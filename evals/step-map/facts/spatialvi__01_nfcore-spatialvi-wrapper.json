@@ -1071,7 +1071,8 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
-   "graded": 6,
+   "dynamic_key_sites": [],
+   "graded": 0,
    "id": "T1",
    "line": 128,
    "placeholders": [
@@ -1128,6 +1129,14 @@
      "line": 144
     }
    ],
+   "dynamic_key_sites": [
+    "gars/_system/executorlib.py:205",
+    "gars/_system/executorlib.py:209",
+    "gars/_system/executorlib.py:214",
+    "gars/_system/executorlib.py:220",
+    "gars/_system/executorlib.py:221",
+    "gars/_system/executorlib.py:243"
+   ],
    "graded": 2,
    "id": "T2",
    "line": 137,
@@ -1160,6 +1169,14 @@
      "command": "squeue -j <job_id>",
      "line": 152
     }
+   ],
+   "dynamic_key_sites": [
+    "gars/_system/executorlib.py:205",
+    "gars/_system/executorlib.py:209",
+    "gars/_system/executorlib.py:214",
+    "gars/_system/executorlib.py:220",
+    "gars/_system/executorlib.py:221",
+    "gars/_system/executorlib.py:243"
    ],
    "graded": 3,
    "id": "T3",
@@ -1200,6 +1217,7 @@
     "nfcore_spatialvi_wrapper.collect"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T4",
    "line": 155,
@@ -1232,6 +1250,10 @@
     "nfcore_spatialvi_wrapper.prepare"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [
+    "gars/_system/wrapperlib.py:245",
+    "gars/_system/wrapperlib.py:252"
+   ],
    "graded": 0,
    "id": "T5",
    "line": 165,
@@ -1253,6 +1275,7 @@
     "nfcore_spatialvi_wrapper.collect"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 3,
    "id": "T6",
    "line": 175,

@@ -978,7 +978,8 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
-   "graded": 3,
+   "dynamic_key_sites": [],
+   "graded": 0,
    "id": "T1",
    "line": 125,
    "placeholders": [
@@ -1027,6 +1028,14 @@
      "line": 141
     }
    ],
+   "dynamic_key_sites": [
+    "gars/_system/executorlib.py:205",
+    "gars/_system/executorlib.py:209",
+    "gars/_system/executorlib.py:214",
+    "gars/_system/executorlib.py:220",
+    "gars/_system/executorlib.py:221",
+    "gars/_system/executorlib.py:243"
+   ],
    "graded": 2,
    "id": "T2",
    "line": 134,
@@ -1070,6 +1079,14 @@
      "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
      "line": 149
     }
+   ],
+   "dynamic_key_sites": [
+    "gars/_system/executorlib.py:205",
+    "gars/_system/executorlib.py:209",
+    "gars/_system/executorlib.py:214",
+    "gars/_system/executorlib.py:220",
+    "gars/_system/executorlib.py:221",
+    "gars/_system/executorlib.py:243"
    ],
    "graded": 3,
    "id": "T3",
@@ -1121,6 +1138,7 @@
     "nfcore_rnaseq_wrapper.collect"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T4",
    "line": 152,
@@ -1153,6 +1171,10 @@
     "nfcore_rnaseq_wrapper.prepare"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [
+    "gars/_system/wrapperlib.py:245",
+    "gars/_system/wrapperlib.py:252"
+   ],
    "graded": 0,
    "id": "T5",
    "line": 162,
@@ -1179,6 +1201,7 @@
     "nfcore_rnaseq_wrapper.collect"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 1,
    "id": "T6",
    "line": 171,

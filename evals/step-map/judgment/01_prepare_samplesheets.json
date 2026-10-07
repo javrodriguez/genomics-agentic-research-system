@@ -43,24 +43,24 @@
    "rung_now": "R5",
    "rung_target": "R1",
    "question": 1,
-   "rung_why": "The allowed values are closed, but turning the user's words into them, and hand-editing the YAML, has no rule; the check (step 3) already reports the missing keys the model looks for here.",
+   "rung_why": "The allowed values are closed and a written rule covers answers to T9, but nothing checks it (S01-declare), a volunteered strandedness has no rule, and the YAML is edited by hand; the check (step 3) already reports the missing keys the model looks for here.",
    "silent": [
     {
      "id": "S01-declare",
      "kind": "unchecked",
-     "decision": "Turning the user's words into strandedness, replication unit, release and pairing",
-     "goes_wrong": "T9 lists the allowed values and the contract says to write exactly what the user supplied and never invent values (01:251-254); the check refuses anything outside the list. But nothing checks that the value written is what the user said: a model that translates 'dUTP' or 'TruSeq stranded' into an allowed value breaks the rule unseen, and a pairing mentioned in passing is only ever flagged with a warning. A wrong but allowed strandedness passes every check",
+     "decision": "Turning the user's words into the replication unit, the reference release, pairing and, when it is not the seeded `auto`, strandedness",
+     "goes_wrong": "Step 2 sends T9 only for undeclared keys (01:249-251), and every seeded rnaseq config carries `strandedness: auto` (_templates/config/rnaseq_bulk.yaml:18), which stage 01 accepts (01:154); so strandedness is asked only if `auto` was removed, and a strandedness the user volunteers has no rule at all: step 2's rules cover T9 answers and volunteered pairing only (01:251-259). For T9 answers the contract says to write exactly what the user supplied (01:251-253), and nothing checks that the value written is what the user said; an invalid replication unit or strandedness is rejected (01:109-113, 153), but reference_release is free text with no registry check (01:111-114). Pairing is recorded only when the user declares it (01:254-255); the check warns only when `paired: paired` has no HISTORY line (stage01_samplesheet.py:560-561), so a misread pairing logged as the rule requires raises nothing. A wrong but allowed strandedness passes every check",
      "severity": 9,
-     "detection": 6,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "Wrong strandedness miscounts reads into a plausible, wrong result; nf-core flags a mismatch only in the MultiQC report's strandedness section, which the next human check points to",
-     "fix": "A numbered menu per setting with each value's meaning, as stage 02 offers genomes; an answer outside it is re-asked; code writes the YAML and the HISTORY line",
+     "why_rank": "A wrong strandedness, re-declared or volunteered, miscounts reads into a plausible, wrong result; T2 shows the value unasked in its Strandedness column (01:332-334), and nf-core flags a mismatch only in the MultiQC strandedness section",
+     "fix": "A numbered menu per setting with each value's meaning, as stage 02 offers genomes, used for a volunteered strandedness too; an answer outside it is re-asked; code writes the YAML and the HISTORY line",
      "fix_rung": "R1"
     },
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -119,12 +119,12 @@
    "rung_now": "R5",
    "rung_target": "R0",
    "question": 1,
-   "rung_why": "Every validation rule is code.",
+   "rung_why": "Every validation rule is code; which reply follows exit 0 is not (S01-table).",
    "silent": [
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -135,6 +135,18 @@
       "D16"
      ],
      "kind": "unsaid"
+    },
+    {
+     "id": "S01-table",
+     "kind": "unsaid",
+     "decision": "Which reply follows the check's exit 0: the exit table's T2 then T4, or steps 6-8's T7, T5 and T8",
+     "goes_wrong": "The Definitions table routes exit 0 to 'T2 then T4' (01:209), while steps 6-8 route exit 0 with pending exclusions or existing outputs to T7 and T5, then offer the deep check (T8) before the writer runs (01:273-283); the contract says the table, not the model's reading, decides the branch (01:205). Read after this check, which writes nothing, the table's T4 says 'Stage 01 complete. Samplesheets written' (01:354)",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A false completion message and a stall: nothing was written, so stage 02's precondition check refuses at once (02:124-125)",
+     "fix": "The table's exit-0 row names the step-6-to-8 order",
+     "fix_rung": "R4"
     }
    ]
   },
@@ -211,7 +223,7 @@
     {
      "id": "S01-yes",
      "decision": "Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both",
-     "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read. Written rules say the two switches need the user's confirmation, but nothing in code ties --confirm-exclusions or --force to an answer; --force also overwrites any edits the user made to the samplesheets",
+     "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read. Written rules say the two switches need the user's confirmation but not what counts as one, and nothing in code ties --confirm-exclusions or --force to an answer; --force also overwrites any edits the user made to the samplesheets",
      "severity": 8,
      "detection": 5,
      "occurrence": null,
@@ -245,7 +257,7 @@
     {
      "id": "S01-yes",
      "decision": "Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both",
-     "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read. Written rules say the two switches need the user's confirmation, but nothing in code ties --confirm-exclusions or --force to an answer; --force also overwrites any edits the user made to the samplesheets",
+     "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read. Written rules say the two switches need the user's confirmation but not what counts as one, and nothing in code ties --confirm-exclusions or --force to an answer; --force also overwrites any edits the user made to the samplesheets",
      "severity": 8,
      "detection": 5,
      "occurrence": null,
@@ -309,13 +321,13 @@
    "rung_now": "R5",
    "rung_target": "R0",
    "question": 1,
-   "rung_why": "The writer is code; the flags it receives were decided at steps 6-8 (S01-yes).",
+   "rung_why": "The writer is code; the flags it receives were decided at steps 6-8 (S01-yes), and its --model id is under a rule nothing checks (G-model).",
    "note": "The step's command omits --verify-integrity full, which its own prose requires when step 8 was accepted (pilot).",
    "silent": [
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -326,6 +338,18 @@
       "D16"
      ],
      "kind": "unsaid"
+    },
+    {
+     "id": "G-model",
+     "kind": "unchecked",
+     "decision": "Which model id to pass as --model",
+     "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+     "severity": 6,
+     "detection": 8,
+     "occurrence": null,
+     "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it",
+     "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+     "fix_rung": "R0"
     }
    ]
   },
@@ -436,7 +460,7 @@
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,

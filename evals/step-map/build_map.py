@@ -241,11 +241,32 @@ def build():
                      "path": contract["path"], "judgment_by": meta["by"],
                      "judgment_date": meta["date"], "inherits": meta["inherits"],
                      "steps": steps}
+    check_prose_ids(maps, unsaid_index)
     ranked = rank(unsaid_index, contracts)
     for cid in maps:
         maps[cid]["silent_ranked"] = [r for r in ranked if any(w["contract"] == cid
                                                                for w in r["where"])]
     return maps, ranked, summary, contracts
+
+
+# A decision id cited in prose (rung_why, or a decision's own text): S00-class, R-factor, G-door.
+# GARS's own record ids (R-092, D-24) start with a digit after the dash and are not matched.
+PROSE_ID = re.compile(r"\b(?:S0[0-3]|[RDWGX])-[a-z][a-z0-9]*(?:-[a-z0-9]+)*\b")
+
+
+def check_prose_ids(maps, unsaid_index):
+    """Every decision id that prose cites must be a decision the map defines."""
+    for cid, m in maps.items():
+        for st in m["steps"]:
+            j = st["judgment"]
+            texts = [j["rung_why"], j.get("note") or ""]
+            for u in j["silent"]:
+                texts += [u["decision"], u["goes_wrong"], u["why_rank"], u["fix"]]
+            for text in texts:
+                for found in PROSE_ID.findall(text):
+                    if found not in unsaid_index:
+                        raise Invalid("%s step %s: prose cites %s, which no step defines"
+                                      % (cid, st["n"], found))
 
 
 def group_of(cid):
@@ -378,8 +399,9 @@ def render(maps, ranked, summary, contracts):
         "| Non-zero codes with no branch (static) | %d |" % s["exits"]["unhandled"],
         "| Fixed answers (accept tokens) | %s |" % ", ".join("`%s`" % t for t in s["accept_tokens"]),
         "| Template placeholders | %d seen: %d graded against the backing call's keys (key, label,"
-        " unbound, no source), %d not graded (context words, choices, model-written text,"
-        " artifact paths); by kind: %s |" % (
+        " unbound), %d not graded (no backing call, unknown where the helper writes field names"
+        " computed at run time, context words, choices, model-written text, artifact paths); by"
+        " kind: %s |" % (
             s["placeholder_accounting"]["seen"], s["placeholder_accounting"]["graded"],
             s["placeholder_accounting"]["ungraded"],
             ", ".join("%s %d" % kv for kv in sorted(s["placeholder_accounting"]["by_binding"].items()))),
@@ -399,7 +421,11 @@ def render(maps, ranked, summary, contracts):
         "\"Static\" means reachable in the helper's code as written, with branches the command's own"
         " flags decide pruned; codes a reader proved unreachable from a given caller are ruled out"
         " with the lines that prove it (`facts/_summary.json`, `rulings`). Uncaught exceptions are"
-        " not modelled (`limits`).",
+        " not modelled (see the limits below).",
+        "",
+        "## What the extraction does not see (limits)",
+        "",
+    ] + ["- " + x for x in s["limits"]] + [
         "",
         "## Rung totals (judgment)",
         "",
@@ -449,7 +475,8 @@ def render(maps, ranked, summary, contracts):
     for cid, m in maps.items():
         lines += ["### `%s`" % m["path"], ""]
         if m["inherits"]:
-            lines += ["Judgment inherits `judgment/%s.json`; overrides are marked." % m["inherits"], ""]
+            lines += ["Judgment inherits `judgment/%s.json`; in `map/`, a step this contract overrides"
+                      " carries `inherited_from` ending \"(overridden)\"." % m["inherits"], ""]
         lines += ["| Step | Actor | Rung now → target | Calls (tool) | No-branch exits | Wait |"
                   " Controls | Silent decisions |", "|---|---|---|---|---|---|---|---|"]
         for st in m["steps"]:

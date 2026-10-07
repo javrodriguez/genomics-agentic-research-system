@@ -413,7 +413,7 @@
    "rung_now": "R5",
    "rung_target": "R3",
    "question": 1,
-   "rung_why": "Finalize is code, but its --data-class and --purpose arguments come from nowhere in the dialogue; the model picks them and they lock.",
+   "rung_why": "Finalize is code, but its --data-class and --purpose arguments come from nowhere in the dialogue; the model picks them and they lock. Its --model id is under a rule nothing checks (G-model).",
    "note": "Exit 2 (class, purpose, agreement or lock refusals) sets no template field, so the stage's exit table names no reply for it (pilot, confirmed). The --sample-id-pattern this step repeats is refused by the guard (D4).",
    "silent": [
     {
@@ -450,6 +450,18 @@
      "occurrence": null,
      "why_rank": "A killed or skipped check; HISTORY records the mode that actually ran",
      "fix": "The full check runs through the executor with a generated script",
+     "fix_rung": "R0"
+    },
+    {
+     "id": "G-model",
+     "kind": "unchecked",
+     "decision": "Which model id to pass as --model",
+     "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+     "severity": 6,
+     "detection": 8,
+     "occurrence": null,
+     "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it",
+     "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
      "fix_rung": "R0"
     }
    ]

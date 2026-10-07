@@ -714,7 +714,84 @@ class TemplateTests(Base):
         t4a = self.contract(S00)["templates"]["T4a"]
         self.assertEqual(t4a["dynamic_key_sites"], [])
         self.assertEqual(sorted(p["label"] for p in t4a["unbound"]), ["r1", "r2"])
-        self.assertGreater(self.result["summary"]["placeholder_accounting"]["by_binding"].get("unknown", 0), 0)
+        # not vacuous: the executor reads its descriptor's field names from a file
+        # (executorlib.py:201-205), so rnaseq-de's T2 carries those sites, and a key missing
+        # from that vocabulary is unknown
+        cited(self, EXL, 205, "values[key] = _strip_value(rest)")
+        t2 = self.contract(RNADE)["templates"]["T2"]
+        self.assertIn("%s:205" % EXL, t2["dynamic_key_sites"])
+        voc = X.flow_vocabulary(X.HelperIndex(self.src), X.load_registry(self.src),
+                                ["executor.status"])
+        self.assertIn("%s:205" % EXL, voc.dynamic)
+        self.assertEqual(X.bind_placeholder("<nokey>", "x <nokey>", voc)["binding"], "unknown")
+
+    def test_a_loop_key_resolves_from_the_loop_around_the_write(self):
+        """stage01_samplesheet.py:779 writes config_values[key] inside `for key in
+        config_columns(fmt)` (770), not inside the literal loop at 535 that also binds `key`."""
+        import ast
+        cited(self, REG01, 535, 'for key in ("unit_of_replication", "reference_release", "paired"):')
+        cited(self, REG01, 770, "for key in config_columns(fmt):")
+        code = ("def f(x, y, z, w, g, rows):\n"
+                "    for key in ('a', 'b'):\n"
+                "        x[key] = 1\n"
+                "    for key in g():\n"
+                "        y[key] = 2\n"
+                "    for key, v in [('p', 1), ('q', 2)]:\n"
+                "        z[key] = v\n"
+                "    for key in ('c',):\n"
+                "        key = g()\n"
+                "        w[key] = 3\n"
+                "    ks = [('m', 1)]\n"
+                "    ks += [('n', 2)]\n"
+                "    for key, v in ks:\n"
+                "        x[key] = v\n")
+        flow = X.Flow(self.src, X.HelperIndex(self.src))
+        flow._nodes = X.pruned_nodes(ast.parse(code).body[0].body, None)
+        def at(line):
+            node = next(n for n in flow._nodes if isinstance(n, ast.Assign) and n.lineno == line
+                        and isinstance(n.targets[0], ast.Subscript))
+            return flow.resolve_dynamic(node.targets[0].slice, line)
+        self.assertEqual(at(3), {"a", "b"})
+        self.assertIsNone(at(5))
+        self.assertEqual(at(7), {"p", "q"})
+        self.assertIsNone(at(10))
+        self.assertEqual(at(14), {"m", "n"})
+        voc = X.flow_vocabulary(X.HelperIndex(self.src), X.load_registry(self.src),
+                                ["stage01_samplesheet"])
+        self.assertEqual(voc.dynamic, set())        # 779 is explained by its key domain
+        self.assertIn("unknown", voc["strandedness"])
+
+    def test_a_tuple_key_is_not_a_json_key(self):
+        """units[(sample, "")] (stage00_register.py:226) cannot be emitted as JSON (json.dumps
+        refuses tuple keys and nothing under gars/ passes skipkeys), so it is not a key site."""
+        cited(self, REG00, 226, 'units[(sample, "")] = {"dir": name}')
+        idx = X.HelperIndex(self.src)
+        self.assertFalse(idx.skipkeys)
+        voc = X.flow_vocabulary(idx, X.load_registry(self.src), ["stage00_register.inspect"])
+        self.assertEqual(voc.dynamic, set())
+
+    def test_item_key_rulings_explain_only_while_their_evidence_holds(self):
+        cited(self, REG00, 705, 'per_assay[aid] = {"display": assay_map.get(aid, aid)')
+        reg = X.load_registry(self.src)
+        voc = X.flow_vocabulary(X.HelperIndex(self.src), reg, ["stage00_register.finalize"])
+        self.assertEqual(voc.dynamic, set())
+        self.assertEqual(X.check_key_rulings(self.src), [])
+
+        class Edited(X.Source):
+            def text(self, path):
+                body = super().text(path)
+                if path == REG00:
+                    lines = body.split("\n")
+                    lines[655] = lines[655].replace("for aid in assays:", "for aid in other:")
+                    body = "\n".join(lines)
+                return body
+        edited = Edited(str(REPO), PIN)
+        voc = X.flow_vocabulary(X.HelperIndex(edited), reg, ["stage00_register.finalize"])
+        self.assertEqual(voc.dynamic, {"%s:705" % REG00})
+        self.assertEqual(X.bind_placeholder("<nokey>", "x <nokey>", voc)["binding"], "unknown")
+        self.assertEqual(X.check_key_rulings(edited),
+                         [{"kind": "item_keys_void", "ruling": "stage00-per-assay",
+                           "lines": ["%s:656" % REG00]}])
 
     def test_key_check_is_not_vacuous(self):
         vocab = X.key_vocabulary(self.src, ["_system/stage01_samplesheet.py"])

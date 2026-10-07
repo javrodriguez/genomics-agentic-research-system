@@ -55,7 +55,7 @@
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -79,13 +79,30 @@
    "evidence": "T5 if missing",
    "controls": [
     "written rules only",
-    "fixed response templates"
+    "fixed response templates",
+    "guard deny rules"
    ],
-   "rung_now": "R4",
+   "rung_now": "R5",
    "rung_target": "R0",
-   "question": 2,
-   "rung_why": "An existence check the model makes by hand; code could (the wrappers' check already does).",
-   "silent": []
+   "question": 1,
+   "rung_why": "An existence check the model makes by hand; code could (the wrappers' check already does). On a closed project the guard refuses the read itself (G-closed).",
+   "silent": [
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ],
+     "kind": "unsaid"
+    }
+   ]
   },
   "3a": {
    "actor": [
@@ -106,12 +123,13 @@
     "fixed response templates",
     "wait points",
     "typed tool calls",
-    "helper exit codes"
+    "helper exit codes",
+    "guard deny rules"
    ],
    "rung_now": "R5",
    "rung_target": "R1",
    "question": 1,
-   "rung_why": "The menus are code and T9 is a human confirmation (R1 plus R3), but three decisions inside the step have no rule: whether any decisions remain, how a scrnaseq chemistry is chosen, and how words become a formula.",
+   "rung_why": "The menus are code and T9 is a human confirmation (R1 plus R3), but whether any decisions remain (R-required), how a scrnaseq chemistry is chosen (R-protocol), which factor the contrast compares (R-factor) and what counts as the confirmation (R-confirm) have no rule, how words become a formula has a written rule nothing checks (R-formula), and on a closed project the guard refuses contrasts and apply (G-closed).",
    "silent": [
     {
      "id": "R-protocol",
@@ -160,13 +178,40 @@
      "id": "R-factor",
      "kind": "unsaid",
      "decision": "Which design factor the contrast compares",
-     "goes_wrong": "contrasts and apply default to --factor condition, which no contract mentions, and apply also accepts a typed factor,numerator,denominator; when the design carries another factor the user cares about, the model decides which one the menu is built from, or types a contrast itself",
+     "goes_wrong": "contrasts and apply default to --factor condition (configure.py:501, 517), which no contract mentions; when the design carries another factor the user cares about, the model decides which one the menu is built from. A typed factor,numerator,denominator is accepted only when it equals a menu pair of the same factor (configure.py:355-372), so the factor, not a typed contrast, is the open choice",
      "severity": 9,
      "detection": 4,
      "occurrence": null,
      "why_rank": "A wrong contrast gives a complete, confident, wrong result (the router's own human check says nothing downstream can detect it); T9 asks the user to confirm the contrast",
-     "fix": "The contrast menu lists the factor with each pair, and apply refuses a typed contrast",
+     "fix": "The contract names --factor and the contrast menu shows the factor beside each pair; a design with more than one candidate factor is asked about",
      "fix_rung": "R1"
+    },
+    {
+     "id": "R-confirm",
+     "kind": "unsaid",
+     "decision": "Whether a free-text reply confirms the dry run (T9) before apply writes the config",
+     "goes_wrong": "T9 ends 'Confirm to write it, or say what to change' (02:262) and step 3a re-runs without --dry-run 'On confirmation' (02:148); no answer is fixed, so 'ok, but the other contrast' is the model's to read, and the write carries whatever the re-run command holds",
+     "severity": 8,
+     "detection": 5,
+     "occurrence": null,
+     "why_rank": "Settings the user did not confirm run the analysis; the sub-stage's T1 shows them unasked, and the router's human check asks the user to confirm the config before dispatch (02:313-317)",
+     "fix": "A fixed answer (`write`), and the write refuses unless it matches the dry run the user saw",
+     "fix_rung": "R2"
+    },
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ],
+     "kind": "unsaid"
     }
    ]
   },
@@ -311,7 +356,7 @@
    "rung_now": "R5",
    "rung_target": "R0",
    "question": 1,
-   "rung_why": "Resolution is code, but its direct spelling is refused wherever a non-public project exists and the contract names no other (G-door); the resolved paths then travel to the sub-stage in the conversation (D-handoff, judged there).",
+   "rung_why": "Resolution is code, but its direct spelling is refused wherever a non-public project exists and the contract names no other (G-door); the resolved paths then travel to the sub-stage in the conversation (D-input and D-supplier, judged there).",
    "note": "Exit 3 (no such project, nothing to resolve) has no branch.",
    "silent": [
     {

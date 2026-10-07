@@ -1279,7 +1279,8 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
-   "graded": 1,
+   "dynamic_key_sites": [],
+   "graded": 0,
    "id": "T1",
    "line": 159,
    "placeholders": [
@@ -1317,6 +1318,14 @@
      "line": 175
     }
    ],
+   "dynamic_key_sites": [
+    "gars/_system/executorlib.py:205",
+    "gars/_system/executorlib.py:209",
+    "gars/_system/executorlib.py:214",
+    "gars/_system/executorlib.py:220",
+    "gars/_system/executorlib.py:221",
+    "gars/_system/executorlib.py:243"
+   ],
    "graded": 2,
    "id": "T2",
    "line": 168,
@@ -1349,6 +1358,14 @@
      "command": "squeue -j <job_id>",
      "line": 183
     }
+   ],
+   "dynamic_key_sites": [
+    "gars/_system/executorlib.py:205",
+    "gars/_system/executorlib.py:209",
+    "gars/_system/executorlib.py:214",
+    "gars/_system/executorlib.py:220",
+    "gars/_system/executorlib.py:221",
+    "gars/_system/executorlib.py:243"
    ],
    "graded": 3,
    "id": "T3",
@@ -1389,6 +1406,7 @@
     "spatial_cluster_count.collect"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T4",
    "line": 186,
@@ -1421,6 +1439,7 @@
     "spatial_cluster_count.prepare"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T5",
    "line": 196,
@@ -1442,6 +1461,7 @@
     "spatial_cluster_count.collect"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 3,
    "id": "T6",
    "line": 206,

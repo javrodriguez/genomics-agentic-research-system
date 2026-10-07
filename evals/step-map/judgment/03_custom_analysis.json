@@ -77,7 +77,7 @@
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -114,7 +114,7 @@
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -169,7 +169,7 @@
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -233,7 +233,7 @@
      "id": "S03-scripts",
      "decision": "How the approved method becomes code",
      "goes_wrong": "The model writes the analysis scripts after approval; approval binds PLAN.md, not the scripts, and verify checks only that declared outputs exist, are non-empty and came from executor runs of unchanged scripts. A script that departs from the approved method, reads inputs the plan does not list, or computes the statistic differently passes every gate",
-     "severity": 9,
+     "severity": 10,
      "detection": 8,
      "occurrence": null,
      "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan (the contract itself records the gap, 03:89-94)",
@@ -288,7 +288,7 @@
      "kind": "unsaid",
      "decision": "In what order, and with what dependencies, several analysis scripts run",
      "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists (it crashes), or read a stale copy left by an earlier attempt, which passes verify",
-     "severity": 9,
+     "severity": 10,
      "detection": 8,
      "occurrence": null,
      "why_rank": "A stale input gives a wrong result that verify accepts; only reading the run records reveals the order",
@@ -298,7 +298,7 @@
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -369,7 +369,7 @@
    "rung_now": "R5",
    "rung_target": "R0",
    "question": 1,
-   "rung_why": "verify checks approval, execution evidence and that declared outputs exist and are non-empty.",
+   "rung_why": "verify checks approval, execution evidence and that declared outputs exist and are non-empty; its --model id is under a rule nothing checks (G-model).",
    "note": "Exit 3 has no branch.",
    "silent": [
     {
@@ -383,6 +383,18 @@
      "why_rank": "A dead end with no compliant road named, but a loud one",
      "fix": "Step 9 branches the expiry to a template naming the new-analysis road",
      "fix_rung": "R4"
+    },
+    {
+     "id": "G-model",
+     "kind": "unchecked",
+     "decision": "Which model id to pass as --model",
+     "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+     "severity": 6,
+     "detection": 8,
+     "occurrence": null,
+     "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it",
+     "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+     "fix_rung": "R0"
     }
    ]
   },
@@ -422,7 +434,7 @@
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,

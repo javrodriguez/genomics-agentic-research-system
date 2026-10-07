@@ -101,6 +101,20 @@ class Published(unittest.TestCase):
             expected += [r["id"] for r in self.ranked if r["group"] == k][:3]
         self.assertEqual(found, expected)
 
+    def test_review_page_scores_equal_the_map(self):
+        """Each item's "Harm X, slip-through Y" is the ranked decision's own severity and detection."""
+        text = open(os.path.join(LANE, "REVIEW.md"), encoding="utf-8").read()
+        parts = re.split(r"<!-- ([A-Za-z0-9-]+) -->", text)[1:]
+        by_id = {}
+        for r in self.ranked:
+            by_id.setdefault(r["id"], r)
+        self.assertEqual(len(parts), 30)
+        for uid, body in zip(parts[::2], parts[1::2]):
+            scores = re.findall(r"Harm (\d+), slip-through (\d+)", body.split("\n## ")[0])
+            self.assertEqual(len(scores), 1, uid)
+            self.assertEqual((int(scores[0][0]), int(scores[0][1])),
+                             (by_id[uid]["severity"], by_id[uid]["detection"]), uid)
+
 
 class Validator(unittest.TestCase):
     """Each rule the validator enforces refuses a judgment that breaks it."""
@@ -189,6 +203,16 @@ class Validator(unittest.TestCase):
             d["steps"]["6"]["silent"][0]["severity"] = 6
         self.edit("01_prepare_samplesheets.json", fn)
         self.refuses("defined twice")
+
+    def test_prose_cites_only_defined_ids(self):
+        self.edit("00_initialize_project.json",
+                  lambda d: d["steps"]["1"].update(rung_why="Fixed text (D-handoff)."))
+        self.refuses("prose cites D-handoff")
+
+    def test_record_ids_in_prose_are_not_decision_ids(self):
+        self.edit("00_initialize_project.json",
+                  lambda d: d["steps"]["1"].update(rung_why="Fixed text (R-092, D-24)."))
+        B.build()
 
     def test_wrong_pin(self):
         self.edit("00_initialize_project.json", lambda d: d.update(sha="0" * 40))

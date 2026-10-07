@@ -1132,6 +1132,7 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T1",
    "line": 323,
@@ -1153,6 +1154,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 6,
    "id": "T2",
    "line": 330,
@@ -1220,6 +1222,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 2,
    "id": "T3",
    "line": 341,
@@ -1253,6 +1256,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 3,
    "id": "T4",
    "line": 352,
@@ -1331,6 +1335,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 1,
    "id": "T5",
    "line": 378,
@@ -1358,6 +1363,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 1,
    "id": "T6",
    "line": 386,
@@ -1382,6 +1388,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 4,
    "id": "T7",
    "line": 411,
@@ -1437,6 +1444,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 3,
    "id": "T8",
    "line": 395,
@@ -1476,6 +1484,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T9",
    "line": 313,

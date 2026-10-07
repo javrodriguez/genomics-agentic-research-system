@@ -142,7 +142,7 @@
     {
      "id": "W-submit",
      "decision": "What to do when GARS's pre-submission check refuses the job",
-     "goes_wrong": "Before a job is queued, the executor checks the dataset's class, purpose and route (the venue rules) and refuses a duplicate. The router's Definitions say to report every refusal and stop, but the sub-stage's submit step says only to capture job_id and the next step announces 'Submitted as job <job_id>' with no branch for exit 1 or 2; the model either announces a submission that did not happen, or changes the executor or memory settings itself to get past the refusal",
+     "goes_wrong": "Before a job is queued, the executor checks the dataset's class, purpose and route (the venue rules) and refuses a duplicate. The router's Definitions say to report every refusal and stop (02:118), but the sub-stage's submit step says only to capture job_id and the next step announces 'Submitted as job <job_id>' with no branch for exit 1 or 2, and nothing checks that the rule was followed; the model either announces a submission that did not happen, or changes the executor or memory settings itself to get past the refusal",
      "severity": 5,
      "detection": 5,
      "occurrence": null,
@@ -152,7 +152,7 @@
      "defects": [
       "D12"
      ],
-     "kind": "unsaid"
+     "kind": "unchecked"
     },
     {
      "id": "G-door",
@@ -192,7 +192,7 @@
    "rung_now": "R5",
    "rung_target": "R0",
    "question": 1,
-   "rung_why": "The gate is code (including the BH check), but --counts-from comes from the conversation (D-handoff) and the direct spelling is a door (G-door).",
+   "rung_why": "The gate is code (including the BH check), but --counts-from comes from the conversation (D-supplier), the model id under a rule nothing checks (G-model), and the direct spelling is a door (G-door).",
    "note": "The two status calls inside its exit branches are branch actions, not new call sites.",
    "silent": [
     {
@@ -221,6 +221,18 @@
       "D15"
      ],
      "kind": "unsaid"
+    },
+    {
+     "id": "G-model",
+     "kind": "unchecked",
+     "decision": "Which model id to pass as --model",
+     "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+     "severity": 6,
+     "detection": 8,
+     "occurrence": null,
+     "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it",
+     "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+     "fix_rung": "R0"
     }
    ]
   },

@@ -1049,6 +1049,7 @@
     "resolve_artifact"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T1",
    "line": 170,
@@ -1080,6 +1081,7 @@
      "line": 193
     }
    ],
+   "dynamic_key_sites": [],
    "graded": 2,
    "id": "T2",
    "line": 180,
@@ -1162,6 +1164,14 @@
     "executor.submit"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [
+    "gars/_system/executorlib.py:205",
+    "gars/_system/executorlib.py:209",
+    "gars/_system/executorlib.py:214",
+    "gars/_system/executorlib.py:220",
+    "gars/_system/executorlib.py:221",
+    "gars/_system/executorlib.py:243"
+   ],
    "graded": 0,
    "id": "T3",
    "line": 198,
@@ -1183,6 +1193,14 @@
     "executor.submit"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [
+    "gars/_system/executorlib.py:205",
+    "gars/_system/executorlib.py:209",
+    "gars/_system/executorlib.py:214",
+    "gars/_system/executorlib.py:220",
+    "gars/_system/executorlib.py:221",
+    "gars/_system/executorlib.py:243"
+   ],
    "graded": 0,
    "id": "T4",
    "line": 207,
@@ -1210,6 +1228,14 @@
     "stage03_analysis.verify"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [
+    "gars/_system/executorlib.py:205",
+    "gars/_system/executorlib.py:209",
+    "gars/_system/executorlib.py:214",
+    "gars/_system/executorlib.py:220",
+    "gars/_system/executorlib.py:221",
+    "gars/_system/executorlib.py:243"
+   ],
    "graded": 0,
    "id": "T5",
    "line": 213,
@@ -1241,6 +1267,7 @@
     "stage03_analysis.verify"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T6",
    "line": 224,

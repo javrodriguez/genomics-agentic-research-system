@@ -127,6 +127,33 @@
    "why_rank": "Sample identity feeds every later step, but T4a asks the user to confirm the derived IDs"
   },
   {
+   "decision": "Which model id to pass as --model",
+   "detection": 8,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 sub-stages: run the pipelines",
+    "Stage 03: custom analysis"
+   ],
+   "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+   "fix_rung": "R0",
+   "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+   "group": 0,
+   "id": "G-model",
+   "kind": "unchecked",
+   "occurrence": null,
+   "rank_in_stage": 6,
+   "severity": 6,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:256-276",
+     "step": "15"
+    }
+   ],
+   "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it"
+  },
+  {
    "decision": "How to run a full integrity check the user asks for on a large cohort",
    "detection": 6,
    "elsewhere": [],
@@ -137,7 +164,7 @@
    "id": "S00-fullcheck",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 6,
+   "rank_in_stage": 7,
    "severity": 5,
    "stage": "Stage 00: register the project and its raw data",
    "where": [
@@ -160,7 +187,7 @@
    "id": "S00-guard",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 7,
+   "rank_in_stage": 8,
    "severity": 5,
    "stage": "Stage 00: register the project and its raw data",
    "where": [
@@ -183,7 +210,7 @@
    "id": "S00-skip",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 8,
+   "rank_in_stage": 9,
    "severity": 5,
    "stage": "Stage 00: register the project and its raw data",
    "where": [
@@ -209,7 +236,7 @@
    "id": "S00-title",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 9,
+   "rank_in_stage": 10,
    "severity": 3,
    "stage": "Stage 00: register the project and its raw data",
    "where": [
@@ -232,7 +259,7 @@
    "id": "S00-counts",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 10,
+   "rank_in_stage": 11,
    "severity": 3,
    "stage": "Stage 00: register the project and its raw data",
    "where": [
@@ -1301,7 +1328,7 @@
     "question": 1,
     "rung_now": "R5",
     "rung_target": "R3",
-    "rung_why": "Finalize is code, but its --data-class and --purpose arguments come from nowhere in the dialogue; the model picks them and they lock.",
+    "rung_why": "Finalize is code, but its --data-class and --purpose arguments come from nowhere in the dialogue; the model picks them and they lock. Its --model id is under a rule nothing checks (G-model).",
     "silent": [
      {
       "decision": "The dataset's data class and purpose, passed to finalize",
@@ -1338,6 +1365,18 @@
       "occurrence": null,
       "severity": 5,
       "why_rank": "A killed or skipped check; HISTORY records the mode that actually ran"
+     },
+     {
+      "decision": "Which model id to pass as --model",
+      "detection": 8,
+      "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+      "fix_rung": "R0",
+      "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+      "id": "G-model",
+      "kind": "unchecked",
+      "occurrence": null,
+      "severity": 6,
+      "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it"
      }
     ]
    },

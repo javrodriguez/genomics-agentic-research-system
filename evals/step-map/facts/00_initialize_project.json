@@ -1815,6 +1815,7 @@
    "ask": "question",
    "backing_tools": [],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T1",
    "line": 289,
@@ -1830,6 +1831,7 @@
     "stage00_register.assays"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 2,
    "id": "T3",
    "line": 297,
@@ -1880,6 +1882,7 @@
     "stage00_register.create"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T3b",
    "line": 324,
@@ -1921,6 +1924,7 @@
     "stage00_register.inspect"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 5,
    "id": "T4a",
    "line": 335,
@@ -2002,6 +2006,7 @@
     "stage00_register.link"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 2,
    "id": "T4b",
    "line": 346,
@@ -2044,6 +2049,7 @@
     "stage00_register.inspect"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 1,
    "id": "T5",
    "line": 352,
@@ -2081,6 +2087,7 @@
     "stage00_register.finalize"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 4,
    "id": "T6",
    "line": 363,
@@ -2148,6 +2155,7 @@
     "stage00_register.create"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 1,
    "id": "T7",
    "line": 393,
@@ -2171,6 +2179,7 @@
     "stage00_register.create"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 0,
    "id": "T8",
    "line": 400,
@@ -2207,6 +2216,7 @@
     "stage00_register.finalize"
    ],
    "commands_for_user": [],
+   "dynamic_key_sites": [],
    "graded": 1,
    "id": "T9",
    "line": 382,

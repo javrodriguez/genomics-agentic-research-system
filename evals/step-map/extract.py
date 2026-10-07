@@ -286,6 +286,7 @@ def accept_tokens(body):
 
 # --- exit mentions ------------------------------------------------------------------------------
 
+NONZERO = -1          # "Exit non-zero": every non-zero code the call itself emits
 EXIT_RE = re.compile(r"(?:\bExit|\(exit)\s+(non-zero|nonzero|\d)((?:\s*(?:,|or|and|/)\s*\d)*)")
 
 
@@ -295,7 +296,7 @@ def exit_codes(text):
     codes = set()
     for m in EXIT_RE.finditer(text):
         if m.group(1).startswith("non"):
-            codes |= {1, 2, 3}
+            codes.add(NONZERO)
         else:
             codes.add(int(m.group(1)))
             codes |= {int(d) for d in re.findall(r"\d", m.group(2))}
@@ -687,6 +688,20 @@ class HelperIndex:
 
     def __init__(self, src):
         self.src, self.modules, self.names, self.memo = src, {}, {}, {}
+        self._skipkeys = None
+
+    @property
+    def skipkeys(self):
+        """True if any file under gars/ names json's skipkeys, which would let a tuple-keyed
+        dict be emitted with those keys dropped rather than refused."""
+        if self._skipkeys is None:
+            out = subprocess.run(["git", "-C", self.src.repo, "grep", "-l", "skipkeys",
+                                  self.src.sha, "--", "gars"], stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, universal_newlines=True)
+            if out.returncode not in (0, 1):
+                raise RuntimeError("git grep failed: %s" % out.stderr.strip())
+            self._skipkeys = bool(out.stdout.strip())
+        return self._skipkeys
 
     def by_path(self, path):
         if path not in self.modules:
@@ -1283,6 +1298,52 @@ KEY_DOMAINS = [{
 }]
 
 
+# A run-time key that names an item (an assay, a requested artifact type), never a field. Each
+# entry is a reader's ruling, bound to whole lines re-checked on every run; while its evidence
+# holds, the sites are explained and a missing key there stays "unbound". A broken entry leaves
+# its sites unexplained (so absence reads "unknown") and is listed as void in the summary.
+ITEM_KEYS = [{
+    "id": "stage00-per-assay",
+    "sites": ["gars/_system/stage00_register.py:705"],
+    "why": ("per_assay is keyed by the assay ids finalize loops over; its keys never reach the "
+            "result, only each assay's row, under the named field `assays`"),
+    "evidence": [
+        ("gars/_system/stage00_register.py", 654, "    per_assay = {}"),
+        ("gars/_system/stage00_register.py", 656, "    for aid in assays:"),
+        ("gars/_system/stage00_register.py", 705,
+         '        per_assay[aid] = {"display": assay_map.get(aid, aid), "files": len(names),'),
+        ("gars/_system/stage00_register.py", 708,
+         '        result["assays"][aid] = {k: v for k, v in per_assay[aid].items()}'),
+    ],
+}, {
+    "id": "resolve-requested-types",
+    "sites": ["gars/_system/resolve_artifact.py:156", "gars/_system/resolve_artifact.py:158"],
+    "why": ("resolved and missing are keyed by the artifact types the command asked for "
+            "(--type or --consumes), emitted under the named fields `resolved` and `missing`"),
+    "evidence": [
+        ("gars/_system/resolve_artifact.py", 151,
+         "    wanted = args.consumes if args.consumes is not None else [args.type]"),
+        ("gars/_system/resolve_artifact.py", 152, "    resolved, missing = {}, {}"),
+        ("gars/_system/resolve_artifact.py", 153, "    for w in wanted:"),
+        ("gars/_system/resolve_artifact.py", 156, "            resolved[w] = hit"),
+        ("gars/_system/resolve_artifact.py", 158, "            missing[w] = why"),
+        ("gars/_system/resolve_artifact.py", 160, '    result["resolved"] = resolved'),
+        ("gars/_system/resolve_artifact.py", 161, '    result["missing"] = missing'),
+    ],
+}]
+
+
+def check_key_rulings(src):
+    """Findings for key domains and item-key rulings whose evidence no longer reads as cited."""
+    void = []
+    for kind, entries in (("key_domain_void", KEY_DOMAINS), ("item_keys_void", ITEM_KEYS)):
+        for e in entries:
+            broken = evidence_holds(src, e["evidence"])
+            if broken:
+                void.append({"kind": kind, "ruling": e["id"], "lines": broken})
+    return void
+
+
 def key_domain_keys(src, domain):
     """The keys a key domain admits: every string constant inside the named module constant that
     starts with the prefix, with the prefix removed."""
@@ -1343,6 +1404,120 @@ class Flow:
     def __init__(self, src, index, flags=None):
         self.src, self.index, self.flags = src, index, flags
         self.keys, self.dynamic, self.memo = set(), [], {}
+        self.shapes = {}          # key -> set of value shapes seen where it is written
+        self._nodes = []          # the current function's nodes, for one-level name lookups
+
+    def add_key(self, key, value=None, shape=None):
+        self.keys.add(key)
+        s = shape if shape is not None else self.shape(value)
+        self.shapes.setdefault(key, set()).add(s)
+
+    def shape(self, node, depth=0):
+        """dict, list, number, text, bool or unknown: what a written value looks like."""
+        if node is None:
+            return "unknown"
+        if isinstance(node, (ast.Dict, ast.DictComp)):
+            return "dict"
+        if isinstance(node, (ast.List, ast.ListComp, ast.Tuple, ast.Set, ast.SetComp,
+                             ast.GeneratorExp)):
+            return "list"
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, bool):
+                return "bool"
+            if isinstance(node.value, (int, float)):
+                return "number"
+            if isinstance(node.value, str):
+                return "text"
+            return "unknown"
+        if isinstance(node, ast.BinOp):
+            return "number"
+        if isinstance(node, ast.Call) and getattr(node.func, "id", None) in (
+                "len", "int", "float", "sum", "round", "max", "min", "abs"):
+            return "number"
+        if isinstance(node, (ast.BoolOp, ast.IfExp)):
+            parts = node.values if isinstance(node, ast.BoolOp) else [node.body, node.orelse]
+            known = {self.shape(p, depth) for p in parts} - {"unknown"}
+            return known.pop() if len(known) == 1 else "unknown"
+        if isinstance(node, ast.Name) and depth < 2:
+            found = {self.shape(n.value, depth + 1) for n in self._nodes
+                     if isinstance(n, ast.Assign) and any(isinstance(tg, ast.Name) and tg.id == node.id
+                                                          for tg in n.targets)}
+            found -= {"unknown"}
+            return found.pop() if len(found) == 1 else "unknown"
+        return "unknown"
+
+    def resolve_dynamic(self, slice_node, lineno):
+        """Keys a run-time subscript takes when its variable is bound by the innermost loop
+        around the write, and that loop runs over literal strings (`for key in ("a", "b")`, or
+        a name built from literals by assignment, `+=` and append; a tuple target takes its
+        position in literal tuples). A variable re-bound inside the loop before the write, or
+        bound by no enclosing loop, is not resolved."""
+        if not isinstance(slice_node, ast.Name):
+            return None
+        name = slice_node.id
+        loops = []
+        for n in self._nodes:
+            if isinstance(n, ast.For) and n.lineno <= lineno <= (n.end_lineno or n.lineno):
+                if isinstance(n.target, ast.Name) and n.target.id == name:
+                    loops.append((n.lineno, n, None))
+                elif isinstance(n.target, ast.Tuple):
+                    pos = [i for i, e in enumerate(n.target.elts)
+                           if isinstance(e, ast.Name) and e.id == name]
+                    if pos:
+                        loops.append((n.lineno, n, pos[0]))
+        if not loops:
+            return None
+        _, loop, pos = max(loops, key=lambda x: x[0])
+        for n in self._nodes:
+            if isinstance(n, (ast.Assign, ast.AugAssign, ast.AnnAssign)) and \
+                    loop.lineno < n.lineno <= lineno:
+                targets = n.targets if isinstance(n, ast.Assign) else [n.target]
+                if any(isinstance(x, ast.Name) and x.id == name and isinstance(x.ctx, ast.Store)
+                       for tg in targets for x in ast.walk(tg)):
+                    return None
+            elif isinstance(n, ast.For) and n is not loop and loop.lineno < n.lineno <= lineno \
+                    and any(isinstance(x, ast.Name) and x.id == name for x in ast.walk(n.target)):
+                return None
+        return self.literal_strings(loop.iter, pos)
+
+    def literal_strings(self, node, pos=None):
+        def one(e):
+            if pos is not None:
+                if not isinstance(e, ast.Tuple) or len(e.elts) <= pos:
+                    return None
+                e = e.elts[pos]
+            return e.value if isinstance(e, ast.Constant) and isinstance(e.value, str) else None
+        if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+            vals = [one(e) for e in node.elts]
+            return set(vals) if vals and None not in vals else None
+        if isinstance(node, ast.Name):
+            base = None
+            for n in self._nodes:
+                if isinstance(n, ast.Assign) and any(isinstance(tg, ast.Name) and tg.id == node.id
+                                                     for tg in n.targets):
+                    if base is not None:
+                        return None      # assigned twice: which value reaches the loop is open
+                    base = self.literal_strings(n.value, pos)
+                    if base is None:
+                        return None
+            if base is None:
+                return None
+            for n in self._nodes:
+                if isinstance(n, ast.AugAssign) and isinstance(n.target, ast.Name) and \
+                        n.target.id == node.id:
+                    more = self.literal_strings(n.value, pos)
+                    if more is None:
+                        return None
+                    base |= more
+                elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and \
+                        isinstance(n.func.value, ast.Name) and n.func.value.id == node.id and \
+                        n.func.attr in ("append", "extend", "insert", "update", "add"):
+                    if n.func.attr == "append" and n.args and one(n.args[0]) is not None:
+                        base.add(one(n.args[0]))
+                    else:
+                        return None
+            return base
+        return None
 
     def module_dict(self, mod, name):
         for top in mod.tree.body:
@@ -1362,6 +1537,7 @@ class Flow:
         self.memo[key] = set()
         tracked = set(tracked)
         nodes = pruned_nodes(body, self.flags if top else None)
+        saved_nodes, self._nodes = self._nodes, nodes
         params = [a.arg for a in args.args] if args else []
         while True:
             before = (len(tracked), len(self.keys))
@@ -1391,15 +1567,21 @@ class Flow:
                     base, slices, _ = subscript_chain(n.func.value)
                     if base in tracked:
                         if n.func.attr == "update":
-                            self.keys |= set(slices)
+                            for s in slices:
+                                self.add_key(s, shape="dict")
                             for a in n.args:
                                 self.expr(mod, a, tracked)
-                            self.keys |= {kw.arg for kw in n.keywords if kw.arg}
+                            for kw in n.keywords:
+                                if kw.arg:
+                                    self.add_key(kw.arg, kw.value)
                         elif n.func.attr == "setdefault" and n.args and \
                                 isinstance(n.args[0], ast.Constant):
-                            self.keys |= set(slices) | {n.args[0].value}
+                            for s in slices:
+                                self.add_key(s, shape="dict")
+                            self.add_key(n.args[0].value, n.args[1] if len(n.args) > 1 else None)
                         elif n.func.attr in ("append", "extend", "insert"):
-                            self.keys |= set(slices)
+                            for s in slices:
+                                self.add_key(s, shape="list")
                             for a in n.args:
                                 self.expr(mod, a, tracked)
             if (len(tracked), len(self.keys)) == before:
@@ -1415,6 +1597,7 @@ class Flow:
             inner = {names[i] for i, a in enumerate(n.args)
                      if i < len(names) and isinstance(a, ast.Name) and a.id in tracked}
             self.walk(target[0], target[1].name, target[1].args, target[1].body, inner, False)
+        self._nodes = saved_nodes
         flowing = {i for i, p in enumerate(params) if p in tracked}
         self.memo[key] = flowing
         return flowing
@@ -1446,9 +1629,30 @@ class Flow:
             return
         if base in tracked:
             if slices or dynamic or not isinstance(tgt, ast.Name):
-                self.keys |= set(slices)
-                if dynamic:
-                    self.dynamic.append("%s:%d" % (mod.path, lineno))
+                chain, node = [], tgt
+                while isinstance(node, ast.Subscript):
+                    chain.insert(0, node.slice)
+                    node = node.value
+                for i, sl in enumerate(chain):
+                    last = i == len(chain) - 1
+                    if isinstance(sl, ast.Constant) and isinstance(sl.value, str):
+                        self.add_key(sl.value, value if last else None,
+                                     None if last else "dict")
+                    elif isinstance(sl, ast.Slice):
+                        continue
+                    elif isinstance(sl, ast.Tuple) and not self.index.skipkeys:
+                        # json.dumps refuses a tuple key (no emit passes skipkeys), so a dict
+                        # keyed this way is rebuilt before it is emitted: not a JSON key
+                        continue
+                    else:
+                        resolved = self.resolve_dynamic(sl, lineno)
+                        if resolved is not None:
+                            for k in resolved:
+                                self.add_key(k, value if last else None, None if last else "dict")
+                        elif not any(isinstance(c, ast.Constant) for c in chain[:i]):
+                            # a key computed at run time at a level no named field sits above:
+                            # it may be a field name. Under a named field it is an item key.
+                            self.dynamic.append("%s:%d" % (mod.path, lineno))
             self.expr(mod, value, tracked)
 
     def expr(self, mod, node, tracked):
@@ -1463,14 +1667,14 @@ class Flow:
         elif isinstance(node, ast.Dict):
             for k, v in zip(node.keys, node.values):
                 if isinstance(k, ast.Constant) and isinstance(k.value, str):
-                    self.keys.add(k.value)
+                    self.add_key(k.value, v)
                 elif k is None:
                     self.expr(mod, v, tracked)
                 self.expr(mod, v, tracked)
         elif isinstance(node, (ast.DictComp, ast.ListComp, ast.SetComp, ast.GeneratorExp)):
             if isinstance(node, ast.DictComp):
                 if isinstance(node.key, ast.Constant) and isinstance(node.key.value, str):
-                    self.keys.add(node.key.value)
+                    self.add_key(node.key.value, node.value)
                 self.expr(mod, node.value, tracked)
             else:
                 self.expr(mod, node.elt, tracked)
@@ -1488,7 +1692,9 @@ class Flow:
                                              "zip", "tuple", "set"):
                 for a in node.args:
                     self.expr(mod, a, tracked)
-                self.keys |= {kw.arg for kw in node.keywords if kw.arg}
+                for kw in node.keywords:
+                    if kw.arg:
+                        self.add_key(kw.arg, kw.value)
                 return
             target = self.index.function(mod, func)
             if target is not None and target[1].name != "emit":
@@ -1528,22 +1734,35 @@ def flow_vocabulary(index, registry, tool_names, src=None, words=None):
     site a holding key domain explains. With `words` (a concrete command line), the top-level
     branches its flags decide are followed one way only."""
     src = src or index.src
-    keys = set()
+    keys = Vocabulary()
     for name in tool_names:
-        keys |= _flow_one(index, registry, name, src, words)
+        keys.merge(_flow_one(index, registry, name, src, words))
     return keys
+
+
+class Vocabulary(dict):
+    """key -> set of value shapes, plus the run-time field-key sites nothing explains."""
+
+    def __init__(self):
+        super().__init__()
+        self.dynamic = set()
+
+    def merge(self, other):
+        for k, v in other.items():
+            self.setdefault(k, set()).update(v)
+        self.dynamic |= other.dynamic
 
 
 def _flow_one(index, registry, name, src, words):
     tool = next((t for t in registry if t["name"] == name), None)
     if tool is None or tool.get("filesystem"):
-        return set()
+        return Vocabulary()
     mod0 = index.by_path("gars/" + tool["argv"][1])
     flow = Flow(src, index, Flags(mod0, words) if words is not None else None)
     argv, mod = tool["argv"], mod0
     main = mod.functions.get("main")
     if main is None:
-        return set()
+        return Vocabulary()
     sub = argv[2] if len(argv) >= 3 and not argv[2].startswith("-") else None
     if sub is None:
         flow.walk(mod, "main", main.args, main.body, set(), False, True)
@@ -1556,10 +1775,19 @@ def _flow_one(index, registry, name, src, words):
                 flow.walk(mod, fn.name, fn.args, fn.body, set(), True, True)
             else:
                 flow.walk(mod, "main", main.args, item.body, set(), False, True)
-    keys = set(flow.keys)
+    keys = Vocabulary()
+    for k in flow.keys:
+        keys[k] = set(flow.shapes.get(k, {"unknown"}))
+    explained = set()
     for domain in KEY_DOMAINS:
         if domain["site"] in flow.dynamic and not evidence_holds(src, domain["evidence"]):
-            keys |= key_domain_keys(src, domain)
+            for k in key_domain_keys(src, domain):
+                keys.setdefault(k, set()).add("unknown")
+            explained.add(domain["site"])
+    for ruling in ITEM_KEYS:
+        if set(ruling["sites"]) & set(flow.dynamic) and not evidence_holds(src, ruling["evidence"]):
+            explained |= set(ruling["sites"])
+    keys.dynamic = set(flow.dynamic) - explained
     return keys
 
 
@@ -1604,7 +1832,7 @@ def key_tokens(vocab):
     return tokens
 
 
-GRADED = ("key", "label", "unbound", "no_source")
+GRADED = ("key", "label", "unbound")
 COUNT_WORDS = {"count", "n", "num"}
 GENERIC = {"n", "path", "title", "project_title", "raw", "Assay ID", "assay_id",
            "assay", "name", "ids", "workspace", "project dir", "NN_name", "NN_slug", "sample_id",
@@ -1655,8 +1883,13 @@ def count_label(line, start, end, header=None):
 def bind_placeholder(text, line, vocab, start=None, header=None):
     """How one placeholder is filled: generic (context), choice (a|b), composed (model-written
     text), artifact (`<type path>`), key (a JSON key the helper writes), label (a count whose
-    label matches a key), unbound (named or labelled, with no key in the helper), or no_source
-    (the template has no backing helper call at all)."""
+    label matches a key whose values can be counted), unbound (named or labelled, with no key in
+    the helper), unknown (no key, but the helper also writes field names computed at run time that
+    nothing explains, so absence cannot be shown), or no_source (no backing helper call)."""
+    dynamic = bool(getattr(vocab, "dynamic", None))
+
+    def missing(label):
+        return {"text": text, "binding": "unknown" if dynamic else "unbound", "label": label}
     inner = text[1:-1]
     if "|" in inner:
         return {"text": text, "binding": "choice"}
@@ -1678,6 +1911,9 @@ def bind_placeholder(text, line, vocab, start=None, header=None):
         for cand in cands:
             words = {singular(w) for w in cand if re.search(r"[a-z]", w.lower())}
             for key in sorted(vocab):
+                shapes = vocab[key] if isinstance(vocab, dict) else {"unknown"}
+                if shapes and shapes <= {"dict", "text", "bool"}:
+                    continue                  # a mapping, a name or a flag is never a count
                 ktoks = {singular(tok) for tok in re.split(r"[^a-z0-9]+", key.lower()) if tok}
                 core = ktoks - COUNT_WORDS
                 if not core:
@@ -1697,7 +1933,7 @@ def bind_placeholder(text, line, vocab, start=None, header=None):
         if best is not None:
             return {"text": text, "binding": "label", "label": " ".join(best[1]).lower(),
                     "key": best[2]}
-        return {"text": text, "binding": "unbound", "label": first}
+        return missing(first)
     if inner in GENERIC:
         return {"text": text, "binding": "generic"}
     if re.fullmatch(r"[a-z][a-z0-9_]*(\.[a-z0-9_]+)*", inner):
@@ -1710,7 +1946,7 @@ def bind_placeholder(text, line, vocab, start=None, header=None):
             for key in sorted(vocab):
                 if inner in re.split(r"[^a-z0-9]+", key.lower()):
                     return {"text": text, "binding": "key", "label": inner, "key": key}
-        return {"text": text, "binding": "unbound", "label": inner}
+        return missing(inner)
     return {"text": text, "binding": "composed"}
 
 
@@ -2027,9 +2263,7 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
             if any(c != 0 for c in item):
                 nonzero_in_step.add(k)
             continue
-        if current is not None and (k in nonzero_in_step or (
-                item["kind"] == "prose-rerun" and current["_k"] == k
-                and current["tool"] == item["tool"])):
+        if current is not None and k in nonzero_in_step:
             # after "Exit 2 -> ..." in the same step: a branch action of the open call
             current["branch_calls"].append({"tool": item["tool"], "line": item["line"],
                                             "kind": item["kind"], "command": item["command"]})
@@ -2046,6 +2280,10 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
         exits, _ = helper_exits(src, index, tool, split_words(minimal))
         exits, ruled = apply_rulings(exits, site["tool"], rulings)
         emitted = real_codes(exits)
+        if NONZERO in site["handled"]:
+            site["handled"].discard(NONZERO)
+            site["handled"] |= {c for c in emitted if c != 0}
+            site["non_zero_phrase"] = True
         site["handled"] = sorted(site["handled"])
         site["emitted"] = emitted
         site["ruled_out"] = ruled
@@ -2082,7 +2320,9 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
         vocab = None
         for call in backing_calls(out_steps, tid, call_sites):
             words = split_words(instantiate(call["command"])[0])
-            vocab = (vocab or set()) | flow_vocabulary(index, registry, [call["tool"]], src, words)
+            if vocab is None:
+                vocab = Vocabulary()
+            vocab.merge(flow_vocabulary(index, registry, [call["tool"]], src, words))
         phs = []
         header = None
         for ln, line in tpl["body"]:
@@ -2100,6 +2340,7 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
             "ask": ask_kind(tpl["body"]), "accept_tokens": accept_tokens(tpl["body"]),
             "backing_tools": backing, "placeholders": phs,
             "unbound": [p for p in phs if p["binding"] == "unbound"],
+            "dynamic_key_sites": sorted(getattr(vocab, "dynamic", set())) if vocab else [],
             "graded": sum(1 for p in phs if p["binding"] in GRADED),
             "commands_for_user": [
                 {"line": ln, "command": re.sub(r"^\s*(Check progress: )?", "", line).strip()}
@@ -2346,6 +2587,7 @@ def extract(src, with_guard=True):
                                  and not tool["argv"][2].startswith("-") else None,
                                  "exits": exits, "problem": problem}
     rulings, void = check_rulings(src)
+    void = void + check_key_rulings(src)
     tmp = tempfile.mkdtemp(prefix="stepmap-")
     guard = None
     try:
@@ -2362,6 +2604,10 @@ def extract(src, with_guard=True):
                                        "why": r["why"],
                                        "evidence": ["%s:%d" % (e[0], e[1]) for e in r["evidence"]]}
                                       for r in rulings],
+                          "key_domains": [{"id": d["id"], "site": d["site"], "why": d["why"]}
+                                          for d in KEY_DOMAINS],
+                          "item_keys": [{"id": r["id"], "sites": r["sites"], "why": r["why"]}
+                                        for r in ITEM_KEYS],
                           "void": void}
     summary["limits"] = LIMITS
     return {"schema": SCHEMA, "sha": src.sha, "contracts": contracts, "helpers": helpers,
@@ -2376,7 +2622,26 @@ LIMITS = [
     "Exit regions are linear: a contract loop ('return to step 6') is not followed back.",
     "Prose failure handling is recorded as sentences, never counted as a handled code.",
     "Labels on counts are matched to helper keys by word, against only the keys that flow into "
-    "the emitted result; a match is a screen, not a proof.",
+    "the emitted result, and never to a key whose written values are all mappings, names or "
+    "flags; a match is a screen, not a proof.",
+    "A key computed at run time is resolved only from the loop that encloses the write, over "
+    "literal strings; a key domain or an item-key ruling (whole-line evidence) explains others. "
+    "The rest (descriptor and config fields read from a file) are published per template, and "
+    "a missing key there is reported as unknown, never as unbound.",
+    "The key set over-approximates: a constant subscript or .get() read carries the whole dict, "
+    "keyword arguments such as sorted(key=) and enumerate(start=) count as keys (configure "
+    "apply's set holds keys it never emits), and a key written on any path counts. A 'key' "
+    "binding can be wrong for this reason; an 'unbound' one is not weakened by it.",
+    "Placeholders the model writes in prose (composed: '<sample id list>', '<n of n>') are not "
+    "graded, though some carry data.",
+    "A flag given on the command line is not read as `is not None`, so a branch on it is kept "
+    "both ways (resolve_artifact.py:140 is listed for the router's step 9 though --consumes is "
+    "given); this can add an unhandled site, never hide one.",
+    "Ruling and key-domain evidence is whole lines, re-checked on every run; an edit between two "
+    "cited lines leaves the evidence holding. The config-columns key domain admits every assay's "
+    "`config:` keys, not only the one format's (strandedness is the only one at the pin).",
+    "A command is instantiated from its own text only: rnaseq-de's 'Run prepare with the same "
+    "paths' is published without the --counts and --design it implies.",
     "Calls made inside an exit branch (branch actions) carry their emitted codes but are not "
     "graded; the summary counts them.",
 ]

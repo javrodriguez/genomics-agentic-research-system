@@ -10,7 +10,7 @@ The fixes would go into the batch of GARS fixes that opens after the freeze on 1
 - `not a real risk: ...`, if you think the agent would never get this wrong, or it would not matter;
 - `different fix: ...`, if the risk is right but you would fix it another way.
 
-Each item ends with a "Your answer:" line for this. Your reasons are what I most need: they set how the rest of the 40 decisions are ranked.
+Each item ends with a "Your answer:" line for this. Your reasons are what I most need: they set how the rest of the 43 decisions are ranked.
 It should take about two hours; the items are independent, so you can stop and resume anywhere.
 
 _Written 7 Oct 2026 from the full step map of GARS as of commit `a626cdc2`, and corrected the same night after independent reviews._
@@ -18,9 +18,9 @@ _Written 7 Oct 2026 from the full step map of GARS as of commit `a626cdc2`, and 
 ## How this was done
 
 I read every numbered step of all 14 GARS stage contracts (142 steps) and asked, at each one, what the agent still decides on its own.
-I found 40 such decisions. Most have no rule at all; a few are covered by a written rule that nothing checks, and those are marked.
+I found 43 such decisions. Most have no rule at all; a few are covered by a written rule that nothing checks, and those are marked.
 Each was scored on two fixed 1-to-10 scales and ranked first by harm, then by slip-through.
-Harm is how bad the outcome would be if the agent got it wrong: 9 is a wrong scientific result, 8 the wrong analysis running, 5 a dead end or wasted compute, 3 a misleading message.
+Harm is how bad the outcome would be if the agent got it wrong: 10 is a wrong scientific result that no check flags, 9 a wrong scientific result, 8 the wrong analysis running, 6 false provenance in the project's record, 5 a dead end or wasted compute, 3 a misleading message.
 Slip-through is how likely the mistake is to get past everything after it: 4 means you are asked to confirm it first, 5 that it is shown to you without asking, 8 that nothing shows it at all.
 How often an agent actually gets each one wrong has not been measured for any of them; a paired test of each, run many times, is how we would measure it, and these fifteen are the first candidates.
 
@@ -72,19 +72,21 @@ Your answer:
 
 ## Stage 01: checking the design and writing the samplesheets
 
-### 1. The user's words become pipeline settings (a rule exists; nothing checks it)
+### 1. The user's words become pipeline settings (a rule covers answers to its question; nothing checks it)
 
 <!-- S01-declare -->
-**What the agent decides on its own.** Before validating, the stage asks the user for missing settings: strandedness, the unit of replication, the reference release, and whether samples are paired.
-The question lists the allowed values, and the contract says to write exactly what the user supplied and never invent values; the check rejects anything outside the list.
-But nothing checks that the value written is what the user said: an agent that turns "dUTP" or "TruSeq stranded" into an allowed value breaks that rule unseen, and a pairing the user mentions in passing is only ever flagged with a warning.
+**What the agent decides on its own.** Before validating, the stage asks only for the settings still missing from the project's settings file, usually the unit of replication and the reference release.
+Strandedness is asked only if someone removed the `auto` that every new RNA-seq settings file starts with; whether samples are paired is recorded only if the user says so.
+For answers to its question, the contract says to write exactly what the user supplied and never invent values, and nothing checks that the value written is what the user said.
+A strandedness the user volunteers ("the libraries are dUTP") has no rule at all: the agent decides whether, and how, to turn it into one of the allowed values.
+The check rejects an unknown replication unit or strandedness, but the reference release is free text that nothing checks.
 
 **What can go wrong.** A wrong but allowed strandedness passes every check and miscounts reads, which gives a complete, plausible, wrong result.
-nf-core reports a strandedness mismatch only as a warning in the quality report's strandedness section.
+A wrong pairing, written down as the contract asks, raises no warning either.
 
-**Why it ranks first here.** Harm 9, slip-through 6: the warning sits in a report you are pointed to, but only someone who looks at that section sees it.
+**Why it ranks first here.** Harm 9, slip-through 5: the next message shows the strandedness in its own column without asking, so you see it, but nothing asks you to check it.
 
-**Proposed fix.** Offer each setting as a numbered list with what each value means, the way stage 02 already offers genomes and contrasts; ask again on any other answer; the script writes the file and the history line.
+**Proposed fix.** Offer each setting as a numbered list with what each value means, the way stage 02 already offers genomes and contrasts, and use the same list when you volunteer a strandedness; ask again on any other answer; the script writes the file and the history line.
 
 Your answer:
 
@@ -93,7 +95,7 @@ Your answer:
 <!-- S01-yes -->
 **What the agent decides on its own.** Two moments in stage 01 need the user's consent: excluding samples the user left out of the design, and overwriting samplesheets that already exist.
 Only "cancel" is a fixed answer; any other reply ("ok", "yes, but keep sample 4") is the agent's to interpret.
-The contract says the two switches that clear these gates need the user's confirmation, but nothing in the code checks that an answer was given.
+The contract says each of the two switches that clear these gates needs the user's confirmation, but not what counts as one, and nothing in the code ties a switch to an answer.
 
 **What can go wrong.** An exclusion the user did not mean runs the analysis on samples they did not choose; an overwrite also discards any edits the user made to the samplesheets by hand.
 
@@ -127,7 +129,7 @@ Your answer:
 GARS has a script that offers it as a menu, and the settings script lists it as single-cell's decision, but the router's steps only ever offer the genome, contrast and peak-type menus, and the command they give for writing the settings has no place for the chemistry; for single-cell that command stops with an error.
 So the agent either adds the chemistry itself, turning the user's words into one of the listed values, or stalls.
 
-**What can go wrong.** A wrong but listed chemistry runs to completion and, in the seeded file's words, parses barcodes at the wrong offsets, producing a plausible matrix and no error.
+**What can go wrong.** A wrong but listed chemistry runs to completion and, in the single-cell pipeline contract's words, "produces a scrambled matrix rather than an error".
 The pre-flight check refuses only a chemistry the chosen aligner cannot run.
 
 **Why it ranks first here.** Harm 9, slip-through 5: the single-cell step's human check tells you to compare cell counts with the number loaded, and names wrong chemistry as one cause.
@@ -155,14 +157,14 @@ Your answer:
 
 <!-- R-factor -->
 **What the agent decides on its own.** The contrast menu is built from one factor of the design table, "condition" by default, and no contract mentions how to choose another.
-The settings script also accepts a contrast typed out in full, although the contract says never to type one.
-When the design carries another factor the user cares about, the agent decides which factor the menu is built from, or types a contrast itself.
+When the design carries another factor the user cares about, the agent decides which factor the menu is built from.
+(A contrast typed out in full is accepted only when it matches a pair on that same menu, so the factor, not the typing, is the open choice.)
 
 **What can go wrong.** The comparison runs on the wrong factor. The router's own human check says of a wrong contrast that nothing downstream can detect it: it produces a complete, confident, wrong result.
 
 **Why it ranks here.** Harm 9, slip-through 4: you are asked to confirm the contrast before it is written.
 
-**Proposed fix.** The menu names the factor beside each pair, and the settings script refuses a typed contrast.
+**Proposed fix.** The contract names the factor setting, the menu shows the factor beside each pair, and a design with more than one candidate factor is asked about.
 
 Your answer:
 
@@ -177,36 +179,38 @@ These ten contracts share two shapes (seven nf-core pipelines, three analyses th
 
 **What can go wrong.** A wrong path analyses the wrong object.
 
-**Why it ranks first here.** Harm 8, slip-through 3: the final check compares each sample's results with the samplesheet, which catches many wrong inputs.
+**Why it ranks first here.** Harm 8, slip-through 5: the start message shows the input path without asking. The final check compares only which samples are present and that each has cells, so another file from the same pipeline run passes it.
 
 **Proposed fix.** Each analysis finds its own input with GARS's resolver, as the differential-expression step already does.
 
 Your answer:
 
-### 2. Naming where the input came from
+### 2. Which AI model the history says ran the step (a rule exists; nothing checks it)
+
+<!-- G-model -->
+**What the agent decides on its own.** Every step that writes the project's history passes the agent's own model name to the script that writes it: registration, the samplesheet writer, each pipeline's and analysis's collecting step, and stage 03's final check.
+The contracts ask for the exact name the agent's software reports, and to leave it out rather than guess; GARS's own decision record makes the model part of each result's provenance.
+
+**What can go wrong.** The script puts whatever the agent passes, word for word, into the history entry and the run's record, and nothing compares it with the model actually running.
+A wrong or guessed name is false provenance in the permanent record.
+It is listed here because the pipelines are where it recurs most; it also appears in the full lists for stages 00, 01 and 03.
+
+**Why it ranks here.** Harm 6, slip-through 8: no message shows the name back to you; only reading the history file reveals it.
+
+**Proposed fix.** The script takes the model name from the software running the agent where it can, and otherwise records "unknown"; never from the agent's own words.
+
+Your answer:
+
+### 3. Naming where the input came from
 
 <!-- D-supplier -->
 **What the agent decides on its own.** When the three follow-on analyses collect their results, the agent passes the name of the step that produced their input; that name is written into the project's history as provenance. It comes from the conversation, often in a later session.
 
 **What can go wrong.** A wrong name is false provenance in the permanent record.
 
-**Why it ranks here.** Harm 6, slip-through 8: nothing checks the line.
+**Why it ranks here.** Harm 6, slip-through 8, the same as the item above: nothing checks the line.
 
 **Proposed fix.** The collecting step takes the producer's name from the resolver, not from the agent.
-
-Your answer:
-
-### 3. When GARS's own pre-submission check refuses a job
-
-<!-- W-submit -->
-**What the agent decides on its own.** Before a job is queued, GARS checks that the data's class and purpose allow it to run where it is going, and refuses a duplicate.
-The router's text says to report every refusal and stop, but the sub-stage's own steps say only "capture the job id", and the next message announces "Submitted as job ..." with no answer for a refusal.
-
-**What can go wrong.** The agent can announce a submission that never happened, or change the executor or memory setting itself to get past the refusal, without asking you.
-
-**Why it ranks here.** Harm 5, slip-through 5: a setting changed without you, or a false "submitted"; the next status display shows nothing was queued.
-
-**Proposed fix.** Give the submit step an answer for each refusal: report it word for word and stop; settings change only on your word.
 
 Your answer:
 
@@ -221,7 +225,7 @@ The final check confirms only that the promised output files exist, are not empt
 
 **What can go wrong.** A script that departs from the approved method, reads data the plan does not list, or computes the statistic differently passes every check.
 
-**Why it ranks first here.** Harm 9, slip-through 8: this is the one place the agent writes the computation itself, and its output is a scientific result.
+**Why it ranks first here.** Harm 10, slip-through 8: this is the one place the agent writes the computation itself, its output is a scientific result, and no check flags a departure from the plan.
 
 **Proposed fix.** Show the scripts for approval too, and lock their fingerprints into the approval record the way the plan's already is.
 
@@ -234,7 +238,7 @@ Your answer:
 
 **What can go wrong.** A script that reads another's output can run before that output exists, and crash; or it can read a stale copy left by an earlier attempt, and the final check then accepts a wrong result.
 
-**Why it ranks here.** Harm 9, slip-through 8: the stale-copy case passes every check; only the run records would show the order.
+**Why it ranks here.** Harm 10, slip-through 8: the stale-copy case passes every check; only the run records would show the order.
 
 **Proposed fix.** The plan lists its scripts in order, and GARS runs them as one job, or with declared dependencies.
 
@@ -255,7 +259,7 @@ Your answer:
 
 ## What else the map found
 
-- **22 defects that need no model run to fix**, in `evals/step-map/DEFECTS.md`, each with the exact file and line, for the post-freeze fix batch that opens on 16 Oct. A 23rd was withdrawn, and another reworded, when a reviewer showed that a stage-wide table in the contract already covers part of them. The ones worth knowing about:
+- **22 defects that need no model run to fix**, in `evals/step-map/DEFECTS.md`, each with the exact file and line, for the post-freeze fix batch that opens on 16 Oct. The file numbers 23: when a reviewer showed that a stage-wide table in the contract already routes part of them, two were withdrawn as first written (one stands in reworded form, the other is folded into it) and a third was reworded; later reviews narrowed several others. Each change is marked in the file, and nothing was deleted. The ones worth knowing about:
   - In a workspace that holds any non-public project, the safety layer refuses the job-submission, job-status, resolver and differential-expression commands exactly as the contracts spell them (38 places in 12 contracts), and accepts only a different spelling no contract mentions.
   - Once a job has been handed back to the user, no step the agent reaches refreshes its status, so a finished job can look "still running" until someone runs the status command by hand.
   - No contract says what happens on a non-public project, where the safety layer refuses most steps.

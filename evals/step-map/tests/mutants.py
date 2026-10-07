@@ -14,6 +14,7 @@ Exit 0 only when every mutant is killed. Standard library only; one test process
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -21,13 +22,31 @@ import tempfile
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# The facts snapshot, by its test id: it fails on any change of output, so it never counts as a kill.
+# The facts snapshot, by its test id: it fails on any change of output, so it never counts as a
+# kill. Mutant runs skip it outright (RUN_ENV) and kills are read from the FAIL/ERROR id headers.
 SNAPSHOT_TEST = "PublishedFactsTests.test_committed_facts_equal_a_fresh_extraction"
+RUN_ENV = {"STEPMAP_NO_SNAPSHOT": "1"}
+# The built-in negative control: it changes only what the facts say about themselves, so every
+# rule-bound test must stay green. If it is "killed", the runner cannot tell a kill from noise.
+CONTROL = "control-output-only"
+HEADER_RE = re.compile(r"^(?:FAIL|ERROR): (\w+) \((?:[\w.]*\.)?(\w+)\.\w+\)", re.M)
+
+
+def failed_tests(output):
+    """Class.method of every failed or erroring test, from unittest's id headers."""
+    return ["%s.%s" % (m.group(2), m.group(1)) for m in HEADER_RE.finditer(output)]
+
+
+def kills(output):
+    """The failures that count as a kill: every failed test except the facts snapshot."""
+    return [t for t in failed_tests(output) if t != SNAPSHOT_TEST]
 EXTRACT = os.path.join(os.path.dirname(HERE), "extract.py")
 TESTS = os.path.join(HERE, "test_extract.py")
 
 # (name, rule it breaks, exact text in extract.py, replacement)
 MUTANTS = [
+    (CONTROL, "negative control: only the facts' schema label changes, no rule",
+     'SCHEMA = "stepmap-facts/1"', 'SCHEMA = "stepmap-facts/1-control"'),
     ("fence-blind", "a ``` line no longer opens a fence",
      'if line.lstrip().startswith("```"):\n            fenced.add(i)\n            inside = not inside',
      'if False:\n            fenced.add(i)\n            inside = not inside'),
@@ -36,9 +55,9 @@ MUTANTS = [
     ("steps-in-fences", "numbered lines inside a fence count as steps",
      '        if i in doc["fenced"]:\n            continue\n        m = STEP_RE.match',
      '        m = STEP_RE.match'),
-    ("nonzero-narrow", '"Exit non-zero" covers only 1 and 2',
-     'if m.group(1).startswith("non"):\n            codes |= {1, 2, 3}',
-     'if m.group(1).startswith("non"):\n            codes |= {1, 2}'),
+    ("nonzero-fixed-set", '"Exit non-zero" handles a fixed {1, 2, 3}, not the call\'s own codes',
+     '            site["handled"] |= {c for c in emitted if c != 0}',
+     '            site["handled"] |= {1, 2, 3}'),
     ("no-paren-exit", "a parenthesised (exit 2) is not a branch",
      'EXIT_RE = re.compile(r"(?:\\bExit|\\(exit)\\s+', 'EXIT_RE = re.compile(r"(?:\\bExit)\\s+'),
     ("lowercase-exit", 'a lowercase "must exit non-zero" about a script counts as a branch',
@@ -83,11 +102,21 @@ MUTANTS = [
      '        if kind == "exit":\n            if current is not None:',
      '        if kind == "exit":\n            if current is not None and current["_k"] == k:'),
     ("branch-calls-open", "a call inside an exit branch opens a new region",
-     '        if current is not None and (k in nonzero_in_step or (',
-     '        if False and (k in nonzero_in_step or ('),
+     '        if current is not None and k in nonzero_in_step:',
+     '        if False and k in nonzero_in_step:'),
+    ("same-tool-rerun", "a later call of the same tool is a re-run inside the open region",
+     '        if current is not None and k in nonzero_in_step:',
+     '        if current is not None and (k in nonzero_in_step or item["tool"] == current["tool"]):'),
     ("all-bound", "a named key the helper never writes still binds",
-     '        return {"text": text, "binding": "unbound", "label": inner}',
-     '        return {"text": text, "binding": "key", "label": inner}'),
+     '        return {"text": text, "binding": "unknown" if dynamic else "unbound", "label": label}',
+     '        return {"text": text, "binding": "key", "label": label}'),
+    ("unknown-never", "a missing key is unbound even where field names are computed at run time",
+     '"binding": "unknown" if dynamic else "unbound"', '"binding": "unbound"'),
+    ("unknown-always", "every missing key is unknown",
+     '    dynamic = bool(getattr(vocab, "dynamic", None))', '    dynamic = True'),
+    ("shape-blind-count", "a mapping, a name or a flag can bind a count",
+     '                if shapes and shapes <= {"dict", "text", "bool"}:\n                    continue',
+     '                if False:\n                    continue'),
     ("no-after-label", "the word after <n> does not label it",
      '    after = re.match(r"\\s+([A-Za-z][A-Za-z0-9]*(?:\\(s\\))?)", line[end:])',
      '    after = None'),
@@ -148,14 +177,34 @@ MUTANTS = [
      '                if row["needs_template_field"]:\n                    if real and all(sets_template_field(src, s["at"]) for s in real):',
      '                if row["needs_template_field"]:\n                    if True:'),
     ("no-dict-keys", "dict-literal keys never reach the result",
-     '        elif isinstance(node, ast.Dict):\n            for k, v in zip(node.keys, node.values):\n                if isinstance(k, ast.Constant) and isinstance(k.value, str):\n                    self.keys.add(k.value)',
-     '        elif isinstance(node, ast.Dict):\n            for k, v in zip(node.keys, node.values):\n                if False:\n                    self.keys.add(k.value)'),
+     '        elif isinstance(node, ast.Dict):\n            for k, v in zip(node.keys, node.values):\n                if isinstance(k, ast.Constant) and isinstance(k.value, str):\n                    self.add_key(k.value, v)',
+     '        elif isinstance(node, ast.Dict):\n            for k, v in zip(node.keys, node.values):\n                if False:\n                    self.add_key(k.value, v)'),
     ("module-wide-vocab", "a template binds against every key in the module, not the result's",
-     '            vocab = (vocab or set()) | flow_vocabulary(index, registry, [call["tool"]], src, words)',
-     '            vocab = (vocab or set()) | key_vocabulary(src, [module_for(call["tool"], registry)])'),
+     '            vocab.merge(flow_vocabulary(index, registry, [call["tool"]], src, words))',
+     '            vocab.merge(type("V", (dict,), {"dynamic": set()})({k: {"unknown"} for k in '
+     'key_vocabulary(src, [module_for(call["tool"], registry)])}))'),
     ("no-key-domain", "keys computed at run time are never explained",
      '        if domain["site"] in flow.dynamic and not evidence_holds(src, domain["evidence"]):',
      '        if False:'),
+    ("loop-anywhere", "a run-time key resolves from any loop that binds its name",
+     '            if isinstance(n, ast.For) and n.lineno <= lineno <= (n.end_lineno or n.lineno):',
+     '            if isinstance(n, ast.For):'),
+    ("subscript-rebinds", "the write's own subscript counts as re-binding the loop variable",
+     'x.id == name and isinstance(x.ctx, ast.Store)', 'x.id == name'),
+    ("no-loop-tuple-target", "a tuple loop target never resolves",
+     '                elif isinstance(n.target, ast.Tuple):', '                elif False:'),
+    ("no-augassign-literals", "`+=` of literal tuples adds no keys",
+     '                    base |= more', '                    pass'),
+    ("tuple-is-a-key", "a tuple subscript is a run-time JSON key",
+     '                    elif isinstance(sl, ast.Tuple) and not self.index.skipkeys:',
+     '                    elif False:'),
+    ("no-item-keys", "item-key rulings explain nothing",
+     '            explained |= set(ruling["sites"])', '            pass'),
+    ("dynamic-dropped", "run-time field keys are dropped silently",
+     '                            self.dynamic.append("%s:%d" % (mod.path, lineno))',
+     '                            pass'),
+    ("graded-no-source", '"graded" counts placeholders with no backing call',
+     'GRADED = ("key", "label", "unbound")', 'GRADED = ("key", "label", "unbound", "no_source")'),
     ("no-tuple-targets", "a, b = f() never carries the flow",
      '        keep = {i for i, el in enumerate(tgt.elts)\n                if isinstance(el, ast.Name) and el.id in tracked}',
      '        keep = set(range(len(tgt.elts)))'),
@@ -199,19 +248,12 @@ def run(selected):
             path = os.path.join(tmp, "extract.py")
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(source.replace(old, new))
-            env = dict(os.environ, STEPMAP_EXTRACT=path)
+            env = dict(os.environ, STEPMAP_EXTRACT=path, **RUN_ENV)
             start = time.time()
             proc = subprocess.run([sys.executable, TESTS], env=env, stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT, universal_newlines=True, timeout=900)
-            red = [ln.split(" ")[0] for ln in proc.stdout.splitlines()
-                   if ln.endswith("... FAIL") or ln.endswith("... ERROR")]
-            snapshot = [ln for ln in proc.stdout.splitlines()
-                        if SNAPSHOT_TEST in ln
-                        and (ln.endswith("... FAIL") or ln.endswith("... ERROR"))]
-            red = [r for r in red if not r.startswith("The")]
-            bound = len([ln for ln in proc.stdout.splitlines()
-                         if ln.endswith("... FAIL") or ln.endswith("... ERROR")]) - len(snapshot)
-            killed = proc.returncode != 0 and bound > 0
+            red = kills(proc.stdout)
+            killed = bool(red)
             results.append((name, killed, red))
             print("%-24s %-7s %5.1fs  %s  [%s]" % (name, "killed" if killed else "SURVIVED",
                                                    time.time() - start, rule,
@@ -219,6 +261,12 @@ def run(selected):
                   flush=True)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+    control = [r for r in results if r[0] == CONTROL]
+    if control and control[0][1]:
+        print("STOP: the negative control was 'killed' (%s); kills cannot be told from noise"
+              % ", ".join(control[0][2]))
+        return 2
+    results = [r for r in results if r[0] != CONTROL]
     survived = [r for r in results if not r[1]]
     print("mutants: %d run, %d killed, %d survived" % (len(results), len(results) - len(survived),
                                                        len(survived)))

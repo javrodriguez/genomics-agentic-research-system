@@ -99,16 +99,16 @@
      "decision": "Which input path to pass to the analysis",
      "goes_wrong": "For single-cell clustering and spatial counts the router resolves the input and the sub-stage contract starts afresh; the path travels only in the conversation, so the model carries or re-derives it, sometimes in a later session",
      "severity": 8,
-     "detection": 3,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "A wrong path analyses the wrong object, but collect cross-checks counts against the samplesheet",
+     "why_rank": "A wrong path analyses the wrong object; collect's gate checks only the sample set and that each sample has cells, which another object from the same pipeline run passes (wrappers/scrna-qc-cluster/scrna_qc_cluster.py:25-27), but T1 shows the path unasked (02.02 scrna-qc-cluster:115, spatial-cluster-count:163)",
      "fix": "The sub-stage resolves its own input, as rnaseq-de already does",
      "fix_rung": "R0"
     },
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -145,7 +145,7 @@
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -184,7 +184,7 @@
     {
      "id": "W-submit",
      "decision": "What to do when GARS's pre-submission check refuses the job",
-     "goes_wrong": "Before a job is queued, the executor checks the dataset's class, purpose and route (the venue rules) and refuses a duplicate. The router's Definitions say to report every refusal and stop, but the sub-stage's submit step says only to capture job_id and the next step announces 'Submitted as job <job_id>' with no branch for exit 1 or 2; the model either announces a submission that did not happen, or changes the executor or memory settings itself to get past the refusal",
+     "goes_wrong": "Before a job is queued, the executor checks the dataset's class, purpose and route (the venue rules) and refuses a duplicate. The router's Definitions say to report every refusal and stop (02:118), but the sub-stage's submit step says only to capture job_id and the next step announces 'Submitted as job <job_id>' with no branch for exit 1 or 2, and nothing checks that the rule was followed; the model either announces a submission that did not happen, or changes the executor or memory settings itself to get past the refusal",
      "severity": 5,
      "detection": 5,
      "occurrence": null,
@@ -194,7 +194,7 @@
      "defects": [
       "D12"
      ],
-     "kind": "unsaid"
+     "kind": "unchecked"
     },
     {
      "id": "G-door",
@@ -336,7 +336,7 @@
    "rung_now": "R5",
    "rung_target": "R0",
    "question": 1,
-   "rung_why": "The gate is code, but the supplier the model names (--h5ad-from, --counts-from) comes from the conversation (D-handoff).",
+   "rung_why": "The gate is code, but the supplier the model names (--h5ad-from, --counts-from) comes from the conversation (D-supplier), and the model id under a rule nothing checks (G-model).",
    "note": "Exit 3 (no such project) has no branch.",
    "silent": [
     {
@@ -354,7 +354,7 @@
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,
@@ -380,6 +380,18 @@
       "D15"
      ],
      "kind": "unsaid"
+    },
+    {
+     "id": "G-model",
+     "kind": "unchecked",
+     "decision": "Which model id to pass as --model",
+     "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+     "severity": 6,
+     "detection": 8,
+     "occurrence": null,
+     "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it",
+     "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+     "fix_rung": "R0"
     }
    ]
   },
@@ -420,7 +432,7 @@
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
      "severity": 5,
      "detection": 2,
      "occurrence": null,

@@ -19,7 +19,7 @@
    "kind": "unchecked",
    "occurrence": null,
    "rank_in_stage": 1,
-   "severity": 9,
+   "severity": 10,
    "stage": "Stage 03: custom analysis",
    "where": [
     {
@@ -42,7 +42,7 @@
    "kind": "unsaid",
    "occurrence": null,
    "rank_in_stage": 2,
-   "severity": 9,
+   "severity": 10,
    "stage": "Stage 03: custom analysis",
    "where": [
     {
@@ -77,6 +77,33 @@
    "why_rank": "The analysis runs on the wrong inputs, but the plan the user approves lists them"
   },
   {
+   "decision": "Which model id to pass as --model",
+   "detection": 8,
+   "elsewhere": [
+    "Stage 00: register the project and its raw data",
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+   "fix_rung": "R0",
+   "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+   "group": 4,
+   "id": "G-model",
+   "kind": "unchecked",
+   "occurrence": null,
+   "rank_in_stage": 4,
+   "severity": 6,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:151-156",
+     "step": "9"
+    }
+   ],
+   "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it"
+  },
+  {
    "decision": "How to proceed when the guard refuses a step on a non-public project",
    "defects": [
     "D16"
@@ -89,12 +116,12 @@
    ],
    "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
    "fix_rung": "R4",
-   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
    "group": 4,
    "id": "G-closed",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 4,
+   "rank_in_stage": 5,
    "severity": 5,
    "stage": "Stage 03: custom analysis",
    "where": [
@@ -137,7 +164,7 @@
    "id": "S03-expiry",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 5,
+   "rank_in_stage": 6,
    "severity": 5,
    "stage": "Stage 03: custom analysis",
    "where": [
@@ -166,7 +193,7 @@
    "id": "G-door",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 6,
+   "rank_in_stage": 7,
    "severity": 4,
    "stage": "Stage 03: custom analysis",
    "where": [
@@ -199,7 +226,7 @@
    "id": "S03-monitor",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 7,
+   "rank_in_stage": 8,
    "severity": 3,
    "stage": "Stage 03: custom analysis",
    "where": [
@@ -225,7 +252,7 @@
    "id": "S03-submit",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 8,
+   "rank_in_stage": 9,
    "severity": 3,
    "stage": "Stage 03: custom analysis",
    "where": [
@@ -254,7 +281,7 @@
    "id": "G-date",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 9,
+   "rank_in_stage": 10,
    "severity": 2,
    "stage": "Stage 03: custom analysis",
    "where": [
@@ -478,7 +505,7 @@
       "detection": 2,
       "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
       "fix_rung": "R4",
-      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
       "kind": "unsaid",
       "occurrence": null,
@@ -546,7 +573,7 @@
       "detection": 2,
       "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
       "fix_rung": "R4",
-      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
       "kind": "unsaid",
       "occurrence": null,
@@ -658,7 +685,7 @@
       "detection": 2,
       "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
       "fix_rung": "R4",
-      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
       "kind": "unsaid",
       "occurrence": null,
@@ -832,7 +859,7 @@
       "id": "S03-scripts",
       "kind": "unchecked",
       "occurrence": null,
-      "severity": 9,
+      "severity": 10,
       "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan (the contract itself records the gap, 03:89-94)"
      },
      {
@@ -886,7 +913,7 @@
       "id": "S03-order",
       "kind": "unsaid",
       "occurrence": null,
-      "severity": 9,
+      "severity": 10,
       "why_rank": "A stale input gives a wrong result that verify accepts; only reading the run records reveals the order"
      },
      {
@@ -897,7 +924,7 @@
       "detection": 2,
       "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
       "fix_rung": "R4",
-      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
       "kind": "unsaid",
       "occurrence": null,
@@ -1115,7 +1142,7 @@
     "question": 1,
     "rung_now": "R5",
     "rung_target": "R0",
-    "rung_why": "verify checks approval, execution evidence and that declared outputs exist and are non-empty.",
+    "rung_why": "verify checks approval, execution evidence and that declared outputs exist and are non-empty; its --model id is under a rule nothing checks (G-model).",
     "silent": [
      {
       "decision": "What to do when the plan's approval has expired before verify",
@@ -1128,6 +1155,18 @@
       "occurrence": null,
       "severity": 5,
       "why_rank": "A dead end with no compliant road named, but a loud one"
+     },
+     {
+      "decision": "Which model id to pass as --model",
+      "detection": 8,
+      "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+      "fix_rung": "R0",
+      "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+      "id": "G-model",
+      "kind": "unchecked",
+      "occurrence": null,
+      "severity": 6,
+      "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it"
      }
     ]
    },
@@ -1225,7 +1264,7 @@
       "detection": 2,
       "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
       "fix_rung": "R4",
-      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
       "kind": "unsaid",
       "occurrence": null,

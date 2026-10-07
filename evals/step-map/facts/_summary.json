@@ -13,16 +13,16 @@
  "contracts": 14,
  "empty_findings": [],
  "exits": {
-  "branch_call_codes_not_graded": 15,
-  "branch_calls": 8,
+  "branch_call_codes_not_graded": 13,
+  "branch_calls": 7,
   "by_stage_table": 6,
-  "call_sites": 73,
-  "emitted": 230,
-  "handled": 85,
+  "call_sites": 74,
+  "emitted": 233,
+  "handled": 84,
   "handled_and_emitted": 84,
-  "handled_not_emitted": 1,
+  "handled_not_emitted": 0,
   "ruled_out": 7,
-  "unhandled": 95,
+  "unhandled": 97,
   "unhandled_list": [
    {
     "codes": [
@@ -48,6 +48,15 @@
     "contract": "02_bioinformatics",
     "step": "3a",
     "tool": "configure.contrasts"
+   },
+   {
+    "codes": [
+     1,
+     3
+    ],
+    "contract": "02_bioinformatics",
+    "step": "3a",
+    "tool": "configure.apply"
    },
    {
     "codes": [
@@ -732,7 +741,13 @@
   "Facts carried in data (a file written earlier, a dict's keys) are not evaluated; the reachability rulings record the ones a reader proved, re-checked against the cited lines.",
   "Exit regions are linear: a contract loop ('return to step 6') is not followed back.",
   "Prose failure handling is recorded as sentences, never counted as a handled code.",
-  "Labels on counts are matched to helper keys by word, against only the keys that flow into the emitted result; a match is a screen, not a proof.",
+  "Labels on counts are matched to helper keys by word, against only the keys that flow into the emitted result, and never to a key whose written values are all mappings, names or flags; a match is a screen, not a proof.",
+  "A key computed at run time is resolved only from the loop that encloses the write, over literal strings; a key domain or an item-key ruling (whole-line evidence) explains others. The rest (descriptor and config fields read from a file) are published per template, and a missing key there is reported as unknown, never as unbound.",
+  "The key set over-approximates: a constant subscript or .get() read carries the whole dict, keyword arguments such as sorted(key=) and enumerate(start=) count as keys (configure apply's set holds keys it never emits), and a key written on any path counts. A 'key' binding can be wrong for this reason; an 'unbound' one is not weakened by it.",
+  "Placeholders the model writes in prose (composed: '<sample id list>', '<n of n>') are not graded, though some carry data.",
+  "A flag given on the command line is not read as `is not None`, so a branch on it is kept both ways (resolve_artifact.py:140 is listed for the router's step 9 though --consumes is given); this can add an unhandled site, never hide one.",
+  "Ruling and key-domain evidence is whole lines, re-checked on every run; an edit between two cited lines leaves the evidence holding. The config-columns key domain admits every assay's `config:` keys, not only the one format's (strandedness is the only one at the pin).",
+  "A command is instantiated from its own text only: rnaseq-de's 'Run prepare with the same paths' is published without the --counts and --design it implies.",
   "Calls made inside an exit branch (branch actions) carry their emitted codes but are not graded; the summary counts them."
  ],
  "placeholder_accounting": {
@@ -742,13 +757,13 @@
    "composed": 69,
    "generic": 95,
    "key": 79,
-   "label": 17,
+   "label": 16,
    "no_source": 38,
-   "unbound": 18
+   "unbound": 19
   },
-  "graded": 152,
+  "graded": 114,
   "seen": 385,
-  "ungraded": 233
+  "ungraded": 271
  },
  "rulings": {
   "holding": [
@@ -796,6 +811,30 @@
      "nfcore_spatialvi_wrapper.prepare"
     ],
     "why": "write_reproducibility raises exit 2 only when key_formula is downstream-v2; an nf-core wrapper's prepare writes params.yaml first (an atomic write that renames the file into place before returning) and passes samplesheet and config, so key_formula is stage01-v1. Every cited line must read exactly as cited, indentation included"
+   }
+  ],
+  "item_keys": [
+   {
+    "id": "stage00-per-assay",
+    "sites": [
+     "gars/_system/stage00_register.py:705"
+    ],
+    "why": "per_assay is keyed by the assay ids finalize loops over; its keys never reach the result, only each assay's row, under the named field `assays`"
+   },
+   {
+    "id": "resolve-requested-types",
+    "sites": [
+     "gars/_system/resolve_artifact.py:156",
+     "gars/_system/resolve_artifact.py:158"
+    ],
+    "why": "resolved and missing are keyed by the artifact types the command asked for (--type or --consumes), emitted under the named fields `resolved` and `missing`"
+   }
+  ],
+  "key_domains": [
+   {
+    "id": "stage01-config-columns",
+    "site": "gars/_system/stage01_samplesheet.py:779",
+    "why": "config_values[key] takes its keys from config_columns(fmt), the `config:` sources of the assay's FORMATS entry, and joins the counts at line 824"
    }
   ],
   "void": []
