@@ -120,3 +120,10 @@ How each Done item maps to a test, and the mutant that goes red against it:
 ## Lessons worth keeping
 - An exclusion list relative to a header-supplied root makes the "one merged list" mutant invisible: every harness's patterns re-anchor to the current harness's home. Anchoring each entry's paths at a folder named in the entry itself (here `.claude/` and `.fake2/` under the shared home) is what lets the seam test see a merge.
 - A defaulting mutant is only observable if exactly one function decides the field. The take record's `agent` is therefore checked only in `agent_of`, and the generic closed-field check skips it.
+
+## Session files
+
+Not recorded. The pinned session-files block (run once, as one command, exactly as written, after the report commit
+`f52ab83d`) was refused before it ran by the Claude Code auto-mode classifier, which gave the reason
+"[Sensitive-Source Provenance]". Per the brief and the hard rules, it was not reworded or retried in any form.
+No `gap4/w2a-cp3-endstate-session` branch was created. The home session should record "blindness unverified".
