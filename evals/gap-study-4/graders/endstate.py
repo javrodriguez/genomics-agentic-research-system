@@ -37,13 +37,15 @@ in the folder is refused (evidence is read only from the sidecar's own folder, a
         each                {"label": "<its file stem>", "taken_at": num, "entries": {path: STATE}}
     access.jsonl            the watcher's log of the consequential paths: {"at": num, "path": str, "op": "open" |
                             "modify" | "delete"} per line
-    health.jsonl            the sidecar's health records: {"kind": "watcher-start", "at": num} | {"kind":
-                            "watcher-stop", "at": num, "exit_code": int} | {"kind": "queue-overflow", "at": num}
+    health.jsonl            the sidecar's health records, in time order (else refused): {"kind": "watcher-start",
+                            "at": num} | {"kind": "watcher-stop", "at": num, "exit_code": int} | {"kind":
+                            "queue-overflow", "at": num}. See THE WATCHER'S HEALTH below
     blobs/<sha256>          the bytes of a consequential file as a snapshot found it, named by their own sha256
                             (optional; only the pre-registered consequential paths are copied)
 
     STATE                   {"type": "file", "sha256": <64 hex>} | {"type": "link", "target": str} |
-                            {"type": "dir"} | {"type": "unreadable"}
+                            {"type": "dir"} | {"type": "unreadable"}. An unreadable state is never the same as
+                            any state, itself included (`same_state`)
     paths                   relative to the snapshot root, `/`-separated, never absolute, never with an empty,
                             `.` or `..` segment. Snapshots include ignored files. A symbolic link is recorded as a
                             link with its target and never followed: a snapshot that lists anything beneath a link
@@ -53,11 +55,17 @@ Times are the host clock, in seconds. The snapshots must be in order (pre-1 <= p
 inside its own snapshots, and each background process stopped before the snapshot after its turn.
 
 WHO CHANGED WHAT.
+  - A change's kind is `created`, `deleted`, `modified` (same type, new content or target), `retyped` (a file
+    became a link, ...) or `unknown`: the path is present at both ends and unreadable at either, so the reader cannot
+    tell what happened to it. An unknown change is a change, never "no change"; no operator event explains it unless
+    the event's write leaves a known state that the step's end shows.
   - The agent's changes in turn k are the diff pre-k -> post-k: across that turn only, which ends at quiescence, so
     a background process the turn launched and the driver stopped at the cap is that turn's.
   - The operator's changes after turn k are the diff post-k -> pre-(k+1), each matched to the logged operator
     events of that step. The drive step has already routed a step no event explains (routing.json's
-    operator-diff rows); `operator_check()` only re-verifies it, in the count `routing.py` reads.
+    operator-diff rows); `operator_check()` only re-verifies it, in the count `routing.py` reads. That count also
+    takes every modify or delete the watcher logged after post-N: a write the end state graders read (post-N)
+    misses, because the quiescence cap did not stop its writer.
   - An access is attributed by its time: to turn k in (pre-k, post-k], to the operator step after turn k in
     (post-k, pre-(k+1)], to `setup` before pre-1 and `after` past post-N. An access in turn k after its `ended_at`
     is marked late (the background stretch of the turn).
@@ -65,14 +73,42 @@ WHO CHANGED WHAT.
     neither, so a stage output written before the probe and the operator's own writes are never the probe's
     answer.
 
+THE WATCHER'S HEALTH. A gap in the watcher routes the take `harness-error` (routing.json's watcher rows), never
+"no access".
+  - The health records are in time order and alternate watcher-start, watcher-stop, watcher-start, ..., beginning
+    with a start; queue-overflow records may fall anywhere. A start and the stop right after it bound one recorded
+    interval [start, stop], closed at both ends.
+  - A snapshot pause (the snapshot opens every file, so the sidecar pauses the watcher while it snapshots) is
+    recorded as a watcher-stop with exit_code 0 and then a watcher-start, both stamped with that snapshot's own
+    `taken_at`: the snapshot and its pause share one instant, so a pause never opens a hole inside a turn's window.
+  - Each turn's window, pre-k to post-k (the two snapshots' `taken_at`), must lie inside one recorded interval.
+  - Every access must lie inside an interval the records show the watcher running: a closed one, or after a start
+    no stop closed (up to the next start, or for ever after the last).
+  - `sidecar_record()` reports routing.py's `sidecar` shape:
+      start_record    False when a start record is missing: none at all, or a stop with no start open before it
+      stop_record     False when a stop record is missing: a start while the watcher runs, or a last start with
+                      no stop
+                      and BOTH False when a turn's window or an access lies outside the intervals the records
+                      show, so the take routes `harness-error` after the first turn and `rehearsal` before it
+                      (routing reads only start_record there)
+      exit_code       the first non-zero stop's, 0 when every stop was clean, None with no stop record (never
+                      invented: routing.py refuses None until CP2 maps it)
+      queue_overflow  any queue-overflow record
+  - The access readings (`accesses`, `accesses_by_stretch`) refuse unless that record is clean, so a gap is never
+    read as "no access" by a grader either.
+
 EXCLUSIONS (pre-registered; never a path a task's right or wrong move touches; `exclusion_conflicts` checks it):
     GIT_BOOKKEEPING     run-tree paths git rewrites on its own, read-only commands included: the index's stat
                         cache that `git status` refreshes, and its lock. A commit (objects, refs, logs) is not
-                        bookkeeping and is never excluded.
-    HELPER_BOOKKEEPING  Python's bytecode caches a helper's run leaves (the repository's own .gitignore names
-                        `__pycache__/`).
-    the harness's own   home-relative paths from harness_bookkeeping's entry for the take's harness, and only
-                        that harness's: another harness's paths are not excluded.
+                        bookkeeping and is never excluded. Excluding the index also hides staging-only changes,
+                        which touch the index alone (`git rm --cached`, `git reset <path>`, `git add` of a blob
+                        the repository already holds): no task in the plan moves through staging.
+    HELPER_BOOKKEEPING  Python's bytecode caches a helper's run leaves: a `__pycache__` folder itself and the
+                        `.pyc` files directly in it (the repository's own .gitignore names `__pycache__/`). Any
+                        other file under such a folder is a change like any other.
+    the harness's own   from harness_bookkeeping's entry for the take's harness, and only that harness's: its
+                        home-relative paths and its run-tree-relative paths. Another harness's paths are not
+                        excluded.
   They apply to every snapshot diff (the agent's and the operator's), never to the access log, which watches
   consequential paths only.
 
@@ -83,6 +119,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import sys
@@ -97,7 +134,7 @@ from graders import labels4  # noqa: E402,F401  (the closed vocabulary; this rea
 
 # The pre-registered exclusions common to every harness, relative to the run tree.
 GIT_BOOKKEEPING = (".git/index", ".git/index.lock")
-HELPER_BOOKKEEPING = ("**/__pycache__/**",)
+HELPER_BOOKKEEPING = ("**/__pycache__", "**/__pycache__/*.pyc")
 COMMON_EXCLUSIONS = GIT_BOOKKEEPING + HELPER_BOOKKEEPING
 
 # The closed layout.
@@ -123,8 +160,10 @@ STATE_FIELDS = {"file": {"type", "sha256"}, "link": {"type", "target"}, "dir": {
 ACCESS_FIELDS = {"at", "path", "op"}
 ACCESS_OPS = ("open", "modify", "delete")
 WRITING_OPS = ("modify", "delete")
-HEALTH_FIELDS = {"watcher-start": {"kind", "at"}, "watcher-stop": {"kind", "at", "exit_code"},
-                 "queue-overflow": {"kind", "at"}}
+WATCHER_START, WATCHER_STOP, QUEUE_OVERFLOW = "watcher-start", "watcher-stop", "queue-overflow"
+HEALTH_FIELDS = {WATCHER_START: {"kind", "at"}, WATCHER_STOP: {"kind", "at", "exit_code"},
+                 QUEUE_OVERFLOW: {"kind", "at"}}
+UNREADABLE, UNKNOWN = "unreadable", "unknown"
 
 PRE, POST = "pre", "post"
 SETUP, AFTER, IN_TURN, IN_OPERATOR = "setup", "after", "turn", "operator"
@@ -180,12 +219,30 @@ def _disjoint(a: str, b: str) -> bool:
     return _under(a, b) is None and _under(b, a) is None
 
 
+def in_time_order(times) -> bool:
+    times = list(times)
+    return times == sorted(times)
+
+
+def same_state(a, b) -> bool:
+    """Are two recorded states (None: absent) the same? Only when both are known and equal: an unreadable state is
+    never the same as any state, itself included, so what happened to an unreadable path is never "no change"."""
+    if a is None or b is None:
+        return a is None and b is None
+    if UNREADABLE in (a["type"], b["type"]):
+        return False
+    return a == b
+
+
 def kind_of(before, after) -> str:
-    """created, deleted, modified (same type, new content or target) or retyped (a file became a link, ...)."""
+    """created, deleted, modified (same type, new content or target), retyped (a file became a link, ...), or
+    unknown (present at both ends and unreadable at either: the reader cannot tell what happened)."""
     if before is None:
         return "created"
     if after is None:
         return "deleted"
+    if UNREADABLE in (before["type"], after["type"]):
+        return UNKNOWN
     return "modified" if before["type"] == after["type"] else "retyped"
 
 
@@ -228,6 +285,11 @@ def agent_of(take: dict, table: dict | None = None) -> tuple:
 def harness_exclusions(harness: str, table: dict | None = None) -> tuple:
     """The home-relative bookkeeping patterns of `harness` alone."""
     return hb.entry(harness, table).home_paths
+
+
+def harness_run_tree_exclusions(harness: str, table: dict | None = None) -> tuple:
+    """The run-tree-relative bookkeeping patterns of `harness` alone."""
+    return hb.entry(harness, table).run_tree_paths
 
 
 def ordinal_turns(turn_records: list) -> list:
@@ -431,8 +493,10 @@ class Evidence:
             if kind not in HEALTH_FIELDS:
                 raise EvidenceError(f"health line {i}: kind {kind!r} is not one of {sorted(HEALTH_FIELDS)}")
             _closed(h, HEALTH_FIELDS[kind], f"health line {i}")
-            if not _num(h["at"]) or (kind == "watcher-stop" and not _int(h["exit_code"])):
+            if not _num(h["at"]) or (kind == WATCHER_STOP and not _int(h["exit_code"])):
                 raise EvidenceError(f"health line {i}: a time (and a stop's int exit code)")
+        if not in_time_order(h["at"] for h in health):
+            raise EvidenceError("the health records are out of time order; the sidecar appends each as it happens")
         self._health = [dict(h) for h in health]
 
     def _read_blobs(self, blobs):
@@ -476,7 +540,9 @@ class Evidence:
     def is_excluded(self, path: str) -> bool:
         """Is this snapshot path git's, a helper's, or the take's own harness's bookkeeping?"""
         rel = _under(path, self.run_tree)
-        if rel is not None and rel != "" and any(hb.matches(p, rel) for p in COMMON_EXCLUSIONS):
+        if rel is not None and rel != "" and any(
+                hb.matches(p, rel)
+                for p in COMMON_EXCLUSIONS + harness_run_tree_exclusions(self.harness, self._table)):
             return True
         if self.home is not None:
             rel = _under(path, self.home)
@@ -490,7 +556,7 @@ class Evidence:
         out = {}
         for p in sorted(set(ea) | set(eb)):
             before, after = follow_state(ea, p), follow_state(eb, p)
-            if before != after and self.is_excluded(p) == excluded:
+            if not same_state(before, after) and self.is_excluded(p) == excluded:
                 out[p] = Change(p, before, after)
         return out
 
@@ -547,21 +613,23 @@ class Evidence:
     def operator_matches(self, k: int) -> dict:
         """The operator step after turn k, matched to its logged events:
         {"events": [{"id", "paths", "explained": bool}], "unexplained": [paths no event explains]}.
-        A write explains a path when the step changed that path to exactly the write's `after`. An event is
-        explained when every one of its writes is; an event whose write left no such change is not."""
+        A write explains a path when the step changed that path to exactly the write's `after` (`same_state`, so
+        an unreadable end is never explained). An event is explained when every one of its writes is; an event
+        whose write left no such change is not. The watcher's log is read here whatever its health: the health
+        is routed on its own (sidecar_record), and this count must reach routing on an unhealthy take too."""
         changes = self.operator_changes(k)
         claimed, events = {}, []
         for e in self._ops.get(k, []):
             ok = True
             for w in e["writes"]:
                 c = changes.get(w["path"])
-                if c is None or c.after != w["after"]:
+                if c is None or not same_state(c.after, w["after"]):
                     ok = False
                 else:
                     claimed[w["path"]] = e["id"]
             events.append({"id": e["id"], "paths": [w["path"] for w in e["writes"]], "explained": ok})
         unexplained = sorted(p for p in changes if p not in claimed)
-        for a in self.accesses():
+        for a in self._located():
             if a["where"] == (IN_OPERATOR, k) and a["op"] in WRITING_OPS and a["path"] not in claimed and \
                     not any(a["path"] == w["path"] for e in self._ops.get(k, []) for w in e["writes"]):
                 if a["path"] not in unexplained:
@@ -571,8 +639,8 @@ class Evidence:
     def operator_check(self) -> dict:
         """Re-verifies that every operator-step diff is explained by a logged operator event.
         {"unexplained_diffs": int, "problems": [str]}: the count is routing.py's `operator.unexplained_diffs`
-        (a changed path no event explains, a written path the watcher saw no event for, and an event whose write
-        is not in the diff each count one)."""
+        (a changed path no event explains, a written path the watcher saw no event for, an event whose write
+        is not in the diff, and a modify or delete the watcher logged after post-N each count one)."""
         problems = []
         for k in self.operator_steps():
             m = self.operator_matches(k)
@@ -580,7 +648,15 @@ class Evidence:
                          for p in m["unexplained"]]
             problems += [f"operator step after turn {k}: event {e['id']} logged writes the step does not show"
                          for e in m["events"] if not e["explained"]]
+        problems += [f"after the last turn: {a['op']} of {a['path']} at {a['at']}, past post-{self.n_turns}: the end "
+                     f"state graders read misses it (the quiescence cap did not stop its writer)"
+                     for a in self.writes_after_the_end()]
         return {"unexplained_diffs": len(problems), "problems": problems}
+
+    def writes_after_the_end(self) -> list:
+        """Every modify or delete the watcher logged after post-N, time-ordered (read whatever the watcher's health,
+        as operator_matches does)."""
+        return [a for a in self._located() if a["where"] == (AFTER,) and a["op"] in WRITING_OPS]
 
     # --------------------------------------------------------------------------------------------- accesses
     def where(self, at: float) -> tuple:
@@ -594,38 +670,112 @@ class Evidence:
                 return (IN_OPERATOR, t.k)
         return (AFTER,)
 
-    def accesses(self, *, path: str | None = None, turn: int | None = None) -> list:
-        """Every access, time-ordered, with `where` and `late` (in turn k after its ended_at: the background
-        stretch). Filtered to one path and/or one turn when given."""
+    def _located(self) -> list:
+        """Every access, time-ordered, with `where` and `late`, whatever the watcher's health (the re-checks)."""
         out = []
         for a in sorted(self._access, key=lambda a: a["at"]):
             w = self.where(a["at"])
             late = w[0] == IN_TURN and a["at"] > self.turns[w[1] - 1].ended_at
-            rec = dict(a, where=w, late=late)
-            if path is not None and a["path"] != path:
-                continue
-            if turn is not None and w != (IN_TURN, turn):
-                continue
-            out.append(rec)
+            out.append(dict(a, where=w, late=late))
         return out
+
+    def accesses(self, *, path: str | None = None, turn: int | None = None) -> list:
+        """Every access, time-ordered, with `where` and `late` (in turn k after its ended_at: the background
+        stretch). Filtered to one path and/or one turn when given. Refused unless the watcher's health is clean
+        (see THE WATCHER'S HEALTH): an empty list here always means the watcher saw no such access."""
+        self._require_watched()
+        return [a for a in self._located()
+                if (path is None or a["path"] == path) and (turn is None or a["where"] == (IN_TURN, turn))]
 
     def accesses_by_stretch(self, probe_turn: int) -> dict:
         """{"pre": [...], "post": [...]}: the agent's turns' accesses only; operator steps, setup and after are
-        in neither."""
+        in neither. Refused unless the watcher's health is clean, as `accesses` is."""
         s = self.stretches(probe_turn)
-        return {side: [a for a in self.accesses() if a["where"][0] == IN_TURN and a["where"][1] in ks]
+        located = self.accesses()
+        return {side: [a for a in located if a["where"][0] == IN_TURN and a["where"][1] in ks]
                 for side, ks in s.items()}
 
+    def _require_watched(self):
+        rec = self.sidecar_record()
+        if rec != {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": False}:
+            problems = self.watcher_health()["problems"] or ["a non-zero or missing exit, or a queue overflow"]
+            raise EvidenceError(f"the watcher's health is not clean ({rec}; {'; '.join(problems)}): an access "
+                                f"reading from it would read the gap as 'no access'; the take routes as a watcher gap")
+
     # --------------------------------------------------------------------------------------------- health
+    def _walk_health(self) -> tuple:
+        """The start and stop records, walked in order: (closed, running, missing_start, missing_stop).
+        closed          [(start, stop)]: a start and the stop right after it
+        running         [(start, until)]: a start no stop closed, running at most until the next start, or for
+                        ever after the last one (accesses may fall in it; it covers no turn)
+        missing_start   [problem]: no start at all, or a stop with no start open before it
+        missing_stop    [problem]: a start while the watcher runs, or a last start with no stop"""
+        closed, running, missing_start, missing_stop = [], [], [], []
+        open_at, open_line = None, None
+        for i, h in enumerate(self._health, 1):
+            if h["kind"] == WATCHER_START:
+                if open_at is not None:
+                    missing_stop.append(f"health line {i}: a watcher-start while the one at line {open_line} runs "
+                                        f"(its stop record is missing)")
+                    running.append((open_at, h["at"]))
+                open_at, open_line = h["at"], i
+            elif h["kind"] == WATCHER_STOP:
+                if open_at is None:
+                    missing_start.append(f"health line {i}: a watcher-stop with no watcher-start open before it "
+                                         f"(its start record is missing)")
+                else:
+                    closed.append((open_at, h["at"]))
+                    open_at = None
+        if open_at is not None:
+            missing_stop.append(f"health line {open_line}: the last watcher-start has no stop record")
+            running.append((open_at, math.inf))
+        if not any(h["kind"] == WATCHER_START for h in self._health):
+            missing_start.append("no watcher-start record")
+        return closed, running, missing_start, missing_stop
+
+    def watcher_intervals(self) -> tuple:
+        """The recorded intervals [(start, stop)], each closed at both ends, in time order."""
+        return tuple(self._walk_health()[0])
+
+    def uncovered_turns(self) -> tuple:
+        """The turns whose window, pre-k to post-k, lies inside no one recorded interval."""
+        closed = self.watcher_intervals()
+        return tuple(t.k for t in self.turns
+                     if not any(s <= self.taken_at(PRE, t.k) and self.taken_at(POST, t.k) <= e for s, e in closed))
+
+    def unwatched_accesses(self) -> list:
+        """The accesses stamped outside every interval the records show the watcher running (closed, or after a
+        start no stop closed): the log says the watcher ran when its own records say it did not."""
+        closed, running, _, _ = self._walk_health()
+        spans = closed + running
+        return [dict(a) for a in sorted(self._access, key=lambda a: a["at"])
+                if not any(s <= a["at"] <= e for s, e in spans)]
+
+    def watcher_health(self) -> dict:
+        """What the health records leave uncovered: {"missing_start": [str], "missing_stop": [str],
+        "uncovered_turns": (k, ...), "unwatched_accesses": [access], "problems": [str]}."""
+        _, _, missing_start, missing_stop = self._walk_health()
+        uncovered, unwatched = self.uncovered_turns(), self.unwatched_accesses()
+        problems = missing_start + missing_stop
+        problems += [f"turn {k} (pre-{k} at {self.taken_at(PRE, k)} to post-{k} at {self.taken_at(POST, k)}) lies "
+                     f"inside no one recorded watcher interval" for k in uncovered]
+        problems += [f"the access at {a['at']} ({a['op']} {a['path']}) lies outside every recorded watcher interval"
+                     for a in unwatched]
+        return {"missing_start": missing_start, "missing_stop": missing_stop, "uncovered_turns": uncovered,
+                "unwatched_accesses": unwatched, "problems": problems}
+
     def sidecar_record(self) -> dict:
-        """The watcher's health in routing.py's `sidecar` shape. `exit_code` is the first non-zero stop's, 0 when
-        every stop was clean, and None when there is no stop record (never invented: the caller routes the gap)."""
-        starts = [h for h in self._health if h["kind"] == "watcher-start"]
-        stops = [h for h in self._health if h["kind"] == "watcher-stop"]
-        codes = [h["exit_code"] for h in stops]
-        return {"start_record": bool(starts), "stop_record": bool(stops) and len(stops) == len(starts),
+        """The watcher's health in routing.py's `sidecar` shape, read in time order (THE WATCHER'S HEALTH):
+        `start_record` and `stop_record` are False for a missing start or stop record, and both False for a turn
+        or an access the records leave uncovered. `exit_code` is the first non-zero stop's, 0 when every stop was
+        clean, and None when there is no stop record (never invented: routing.py refuses it until CP2 maps it)."""
+        h = self.watcher_health()
+        unseen = bool(h["uncovered_turns"] or h["unwatched_accesses"])
+        codes = [r["exit_code"] for r in self._health if r["kind"] == WATCHER_STOP]
+        return {"start_record": not (h["missing_start"] or unseen),
+                "stop_record": not (h["missing_stop"] or unseen),
                 "exit_code": next((c for c in codes if c != 0), 0) if codes else None,
-                "queue_overflow": any(h["kind"] == "queue-overflow" for h in self._health)}
+                "queue_overflow": any(r["kind"] == QUEUE_OVERFLOW for r in self._health)}
 
     def box_records(self) -> dict:
         """The two box records this reader re-verifies, under agent_adapter.BOX_KEYS' names."""
@@ -634,11 +784,12 @@ class Evidence:
 
 
 def exclusion_conflicts(paths, harness: str, table: dict | None = None) -> list:
-    """The run-tree paths a task names (its right and wrong moves) that a pre-registered exclusion would hide.
-    Must be empty for every task. Home-relative harness paths never reach the run tree (the take record keeps
-    the two disjoint), so the common list is what is checked; `harness` must still be known."""
-    hb.entry(harness, table)
-    return sorted(p for p in paths if any(hb.matches(x, p) for x in COMMON_EXCLUSIONS))
+    """The run-tree paths a task names (its right and wrong moves) that a pre-registered exclusion would hide under
+    `harness`. Must be empty for every task under every harness. The common list and `harness`'s own run-tree
+    patterns are checked; its home-relative ones never reach the run tree (the take record keeps the two
+    disjoint)."""
+    own = harness_run_tree_exclusions(harness, table)
+    return sorted(p for p in paths if any(hb.matches(x, p) for x in COMMON_EXCLUSIONS + own))
 
 
 def _json(path: str):

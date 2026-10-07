@@ -9,10 +9,15 @@ ONE OF THE SEAM'S THREE TABLES (interface 8, glitch-f3's ruling, 6 Oct 2026). `a
 `graders/endstate.py` takes the harness from the evidence (the take record's `agent.harness`) and asks `entry()`,
 which refuses an unknown name and never defaults to any harness.
 
-WHERE THE PATHS ARE. Each pattern is relative to the take user's home folder as the evidence places it (the take
-record's `home`; see `graders/endstate.py`), never to the run tree: a harness keeps its bookkeeping in its own
-home, and the run tree is where a task's right and wrong moves land. Under one harness, another harness's paths are
-NOT excluded: an agent under one harness that writes into another's folders made that change itself.
+WHERE THE PATHS ARE. An entry holds two lists of patterns, each read for the take's own harness only:
+    home_paths      relative to the take user's home folder as the evidence places it (the take record's `home`;
+                    see `graders/endstate.py`): where a harness keeps its own bookkeeping.
+    run_tree_paths  relative to the run tree: bookkeeping a harness leaves there itself, for example temp files
+                    under TMPDIR, which round 3's driver points into the run tree (drive.py:172-182). The run tree
+                    is where a task's right and wrong moves land, so a pattern here must be grounded and must hide
+                    no task path (`endstate.exclusion_conflicts` checks it per task).
+Under one harness, another harness's paths (of either list) are NOT excluded: an agent under one harness that writes
+into another's folders made that change itself.
 
 PATTERNS. `/`-separated segments. A segment is matched with `fnmatch.fnmatchcase` (so `*` never crosses a `/`); a
 `**` segment matches zero or more whole segments. No leading `/`, no empty, `.` or `..` segment.
@@ -22,8 +27,11 @@ pre-registration key `run_location.excluded_from_the_run_tree` at e2979b31). Exc
 
     .claude/projects/*/*.jsonl   the session file. drive.py:232-245 (`session_file`, the glob at 241-242): Claude Code writes it under
                                  `$CLAUDE_CONFIG_DIR`, or `~/.claude` when that is unset, as
-                                 `projects/<folder>/<session id>.jsonl`. Round 3's session environment
-                                 (drive.py:158-186) sets no CLAUDE_CONFIG_DIR, so the home-relative default holds.
+                                 `projects/<folder>/<session id>.jsonl`. Round 3's isolation environment
+                                 (drive.py:170, ISOLATION_ENV) sets no CLAUDE_CONFIG_DIR; whether an inherited one
+                                 passes through is open (CP2).
+    run_tree_paths: none         round 3's files ground no run-tree bookkeeping of Claude Code's own, so the list
+                                 is empty until CP2 measures one (lane report w2a-cp3-endstate, open question 2).
 
 NOT excluded, each recorded in the entry's `not_excluded` with its line (lane w2a's decisions):
 
@@ -31,7 +39,8 @@ NOT excluded, each recorded in the entry's `not_excluded` with its line (lane w2
                                  something wrote it, and the reader shows it.
     .tmp/ (run tree)             drive.py:172-182: the take's temp folder (TMPDIR, TMP, TEMP). Every tool's scratch
                                  lands there, the agent's own included, so a placeholder data file written there is
-                                 a created file. Not the harness's alone, so never excluded.
+                                 a created file. Not the harness's alone, so never excluded as a folder; a file
+                                 Claude Code itself leaves there needs a grounded run_tree_paths pattern (CP2).
     data/staging/, .tmp/         drive.py:384-394: git-excluded in the checkout, which hides them from `git status`,
                                  never from the snapshots. data/staging/ is where the driver stages fixtures: an
                                  operator write, matched to its logged event like any other.
@@ -58,9 +67,10 @@ CLAUDE_CODE = "claude-code"
 
 @dataclass(frozen=True)
 class Entry:
-    """One harness's bookkeeping: home-relative patterns excluded, the lines that ground them, and what was
-    considered and kept in (path, why)."""
+    """One harness's bookkeeping: the home-relative patterns excluded (at least one), the run-tree-relative ones
+    (required, possibly empty), the lines that ground them, and what was considered and kept in (path, why)."""
     home_paths: tuple
+    run_tree_paths: tuple
     grounds: tuple
     not_excluded: tuple
 
@@ -68,12 +78,15 @@ class Entry:
 TABLE: dict = {
     CLAUDE_CODE: Entry(
         home_paths=(".claude/projects/*/*.jsonl",),
+        run_tree_paths=(),
         grounds=(
             "evals/gap-study-4/drive.py:241-242 session_file: "
             "Path(os.environ.get(\"CLAUDE_CONFIG_DIR\") or (Path.home() / \".claude\")) / \"projects\", "
             "glob(f\"*/{session_id}.jsonl\")",
-            "evals/gap-study-4/drive.py:158-186: the session's environment sets no CLAUDE_CONFIG_DIR "
-            "(ISOLATION_ENV holds ENABLE_CLAUDEAI_MCP_SERVERS and CLAUDE_CODE_DISABLE_AUTO_MEMORY only)",
+            "evals/gap-study-4/drive.py:170: ISOLATION_ENV sets no CLAUDE_CONFIG_DIR (it holds "
+            "ENABLE_CLAUDEAI_MCP_SERVERS and CLAUDE_CODE_DISABLE_AUTO_MEMORY only); whether an inherited one passes "
+            "through is open (CP2)",
+            "run_tree_paths: none; round 3's files ground no run-tree bookkeeping of the harness's own (CP2 measures)",
         ),
         not_excluded=(
             ("auto-memory folder", "drive.py:166-170: CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 turns it off"),
@@ -131,6 +144,12 @@ def excluded(name, home_path: str, table: dict | None = None) -> bool:
     return any(matches(p, home_path) for p in entry(name, table).home_paths)
 
 
+def run_tree_excluded(name, run_path: str, table: dict | None = None) -> bool:
+    """Is `run_path` (relative to the run tree) bookkeeping harness `name` leaves in the run tree itself? Only that
+    harness's entry is read."""
+    return any(matches(p, run_path) for p in entry(name, table).run_tree_paths)
+
+
 def check_table(table: dict | None = None) -> list[str]:
     table = TABLE if table is None else table
     problems = []
@@ -147,6 +166,11 @@ def check_table(table: dict | None = None) -> list[str]:
         else:
             for p in e.home_paths:
                 problems += [f"{name}: {x}" for x in pattern_problems(p)]
+        if not isinstance(e.run_tree_paths, tuple):
+            problems.append(f"{name}: run_tree_paths must be a tuple (empty when the harness leaves none)")
+        else:
+            for p in e.run_tree_paths:
+                problems += [f"{name}: run tree: {x}" for x in pattern_problems(p)]
         if not isinstance(e.grounds, tuple) or not e.grounds or not all(isinstance(g, str) and g for g in e.grounds):
             problems.append(f"{name}: every entry names its grounds")
         if not isinstance(e.not_excluded, tuple) or not all(
