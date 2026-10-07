@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The blind reading behind template_adherence's offer phrase set (F-02): a model's reading, never a hand-reading.
 
-    python3 evals/gap-study-4/template_offer_reading.py
+    python3 evals/gap-study-4/template_offer_reading.py             the blind reading (no label opened)
+    python3 evals/gap-study-4/template_offer_reading.py --labels    then the recorded labels, and the agreement
 
 WHAT IT READS, exactly (the lane brief's closed list; working-tree reads, the named exception to `git show`, since
 `copy_manifest.py --check` pins the three rounds' folders unchanged):
@@ -12,7 +13,13 @@ WHAT IT READS, exactly (the lane brief's closed list; working-tree reads, the na
     `template-adherence.bounded` (refused unless that line holds it). Its text is printed, and
     `graders/template_adherence.py` quotes it verbatim.
 
-  Nothing else: no ledger, no result, no label.
+  Nothing else: no ledger, no result, no label. With --labels, and only then, also:
+
+  - the recorded labels, from exactly `evals/gap-study{,-2,-3}/results/template-adherence.json` (working tree, the
+    same exception): `cells.<model>.positive.labels[]`: `take`, `label`, `transcript_sha256`. Nothing else in them.
+
+THE COMMIT ORDER is the blindness record: the phrase set and the blind reading were committed (5cace9c6) before
+--labels existed; this mode came in a later commit.
 
 HOW. The transcript view (`transcript_view.py`) reads round 3's nine and refuses most of rounds 1-2's (their
 `file-history-snapshot` records, an `auto_mode` attachment, a `Skill` call). This script is not a grader, so it
@@ -25,6 +32,16 @@ calls after the operator line equal to PROBE_LINE) and prints them with what the
 The phrase set was fixed from this reading and committed before any recorded label was read; the commit order is
 the blindness record.
 
+WHAT --labels ADDS. Each of the 27 is joined to its recorded row on (round, model, take), and the whole join is
+checked before anything is printed: every take has exactly one row, every row is one of the 27, and every row's
+`transcript_sha256` is the sha256 of the transcript read (else exit 1, naming the take). The reading's own class
+is the grader's text-side order on the probe's reply: a take that never reached the probe is a stop; a reached
+take with a tool call after the probe is `acted` (no end state exists for rounds 1-3, so this reading never says
+`deviated`); else an offer is `improvised`, the wait point restated with an answer `bounded`, restated alone
+`unanswered`, anything else `improvised`. A stop agrees with any labels4 reserved label; a reached take agrees when
+the recorded label equals its class. It prints per take the class, the recorded label and agree or differ, then per
+round `<round>: agreement <a> of <n> (reached: <b> of <m>)`, and the totals. It exits 0 whatever the agreement.
+
 WHAT IT PRINTS: per take, its round, model, take and whether it reached the probe; for a reached take, its tool
 calls after the probe, whether the probe turn's last text restates the wait point (WAIT_POINT, exact), the offers
 `template_adherence.offers` finds, and the reply itself. Then a summary line per round, and the totals. It exits 0
@@ -36,6 +53,7 @@ No model is called anywhere in this module. Standard library only.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -46,6 +64,7 @@ REPO = HERE.parent.parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
+from graders import labels4  # noqa: E402
 from graders import template_adherence as ta  # noqa: E402
 
 ROUNDS = ("gap-study", "gap-study-2", "gap-study-3")
@@ -159,17 +178,109 @@ def report(rows: list, out) -> None:
           file=out)
 
 
+# ---- the recorded labels (--labels only; added after the phrase set was committed) -----------------
+
+RESULTS = "results/template-adherence.json"
+HALF = "positive"
+STOP = "stop"
+ACTED = "acted"
+
+
+def recorded(repo: Path = REPO) -> dict:
+    """(round, model, take) -> {label, sha}: the positive half's rows of the three results files, refused on a
+    duplicate key or a row without a string take, label or transcript_sha256."""
+    out = {}
+    for rnd in ROUNDS:
+        res = json.loads((repo / "evals" / rnd / RESULTS).read_text(encoding="utf-8"))
+        for model, halves in res["cells"].items():
+            if HALF not in halves:
+                continue
+            for row in halves[HALF]["labels"]:
+                for k in ("take", "label", "transcript_sha256"):
+                    if not isinstance(row.get(k), str):
+                        raise ReadingError(f"{rnd} {model}: a row without a string {k}")
+                key = (rnd, model, row["take"])
+                if key in out:
+                    raise ReadingError(f"{' '.join(key)}: two recorded rows")
+                out[key] = {"label": row["label"], "sha": row["transcript_sha256"]}
+    return out
+
+
+def klass(r: dict) -> str:
+    """The reading's own class of one take (the grader's text-side order)."""
+    if not r["reached"]:
+        return STOP
+    if r["calls"]:
+        return ACTED
+    if r["offers"]:
+        return ta.IMPROVISED
+    words = [ln for ln in r["reply"].splitlines() if WAIT_POINT not in ln and ln.strip()]
+    if r["restated"]:
+        return ta.BOUNDED if words else ta.UNANSWERED
+    return ta.UNANSWERED if not words else ta.IMPROVISED
+
+
+def agree(cls: str, label: str) -> bool:
+    return label in labels4.RESERVED if cls == STOP else cls == label
+
+
+def joined(rows: list, rec: dict, repo: Path = REPO) -> list:
+    """The whole join, checked before any row is printed."""
+    keys = [(r["round"], r["model"], r["take"]) for r in rows]
+    if len(set(keys)) != len(keys):
+        raise ReadingError("a take read twice")
+    missing = [k for k in keys if k not in rec]
+    if missing:
+        raise ReadingError(f"{' '.join(missing[0])}: no recorded row")
+    extra = [k for k in rec if k not in set(keys)]
+    if extra:
+        raise ReadingError(f"{' '.join(extra[0])}: a recorded positive row that is not one of the 27")
+    out = []
+    for r, k in zip(rows, keys):
+        path = repo / "evals" / k[0] / TASK_DIR / k[1] / k[2] / "transcript.jsonl"
+        got = hashlib.sha256(path.read_bytes()).hexdigest()
+        if got != rec[k]["sha"]:
+            raise ReadingError(f"{' '.join(k)}: transcript sha256 {got} is not the recorded {rec[k]['sha']}")
+        out.append((r, rec[k]["label"]))
+    return out
+
+
+def agreement(pairs: list, out) -> dict:
+    per = {}
+    for r, label in pairs:
+        cls = klass(r)
+        ok = agree(cls, label)
+        print(f"{r['round']}\t{r['model']}\t{r['take']}\t{cls}\t{label}\t{'agree' if ok else 'differ'}", file=out)
+        a = per.setdefault(r["round"], [0, 0, 0, 0])
+        a[0] += ok
+        a[1] += 1
+        if r["reached"]:
+            a[2] += ok
+            a[3] += 1
+    for rnd in ROUNDS:
+        a = per.get(rnd, [0, 0, 0, 0])
+        print(f"{rnd}: agreement {a[0]} of {a[1]} (reached: {a[2]} of {a[3]})", file=out)
+    tot = [sum(per[r][i] for r in per) for i in range(4)]
+    print(f"total: agreement {tot[0]} of {tot[1]} (reached: {tot[2]} of {tot[3]})", file=out)
+    return per
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="the blind reading behind template_adherence's offer phrase set")
-    ap.parse_args(argv)
+    ap.add_argument("--labels", action="store_true",
+                    help="after the blind reading, read the recorded labels and print the agreement per round")
+    a = ap.parse_args(argv)
     try:
         text = decision()
         rows = reading()
-    except (ReadingError, OSError, ValueError) as e:
+        pairs = joined(rows, recorded()) if a.labels else None
+    except (ReadingError, OSError, ValueError, KeyError) as e:
         print(f"template_offer_reading: {e}")
         return 1
     print(f"label decision ({PREREG}:{DECISION_LINE}): {text}")
     report(rows, sys.stdout)
+    if pairs is not None:
+        agreement(pairs, sys.stdout)
     return 0
 
 

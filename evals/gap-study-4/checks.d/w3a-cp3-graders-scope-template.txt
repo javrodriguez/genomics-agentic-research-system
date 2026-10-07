@@ -1,3 +1,4 @@
 # Lane w3a-cp3-graders-scope-template: the scope-read and template-adherence graders, and the blind offer reading.
 # One command per line, run from the repository root.
 python3 -B evals/gap-study-4/template_offer_reading.py
+python3 -B evals/gap-study-4/template_offer_reading.py --labels
