@@ -11,7 +11,7 @@
               python3 package_run.py render --harvest <dir> --gars-repo <GARS git clone>
                   --sources <lane-sources.tsv> --tolerances <package-tolerances.json> --out <package>
               Reads only the harvest, named files at the recorded GARS commit (git show) and the
-              two lane files; every value carries one of three labels.
+              two lane files; every value carries one of six labels.
   rerun-note  writes the landing README beside a package, from a verifying pass's artifact:
               python3 package_run.py rerun-note --package <dir> --artifact <dir> [--artifact <dir>]
                   --workflow <workflow file name> --out <README.md>
@@ -1726,6 +1726,11 @@ def rerun_note(args):
     package_digest = sha256_file(package / 'SHA256SUMS')
     if not re.match(r'[a-z0-9-]+\.yml\Z', args.workflow):
         raise Refusal('--workflow is a workflow file name such as reproduction-yeast-atac.yml')
+    # the README links the workflow's runs, so the workflow must exist in this repository (S5 review r2, M7)
+    workflow = package.resolve().parents[2] / '.github' / 'workflows' / args.workflow
+    if not workflow.is_file():
+        raise Refusal('no workflow %s in this repository; the landing README would link a page that does '
+                      'not exist' % args.workflow)
     passes = [read_artifact(a, package_digest) for a in args.artifact]
     if len(passes) > 2:
         raise Refusal('at most two claim passes')
@@ -1765,7 +1770,7 @@ def rerun_note(args):
                                                                                     p['pipeline_commit']) for p in pipes),
              '', 'Re-run: `bash package/rerun.sh --out <empty folder>`', '',
              'Verify: `python3 package/verify.py --against <that folder>`', '',
-             'Re-run on a fresh %s, %s, from this package and the public sources it pins by checksum '
+             'Re-run on a %s, %s, from this package and the public sources it pins by checksum '
              '(package sha256 `%s`): %s.' % (machine, dates, package_digest, compare.line(counts)), '',
              'The re-run was a pre-landing pass in a private environment (not viewable); the public workflow\'s '
              'runs ([%s](%s)) must show the same table.' % (args.workflow, runs), '']

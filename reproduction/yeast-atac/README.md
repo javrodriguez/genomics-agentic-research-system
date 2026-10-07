@@ -8,7 +8,7 @@ Re-run: `bash package/rerun.sh --out <empty folder>`
 
 Verify: `python3 package/verify.py --against <that folder>`
 
-Re-run on a fresh 4-CPU 16 GB launch-pad machine (AWS m5.xlarge), no image cached, 2026-10-06 and 2026-10-07, from this package and the public sources it pins by checksum (package sha256 `f5964ecee48730b533458db313667b597a7c0e09df27020e8ba6da07cae85811`): of 6 outputs (209 files), 2 matched exactly, 1 within the stated tolerance, 1 present but not byte-comparable, 2 differ (causes in PROVENANCE.md).
+Re-run on a 4-CPU 16 GB launch-pad machine (AWS m5.xlarge), no image cached, 2026-10-06 and 2026-10-07, from this package and the public sources it pins by checksum (package sha256 `f5964ecee48730b533458db313667b597a7c0e09df27020e8ba6da07cae85811`): of 6 outputs (209 files), 2 matched exactly, 1 within the stated tolerance, 1 present but not byte-comparable, 2 differ (causes in PROVENANCE.md).
 
 The re-run was a pre-landing pass in a private environment (not viewable); the public workflow's runs ([reproduction-yeast-atac.yml](https://github.com/javrodriguez/genomics-agentic-research-system/actions/workflows/reproduction-yeast-atac.yml)) must show the same table.
 

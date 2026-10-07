@@ -10,7 +10,7 @@ GARS lets an AI agent run real genomics pipelines inside a folder of written rul
 
 Built by Javier Rodríguez Hernáez, formerly Senior Bioinformatics Programmer at NYU Langone (2018–2026), now open to contract and full-time work in AI for science and genomics · [LinkedIn](https://www.linkedin.com/in/jrodriguezhernaez/) · [GitHub](https://github.com/javrodriguez)
 
-**[▶ Watch a recorded session](https://gars.javrodriguez.dev/demo/)** (set-up on synthetic data) · [Check it yourself](#check-it-yourself) · [A GARS run's reproduction package](reproduction/yeast-atac/) (its re-run result lands with the package) · [Try to break the rules](https://gars.javrodriguez.dev/try/) · [Evidence and limits](https://gars.javrodriguez.dev/evidence/) · [Install](https://gars.javrodriguez.dev/install/) · [Docs](docs/) · [Credits](#credits) · [Cite](CITATION.cff) · MIT
+**[▶ Watch a recorded session](https://gars.javrodriguez.dev/demo/)** (set-up on synthetic data) · [Check it yourself](#check-it-yourself) · [A GARS run's reproduction package, re-run twice on 4-CPU machines with no image cached](reproduction/yeast-atac/) · [Try to break the rules](https://gars.javrodriguez.dev/try/) · [Evidence and limits](https://gars.javrodriguez.dev/evidence/) · [Install](https://gars.javrodriguez.dev/install/) · [Docs](docs/) · [Credits](#credits) · [Cite](CITATION.cff) · MIT
 
 ## The agent guides. Tested code computes. You decide.
 
@@ -397,7 +397,7 @@ artifact each stage produces.
 
 ## Status
 
-- **1303 tests** in `tests/run_tests.py`; CI was green on main at `5c142aa` ([run 37059655674](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/37059655674)), with the Gap Study token correction in.
+- **1399 tests** in `tests/run_tests.py`, with the reproduction package (0281-0283) in; the last CI run on main before it was green at `5c142aa` ([run 37059655674](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/37059655674)), with the Gap Study token correction in; CI runs again on main with the landing.
 - **Seven assays are wired; most are proven live** — the table below.
 - **Build log:** the row-by-row status and its dated evidence are in
   [DEVELOPMENT.md](DEVELOPMENT.md#status-moved-from-the-readme-30-sep-2026); the definition-of-done

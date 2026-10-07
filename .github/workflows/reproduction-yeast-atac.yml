@@ -1,0 +1,102 @@
+# The yeast ATAC exemplar, re-run from its reproduction package (decisions 0281, 0283).
+#
+# Job `self-check` runs the package's offline verify.py and shellcheck on rerun.sh, in minutes.
+# Job `rerun` runs the package's own commands on a GitHub-hosted runner, exactly as REPRODUCE.md
+# prints them: `bash rerun.sh --out <folder>`, then `python3 verify.py --against <folder>
+# --table-out <folder>`. It passes when the re-run's result line equals the line the committed
+# landing README (reproduction/yeast-atac/README.md) states, whatever that line's counts are: the
+# README's line was measured on two pre-landing passes, and this job checks that the public runner
+# measures the same. Its member table, the package digest it verified and the machine class are
+# uploaded as the artifact `rerun-note` reads.
+#
+# Disk: a cold-cache pass used about 15 GB of root disk (0283), more than the runner's free space,
+# so the job first removes preinstalled toolchains this re-run never uses and records free space.
+#
+# The schedule's honest limit: GitHub disables a scheduled workflow after 60 days without repository
+# activity, so a page quoting this job shows the date of a pinned run, never a standing promise.
+name: Reproduction (yeast ATAC)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 7 5 * *"
+
+permissions:
+  contents: read
+
+jobs:
+  self-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: reproduction/yeast-atac
+      - name: The package verifies offline
+        run: python3 reproduction/yeast-atac/package/verify.py
+      - name: rerun.sh is shellcheck-clean
+        run: shellcheck reproduction/yeast-atac/package/rerun.sh
+
+  rerun:
+    needs: self-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: reproduction/yeast-atac
+      - name: Free disk (toolchains this re-run never uses)
+        run: |
+          df -B1 --output=avail / | tail -1 > "$RUNNER_TEMP/free-before.txt"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          docker system prune -af
+          df -B1 --output=avail / | tail -1 > "$RUNNER_TEMP/free-after.txt"
+          echo "free root disk: $(cat "$RUNNER_TEMP/free-before.txt") bytes before, $(cat "$RUNNER_TEMP/free-after.txt") after" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$(cat "$RUNNER_TEMP/free-after.txt")" -ge 17000000000
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: The Nextflow launcher (rerun.sh pins the version the run recorded)
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL https://get.nextflow.io -o "$HOME/.local/bin/nextflow"
+          chmod +x "$HOME/.local/bin/nextflow"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Re-run from the package
+        run: |
+          start=$(date +%s)
+          bash reproduction/yeast-atac/package/rerun.sh --out "$RUNNER_TEMP/rerun"
+          echo "rerun.sh exit 0, wall time $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Compare with the run's record and the landing README
+        run: |
+          set +e
+          python3 reproduction/yeast-atac/package/verify.py --against "$RUNNER_TEMP/rerun" \
+            --table-out "$RUNNER_TEMP/artifact" > "$RUNNER_TEMP/verify.txt"
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/verify.txt"
+          line="$(tail -n 1 "$RUNNER_TEMP/verify.txt")"
+          {
+            echo "verify.py exit $code"
+            echo '```'
+            cat "$RUNNER_TEMP/verify.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          case "$code" in 0|2|3) ;; *) echo "verify.py could not compare (exit $code)"; exit 1 ;; esac
+          printf '%s\n%s\n' "GitHub-hosted ubuntu-latest runner (4 CPU, 16 GB), images pulled fresh" \
+            "$(date -u +%Y-%m-%d)" > "$RUNNER_TEMP/artifact/machine.txt"
+          if grep -qF -- "$line" reproduction/yeast-atac/README.md; then
+            echo "the result line equals the landing README's" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "the result line differs from the landing README's: $line" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - name: The pass artifact (what rerun-note reads)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rerun-note-artifact
+          path: ${{ runner.temp }}/artifact
+          if-no-files-found: warn
+          retention-days: 90

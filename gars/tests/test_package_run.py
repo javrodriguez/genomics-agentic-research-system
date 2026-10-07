@@ -1186,12 +1186,21 @@ class S2bModes(PackageCase):
             write(folder / 'machine.txt', '4-CPU 16 GB pad m5.xlarge\n2026-10-07\n')
             artifacts += ['--artifact', folder]
         expected = comparer.line(comparer.compare(str(package), str(rerun))['counts'])
-        note = w.root / 'README.md'
-        proc = run([sys.executable, TOOL, 'rerun-note', '--package', package, '--workflow', 'reproduction-yeast-atac.yml',
-                    '--out', note] + artifacts)
+        repo = w.root / 'repo'   # the landing's own shape: <repo>/reproduction/<name>/package
+        placed = repo / 'reproduction' / 'yeast-atac' / 'package'
+        shutil.copytree(str(package), str(placed))
+        note = placed.parent / 'README.md'
+        argv = [sys.executable, TOOL, 'rerun-note', '--package', placed, '--workflow', 'reproduction-yeast-atac.yml',
+                '--out', note] + artifacts
+        refused = run(argv)
+        self.refused(refused, 'no workflow reproduction-yeast-atac.yml in this repository')   # S5 review r2, M7
+        write(repo / '.github' / 'workflows' / 'reproduction-yeast-atac.yml', 'name: x\n')
+        proc = run(argv)
         self.assertEqual(proc.returncode, 0, proc.stderr.decode())
         self.assertIn(expected, note.read_text())
         self.assertIn('0 differ', expected)
+        self.assertNotIn('fresh', note.read_text())   # nothing in the artifact records freshness
+        self.assertIn('Re-run on a 4-CPU 16 GB pad m5.xlarge', note.read_text())
 
     def test_a_difference_beyond_the_mode_still_differs(self):
         cases = {

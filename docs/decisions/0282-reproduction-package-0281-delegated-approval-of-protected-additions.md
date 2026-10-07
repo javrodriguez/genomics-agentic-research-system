@@ -8,13 +8,14 @@ touches:
   - gars/_system/claims/package/compare.py
   - gars/_system/claims/package/rerun.sh
   - .gitignore
+  - .github/workflows/reproduction-yeast-atac.yml
 symptoms:
-  - the reproduction package (0281) adds four files under the protected prefix gars/_system/ with no owner-approval record
+  - the reproduction package (0281) adds four files under the protected prefix gars/_system/ and one under .github/ with no owner-approval record
 ---
 # The reproduction package 0281: approval of its protected additions
 
 Addendum to [0281](0281-reproduction-package-harvest-and-render.md), which describes the design.
-The four files this record approves are under a protected prefix (§9.3, R-094, `guard_hook.PROTECTED_PREFIXES`), so the additions need an owner-approval record.
+The five files this record approves are under protected paths (§9.3, R-094: `gars/_system/` in `guard_hook.PROTECTED_PREFIXES`, and the repository's `.github/`), so the additions need an owner-approval record.
 Its shape follows [0277](0277-methods-journal-paragraph-0276-approval-of-protected-change.md).
 
 Two things approve it, and they are kept apart here:
@@ -45,18 +46,20 @@ The reports are kept outside the repository and cited by their sha256.
 
 ## Decision
 
-Glitch, under the owner's 23 September 2026 delegation, approves the following protected additions as built at the lane commit that lands them:
+Glitch, under the owner's 23 September 2026 delegation, approves the following protected additions as built at the lane commit that lands them (four under `gars/_system/`, one under `.github/`):
 
 1. **`gars/_system/claims/package_run.py`** (new): the `harvest`, `render` and `rerun-note` verbs of 0281; standard library only, no model; `render` opens only the harvest, named files at the recorded GARS commit by `git show`, and the two lane files; `harvest` reads GARS's own checks read-only.
 2. **`gars/_system/claims/package/verify.py`**, **`compare.py`** and **`rerun.sh`** (new): the templates copied into every package; `verify.py` and `compare.py` are standard library and offline; `rerun.sh` downloads only the pinned inputs and runs only the pinned pipeline.
 
-None of the four is a typed tool the agent can call, and none edits a GARS record.
+3. **`.github/workflows/reproduction-yeast-atac.yml`** (new, under the protected `.github/`): on manual dispatch and monthly, never per push, it runs the package's offline `verify.py` and shellcheck, then the package's own `rerun.sh` and `verify.py --against` on a GitHub-hosted runner after freeing disk, passes only when the result line equals the landing README's, and uploads the pass artifact; read-only permissions, no secret. It has not run anywhere yet: its first run is the post-landing dispatch, on the owner's word.
+
+None of the five is a typed tool the agent can call, and none edits a GARS record.
 Outside the protected prefix, recorded for completeness: `.gitignore` gains `.gars-approvals/` (review H10, so a project's approval store is never committed), and the lane adds `gars/tests/test_package_run.py`, its golden packages, `scripts/repro_exemplar_run.py`, `scripts/repro_s2b_probe.py` and their tests, the lane files and the exemplar under `reproduction/yeast-atac/`, 0281, 0283 and this record.
 `scripts/rerun_check.py`, `_references/tolerances.yaml`, `executorlib.py` and the wrapper templates are untouched.
 
 ## Test
 
-- Full suite on the build node at the lane commits that changed these files, each verdict derived on the Mac; the latest, `70983396`: `athena-suite repro-oracle-7098339-20261006T192931Z PASS kind=gars ran=1387 passed=1305 failures=0 errors=0 skipped=82`.
+- Full suite on the build node at every lane commit that changed these files, each verdict derived on the Mac; the latest is recorded at this record's last commit (S6).
 - Mutation, on byte backups restored and sha-verified: the 5 October runs (84 mutants, all killed, named in 0281) and the 6 October hash-oracle runs (21 of 21 killed), named in 0281.
 - The landing merge, its full suite, the outgoing range's scans, the smoke delta and `audit_trailers.py` are run at slice S6 and recorded here then.
 
