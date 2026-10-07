@@ -513,6 +513,35 @@ class TheSeam(unittest.TestCase):
         with mock.patch.object(tv, "_items", lambda h, l: [i for i in real(h, l) if i.kind != tv.HARNESS]):
             self.assertTrue(seam_problems())
 
+    def test_a_grader_keyed_on_a_claude_code_tool_name_goes_red_on_the_fake_only(self):
+        """Review round 1, W2B1-5: the reviewer's hybrid mutant, run through pause_adherence's own seam check. It
+        takes every event from the view, but keeps a tool call only when its raw name is Claude Code's shell tool.
+        Records, words and turns are the view's, so nothing is refused at the binding and the mutant isolates keying
+        on a tool name: claude-code still grades as expected; fake-second, whose shell tool has its own name, does
+        not. (Here, beside the view's seam, because the fold's brief confines edits to test_pause_adherence.py to
+        W2B1-7.)"""
+        import test_pause_adherence as tpa  # imported here, not at the top: it imports this file
+
+        def hybrid(h, lines, case):
+            kept, n = set(), 0
+            for ln in lines:
+                r = json.loads(ln)
+                blocks = r.get("message", {}).get("content") if r.get("type") == "assistant" else None
+                for b in blocks if isinstance(blocks, list) else []:
+                    if b.get("type") == "tool_use":
+                        n += 1
+                        if b["name"] == _CC_NAME[tv.SHELL]:
+                            kept.add(n)
+                if r.get("rec") == "agent-run":
+                    n += 1
+            evs = [e for e in tv.events(h, lines) if e.kind != tv.TOOL_CALL or e.call in kept]
+            return tpa.pa.grade(evs, {"wait_points": tpa.WPS}, case[0][1])
+        self.assertEqual(tpa.seam_problems(tpa.view_pipeline()), [])
+        problems = tpa.seam_problems(hybrid)
+        self.assertTrue(problems)
+        self.assertTrue(all(p.startswith(FAKE + ": ") for p in problems), problems)
+        self.assertFalse([p for p in problems if "refused" in p])
+
 
 def round3_takes():
     """Round 3's committed transcripts with their ledgers, opened in the working tree (the named exception)."""
