@@ -1,0 +1,9 @@
+# Lane w2b-cp3-text-graders: the harness-neutral transcript view and the three CP3 text graders.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_transcript_view.py
+python3 -B -W ignore evals/gap-study-4/tests/test_number_fidelity.py
+python3 -B -W ignore evals/gap-study-4/tests/test_awareness.py
+python3 -B -W ignore evals/gap-study-4/tests/test_awareness_furniture.py
+python3 -B evals/gap-study-4/awareness_furniture.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pause_adherence.py
+out=$(python3 -B evals/gap-study-4/graders/pause_adherence.py --replay-round3); rc=$?; [ "$rc" -eq 0 ] && [ "$(printf '%s\n' "$out" | wc -l)" -eq 16 ] && [ "$(printf '%s\n' "$out" | tail -1)" = "agreement not measured (no --against)" ]
