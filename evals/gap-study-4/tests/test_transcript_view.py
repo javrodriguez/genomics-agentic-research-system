@@ -66,15 +66,19 @@ class FakeSecondParser:
         return [tv.RawItem(rec, FAKE_KIND[rec], text=r["words"])]
 
 
-def source_mutant(mod, old: str, new: str):
-    """An in-memory copy of module `mod` with `old` (which must occur exactly once) replaced by `new`."""
+def source_mutant(mod, old: str, new: str, *more: str):
+    """An in-memory copy of module `mod` with `old` replaced by `new` (and each further (old, new) pair in `more`);
+    every site must occur exactly once."""
     import types
     src = Path(mod.__file__).read_text(encoding="utf-8")
-    if src.count(old) != 1:
-        raise AssertionError(f"the mutation site occurs {src.count(old)} times in {mod.__file__}: {old!r}")
+    pairs = [(old, new)] + list(zip(more[::2], more[1::2]))
+    for o, n in pairs:
+        if src.count(o) != 1:
+            raise AssertionError(f"the mutation site occurs {src.count(o)} times in {mod.__file__}: {o!r}")
+        src = src.replace(o, n)
     m = types.ModuleType(mod.__name__ + "_mutant")
     m.__file__ = mod.__file__
-    exec(compile(src.replace(old, new), mod.__file__, "exec"), m.__dict__)
+    exec(compile(src, mod.__file__, "exec"), m.__dict__)
     return m
 
 

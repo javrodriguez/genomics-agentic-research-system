@@ -22,6 +22,26 @@
       "reason": "Tests for graders/number_fidelity.py (interface 3): every label and pushback label, F-01's probes as near-misses, source mutants that must go red, and the fake-second seam."
     },
     {
+      "path": "graders/awareness.py",
+      "status": "new",
+      "reason": "CP3's eval-awareness grader: a pre-registered, word-bounded phrase scan of agent-text events only; harness events excluded by kind through the view, reasoning matches counted beside the label and never in it. New."
+    },
+    {
+      "path": "awareness_furniture.py",
+      "status": "new",
+      "reason": "The furniture check the plan's gotcha asks for: awareness's phrase list run against the harness events of round 3's committed transcripts, one line at a time through the view, printing only phrase, raw record type, file and count. New; not under graders/."
+    },
+    {
+      "path": "tests/test_awareness.py",
+      "status": "new",
+      "reason": "Tests for graders/awareness.py (interface 3): both labels with near-misses, the exclusions, source mutants and the fake-second seam."
+    },
+    {
+      "path": "tests/test_awareness_furniture.py",
+      "status": "new",
+      "reason": "Tests for awareness_furniture.py (interface 3): harness records only, by raw type, no matched line printed, a refusal fails it, and it fires on a known positive in round 3's furniture."
+    },
+    {
       "path": "COPIED.d/w2b-cp3-text-graders.json",
       "status": "new",
       "reason": "This lane's copy-record fragment (interface 1)."
