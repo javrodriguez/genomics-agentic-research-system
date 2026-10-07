@@ -639,3 +639,106 @@ W2B3-2, W2B3-4, W2B3-5, W2B3-6 and W2B3-10 changed no code in this fold. Each is
 - W2B3-10: "none" as a count negator.
 
 The fold 2 known limits above ("Contrast words reject nothing", "A negated predicate after the count", "A scoper more than three words back", ruling (ii)'s residual, an anchored phrase meeting a compound) are all instances of W2B3-2, or are named in it, and are unchanged.
+
+## Integration (wave 2 merge)
+
+The wave 2 trial merge `gap4/wave2-merge` at `2c86f3c5` (164b272c, w2a's `64693c47` and w2b's `ff294d55`) was red: `run_checks` passed 20 of 22.
+This lane's grader sweep (`tests/test_pause_adherence.py`, TheSweep) forbids Claude Code's raw names in every `graders/*.py`.
+w2a's `graders/endstate.py` uses `"type"` as its own evidence STATE key, and `"type"` is also an argument key of Claude Code's Grep tool.
+One integration commit pair fixes it, red first, on the Mac for the gap4 lane lead.
+Nothing was pushed or merged anywhere; the merged-tree check below ran in a throwaway worktree, since removed.
+
+### The red, reproduced
+
+On the merged tree, read only: `PYTHONDONTWRITEBYTECODE=1 python3 -W ignore /Users/javrodher/aegis-builds/gap4-wave2-merge/evals/gap-study-4/tests/test_pause_adherence.py` ran 21 tests, with 3 failures:
+- `test_no_grader_types_a_claude_code_raw_name`: `["endstate.py types ['type']"] != []`;
+- `test_a_grader_may_record_the_manifest_keys`: `["endstate.py types ['type']"] != []`;
+- `test_the_manifest_check_fires_on_a_sweep_without_the_shared_constant`: `["endstate.py types ['model', 'type']", "pause_adherence.py types ['model']"] != ["pause_adherence.py types ['model']"]`.
+
+### Rulings (recorded as given; relayed by the gap4 lane lead)
+
+1. **glitch-f3's ruling A', default-deny.**
+   - The sweep covers every `graders/*.py`.
+   - One named tuple is exempt: `EVIDENCE_ONLY_GRADERS = ("endstate.py",)`.
+   - Each listed grader must pass an evidence-only check: it imports none of `transcript_view`, `drive` or `agent_adapter`, it holds no transcript or session-file path literal, and it reuses the predicates of w2a's `checks.d/w2a-cp3-endstate.txt` lines 7 and 9.
+2. **The lane lead's refinement of the literal list, approved by glitch-f3.** Taken word for word, the list ("transcript", ".jsonl", "projects/") fails endstate itself: its own evidence names `ledger.jsonl`, `access.jsonl` and `health.jsonl` (lines 147-149), and its docstring ("It reads no transcript"). The refinement, with glitch-f3's rejection of the two alternatives (an allow-list of endstate's names; dropping ".jsonl"):
+   - only code literals are read, never a module, class or function docstring (the first statement of a body when it is a bare string);
+   - "transcript" and "projects/" mark a literal in any case;
+   - ".jsonl" marks one only inside a path or a glob (the literal also holds "/" or "*");
+   - the marks are one named constant, `SESSION_PATH_MARKS`.
+3. **glitch-f3's requirement: the check names what it does not see.** A path built from parts, such as `os.path.join("projects", x, "session.jsonl")`, gets past the literal marks. A grader that actually parses a transcript is still caught, by the import predicate or, once unlisted, by the default-deny raw-name sweep. This is named in `evidence_only_problems`'s docstring and pinned by a test.
+
+### Commits (`git log --format='%h %s'`)
+
+```
+338ed827 gap4 w2b-cp3-text-graders int 1/2: red tests for the default-deny sweep with a named evidence-only exemption (A')
+21fd2ede gap4 w2b-cp3-text-graders int 2/2: the grader sweep is default-deny with a named evidence-only exemption (A')
+(this report's commit)
+```
+
+**The red commit.**
+- It holds the tests, the evidence-only predicates and the synthetic graders, which are source strings in the test, never files.
+- Its two fix sites stood at `ff294d55`'s behaviour: nothing exempt, and no evidence-only check.
+- Run alone, `test_pause_adherence.py` ran 30 tests with 9 failures, each for its reason:
+  - the merged tree's three, reproduced in this worktree with endstate read from w2a's head;
+  - A' tests 1, 3 and 5;
+  - refinements (i), (ii) and (iii).
+- A' tests 2 and 4 and the residual pin passed already, because `ff294d55`'s sweep was default-deny with no exemption. They guard against the exemption loosening that, and their mutants go red.
+- The fix commit changes exactly those two sites, plus the copy record's reason.
+
+### The tests (all in `TheSweep`; each mutant is in the test)
+
+| test | what it shows | its mutant, which goes red |
+|---|---|---|
+| 1. `test_an_evidence_only_grader_is_exempt_and_passes_the_check` | `EVIDENCE_ONLY_GRADERS == ("endstate.py",)`; endstate's real source passes the evidence-only check; the sweep over this tree plus endstate gives []. | Unlisting endstate gives `["endstate.py types ['type']"]`, the merge's red. |
+| 2. `test_an_unlisted_grader_typing_a_raw_name_goes_red` | Unlisted synthetic graders typing `"type"`, `"Grep"`, or a raw stream parse (`"assistant"`, `"content"`, `"tool_use"`, `"type"`) are each flagged with exactly those names. | Plain A (test 4) leaves all three unflagged. |
+| 3. `test_a_listed_grader_that_breaks_the_evidence_only_check_goes_red` | endstate's real source plus one breach is flagged by the evidence-only check, never by the raw-name sweep it is spared. The five breaches: an import of `transcript_view`, of `drive` or of `agent_adapter`; the harness name `fake-second`; the literal `"transcript.jsonl"`. | Test 5. |
+| 4. `test_the_check_fires_on_plain_a` | Exempting every grader that does not import the view (plain A) leaves the synthetic raw-stream parser unflagged. | It is the mutant. |
+| 5. `test_the_check_fires_on_an_empty_evidence_only_check` | Control: test 3's check flags all five breaches. | An empty evidence-only check leaves all five unflagged. |
+| (i) `test_a_session_file_path_or_glob_fails_the_check` | `PATH = "projects/abc/*.jsonl"` and `open("run/session.jsonl")` each fail. | ".jsonl" never a mark: `run/session.jsonl` passes. |
+| (ii) `test_a_docstring_is_not_a_path_literal` | A synthetic listed grader whose only "transcript" is in its module and function docstrings passes. | Docstrings read as literals: endstate itself goes red. |
+| (iii) `test_a_transcript_literal_in_any_case_fails_the_check` | `NAME = "Transcript.JSONL"` fails. | Case-sensitive marks: it passes. |
+| residual `test_the_named_residual_a_joined_path` | The joined-path grader passes the literal check, and, unlisted and carrying `"assistant"`, fails the raw-name sweep. | (pins what the check does not see) |
+
+The battery grew from 533 to 542 (this file: 21 to 30).
+The existing sweep tests now run over this tree's graders plus endstate (`sources_with_endstate()`), so the third test's expectation holds as ruled: the manifest-key mutation hits only the swept graders.
+endstate is read from this tree when it holds one (the merged tree does), else by `git show 64693c47:evals/gap-study-4/graders/endstate.py`. A missing source raises, never skips.
+
+### The merged-tree check (a throwaway worktree, since removed)
+
+```
+git -C /Users/javrodher/glitch/workspaces/genomics-agentic-research-system worktree add --detach /Users/javrodher/aegis-builds/gap4-w2b-int-check 21fd2ede
+git -C /Users/javrodher/aegis-builds/gap4-w2b-int-check -c maintenance.auto=false -c gc.auto=0 merge --no-edit 64693c47   # merge ac5423f4, local only
+PYTHONDONTWRITEBYTECODE=1 python3 -W ignore <that>/evals/gap-study-4/tests/test_pause_adherence.py   Ran 30 tests ... OK
+```
+
+- There the sweep reads endstate from disk (sha256 `b3afaf09b228c23ec6272edd8bc6bbd88fe3e01fbfd74ba2d3f918eb92981eb8`, identical to `64693c47`'s) and gives [].
+- The lane's other test files and w2a's pass there too: test_transcript_view 20, test_number_fidelity 32, test_awareness 19, test_awareness_furniture 5, test_endstate 64, test_harness_bookkeeping 14, all OK.
+- Under the same heavy slot, `run_checks.py` on the merged tree printed `run_checks: 22 of 22 commands passed` (exit 0; its battery line `test_round4: 620 run, 0 skipped, 0 expected failures`), against 20 of 22 on `2c86f3c5`.
+
+### Every test and check run (on `21fd2ede`, `PYTHONDONTWRITEBYTECODE=1`, each batch after `mac_slot.py light-ok` exited 0)
+
+```
+python3 -W ignore evals/gap-study-4/tests/test_pause_adherence.py      Ran 30 tests ... OK   (21 before)
+python3 evals/gap-study-4/copy_manifest.py --check                     ok: 77 files from 3 fragment(s) (w1a-cp1-scaffold, w1b-cp1-routing-batch, w2b-cp3-text-graders): 44 identical and 4 edited (round 3 at e2979b31, shared files at 68ec902f), 29 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf
+python3 evals/gap-study-4/graders/pause_adherence.py --replay-round3    16 lines, byte-identical to round 2's capture (exit 0)
+python3 -W ignore evals/gap-study-4/test_round4.py                     test_round4: 542 run, 0 skipped, 0 expected failures   (exit 0; under mac_slot heavy slot gap4-w2b-int, acquired 03:55, released after; run by the harness, never as a & job)
+python3 evals/gap-study-4/run_checks.py                                run_checks: 17 of 17 commands passed   (exit 0; same slot)
+```
+
+### The three hashes, unchanged
+
+- `graders/pause_adherence.py`: `d7d6dfccbace3a87b4ea82145bbbd0bae141ad96a804a63a97773584632d197f`
+- `transcript_view.py`: `65f8dda29f90c485aa93a63f535e4de1ef191ce943df310ea9ee2649d4ca69b2`
+- `graders/labels4.py`: `c1ca63b082516e574c71a716716966dcc0541ff7db16f6fd0757d9c3dc2716dd`
+- w2a's `graders/endstate.py` was never edited (sha256 above, the merged tree's equal to `64693c47`'s).
+- `--replay-round3` (no `--against`) is unchanged: 16 lines, byte-identical to round 2's capture.
+
+`git diff ff294d55 --stat` touches only `tests/test_pause_adherence.py`, `COPIED.d/w2b-cp3-text-graders.json` and this report, and `git status --porcelain --ignored` is empty.
+
+### Decisions (this integration's own)
+
+- **I1. The evidence-only check runs inside the sweep.** A listed grader is spared the raw-name sweep only by passing the check, so a breach turns the same sweep test red as an unlisted raw name does.
+- **I2. w2a's grep predicates are read as grep reads them,** one line at a time: line 9's import pattern with `[^\S\n]` for `[[:space:]]`, matched to the line's end so a finding prints the whole line; line 7's harness pattern over the whole source, case-insensitive.
+- **I3. endstate is read from the tree when present, else from w2a's head by `git show`.** The battery already reads history (`copy_manifest.py`), so this adds no new kind of dependency.
+- **I4. The red commit sets the two fix sites to `ff294d55`'s behaviour** rather than leaving the names undefined, so the red tests fail on their assertions, never on a NameError.
