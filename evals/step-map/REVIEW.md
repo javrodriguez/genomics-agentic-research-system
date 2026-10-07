@@ -254,7 +254,7 @@ Your answer:
 
 ## What else the map found
 
-- **21 defects that need no model run to fix**, in `evals/step-map/DEFECTS.md`, each with the exact file and line, for the post-freeze fix batch that opens on 16 Oct. The ones worth knowing about:
+- **22 defects that need no model run to fix**, in `evals/step-map/DEFECTS.md`, each with the exact file and line, for the post-freeze fix batch that opens on 16 Oct. The ones worth knowing about:
   - In a workspace that holds any non-public project, the safety layer refuses the job-submission, job-status and resolver commands exactly as the contracts spell them (38 places in 12 contracts), and accepts only a different spelling no contract mentions.
   - Once a job has been handed back to the user, no step the agent follows refreshes its status, so a finished job can look "still running" until someone runs the status command by hand.
   - No contract says what happens on a non-public project, where the safety layer refuses most steps.

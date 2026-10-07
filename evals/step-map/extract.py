@@ -23,6 +23,13 @@ What it pulls, per contract (the method note's list, "What the analysis suggests
 
 Every filter reports what it saw and what it graded; an empty result is a finding, never a pass.
 Every extracted fact carries its source as `path:line` at the pin.
+
+Two layers are not plain static facts, and are kept apart so they can be checked:
+- reachability rulings (RULINGS): a site a reader proved unreachable from given callers, applied
+  only while every cited line still reads as cited, and listed per call site under `ruled_out`;
+- template-label matching: a count's label matched to a helper key by its words, a screen that
+  errs toward "unbound" (look here), never a proof.
+What it does not model is listed in LIMITS and in the summary's `limits`.
 """
 
 import argparse
@@ -295,8 +302,28 @@ def exit_codes(text):
     return sorted(codes)
 
 
+OTHER_ACTOR_RE = re.compile(r"\b(they report|the user|their own terminal)\b")
+
+
+def sentence_bounds(text, pos):
+    """The sentence around `pos`: a full stop ends a sentence only before a space and a capital,
+    a backtick, a digit or a bold marker, so dots inside file names do not cut it."""
+    ends = [m.end() for m in re.finditer(r"[.!?;](?=\s+(?:[A-Z0-9`*]|$))", text)]
+    start = max([e for e in ends if e <= pos], default=0)
+    end = min([e for e in ends if e > pos], default=len(text))
+    return start, end
+
+
 def exit_mentions(text):
-    return [(m.start(), exit_codes(m.group(0))) for m in EXIT_RE.finditer(text)]
+    """(offset, codes, actor) for each exit-code mention. A mention in a sentence about the
+    user's own command ("If they report that it refused (exit 2)") is the user's, not a branch
+    on the agent's call."""
+    out = []
+    for m in EXIT_RE.finditer(text):
+        s, _ = sentence_bounds(text, m.start())
+        actor = "user" if OTHER_ACTOR_RE.search(text[s:m.start()]) else "agent"
+        out.append((m.start(), exit_codes(m.group(0)), actor))
+    return out
 
 
 # --- registry and command mapping ---------------------------------------------------------------
@@ -472,6 +499,59 @@ def step_calls(doc, step, registry, wrapper):
                                m.start()))
     calls.sort(key=lambda c: (c["line"], c["_pos"]))
     return calls, other
+
+
+RERUN_RE = re.compile(r"\bre-run `(\w+)`(?: with `(--[^`]+)`)?")
+
+
+def rerun_calls(text, offsets, calls_here, earlier_steps, registry):
+    """'re-run `inspect` with `--flag ...`': a call of the latest earlier command of that
+    subcommand, with the flag added."""
+    out = []
+    for m in RERUN_RE.finditer(text):
+        sub, flag = m.group(1), m.group(2)
+        previous = [c for s in earlier_steps for c in s["calls"]] + list(calls_here)
+        base = [c for c in previous if c["tool"] and c["tool"].endswith("." + sub)]
+        if not base:
+            continue
+        command = base[-1]["command"] + (" " + flag if flag else "")
+        out.append(make_call(command, line_at(offsets, m.start()), "prose-rerun", registry,
+                             m.start()))
+    return out
+
+
+PATH_SPAN_RE = re.compile(r"/|\.(md|yaml|csv|json|tsv|py|sh|jsonl|h5ad)\b|^(STATUS|HISTORY\.md|PLAN\.md)$")
+
+
+def span_accounting(doc, step, text, calls):
+    """Every backticked span in the step's prose, each in one class, against an independent count
+    of backticks in the step's raw lines; a mismatch means a span or a line was dropped."""
+    raw = sum(doc["lines"][i - 1].count("`") for i in range(step["start"], step["end"] + 1)
+              if i not in doc["fenced"])
+    classes = {}
+    for m in re.finditer(r"`([^`]+)`", text):
+        inner = m.group(1).strip()
+        words = inner.split()
+        before = text[max(0, m.start() - 10):m.start()]
+        if words and words[0] in EXECUTABLES:
+            cls = "command"
+        elif inner.startswith("--"):
+            cls = "flag"
+        elif len(words) == 1 and re.search(r"\b(?:[Rr]un|re-run|[Rr]un the wrapper's)\s$", before):
+            cls = "subcommand"
+        elif PATH_SPAN_RE.search(inner):
+            cls = "path"
+        elif re.fullmatch(r"T\d+[a-z]?", inner):
+            cls = "template"
+        else:
+            cls = "value"
+        classes[cls] = classes.get(cls, 0) + 1
+    seen = sum(classes.values())
+    inline_calls = sum(1 for c in calls if c["kind"] in ("inline", "executable"))
+    return {"raw_backtick_pairs": raw // 2, "seen": seen, "by_class": dict(sorted(classes.items())),
+            "command_spans": classes.get("command", 0), "inline_calls": inline_calls,
+            "consistent": raw % 2 == 0 and raw // 2 == seen and
+            classes.get("command", 0) == inline_calls}
 
 
 def make_call(command, line, kind, registry, pos=0):
@@ -661,6 +741,15 @@ class Flags:
                     self.kinds.setdefault(dest, "none_default")
 
     def truth(self, test):
+        if isinstance(test, ast.BoolOp):
+            values = [self.truth(v) for v in test.values]
+            if isinstance(test.op, ast.And):
+                if any(v is False for v in values):
+                    return False
+                return True if all(v is True for v in values) else UNKNOWN
+            if any(v is True for v in values):
+                return True
+            return False if all(v is False for v in values) else UNKNOWN
         if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
             inner = self.truth(test.operand)
             return UNKNOWN if inner is UNKNOWN else (not inner)
@@ -976,6 +1065,148 @@ def real_codes(exits):
                   if c != "None" and any(s["how"] != "argparse" for s in sites))
 
 
+
+# --- reachability rulings ------------------------------------------------------------------------
+# A static walk cannot see facts carried in data (a file written earlier, a dict's keys). A ruling
+# records one such fact a reader proved from the source: the site it rules out, the tools it
+# applies to, and the exact lines that prove it. Every run re-reads those lines at the pin; if any
+# line has changed the ruling is void, is not applied, and is reported. Ruled-out codes stay in the
+# helper's static exits and are listed per call site under `ruled_out`, never silently dropped.
+
+NFCORE = ("atacseq", "chipseq", "cutandrun", "methylseq", "rnaseq", "scrnaseq", "spatialvi")
+NFCORE_LINES = {"atacseq": (189, 206), "chipseq": (188, 205), "cutandrun": (190, 204),
+                "methylseq": (118, 132), "rnaseq": (152, 169), "scrnaseq": (260, 277),
+                "spatialvi": (225, 242)}
+RULINGS = [{
+    "id": "prepare-stage01-v1",
+    "site": "gars/_system/wrapperlib.py:925",
+    "tools": ["nfcore_%s_wrapper.prepare" % a for a in NFCORE],
+    "why": ("write_reproducibility raises exit 2 only when key_formula is downstream-v2; an nf-core "
+            "wrapper's prepare writes params.yaml first and passes samplesheet and config, so "
+            "key_formula is stage01-v1"),
+    "evidence": [
+        ("gars/_system/wrapperlib.py", 797, "def write_params_yaml(substage, assay, params):"),
+        ("gars/_system/wrapperlib.py", 798, 'with ws.atomic_open(substage / "params.yaml") as fh:'),
+        ("gars/_system/wrapperlib.py", 917, "manifest['key_formula'] = ('stage01-v1' if (substage / 'params.yaml').is_file()"),
+        ("gars/_system/wrapperlib.py", 918, "and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v2')"),
+        ("gars/_system/wrapperlib.py", 919, "if manifest['key_formula'] == 'downstream-v2':"),
+    ] + [e for a in NFCORE for e in (
+        ("gars/_system/wrappers/nfcore-%s-wrapper/nfcore_%s_wrapper.py" % (a, a),
+         NFCORE_LINES[a][0], "    wl.write_params_yaml(substage, ASSAY, params)"),
+        ("gars/_system/wrappers/nfcore-%s-wrapper/nfcore_%s_wrapper.py" % (a, a),
+         NFCORE_LINES[a][1], "    wl.write_reproducibility(substage, ASSAY, paths[\"checkout\"],"),
+        ("gars/_system/wrappers/nfcore-%s-wrapper/nfcore_%s_wrapper.py" % (a, a),
+         NFCORE_LINES[a][1] + 1, '{"samplesheet": paths["samplesheet"], "config": paths["config"]},'))],
+}]
+
+
+def check_rulings(src):
+    """(rulings that hold, findings for rulings whose evidence no longer reads as cited)."""
+    holding, void = [], []
+    for ruling in RULINGS:
+        broken = []
+        for path, line, needle in ruling["evidence"]:
+            lines = src.text(path).split("\n")
+            if len(lines) < line or needle not in lines[line - 1]:
+                broken.append("%s:%d" % (path, line))
+        if broken:
+            void.append({"kind": "ruling_void", "ruling": ruling["id"], "lines": broken})
+        else:
+            holding.append(ruling)
+    return holding, void
+
+
+def apply_rulings(exits, tool, rulings):
+    """(exits without the sites a holding ruling rules out for this tool, {code: [site, ruling]})."""
+    out, ruled = {}, {}
+    for code, sites in exits.items():
+        keep = []
+        for s in sites:
+            hit = [r["id"] for r in rulings if tool in r["tools"] and s["at"] == r["site"]]
+            if hit:
+                ruled.setdefault(code, []).append({"at": s["at"], "ruling": hit[0]})
+            else:
+                keep.append(s)
+        if keep:
+            out[code] = keep
+    return out, ruled
+
+
+# --- the keys a called subcommand can write --------------------------------------------------------
+
+def node_keys(nodes):
+    vocab, calls = set(), []
+    for root in nodes:
+        for node in ast.walk(root):
+            if isinstance(node, ast.Dict):
+                vocab |= {k.value for k in node.keys
+                          if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+            elif isinstance(node, (ast.Assign, ast.AugAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for tgt in targets:
+                    if isinstance(tgt, ast.Subscript) and isinstance(tgt.slice, ast.Constant) \
+                            and isinstance(tgt.slice.value, str):
+                        vocab.add(tgt.slice.value)
+            if isinstance(node, ast.Call):
+                calls.append(node)
+                if isinstance(node.func, ast.Attribute):
+                    if node.func.attr == "setdefault" and node.args and \
+                            isinstance(node.args[0], ast.Constant) and \
+                            isinstance(node.args[0].value, str):
+                        vocab.add(node.args[0].value)
+                    if node.func.attr == "update":
+                        vocab |= {kw.arg for kw in node.keywords if kw.arg}
+                if getattr(node.func, "id", None) == "dict":
+                    vocab |= {kw.arg for kw in node.keywords if kw.arg}
+    return vocab, calls
+
+
+def scoped_vocabulary(index, registry, tool_names):
+    """Keys the named tools' subcommands can write: main's common statements, the subcommand's
+    own function or block, and every function they call (followed through the helper modules),
+    never the module's other subcommands."""
+    vocab = set()
+    for name in tool_names:
+        tool = next((t for t in registry if t["name"] == name), None)
+        if tool is None or tool.get("filesystem"):
+            continue
+        argv = tool["argv"]
+        mod = index.by_path("gars/" + argv[1])
+        main = mod.functions.get("main")
+        sub = argv[2] if len(argv) >= 3 and not argv[2].startswith("-") else None
+        if main is None:
+            continue
+        if sub is None:
+            roots = [(mod, main.body)]
+        else:
+            scoped, common = dispatch_scopes(main)
+            roots = [(mod, common)] + [(mod, mod.functions[item].body if kind == "func"
+                                         else item.body) for kind, item in scoped.get(sub, [])]
+        seen = set()
+        while roots:
+            m, body = roots.pop()
+            keys, calls = node_keys(body)
+            vocab |= keys
+            # keys of the module's dict constants this code reads (e.g. a loop over CONFIG_RULES
+            # that writes one count per rule)
+            names = {n.id for root in body for n in ast.walk(root)
+                     if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+            for top in m.tree.body:
+                if isinstance(top, ast.Assign) and isinstance(top.value, ast.Dict) and \
+                        any(isinstance(tg, ast.Name) and tg.id in names for tg in top.targets):
+                    vocab |= {k.value for k in top.value.keys
+                              if isinstance(k, ast.Constant) and isinstance(k.value, str)}
+            for call in calls:
+                target = index.function(m, call.func)
+                if target is None:
+                    continue
+                key = (target[0].path, target[1].name)
+                if key not in seen:
+                    seen.add(key)
+                    roots.append((target[0], target[1].body))
+    return vocab
+
+
 # --- JSON key vocabulary ---------------------------------------------------------------------
 
 def key_vocabulary(src, module_paths):
@@ -1017,10 +1248,12 @@ def key_tokens(vocab):
     return tokens
 
 
-GENERIC = {"n", "path", "title", "project_title", "sanitized", "raw", "Assay ID", "assay_id",
+GRADED = ("key", "label", "unbound", "no_source")
+GENERIC = {"n", "path", "title", "project_title", "raw", "Assay ID", "assay_id",
            "assay", "name", "ids", "workspace", "project dir", "NN_name", "NN_slug", "sample_id",
            "timestamp", "sub-stage", "type", "jobid", "step"}
-STOPWORDS = {"of", "the", "a", "an", "in", "to", "and", "or", "for", "per", "not"}
+STOPWORDS = {"of", "the", "a", "an", "to", "and", "or", "for", "per", "not", "at", "by",
+             "with", "on", "if"}
 
 
 def singular(word):
@@ -1028,18 +1261,41 @@ def singular(word):
     return word[:-1] if word.endswith("s") and len(word) > 3 else word
 
 
-def count_label(line, start, end):
-    """The words labelling a `<n>`: the word right after it, else the label before a colon."""
+def count_label(line, start, end, header=None):
+    """Candidate labels for a `<n>`, each a list of words: the word right after it (`<n> R1`);
+    the identifier right before it (`min_genes <n>`, `Linked <n> files`); in a table row, the
+    previous cell when it is text (`| Cells in | <n> |`), else the column's header; the label
+    before a colon, cut at the previous sentence, cell or bracket (`Significant at padj <
+    0.05: <n>`). An empty list when nothing labels it."""
+    cands = []
     after = re.match(r"\s+([A-Za-z][A-Za-z0-9]*(?:\(s\))?)", line[end:])
     if after:
-        return [after.group(1)]
-    before = re.search(r"([A-Za-z][A-Za-z ()]*?):\s*$", line[:start])
-    if before:
-        return [w for w in re.findall(r"[A-Za-z0-9]+", before.group(1))]
-    return []
+        cands.append([after.group(1)])
+    before = re.search(r"([A-Za-z][A-Za-z0-9_]*)\s+$", line[:start])
+    if before and before.group(1).lower() not in STOPWORDS:
+        cands.append([before.group(1)])
+    if line.strip().startswith("|"):
+        cells, pos, idx = line.split("|"), 0, None
+        for i, cell in enumerate(cells):
+            if pos <= start < pos + len(cell) + 1:
+                idx = i
+                break
+            pos += len(cell) + 1
+        if idx is not None and idx > 1 and "<" not in cells[idx - 1] and \
+                re.search(r"[A-Za-z]", cells[idx - 1]):
+            cands.append(re.findall(r"[A-Za-z][A-Za-z0-9]*", cells[idx - 1]))
+        elif header and idx is not None and idx < len(header.split("|")):
+            cands.append(re.findall(r"[A-Za-z][A-Za-z0-9]*", header.split("|")[idx]))
+    seg = line[:start]
+    cut = max(seg.rfind(". "), seg.rfind("|"), seg.rfind("("), seg.rfind(", "))
+    seg = seg[cut + 1:]
+    colon = re.search(r"^(.*):\s*$", seg)
+    if colon and re.search(r"[A-Za-z]", colon.group(1)):
+        cands.append(re.findall(r"[A-Za-z][A-Za-z0-9]*", colon.group(1)))
+    return [c for c in cands if c]
 
 
-def bind_placeholder(text, line, vocab, start=None):
+def bind_placeholder(text, line, vocab, start=None, header=None):
     """How one placeholder is filled: generic (context), choice (a|b), composed (model-written
     text), artifact (`<type path>`), key (a JSON key the helper writes), label (a count whose
     label matches a key), unbound (named or labelled, with no key in the helper), or no_source
@@ -1053,15 +1309,24 @@ def bind_placeholder(text, line, vocab, start=None):
     if inner == "n":
         if start is None:
             start = line.find(text)
-        labels = [w for w in count_label(line, start, start + len(text)) if w.lower() not in STOPWORDS]
-        if not labels:
-            return {"text": text, "binding": "generic"}
+        cands = [[w for w in c if w.lower() not in STOPWORDS]
+                 for c in count_label(line, start, start + len(text), header)]
+        cands = [c for c in cands if c]
+        first = " ".join(cands[0]).lower() if cands else None
         if vocab is None:
-            return {"text": text, "binding": "no_source", "label": singular(labels[0])}
-        tokens = {singular(t) for t in key_tokens(vocab)}
-        if any(singular(w) in tokens for w in labels):
-            return {"text": text, "binding": "label", "label": " ".join(labels).lower()}
-        return {"text": text, "binding": "unbound", "label": singular(labels[-1])}
+            return {"text": text, "binding": "no_source", "label": first}
+        if not cands:
+            return {"text": text, "binding": "ungraded"}
+        keys = sorted(vocab)
+        for cand in cands:
+            content = [singular(w) for w in cand if re.search(r"[a-z]", w.lower())]
+            allowed = 1 if len(content) >= 3 else 0
+            for key in keys:
+                ktoks = {singular(tok) for tok in re.split(r"[^a-z0-9]+", key.lower()) if tok}
+                if content and sum(w not in ktoks for w in content) <= allowed:
+                    return {"text": text, "binding": "label", "label": " ".join(cand).lower(),
+                            "key": key}
+        return {"text": text, "binding": "unbound", "label": first}
     if inner in GENERIC:
         return {"text": text, "binding": "generic"}
     if re.fullmatch(r"[a-z][a-z0-9_]*(\.[a-z0-9_]+)*", inner):
@@ -1070,6 +1335,10 @@ def bind_placeholder(text, line, vocab, start=None):
         last = inner.split(".")[-1]
         if inner in vocab or last in vocab:
             return {"text": text, "binding": "key", "label": inner}
+        if "_" not in inner and "." not in inner:
+            for key in sorted(vocab):
+                if inner in re.split(r"[^a-z0-9]+", key.lower()):
+                    return {"text": text, "binding": "key", "label": inner, "key": key}
         return {"text": text, "binding": "unbound", "label": inner}
     return {"text": text, "binding": "composed"}
 
@@ -1098,8 +1367,21 @@ FILE_RULES = [
     (r"\bwrite its scripts under `scripts/`", "Write",
      "projects/{project}/03_custom_analysis/01_qc-look/scripts/run.sh"),
     (r"\bthe analysis log says\b", "Read", "{substage_dir}/logs/analysis.log"),
+    (r"\bCheck preconditions: `01_samplesheets/<Assay ID>_samplesheet\.csv` and `_design\.csv` exist",
+     "Read", "projects/{project}/01_samplesheets/{assay}_samplesheet.csv"),
 ]
-FILE_VERB_RE = re.compile(r"\b(read|write|append|edit|replace|apply them)\b", re.I)
+FILE_VERB_RE = re.compile(r"\b(read|write|append|edit|replace|apply them|check|exists?)\b", re.I)
+
+
+def sentences(text):
+    """(start, end) of each sentence; a full stop inside a file name does not end one."""
+    out, start = [], 0
+    for m in re.finditer(r"[.!?](?=\s+(?:[A-Z0-9`*<]|$))|[.!?]$", text):
+        out.append((start, m.end()))
+        start = m.end()
+    if start < len(text) and text[start:].strip():
+        out.append((start, len(text)))
+    return out
 
 
 def step_file_actions(text, offsets):
@@ -1114,13 +1396,12 @@ def step_file_actions(text, offsets):
             actions.append({"tool": tool, "path": path, "line": line_at(offsets, m.start()),
                             "phrase": m.group(0)})
     unclassified = []
-    for sentence in re.finditer(r"[^.]+(?:\.|$)", text):
-        s, e = sentence.start(), sentence.end()
-        if not FILE_VERB_RE.search(sentence.group(0)):
+    for s, e in sentences(text):
+        if not FILE_VERB_RE.search(text[s:e]):
             continue
         if any(s <= a < e for a, _ in matched_spans):
             continue
-        unclassified.append({"line": line_at(offsets, s), "sentence": sentence.group(0).strip()})
+        unclassified.append({"line": line_at(offsets, s), "sentence": text[s:e].strip()})
     actions.sort(key=lambda a: a["line"])
     return actions, unclassified
 
@@ -1320,8 +1601,10 @@ def intended_scenario(contract_path, tool):
 
 # --- one contract ---------------------------------------------------------------------------
 
-def extract_text(path, text, src, registry=None, index=None, guard=None, helpers=None):
+def extract_text(path, text, src, registry=None, index=None, guard=None, helpers=None,
+                 rulings=None):
     registry = registry if registry is not None else load_registry(src)
+    rulings = rulings if rulings is not None else check_rulings(src)[0]
     index = index or HelperIndex(src)
     helpers = helpers if helpers is not None else {}
     doc = parse_markdown(text)
@@ -1336,6 +1619,8 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
     for k, step in enumerate(steps):
         text_, offsets = prose(doc, step["start"], step["end"])
         calls, other = step_calls(doc, step, registry, wrapper)
+        calls += rerun_calls(text_, offsets, calls, out_steps, registry)
+        calls.sort(key=lambda c: (c["line"], c["_pos"]))
         fenced_other += [dict(o, step=step["n"]) for o in other]
         actions, unclassified = step_file_actions(text_, offsets)
         file_unclassified += [dict(u, step=step["n"]) for u in unclassified]
@@ -1345,47 +1630,51 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
             "source": "%s:%d-%d" % (path, step["start"], step["end"]),
             "text": text_,
             "templates": list(dict.fromkeys(re.findall(r"\bT\d+[a-z]?\b", text_))),
-            "exit_mentions": [{"line": line_at(offsets, pos), "codes": codes}
-                              for pos, codes in mentions],
+            "exit_mentions": [{"line": line_at(offsets, pos), "codes": codes, "actor": actor}
+                              for pos, codes, actor in mentions],
             "calls": calls, "file_actions": actions, "_offsets": offsets,
+            "spans": span_accounting(doc, step, text_, calls),
             "waits_word": bool(re.search(r"\bwait\b", text_, re.I)
                                and not re.search(r"\b(Do not|not) wait\b", text_)),
         })
         for call in calls:
             if call["tool"]:
                 events.append(((call["line"], call["_pos"]), k, "call", call))
-        for pos, codes in mentions:
-            events.append(((line_at(offsets, pos), pos), k, "exit", codes))
+        for pos, codes, actor in mentions:
+            if actor == "agent":
+                events.append(((line_at(offsets, pos), pos), k, "exit", codes))
     # Exit regions: a registered call opens a region that collects every exit mention after it,
     # across step boundaries, until the next call that opens one. A call inside an exit branch
     # ("Exit 2 -> call status ...") is a branch action and opens nothing.
     events.sort(key=lambda e: (out_steps[e[1]]["start"], e[0]))
-    call_sites, current, exit_since_open, opened_in_step = [], None, False, set()
+    call_sites, current, nonzero_in_step = [], None, set()
     for _, k, kind, item in events:
         if kind == "exit":
             if current is not None:
                 current["handled"] |= set(item)
-                exit_since_open = True
+            if any(c != 0 for c in item):
+                nonzero_in_step.add(k)
             continue
-        first_in_step = k not in opened_in_step
-        if first_in_step or not exit_since_open or current is None or current["_k"] != k:
-            current = {"step": out_steps[k]["n"], "_k": k, "line": item["line"],
-                       "tool": item["tool"], "command": item["command"], "handled": set(),
-                       "_call": item, "branch_calls": []}
-            call_sites.append(current)
-            opened_in_step.add(k)
-            exit_since_open = False
-        else:
-            current["branch_calls"].append({"tool": item["tool"], "line": item["line"]})
+        if current is not None and k in nonzero_in_step:
+            # after "Exit 2 -> ..." in the same step: a branch action of the open call
+            current["branch_calls"].append({"tool": item["tool"], "line": item["line"],
+                                            "kind": item["kind"]})
+            continue
+        current = {"step": out_steps[k]["n"], "_k": k, "line": item["line"],
+                   "tool": item["tool"], "command": item["command"], "handled": set(),
+                   "_call": item, "branch_calls": []}
+        call_sites.append(current)
     for site in call_sites:
         call = site.pop("_call")
         site.pop("_k")
         tool = next(t for t in registry if t["name"] == site["tool"])
         minimal = instantiate(call["command"])[0]
         exits, _ = helper_exits(src, index, tool, split_words(minimal))
+        exits, ruled = apply_rulings(exits, site["tool"], rulings)
         emitted = real_codes(exits)
         site["handled"] = sorted(site["handled"])
         site["emitted"] = emitted
+        site["ruled_out"] = ruled
         site["unhandled"] = [c for c in emitted if c != 0 and c not in site["handled"]]
         site["unhandled_sites"] = {str(c): [s["at"] for s in exits.get(str(c), [])
                                             if s["how"] != "argparse"]
@@ -1396,16 +1685,16 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
     out_templates = {}
     for tid, tpl in templates.items():
         backing = backing_tools(out_steps, tid, call_sites)
-        modules = sorted({module_for(t, registry) for t in backing if module_for(t, registry)})
-        extra = set()
-        for m in modules:
-            if "/wrappers/" in m:
-                extra.add("_system/wrapperlib.py")
-        vocab = key_vocabulary(src, sorted(set(modules) | extra)) if modules else None
+        vocab = scoped_vocabulary(index, registry, backing) if backing else None
         phs = []
+        header = None
         for ln, line in tpl["body"]:
+            if line.strip().startswith("|"):
+                header = header or line
+            else:
+                header = None
             for m in re.finditer(r"<[^<>\n]+>", line):
-                b = bind_placeholder(m.group(0), line, vocab, m.start())
+                b = bind_placeholder(m.group(0), line, vocab, m.start(), header)
                 b["line"] = ln
                 phs.append(b)
         out_templates[tid] = {
@@ -1414,6 +1703,7 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
             "ask": ask_kind(tpl["body"]), "accept_tokens": accept_tokens(tpl["body"]),
             "backing_tools": backing, "placeholders": phs,
             "unbound": [p for p in phs if p["binding"] == "unbound"],
+            "graded": sum(1 for p in phs if p["binding"] in GRADED),
             "commands_for_user": [
                 {"line": ln, "command": re.sub(r"^\s*(Check progress: )?", "", line).strip()}
                 for ln, line in tpl["body"]
@@ -1453,8 +1743,7 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
 
 FLAG_RE = re.compile(r"`(--[a-z][a-z0-9-]*)(?:[ =]([^`]*))?`")
 NEGATION_RE = re.compile(r"\b(Never|never|not|Do not)\b[^.]*$")
-FAILURE_RE = re.compile(r"(?:^|(?<=\. ))If [^.]*\b(fail\w*|refus\w*|absent|missing|error|not met|"
-                        r"nothing is resolvable)\b[^.]*\.")
+FAILURE_WORDS = re.compile(r"\b(fail\w*|refus\w*|absent|missing|error|not met|nothing is resolvable)\b")
 
 
 def command_flags(command):
@@ -1490,6 +1779,8 @@ def prose_flags(out_steps, registry):
             sentence_start = max(text.rfind(". ", 0, m.start()), 0)
             prohibited = bool(NEGATION_RE.search(text[sentence_start:m.start()]))
             removal = text[max(0, m.start() - 8):m.start()].endswith("without ")
+            s_start, s_end = sentence_bounds(text, m.start())
+            descriptive = bool(re.search(r"\bdefault\b", text[s_start:s_end]))
             fpos = (line_at(step["_offsets"], m.start()), m.start())
             here = [c for c in step["calls"] if c["tool"]]
             key = lambda c: (c["line"], -1 if c["kind"] == "fenced" else c["_pos"])  # noqa: E731
@@ -1511,7 +1802,8 @@ def prose_flags(out_steps, registry):
             entry = {"step": step["n"], "line": line_at(step["_offsets"], m.start()),
                      "flag": flag, "value": value, "target_tool": target["tool"],
                      "target_step": target_step, "in_command": in_command,
-                     "prohibited": prohibited, "removal": removal, "variant": None}
+                     "prohibited": prohibited, "removal": removal,
+                     "descriptive": descriptive, "variant": None}
             if removal and in_command:
                 words = target["command"].split()
                 entry["variant"] = " ".join(w for w in words if w.strip("[]") != flag)
@@ -1525,17 +1817,19 @@ def prose_flags(out_steps, registry):
 
 def region_prose_handling(out_steps, call_sites):
     """Sentences after each call, up to the next call site's step, that handle a failure in
-    words rather than by exit code ("If approval is absent ... reply T3")."""
+    words rather than by exit code ("If approval is absent ... reply T3"). A heuristic record,
+    never counted as a handled code."""
     index = {s["n"]: i for i, s in enumerate(out_steps)}
     for j, site in enumerate(call_sites):
         k = index[site["step"]]
         nxt = index[call_sites[j + 1]["step"]] if j + 1 < len(call_sites) else len(out_steps)
         texts = [out_steps[k]["text"]] + [out_steps[i]["text"] for i in range(k + 1, max(nxt, k + 1))]
         found = []
-        for t in texts:
-            for m in FAILURE_RE.finditer(t):
-                sentence = m.group(0).strip()
-                if "Exit" not in sentence and "(exit" not in sentence and sentence not in found:
+        for text in texts:
+            for s, e in sentences(text):
+                sentence = text[s:e].strip()
+                if sentence.startswith("If ") and FAILURE_WORDS.search(sentence) and \
+                        "Exit" not in sentence and "(exit" not in sentence and sentence not in found:
                     found.append(sentence)
         site["prose_handling"] = found[:4]
 
@@ -1582,6 +1876,10 @@ def guard_row(guard, path, call, assay, substage):
         forms["maximal"] = maximal
     if call["comment"]:
         forms["literal_with_comment"] = instantiate(call["literal"])[0]
+    if "<class>" in call["command"]:
+        # the synthetic form says `public`; the other two classes are graded too
+        for value in ("deidentified_under_agreement", "identifiable"):
+            forms["class=" + value] = instantiate(call["command"].replace("<class>", value))[0]
     if call["kind"] == "prose":
         forms = {k: add_required(v, call["tool"], guard) for k, v in forms.items()}
     row["forms"] = {}
@@ -1635,18 +1933,38 @@ def extract(src, with_guard=True):
                                  "subcommand": tool["argv"][2] if len(tool["argv"]) >= 3
                                  and not tool["argv"][2].startswith("-") else None,
                                  "exits": exits, "problem": problem}
+    rulings, void = check_rulings(src)
     tmp = tempfile.mkdtemp(prefix="stepmap-")
     guard = None
     try:
         guard = GuardHarness(src, tmp) if with_guard else None
-        contracts = [dict(extract_text(p, src.text(p), src, registry, index, guard, helpers),
+        contracts = [dict(extract_text(p, src.text(p), src, registry, index, guard, helpers,
+                                       rulings),
                           blob=src.blob(p)) for p in contract_paths(src)]
     finally:
         if guard is not None:
             guard.close()
         shutil.rmtree(tmp, ignore_errors=True)
+    summary = summarize(contracts, helpers, registry)
+    summary["rulings"] = {"holding": [{"id": r["id"], "site": r["site"], "tools": r["tools"],
+                                       "why": r["why"],
+                                       "evidence": ["%s:%d" % (e[0], e[1]) for e in r["evidence"]]}
+                                      for r in rulings],
+                          "void": void}
+    summary["limits"] = LIMITS
     return {"schema": SCHEMA, "sha": src.sha, "contracts": contracts, "helpers": helpers,
-            "summary": summarize(contracts, helpers, registry)}
+            "summary": summary}
+
+
+LIMITS = [
+    "An uncaught exception (a traceback, exit 1, no JSON) is not modelled as an exit site; D22 is "
+    "one, found by running the helper.",
+    "Facts carried in data (a file written earlier, a dict's keys) are not evaluated; the "
+    "reachability rulings record the ones a reader proved, re-checked against the cited lines.",
+    "Exit regions are linear: a contract loop ('return to step 6') is not followed back.",
+    "Prose failure handling is recorded as sentences, never counted as a handled code.",
+    "Labels on counts are matched to helper keys by word; a match is a screen, not a proof.",
+]
 
 
 def summarize(contracts, helpers, registry):
@@ -1662,14 +1980,27 @@ def summarize(contracts, helpers, registry):
     for p in phs:
         by_binding[p["binding"]] = by_binding.get(p["binding"], 0) + 1
     sites = [cs for c in contracts for cs in c["call_sites"]]
-    guard_refused = []
+    guard_refused, prohibited = [], []
     for c, s, call in calls:
         g = call.get("guard")
         if g and g.get("status") == "checked" and not g["allowed_where_intended"]:
             guard_refused.append({"contract": c["id"], "step": s["n"], "tool": call["tool"],
-                                  "command": call["command"],
+                                  "command": call["command"], "kind": call["kind"],
                                   "scenario": g["intended"],
                                   "reason": g["forms"]["minimal"]["decisions"][g["intended"]]["reason"][:300]})
+    for c in contracts:
+        for f in c["prose_flags"]:
+            g = f.get("guard")
+            if not g or g.get("status") != "checked":
+                continue
+            row = {"contract": c["id"], "step": f["step"], "tool": f["target_tool"],
+                   "command": f["variant"], "kind": "flag-variant", "flag": f["flag"],
+                   "scenario": g["intended"], "allowed": g["allowed_where_intended"],
+                   "reason": g["forms"]["minimal"]["decisions"][g["intended"]]["reason"][:300]}
+            if f["prohibited"]:
+                prohibited.append(row)
+            elif not g["allowed_where_intended"]:
+                guard_refused.append(row)
     file_seen = sum(len(s["file_actions"]) for c in contracts for s in c["steps"])
     return {
         "contracts": len(contracts),
@@ -1681,19 +2012,30 @@ def summarize(contracts, helpers, registry):
         "unregistered_calls": [{"contract": c["id"], "step": s["n"], "line": call["line"],
                                 "executable": call["executable"], "kind": call["kind"]}
                                for c, s, call in calls if not call["tool"]],
-        "placeholder_accounting": {"seen": len(phs), "by_binding": dict(sorted(by_binding.items()))},
+        "placeholder_accounting": {"seen": len(phs),
+                                   "graded": sum(1 for p in phs if p["binding"] in GRADED),
+                                   "ungraded": sum(1 for p in phs if p["binding"] not in GRADED),
+                                   "by_binding": dict(sorted(by_binding.items()))},
+        "span_accounting": {
+            "raw_backtick_pairs": sum(s["spans"]["raw_backtick_pairs"] for c in contracts
+                                      for s in c["steps"]),
+            "seen": sum(s["spans"]["seen"] for c in contracts for s in c["steps"]),
+            "inconsistent_steps": ["%s step %s" % (c["id"], s["n"]) for c in contracts
+                                   for s in c["steps"] if not s["spans"]["consistent"]]},
         "accept_tokens": sorted({tok for c in contracts for t in c["templates"].values()
                                  for tok in t["accept_tokens"]}),
         "exits": {"call_sites": len(sites),
                   "emitted": sum(len(cs["emitted"]) for cs in sites),
                   "handled": sum(len(cs["handled"]) for cs in sites),
                   "unhandled": sum(len(cs["unhandled"]) for cs in sites),
+                  "ruled_out": sum(len(cs["ruled_out"]) for cs in sites),
                   "unhandled_list": [{"contract": c["id"], "step": cs["step"], "tool": cs["tool"],
                                       "codes": cs["unhandled"]}
                                      for c in contracts for cs in c["call_sites"] if cs["unhandled"]]},
         "guard": {"calls_checked": sum(1 for x in calls if x[2].get("guard", {}).get("status")
                                        == "checked"),
                   "refused_where_intended": guard_refused,
+                  "prohibited_flags": prohibited,
                   "file_actions_checked": file_seen},
         "file_mentions_unclassified": sum(len(c["file_mentions_unclassified"]) for c in contracts),
         "empty_findings": [f for c in contracts for f in c["findings"]],

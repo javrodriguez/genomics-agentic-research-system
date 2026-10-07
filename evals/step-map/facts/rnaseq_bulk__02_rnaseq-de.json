@@ -17,6 +17,7 @@
    ],
    "line": 106,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "3",
    "tool": "resolve_artifact",
    "unhandled": [],
@@ -35,6 +36,7 @@
    ],
    "line": 112,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "4",
    "tool": "rnaseq_de.check",
    "unhandled": [
@@ -61,6 +63,7 @@
    ],
    "line": 115,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "5",
    "tool": "rnaseq_de.prepare",
    "unhandled": [
@@ -88,6 +91,7 @@
    "handled": [],
    "line": 117,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "6",
    "tool": "executor.submit",
    "unhandled": [
@@ -116,6 +120,7 @@
    "handled": [],
    "line": 119,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "7",
    "tool": "executor.status",
    "unhandled": [
@@ -134,10 +139,12 @@
   {
    "branch_calls": [
     {
+     "kind": "inline",
      "line": 124,
      "tool": "executor.status"
     },
     {
+     "kind": "inline",
      "line": 125,
      "tool": "executor.status"
     }
@@ -156,6 +163,7 @@
    ],
    "line": 122,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "8",
    "tool": "rnaseq_de.collect",
    "unhandled": [
@@ -170,12 +178,19 @@
   }
  ],
  "fenced_non_commands": [],
- "file_mentions_unclassified": [],
+ "file_mentions_unclassified": [
+  {
+   "line": 112,
+   "sentence": "Run the wrapper's `check` with the resolved `--counts` and `--design`.",
+   "step": "4"
+  }
+ ],
  "findings": [],
  "id": "rnaseq_bulk__02_rnaseq-de",
  "path": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md",
  "prose_flags": [
   {
+   "descriptive": false,
    "flag": "--counts",
    "in_command": true,
    "line": 112,
@@ -188,6 +203,7 @@
    "variant": null
   },
   {
+   "descriptive": false,
    "flag": "--design",
    "in_command": true,
    "line": 112,
@@ -200,6 +216,7 @@
    "variant": null
   },
   {
+   "descriptive": false,
    "flag": "--model",
    "in_command": true,
    "line": 122,
@@ -212,6 +229,7 @@
    "variant": null
   },
   {
+   "descriptive": false,
    "flag": "--counts-from",
    "in_command": true,
    "line": 123,
@@ -276,6 +294,14 @@
    "file_actions": [],
    "n": "1",
    "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:100-100",
+   "spans": {
+    "by_class": {},
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
    "start": 100,
    "templates": [
     "T1"
@@ -323,6 +349,16 @@
    ],
    "n": "2",
    "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:101-102",
+   "spans": {
+    "by_class": {
+     "value": 3
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 3,
+    "seen": 3
+   },
    "start": 101,
    "templates": [],
    "text": "2. Read the STATUS file. If `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — the router handles those states.",
@@ -404,6 +440,7 @@
    "end": 111,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1,
       2,
@@ -415,6 +452,16 @@
    "file_actions": [],
    "n": "3",
    "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:103-111",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
    "start": 103,
    "templates": [
     "T5"
@@ -498,6 +545,7 @@
    "end": 114,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1
      ],
@@ -507,6 +555,17 @@
    "file_actions": [],
    "n": "4",
    "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:112-114",
+   "spans": {
+    "by_class": {
+     "flag": 2,
+     "value": 4
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 6,
+    "seen": 6
+   },
    "start": 112,
    "templates": [
     "T5"
@@ -590,12 +649,14 @@
    "end": 116,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1
      ],
      "line": 115
     },
     {
+     "actor": "agent",
      "codes": [
       0
      ],
@@ -605,6 +666,17 @@
    "file_actions": [],
    "n": "5",
    "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:115-116",
+   "spans": {
+    "by_class": {
+     "path": 2,
+     "subcommand": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 3,
+    "seen": 3
+   },
    "start": 115,
    "templates": [
     "T5"
@@ -690,6 +762,17 @@
    "file_actions": [],
    "n": "6",
    "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:117-118",
+   "spans": {
+    "by_class": {
+     "command": 1,
+     "value": 2
+    },
+    "command_spans": 1,
+    "consistent": true,
+    "inline_calls": 1,
+    "raw_backtick_pairs": 3,
+    "seen": 3
+   },
    "start": 117,
    "templates": [
     "T2"
@@ -775,6 +858,17 @@
    "file_actions": [],
    "n": "7",
    "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:119-121",
+   "spans": {
+    "by_class": {
+     "command": 1,
+     "value": 9
+    },
+    "command_spans": 1,
+    "consistent": true,
+    "inline_calls": 1,
+    "raw_backtick_pairs": 10,
+    "seen": 10
+   },
    "start": 119,
    "templates": [
     "T3"
@@ -990,12 +1084,14 @@
    "end": 126,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       2
      ],
      "line": 123
     },
     {
+     "actor": "agent",
      "codes": [
       1
      ],
@@ -1005,6 +1101,19 @@
    "file_actions": [],
    "n": "8",
    "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:122-126",
+   "spans": {
+    "by_class": {
+     "command": 2,
+     "flag": 2,
+     "subcommand": 1,
+     "value": 1
+    },
+    "command_spans": 2,
+    "consistent": true,
+    "inline_calls": 2,
+    "raw_backtick_pairs": 6,
+    "seen": 6
+   },
    "start": 122,
    "templates": [
     "T4"
@@ -1064,6 +1173,7 @@
    "end": 131,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       0
      ],
@@ -1102,6 +1212,17 @@
    ],
    "n": "9",
    "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:127-131",
+   "spans": {
+    "by_class": {
+     "path": 2,
+     "value": 7
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 9,
+    "seen": 9
+   },
    "start": 127,
    "templates": [
     "T6"
@@ -1121,6 +1242,7 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
+   "graded": 3,
    "id": "T1",
    "line": 143,
    "placeholders": [
@@ -1155,7 +1277,7 @@
     },
     {
      "binding": "no_source",
-     "label": "sample",
+     "label": "samples",
      "line": 149,
      "text": "<n>"
     }
@@ -1176,6 +1298,7 @@
      "line": 159
     }
    ],
+   "graded": 2,
    "id": "T2",
    "line": 152,
    "placeholders": [
@@ -1219,6 +1342,7 @@
      "line": 167
     }
    ],
+   "graded": 3,
    "id": "T3",
    "line": 163,
    "placeholders": [
@@ -1268,6 +1392,7 @@
     "rnaseq_de.collect"
    ],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T4",
    "line": 170,
    "placeholders": [
@@ -1300,6 +1425,7 @@
     "rnaseq_de.prepare"
    ],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T5",
    "line": 180,
    "placeholders": [
@@ -1325,24 +1451,34 @@
     "rnaseq_de.collect"
    ],
    "commands_for_user": [],
+   "graded": 2,
    "id": "T6",
    "line": 189,
    "placeholders": [
     {
      "binding": "label",
+     "key": "genes_tested",
      "label": "genes tested",
      "line": 200,
      "text": "<n>"
     },
     {
-     "binding": "generic",
+     "binding": "unbound",
+     "label": "significant padj",
      "line": 200,
      "text": "<n>"
     }
    ],
    "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:189",
    "title": "Complete",
-   "unbound": []
+   "unbound": [
+    {
+     "binding": "unbound",
+     "label": "significant padj",
+     "line": 200,
+     "text": "<n>"
+    }
+   ]
   }
  },
  "wrapper_invocation": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py"

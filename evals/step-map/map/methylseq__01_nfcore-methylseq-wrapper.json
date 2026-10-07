@@ -234,7 +234,6 @@
       "emitted": [
        0,
        1,
-       2,
        3
       ],
       "handled": [
@@ -245,13 +244,9 @@
       "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:86",
       "tool": "nfcore_methylseq_wrapper.prepare",
       "unhandled": [
-       2,
        3
       ],
       "unhandled_emit_sites": {
-       "2": [
-        "gars/_system/wrapperlib.py:925"
-       ],
        "3": [
         "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:106"
        ]
@@ -288,7 +283,7 @@
      "the config and samplesheet"
     ],
     "kind": "judgment",
-    "note": "The extractor reports a static exit 2 from wrapperlib.py:925; it is unreachable from these wrappers, which pass the samplesheet and config, so key_formula is stage01-v1 (wrapperlib.py:917-918). Exit 3 (no such project) has no branch.",
+    "note": "The helper's static exit 2 (wrapperlib.py:925) is ruled unreachable from these wrappers by the extractor's cited ruling: prepare writes params.yaml first and passes the samplesheet and config, so key_formula is stage01-v1 (wrapperlib.py:917-919). Exit 3 (no such project) has no branch.",
     "question": 2,
     "rung_now": "R0",
     "rung_target": "R0",

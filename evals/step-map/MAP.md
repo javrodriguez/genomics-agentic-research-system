@@ -21,19 +21,21 @@ Scores, each 1 to 10: **severity**, the worst downstream consequence (10 a wrong
 | Contracts | 14 |
 | Numbered steps | 142 |
 | Response templates | 94 |
-| Commands named in steps | 92 (79 mapped to a registry tool, 13 unregistered, 0 uninstantiable) |
+| Commands named in steps | 93 (80 mapped to a registry tool, 13 unregistered, 0 uninstantiable) |
 | Unregistered commands named in steps | `date`, `sbatch` |
 | Call sites with exit branches compared | 73 |
-| Exit codes the helpers can emit there (static) | 238 |
-| Codes the contract branches on | 86 |
-| Non-zero codes with no branch (static) | 108 |
+| Exit codes the helpers can emit there (static) | 230 |
+| Codes the contract branches on | 85 |
+| Non-zero codes with no branch (static) | 101 |
 | Fixed answers (accept tokens) | `cancel`, `skip`, `verify` |
-| Template placeholders bound against helper keys | 385 (artifact 50, choice 19, composed 69, generic 112, key 79, label 15, no_source 30, unbound 11) |
-| Calls and flag variants put to the pinned guard | 92 calls, in 5 synthetic workspaces |
-| File actions put to the pinned guard | 33 |
-| File-verb sentences seen but not classified | 16 (listed in `facts/`) |
+| Template placeholders | 385 seen: 152 graded against the backing call's keys (key, label, unbound, no source), 233 not graded (context words, choices, model-written text, artifact paths); by kind: artifact 50, choice 19, composed 69, generic 95, key 79, label 17, no_source 38, unbound 18 |
+| Exit codes ruled unreachable by a cited reading | 7 (rulings re-checked against their lines on every run) |
+| Backtick spans in steps | 471, counted independently in the raw lines and matched |
+| Calls and flag variants put to the pinned guard | 93 calls, in 5 synthetic workspaces |
+| File actions put to the pinned guard | 34 |
+| File-verb sentences seen but not classified | 32 (listed in `facts/`) |
 
-"Static" means reachable in the helper's code as written; a judgment note marks the few codes a reader found unreachable from a given caller (for example `prepare`'s exit 2 in the seven nf-core wrappers).
+"Static" means reachable in the helper's code as written, with branches the command's own flags decide pruned; codes a reader proved unreachable from a given caller are ruled out with the lines that prove it (`facts/_summary.json`, `rulings`). Uncaught exceptions are not modelled (`limits`).
 
 ## Rung totals (judgment)
 
@@ -127,7 +129,7 @@ Of the severity 1-4 steps, the unsaid decisions are: G-date (12 steps); G-door (
 | 7 | model | R4 → R4 | none | none | gate | helper exit codes, fixed response templates, wait points | none |
 | 8 | model | R4 → R4 | none | none | question | fixed response templates, wait points, one action per step | none |
 | 9 | model+helper+guard | R5 → R4 | stage00_register.inspect | none | no | typed tool calls, guard deny rules, negative scope rules, helper exit codes | S00-guard |
-| 10 | model+helper+human | R5 → R1 | none | none | gate (skip) | helper exit codes, negative scope rules, fixed response templates, wait points, guard deny rules | S00-pattern |
+| 10 | model+helper+human | R5 → R1 | stage00_register.inspect | none | gate (skip) | helper exit codes, negative scope rules, fixed response templates, wait points, guard deny rules | S00-pattern |
 | 11 | model+human | R3 → R3 | none | none | gate | fixed response templates, wait points, negative scope rules | none |
 | 12 | model+helper+guard | R5 → R1 | stage00_register.link | stage00_register.link [2, 3] | no | typed tool calls, helper exit codes, negative scope rules, guard deny rules | S00-yes |
 | 13 | model | R4 → R4 | none | none | no | fixed response templates | none |
@@ -180,7 +182,7 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
 | 3 | model+helper | R0 → R0 | nfcore_atacseq_wrapper.check | nfcore_atacseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_atacseq_wrapper.prepare | nfcore_atacseq_wrapper.prepare [2, 3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 4 | model+helper | R0 → R0 | nfcore_atacseq_wrapper.prepare | nfcore_atacseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model | R4 → R4 | none | none | no | fixed response templates, negative scope rules | none |
 | 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
@@ -196,7 +198,7 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
 | 3 | model+helper | R0 → R0 | nfcore_chipseq_wrapper.check | nfcore_chipseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_chipseq_wrapper.prepare | nfcore_chipseq_wrapper.prepare [2, 3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 4 | model+helper | R0 → R0 | nfcore_chipseq_wrapper.prepare | nfcore_chipseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model | R4 → R4 | none | none | no | fixed response templates, negative scope rules | none |
 | 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
@@ -212,7 +214,7 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
 | 3 | model+helper | R0 → R0 | nfcore_cutandrun_wrapper.check | nfcore_cutandrun_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R5 → R4 | nfcore_cutandrun_wrapper.prepare | nfcore_cutandrun_wrapper.prepare [2, 3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | X-cutandrun-resume |
+| 4 | model+helper | R5 → R4 | nfcore_cutandrun_wrapper.prepare | nfcore_cutandrun_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | X-cutandrun-resume |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model | R4 → R4 | none | none | no | fixed response templates, negative scope rules | none |
 | 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
@@ -228,7 +230,7 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
 | 3 | model+helper | R0 → R0 | nfcore_methylseq_wrapper.check | nfcore_methylseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_methylseq_wrapper.prepare | nfcore_methylseq_wrapper.prepare [2, 3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 4 | model+helper | R0 → R0 | nfcore_methylseq_wrapper.prepare | nfcore_methylseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model | R4 → R4 | none | none | no | fixed response templates, negative scope rules | none |
 | 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
@@ -244,7 +246,7 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
 | 3 | model+helper | R0 → R0 | nfcore_rnaseq_wrapper.check | nfcore_rnaseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_rnaseq_wrapper.prepare | nfcore_rnaseq_wrapper.prepare [2, 3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 4 | model+helper | R0 → R0 | nfcore_rnaseq_wrapper.prepare | nfcore_rnaseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model | R4 → R4 | none | none | no | fixed response templates, negative scope rules | none |
 | 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
@@ -276,7 +278,7 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
 | 3 | model+helper | R0 → R0 | nfcore_scrnaseq_wrapper.check | nfcore_scrnaseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_scrnaseq_wrapper.prepare | nfcore_scrnaseq_wrapper.prepare [2, 3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 4 | model+helper | R0 → R0 | nfcore_scrnaseq_wrapper.prepare | nfcore_scrnaseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model+helper | R5 → R4 | executor.status | executor.status [1, 2] | no | typed tool calls, fixed response templates, negative scope rules | G-door |
 | 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
@@ -308,7 +310,7 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
 | 3 | model+helper | R0 → R0 | nfcore_spatialvi_wrapper.check | nfcore_spatialvi_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_spatialvi_wrapper.prepare | nfcore_spatialvi_wrapper.prepare [2, 3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 4 | model+helper | R0 → R0 | nfcore_spatialvi_wrapper.prepare | nfcore_spatialvi_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model+helper | R5 → R4 | executor.status | executor.status [1, 2] | no | typed tool calls, fixed response templates, negative scope rules | G-door |
 | 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |

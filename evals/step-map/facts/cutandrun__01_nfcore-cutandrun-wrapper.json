@@ -15,6 +15,7 @@
    ],
    "line": 109,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "3",
    "tool": "nfcore_cutandrun_wrapper.check",
    "unhandled": [
@@ -32,7 +33,6 @@
    "emitted": [
     0,
     1,
-    2,
     3
    ],
    "handled": [
@@ -41,16 +41,20 @@
    ],
    "line": 113,
    "prose_handling": [],
+   "ruled_out": {
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "ruling": "prepare-stage01-v1"
+     }
+    ]
+   },
    "step": "4",
    "tool": "nfcore_cutandrun_wrapper.prepare",
    "unhandled": [
-    2,
     3
    ],
    "unhandled_sites": {
-    "2": [
-     "gars/_system/wrapperlib.py:925"
-    ],
     "3": [
      "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:178"
     ]
@@ -67,6 +71,7 @@
    "handled": [],
    "line": 115,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "5",
    "tool": "executor.submit",
    "unhandled": [
@@ -95,6 +100,7 @@
    "handled": [],
    "line": 119,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "7",
    "tool": "executor.status",
    "unhandled": [
@@ -126,6 +132,7 @@
    ],
    "line": 124,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "8",
    "tool": "nfcore_cutandrun_wrapper.collect",
    "unhandled": [
@@ -142,6 +149,11 @@
  "fenced_non_commands": [],
  "file_mentions_unclassified": [
   {
+   "line": 109,
+   "sentence": "Run the wrapper's `check`.",
+   "step": "3"
+  },
+  {
    "line": 128,
    "sentence": "Preserve the failure; do not poll to replace it.",
    "step": "8"
@@ -152,6 +164,7 @@
  "path": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md",
  "prose_flags": [
   {
+   "descriptive": false,
    "flag": "--model",
    "in_command": true,
    "line": 125,
@@ -216,6 +229,14 @@
    "file_actions": [],
    "n": "1",
    "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:106-106",
+   "spans": {
+    "by_class": {},
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
    "start": 106,
    "templates": [
     "T1"
@@ -263,6 +284,16 @@
    ],
    "n": "2",
    "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:107-108",
+   "spans": {
+    "by_class": {
+     "value": 3
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 3,
+    "seen": 3
+   },
    "start": 107,
    "templates": [],
    "text": "2. Read the STATUS file. If it is `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — stage 02's router already handles those states and should not have routed here.",
@@ -344,6 +375,7 @@
    "end": 112,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1
      ],
@@ -353,6 +385,16 @@
    "file_actions": [],
    "n": "3",
    "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:109-112",
+   "spans": {
+    "by_class": {
+     "value": 5
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 5,
+    "seen": 5
+   },
    "start": 109,
    "templates": [
     "T5"
@@ -436,12 +478,14 @@
    "end": 114,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1
      ],
      "line": 113
     },
     {
+     "actor": "agent",
      "codes": [
       0
      ],
@@ -451,6 +495,17 @@
    "file_actions": [],
    "n": "4",
    "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:113-114",
+   "spans": {
+    "by_class": {
+     "path": 2,
+     "subcommand": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 3,
+    "seen": 3
+   },
    "start": 113,
    "templates": [
     "T5"
@@ -536,6 +591,17 @@
    "file_actions": [],
    "n": "5",
    "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:115-116",
+   "spans": {
+    "by_class": {
+     "command": 1,
+     "value": 1
+    },
+    "command_spans": 1,
+    "consistent": true,
+    "inline_calls": 1,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
    "start": 115,
    "templates": [],
    "text": "5. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh`. It prints one JSON object; `job_id` is the field. Capture it.",
@@ -552,6 +618,16 @@
    "file_actions": [],
    "n": "6",
    "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:117-118",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
    "start": 117,
    "templates": [
     "T2"
@@ -637,6 +713,17 @@
    "file_actions": [],
    "n": "7",
    "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:119-121",
+   "spans": {
+    "by_class": {
+     "command": 1,
+     "value": 11
+    },
+    "command_spans": 1,
+    "consistent": true,
+    "inline_calls": 1,
+    "raw_backtick_pairs": 12,
+    "seen": 12
+   },
    "start": 119,
    "templates": [
     "T3"
@@ -720,12 +807,14 @@
    "end": 128,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       2
      ],
      "line": 126
     },
     {
+     "actor": "agent",
      "codes": [
       1
      ],
@@ -735,6 +824,18 @@
    "file_actions": [],
    "n": "8",
    "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:122-128",
+   "spans": {
+    "by_class": {
+     "flag": 1,
+     "subcommand": 1,
+     "value": 7
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 9,
+    "seen": 9
+   },
    "start": 122,
    "templates": [
     "T4"
@@ -794,6 +895,7 @@
    "end": 131,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       0
      ],
@@ -832,6 +934,17 @@
    ],
    "n": "9",
    "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:129-131",
+   "spans": {
+    "by_class": {
+     "path": 2,
+     "value": 4
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 6,
+    "seen": 6
+   },
    "start": 129,
    "templates": [
     "T6"
@@ -851,12 +964,13 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
+   "graded": 2,
    "id": "T1",
    "line": 143,
    "placeholders": [
     {
      "binding": "no_source",
-     "label": "row",
+     "label": "rows",
      "line": 147,
      "text": "<n>"
     },
@@ -898,6 +1012,7 @@
      "line": 159
     }
    ],
+   "graded": 2,
    "id": "T2",
    "line": 152,
    "placeholders": [
@@ -941,6 +1056,7 @@
      "line": 167
     }
    ],
+   "graded": 3,
    "id": "T3",
    "line": 163,
    "placeholders": [
@@ -990,6 +1106,7 @@
     "nfcore_cutandrun_wrapper.collect"
    ],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T4",
    "line": 170,
    "placeholders": [
@@ -1021,6 +1138,7 @@
     "nfcore_cutandrun_wrapper.prepare"
    ],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T5",
    "line": 180,
    "placeholders": [
@@ -1046,6 +1164,7 @@
     "nfcore_cutandrun_wrapper.collect"
    ],
    "commands_for_user": [],
+   "graded": 2,
    "id": "T6",
    "line": 189,
    "placeholders": [
@@ -1081,12 +1200,14 @@
     },
     {
      "binding": "label",
+     "key": "groups",
      "label": "groups",
      "line": 201,
      "text": "<n>"
     },
     {
      "binding": "label",
+     "key": "target",
      "label": "targets",
      "line": 201,
      "text": "<n>"

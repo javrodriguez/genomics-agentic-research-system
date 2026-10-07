@@ -12,6 +12,7 @@
    "handled": [],
    "line": 135,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "3a",
    "tool": "configure.genomes",
    "unhandled": [
@@ -34,6 +35,7 @@
    "handled": [],
    "line": 136,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "3a",
    "tool": "configure.contrasts",
    "unhandled": [
@@ -58,6 +60,7 @@
    "handled": [],
    "line": 137,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "3a",
    "tool": "configure.peaks",
    "unhandled": [],
@@ -78,6 +81,7 @@
    "prose_handling": [
     "If that sub-stage is `FAILED:<reason>` or `CANCELLED`, reply T6 with its recorded error and stop."
    ],
+   "ruled_out": {},
    "step": "3a",
    "tool": "configure.apply",
    "unhandled": [
@@ -108,6 +112,7 @@
    ],
    "line": 170,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "9",
    "tool": "resolve_artifact",
    "unhandled": [
@@ -124,9 +129,19 @@
  "fenced_non_commands": [],
  "file_mentions_unclassified": [
   {
+   "line": 122,
+   "sentence": "If the project does not exist, or the Assay ID is not in the assay map, reply T5 and stop.",
+   "step": "2"
+  },
+  {
    "line": 140,
    "sentence": "Then, with the numbers the user gave: Reply T9 showing what it would write and **wait for confirmation**.",
    "step": "3a"
+  },
+  {
+   "line": 160,
+   "sentence": "If that sub-stage is `SUBMITTED` or `RUNNING`, reply T3 with how to check on it, and stop.",
+   "step": "7"
   }
  ],
  "findings": [],
@@ -134,6 +149,7 @@
  "path": "gars/02_bioinformatics/CONTEXT.md",
  "prose_flags": [
   {
+   "descriptive": false,
    "flag": "--dry-run",
    "guard": {
     "allowed_where_intended": true,
@@ -285,6 +301,14 @@
    "file_actions": [],
    "n": "1",
    "source": "gars/02_bioinformatics/CONTEXT.md:121-121",
+   "spans": {
+    "by_class": {},
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
    "start": 121,
    "templates": [
     "T1"
@@ -303,6 +327,14 @@
    "file_actions": [],
    "n": "2",
    "source": "gars/02_bioinformatics/CONTEXT.md:122-123",
+   "spans": {
+    "by_class": {},
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
    "start": 122,
    "templates": [
     "T5"
@@ -318,9 +350,48 @@
    "calls": [],
    "end": 125,
    "exit_mentions": [],
-   "file_actions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/01_samplesheets/rnaseq_bulk_samplesheet.csv is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/01_samplesheets/rnaseq_bulk_samplesheet.csv is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/01_samplesheets/rnaseq_bulk_samplesheet.csv is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 124,
+     "path": "projects/{project}/01_samplesheets/{assay}_samplesheet.csv",
+     "phrase": "Check preconditions: `01_samplesheets/<Assay ID>_samplesheet.csv` and `_design.csv` exist",
+     "tool": "Read"
+    }
+   ],
    "n": "3",
    "source": "gars/02_bioinformatics/CONTEXT.md:124-125",
+   "spans": {
+    "by_class": {
+     "path": 2
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
    "start": 124,
    "templates": [
     "T5"
@@ -677,6 +748,7 @@
    "end": 153,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1
      ],
@@ -686,6 +758,18 @@
    "file_actions": [],
    "n": "3a",
    "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+   "spans": {
+    "by_class": {
+     "flag": 1,
+     "path": 2,
+     "value": 6
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 9,
+    "seen": 9
+   },
    "start": 126,
    "templates": [
     "T8",
@@ -737,6 +821,16 @@
    ],
    "n": "4",
    "source": "gars/02_bioinformatics/CONTEXT.md:154-154",
+   "spans": {
+    "by_class": {
+     "path": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
    "start": 154,
    "templates": [],
    "text": "4. Read the Sub-stages column for this assay from `_references/assay_stage_skill_map.md`.",
@@ -782,6 +876,16 @@
    ],
    "n": "5",
    "source": "gars/02_bioinformatics/CONTEXT.md:155-156",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
    "start": 155,
    "templates": [
     "T2"
@@ -800,6 +904,16 @@
    "file_actions": [],
    "n": "6",
    "source": "gars/02_bioinformatics/CONTEXT.md:157-159",
+   "spans": {
+    "by_class": {
+     "value": 2
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
    "start": 157,
    "templates": [
     "T4"
@@ -820,6 +934,16 @@
    "file_actions": [],
    "n": "7",
    "source": "gars/02_bioinformatics/CONTEXT.md:160-161",
+   "spans": {
+    "by_class": {
+     "value": 2
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
    "start": 160,
    "templates": [
     "T3"
@@ -838,6 +962,16 @@
    "file_actions": [],
    "n": "8",
    "source": "gars/02_bioinformatics/CONTEXT.md:162-164",
+   "spans": {
+    "by_class": {
+     "value": 2
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
    "start": 162,
    "templates": [
     "T6"
@@ -921,6 +1055,7 @@
    "end": 178,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1
      ],
@@ -959,6 +1094,17 @@
    ],
    "n": "9",
    "source": "gars/02_bioinformatics/CONTEXT.md:165-178",
+   "spans": {
+    "by_class": {
+     "path": 1,
+     "value": 5
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 6,
+    "seen": 6
+   },
    "start": 165,
    "templates": [
     "T7"
@@ -1006,6 +1152,16 @@
    ],
    "n": "10",
    "source": "gars/02_bioinformatics/CONTEXT.md:179-180",
+   "spans": {
+    "by_class": {
+     "path": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
    "start": 179,
    "templates": [],
    "text": "10. Read `02_bioinformatics/<Assay ID>/<NN_name>/CONTEXT.md` and execute that contract. It owns everything from here, including its own response templates.",
@@ -1023,6 +1179,7 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T1",
    "line": 189,
    "placeholders": [
@@ -1046,11 +1203,13 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
+   "graded": 3,
    "id": "T2",
    "line": 196,
    "placeholders": [
     {
-     "binding": "generic",
+     "binding": "no_source",
+     "label": null,
      "line": 200,
      "text": "<n>"
     },
@@ -1091,6 +1250,7 @@
      "line": 209
     }
    ],
+   "graded": 3,
    "id": "T3",
    "line": 205,
    "placeholders": [
@@ -1137,6 +1297,7 @@
    "ask": "handoff",
    "backing_tools": [],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T4",
    "line": 214,
    "placeholders": [
@@ -1170,6 +1331,7 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T5",
    "line": 265,
    "placeholders": [
@@ -1203,6 +1365,7 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
+   "graded": 2,
    "id": "T6",
    "line": 279,
    "placeholders": [
@@ -1245,6 +1408,7 @@
     "resolve_artifact"
    ],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T7",
    "line": 289,
    "placeholders": [
@@ -1278,6 +1442,7 @@
     "configure.apply"
    ],
    "commands_for_user": [],
+   "graded": 1,
    "id": "T8",
    "line": 229,
    "placeholders": [
@@ -1288,7 +1453,7 @@
     },
     {
      "binding": "unbound",
-     "label": "decision",
+     "label": "decisions",
      "line": 231,
      "text": "<n>"
     },
@@ -1308,7 +1473,7 @@
    "unbound": [
     {
      "binding": "unbound",
-     "label": "decision",
+     "label": "decisions",
      "line": 231,
      "text": "<n>"
     }
@@ -1324,6 +1489,7 @@
     "configure.apply"
    ],
    "commands_for_user": [],
+   "graded": 2,
    "id": "T9",
    "line": 251,
    "placeholders": [

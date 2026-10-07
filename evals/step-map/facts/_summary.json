@@ -5,8 +5,8 @@
   "verify"
  ],
  "command_accounting": {
-  "mapped": 79,
-  "seen": 92,
+  "mapped": 80,
+  "seen": 93,
   "uninstantiable": 0,
   "unregistered": 13
  },
@@ -14,9 +14,10 @@
  "empty_findings": [],
  "exits": {
   "call_sites": 73,
-  "emitted": 238,
-  "handled": 86,
-  "unhandled": 108,
+  "emitted": 230,
+  "handled": 85,
+  "ruled_out": 7,
+  "unhandled": 101,
   "unhandled_list": [
    {
     "codes": [
@@ -110,7 +111,6 @@
    },
    {
     "codes": [
-     2,
      3
     ],
     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
@@ -153,7 +153,6 @@
    },
    {
     "codes": [
-     2,
      3
     ],
     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
@@ -196,7 +195,6 @@
    },
    {
     "codes": [
-     2,
      3
     ],
     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
@@ -239,7 +237,6 @@
    },
    {
     "codes": [
-     2,
      3
     ],
     "contract": "methylseq__01_nfcore-methylseq-wrapper",
@@ -282,7 +279,6 @@
    },
    {
     "codes": [
-     2,
      3
     ],
     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
@@ -368,7 +364,6 @@
    },
    {
     "codes": [
-     2,
      3
     ],
     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
@@ -472,7 +467,6 @@
    },
    {
     "codes": [
-     2,
      3
     ],
     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
@@ -611,14 +605,37 @@
    }
   ]
  },
- "file_mentions_unclassified": 16,
+ "file_mentions_unclassified": 32,
  "guard": {
-  "calls_checked": 92,
-  "file_actions_checked": 33,
+  "calls_checked": 93,
+  "file_actions_checked": 34,
+  "prohibited_flags": [
+   {
+    "allowed": false,
+    "command": "python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path> --force",
+    "contract": "00_initialize_project",
+    "flag": "--force",
+    "kind": "flag-variant",
+    "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (this call is not a declared registration); Only public data may enter a hosted-model prompt ",
+    "scenario": "fresh_declared",
+    "step": "12",
+    "tool": "stage00_register.link"
+   }
+  ],
   "refused_where_intended": [
+   {
+    "command": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path> --sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'",
+    "contract": "00_initialize_project",
+    "kind": "prose-rerun",
+    "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R",
+    "scenario": "fresh_declared",
+    "step": "10",
+    "tool": "stage00_register.inspect"
+   },
    {
     "command": "sbatch",
     "contract": "01_prepare_samplesheets",
+    "kind": "executable",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "8",
@@ -627,6 +644,7 @@
    {
     "command": "date",
     "contract": "01_prepare_samplesheets",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "13",
@@ -635,6 +653,7 @@
    {
     "command": "date",
     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "9",
@@ -643,6 +662,7 @@
    {
     "command": "date",
     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "9",
@@ -651,6 +671,7 @@
    {
     "command": "date",
     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "9",
@@ -659,6 +680,7 @@
    {
     "command": "date",
     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "9",
@@ -667,6 +689,7 @@
    {
     "command": "date",
     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "9",
@@ -675,6 +698,7 @@
    {
     "command": "date",
     "contract": "rnaseq_bulk__02_rnaseq-de",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "9",
@@ -683,6 +707,7 @@
    {
     "command": "date",
     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "9",
@@ -691,6 +716,7 @@
    {
     "command": "date",
     "contract": "scrnaseq__02_scrna-qc-cluster",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "9",
@@ -699,6 +725,7 @@
    {
     "command": "date",
     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "9",
@@ -707,6 +734,7 @@
    {
     "command": "date",
     "contract": "spatialvi__02_spatial-cluster-count",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "9",
@@ -715,29 +743,102 @@
    {
     "command": "date",
     "contract": "03_custom_analysis",
+    "kind": "implicit",
     "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
     "scenario": "public",
     "step": "10",
     "tool": null
+   },
+   {
+    "allowed": false,
+    "command": "python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model \"<model id>\" --sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'",
+    "contract": "00_initialize_project",
+    "flag": "--sample-id-pattern",
+    "kind": "flag-variant",
+    "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R",
+    "scenario": "fresh_declared",
+    "step": "15",
+    "tool": "stage00_register.finalize"
    }
   ]
  },
  "helpers": 53,
+ "limits": [
+  "An uncaught exception (a traceback, exit 1, no JSON) is not modelled as an exit site; D22 is one, found by running the helper.",
+  "Facts carried in data (a file written earlier, a dict's keys) are not evaluated; the reachability rulings record the ones a reader proved, re-checked against the cited lines.",
+  "Exit regions are linear: a contract loop ('return to step 6') is not followed back.",
+  "Prose failure handling is recorded as sentences, never counted as a handled code.",
+  "Labels on counts are matched to helper keys by word; a match is a screen, not a proof."
+ ],
  "placeholder_accounting": {
   "by_binding": {
    "artifact": 50,
    "choice": 19,
    "composed": 69,
-   "generic": 112,
+   "generic": 95,
    "key": 79,
-   "label": 15,
-   "no_source": 30,
-   "unbound": 11
+   "label": 17,
+   "no_source": 38,
+   "unbound": 18
   },
-  "seen": 385
+  "graded": 152,
+  "seen": 385,
+  "ungraded": 233
+ },
+ "rulings": {
+  "holding": [
+   {
+    "evidence": [
+     "gars/_system/wrapperlib.py:797",
+     "gars/_system/wrapperlib.py:798",
+     "gars/_system/wrapperlib.py:917",
+     "gars/_system/wrapperlib.py:918",
+     "gars/_system/wrapperlib.py:919",
+     "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:189",
+     "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:206",
+     "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:207",
+     "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:188",
+     "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:205",
+     "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:206",
+     "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:190",
+     "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:204",
+     "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:205",
+     "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:118",
+     "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:132",
+     "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:133",
+     "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:152",
+     "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:169",
+     "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:170",
+     "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:260",
+     "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:277",
+     "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:278",
+     "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:225",
+     "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:242",
+     "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:243"
+    ],
+    "id": "prepare-stage01-v1",
+    "site": "gars/_system/wrapperlib.py:925",
+    "tools": [
+     "nfcore_atacseq_wrapper.prepare",
+     "nfcore_chipseq_wrapper.prepare",
+     "nfcore_cutandrun_wrapper.prepare",
+     "nfcore_methylseq_wrapper.prepare",
+     "nfcore_rnaseq_wrapper.prepare",
+     "nfcore_scrnaseq_wrapper.prepare",
+     "nfcore_spatialvi_wrapper.prepare"
+    ],
+    "why": "write_reproducibility raises exit 2 only when key_formula is downstream-v2; an nf-core wrapper's prepare writes params.yaml first and passes samplesheet and config, so key_formula is stage01-v1"
+   }
+  ],
+  "void": []
  },
  "schema": "stepmap-facts/1",
  "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "span_accounting": {
+  "inconsistent_steps": [],
+  "raw_backtick_pairs": 471,
+  "seen": 471
+ },
  "steps": 142,
  "steps_by_contract": {
   "00_initialize_project": 17,

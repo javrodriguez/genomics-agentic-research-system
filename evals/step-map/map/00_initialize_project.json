@@ -598,14 +598,40 @@
   },
   {
    "extracted": {
-    "calls": [],
+    "calls": [
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path> --sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": false
+       },
+       "allowed_where_intended": false,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": false
+       },
+       "intended_workspace": "fresh_declared",
+       "refusal": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+      },
+      "kind": "prose-rerun",
+      "source": "gars/00_initialize_project/CONTEXT.md:241",
+      "tool": "stage00_register.inspect"
+     }
+    ],
     "exit_branches": [],
     "file_actions": [],
     "prose_flags": [
      {
-      "allowed_where_intended": false,
+      "allowed_where_intended": null,
       "flag": "--sample-id-pattern",
-      "in_command": false,
+      "in_command": true,
       "prohibited": false,
       "source": "gars/00_initialize_project/CONTEXT.md:242",
       "target_tool": "stage00_register.inspect",
@@ -646,6 +672,7 @@
      "the user's description of their file names"
     ],
     "kind": "judgment",
+    "note": "The re-run is a branch action of step 9's inspect. A malformed pattern crashes inspect with a traceback, exit 1 and no JSON, which no step handles (D22).",
     "question": 1,
     "rung_now": "R5",
     "rung_target": "R1",
@@ -654,7 +681,8 @@
      {
       "decision": "Turning the user's description of their file names into a sample-ID regex",
       "defects": [
-       "D4"
+       "D4",
+       "D22"
       ],
       "detection": 3,
       "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",
@@ -1190,7 +1218,8 @@
   {
    "decision": "Turning the user's description of their file names into a sample-ID regex",
    "defects": [
-    "D4"
+    "D4",
+    "D22"
    ],
    "detection": 3,
    "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",

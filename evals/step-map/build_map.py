@@ -335,18 +335,26 @@ def render(maps, ranked, summary, contracts):
         "| Codes the contract branches on | %d |" % s["exits"]["handled"],
         "| Non-zero codes with no branch (static) | %d |" % s["exits"]["unhandled"],
         "| Fixed answers (accept tokens) | %s |" % ", ".join("`%s`" % t for t in s["accept_tokens"]),
-        "| Template placeholders bound against helper keys | %d (%s) |" % (
-            s["placeholder_accounting"]["seen"],
+        "| Template placeholders | %d seen: %d graded against the backing call's keys (key, label,"
+        " unbound, no source), %d not graded (context words, choices, model-written text,"
+        " artifact paths); by kind: %s |" % (
+            s["placeholder_accounting"]["seen"], s["placeholder_accounting"]["graded"],
+            s["placeholder_accounting"]["ungraded"],
             ", ".join("%s %d" % kv for kv in sorted(s["placeholder_accounting"]["by_binding"].items()))),
+        "| Exit codes ruled unreachable by a cited reading | %d (rulings re-checked against their lines"
+        " on every run) |" % s["exits"]["ruled_out"],
+        "| Backtick spans in steps | %d, counted independently in the raw lines and matched |"
+        % s["span_accounting"]["seen"],
         "| Calls and flag variants put to the pinned guard | %d calls, in 5 synthetic workspaces |"
         % s["guard"]["calls_checked"],
         "| File actions put to the pinned guard | %d |" % s["guard"]["file_actions_checked"],
         "| File-verb sentences seen but not classified | %d (listed in `facts/`) |"
         % s["file_mentions_unclassified"],
         "",
-        "\"Static\" means reachable in the helper's code as written; a judgment note marks the few"
-        " codes a reader found unreachable from a given caller (for example `prepare`'s exit 2 in the"
-        " seven nf-core wrappers).",
+        "\"Static\" means reachable in the helper's code as written, with branches the command's own"
+        " flags decide pruned; codes a reader proved unreachable from a given caller are ruled out"
+        " with the lines that prove it (`facts/_summary.json`, `rulings`). Uncaught exceptions are"
+        " not modelled (`limits`).",
         "",
         "## Rung totals (judgment)",
         "",

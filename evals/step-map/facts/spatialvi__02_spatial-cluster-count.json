@@ -15,6 +15,7 @@
    ],
    "line": 130,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "3",
    "tool": "spatial_cluster_count.check",
    "unhandled": [
@@ -41,6 +42,7 @@
    ],
    "line": 133,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "4",
    "tool": "spatial_cluster_count.prepare",
    "unhandled": [
@@ -67,6 +69,7 @@
    "handled": [],
    "line": 135,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "5",
    "tool": "executor.submit",
    "unhandled": [
@@ -95,6 +98,7 @@
    "handled": [],
    "line": 136,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "6",
    "tool": "executor.status",
    "unhandled": [
@@ -121,6 +125,7 @@
    "handled": [],
    "line": 137,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "7",
    "tool": "executor.status",
    "unhandled": [
@@ -139,10 +144,12 @@
   {
    "branch_calls": [
     {
+     "kind": "inline",
      "line": 141,
      "tool": "executor.status"
     },
     {
+     "kind": "inline",
      "line": 146,
      "tool": "executor.status"
     }
@@ -161,6 +168,7 @@
    ],
    "line": 139,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "8",
    "tool": "spatial_cluster_count.collect",
    "unhandled": [
@@ -175,12 +183,19 @@
   }
  ],
  "fenced_non_commands": [],
- "file_mentions_unclassified": [],
+ "file_mentions_unclassified": [
+  {
+   "line": 130,
+   "sentence": "Run the wrapper's `check` with the resolved `--h5ad`.",
+   "step": "3"
+  }
+ ],
  "findings": [],
  "id": "spatialvi__02_spatial-cluster-count",
  "path": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md",
  "prose_flags": [
   {
+   "descriptive": false,
    "flag": "--h5ad",
    "in_command": true,
    "line": 130,
@@ -193,6 +208,7 @@
    "variant": null
   },
   {
+   "descriptive": false,
    "flag": "--model",
    "in_command": true,
    "line": 139,
@@ -205,6 +221,7 @@
    "variant": null
   },
   {
+   "descriptive": false,
    "flag": "--h5ad-from",
    "in_command": true,
    "line": 140,
@@ -269,6 +286,14 @@
    "file_actions": [],
    "n": "1",
    "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:127-127",
+   "spans": {
+    "by_class": {},
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
    "start": 127,
    "templates": [
     "T1"
@@ -316,6 +341,16 @@
    ],
    "n": "2",
    "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:128-129",
+   "spans": {
+    "by_class": {
+     "value": 3
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 3,
+    "seen": 3
+   },
    "start": 128,
    "templates": [],
    "text": "2. Read the STATUS file. If it is `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — stage 02's router already handles those states and should not have routed here.",
@@ -397,6 +432,7 @@
    "end": 132,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1
      ],
@@ -406,6 +442,17 @@
    "file_actions": [],
    "n": "3",
    "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:130-132",
+   "spans": {
+    "by_class": {
+     "flag": 1,
+     "value": 2
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 3,
+    "seen": 3
+   },
    "start": 130,
    "templates": [
     "T5"
@@ -489,12 +536,14 @@
    "end": 134,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1
      ],
      "line": 133
     },
     {
+     "actor": "agent",
      "codes": [
       0
      ],
@@ -504,6 +553,17 @@
    "file_actions": [],
    "n": "4",
    "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:133-134",
+   "spans": {
+    "by_class": {
+     "path": 1,
+     "subcommand": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
    "start": 133,
    "templates": [
     "T5"
@@ -589,6 +649,17 @@
    "file_actions": [],
    "n": "5",
    "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:135-135",
+   "spans": {
+    "by_class": {
+     "command": 1,
+     "value": 1
+    },
+    "command_spans": 1,
+    "consistent": true,
+    "inline_calls": 1,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
    "start": 135,
    "templates": [],
    "text": "5. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh`. Capture its `job_id`.",
@@ -672,6 +743,17 @@
    "file_actions": [],
    "n": "6",
    "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:136-136",
+   "spans": {
+    "by_class": {
+     "command": 1,
+     "value": 1
+    },
+    "command_spans": 1,
+    "consistent": true,
+    "inline_calls": 1,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
    "start": 136,
    "templates": [
     "T2"
@@ -757,6 +839,17 @@
    "file_actions": [],
    "n": "7",
    "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:137-138",
+   "spans": {
+    "by_class": {
+     "command": 1,
+     "value": 3
+    },
+    "command_spans": 1,
+    "consistent": true,
+    "inline_calls": 1,
+    "raw_backtick_pairs": 4,
+    "seen": 4
+   },
    "start": 137,
    "templates": [
     "T3"
@@ -972,12 +1065,14 @@
    "end": 146,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       2
      ],
      "line": 140
     },
     {
+     "actor": "agent",
      "codes": [
       1
      ],
@@ -1016,6 +1111,19 @@
    ],
    "n": "8",
    "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:139-146",
+   "spans": {
+    "by_class": {
+     "command": 2,
+     "flag": 2,
+     "subcommand": 1,
+     "value": 3
+    },
+    "command_spans": 2,
+    "consistent": true,
+    "inline_calls": 2,
+    "raw_backtick_pairs": 8,
+    "seen": 8
+   },
    "start": 139,
    "templates": [
     "T4"
@@ -1075,6 +1183,7 @@
    "end": 148,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       0
      ],
@@ -1113,6 +1222,17 @@
    ],
    "n": "9",
    "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:147-148",
+   "spans": {
+    "by_class": {
+     "path": 1,
+     "value": 2
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 3,
+    "seen": 3
+   },
    "start": 147,
    "templates": [
     "T6"
@@ -1132,6 +1252,7 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
+   "graded": 1,
    "id": "T1",
    "line": 159,
    "placeholders": [
@@ -1148,7 +1269,7 @@
     },
     {
      "binding": "no_source",
-     "label": "sample",
+     "label": "sample(s)",
      "line": 163,
      "text": "<n>"
     }
@@ -1169,6 +1290,7 @@
      "line": 175
     }
    ],
+   "graded": 2,
    "id": "T2",
    "line": 168,
    "placeholders": [
@@ -1201,6 +1323,7 @@
      "line": 183
     }
    ],
+   "graded": 3,
    "id": "T3",
    "line": 179,
    "placeholders": [
@@ -1239,6 +1362,7 @@
     "spatial_cluster_count.collect"
    ],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T4",
    "line": 186,
    "placeholders": [
@@ -1270,6 +1394,7 @@
     "spatial_cluster_count.prepare"
    ],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T5",
    "line": 196,
    "placeholders": [
@@ -1290,11 +1415,12 @@
     "spatial_cluster_count.collect"
    ],
    "commands_for_user": [],
+   "graded": 3,
    "id": "T6",
    "line": 206,
    "placeholders": [
     {
-     "binding": "key",
+     "binding": "unbound",
      "label": "sample",
      "line": 212,
      "text": "<sample>"
@@ -1326,7 +1452,14 @@
    ],
    "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:206",
    "title": "Complete",
-   "unbound": []
+   "unbound": [
+    {
+     "binding": "unbound",
+     "label": "sample",
+     "line": 212,
+     "text": "<sample>"
+    }
+   ]
   }
  },
  "wrapper_invocation": "python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py"

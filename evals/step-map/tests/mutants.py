@@ -2,8 +2,9 @@
 """Mutant runner for the step-map extractor: every extraction rule must be able to fail.
 
 Each mutant breaks one rule in a COPY of extract.py (the original is never edited), then the
-test suite runs against that copy through STEPMAP_EXTRACT. A mutant the suite does not turn red
-"survived": the rule it breaks is not actually checked. Each mutant's text must occur exactly
+test suite runs against that copy through STEPMAP_EXTRACT. A mutant counts as killed only when a
+test OTHER than the published-facts snapshot fails: the snapshot fails on any change of output,
+so a kill by it alone proves nothing about the rule. A mutant not killed that way "survived". Each mutant's text must occur exactly
 once in the extractor, or the runner stops (a mutant that matches nothing proves nothing).
 
     python3 evals/step-map/tests/mutants.py            # all mutants, one at a time
@@ -80,14 +81,14 @@ MUTANTS = [
      '        if kind == "exit":\n            if current is not None:',
      '        if kind == "exit":\n            if current is not None and current["_k"] == k:'),
     ("branch-calls-open", "a call inside an exit branch opens a new region",
-     'if first_in_step or not exit_since_open or current is None or current["_k"] != k:',
-     'if True:'),
+     '        if current is not None and k in nonzero_in_step:',
+     '        if False:'),
     ("all-bound", "a named key the helper never writes still binds",
      '        return {"text": text, "binding": "unbound", "label": inner}',
      '        return {"text": text, "binding": "key", "label": inner}'),
-    ("no-dict-keys", "dict-literal keys are not in the vocabulary",
-     '            if isinstance(node, ast.Dict):\n                vocab |=',
-     '            if False:\n                vocab |='),
+    ("no-dict-keys", "dict-literal keys are not in a subcommand's vocabulary",
+     '            if isinstance(node, ast.Dict):\n                vocab |= {k.value for k in node.keys\n                          if isinstance(k, ast.Constant) and isinstance(k.value, str)}\n            elif isinstance(node, (ast.Assign, ast.AugAssign)):\n                targets = node.targets if isinstance(node, ast.Assign) else [node.target]\n                for tgt in targets:',
+     '            if False:\n                pass\n            elif isinstance(node, (ast.Assign, ast.AugAssign)):\n                targets = node.targets if isinstance(node, ast.Assign) else [node.target]\n                for tgt in targets:'),
     ("no-after-label", "the word after <n> does not label it",
      '    after = re.match(r"\\s+([A-Za-z][A-Za-z0-9]*(?:\\(s\\))?)", line[end:])',
      '    after = None'),
@@ -112,6 +113,47 @@ MUTANTS = [
     ("flag-target-last", "a flag modifies the last call in its step",
      '            target = before[-1] if before else (after[0] if after else None)',
      '            target = here[-1] if here else None'),
+    ("no-boolop", "an and/or test is never decided by the flags",
+     '        if isinstance(test, ast.BoolOp):\n            values',
+     '        if False:\n            values'),
+    ("user-exit-counts", "an exit the user reports counts as a branch on the agent's call",
+     '            if actor == "agent":\n                events.append',
+     '            if True:\n                events.append'),
+    ("no-rulings", "reachability rulings are never applied",
+     '            hit = [r["id"] for r in rulings if tool in r["tools"] and s["at"] == r["site"]]',
+     '            hit = []'),
+    ("rulings-unchecked", "a ruling holds whatever its evidence lines say",
+     '            if len(lines) < line or needle not in lines[line - 1]:',
+     '            if False:'),
+    ("no-rerun", "'re-run `inspect` with ...' is not a call",
+     'RERUN_RE = re.compile(r"\\bre-run `(\\w+)`(?: with `(--[^`]+)`)?")',
+     'RERUN_RE = re.compile(r"(?!x)x")'),
+    ("spans-always-consistent", "the independent backtick count is never compared",
+     '            "consistent": raw % 2 == 0 and raw // 2 == seen and',
+     '            "consistent": True or'),
+    ("module-wide-vocab", "a template binds against every key in the module, not the called subcommand's",
+     '        vocab = scoped_vocabulary(index, registry, backing) if backing else None',
+     '        vocab = key_vocabulary(src, sorted({module_for(b, registry) for b in backing if module_for(b, registry)})) if backing else None'),
+    ("loose-labels", "any one word of a label binds it",
+     '        allowed = 1 if len(content) >= 3 else 0\n            for key in keys:',
+     '        allowed = len(content) - 1\n            for key in keys:'),
+    ("sanitized-generic", "the sanitized title is a context word, never graded",
+     'GENERIC = {"n", "path", "title", "project_title", "raw",',
+     'GENERIC = {"n", "path", "title", "project_title", "raw", "sanitized",'),
+    ("no-class-forms", "finalize is graded for the public class only",
+     '    if "<class>" in call["command"]:', '    if False:'),
+    ("refused-calls-only", "refused flag variants are left out of the summary",
+     '            elif not g["allowed_where_intended"]:\n                guard_refused.append(row)',
+     '            elif False:\n                guard_refused.append(row)'),
+    ("no-module-constants", "keys of the module constants a subcommand reads are ignored",
+     '            for top in m.tree.body:\n                if isinstance(top, ast.Assign) and isinstance(top.value, ast.Dict) and \\',
+     '            for top in []:\n                if isinstance(top, ast.Assign) and isinstance(top.value, ast.Dict) and \\'),
+    ("no-precondition-read", "the router's precondition check is not a file action",
+     '    (r"\\bCheck preconditions: `01_samplesheets/<Assay ID>_samplesheet\\.csv` and `_design\\.csv` exist",',
+     '    (r"(?!x)x",'),
+    ("history-rules-off", "HISTORY.md appends are not file actions",
+     '    actions.sort(key=lambda a: a["line"])',
+     '    actions = [a for a in actions if not a["path"].endswith("HISTORY.md")]\n    actions.sort(key=lambda a: a["line"])'),
 ]
 
 
@@ -136,7 +178,13 @@ def run(selected):
                                   stderr=subprocess.STDOUT, universal_newlines=True, timeout=900)
             red = [ln.split(" ")[0] for ln in proc.stdout.splitlines()
                    if ln.endswith("... FAIL") or ln.endswith("... ERROR")]
-            killed = proc.returncode != 0
+            snapshot = [ln for ln in proc.stdout.splitlines()
+                        if ("committed_facts" in ln or "re-derived and diffed" in ln)
+                        and (ln.endswith("... FAIL") or ln.endswith("... ERROR"))]
+            red = [r for r in red if not r.startswith("The")]
+            bound = len([ln for ln in proc.stdout.splitlines()
+                         if ln.endswith("... FAIL") or ln.endswith("... ERROR")]) - len(snapshot)
+            killed = proc.returncode != 0 and bound > 0
             results.append((name, killed, red))
             print("%-24s %-7s %5.1fs  %s  [%s]" % (name, "killed" if killed else "SURVIVED",
                                                    time.time() - start, rule,

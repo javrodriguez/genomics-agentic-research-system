@@ -17,6 +17,7 @@
    ],
    "line": 264,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "3",
    "tool": "stage01_samplesheet",
    "unhandled": [],
@@ -38,6 +39,7 @@
    ],
    "line": 286,
    "prose_handling": [],
+   "ruled_out": {},
    "step": "9",
    "tool": "stage01_samplesheet",
    "unhandled": [
@@ -56,14 +58,19 @@
  "fenced_non_commands": [],
  "file_mentions_unclassified": [
   {
-   "line": 254,
-   "sentence": "py apply` to supply these: its stage-02 menus do not write them.",
+   "line": 253,
+   "sentence": "Never invent values or use `configure.py apply` to supply these: its stage-02 menus do not write them.",
    "step": "2"
   },
   {
    "line": 271,
    "sentence": "Write no outputs.",
    "step": "5"
+  },
+  {
+   "line": 277,
+   "sentence": "Reply T8 offering the optional deep integrity check, quoting `included_gb` and `full_check_estimate_min` from step 3, and wait.",
+   "step": "8"
   },
   {
    "line": 295,
@@ -81,6 +88,7 @@
  "path": "gars/01_prepare_samplesheets/CONTEXT.md",
  "prose_flags": [
   {
+   "descriptive": false,
    "flag": "--confirm-exclusions",
    "in_command": true,
    "line": 282,
@@ -93,6 +101,7 @@
    "variant": null
   },
   {
+   "descriptive": false,
    "flag": "--force",
    "in_command": true,
    "line": 282,
@@ -105,6 +114,7 @@
    "variant": null
   },
   {
+   "descriptive": false,
    "flag": "--verify-integrity",
    "guard": {
     "allowed_where_intended": true,
@@ -199,6 +209,7 @@
    "variant": "python3 _system/stage01_samplesheet.py --project projects/<title> --model \"<model id>\" [--confirm-exclusions] [--force] --verify-integrity full"
   },
   {
+   "descriptive": false,
    "flag": "--model",
    "in_command": true,
    "line": 289,
@@ -263,6 +274,14 @@
    "file_actions": [],
    "n": "1",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:248-248",
+   "spans": {
+    "by_class": {},
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
    "start": 248,
    "templates": [
     "T1"
@@ -366,6 +385,17 @@
    ],
    "n": "2",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
+   "spans": {
+    "by_class": {
+     "path": 2,
+     "value": 2
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 4,
+    "seen": 4
+   },
    "start": 249,
    "templates": [
     "T9"
@@ -453,6 +483,14 @@
    "file_actions": [],
    "n": "3",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:261-268",
+   "spans": {
+    "by_class": {},
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
    "start": 261,
    "templates": [],
    "text": "3. Run the validator, from the workspace root: It needs no conda environment; when library_index is present it streams up to 1,000 records per FASTQ. Parse its JSON; branch on its **exit code** per Definitions.",
@@ -467,6 +505,7 @@
    "end": 269,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       3
      ],
@@ -476,6 +515,16 @@
    "file_actions": [],
    "n": "4",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:269-269",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
    "start": 269,
    "templates": [
     "T6"
@@ -492,6 +541,7 @@
    "end": 272,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1
      ],
@@ -501,6 +551,16 @@
    "file_actions": [],
    "n": "5",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:270-272",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
    "start": 270,
    "templates": [
     "T3",
@@ -521,6 +581,7 @@
    "end": 275,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       0
      ],
@@ -530,6 +591,16 @@
    "file_actions": [],
    "n": "6",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:273-275",
+   "spans": {
+    "by_class": {
+     "value": 3
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 3,
+    "seen": 3
+   },
    "start": 273,
    "templates": [
     "T7"
@@ -550,6 +621,7 @@
    "end": 276,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       0
      ],
@@ -559,6 +631,16 @@
    "file_actions": [],
    "n": "7",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:276-276",
+   "spans": {
+    "by_class": {
+     "value": 2
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
    "start": 276,
    "templates": [
     "T5"
@@ -624,6 +706,17 @@
    "file_actions": [],
    "n": "8",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:277-280",
+   "spans": {
+    "by_class": {
+     "command": 1,
+     "value": 3
+    },
+    "command_spans": 1,
+    "consistent": true,
+    "inline_calls": 1,
+    "raw_backtick_pairs": 4,
+    "seen": 4
+   },
    "start": 277,
    "templates": [
     "T8"
@@ -739,6 +832,17 @@
    "file_actions": [],
    "n": "9",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:281-291",
+   "spans": {
+    "by_class": {
+     "flag": 4,
+     "value": 2
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 6,
+    "seen": 6
+   },
    "start": 281,
    "templates": [],
    "text": "9. Once every applicable gate is confirmed, run the writer with exactly the flags the user cleared — `--confirm-exclusions` only if step 6 happened, `--force` only if step 7 did, and `--verify-integrity full` only if step 8 was accepted: `--model` is the exact model id you are running as; it lands in the `history_entry` beside the template version. Omit it only if you cannot name your model — the script then records `unknown`.",
@@ -753,6 +857,7 @@
    "end": 294,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       2
      ],
@@ -762,6 +867,16 @@
    "file_actions": [],
    "n": "10",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:293-294",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
    "start": 293,
    "templates": [
     "T5",
@@ -784,6 +899,7 @@
    "end": 296,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       1
      ],
@@ -793,6 +909,16 @@
    "file_actions": [],
    "n": "11",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:295-296",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
    "start": 295,
    "templates": [
     "T3"
@@ -811,6 +937,7 @@
    "end": 297,
    "exit_mentions": [
     {
+     "actor": "agent",
      "codes": [
       0
      ],
@@ -820,6 +947,16 @@
    "file_actions": [],
    "n": "12",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:297-297",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
    "start": 297,
    "templates": [
     "T2"
@@ -910,6 +1047,17 @@
    ],
    "n": "13",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:298-300",
+   "spans": {
+    "by_class": {
+     "path": 1,
+     "value": 2
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 3,
+    "seen": 3
+   },
    "start": 298,
    "templates": [],
    "text": "13. Append the script's `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>` with today's date. Do not restate its numbers in your own words — they are the script's counts, not your recollection.",
@@ -926,6 +1074,17 @@
    "file_actions": [],
    "n": "14",
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:301-304",
+   "spans": {
+    "by_class": {
+     "path": 1,
+     "value": 3
+    },
+    "command_spans": 0,
+    "consistent": true,
+    "inline_calls": 0,
+    "raw_backtick_pairs": 4,
+    "seen": 4
+   },
    "start": 301,
    "templates": [
     "T4"
@@ -947,6 +1106,7 @@
    "ask": null,
    "backing_tools": [],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T1",
    "line": 323,
    "placeholders": [
@@ -967,6 +1127,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "graded": 6,
    "id": "T2",
    "line": 330,
    "placeholders": [
@@ -1033,6 +1194,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "graded": 2,
    "id": "T3",
    "line": 341,
    "placeholders": [
@@ -1065,6 +1227,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "graded": 3,
    "id": "T4",
    "line": 352,
    "placeholders": [
@@ -1107,7 +1270,7 @@
     },
     {
      "binding": "unbound",
-     "label": "decision",
+     "label": "decisions",
      "line": 360,
      "text": "<n>"
     },
@@ -1127,7 +1290,7 @@
    "unbound": [
     {
      "binding": "unbound",
-     "label": "decision",
+     "label": "decisions",
      "line": 360,
      "text": "<n>"
     }
@@ -1142,6 +1305,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "graded": 1,
    "id": "T5",
    "line": 378,
    "placeholders": [
@@ -1168,6 +1332,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "graded": 1,
    "id": "T6",
    "line": 386,
    "placeholders": [
@@ -1191,11 +1356,13 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "graded": 4,
    "id": "T7",
    "line": 411,
    "placeholders": [
     {
      "binding": "label",
+     "key": "sample_dir",
      "label": "sample(s)",
      "line": 413,
      "text": "<n>"
@@ -1238,6 +1405,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "graded": 3,
    "id": "T8",
    "line": 395,
    "placeholders": [
@@ -1276,6 +1444,7 @@
     "stage01_samplesheet"
    ],
    "commands_for_user": [],
+   "graded": 0,
    "id": "T9",
    "line": 313,
    "placeholders": [

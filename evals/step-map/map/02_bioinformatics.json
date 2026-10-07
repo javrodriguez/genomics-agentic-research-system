@@ -114,7 +114,20 @@
    "extracted": {
     "calls": [],
     "exit_branches": [],
-    "file_actions": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": false,
+       "fresh": false,
+       "fresh_declared": false,
+       "mixed": true,
+       "public": true
+      },
+      "path": "projects/{project}/01_samplesheets/{assay}_samplesheet.csv",
+      "source": "gars/02_bioinformatics/CONTEXT.md:124",
+      "tool": "Read"
+     }
+    ],
     "prose_flags": [],
     "source": "gars/02_bioinformatics/CONTEXT.md:124-125",
     "templates": [

@@ -98,7 +98,7 @@
    "question": 2,
    "rung_why": "Generation is code and the guard keeps the agent out of what it writes.",
    "unsaid": [],
-   "note": "The extractor reports a static exit 2 from wrapperlib.py:925; it is unreachable from these wrappers, which pass the samplesheet and config, so key_formula is stage01-v1 (wrapperlib.py:917-918). Exit 3 (no such project) has no branch."
+   "note": "The helper's static exit 2 (wrapperlib.py:925) is ruled unreachable from these wrappers by the extractor's cited ruling: prepare writes params.yaml first and passes the samplesheet and config, so key_formula is stage01-v1 (wrapperlib.py:917-919). Exit 3 (no such project) has no branch."
   },
   "5": {
    "actor": [

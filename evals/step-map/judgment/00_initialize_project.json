@@ -259,10 +259,12 @@
      "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",
      "fix_rung": "R1",
      "defects": [
-      "D4"
+      "D4",
+      "D22"
      ]
     }
-   ]
+   ],
+   "note": "The re-run is a branch action of step 9's inspect. A malformed pattern crashes inspect with a traceback, exit 1 and no JSON, which no step handles (D22)."
   },
   "11": {
    "actor": [

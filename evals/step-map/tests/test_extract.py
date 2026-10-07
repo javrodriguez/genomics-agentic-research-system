@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Red-first tests for the GARS step-map extractor (evals/step-map/extract.py).
 
-Every expected value is grounded in a file and line at the pinned commit, and each test
-re-reads that line (`cited`) so the expectation cannot drift away from its source.
+Every expectation about the sources is grounded in a file and line at the pinned commit, and
+the test re-reads that line (`cited`) so the expectation cannot drift away from its source.
+Tests of the extractor's own mechanics run on synthetic modules (FakeSource), not on GARS.
 The pilot's stage 00-01 facts (glitch-mem research note, 7 Oct 2026) are the first oracle.
 
 Run alone, from the repository root:  python3 evals/step-map/tests/test_extract.py
@@ -138,6 +139,13 @@ class ContractDiscoveryTests(Base):
 
     def test_142_numbered_steps(self):
         # The method note: "142 numbered process steps in 14 contracts".
+        for path, line, needle in ((S00, 280, "17. Exit 0 → reply T6"),
+                                   (S01, 301, "14. Reply T4 using `wrote`"),
+                                   (S02, 179, "10. Read `02_bioinformatics/<Assay ID>/<NN_name>/CONTEXT.md`"),
+                                   (S03, 157, "10. Exit 0 → append the returned `history_entry`"),
+                                   (RNADE, 127, "9. Exit 0 → `collect` has written `OUTPUTS.tsv`"),
+                                   (SCC, 147, "9. Exit 0 → append its `history_entry`")):
+            cited(self, path, line, needle)
         counts = {c["path"]: len(c["steps"]) for c in self.result["contracts"]}
         self.assertEqual(counts[S00], 17)   # 00:195-280, steps 1..17
         self.assertEqual(counts[S01], 14)   # 01:248-304, steps 1..14
@@ -296,17 +304,28 @@ class UnhandledExitTests(Base):
         return sorted(out)
 
     def test_pilot_create_exit_3(self):
+        cited(self, REG00, 366, "return emit(result, EXIT_USAGE)")
+        cited(self, S00, 228, "7. Exit 2 with `template: T7`")
         self.assertEqual(self.unhandled(S00, "stage00_register.create"), [3])
 
     def test_pilot_link_exit_2_and_also_3(self):
         # Pilot: "link exit 2". The extractor also finds exit 3 (stage00_register.py:500).
+        cited(self, REG00, 500, "return emit(result, EXIT_USAGE)")
+        cited(self, REG00, 510, "return emit(result, EXIT_REFUSED)")
+        cited(self, S00, 252, "Never add `--force`. Exit 1 → report its `error` and stop")
         self.assertEqual(self.unhandled(S00, "stage00_register.link"), [2, 3])
 
     def test_pilot_finalize_exit_2(self):
+        cited(self, REG00, 621, "return emit(result, EXIT_REFUSED)")
+        cited(self, S00, 277, "16. Exit 1 or 3 → reply T9")
         self.assertEqual(self.unhandled(S00, "stage00_register.finalize"), [2])
 
     def test_inspect_fully_handled(self):
-        self.assertEqual(self.unhandled(S00, "stage00_register.inspect"), [])
+        cited(self, S00, 240, "10. Exit 2 → reply T5")
+        sites = [s for s in self.contract(S00)["call_sites"] if s["tool"] == "stage00_register.inspect"]
+        self.assertEqual([s["step"] for s in sites], ["9"])   # the re-run is a branch action
+        self.assertEqual(sites[0]["unhandled"], [])
+        self.assertEqual([b["kind"] for b in sites[0]["branch_calls"]], ["prose-rerun"])
 
     def test_branch_before_a_call_belongs_to_the_previous_call(self):
         # 00:219 "6. Exit 0 → take its assay_ids" answers step 4's `assays --select`.
@@ -314,6 +333,23 @@ class UnhandledExitTests(Base):
         self.assertEqual(len(sites), 1)
         self.assertIn(0, sites[0]["handled"])
         self.assertIn(2, sites[0]["handled"])
+
+    def test_user_reported_exit_is_not_a_branch_on_the_agents_call(self):
+        # 03:131-132: the user runs approve in their own terminal; "(exit 2)" is theirs.
+        cited(self, S03, 132, "report that it refused (exit 2)")
+        create = [s for s in self.contract(S03)["call_sites"] if s["tool"] == "stage03_analysis.create"]
+        self.assertEqual(len(create), 1)
+        self.assertEqual(create[0]["handled"], [])
+        actors = [m["actor"] for m in self.step(S03, "6")["exit_mentions"]]
+        self.assertEqual(actors, ["user"])
+
+    def test_and_condition_decided_by_the_flags(self):
+        # stage03_analysis.py:488-490 refuses only when --workspace is given; the contract's
+        # create has none, so create cannot exit 2 from there.
+        cited(self, "gars/_system/stage03_analysis.py", 488,
+              "if args.workspace is not None and args.workspace.resolve() != Path(workspace).resolve():")
+        create = [s for s in self.contract(S03)["call_sites"] if s["tool"] == "stage03_analysis.create"]
+        self.assertEqual(create[0]["emitted"], [0, 3])
 
     def test_submit_has_no_branch_in_wrapper_contracts(self):
         cited(self, RNA01, 98, "It prints one JSON object; `job_id` is the field. Capture it.")
@@ -342,13 +378,21 @@ class ProseFlagTests(Base):
         self.assertIs(self.flag(S01, "9", "--confirm-exclusions")["in_command"], True)
         self.assertIs(self.flag(S01, "9", "--force")["in_command"], True)
 
-    def test_sample_id_pattern_variant_refused_where_intended(self):
+    def test_rerun_with_the_pattern_is_a_call_and_is_refused(self):
+        cited(self, S00, 241, "re-run")
         cited(self, S00, 242, "`inspect` with `--sample-id-pattern '<their answer as a regex with named groups")
-        e = self.flag(S00, "10", "--sample-id-pattern")
-        self.assertEqual((e["target_tool"], e["target_step"]), ("stage00_register.inspect", "9"))
-        g = e["guard"]
+        calls = [c for c in self.step(S00, "10")["calls"] if c["tool"]]
+        self.assertEqual([(c["tool"], c["kind"]) for c in calls],
+                         [("stage00_register.inspect", "prose-rerun")])
+        self.assertIn("--sample-id-pattern", calls[0]["command"])
+        g = calls[0]["guard"]
         self.assertEqual(g["intended"], "fresh_declared")
         self.assertIs(g["allowed_where_intended"], False)
+        self.assertIs(self.flag(S00, "10", "--sample-id-pattern")["in_command"], True)
+        refused = {(r["contract"], r["step"], r["kind"]) for r in
+                   self.result["summary"]["guard"]["refused_where_intended"]}
+        self.assertIn(("00_initialize_project", "10", "prose-rerun"), refused)
+        self.assertIn(("00_initialize_project", "15", "flag-variant"), refused)
 
     def test_flag_attaches_to_the_call_before_it_not_a_branch_call(self):
         # 02.02:122-123: `--counts-from` modifies collect; status calls sit inside exit branches.
@@ -362,6 +406,13 @@ class ProseFlagTests(Base):
         e = self.flag(S00, "12", "--force")
         self.assertIs(e["prohibited"], True)
         self.assertIs(e["guard"]["allowed_where_intended"], False)
+        listed = [(r["step"], r["flag"]) for r in self.result["summary"]["guard"]["prohibited_flags"]]
+        self.assertEqual(listed, [("12", "--force")])
+
+    def test_descriptive_mention_of_a_default(self):
+        cited(self, S00, 275, "It runs `--integrity quick` by default")
+        e = [f for f in self.contract(S00)["prose_flags"] if f["step"] == "15" and f["line"] == 275]
+        self.assertIs(e[0]["descriptive"], True)
 
 
 class ReachabilityTests(Base):
@@ -369,6 +420,32 @@ class ReachabilityTests(Base):
         hits = [s for s in self.contract(path)["call_sites"] if s["step"] == step and s["tool"] == tool]
         self.assertEqual(len(hits), 1)
         return hits[0]
+
+    def test_nfcore_prepare_exit_2_is_ruled_out_with_evidence(self):
+        cited(self, WLIB, 917, "manifest['key_formula'] = ('stage01-v1' if (substage / 'params.yaml').is_file()")
+        cited(self, "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py", 152,
+              "wl.write_params_yaml(substage, ASSAY, params)")
+        cited(self, "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py", 170,
+              '{"samplesheet": paths["samplesheet"], "config": paths["config"]}')
+        site = self.site(RNA01, "4", "nfcore_rnaseq_wrapper.prepare")
+        self.assertEqual(site["emitted"], [0, 1, 3])
+        self.assertEqual(site["ruled_out"], {"2": [{"at": "%s:925" % WLIB, "ruling": "prepare-stage01-v1"}]})
+        # downstream-v2 callers keep the real exit 2
+        self.assertIn(2, self.site(RNADE, "5", "rnaseq_de.prepare")["emitted"])
+        self.assertEqual(self.result["summary"]["rulings"]["void"], [])
+
+    def test_a_ruling_is_void_when_its_evidence_changes(self):
+        class Edited(X.Source):
+            def text(self, path):
+                body = super().text(path)
+                if path == WLIB:
+                    lines = body.split("\n")
+                    lines[917] = lines[917].replace("'samplesheet' in inputs and ", "")
+                    body = "\n".join(lines)
+                return body
+        holding, void = X.check_rulings(Edited(str(REPO), PIN))
+        self.assertEqual(holding, [])
+        self.assertEqual(void[0]["lines"], ["%s:918" % WLIB])
 
     def test_check_mode_cannot_emit_the_writers_gate(self):
         # stage01_samplesheet.py:1069-1073 returns before the blocked branch (1085) in --check.
@@ -454,6 +531,40 @@ class TemplateTests(Base):
         bound = [p["text"] for p in t8["placeholders"] if p["binding"] == "key"]
         self.assertIn("<included_gb>", bound)
         self.assertIn("<full_check_estimate_min>", bound)
+
+    def test_vocabulary_is_the_called_subcommands_not_the_modules(self):
+        # 03:186 "Outputs: <n> declared": the only matching key, outputs_declared, is written by
+        # approve (stage03_analysis.py:372), the user's command, not by create.
+        cited(self, "gars/_system/stage03_analysis.py", 372, "outputs_declared")
+        cited(self, S03, 186, "Outputs: <n> declared")
+        t2 = self.contract(S03)["templates"]["T2"]
+        bindings = {p["line"]: p["binding"] for p in t2["placeholders"] if p["text"] == "<n>"}
+        self.assertEqual(bindings, {185: "unbound", 186: "unbound"})
+
+    def test_labels_with_digits_and_table_rows_are_graded(self):
+        cited(self, RNADE, 200, "Genes tested: <n> | Significant at padj < 0.05: <n>")
+        t6 = [p for p in self.contract(RNADE)["templates"]["T6"]["placeholders"] if p["text"] == "<n>"]
+        self.assertEqual([(p["binding"], p.get("key")) for p in t6],
+                         [("label", "genes_tested"), ("unbound", None)])
+        scqc = "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md"
+        cited(self, scqc, 164, "| Cells in | <n> |")
+        cited(self, scqc, 165, "| Cells after QC | <n> |")
+        rows = {p["line"]: (p["binding"], p.get("key")) for p in
+                self.contract(scqc)["templates"]["T6"]["placeholders"] if p["text"] == "<n>"}
+        self.assertEqual(rows[164], ("unbound", None))   # n_cells_in is in summary.json only
+        self.assertEqual(rows[165], ("label", "cells_after_qc"))
+        cited(self, scqc, 116, "Thresholds: min_genes <n> | min_cells <n> | max_mito <n>% | HVG <n>")
+        t1 = [p["binding"] for p in self.contract(scqc)["templates"]["T1"]["placeholders"]
+              if p["line"] == 116]
+        self.assertEqual(t1, ["no_source"] * 4)
+
+    def test_sanitized_title_unbound_before_create(self):
+        cited(self, S00, 305, "Project title: <raw> -> directory <sanitized>")
+        t = self.contract(S00)["templates"]
+        self.assertEqual([p["binding"] for p in t["T3"]["placeholders"] if p["text"] == "<sanitized>"],
+                         ["unbound"])
+        self.assertEqual([p.get("key") for p in t["T7"]["placeholders"] if p["text"] == "<sanitized>"],
+                         ["sanitized_title"])
 
     def test_key_check_is_not_vacuous(self):
         vocab = X.key_vocabulary(self.src, ["_system/stage01_samplesheet.py"])
@@ -551,11 +662,113 @@ class GuardTests(Base):
         self.assertGreaterEqual(checked, 60)   # non-vacuity: an empty walk is not coverage
 
 
+class FileActionTests(Base):
+    def actions(self, path, n):
+        return [(a["tool"], a["path"]) for a in self.step(path, n)["file_actions"]]
+
+    def test_history_appends(self):
+        cited(self, S01, 298, "13. Append the script's `history_entry` to the project's `HISTORY.md` **verbatim**")
+        self.assertEqual(self.actions(S01, "13"), [("Edit", "projects/{project}/HISTORY.md")])
+        cited(self, RNA01, 111, "9. Exit 0 → `collect` has written `OUTPUTS.tsv` and `STATUS COMPLETE`. Append its")
+        self.assertEqual(self.actions(RNA01, "9"), [("Edit", "projects/{project}/HISTORY.md")])
+
+    def test_reads_and_writes(self):
+        cited(self, S02, 155, "5. Read each sub-stage's STATUS file")
+        self.assertEqual(self.actions(S02, "5"), [("Read", "{substage_dir}/STATUS")])
+        cited(self, S02, 124, "3. Check preconditions: `01_samplesheets/<Assay ID>_samplesheet.csv` and `_design.csv` exist")
+        self.assertEqual(self.actions(S02, "3"),
+                         [("Read", "projects/{project}/01_samplesheets/{assay}_samplesheet.csv")])
+        cited(self, S03, 135, "7. Execute the approved plan literally: write its scripts under `scripts/`")
+        self.assertIn(("Write", "projects/{project}/03_custom_analysis/01_qc-look/scripts/run.sh"),
+                      self.actions(S03, "7"))
+        cited(self, S01, 249, "2. Resolve the project directory from the title. Read each assay config")
+        self.assertEqual(self.actions(S01, "2")[:2],
+                         [("Read", "projects/{project}/_config/{assay}.yaml"),
+                          ("Edit", "projects/{project}/_config/{assay}.yaml")])
+
+    def test_history_append_refused_on_a_closed_project(self):
+        a = self.step(S01, "13")["file_actions"][0]
+        self.assertIs(a["guard"]["public"]["allow"], True)
+        self.assertIs(a["guard"]["closed"]["allow"], False)
+
+    def test_finalize_graded_for_every_class(self):
+        cited(self, S00, 58, "Finalize requires `--data-class` (`public`, `deidentified_under_agreement`, or")
+        call = [c for c in self.step(S00, "15")["calls"] if c["tool"]][0]
+        forms = call["guard"]["forms"]
+        self.assertIs(forms["minimal"]["decisions"]["fresh_declared"]["allow"], True)
+        for value in ("deidentified_under_agreement", "identifiable"):
+            self.assertIs(forms["class=" + value]["decisions"]["fresh_declared"]["allow"], False)
+
+
+class Mechanics(unittest.TestCase):
+    """The walker's own rules, on synthetic modules (no GARS file exercises them at the pin)."""
+
+    class FakeSource:
+        def __init__(self, files):
+            self.files = files
+
+        def text(self, path):
+            return self.files[path]
+
+        def exists(self, path):
+            return path in self.files
+
+    MOD = """
+import argparse, sys
+EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE = 0, 1, 2, 3
+def emit(result, code):
+    return code
+def failure(result, code=EXIT_FAILURE):
+    return emit(result, code)
+def main(argv=None):
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--workspace", default=None)
+    ap.add_argument("--check", action="store_true")
+    args = ap.parse_args(argv)
+    if args.workspace is not None and args.workspace != ".":
+        return emit({}, EXIT_REFUSED)
+    if args.check:
+        return emit({}, EXIT_OK)
+    return failure({})
+"""
+
+    def exits(self, words):
+        src = self.FakeSource({"gars/_system/fake.py": self.MOD})
+        index = X.HelperIndex(src)
+        tool = {"name": "fake", "argv": ["python3", "_system/fake.py"]}
+        return X.helper_exits(src, index, tool, words)[0]
+
+    def test_default_exit_code_is_resolved(self):
+        codes = self.exits(["python3", "_system/fake.py"])
+        self.assertIn("1", codes)              # failure(result) with code defaulting to EXIT_FAILURE
+        self.assertNotIn("None", codes)
+
+    def test_and_or_pruned_by_flags(self):
+        self.assertNotIn("2", {c for c, s in self.exits(["python3", "_system/fake.py"]).items()
+                               if any(x["how"] != "argparse" for x in s)})
+        with_ws = self.exits(["python3", "_system/fake.py", "--workspace", "w"])
+        self.assertIn("2", {c for c, s in with_ws.items() if any(x["how"] != "argparse" for x in s)})
+
+    def test_flag_branch_stops_the_block(self):
+        codes = self.exits(["python3", "_system/fake.py", "--check"])
+        self.assertEqual(sorted(c for c, s in codes.items() if any(x["how"] != "argparse" for x in s)),
+                         ["0"])
+
+
 class AccountingTests(Base):
     def test_placeholder_accounting(self):
         acc = self.result["summary"]["placeholder_accounting"]
-        self.assertEqual(acc["seen"], sum(acc["by_binding"].values()))
+        self.assertEqual(acc["seen"], acc["graded"] + acc["ungraded"])
         self.assertGreater(acc["by_binding"].get("unbound", 0), 0)
+
+    def test_spans_counted_independently(self):
+        """Backticks counted in the raw lines equal the spans the prose parser classified, and
+        every command-shaped span became a call: a dropped line or span shows here."""
+        spans = self.result["summary"]["span_accounting"]
+        self.assertEqual(spans["inconsistent_steps"], [])
+        self.assertEqual(spans["raw_backtick_pairs"], spans["seen"])
+        self.assertGreater(spans["seen"], 400)
+        self.assertEqual(self.step(S00, "10")["spans"]["by_class"].get("subcommand"), 1)
 
     def test_summary_counts_are_derived(self):
         s = self.result["summary"]

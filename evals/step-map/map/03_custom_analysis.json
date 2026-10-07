@@ -57,8 +57,7 @@
         "gars/_system/resolve_artifact.py:149"
        ],
        "3": [
-        "gars/_system/resolve_artifact.py:138",
-        "gars/_system/resolve_artifact.py:140"
+        "gars/_system/resolve_artifact.py:138"
        ]
       }
      }
@@ -160,12 +159,9 @@
      {
       "emitted": [
        0,
-       2,
        3
       ],
-      "handled": [
-       2
-      ],
+      "handled": [],
       "prose_handling": [],
       "source": "gars/03_custom_analysis/CONTEXT.md:119",
       "tool": "stage03_analysis.create",
@@ -607,7 +603,7 @@
       ],
       "handled": [],
       "prose_handling": [
-       "If execution fails, call `python3 <workspace>/_system/executorlib."
+       "If execution fails, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T5 with the actual error, and stop."
       ],
       "source": "gars/03_custom_analysis/CONTEXT.md:148",
       "tool": "executor.status",
