@@ -1,0 +1,284 @@
+{
+ "kind": "judgment",
+ "shape": "the seven nf-core wrapper sub-stages (atacseq, chipseq, cutandrun, methylseq, rnaseq, scrnaseq, spatialvi): reply, STATUS gate, check, prepare, submit, hand-off, later status, collect, history",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "by": "step-map lane lead (claude-opus-5-5)",
+ "date": "2026-10-07",
+ "steps": {
+  "1": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "the assay config and samplesheet, read by the model"
+   ],
+   "evidence": "T1",
+   "controls": [
+    "fixed response templates"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R0",
+   "question": 2,
+   "rung_why": "T1 is sent before any helper runs, so its counts and settings come from the model reading files (D20); check could return them.",
+   "unsaid": []
+  },
+  "2": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "the sub-stage's STATUS file"
+   ],
+   "evidence": "none",
+   "controls": [
+    "definitions shared with helper code",
+    "written rules only"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "Three states stop; the other five are left to the model, and only step 7's 'On a later invocation' implies where they resume.",
+   "unsaid": [
+    {
+     "id": "W-reentry",
+     "decision": "Where to resume a sub-stage whose STATUS is VALIDATING, ARTIFACT_MISSING, STALE or FAILED",
+     "goes_wrong": "Step 2 stops only on SUBMITTED, RUNNING or COMPLETE, so read literally the other states fall through to check, prepare and submit; only step 7's 'On a later invocation' implies jumping to the status call and collect. A literal reading re-prepares a finished run, rewriting its params and reproducibility manifest, and tries to submit it again",
+     "severity": 5,
+     "detection": 4,
+     "occurrence": null,
+     "why_rank": "Wasted work and a rewritten provenance file rather than a wrong result: the executor's duplicate-submission refusal and collect's gates stand behind it",
+     "fix": "Step 2 branches every STATUS value to its step, as the router's steps 6-9 do; better, the wrapper reports the next action from STATUS",
+     "fix_rung": "R0",
+     "defects": [
+      "D11"
+     ]
+    }
+   ]
+  },
+  "3": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the config, samplesheet, pinned checkout, executor config and run/"
+   ],
+   "evidence": "`preflight/check_result.json`",
+   "controls": [
+    "typed tool calls",
+    "helper exit codes",
+    "definitions shared with helper code",
+    "negative scope rules",
+    "guard deny rules"
+   ],
+   "rung_now": "R0",
+   "rung_target": "R0",
+   "question": 2,
+   "rung_why": "Every precondition is code.",
+   "unsaid": [],
+   "note": "Exit 3 (no such project) has no branch; the router has already checked the project."
+  },
+  "4": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the config and samplesheet"
+   ],
+   "evidence": "`params.yaml`, `submit.sh`, `reproducibility/manifest.json`, `commands.sh`",
+   "controls": [
+    "typed tool calls",
+    "helper exit codes",
+    "guard deny rules",
+    "negative scope rules"
+   ],
+   "rung_now": "R0",
+   "rung_target": "R0",
+   "question": 2,
+   "rung_why": "Generation is code and the guard keeps the agent out of what it writes.",
+   "unsaid": [],
+   "note": "The extractor reports a static exit 2 from wrapperlib.py:925; it is unreachable from these wrappers, which pass the samplesheet and config, so key_formula is stage01-v1 (wrapperlib.py:917-918). Exit 3 (no such project) has no branch."
+  },
+  "5": {
+   "actor": [
+    "model",
+    "helper",
+    "scheduler",
+    "guard"
+   ],
+   "inputs": [
+    "the generated submit.sh",
+    "`00_data/dataset.tsv` and the executor descriptor (venue preflight)"
+   ],
+   "evidence": "the submission record and STATUS SUBMITTED, when it succeeds",
+   "controls": [
+    "typed tool calls",
+    "run markers bound to script hashes",
+    "guard deny rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R4",
+   "question": 1,
+   "rung_why": "Submission is code, but the step has no branch for its refusals and the next step assumes success.",
+   "unsaid": [
+    {
+     "id": "W-submit",
+     "decision": "What to do when the executor refuses the submission",
+     "goes_wrong": "No step branches on submit's exit: each sub-stage's submit step says only to capture job_id before T2 announces 'Submitted as job <job_id>', and stage 03's step 7 handles only an approval refusal. A venue-preflight refusal (unclassified or expired dataset, a route or memory rule) or a duplicate-submission refusal exits 1 or 2 with no branch, so the model either reports a submission that did not happen or improvises, for example by editing the config's memory declaration until the venue rule passes",
+     "severity": 7,
+     "detection": 6,
+     "occurrence": null,
+     "why_rank": "The venue rules are a data-policy gate; an improvised way past one is a breach only a reader of the transcript would see",
+     "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; never change config to pass a venue rule",
+     "fix_rung": "R4",
+     "defects": [
+      "D12"
+     ]
+    },
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ]
+    }
+   ]
+  },
+  "6": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "submit's job_id"
+   ],
+   "evidence": "T2",
+   "controls": [
+    "fixed response templates",
+    "negative scope rules"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "A fixed hand-off; T2 itself tells the user to run a script (D18).",
+   "unsaid": []
+  },
+  "7": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the job id from STATUS",
+    "the scheduler"
+   ],
+   "evidence": "STATUS refreshed by the status call",
+   "controls": [
+    "typed tool calls",
+    "definitions shared with helper code",
+    "negative scope rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "The status call is code, but the step is unreachable for SUBMITTED or RUNNING through the router and step 2, so whether it ever runs is the model's decision (W-poll); its exit 1 and 2 have no branch.",
+   "unsaid": [
+    {
+     "id": "W-poll",
+     "decision": "When to refresh a submitted job's STATUS, and who does it",
+     "goes_wrong": "Only executorlib.py status moves STATUS from SUBMITTED to VALIDATING, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's status call is reached only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A stall, not a wrong result, and a visible one; but every assay passes through it",
+     "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
+     "fix_rung": "R0",
+     "defects": [
+      "D10",
+      "D13"
+     ]
+    },
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ]
+    }
+   ]
+  },
+  "8": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the finished run",
+    "the model's own id"
+   ],
+   "evidence": "`OUTPUTS.tsv`, STATUS COMPLETE or FAILED, the harvested cache",
+   "controls": [
+    "typed tool calls",
+    "exit gates that check content",
+    "run markers bound to script hashes",
+    "helper exit codes",
+    "history entries written by helpers"
+   ],
+   "rung_now": "R0",
+   "rung_target": "R0",
+   "question": 2,
+   "rung_why": "The gate checks content and writes the state; the model passes its id under a written rule.",
+   "unsaid": [],
+   "note": "Exit 3 (no such project) has no branch."
+  },
+  "9": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "collect's `history_entry`"
+   ],
+   "evidence": "an appended `HISTORY.md` entry; T6",
+   "controls": [
+    "history entries written by helpers",
+    "fixed response templates",
+    "written rules only",
+    "guard deny rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "Copying is written, but the date the model must write in has no source the agent can reach.",
+   "unsaid": [
+    {
+     "id": "G-date",
+     "decision": "What today's date is, for the HISTORY.md entry",
+     "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace, and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+     "severity": 3,
+     "detection": 9,
+     "occurrence": null,
+     "why_rank": "A wrong date misleads a later reader of the record but changes no result; nothing ever checks it",
+     "fix": "The helper stamps the date (it already imports datetime) and appends the entry itself",
+     "fix_rung": "R0",
+     "defects": [
+      "D17"
+     ]
+    }
+   ]
+  }
+ }
+}

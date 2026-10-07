@@ -1,0 +1,329 @@
+{
+ "kind": "judgment",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "by": "step-map lane lead (claude-opus-5-5)",
+ "date": "2026-10-07",
+ "steps": {
+  "1": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the user's goal",
+    "the project",
+    "the resolver's --list for 'the relevant assay'"
+   ],
+   "evidence": "the resolver's JSON; T1 if nothing resolves",
+   "controls": [
+    "typed tool calls",
+    "closed vocabularies",
+    "fixed response templates",
+    "guard deny rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "Listing is code; which project and assay to list is the model's choice, and the resolver's direct spelling is a door (G-door).",
+   "unsaid": [
+    {
+     "id": "S03-assay",
+     "decision": "Which project, and which assay's artifacts, the analysis draws on",
+     "goes_wrong": "Step 1 lists artifacts for 'the relevant assay'; in a project with several assays the model picks one, and the plan's Inputs inherit that choice",
+     "severity": 5,
+     "detection": 3,
+     "occurrence": null,
+     "why_rank": "The plan's Inputs table shows the choice before approval",
+     "fix": "List every assay's artifacts and let the plan name each input's assay",
+     "fix_rung": "R0"
+    },
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ]
+    }
+   ]
+  },
+  "2": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the user's goal (for the slug)"
+   ],
+   "evidence": "`03_custom_analysis/<NN_slug>/` with a PLAN.md skeleton",
+   "controls": [
+    "typed tool calls",
+    "written rules only"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "Allocation is code; the slug is a cosmetic name under a written rule.",
+   "unsaid": [],
+   "note": "Exit 3 has no branch."
+  },
+  "3": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "the user's goal",
+    "the resolvable artifacts",
+    "the closed artifact vocabulary"
+   ],
+   "evidence": "PLAN.md (DRAFT)",
+   "controls": [
+    "the plan gate",
+    "closed vocabularies",
+    "written rules only"
+   ],
+   "rung_now": "R3",
+   "rung_target": "R3",
+   "question": 4,
+   "rung_why": "The judgment the stage exists for, gated by the human's approval of the plan; approve checks the form (markers, output types, relative paths).",
+   "unsaid": []
+  },
+  "4": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "PLAN.md"
+   ],
+   "evidence": "T2 with the approval command",
+   "controls": [
+    "fixed response templates",
+    "wait points",
+    "the plan gate"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "A fixed hand-off to the human gate.",
+   "unsaid": []
+  },
+  "5": {
+   "actor": [
+    "model",
+    "human"
+   ],
+   "inputs": [
+    "the user's requested changes"
+   ],
+   "evidence": "PLAN.md edited; T2 again",
+   "controls": [
+    "the plan gate",
+    "fixed response templates",
+    "wait points"
+   ],
+   "rung_now": "R3",
+   "rung_target": "R3",
+   "question": 4,
+   "rung_why": "The model edits, the human re-reads before approving.",
+   "unsaid": []
+  },
+  "6": {
+   "actor": [
+    "human",
+    "helper",
+    "model"
+   ],
+   "inputs": [
+    "the user's own approve run",
+    "its blocked reasons, relayed by the user"
+   ],
+   "evidence": "the approval record in the store outside the workspace; T3 on refusal",
+   "controls": [
+    "the plan gate",
+    "guard deny rules",
+    "fixed response templates"
+   ],
+   "rung_now": "R3",
+   "rung_target": "R3",
+   "question": 4,
+   "rung_why": "The human approves in their own terminal; the guard refuses approve to the agent.",
+   "unsaid": []
+  },
+  "7": {
+   "actor": [
+    "model",
+    "helper",
+    "scheduler",
+    "guard"
+   ],
+   "inputs": [
+    "the approved PLAN.md",
+    "the resolved input artifacts"
+   ],
+   "evidence": "`scripts/`, the submission records, run markers",
+   "controls": [
+    "the plan gate",
+    "run markers bound to script hashes",
+    "typed tool calls",
+    "negative scope rules",
+    "guard deny rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R3",
+   "question": 1,
+   "rung_why": "The model writes the computation; approval binds the plan, not the scripts, and nothing reads the code against the plan.",
+   "unsaid": [
+    {
+     "id": "S03-scripts",
+     "decision": "How the approved method becomes code",
+     "goes_wrong": "The model writes the analysis scripts after approval; approval binds PLAN.md, not the scripts, and verify checks only that declared outputs exist, are non-empty and came from executor runs of unchanged scripts. A script that departs from the approved method, reads inputs the plan does not list, or computes the statistic differently passes every gate",
+     "severity": 9,
+     "detection": 8,
+     "occurrence": null,
+     "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan",
+     "fix": "Show the scripts for approval and bind their hashes into the approval record, as the plan's already is",
+     "fix_rung": "R3"
+    },
+    {
+     "id": "S03-monitor",
+     "decision": "How to 'monitor the job' after T4",
+     "goes_wrong": "Step 7 says to monitor the job; every other contract forbids polling in a loop and no step says when to check, so the model polls, sleeps, or waits for the user",
+     "severity": 3,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A wasted session or a stalled one, visibly",
+     "fix": "Return after T4; the next invocation calls status once",
+     "fix_rung": "R4"
+    },
+    {
+     "id": "W-submit",
+     "decision": "What to do when the executor refuses the submission",
+     "goes_wrong": "No step branches on submit's exit: each sub-stage's submit step says only to capture job_id before T2 announces 'Submitted as job <job_id>', and stage 03's step 7 handles only an approval refusal. A venue-preflight refusal (unclassified or expired dataset, a route or memory rule) or a duplicate-submission refusal exits 1 or 2 with no branch, so the model either reports a submission that did not happen or improvises, for example by editing the config's memory declaration until the venue rule passes",
+     "severity": 7,
+     "detection": 6,
+     "occurrence": null,
+     "why_rank": "The venue rules are a data-policy gate; an improvised way past one is a breach only a reader of the transcript would see",
+     "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; never change config to pass a venue rule",
+     "fix_rung": "R4",
+     "defects": [
+      "D12"
+     ]
+    },
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ]
+    }
+   ]
+  },
+  "8": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the job id",
+    "the scheduler"
+   ],
+   "evidence": "T5",
+   "controls": [
+    "typed tool calls",
+    "fixed response templates",
+    "negative scope rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R4",
+   "question": 1,
+   "rung_why": "A written failure branch, but the status call's direct spelling is a door (G-door) and its own exits have no branch (D13).",
+   "unsaid": [
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ]
+    }
+   ]
+  },
+  "9": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the analysis",
+    "the model's own id"
+   ],
+   "evidence": "`OUTPUTS.tsv`, STATUS COMPLETE",
+   "controls": [
+    "typed tool calls",
+    "exit gates that check content",
+    "run markers bound to script hashes",
+    "helper exit codes",
+    "history entries written by helpers"
+   ],
+   "rung_now": "R0",
+   "rung_target": "R0",
+   "question": 2,
+   "rung_why": "verify checks approval, execution evidence and that declared outputs exist and are non-empty.",
+   "unsaid": [],
+   "note": "Exit 3 has no branch."
+  },
+  "10": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "verify's history_entry"
+   ],
+   "evidence": "an appended HISTORY.md entry; T6",
+   "controls": [
+    "history entries written by helpers",
+    "fixed response templates",
+    "written rules only"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "Copying is written, but the date has no source the agent can reach.",
+   "unsaid": [
+    {
+     "id": "G-date",
+     "decision": "What today's date is, for the HISTORY.md entry",
+     "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace, and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+     "severity": 3,
+     "detection": 9,
+     "occurrence": null,
+     "why_rank": "A wrong date misleads a later reader of the record but changes no result; nothing ever checks it",
+     "fix": "The helper stamps the date (it already imports datetime) and appends the entry itself",
+     "fix_rung": "R0",
+     "defects": [
+      "D17"
+     ]
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,1243 @@
+{
+ "id": "02_bioinformatics",
+ "inherits": null,
+ "judgment_by": "step-map lane lead (claude-opus-5-5)",
+ "judgment_date": "2026-10-07",
+ "path": "gars/02_bioinformatics/CONTEXT.md",
+ "schema": "stepmap-map/1",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "steps": [
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/CONTEXT.md:121-121",
+    "templates": [
+     "T1"
+    ],
+    "text": "1. Activated when the user asks to run bioinformatics, or names an assay to process. Reply T1.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "fixed response templates"
+    ],
+    "evidence": "T1",
+    "inputs": [
+     "the user's request"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "Fixed text.",
+    "unsaid": []
+   },
+   "n": "1"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/CONTEXT.md:122-123",
+    "templates": [
+     "T5"
+    ],
+    "text": "2. Resolve the project and the Assay ID. If the project does not exist, or the Assay ID is not in the assay map, reply T5 and stop.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "fixed response templates",
+     "written rules only"
+    ],
+    "evidence": "T1 shows the result; T5 if none",
+    "inputs": [
+     "the user's words for the project and assay",
+     "projects/",
+     "the assay map"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R1",
+    "rung_why": "Matching words to a project directory and an Assay ID has no rule; stage 00's normalising resolver exists for assays but is not used here.",
+    "unsaid": [
+     {
+      "decision": "Which project and assay the user's words mean",
+      "detection": 3,
+      "fix": "A resolver lists the matching projects and assays; the model renders, the user picks",
+      "fix_rung": "R1",
+      "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right pipeline on the wrong project",
+      "id": "R-project",
+      "occurrence": null,
+      "severity": 6,
+      "why_rank": "T1 shows the project and assay before anything runs, so an attentive user catches it"
+     },
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core wrapper subcommand, reads of _config/ and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "occurrence": null,
+      "severity": 6,
+      "why_rank": "The guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
+   },
+   "n": "2"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/CONTEXT.md:124-125",
+    "templates": [
+     "T5"
+    ],
+    "text": "3. Check preconditions: `01_samplesheets/<Assay ID>_samplesheet.csv` and `_design.csv` exist and are non-empty. If not, reply T5 and stop — stage 01 has not run.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "written rules only",
+     "fixed response templates"
+    ],
+    "evidence": "T5 if missing",
+    "inputs": [
+     "`01_samplesheets/` files"
+    ],
+    "kind": "judgment",
+    "question": 2,
+    "rung_now": "R4",
+    "rung_target": "R0",
+    "rung_why": "An existence check the model makes by hand; code could (the wrappers' check already does).",
+    "unsaid": []
+   },
+   "n": "3"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/configure.py genomes --assay <Assay ID>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "fenced",
+      "source": "gars/02_bioinformatics/CONTEXT.md:135",
+      "tool": "configure.genomes"
+     },
+     {
+      "command": "python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "fenced",
+      "source": "gars/02_bioinformatics/CONTEXT.md:136",
+      "tool": "configure.contrasts"
+     },
+     {
+      "command": "python3 _system/configure.py peaks",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "fenced",
+      "source": "gars/02_bioinformatics/CONTEXT.md:137",
+      "tool": "configure.peaks"
+     },
+     {
+      "command": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>] --dry-run",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "fenced",
+      "source": "gars/02_bioinformatics/CONTEXT.md:144",
+      "tool": "configure.apply"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       3
+      ],
+      "handled": [],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/CONTEXT.md:135",
+      "tool": "configure.genomes",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/configure.py:177"
+       ]
+      }
+     },
+     {
+      "emitted": [
+       0,
+       1,
+       3
+      ],
+      "handled": [],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/CONTEXT.md:136",
+      "tool": "configure.contrasts",
+      "unhandled": [
+       1,
+       3
+      ],
+      "unhandled_emit_sites": {
+       "1": [
+        "gars/_system/configure.py:213"
+       ],
+       "3": [
+        "gars/_system/configure.py:205"
+       ]
+      }
+     },
+     {
+      "emitted": [
+       0
+      ],
+      "handled": [],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/CONTEXT.md:137",
+      "tool": "configure.peaks",
+      "unhandled": [],
+      "unhandled_emit_sites": {}
+     },
+     {
+      "emitted": [
+       0,
+       1,
+       3
+      ],
+      "handled": [
+       1
+      ],
+      "prose_handling": [
+       "If that sub-stage is `FAILED:<reason>` or `CANCELLED`, reply T6 with its recorded error and stop."
+      ],
+      "source": "gars/02_bioinformatics/CONTEXT.md:144",
+      "tool": "configure.apply",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/configure.py:319",
+        "gars/_system/configure.py:324",
+        "gars/_system/configure.py:329",
+        "gars/_system/configure.py:350",
+        "gars/_system/configure.py:354",
+        "gars/_system/configure.py:388",
+        "gars/_system/configure.py:414"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [
+     {
+      "allowed_where_intended": true,
+      "flag": "--dry-run",
+      "in_command": true,
+      "prohibited": false,
+      "source": "gars/02_bioinformatics/CONTEXT.md:149",
+      "target_tool": "configure.apply",
+      "value": null
+     }
+    ],
+    "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+    "templates": [
+     "T8",
+     "T9"
+    ],
+    "text": "3a. **Complete the config before routing anything.** Stage 00 seeded `_config/<Assay ID>.yaml` with every derivable value filled and the scientific decisions marked `<REQUIRED>`. Resolve them by menu, never by asking the user to type a path or a level name: The decisions are per-assay (`ASSAY_DECISIONS` in `_system/configure.py`): every assay chooses a genome; an assay with a `de` block additionally chooses a contrast (and may give a formula); an assay with a `peaks` block chooses a peak type. Reply T8 rendering the genome menu plus this assay's decision menu. Wait. Then, with the numbers the user gave: Reply T9 showing what it would write and **wait for confirmation**. On confirmation, re-run without `--dry-run`. Exit 1 → report its `error` and return to T8; never retry with a value the user did not choose. Skip 3a entirely when the config has no `<REQUIRED>` markers left — a completed config is not a question to re-ask.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "gate",
+     "templates": [
+      "T8",
+      "T9"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper",
+     "human"
+    ],
+    "controls": [
+     "closed menus built by code",
+     "closed vocabularies",
+     "fixed response templates",
+     "wait points",
+     "typed tool calls",
+     "helper exit codes"
+    ],
+    "evidence": "the dry-run JSON; the written config after confirmation",
+    "inputs": [
+     "`_config/<Assay ID>.yaml`",
+     "the genome registry",
+     "the design table",
+     "the user's menu numbers and any formula"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R1",
+    "rung_why": "The menus are code and T9 is a human confirmation (R1 plus R3), but three decisions inside the step have no rule: whether any decisions remain, how a scrnaseq chemistry is chosen, and how words become a formula.",
+    "unsaid": [
+     {
+      "decision": "How a scrnaseq user's library chemistry gets into the config",
+      "defects": [
+       "D7"
+      ],
+      "detection": 8,
+      "fix": "Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it",
+      "fix_rung": "R1",
+      "goes_wrong": "configure.py makes chemistry scrnaseq's decision and has a protocols menu, but step 3a and T8 name only the genome, contrast and peak menus; the model either asks in free text and passes the user's words to apply, or never asks. apply accepts any listed chemistry, and a wrong but listed one runs to completion with barcodes read at the wrong offsets",
+      "id": "R-protocol",
+      "occurrence": null,
+      "severity": 9,
+      "why_rank": "The seeded config calls it its most dangerous key: a wrong value produces a plausible matrix and no error, and the wrapper's check refuses only a chemistry the aligner cannot run"
+     },
+     {
+      "decision": "Turning the user's words about the model ('account for batch') into a DE formula",
+      "detection": 4,
+      "fix": "Formula choices built from the design table's own columns, as the contrasts are, confirmed in T9",
+      "fix_rung": "R1",
+      "goes_wrong": "Scope allows a formula 'the user gave you', and users give words, not formula syntax; the model writes the formula and apply checks only its form, so a wrong covariate or interaction becomes the tested model",
+      "id": "R-formula",
+      "occurrence": null,
+      "severity": 9,
+      "why_rank": "A wrong model changes every p-value; T9 shows the formula before writing, a real check only for a user who reads formula syntax"
+     },
+     {
+      "decision": "Whether the config still has decisions to make",
+      "defects": [
+       "D8",
+       "D9"
+      ],
+      "detection": 2,
+      "fix": "Code reports the pending decisions (the wrappers' config_unfilled check already computes them)",
+      "fix_rung": "R0",
+      "goes_wrong": "3a is skipped when 'no <REQUIRED> markers are left', judged by the model reading YAML; every seeded config carries the word in its header comment and spatialvi has no decisions registered, so a literal reading re-asks a finished config or runs apply for spatialvi, which exits 3 with no branch",
+      "id": "R-required",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "A stall or a needless question, not a wrong result"
+     }
+    ]
+   },
+   "n": "3a"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": true,
+       "fresh": true,
+       "fresh_declared": true,
+       "mixed": true,
+       "public": true
+      },
+      "path": "_references/assay_stage_skill_map.md",
+      "source": "gars/02_bioinformatics/CONTEXT.md:154",
+      "tool": "Read"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/CONTEXT.md:154-154",
+    "templates": [],
+    "text": "4. Read the Sub-stages column for this assay from `_references/assay_stage_skill_map.md`.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "written rules only",
+     "negative scope rules"
+    ],
+    "evidence": "none of its own",
+    "inputs": [
+     "the assay map"
+    ],
+    "kind": "judgment",
+    "question": 2,
+    "rung_now": "R4",
+    "rung_target": "R0",
+    "rung_why": "Reading a table code already parses (stage 00's assays returns the sub-stages).",
+    "unsaid": []
+   },
+   "n": "4"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": true,
+       "fresh": true,
+       "fresh_declared": true,
+       "mixed": true,
+       "public": true
+      },
+      "path": "{substage_dir}/STATUS",
+      "source": "gars/02_bioinformatics/CONTEXT.md:155",
+      "tool": "Read"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/CONTEXT.md:155-156",
+    "templates": [
+     "T2"
+    ],
+    "text": "5. Read each sub-stage's STATUS file, treating a missing file as `NOT_STARTED`. Reply T2 with the full sub-stage status table, including VALIDATING, ARTIFACT_MISSING and STALE.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "definitions shared with helper code",
+     "fixed response templates",
+     "a session-start state render"
+    ],
+    "evidence": "T2",
+    "inputs": [
+     "each sub-stage's STATUS file"
+    ],
+    "kind": "judgment",
+    "question": 2,
+    "rung_now": "R4",
+    "rung_target": "R0",
+    "rung_why": "The model reads files and builds a table that project_state.py already renders.",
+    "unsaid": []
+   },
+   "n": "5"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/CONTEXT.md:157-159",
+    "templates": [
+     "T4"
+    ],
+    "text": "6. Identify the first sub-stage that is not `COMPLETE`. If every sub-stage is `COMPLETE`, reply T4 and stop. VALIDATING, ARTIFACT_MISSING and STALE continue to step 10, where the sub-stage contract runs its collect step and reports its gate result.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "handoff",
+     "templates": [
+      "T4"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "written rules only",
+     "definitions shared with helper code"
+    ],
+    "evidence": "T4 when all complete",
+    "inputs": [
+     "the STATUS values"
+    ],
+    "kind": "judgment",
+    "question": 2,
+    "rung_now": "R4",
+    "rung_target": "R0",
+    "rung_why": "A written ordering rule over a closed enum; code could pick the next sub-stage.",
+    "unsaid": []
+   },
+   "n": "6"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/CONTEXT.md:160-161",
+    "templates": [
+     "T3"
+    ],
+    "text": "7. If that sub-stage is `SUBMITTED` or `RUNNING`, reply T3 with how to check on it, and stop. Do not resubmit. After polling, VALIDATING, ARTIFACT_MISSING and STALE go to step 10.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "fixed response templates",
+     "negative scope rules"
+    ],
+    "evidence": "T3",
+    "inputs": [
+     "a SUBMITTED or RUNNING STATUS"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "The router stops on a submitted job without refreshing it, and no step anywhere says who refreshes STATUS.",
+    "unsaid": [
+     {
+      "decision": "When to refresh a submitted job's STATUS, and who does it",
+      "defects": [
+       "D10",
+       "D13"
+      ],
+      "detection": 2,
+      "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
+      "fix_rung": "R0",
+      "goes_wrong": "Only executorlib.py status moves STATUS from SUBMITTED to VALIDATING, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's status call is reached only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+      "id": "W-poll",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A stall, not a wrong result, and a visible one; but every assay passes through it"
+     }
+    ]
+   },
+   "n": "7"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/CONTEXT.md:162-164",
+    "templates": [
+     "T6"
+    ],
+    "text": "8. If that sub-stage is `FAILED:<reason>` or `CANCELLED`, reply T6 with its recorded error and stop. Resolving a failure or cancellation is the user's decision, not an automatic retry. VALIDATING, ARTIFACT_MISSING and STALE instead go to step 10.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "human"
+    ],
+    "controls": [
+     "fixed response templates",
+     "negative scope rules"
+    ],
+    "evidence": "T6",
+    "inputs": [
+     "a FAILED or CANCELLED STATUS",
+     "the sub-stage's log"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R4",
+    "rung_why": "Stopping is written; what follows the user's decision is not.",
+    "unsaid": [
+     {
+      "decision": "What to do once the user decides how to resolve a failed or cancelled sub-stage",
+      "detection": 3,
+      "fix": "A written recovery branch per failure class, naming the human's approval command",
+      "fix_rung": "R4",
+      "goes_wrong": "T6 says corrected inputs need prepare again; nothing says how a retry is approved (the executor requires a human's approve-action) or when cutandrun's prepare --resume-refresh applies, so the model improvises the re-run",
+      "id": "R-failed",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "The executor's retry policy refuses an unapproved retry, so the usual harm is a muddled recovery"
+     }
+    ]
+   },
+   "n": "8"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --consumes <type> [<type> ...]",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "fenced",
+      "source": "gars/02_bioinformatics/CONTEXT.md:170",
+      "tool": "resolve_artifact"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       3
+      ],
+      "handled": [
+       1
+      ],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/CONTEXT.md:170",
+      "tool": "resolve_artifact",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/resolve_artifact.py:138",
+        "gars/_system/resolve_artifact.py:140"
+       ]
+      }
+     }
+    ],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": true,
+       "fresh": true,
+       "fresh_declared": true,
+       "mixed": true,
+       "public": true
+      },
+      "path": "_references/assay_stage_skill_map.md",
+      "source": "gars/02_bioinformatics/CONTEXT.md:165",
+      "tool": "Read"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/CONTEXT.md:165-178",
+    "templates": [
+     "T7"
+    ],
+    "text": "9. If that sub-stage is `NOT_STARTED`, read its `Consumes` column from the assay map and resolve every listed type; VALIDATING, ARTIFACT_MISSING and STALE bypass this initial-input routing and go to step 10's collect hand-off: Do not perform this search yourself — the reverse-order scan, the `native` preference and the STATUS gate are the script's, and reading `OUTPUTS.tsv` by eye is how a consumer silently picks a matrix reshaped for someone else's parser. Exit 1 → reply T7 naming its `missing` and `declared_but_absent` entries and stop. **Never dispatch a sub-stage whose inputs are absent, and never regenerate a missing artifact.**",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "helper exit codes",
+     "closed vocabularies",
+     "guard deny rules"
+    ],
+    "evidence": "the resolver's JSON in the transcript",
+    "inputs": [
+     "the sub-stage's Consumes types"
+    ],
+    "kind": "judgment",
+    "note": "Exit 3 (no such project, nothing to resolve) has no branch.",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "Resolution is code, but its direct spelling is refused wherever a non-public project exists and the contract names no other (G-door); the resolved paths then travel to the sub-stage in the conversation (D-handoff, judged there).",
+    "unsaid": [
+     {
+      "decision": "How to spell a call the guard accepts only through the dispatcher",
+      "defects": [
+       "D15"
+      ],
+      "detection": 2,
+      "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+      "fix_rung": "R0",
+      "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+      "id": "G-door",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     }
+    ]
+   },
+   "n": "9"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": true,
+       "fresh": true,
+       "fresh_declared": true,
+       "mixed": true,
+       "public": true
+      },
+      "path": "02_bioinformatics/{assay}/{substage}/CONTEXT.md",
+      "source": "gars/02_bioinformatics/CONTEXT.md:179",
+      "tool": "Read"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/CONTEXT.md:179-180",
+    "templates": [],
+    "text": "10. Read `02_bioinformatics/<Assay ID>/<NN_name>/CONTEXT.md` and execute that contract. It owns everything from here, including its own response templates.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "written rules only"
+    ],
+    "evidence": "the sub-stage's own templates",
+    "inputs": [
+     "the sub-stage contract"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "A hand-off by path; where the sub-stage resumes is judged in its step 2 (W-reentry).",
+    "unsaid": []
+   },
+   "n": "10"
+  }
+ ],
+ "unsaid_ranked": [
+  {
+   "decision": "How to proceed when the guard refuses a step on a non-public project",
+   "defects": [
+    "D16"
+   ],
+   "detection": 2,
+   "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+   "fix_rung": "R4",
+   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core wrapper subcommand, reads of _config/ and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+   "group": 1,
+   "id": "G-closed",
+   "occurrence": null,
+   "rank_in_stage": 4,
+   "severity": 6,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
+     "step": "2"
+    },
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:122-123",
+     "step": "2"
+    }
+   ],
+   "why_rank": "The guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+  },
+  {
+   "decision": "How a scrnaseq user's library chemistry gets into the config",
+   "defects": [
+    "D7"
+   ],
+   "detection": 8,
+   "fix": "Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it",
+   "fix_rung": "R1",
+   "goes_wrong": "configure.py makes chemistry scrnaseq's decision and has a protocols menu, but step 3a and T8 name only the genome, contrast and peak menus; the model either asks in free text and passes the user's words to apply, or never asks. apply accepts any listed chemistry, and a wrong but listed one runs to completion with barcodes read at the wrong offsets",
+   "group": 2,
+   "id": "R-protocol",
+   "occurrence": null,
+   "rank_in_stage": 1,
+   "severity": 9,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+     "step": "3a"
+    }
+   ],
+   "why_rank": "The seeded config calls it its most dangerous key: a wrong value produces a plausible matrix and no error, and the wrapper's check refuses only a chemistry the aligner cannot run"
+  },
+  {
+   "decision": "Turning the user's words about the model ('account for batch') into a DE formula",
+   "detection": 4,
+   "fix": "Formula choices built from the design table's own columns, as the contrasts are, confirmed in T9",
+   "fix_rung": "R1",
+   "goes_wrong": "Scope allows a formula 'the user gave you', and users give words, not formula syntax; the model writes the formula and apply checks only its form, so a wrong covariate or interaction becomes the tested model",
+   "group": 2,
+   "id": "R-formula",
+   "occurrence": null,
+   "rank_in_stage": 2,
+   "severity": 9,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+     "step": "3a"
+    }
+   ],
+   "why_rank": "A wrong model changes every p-value; T9 shows the formula before writing, a real check only for a user who reads formula syntax"
+  },
+  {
+   "decision": "Which project and assay the user's words mean",
+   "detection": 3,
+   "fix": "A resolver lists the matching projects and assays; the model renders, the user picks",
+   "fix_rung": "R1",
+   "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right pipeline on the wrong project",
+   "group": 2,
+   "id": "R-project",
+   "occurrence": null,
+   "rank_in_stage": 3,
+   "severity": 6,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:122-123",
+     "step": "2"
+    }
+   ],
+   "why_rank": "T1 shows the project and assay before anything runs, so an attentive user catches it"
+  },
+  {
+   "decision": "What to do once the user decides how to resolve a failed or cancelled sub-stage",
+   "detection": 3,
+   "fix": "A written recovery branch per failure class, naming the human's approval command",
+   "fix_rung": "R4",
+   "goes_wrong": "T6 says corrected inputs need prepare again; nothing says how a retry is approved (the executor requires a human's approve-action) or when cutandrun's prepare --resume-refresh applies, so the model improvises the re-run",
+   "group": 2,
+   "id": "R-failed",
+   "occurrence": null,
+   "rank_in_stage": 4,
+   "severity": 5,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:162-164",
+     "step": "8"
+    }
+   ],
+   "why_rank": "The executor's retry policy refuses an unapproved retry, so the usual harm is a muddled recovery"
+  },
+  {
+   "decision": "When to refresh a submitted job's STATUS, and who does it",
+   "defects": [
+    "D10",
+    "D13"
+   ],
+   "detection": 2,
+   "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
+   "fix_rung": "R0",
+   "goes_wrong": "Only executorlib.py status moves STATUS from SUBMITTED to VALIDATING, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's status call is reached only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+   "group": 2,
+   "id": "W-poll",
+   "occurrence": null,
+   "rank_in_stage": 5,
+   "severity": 5,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:160-161",
+     "step": "7"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104-106",
+     "step": "7"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:97-99",
+     "step": "7"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:92-94",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:101-103",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:126-126",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94-95",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:106-107",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:137-138",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A stall, not a wrong result, and a visible one; but every assay passes through it"
+  },
+  {
+   "decision": "Whether the config still has decisions to make",
+   "defects": [
+    "D8",
+    "D9"
+   ],
+   "detection": 2,
+   "fix": "Code reports the pending decisions (the wrappers' config_unfilled check already computes them)",
+   "fix_rung": "R0",
+   "goes_wrong": "3a is skipped when 'no <REQUIRED> markers are left', judged by the model reading YAML; every seeded config carries the word in its header comment and spatialvi has no decisions registered, so a literal reading re-asks a finished config or runs apply for spatialvi, which exits 3 with no branch",
+   "group": 2,
+   "id": "R-required",
+   "occurrence": null,
+   "rank_in_stage": 6,
+   "severity": 4,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+     "step": "3a"
+    }
+   ],
+   "why_rank": "A stall or a needless question, not a wrong result"
+  },
+  {
+   "decision": "How to spell a call the guard accepts only through the dispatcher",
+   "defects": [
+    "D15"
+   ],
+   "detection": 2,
+   "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+   "fix_rung": "R0",
+   "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+   "group": 2,
+   "id": "G-door",
+   "occurrence": null,
+   "rank_in_stage": 7,
+   "severity": 4,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:165-178",
+     "step": "9"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100-101",
+     "step": "5"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104-106",
+     "step": "7"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:93-94",
+     "step": "5"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:97-99",
+     "step": "7"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:115-116",
+     "step": "5"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:88-89",
+     "step": "5"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:92-94",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:97-98",
+     "step": "5"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:101-103",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:103-111",
+     "step": "3"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:112-114",
+     "step": "4"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:115-116",
+     "step": "5"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:117-118",
+     "step": "6"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:122-126",
+     "step": "8"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:123-123",
+     "step": "5"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:124-125",
+     "step": "6"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:126-126",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:92-92",
+     "step": "5"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:93-93",
+     "step": "6"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94-95",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:104-104",
+     "step": "5"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:105-105",
+     "step": "6"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:106-107",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:135-135",
+     "step": "5"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:136-136",
+     "step": "6"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:137-138",
+     "step": "7"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
+     "step": "1"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:148-150",
+     "step": "8"
+    }
+   ],
+   "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+  }
+ ]
+}

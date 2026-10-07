@@ -1,0 +1,221 @@
+{
+ "kind": "judgment",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "by": "step-map lane lead (claude-opus-5-5)",
+ "date": "2026-10-07",
+ "inherits": "_shape_downstream",
+ "steps": {
+  "3": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the Consumes types counts_gene and design"
+   ],
+   "evidence": "the resolver's JSON in the transcript",
+   "controls": [
+    "typed tool calls",
+    "helper exit codes",
+    "closed vocabularies",
+    "guard deny rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "rnaseq-de resolves its own inputs (the other downstream sub-stages do not); the resolver's direct spelling is refused wherever a non-public project exists (G-door).",
+   "unsaid": [
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ]
+    }
+   ]
+  },
+  "4": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the counts and design resolved at step 3"
+   ],
+   "evidence": "`preflight/check_result.json`",
+   "controls": [
+    "typed tool calls",
+    "helper exit codes",
+    "definitions shared with helper code",
+    "negative scope rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "The check is code on paths resolved in this same contract; its direct spelling is refused wherever a non-public project exists (G-door).",
+   "unsaid": [
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ]
+    }
+   ],
+   "note": "Exit 3 (no such project) has no branch."
+  },
+  "5": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the counts and design resolved at step 3"
+   ],
+   "evidence": "`scripts/run_de.py`, `submit.sh`, `reproducibility/`",
+   "controls": [
+    "typed tool calls",
+    "helper exit codes",
+    "negative scope rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "Generation is code; the direct spelling is refused wherever a non-public project exists (G-door), and the design_not_canonical refusal (exit 2) has no branch (D14).",
+   "unsaid": [
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ]
+    }
+   ]
+  },
+  "6": {
+   "actor": [
+    "model",
+    "helper",
+    "scheduler",
+    "guard"
+   ],
+   "inputs": [
+    "the generated submit.sh",
+    "the dataset row and executor descriptor (venue preflight)"
+   ],
+   "evidence": "the submission record and STATUS SUBMITTED when it succeeds; T2",
+   "controls": [
+    "typed tool calls",
+    "run markers bound to script hashes",
+    "guard deny rules",
+    "fixed response templates"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R4",
+   "question": 1,
+   "rung_why": "Submission and the hand-off in one step, with no branch for a refused submission.",
+   "unsaid": [
+    {
+     "id": "W-submit",
+     "decision": "What to do when the executor refuses the submission",
+     "goes_wrong": "No step branches on submit's exit: each sub-stage's submit step says only to capture job_id before T2 announces 'Submitted as job <job_id>', and stage 03's step 7 handles only an approval refusal. A venue-preflight refusal (unclassified or expired dataset, a route or memory rule) or a duplicate-submission refusal exits 1 or 2 with no branch, so the model either reports a submission that did not happen or improvises, for example by editing the config's memory declaration until the venue rule passes",
+     "severity": 7,
+     "detection": 6,
+     "occurrence": null,
+     "why_rank": "The venue rules are a data-policy gate; an improvised way past one is a breach only a reader of the transcript would see",
+     "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; never change config to pass a venue rule",
+     "fix_rung": "R4",
+     "defects": [
+      "D12"
+     ]
+    },
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ]
+    }
+   ]
+  },
+  "8": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the finished run",
+    "the supplying sub-stage the resolver named, carried in the conversation",
+    "the model's own id"
+   ],
+   "evidence": "`OUTPUTS.tsv` (de_results native, counts_gene adapted), STATUS COMPLETE or FAILED",
+   "controls": [
+    "typed tool calls",
+    "exit gates that check content",
+    "run markers bound to script hashes",
+    "helper exit codes",
+    "history entries written by helpers"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "The gate is code (including the BH check), but --counts-from comes from the conversation (D-handoff) and the direct spelling is a door (G-door).",
+   "unsaid": [
+    {
+     "id": "D-handoff",
+     "decision": "Which input path to pass, and which sub-stage to name as its supplier at collect",
+     "goes_wrong": "The router resolves the inputs at its step 9 and the sub-stage contract starts afresh; the path and the supplying sub-stage travel only in the conversation, so the model carries or re-derives them. A wrong --h5ad-from or --counts-from records the wrong provenance; a wrong path feeds the wrong object",
+     "severity": 6,
+     "detection": 4,
+     "occurrence": null,
+     "why_rank": "collect cross-checks counts against the samplesheet and rnaseq-de's prepare refuses a non-canonical design, so most wrong inputs are caught; the provenance line is not",
+     "fix": "Each sub-stage resolves its own inputs (rnaseq-de already does at its step 3) and collect derives the supplier from the resolver",
+     "fix_rung": "R0"
+    },
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ]
+    }
+   ],
+   "note": "The two status calls inside its exit branches are branch actions, not new call sites."
+  }
+ }
+}

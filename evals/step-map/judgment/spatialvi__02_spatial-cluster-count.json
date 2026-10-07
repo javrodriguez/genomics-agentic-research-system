@@ -1,0 +1,12 @@
+{
+ "kind": "judgment",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "by": "step-map lane lead (claude-opus-5-5)",
+ "date": "2026-10-07",
+ "inherits": "_shape_downstream",
+ "steps": {
+  "8": {
+   "note": "Step 8 also asks the model to read the analysis log and quote two named messages verbatim; reading logs is outside every other sub-stage's scope."
+  }
+ }
+}

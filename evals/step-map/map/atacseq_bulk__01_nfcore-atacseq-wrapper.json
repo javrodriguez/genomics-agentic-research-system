@@ -1,0 +1,1256 @@
+{
+ "id": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+ "inherits": "_shape_wrapper",
+ "judgment_by": "step-map lane lead (claude-opus-5-5)",
+ "judgment_date": "2026-10-07",
+ "path": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md",
+ "schema": "stepmap-map/1",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "steps": [
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:92-92",
+    "templates": [
+     "T1"
+    ],
+    "text": "1. Reply T1.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "fixed response templates"
+    ],
+    "evidence": "T1",
+    "inherited_from": "_shape_wrapper",
+    "inputs": [
+     "the assay config and samplesheet, read by the model"
+    ],
+    "kind": "judgment",
+    "question": 2,
+    "rung_now": "R4",
+    "rung_target": "R0",
+    "rung_why": "T1 is sent before any helper runs, so its counts and settings come from the model reading files (D20); check could return them.",
+    "unsaid": []
+   },
+   "n": "1"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": true,
+       "fresh": true,
+       "fresh_declared": true,
+       "mixed": true,
+       "public": true
+      },
+      "path": "{substage_dir}/STATUS",
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:93",
+      "tool": "Read"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:93-94",
+    "templates": [],
+    "text": "2. Read the STATUS file. If it is `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — stage 02's router already handles those states and should not have routed here.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "definitions shared with helper code",
+     "written rules only"
+    ],
+    "evidence": "none",
+    "inherited_from": "_shape_wrapper",
+    "inputs": [
+     "the sub-stage's STATUS file"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "Three states stop; the other five are left to the model, and only step 7's 'On a later invocation' implies where they resume.",
+    "unsaid": [
+     {
+      "decision": "Where to resume a sub-stage whose STATUS is VALIDATING, ARTIFACT_MISSING, STALE or FAILED",
+      "defects": [
+       "D11"
+      ],
+      "detection": 4,
+      "fix": "Step 2 branches every STATUS value to its step, as the router's steps 6-9 do; better, the wrapper reports the next action from STATUS",
+      "fix_rung": "R0",
+      "goes_wrong": "Step 2 stops only on SUBMITTED, RUNNING or COMPLETE, so read literally the other states fall through to check, prepare and submit; only step 7's 'On a later invocation' implies jumping to the status call and collect. A literal reading re-prepares a finished run, rewriting its params and reproducibility manifest, and tries to submit it again",
+      "id": "W-reentry",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "Wasted work and a rewritten provenance file rather than a wrong result: the executor's duplicate-submission refusal and collect's gates stand behind it"
+     }
+    ]
+   },
+   "n": "2"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py check --project projects/<title>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "prose",
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:95",
+      "tool": "nfcore_atacseq_wrapper.check"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       3
+      ],
+      "handled": [
+       1
+      ],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:95",
+      "tool": "nfcore_atacseq_wrapper.check",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:110"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:95-97",
+    "templates": [
+     "T5"
+    ],
+    "text": "3. Run the wrapper's `check`. Exit 1 → reply T5 with its `failures` verbatim and stop. Do not fix causes yourself: `config_unfilled` means the stage 02 menus have not run, `samplesheet` means stage 01 must be re-run, `pipeline` means the pinned checkout is missing or wrong.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "helper exit codes",
+     "definitions shared with helper code",
+     "negative scope rules",
+     "guard deny rules"
+    ],
+    "evidence": "`preflight/check_result.json`",
+    "inherited_from": "_shape_wrapper",
+    "inputs": [
+     "the config, samplesheet, pinned checkout, executor config and run/"
+    ],
+    "kind": "judgment",
+    "note": "Exit 3 (no such project) has no branch; the router has already checked the project.",
+    "question": 2,
+    "rung_now": "R0",
+    "rung_target": "R0",
+    "rung_why": "Every precondition is code.",
+    "unsaid": []
+   },
+   "n": "3"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py prepare --project projects/<title>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "prose",
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:98",
+      "tool": "nfcore_atacseq_wrapper.prepare"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "handled": [
+       0,
+       1
+      ],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:98",
+      "tool": "nfcore_atacseq_wrapper.prepare",
+      "unhandled": [
+       2,
+       3
+      ],
+      "unhandled_emit_sites": {
+       "2": [
+        "gars/_system/wrapperlib.py:925"
+       ],
+       "3": [
+        "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:177"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:98-99",
+    "templates": [
+     "T5"
+    ],
+    "text": "4. Run `prepare`. Exit 1 → reply T5 (same rule). Exit 0 → it wrote `params.yaml`, `submit.sh` and the reproducibility bundle; report nothing yet.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "helper exit codes",
+     "guard deny rules",
+     "negative scope rules"
+    ],
+    "evidence": "`params.yaml`, `submit.sh`, `reproducibility/manifest.json`, `commands.sh`",
+    "inherited_from": "_shape_wrapper",
+    "inputs": [
+     "the config and samplesheet"
+    ],
+    "kind": "judgment",
+    "note": "The extractor reports a static exit 2 from wrapperlib.py:925; it is unreachable from these wrappers, which pass the samplesheet and config, so key_formula is stage01-v1 (wrapperlib.py:917-918). Exit 3 (no such project) has no branch.",
+    "question": 2,
+    "rung_now": "R0",
+    "rung_target": "R0",
+    "rung_why": "Generation is code and the guard keeps the agent out of what it writes.",
+    "unsaid": []
+   },
+   "n": "4"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100",
+      "tool": "executor.submit"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2
+      ],
+      "handled": [],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100",
+      "tool": "executor.submit",
+      "unhandled": [
+       1,
+       2
+      ],
+      "unhandled_emit_sites": {
+       "1": [
+        "gars/_system/executorlib.py:1420",
+        "gars/_system/executorlib.py:1431"
+       ],
+       "2": [
+        "gars/_system/executorlib.py:1395",
+        "gars/_system/executorlib.py:1419"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100-101",
+    "templates": [],
+    "text": "5. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh`. It prints one JSON object; `job_id` is the field. Capture it.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper",
+     "scheduler",
+     "guard"
+    ],
+    "controls": [
+     "typed tool calls",
+     "run markers bound to script hashes",
+     "guard deny rules"
+    ],
+    "evidence": "the submission record and STATUS SUBMITTED, when it succeeds",
+    "inherited_from": "_shape_wrapper",
+    "inputs": [
+     "the generated submit.sh",
+     "`00_data/dataset.tsv` and the executor descriptor (venue preflight)"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R4",
+    "rung_why": "Submission is code, but the step has no branch for its refusals and the next step assumes success.",
+    "unsaid": [
+     {
+      "decision": "What to do when the executor refuses the submission",
+      "defects": [
+       "D12"
+      ],
+      "detection": 6,
+      "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; never change config to pass a venue rule",
+      "fix_rung": "R4",
+      "goes_wrong": "No step branches on submit's exit: each sub-stage's submit step says only to capture job_id before T2 announces 'Submitted as job <job_id>', and stage 03's step 7 handles only an approval refusal. A venue-preflight refusal (unclassified or expired dataset, a route or memory rule) or a duplicate-submission refusal exits 1 or 2 with no branch, so the model either reports a submission that did not happen or improvises, for example by editing the config's memory declaration until the venue rule passes",
+      "id": "W-submit",
+      "occurrence": null,
+      "severity": 7,
+      "why_rank": "The venue rules are a data-policy gate; an improvised way past one is a breach only a reader of the transcript would see"
+     },
+     {
+      "decision": "How to spell a call the guard accepts only through the dispatcher",
+      "defects": [
+       "D15"
+      ],
+      "detection": 2,
+      "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+      "fix_rung": "R0",
+      "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+      "id": "G-door",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     }
+    ]
+   },
+   "n": "5"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:102-103",
+    "templates": [
+     "T2"
+    ],
+    "text": "6. Submit has written `SUBMITTED`; no status call is needed yet. Reply T2 and stop. Do not wait, poll, or sleep.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "fixed response templates",
+     "negative scope rules"
+    ],
+    "evidence": "T2",
+    "inherited_from": "_shape_wrapper",
+    "inputs": [
+     "submit's job_id"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "A fixed hand-off; T2 itself tells the user to run a script (D18).",
+    "unsaid": []
+   },
+   "n": "6"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104",
+      "tool": "executor.status"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2
+      ],
+      "handled": [],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104",
+      "tool": "executor.status",
+      "unhandled": [
+       1,
+       2
+      ],
+      "unhandled_emit_sites": {
+       "1": [
+        "gars/_system/executorlib.py:1448"
+       ],
+       "2": [
+        "gars/_system/executorlib.py:1395"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104-106",
+    "templates": [
+     "T3"
+    ],
+    "text": "7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: ask `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`, `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. If `PENDING` or `RUNNING`, reply T3, stop; the status call has already refreshed STATUS.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "definitions shared with helper code",
+     "negative scope rules"
+    ],
+    "evidence": "STATUS refreshed by the status call",
+    "inherited_from": "_shape_wrapper",
+    "inputs": [
+     "the job id from STATUS",
+     "the scheduler"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "The status call is code, but the step is unreachable for SUBMITTED or RUNNING through the router and step 2, so whether it ever runs is the model's decision (W-poll); its exit 1 and 2 have no branch.",
+    "unsaid": [
+     {
+      "decision": "When to refresh a submitted job's STATUS, and who does it",
+      "defects": [
+       "D10",
+       "D13"
+      ],
+      "detection": 2,
+      "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
+      "fix_rung": "R0",
+      "goes_wrong": "Only executorlib.py status moves STATUS from SUBMITTED to VALIDATING, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's status call is reached only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+      "id": "W-poll",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A stall, not a wrong result, and a visible one; but every assay passes through it"
+     },
+     {
+      "decision": "How to spell a call the guard accepts only through the dispatcher",
+      "defects": [
+       "D15"
+      ],
+      "detection": 2,
+      "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+      "fix_rung": "R0",
+      "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+      "id": "G-door",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     }
+    ]
+   },
+   "n": "7"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py collect --project projects/<title> --model \"<the exact model id you are running as>\"",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "prose",
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:109",
+      "tool": "nfcore_atacseq_wrapper.collect"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "handled": [
+       0,
+       1,
+       2
+      ],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:109",
+      "tool": "nfcore_atacseq_wrapper.collect",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/wrapperlib.py:185",
+        "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:225"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [
+     {
+      "allowed_where_intended": null,
+      "flag": "--model",
+      "in_command": true,
+      "prohibited": false,
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:110",
+      "target_tool": "nfcore_atacseq_wrapper.collect",
+      "value": "\"<the exact model id you are running as>\""
+     }
+    ],
+    "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:107-113",
+    "templates": [
+     "T4"
+    ],
+    "text": "8. If status reports `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`, reply T4 with that reason and the scheduler log path, stop. If the scheduler reports `COMPLETED`, STATUS is `VALIDATING`; run `collect` with `--model \"<the exact model id you are running as>\"` (decision 0024). Exit 2 → collection is refused: reply T4 with the wrapper's error and scheduler log path, stop. Exit 1 → the exit gate failed and collect wrote `FAILED:EXIT_1`: reply T4 with its `failures` verbatim, stop. Preserve the failure; do not poll to replace it.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "exit gates that check content",
+     "run markers bound to script hashes",
+     "helper exit codes",
+     "history entries written by helpers"
+    ],
+    "evidence": "`OUTPUTS.tsv`, STATUS COMPLETE or FAILED, the harvested cache",
+    "inherited_from": "_shape_wrapper",
+    "inputs": [
+     "the finished run",
+     "the model's own id"
+    ],
+    "kind": "judgment",
+    "note": "Exit 3 (no such project) has no branch.",
+    "question": 2,
+    "rung_now": "R0",
+    "rung_target": "R0",
+    "rung_why": "The gate checks content and writes the state; the model passes its id under a written rule.",
+    "unsaid": []
+   },
+   "n": "8"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "date",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": false
+       },
+       "allowed_where_intended": false,
+       "dispatcher_allowed_by_workspace": {},
+       "intended_workspace": "public",
+       "refusal": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058"
+      },
+      "kind": "implicit",
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:116",
+      "tool": null
+     }
+    ],
+    "exit_branches": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": false,
+       "fresh": false,
+       "fresh_declared": false,
+       "mixed": true,
+       "public": true
+      },
+      "path": "projects/{project}/HISTORY.md",
+      "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:114",
+      "tool": "Edit"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:114-116",
+    "templates": [
+     "T6"
+    ],
+    "text": "9. Exit 0 → `collect` has written `OUTPUTS.tsv` and `STATUS COMPLETE`. Append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>` with today's date, and reply T6.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "history entries written by helpers",
+     "fixed response templates",
+     "written rules only",
+     "guard deny rules"
+    ],
+    "evidence": "an appended `HISTORY.md` entry; T6",
+    "inherited_from": "_shape_wrapper",
+    "inputs": [
+     "collect's `history_entry`"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "Copying is written, but the date the model must write in has no source the agent can reach.",
+    "unsaid": [
+     {
+      "decision": "What today's date is, for the HISTORY.md entry",
+      "defects": [
+       "D17"
+      ],
+      "detection": 9,
+      "fix": "The helper stamps the date (it already imports datetime) and appends the entry itself",
+      "fix_rung": "R0",
+      "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace, and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+      "id": "G-date",
+      "occurrence": null,
+      "severity": 3,
+      "why_rank": "A wrong date misleads a later reader of the record but changes no result; nothing ever checks it"
+     }
+    ]
+   },
+   "n": "9"
+  }
+ ],
+ "unsaid_ranked": [
+  {
+   "decision": "What today's date is, for the HISTORY.md entry",
+   "defects": [
+    "D17"
+   ],
+   "detection": 9,
+   "fix": "The helper stamps the date (it already imports datetime) and appends the entry itself",
+   "fix_rung": "R0",
+   "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace, and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+   "group": 1,
+   "id": "G-date",
+   "occurrence": null,
+   "rank_in_stage": 6,
+   "severity": 3,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:298-300",
+     "step": "13"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:114-116",
+     "step": "9"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:107-109",
+     "step": "9"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:129-131",
+     "step": "9"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:102-104",
+     "step": "9"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:111-113",
+     "step": "9"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:127-131",
+     "step": "9"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:134-136",
+     "step": "9"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:100-101",
+     "step": "9"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:115-117",
+     "step": "9"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:147-148",
+     "step": "9"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
+     "step": "10"
+    }
+   ],
+   "why_rank": "A wrong date misleads a later reader of the record but changes no result; nothing ever checks it"
+  },
+  {
+   "decision": "When to refresh a submitted job's STATUS, and who does it",
+   "defects": [
+    "D10",
+    "D13"
+   ],
+   "detection": 2,
+   "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
+   "fix_rung": "R0",
+   "goes_wrong": "Only executorlib.py status moves STATUS from SUBMITTED to VALIDATING, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's status call is reached only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+   "group": 2,
+   "id": "W-poll",
+   "occurrence": null,
+   "rank_in_stage": 5,
+   "severity": 5,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:160-161",
+     "step": "7"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104-106",
+     "step": "7"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:97-99",
+     "step": "7"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:92-94",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:101-103",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:126-126",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94-95",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:106-107",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:137-138",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A stall, not a wrong result, and a visible one; but every assay passes through it"
+  },
+  {
+   "decision": "How to spell a call the guard accepts only through the dispatcher",
+   "defects": [
+    "D15"
+   ],
+   "detection": 2,
+   "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+   "fix_rung": "R0",
+   "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+   "group": 2,
+   "id": "G-door",
+   "occurrence": null,
+   "rank_in_stage": 7,
+   "severity": 4,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:165-178",
+     "step": "9"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100-101",
+     "step": "5"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104-106",
+     "step": "7"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:93-94",
+     "step": "5"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:97-99",
+     "step": "7"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:115-116",
+     "step": "5"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:88-89",
+     "step": "5"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:92-94",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:97-98",
+     "step": "5"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:101-103",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:103-111",
+     "step": "3"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:112-114",
+     "step": "4"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:115-116",
+     "step": "5"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:117-118",
+     "step": "6"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:122-126",
+     "step": "8"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:123-123",
+     "step": "5"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:124-125",
+     "step": "6"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:126-126",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:92-92",
+     "step": "5"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:93-93",
+     "step": "6"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94-95",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:104-104",
+     "step": "5"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:105-105",
+     "step": "6"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:106-107",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:135-135",
+     "step": "5"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:136-136",
+     "step": "6"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:137-138",
+     "step": "7"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
+     "step": "1"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:148-150",
+     "step": "8"
+    }
+   ],
+   "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+  },
+  {
+   "decision": "What to do when the executor refuses the submission",
+   "defects": [
+    "D12"
+   ],
+   "detection": 6,
+   "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; never change config to pass a venue rule",
+   "fix_rung": "R4",
+   "goes_wrong": "No step branches on submit's exit: each sub-stage's submit step says only to capture job_id before T2 announces 'Submitted as job <job_id>', and stage 03's step 7 handles only an approval refusal. A venue-preflight refusal (unclassified or expired dataset, a route or memory rule) or a duplicate-submission refusal exits 1 or 2 with no branch, so the model either reports a submission that did not happen or improvises, for example by editing the config's memory declaration until the venue rule passes",
+   "group": 3,
+   "id": "W-submit",
+   "occurrence": null,
+   "rank_in_stage": 1,
+   "severity": 7,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100-101",
+     "step": "5"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:93-94",
+     "step": "5"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:115-116",
+     "step": "5"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:88-89",
+     "step": "5"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:97-98",
+     "step": "5"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:117-118",
+     "step": "6"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:123-123",
+     "step": "5"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:92-92",
+     "step": "5"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:104-104",
+     "step": "5"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:135-135",
+     "step": "5"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "The venue rules are a data-policy gate; an improvised way past one is a breach only a reader of the transcript would see"
+  },
+  {
+   "decision": "Where to resume a sub-stage whose STATUS is VALIDATING, ARTIFACT_MISSING, STALE or FAILED",
+   "defects": [
+    "D11"
+   ],
+   "detection": 4,
+   "fix": "Step 2 branches every STATUS value to its step, as the router's steps 6-9 do; better, the wrapper reports the next action from STATUS",
+   "fix_rung": "R0",
+   "goes_wrong": "Step 2 stops only on SUBMITTED, RUNNING or COMPLETE, so read literally the other states fall through to check, prepare and submit; only step 7's 'On a later invocation' implies jumping to the status call and collect. A literal reading re-prepares a finished run, rewriting its params and reproducibility manifest, and tries to submit it again",
+   "group": 3,
+   "id": "W-reentry",
+   "occurrence": null,
+   "rank_in_stage": 3,
+   "severity": 5,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:93-94",
+     "step": "2"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:85-86",
+     "step": "2"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:107-108",
+     "step": "2"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:80-81",
+     "step": "2"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:89-90",
+     "step": "2"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:101-102",
+     "step": "2"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:116-117",
+     "step": "2"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:85-86",
+     "step": "2"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:98-99",
+     "step": "2"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:128-129",
+     "step": "2"
+    }
+   ],
+   "why_rank": "Wasted work and a rewritten provenance file rather than a wrong result: the executor's duplicate-submission refusal and collect's gates stand behind it"
+  }
+ ]
+}

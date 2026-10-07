@@ -1,0 +1,1302 @@
+{
+ "id": "00_initialize_project",
+ "inherits": null,
+ "judgment_by": "step-map lane lead (claude-opus-5-5)",
+ "judgment_date": "2026-10-07",
+ "path": "gars/00_initialize_project/CONTEXT.md",
+ "schema": "stepmap-map/1",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "steps": [
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:195-195",
+    "templates": [
+     "T1"
+    ],
+    "text": "1. Activated when the user says they want to start a new project. Reply T1.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "question",
+     "templates": [
+      "T1"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "fixed response templates",
+     "wait points",
+     "one action per step"
+    ],
+    "evidence": "the T1 message in the conversation only",
+    "inputs": [
+     "the user's request to start a project"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "Fixed text with no choice in it; nothing for code to compute.",
+    "unsaid": []
+   },
+   "n": "1"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:196-197",
+    "templates": [],
+    "text": "2. Receive the project title. **Send nothing yet** — the sanitized title is confirmed in the same message as the menu, so the user is asked exactly one question at a time.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "written rules only",
+     "one action per step"
+    ],
+    "evidence": "none until T3 shows the title and its directory form",
+    "inputs": [
+     "the user's reply"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "The model decides which part of a reply is the title, and T3 then needs the sanitized form before any helper has computed it (D3).",
+    "unsaid": [
+     {
+      "decision": "Which part of the user's reply is the project title, and what its directory name is",
+      "defects": [
+       "D3"
+      ],
+      "detection": 3,
+      "fix": "assays takes the title and returns create's sanitized form, so T3 renders code's answer",
+      "fix_rung": "R0",
+      "goes_wrong": "A first reply may carry the title with an assay or a path; the model decides what the title is, and T3 shows a sanitized directory name that only create (step 6) computes, so the model sanitizes it itself, which Definitions forbid",
+      "id": "S00-title",
+      "occurrence": null,
+      "severity": 3,
+      "why_rank": "A wrong title is awkward to undo but changes no data, and T3b shows the real directory before any data is linked"
+     }
+    ]
+   },
+   "n": "2"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/stage00_register.py assays",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "fresh_declared"
+      },
+      "kind": "fenced",
+      "source": "gars/00_initialize_project/CONTEXT.md:201",
+      "tool": "stage00_register.assays"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       3
+      ],
+      "handled": [],
+      "prose_handling": [],
+      "source": "gars/00_initialize_project/CONTEXT.md:201",
+      "tool": "stage00_register.assays",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/stage00_register.py:291"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:198-207",
+    "templates": [
+     "T3"
+    ],
+    "text": "3. **Always offer the menu, whether or not the user named an assay.** Run: Reply T3, rendering every entry of its `assays` array. Do this even when the request already names an assay unambiguously — the menu is what makes the set of choices visible, and this is the last moment before any directory exists when a correction is free. If the user did name one, say which menu entry it matches so confirming costs one word.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "gate",
+     "templates": [
+      "T3"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "helper",
+     "model"
+    ],
+    "controls": [
+     "closed menus built by code",
+     "fixed response templates",
+     "wait points",
+     "helper exit codes"
+    ],
+    "evidence": "the T3 message; `assays` JSON in the transcript",
+    "inputs": [
+     "the assay map, through `assays`",
+     "the user's earlier phrase naming an assay"
+    ],
+    "kind": "judgment",
+    "note": "Exit 3 (assay map missing) has no branch here or at step 4 (D2).",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "The menu is code's, but the 'Your request matches NN' line asks the model to resolve a phrase with no rule (Definitions forbid exactly that); normalisation in code already does it.",
+    "unsaid": [
+     {
+      "decision": "Which menu entry the user's earlier phrase matches ('Your request matches 01')",
+      "detection": 5,
+      "fix": "`assays --select` on the original phrase returns the match or the ambiguity; the model only renders it",
+      "fix_rung": "R0",
+      "goes_wrong": "Definitions forbid resolving a phrase yourself, yet step 3 asks the model to say which entry the request matches; 'RNA-seq' could be bulk or single-cell, the user tends to confirm a suggestion with one word, and a wrong suggestion creates the wrong assay's directories and config",
+      "id": "S00-match",
+      "occurrence": null,
+      "severity": 8,
+      "why_rank": "A wrong assay runs the wrong pipeline on the data; T3b names the assay, but only a user who reads it carefully catches the slip"
+     }
+    ]
+   },
+   "n": "3"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/stage00_register.py assays --select \"<exactly what the user replied>\"",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "fresh_declared"
+      },
+      "kind": "fenced",
+      "source": "gars/00_initialize_project/CONTEXT.md:211",
+      "tool": "stage00_register.assays"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       2,
+       3
+      ],
+      "handled": [
+       0,
+       2
+      ],
+      "prose_handling": [],
+      "source": "gars/00_initialize_project/CONTEXT.md:211",
+      "tool": "stage00_register.assays",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/stage00_register.py:291"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:208-216",
+    "templates": [],
+    "text": "4. Receive the selection and resolve it: Pass their reply through **unchanged**. It accepts menu numbers, Assay IDs and assay names, in any mixture; resolving is the script's job, and doing it yourself is how the wrong assay gets created.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "closed vocabularies",
+     "typed tool calls",
+     "helper exit codes",
+     "written rules only"
+    ],
+    "evidence": "`assays --select` JSON in the transcript",
+    "inputs": [
+     "the user's reply, passed through unchanged"
+    ],
+    "kind": "judgment",
+    "question": 2,
+    "rung_now": "R0",
+    "rung_target": "R0",
+    "rung_why": "Resolution of the reply is code's; the model only quotes it.",
+    "unsaid": []
+   },
+   "n": "4"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:217-218",
+    "templates": [
+     "T3"
+    ],
+    "text": "5. Exit 2 → reply T3 again, naming its `invalid` entries, and wait. Never proceed on a partial selection, and never substitute the entry you think was meant.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "gate",
+     "templates": [
+      "T3"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "helper exit codes",
+     "fixed response templates",
+     "wait points"
+    ],
+    "evidence": "the repeated T3",
+    "inputs": [
+     "`assays --select`'s `invalid` list"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "A written branch on an exit code; nothing to decide.",
+    "unsaid": []
+   },
+   "n": "5"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/stage00_register.py create --title \"<title>\" --assays <assay_id> [<assay_id> ...]",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "fresh_declared"
+      },
+      "kind": "fenced",
+      "source": "gars/00_initialize_project/CONTEXT.md:222",
+      "tool": "stage00_register.create"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       2,
+       3
+      ],
+      "handled": [
+       0,
+       2
+      ],
+      "prose_handling": [],
+      "source": "gars/00_initialize_project/CONTEXT.md:222",
+      "tool": "stage00_register.create",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/stage00_register.py:366",
+        "gars/_system/stage00_register.py:378",
+        "gars/_system/stage00_register.py:395"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:219-227",
+    "templates": [],
+    "text": "6. Exit 0 → take its **`assay_ids`**. Create the project: Pass Assay IDs, **never menu numbers**. The numbers are a display convenience regenerated on every call; an assay added to the map renumbers them, so a number that reaches disk or a later turn means something else.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "helper exit codes",
+     "closed vocabularies"
+    ],
+    "evidence": "the project stamp, `_config/` and `raw/` directories on disk",
+    "inputs": [
+     "`assay_ids` from step 4",
+     "the title"
+    ],
+    "kind": "judgment",
+    "note": "Exit 3 (title sanitizes to nothing, map or stamp missing) has no branch (the pilot's create exit 3).",
+    "question": 2,
+    "rung_now": "R0",
+    "rung_target": "R0",
+    "rung_why": "Pure code once the IDs are passed.",
+    "unsaid": []
+   },
+   "n": "6"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:228-229",
+    "templates": [
+     "T7",
+     "T8"
+    ],
+    "text": "7. Exit 2 with `template: T7` → the project exists. Reply T7 and wait for a different title. Nothing was created. Exit 2 with `template: T8` → reply T8; nothing was created; stop.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "gate",
+     "templates": [
+      "T7"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "helper exit codes",
+     "fixed response templates",
+     "wait points"
+    ],
+    "evidence": "T7 or T8",
+    "inputs": [
+     "create's `template` field"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "The helper names the template; the model sends it.",
+    "unsaid": []
+   },
+   "n": "7"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:230-233",
+    "templates": [
+     "T3b"
+    ],
+    "text": "8. Exit 0 → the stamp is copied and `00_data/<Assay ID>/raw/` exists for each assay. Reply T3b confirming what was created **by Assay ID and name**, then ask for the raw data path of the **first** assay. Handle assays strictly one at a time, never asking for the next until the current is resolved.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "question",
+     "templates": [
+      "T3b"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "fixed response templates",
+     "wait points",
+     "one action per step"
+    ],
+    "evidence": "T3b",
+    "inputs": [
+     "create's JSON"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "A fixed template; the order of assays is create's list.",
+    "unsaid": []
+   },
+   "n": "8"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": true,
+        "mixed": false,
+        "public": false
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": true,
+        "mixed": false,
+        "public": false
+       },
+       "intended_workspace": "fresh_declared"
+      },
+      "kind": "fenced",
+      "source": "gars/00_initialize_project/CONTEXT.md:237",
+      "tool": "stage00_register.inspect"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       2
+      ],
+      "handled": [
+       0,
+       2
+      ],
+      "prose_handling": [
+       "If the error names unmatched filenames, show them, ask the user how sample IDs should be read, and re-run `inspect` with `--sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'`."
+      ],
+      "source": "gars/00_initialize_project/CONTEXT.md:237",
+      "tool": "stage00_register.inspect",
+      "unhandled": [],
+      "unhandled_emit_sites": {}
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:234-238",
+    "templates": [],
+    "text": "9. Receive a path. Inspect it, writing nothing:",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper",
+     "guard"
+    ],
+    "controls": [
+     "typed tool calls",
+     "guard deny rules",
+     "negative scope rules",
+     "helper exit codes"
+    ],
+    "evidence": "`inspect` JSON in the transcript; nothing on disk",
+    "inputs": [
+     "the path the user typed"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R4",
+    "rung_why": "The scan is code's, but the guard runs it for an agent only on a source a human declared public, and no contract says what to do when it refuses.",
+    "unsaid": [
+     {
+      "decision": "What to do when the guard refuses inspect or link because no human declared the source public",
+      "detection": 2,
+      "fix": "Definitions name data_sources.tsv; a branch sends a template asking the human to declare the folder or run the step",
+      "fix_rung": "R4",
+      "goes_wrong": "An agent may run inspect, link and finalize only on a folder listed in data_sources.tsv; no contract mentions that file, so the reply to the refusal is the model's own: ask the user to run the step, ask them to declare the folder, or stop",
+      "id": "S00-guard",
+      "occurrence": null,
+      "severity": 7,
+      "why_rank": "Stage 00 cannot finish in a guarded session without the human's declaration and the contract offers no compliant road; the refusal itself is loud"
+     }
+    ]
+   },
+   "n": "9"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [
+     {
+      "allowed_where_intended": false,
+      "flag": "--sample-id-pattern",
+      "in_command": false,
+      "prohibited": false,
+      "source": "gars/00_initialize_project/CONTEXT.md:242",
+      "target_tool": "stage00_register.inspect",
+      "value": "'<their answer as a regex with named groups sample, read and optionally lane>'"
+     }
+    ],
+    "source": "gars/00_initialize_project/CONTEXT.md:240-243",
+    "templates": [
+     "T5"
+    ],
+    "text": "10. Exit 2 → reply T5 with its `error`. Accept either a replacement path or `skip`. If the error names unmatched filenames, show them, ask the user how sample IDs should be read, and re-run `inspect` with `--sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'`. Never compose that pattern from your own reading of the filenames.",
+    "wait": {
+     "accept_tokens": [
+      "skip"
+     ],
+     "kind": "gate",
+     "templates": [
+      "T5"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper",
+     "human"
+    ],
+    "controls": [
+     "helper exit codes",
+     "negative scope rules",
+     "fixed response templates",
+     "wait points",
+     "guard deny rules"
+    ],
+    "evidence": "T5; a second `inspect` JSON",
+    "inputs": [
+     "`inspect`'s error and unmatched names",
+     "the user's description of their file names"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R1",
+    "rung_why": "Scope forbids composing a pattern while the step asks for 'their answer as a regex': the rule contradicts itself, and the guard refuses every named-group pattern (D4).",
+    "unsaid": [
+     {
+      "decision": "Turning the user's description of their file names into a sample-ID regex",
+      "defects": [
+       "D4"
+      ],
+      "detection": 3,
+      "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",
+      "fix_rung": "R1",
+      "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), so the model then improvises a road around it",
+      "id": "S00-pattern",
+      "occurrence": null,
+      "severity": 8,
+      "why_rank": "Sample identity feeds every later step, but T4a lists the derived IDs for confirmation and the stage's human check asks the same"
+     }
+    ]
+   },
+   "n": "10"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:244-245",
+    "templates": [
+     "T4a"
+    ],
+    "text": "11. Exit 0 → reply T4a with its counts and `sample_ids`, and **ask the user to confirm before anything is written**. Do not link yet.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "gate",
+     "templates": [
+      "T4a"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "human"
+    ],
+    "controls": [
+     "fixed response templates",
+     "wait points",
+     "negative scope rules"
+    ],
+    "evidence": "T4a in the conversation",
+    "inputs": [
+     "`inspect`'s counts and sample IDs"
+    ],
+    "kind": "judgment",
+    "note": "T4a's read-1 and read-2 counts are not in inspect's JSON (pilot defect); the model would have to count files itself, which Scope forbids.",
+    "question": 4,
+    "rung_now": "R3",
+    "rung_target": "R3",
+    "rung_why": "The human confirms the derived IDs before anything is written.",
+    "unsaid": []
+   },
+   "n": "11"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": true,
+        "mixed": false,
+        "public": false
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": true,
+        "mixed": false,
+        "public": false
+       },
+       "intended_workspace": "fresh_declared"
+      },
+      "kind": "fenced",
+      "source": "gars/00_initialize_project/CONTEXT.md:249",
+      "tool": "stage00_register.link"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "handled": [
+       0,
+       1
+      ],
+      "prose_handling": [],
+      "source": "gars/00_initialize_project/CONTEXT.md:249",
+      "tool": "stage00_register.link",
+      "unhandled": [
+       2,
+       3
+      ],
+      "unhandled_emit_sites": {
+       "2": [
+        "gars/_system/stage00_register.py:510"
+       ],
+       "3": [
+        "gars/_system/stage00_register.py:500"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [
+     {
+      "allowed_where_intended": false,
+      "flag": "--force",
+      "in_command": false,
+      "prohibited": true,
+      "source": "gars/00_initialize_project/CONTEXT.md:252",
+      "target_tool": "stage00_register.link",
+      "value": null
+     }
+    ],
+    "source": "gars/00_initialize_project/CONTEXT.md:246-253",
+    "templates": [],
+    "text": "12. On confirmation, link: Never add `--force`. Exit 1 → report its `error` and stop; the raw directory is already populated and narrowing an existing project is not this stage's to do.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper",
+     "guard"
+    ],
+    "controls": [
+     "typed tool calls",
+     "helper exit codes",
+     "negative scope rules",
+     "guard deny rules"
+    ],
+    "evidence": "symlinks under `00_data/<Assay ID>/raw/`",
+    "inputs": [
+     "the user's reply to T4a",
+     "the inspected path"
+    ],
+    "kind": "judgment",
+    "note": "Exit 2 (pilot) and exit 3 (D1) have no branch.",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R1",
+    "rung_why": "Link is code, but whether the reply is a yes has no rule and the link cannot be undone inside the stage.",
+    "unsaid": [
+     {
+      "decision": "Whether the user's reply to T4a is a yes before link runs",
+      "detection": 3,
+      "fix": "A fixed answer (`link`), re-asked on anything else",
+      "fix_rung": "R1",
+      "goes_wrong": "T4a asks to 'Confirm ... or provide a different path' with no fixed answer; 'looks fine, but what about the undetermined files?' is the model's to read, and link cannot be undone inside the stage (re-linking needs --force, which is forbidden)",
+      "id": "S00-yes",
+      "occurrence": null,
+      "severity": 6,
+      "why_rank": "Wrong files stay linked until the user deletes the project, but T4b and the human check show what was linked"
+     }
+    ]
+   },
+   "n": "12"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:254-254",
+    "templates": [
+     "T4b"
+    ],
+    "text": "13. Exit 0 → reply T4b with its `linked` count.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "fixed response templates"
+    ],
+    "evidence": "T4b",
+    "inputs": [
+     "link's `linked` count"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "A fixed template on code's count.",
+    "unsaid": []
+   },
+   "n": "13"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:255-255",
+    "templates": [],
+    "text": "14. Repeat steps 9-13 for each remaining assay.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "written rules only",
+     "one action per step"
+    ],
+    "evidence": "none of its own",
+    "inputs": [
+     "create's list of assays",
+     "which assays are linked or skipped"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "The loop is written, but what a `skip` leaves behind is not.",
+    "unsaid": [
+     {
+      "decision": "What happens to an assay after the user replies `skip`",
+      "detection": 1,
+      "fix": "A helper drops the skipped assay's empty directory, or finalize ignores an assay marked skipped",
+      "fix_rung": "R0",
+      "goes_wrong": "T5 offers skip, but nothing removes the skipped assay: its raw/ stays empty and finalize fails on it ('raw/ is empty'), leaving a half-made project the contract tells the agent not to delete",
+      "id": "S00-skip",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "A loud failure, but a dead end the user did not choose"
+     }
+    ]
+   },
+   "n": "14"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model \"<model id>\"",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "fresh_declared"
+      },
+      "kind": "fenced",
+      "source": "gars/00_initialize_project/CONTEXT.md:264",
+      "tool": "stage00_register.finalize"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "handled": [
+       0,
+       1,
+       3
+      ],
+      "prose_handling": [],
+      "source": "gars/00_initialize_project/CONTEXT.md:264",
+      "tool": "stage00_register.finalize",
+      "unhandled": [
+       2
+      ],
+      "unhandled_emit_sites": {
+       "2": [
+        "gars/_system/stage00_register.py:621",
+        "gars/_system/stage00_register.py:624",
+        "gars/_system/stage00_register.py:627",
+        "gars/_system/stage00_register.py:638"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [
+     {
+      "allowed_where_intended": true,
+      "flag": "--integrity",
+      "in_command": false,
+      "prohibited": false,
+      "source": "gars/00_initialize_project/CONTEXT.md:259",
+      "target_tool": "stage00_register.finalize",
+      "value": "quick"
+     },
+     {
+      "allowed_where_intended": null,
+      "flag": "--model",
+      "in_command": true,
+      "prohibited": false,
+      "source": "gars/00_initialize_project/CONTEXT.md:267",
+      "target_tool": "stage00_register.finalize",
+      "value": null
+     },
+     {
+      "allowed_where_intended": false,
+      "flag": "--sample-id-pattern",
+      "in_command": false,
+      "prohibited": false,
+      "source": "gars/00_initialize_project/CONTEXT.md:270",
+      "target_tool": "stage00_register.finalize",
+      "value": null
+     },
+     {
+      "allowed_where_intended": true,
+      "flag": "--integrity",
+      "in_command": false,
+      "prohibited": false,
+      "source": "gars/00_initialize_project/CONTEXT.md:275",
+      "target_tool": "stage00_register.finalize",
+      "value": "quick"
+     }
+    ],
+    "source": "gars/00_initialize_project/CONTEXT.md:256-276",
+    "templates": [],
+    "text": "15. When every assay is linked, finalize. Run it as an ordinary foreground call, with the longest command timeout your harness allows, never in the background: a background task's output file lies outside the workspace, where this workspace's guard does not let a session read (R-073), so you would never see the result. At the default `--integrity quick` it takes seconds even on a large cohort. If a timeout ever kills it, it is deterministic and re-runnable: re-run it once in the foreground. `--model` is the exact model id you are running as, exactly as your harness reports it — the model is part of the toolchain, so `HISTORY.md` records it beside the template version. If you cannot name it, omit the flag: the script records `unknown`, which is honest; a guessed id is not. Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate. It is deterministic and re-runnable: on unchanged inputs it reproduces the four files byte for byte, so a killed run costs only time. It runs `--integrity quick` by default — metadata only, fast. Pass a different depth **only if the user asked for one**, and never downgrade on your own initiative.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper",
+     "guard"
+    ],
+    "controls": [
+     "typed tool calls",
+     "exit gates that check content",
+     "history entries written by helpers",
+     "read-only file modes",
+     "guard deny rules",
+     "closed vocabularies"
+    ],
+    "evidence": "`files.csv`, `samples.csv`, `CONTEXT.md`, `HISTORY.md`, `00_data/dataset.tsv` (locked)",
+    "inputs": [
+     "the project",
+     "a data class, a purpose and an agreement reference no step collects",
+     "the model's own id"
+    ],
+    "kind": "judgment",
+    "note": "Exit 2 (class, purpose, agreement or lock refusals) has no branch (pilot). The --sample-id-pattern this step repeats is refused by the guard (D4).",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R3",
+    "rung_why": "Finalize is code, but its --data-class and --purpose arguments come from nowhere in the dialogue; the model picks them and they lock.",
+    "unsaid": [
+     {
+      "decision": "The dataset's data class and purpose, passed to finalize",
+      "detection": 8,
+      "fix": "A step asks class and purpose from a closed menu built from the data policy table, T6 shows them, and finalize's refusals get a branch",
+      "fix_rung": "R3",
+      "goes_wrong": "Step 15's command carries --data-class and --purpose, but T1 promises to collect only the title, the assays and the paths, and no step asks. The model picks both, finalize locks them in dataset.tsv, and T6 never shows them. The guard lets an agent register 'public' only for a source a human declared public, so the class is fenced; the purpose (fixture, internal, pilot, commercial) is not, and it decides retention and whether local execution is allowed",
+      "id": "S00-class",
+      "occurrence": null,
+      "severity": 8,
+      "why_rank": "A permanent, machine-enforced record of how the data may be used, chosen without asking and never shown back"
+     }
+    ]
+   },
+   "n": "15"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:277-279",
+    "templates": [
+     "T9"
+    ],
+    "text": "16. Exit 1 or 3 → reply T9 listing every entry of its `failures` array. Do not claim completion, do not repair anything, and do not delete what was created — the user decides whether to fix or discard.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "helper exit codes",
+     "fixed response templates",
+     "negative scope rules"
+    ],
+    "evidence": "T9",
+    "inputs": [
+     "finalize's `failures`"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "A written branch; T9's columns need the model to split failure strings (D19).",
+    "unsaid": []
+   },
+   "n": "16"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/00_initialize_project/CONTEXT.md:280-280",
+    "templates": [
+     "T6"
+    ],
+    "text": "17. Exit 0 → reply T6 using its `assays` map and `template_version`.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "handoff",
+     "templates": [
+      "T6"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "human"
+    ],
+    "controls": [
+     "fixed response templates",
+     "one human check per stage",
+     "wait points"
+    ],
+    "evidence": "T6; the stage's human check follows",
+    "inputs": [
+     "finalize's `assays` map and `template_version`"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "A fixed hand-off on code's numbers.",
+    "unsaid": []
+   },
+   "n": "17"
+  }
+ ],
+ "unsaid_ranked": [
+  {
+   "decision": "The dataset's data class and purpose, passed to finalize",
+   "detection": 8,
+   "fix": "A step asks class and purpose from a closed menu built from the data policy table, T6 shows them, and finalize's refusals get a branch",
+   "fix_rung": "R3",
+   "goes_wrong": "Step 15's command carries --data-class and --purpose, but T1 promises to collect only the title, the assays and the paths, and no step asks. The model picks both, finalize locks them in dataset.tsv, and T6 never shows them. The guard lets an agent register 'public' only for a source a human declared public, so the class is fenced; the purpose (fixture, internal, pilot, commercial) is not, and it decides retention and whether local execution is allowed",
+   "group": 0,
+   "id": "S00-class",
+   "occurrence": null,
+   "rank_in_stage": 1,
+   "severity": 8,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:256-276",
+     "step": "15"
+    }
+   ],
+   "why_rank": "A permanent, machine-enforced record of how the data may be used, chosen without asking and never shown back"
+  },
+  {
+   "decision": "Which menu entry the user's earlier phrase matches ('Your request matches 01')",
+   "detection": 5,
+   "fix": "`assays --select` on the original phrase returns the match or the ambiguity; the model only renders it",
+   "fix_rung": "R0",
+   "goes_wrong": "Definitions forbid resolving a phrase yourself, yet step 3 asks the model to say which entry the request matches; 'RNA-seq' could be bulk or single-cell, the user tends to confirm a suggestion with one word, and a wrong suggestion creates the wrong assay's directories and config",
+   "group": 0,
+   "id": "S00-match",
+   "occurrence": null,
+   "rank_in_stage": 2,
+   "severity": 8,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:198-207",
+     "step": "3"
+    }
+   ],
+   "why_rank": "A wrong assay runs the wrong pipeline on the data; T3b names the assay, but only a user who reads it carefully catches the slip"
+  },
+  {
+   "decision": "Turning the user's description of their file names into a sample-ID regex",
+   "defects": [
+    "D4"
+   ],
+   "detection": 3,
+   "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",
+   "fix_rung": "R1",
+   "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), so the model then improvises a road around it",
+   "group": 0,
+   "id": "S00-pattern",
+   "occurrence": null,
+   "rank_in_stage": 3,
+   "severity": 8,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:240-243",
+     "step": "10"
+    }
+   ],
+   "why_rank": "Sample identity feeds every later step, but T4a lists the derived IDs for confirmation and the stage's human check asks the same"
+  },
+  {
+   "decision": "What to do when the guard refuses inspect or link because no human declared the source public",
+   "detection": 2,
+   "fix": "Definitions name data_sources.tsv; a branch sends a template asking the human to declare the folder or run the step",
+   "fix_rung": "R4",
+   "goes_wrong": "An agent may run inspect, link and finalize only on a folder listed in data_sources.tsv; no contract mentions that file, so the reply to the refusal is the model's own: ask the user to run the step, ask them to declare the folder, or stop",
+   "group": 0,
+   "id": "S00-guard",
+   "occurrence": null,
+   "rank_in_stage": 4,
+   "severity": 7,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:234-238",
+     "step": "9"
+    }
+   ],
+   "why_rank": "Stage 00 cannot finish in a guarded session without the human's declaration and the contract offers no compliant road; the refusal itself is loud"
+  },
+  {
+   "decision": "Whether the user's reply to T4a is a yes before link runs",
+   "detection": 3,
+   "fix": "A fixed answer (`link`), re-asked on anything else",
+   "fix_rung": "R1",
+   "goes_wrong": "T4a asks to 'Confirm ... or provide a different path' with no fixed answer; 'looks fine, but what about the undetermined files?' is the model's to read, and link cannot be undone inside the stage (re-linking needs --force, which is forbidden)",
+   "group": 0,
+   "id": "S00-yes",
+   "occurrence": null,
+   "rank_in_stage": 5,
+   "severity": 6,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:246-253",
+     "step": "12"
+    }
+   ],
+   "why_rank": "Wrong files stay linked until the user deletes the project, but T4b and the human check show what was linked"
+  },
+  {
+   "decision": "What happens to an assay after the user replies `skip`",
+   "detection": 1,
+   "fix": "A helper drops the skipped assay's empty directory, or finalize ignores an assay marked skipped",
+   "fix_rung": "R0",
+   "goes_wrong": "T5 offers skip, but nothing removes the skipped assay: its raw/ stays empty and finalize fails on it ('raw/ is empty'), leaving a half-made project the contract tells the agent not to delete",
+   "group": 0,
+   "id": "S00-skip",
+   "occurrence": null,
+   "rank_in_stage": 6,
+   "severity": 4,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:255-255",
+     "step": "14"
+    }
+   ],
+   "why_rank": "A loud failure, but a dead end the user did not choose"
+  },
+  {
+   "decision": "Which part of the user's reply is the project title, and what its directory name is",
+   "defects": [
+    "D3"
+   ],
+   "detection": 3,
+   "fix": "assays takes the title and returns create's sanitized form, so T3 renders code's answer",
+   "fix_rung": "R0",
+   "goes_wrong": "A first reply may carry the title with an assay or a path; the model decides what the title is, and T3 shows a sanitized directory name that only create (step 6) computes, so the model sanitizes it itself, which Definitions forbid",
+   "group": 0,
+   "id": "S00-title",
+   "occurrence": null,
+   "rank_in_stage": 7,
+   "severity": 3,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:196-197",
+     "step": "2"
+    }
+   ],
+   "why_rank": "A wrong title is awkward to undo but changes no data, and T3b shows the real directory before any data is linked"
+  }
+ ]
+}
