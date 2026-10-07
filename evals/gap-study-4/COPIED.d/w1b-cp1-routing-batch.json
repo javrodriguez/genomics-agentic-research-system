@@ -4,27 +4,27 @@
     {
       "path": "graders/labels4.py",
       "status": "new",
-      "reason": "Round 4's closed vocabulary (interface 4); round 3 has no such module. Its reserved labels repeat round 3's graders/labels.py strings, imported nowhere from there. It also holds the turn ends (TURN_ENDS, GRADED_ENDS) that agent_adapter.py and routing.json use instead of retyping them (review round 1, W1B-7). It also holds the cell state `incomplete — mechanical` (INCOMPLETE_MECHANICAL, CELL_STATES), round 3's word for a cell at its rehearsal or pause cap, which batch.py commits under glitch-f3's cap ruling (6 Oct 2026, fold 3)."
+      "reason": "Round 4's closed vocabulary (interface 4); round 3 has no such module. Its reserved labels repeat round 3's graders/labels.py strings, imported nowhere from there. It also holds the turn ends (TURN_ENDS, GRADED_ENDS) that agent_adapter.py and routing.json use instead of retyping them (review round 1, W1B-7). It also holds the cell state `incomplete — mechanical` (INCOMPLETE_MECHANICAL, CELL_STATES), round 3's word for a cell at its rehearsal or pause cap, which batch.py commits under glitch-f3's cap ruling (6 Oct 2026, fold 3). It also holds the ruling words (RULING, RULE_RERUN, RULE_ROUTE, RULINGS) a restart reads before it drives a blocked take, or one that failed after its drive started, again (review round 3, W1B3-1, fold 4)."
     },
     {
       "path": "agent_adapter.py",
       "status": "new",
-      "reason": "The runner's only agent interface (interface 5); new in round 4. TurnResult's init, api_errors (every API error of the turn, in order) and counters are required keywords, and the agent's first turn starts only with completed agent output (review round 2: W1B2-1, W1B2-4, W1B2-7)."
+      "reason": "The runner's only agent interface (interface 5); new in round 4. TurnResult's init, api_errors (every API error of the turn, in order) and counters are required keywords, and the agent's first turn starts only with completed agent output (review round 2: W1B2-1, W1B2-4, W1B2-7). started_at and ended_at are required keywords too, the host clock as an int or a float (review round 3, W1B3-6, fold 4)."
     },
     {
       "path": "routing.json",
       "status": "new",
-      "reason": "CP1's routing table as pre-registered data, with its annotations (an outside reach, a quiescence kill, an event id arriving as a checker reason: decided on every take, never routing), round 3's operator-side and driver-decided reasons and caps copied under Javier's ruling \"gap4 routing: A\" with their sources, glitch-f3's rulings on the rate-limit markers, the silent first-turn timeout (with no init event it rehearses, a differing init is refused: fold 3) and the cap units (rehearsals and pauses counted per half-cell, round 3's unit: fold 3), and the pin profiles CP5 pre-registers (PENDING); new in round 4 (round 3 routed inside drive.py)."
+      "reason": "CP1's routing table as pre-registered data, with its annotations (an outside reach, a quiescence kill, an event id arriving as a checker reason: decided on every take, never routing), round 3's operator-side and driver-decided reasons and caps copied under Javier's ruling \"gap4 routing: A\" with their sources, glitch-f3's rulings on the rate-limit markers, the silent first-turn timeout (with no init event it rehearses, a differing init is refused: fold 3) and the cap units (rehearsals and pauses counted per half-cell, round 3's unit: fold 3), and the pin profiles CP5 pre-registers (PENDING); new in round 4 (round 3 routed inside drive.py). Fold 4 (review round 3): one table-level pin refusal (before the first turn a present init that differs from the pin is refused whatever else matches; only the rate-limit pause outranks it: W1B3-2, glitch-f3 accepted the stricter reading), the silent-timeout row without its none_of, the pause cap counted by usage-window event (W1B3-5, glitch-f3's ruling), and the stale key sentence gone (W1B3-4)."
     },
     {
       "path": "routing.py",
       "status": "new",
-      "reason": "CP1's routing decision as one pure module; new in round 4."
+      "reason": "CP1's routing decision as one pure module; new in round 4. It applies routing.json's pin refusal and checks its shape (fold 4, W1B3-2)."
     },
     {
       "path": "batch.py",
       "status": "new",
-      "reason": "CP1's in-repo take loop, replacing round 3's out-of-repo batch.sh (verify-3 finding); it decides each take's mask, events and fate before the commit (blocked and failed masked fail-closed), rebuilds its caps and attempts from the committed outcomes on a restart, stops cleanly on a repo or window failure, refuses to start on PENDING data, closes a half-cell `incomplete — mechanical` at its rehearsal or pause cap and goes on (glitch-f3's cap ruling, fold 3), and states the usage window's wait_reset() contract (glitch-f3's ruling, fold 3); new."
+      "reason": "CP1's in-repo take loop, replacing round 3's out-of-repo batch.sh (verify-3 finding); it decides each take's mask, events and fate before the commit (blocked and failed masked fail-closed), rebuilds its caps and attempts from the committed outcomes on a restart, stops cleanly on a repo or window failure, refuses to start on PENDING data, closes a half-cell `incomplete — mechanical` at its rehearsal or pause cap and goes on (glitch-f3's cap ruling, fold 3), and states the usage window's wait_reset() contract (glitch-f3's ruling, fold 3); new. Fold 4 (review round 3): a restart refuses a blocked take, or one that failed after its drive started, until the repo holds a closed ruling for it (re-run or route <route>, with by), and never writes one; a take where nothing ran is re-driven automatically (drive_started); a leak keeps the take's route and fate and stops the loop (W1B3-1); the restart's pause window covers a block, rulings included (W1B3-3); pauses that share one reset count once per half-cell (window_event, W1B3-5); a restart refuses rows that leave out a drive its history owes (W1B3-6)."
     },
     {
       "path": "tests/test_labels4.py",
