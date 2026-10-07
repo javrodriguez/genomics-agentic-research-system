@@ -253,6 +253,13 @@ REFUSE = {
     "a user record with another origin": (CC, _cc({"type": "user", "origin": {"kind": "hook"},
                                                    "message": {"content": "x"}})),
     "a sidechain record": (CC, _cc({"type": "assistant", "isSidechain": True, "message": {"content": []}})),
+    # Review round 1, W2B1-6: records the harness wrote itself are refused, never read as anyone's words.
+    "a meta user record": (CC, _cc({"type": "user", "isMeta": True, "message": {"content": "Caveat: the messages"}})),
+    "a record carrying isMeta, even false": (CC, _cc({"type": "user", "isMeta": False, "message": {"content": "05"}})),
+    "an API-error assistant record": (CC, _cc({"type": "assistant", "isApiErrorMessage": True, "message": {
+        "model": "claude-haiku-4-5-20251001", "content": [{"type": "text", "text": "API Error: 500"}]}})),
+    "a synthetic assistant record": (CC, _cc({"type": "assistant", "message": {
+        "model": "<synthetic>", "content": [{"type": "text", "text": "No response requested."}]}})),
     "a result for no call": (CC, _cc({"type": "user", "message": {"content": [
         {"type": "tool_result", "tool_use_id": "toolu_404", "content": "x"}]}})),
     "a second result for one call": (CC, render([("call", tv.OTHER, {}), ("result", "a"), ("result", "b")], CC)),

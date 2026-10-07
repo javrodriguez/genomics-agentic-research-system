@@ -331,6 +331,15 @@ class TheSweep(unittest.TestCase):
         mutated["awareness.py"] = srcs["awareness.py"] + "\n_MUTANT = view.harness_types\n"
         self.assertEqual(calls(mutated), ["awareness.py"])
 
+    def test_a_grader_may_record_the_manifest_keys(self):  # review round 1, W2B1-7
+        # Interface 8: wherever a take's `model` is recorded, `agent` ({harness, version}) is recorded beside it. A
+        # grader that records them is not typing a raw name, though `model` is also a Claude Code attachment type.
+        srcs = grader_sources()
+        mutated = dict(srcs)
+        mutated["pause_adherence.py"] = (srcs["pause_adherence.py"]
+                                         + '\n_ROW = {"model": "m", "agent": {"harness": "h", "version": "v"}}\n')
+        self.assertEqual(sweep_problems(mutated), [])
+
     def test_the_exclusion_is_only_the_views_own_words(self):
         p = tv.PARSERS[CC]
         allk = set(p.record_types) | set(p.block_types) | set(p.attachment_types) | set(p.tools) | {
