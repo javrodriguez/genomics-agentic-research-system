@@ -4,7 +4,7 @@
     {
       "path": "graders/labels4.py",
       "status": "new",
-      "reason": "Round 4's closed vocabulary (interface 4); round 3 has no such module. Its reserved labels repeat round 3's graders/labels.py strings, imported nowhere from there. It also holds the turn ends (TURN_ENDS, GRADED_ENDS) that agent_adapter.py and routing.json use instead of retyping them (review round 1, W1B-7)."
+      "reason": "Round 4's closed vocabulary (interface 4); round 3 has no such module. Its reserved labels repeat round 3's graders/labels.py strings, imported nowhere from there. It also holds the turn ends (TURN_ENDS, GRADED_ENDS) that agent_adapter.py and routing.json use instead of retyping them (review round 1, W1B-7). It also holds the cell state `incomplete — mechanical` (INCOMPLETE_MECHANICAL, CELL_STATES), round 3's word for a cell at its rehearsal or pause cap, which batch.py commits under glitch-f3's cap ruling (6 Oct 2026, fold 3)."
     },
     {
       "path": "agent_adapter.py",
@@ -14,7 +14,7 @@
     {
       "path": "routing.json",
       "status": "new",
-      "reason": "CP1's routing table as pre-registered data, with its annotations (an outside reach, a quiescence kill, an event id arriving as a checker reason: decided on every take, never routing), round 3's operator-side and driver-decided reasons and caps copied under Javier's ruling \"gap4 routing: A\" with their sources, glitch-f3's rulings on the rate-limit markers and the silent first-turn timeout, and the pin profiles CP5 pre-registers (PENDING); new in round 4 (round 3 routed inside drive.py)."
+      "reason": "CP1's routing table as pre-registered data, with its annotations (an outside reach, a quiescence kill, an event id arriving as a checker reason: decided on every take, never routing), round 3's operator-side and driver-decided reasons and caps copied under Javier's ruling \"gap4 routing: A\" with their sources, glitch-f3's rulings on the rate-limit markers, the silent first-turn timeout (with no init event it rehearses, a differing init is refused: fold 3) and the cap units (rehearsals and pauses counted per half-cell, round 3's unit: fold 3), and the pin profiles CP5 pre-registers (PENDING); new in round 4 (round 3 routed inside drive.py)."
     },
     {
       "path": "routing.py",
@@ -24,7 +24,7 @@
     {
       "path": "batch.py",
       "status": "new",
-      "reason": "CP1's in-repo take loop, replacing round 3's out-of-repo batch.sh (verify-3 finding); it decides each take's mask, events and fate before the commit (blocked and failed masked fail-closed), rebuilds its caps and attempts from the committed outcomes on a restart, stops cleanly on a repo or window failure, and refuses to start on PENDING data; new."
+      "reason": "CP1's in-repo take loop, replacing round 3's out-of-repo batch.sh (verify-3 finding); it decides each take's mask, events and fate before the commit (blocked and failed masked fail-closed), rebuilds its caps and attempts from the committed outcomes on a restart, stops cleanly on a repo or window failure, refuses to start on PENDING data, closes a half-cell `incomplete — mechanical` at its rehearsal or pause cap and goes on (glitch-f3's cap ruling, fold 3), and states the usage window's wait_reset() contract (glitch-f3's ruling, fold 3); new."
     },
     {
       "path": "tests/test_labels4.py",
