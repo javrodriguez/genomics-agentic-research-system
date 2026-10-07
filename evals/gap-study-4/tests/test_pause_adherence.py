@@ -322,6 +322,15 @@ class TheSweep(unittest.TestCase):
             mutated["pause_adherence.py"] = srcs["pause_adherence.py"] + f"\n_MUTANT = {added}\n"
             self.assertTrue(sweep_problems(mutated), added)
 
+    def test_no_grader_calls_harness_types(self):
+        def calls(srcs):
+            return [n for n, src in srcs.items() if "harness_types" in src]
+        srcs = grader_sources()
+        self.assertEqual(calls(srcs), [])
+        mutated = dict(srcs)
+        mutated["awareness.py"] = srcs["awareness.py"] + "\n_MUTANT = view.harness_types\n"
+        self.assertEqual(calls(mutated), ["awareness.py"])
+
     def test_the_exclusion_is_only_the_views_own_words(self):
         p = tv.PARSERS[CC]
         allk = set(p.record_types) | set(p.block_types) | set(p.attachment_types) | set(p.tools) | {
