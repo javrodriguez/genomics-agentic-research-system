@@ -1,6 +1,6 @@
 ---
 date: 2026-10-05
-status: standing # draft until S6: the frame, rules and entries are frozen and pass 1 is in; passes 2 and 3 are open
+status: standing # draft until S6: the frame, rules and entries are frozen; passes 1, 2 and 3 are in; the landing is open
 kind: decision
 touches:
   - gars/_system/claims/package_run.py
@@ -107,6 +107,14 @@ No `pass-1` entry was needed: every member that did not match exactly is covered
 Pass 1 ran against an earlier render of the same harvest, with the same re-run commands; it is **re-judged** offline against the package of record (`f5964ece…`, decision 0281) by that package's own `verify.py --against` over pass 1's re-run folder, and reads the same line (exit 2; the re-judgment's output and member table are the artifact `rejudge-f5964ece.tgz`, sha256 `d4d33c4d0acc78c640c36e1cc7de09e6ca81e3cf5c98ce17ae2c0281ac21f87c`, kept with the pass's evidence outside the repository).
 A cold-cache pass raised the machine's root-disk use by 15.02 GB (container images included); the re-run folder held 0.90 GB.
 
+## Passes 2 and 3 (the claim passes)
+
+Run 6 and 7 October 2026 after the S5 review's last round, on the package of record (`f5964ece…`, decision 0281), each on its own fresh m5.xlarge launch-pad machine (launch-pad lifetimes 7 and 8; 4 vCPU, 16,550,252,544 and 16,550,240,256 bytes of memory for Docker; no container image cached), by the package's own `rerun.sh` and `verify.py --against --table-out`: `rerun.sh` exit 0 in 2034 and 2111 seconds.
+**Both read: of 6 outputs (209 files), 2 matched exactly, 1 within the stated tolerance, 1 present but not byte-comparable, 2 differ (causes in PROVENANCE.md).**
+**They agree** under the rule above: the two member tables are identical, member by member, in mode and in result (209 members, none disagreeing), and equal pass 1's re-judgment: 105 byte-identical, 37 after `sorted_table`, 2 after `column_matched_table`, 2 within 1e-9 after sign alignment, 55 present, 8 differ (the two findings).
+The pass artifacts (`repro-pass2.tgz`, sha256 `6769d3187d866dbf7835141ee5536ab1faaa0d7836510f0fb0cfe1380d701587`; `repro-pass3.tgz`, sha256 `7613fd7bcd1240abd50752e5a370ff2efa3a30f668d87a6d994c1fc54d255c2d`) are kept outside the repository; `reproduction/yeast-atac/README.md` is `package_run.py rerun-note`'s rendering of them.
+Root-disk use rose by 15.05 GB and 15.02 GB over each pass's start.
+
 ## What this does not close
 
 - Independence: every pass is run by the repository's own machinery, never by another person.
@@ -117,7 +125,7 @@ A cold-cache pass raised the machine's root-disk use by 15.02 GB (container imag
 
 ## Status
 
-Draft, on the build branch `lane/repro-package`; the frame, rules and entries are frozen and pass 1 is in; finalised with passes 2 and 3 and the landing (S6).
+Draft, on the build branch `lane/repro-package`; the frame, rules and entries are frozen and passes 1, 2 and 3 are in; finalised with the landing (S6).
 
 ## Date
 
