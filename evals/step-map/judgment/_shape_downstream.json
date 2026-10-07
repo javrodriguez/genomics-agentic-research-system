@@ -25,7 +25,7 @@
      "id": "W-startvalues",
      "kind": "unsaid",
      "decision": "The values the start message shows before any helper runs",
-     "goes_wrong": "T1 is sent at step 1, so its counts and settings (samplesheet rows, reference, aligner, thresholds) come from the model reading files itself",
+     "goes_wrong": "T1 is sent at step 1, so its counts, settings and paths come from the model reading files itself (samplesheet rows, reference, aligner and thresholds in the nf-core wrappers; formula, contrast, counts and design paths in rnaseq-de, 02.02 rnaseq-de:145-149; the input path, with thresholds or a sample count, in the two other analyses)",
      "severity": 3,
      "detection": 5,
      "occurrence": null,
