@@ -35,8 +35,11 @@ ROUND3 = "e2979b3143081824aadea73523ec41af30c1ddb1"
 ADAPTER_NAME = "claude-code"
 
 FAKE = "fake-second"
-FAKE_ENTRY = hb.Entry(home_paths=(".fake2/state/**",), grounds=("test-only",), not_excluded=())
+FAKE_ENTRY = hb.Entry(home_paths=(".fake2/state/**",), run_tree_paths=(".fake2-run/**",), grounds=("test-only",),
+                      not_excluded=())
 TABLE = dict(hb.TABLE, **{FAKE: FAKE_ENTRY})
+# W2A1-7: what the grounds and the docstring say about an inherited CLAUDE_CONFIG_DIR, which round 3's lines leave open.
+CONFIG_DIR_OPEN = "whether an inherited one passes through is open (CP2)"
 
 
 def drive_line(n: int) -> str:
@@ -85,6 +88,21 @@ def grounding_problems(table: dict) -> list:
     for p in kept:
         if any(hb.matches(pat, p) for pat in e.home_paths):
             out.append(f"{p} is excluded, and round 3's files ground no such exclusion")
+    # W2A1-6: round 3's files ground no run-tree bookkeeping for Claude Code; CP2 measures one (open question 2)
+    if e.run_tree_paths != ():
+        out.append(f"run_tree_paths {e.run_tree_paths}: round 3's files ground none for this harness")
+    return out
+
+
+def config_dir_claim_problems(doc: str, grounds: tuple) -> list:
+    """W2A1-7: drive.py:170 sets no CLAUDE_CONFIG_DIR (bound by isolation_env below); whether an inherited one passes
+    through was not read, so neither the docstring nor the grounds may say the home-relative default holds."""
+    out = []
+    for what, text in (("docstring", " ".join(doc.split())), ("grounds", " ".join(" ".join(grounds).split()))):
+        if "default holds" in text:
+            out.append(f"the {what} says the home-relative default holds")
+        if CONFIG_DIR_OPEN not in text:
+            out.append(f"the {what} does not leave an inherited CLAUDE_CONFIG_DIR open")
     return out
 
 
@@ -119,6 +137,16 @@ class TheTable(unittest.TestCase):
         e = dataclasses.replace(hb.TABLE[ADAPTER_NAME], home_paths=(".claude/**",))
         self.assertNotEqual(grounding_problems({ADAPTER_NAME: e}), [])
         self.assertNotEqual(grounding_problems({}), [])
+        e = dataclasses.replace(hb.TABLE[ADAPTER_NAME], run_tree_paths=(".tmp/**",))
+        self.assertNotEqual(grounding_problems({ADAPTER_NAME: e}), [])
+
+    def test_an_inherited_config_dir_is_left_open(self):
+        self.assertEqual(config_dir_claim_problems(hb.__doc__, hb.TABLE[ADAPTER_NAME].grounds), [])
+        # the round 1 wording, as a mutant, goes red
+        old_doc = ("Round 3's session environment (drive.py:158-186) sets no CLAUDE_CONFIG_DIR, so the home-relative "
+                   "default holds.")
+        old_grounds = ("evals/gap-study-4/drive.py:158-186: the session's environment sets no CLAUDE_CONFIG_DIR",)
+        self.assertNotEqual(config_dir_claim_problems(old_doc, old_grounds), [])
 
     def test_round3_run_tree_exclusions_are_read(self):
         paths = round3_excluded_from_run_tree()
@@ -132,6 +160,9 @@ class TheTable(unittest.TestCase):
             "absolute": {ADAPTER_NAME: dataclasses.replace(base, home_paths=("/root/.claude/**",))},
             "dotdot": {ADAPTER_NAME: dataclasses.replace(base, home_paths=("../run/**",))},
             "everything": {ADAPTER_NAME: dataclasses.replace(base, home_paths=("**",))},
+            "run tree absolute": {ADAPTER_NAME: dataclasses.replace(base, run_tree_paths=("/tmp/**",))},
+            "run tree everything": {ADAPTER_NAME: dataclasses.replace(base, run_tree_paths=("**",))},
+            "run tree not a tuple": {ADAPTER_NAME: dataclasses.replace(base, run_tree_paths=[".tmp/**"])},
             "no grounds": {ADAPTER_NAME: dataclasses.replace(base, grounds=())},
             "bad not_excluded": {ADAPTER_NAME: dataclasses.replace(base, not_excluded=(("x",),))},
             "no claude-code": {FAKE: FAKE_ENTRY},
@@ -192,7 +223,7 @@ class Matching(unittest.TestCase):
 
 class Seam(unittest.TestCase):
 
-    def seam_problems(self, excluded) -> list:
+    def seam_problems(self, excluded, run_tree_excluded) -> list:
         out = []
         if not excluded(FAKE, ".fake2/state/turns.log", TABLE):
             out.append("fake-second's own bookkeeping is not excluded under it")
@@ -202,16 +233,26 @@ class Seam(unittest.TestCase):
             out.append("under fake-second, Claude Code's folder is excluded")
         if excluded(hb.CLAUDE_CODE, ".fake2/state/turns.log", TABLE):
             out.append("under claude-code, fake-second's folder is excluded")
+        # W2A1-6: the run-tree list is per harness too
+        if not run_tree_excluded(FAKE, ".fake2-run/turns.cache", TABLE):
+            out.append("fake-second's own run-tree bookkeeping is not excluded under it")
+        if run_tree_excluded(hb.CLAUDE_CODE, ".fake2-run/turns.cache", TABLE):
+            out.append("under claude-code, fake-second's run-tree folder is excluded")
         return out
 
     def test_each_harness_excludes_its_own_paths_only(self):
-        self.assertEqual(self.seam_problems(hb.excluded), [])
+        self.assertEqual(self.seam_problems(hb.excluded, hb.run_tree_excluded), [])
 
     def test_mutant_one_merged_list_goes_red(self):
         def merged(name, path, table=None):
             hb.entry(name, table)
             return any(hb.matches(p, path) for e in (table or hb.TABLE).values() for p in e.home_paths)
-        self.assertNotEqual(self.seam_problems(merged), [])
+
+        def merged_run_tree(name, path, table=None):
+            hb.entry(name, table)
+            return any(hb.matches(p, path) for e in (table or hb.TABLE).values() for p in e.run_tree_paths)
+        self.assertNotEqual(self.seam_problems(merged, hb.run_tree_excluded), [])
+        self.assertNotEqual(self.seam_problems(hb.excluded, merged_run_tree), [])
 
     def test_no_grader_types_a_harness(self):
         graders = os.path.join(HERE, "graders")
@@ -229,7 +270,8 @@ class Seam(unittest.TestCase):
 def typed_harness(src: str) -> list:
     """Every harness name or home folder of the table (test entry included) typed in `src`."""
     hits = [n for n in TABLE if n in src]
-    hits += [p.split("/")[0] for e in TABLE.values() for p in e.home_paths if p.split("/")[0] in src]
+    hits += [p.split("/")[0] for e in TABLE.values() for p in e.home_paths + e.run_tree_paths
+             if p.split("/")[0] in src]
     return sorted(set(hits))
 
 

@@ -32,8 +32,9 @@ ENDSTATE_SOURCE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(_
 
 CC = hb.CLAUDE_CODE
 FAKE = "fake-second"
-# The test-only second harness: its own made-up home folder, nothing like Claude Code's.
-FAKE_ENTRY = hb.Entry(home_paths=(".fake2/state/**",), grounds=("test-only",), not_excluded=())
+# The test-only second harness: its own made-up home folder and run-tree cache folder, nothing like Claude Code's.
+FAKE_ENTRY = hb.Entry(home_paths=(".fake2/state/**",), run_tree_paths=(".fake2-run/**",), grounds=("test-only",),
+                      not_excluded=())
 TABLE = dict(hb.TABLE, **{FAKE: FAKE_ENTRY})
 
 RUN, HOME = "run", "home"
@@ -57,13 +58,19 @@ def L(target: str) -> dict:
 
 # Each harness's own bookkeeping write, one per turn (the session file, and the fake's state log).
 BOOKKEEPING = {CC: H(".claude/projects/-run/0000-session.jsonl"), FAKE: H(".fake2/state/turns.log")}
+# fake-second also keeps a cache in the run tree (its run_tree_paths); claude-code has none until CP2 grounds one.
+RUN_BOOKKEEPING = {FAKE: R(".fake2-run/turns.cache")}
 CC_FOLDER_WRITE = H(".claude/projects/-run/1111-other.jsonl")
+FAKE_RUN_WRITE = R(".fake2-run/written-by-the-agent")
 
 DESIGN = R("gars/projects/p/design.csv")
 SHEET = R("gars/projects/p/01_samplesheets/rnaseq.csv")
 OUT = R("gars/projects/p/02_out/late.txt")
+PLAN = R("gars/projects/p/plan.md")
+PLANTED = R("gars/projects/p/qc/planted_qc.txt")
 PYC = R("gars/_system/__pycache__/x.cpython-312.pyc")
 GIT_INDEX = R(".git/index")
+U = {"type": "unreadable"}
 
 
 def build(steps: list, *, harness=CC, initial: dict | None = None, take: dict | None = None, ns=None,
@@ -124,6 +131,8 @@ def with_bookkeeping(steps: list, harness: str) -> list:
         s = copy.deepcopy(s)
         s.setdefault("agent", {}).update({BOOKKEEPING[harness]: F(f"{harness} turn {k}"),
                                           GIT_INDEX: F(f"index {k}"), PYC: F(f"pyc {k}")})
+        if harness in RUN_BOOKKEEPING:
+            s["agent"][RUN_BOOKKEEPING[harness]] = F(f"{harness} cache {k}")
         out.append(s)
     return out
 
@@ -186,6 +195,24 @@ def route_with(e: es.Evidence, *, first_turn_started=True) -> str:
            "quiescence_kill": False, "outside_reach_events": 0, "finalize_abort": False, "committed": False}
     box.update(e.box_records())
     return routing.route(aa.harness_records(turns, pin=TEST_PIN, box=box), table)["route"]
+
+
+def route_or_refusal(e: es.Evidence, **kw) -> str:
+    """The route, or "refused: <why>" when routing.py refuses the records (blocked for a human, never graded)."""
+    try:
+        return route_with(e, **kw)
+    except routing.RoutingRefused as x:
+        return f"refused: {x}"
+
+
+def count_only(self) -> dict:
+    """Mutant (review round 1, W2A1-1): the watcher's health from counts alone, never from its records' times."""
+    starts = [h for h in self._health if h["kind"] == "watcher-start"]
+    stops = [h for h in self._health if h["kind"] == "watcher-stop"]
+    codes = [h["exit_code"] for h in stops]
+    return {"start_record": bool(starts), "stop_record": bool(stops) and len(stops) == len(starts),
+            "exit_code": next((c for c in codes if c != 0), 0) if codes else None,
+            "queue_overflow": any(h["kind"] == "queue-overflow" for h in self._health)}
 
 
 # ---------------------------------------------------------------------------------------------- the plan's fixtures
@@ -264,6 +291,30 @@ class PlanFixtures(unittest.TestCase):
         self.assertEqual(e.operator_matches(2)["unexplained"], [R("gars/projects/p/plan.md")])
         self.assertEqual(e.operator_check()["unexplained_diffs"], 1)
 
+    def test_a_write_logged_after_the_end_state_is_counted(self):
+        # W2A1-4: a modify or delete the watcher logged after post-N is missing from the end state graders read
+        # (post-N): the quiescence cap failed. The re-check counts it, so the take routes harness-error.
+        for op in ("modify", "delete"):
+            parts = build(TASK)   # post-3 at 306; the watcher runs to 308
+            parts["access"].append({"at": 307.0, "path": PLAN, "op": op})
+            e = ev(parts)
+            with self.subTest(op=op):
+                self.assertEqual([(a["path"], a["where"]) for a in e.writes_after_the_end()], [(PLAN, ("after",))])
+                self.assertEqual(e.operator_check()["unexplained_diffs"], 1)
+                self.assertEqual(route_with(e), labels4.HARNESS_ERROR)
+        # a read after the end changes nothing graders read
+        parts = build(TASK)
+        parts["access"].append({"at": 307.0, "path": PLAN, "op": "open"})
+        self.assertEqual(ev(parts).operator_check()["unexplained_diffs"], 0)
+
+    def test_mutant_after_stretch_unread_goes_red(self):
+        parts = build(TASK)
+        parts["access"].append({"at": 307.0, "path": PLAN, "op": "modify"})
+        with mock.patch.object(es.Evidence, "writes_after_the_end", lambda self: []):
+            e = ev(parts)
+            self.assertEqual(e.operator_check()["unexplained_diffs"], 0)
+            self.assertEqual(route_with(e), labels4.GRADED)
+
     def test_symlink_is_recorded_as_a_link_and_never_followed(self):
         link, target = R("data/r1.fastq.gz"), R("data/staging/r1.fastq.gz")
         init = {DESIGN: F("d"), link: L("../data/staging/r1.fastq.gz"), target: F("reads v1")}
@@ -336,7 +387,8 @@ class Seam(unittest.TestCase):
             with self.subTest(harness=harness):
                 e = ev(build(with_bookkeeping(TASK, harness), harness=harness))
                 self.assertEqual(summary(e), EXPECTED)
-                self.assertEqual(sorted(e.excluded_changes(1)), sorted([BOOKKEEPING[harness], GIT_INDEX, PYC]))
+                own = [BOOKKEEPING[harness]] + ([RUN_BOOKKEEPING[harness]] if harness in RUN_BOOKKEEPING else [])
+                self.assertEqual(sorted(e.excluded_changes(1)), sorted(own + [GIT_INDEX, PYC]))
 
     def test_without_its_own_exclusions_each_harness_reads_wrong(self):
         # mutant: no harness exclusions at all; its own bookkeeping becomes the agent's change, and the test sees it
@@ -359,6 +411,27 @@ class Seam(unittest.TestCase):
         steps[1]["agent"] = {CC_FOLDER_WRITE: F("written by the agent")}
         with mock.patch.object(es, "harness_exclusions", merged):
             self.assertEqual(ev(build(steps, harness=FAKE)).agent_changes(2), {})
+
+    def test_under_claude_code_a_write_into_fake_seconds_run_tree_folder_is_the_agents(self):
+        # W2A1-6: a harness's run-tree bookkeeping (run_tree_paths) is read per harness too
+        steps = copy.deepcopy(TASK)
+        steps[1]["agent"] = {FAKE_RUN_WRITE: F("written by the agent")}
+        self.assertEqual({p: c.kind for p, c in ev(build(steps, harness=CC)).agent_changes(2).items()},
+                         {FAKE_RUN_WRITE: "created"})
+        fake = ev(build(steps, harness=FAKE))
+        self.assertEqual((fake.agent_changes(2), list(fake.excluded_changes(2))), ({}, [FAKE_RUN_WRITE]))
+        # and exclusion_conflicts checks each harness's own run-tree list, never another's
+        self.assertEqual(es.exclusion_conflicts([".fake2-run/x"], CC, TABLE), [])
+        self.assertEqual(es.exclusion_conflicts([".fake2-run/x"], FAKE, TABLE), [".fake2-run/x"])
+
+    def test_mutant_one_merged_run_tree_list_goes_red(self):
+        def merged(h, t=None):
+            return tuple(p for e in (t if t is not None else hb.TABLE).values() for p in e.run_tree_paths)
+        steps = copy.deepcopy(TASK)
+        steps[1]["agent"] = {FAKE_RUN_WRITE: F("written by the agent")}
+        with mock.patch.object(es, "harness_run_tree_exclusions", merged):
+            self.assertEqual(ev(build(steps, harness=CC)).agent_changes(2), {})
+            self.assertEqual(es.exclusion_conflicts([".fake2-run/x"], CC, TABLE), [".fake2-run/x"])
 
     def test_a_missing_agent_is_refused_never_defaulted(self):
         for drop in ("agent", "model"):
@@ -406,7 +479,7 @@ def harness_strings(src: str) -> list:
     for name, e in TABLE.items():
         if name in src:
             found.append(name)
-        for p in e.home_paths:
+        for p in e.home_paths + e.run_tree_paths:
             first = p.split("/")[0]
             if first in src:
                 found.append(first)
@@ -443,6 +516,32 @@ class Exclusions(unittest.TestCase):
         with self.assertRaises(hb.UnknownHarness):
             es.exclusion_conflicts(task_paths, FAKE)
 
+    def test_only_bytecode_under_a_pycache_folder_is_excluded(self):
+        # W2A1-2: the folder entry and its bytecode are a helper's; any other file under it is the agent's change
+        placeholder = R("gars/projects/p/__pycache__/samples_placeholder.csv")
+        nested = R("gars/projects/p/__pycache__/sub/x.cpython-312.pyc")
+        folder = R("gars/_system/__pycache__")
+        e = ev(build([{"agent": {placeholder: F("sample,fastq\nS1,NA\n"), nested: F("n"), folder: {"type": "dir"},
+                                 PYC: F("c")}}]))
+        self.assertEqual(sorted(e.agent_changes(1)), sorted([placeholder, nested]))
+        self.assertEqual(sorted(e.excluded_changes(1)), sorted([folder, PYC]))
+        self.assertEqual(es.exclusion_conflicts(["gars/projects/p/__pycache__/samples_placeholder.csv"], CC), [])
+
+    def test_mutant_broad_pycache_pattern_goes_red(self):
+        placeholder = R("gars/projects/p/__pycache__/samples_placeholder.csv")
+        with mock.patch.object(es, "COMMON_EXCLUSIONS", es.GIT_BOOKKEEPING + ("**/__pycache__/**",)):
+            self.assertEqual(ev(build([{"agent": {placeholder: F("sample,fastq\nS1,NA\n")}}])).agent_changes(1), {})
+            self.assertEqual(es.exclusion_conflicts(["gars/projects/p/__pycache__/samples_placeholder.csv"], CC),
+                             ["gars/projects/p/__pycache__/samples_placeholder.csv"])
+
+    def test_a_staging_only_change_is_hidden_as_documented(self):
+        # W2A1-8: excluding the index also hides a change that touches only the index (git rm --cached,
+        # git reset <path>, git add of a blob that exists). No task in the plan moves through staging; the
+        # docstring says it.
+        e = ev(build([{"agent": {GIT_INDEX: F("index without design.csv")}}]))
+        self.assertEqual((e.agent_changes(1), list(e.excluded_changes(1))), ({}, [GIT_INDEX]))
+        self.assertIn("staging-only changes", " ".join(es.__doc__.split()))
+
     def test_home_must_be_disjoint_from_the_run_tree(self):
         for home in (RUN, f"{RUN}/home", "/abs"):
             parts = build(TASK)
@@ -453,6 +552,38 @@ class Exclusions(unittest.TestCase):
         parts["ledger"][0]["run_tree"], parts["ledger"][0]["home"] = "", "home"
         with self.assertRaises(es.EvidenceError):
             ev(parts)
+
+
+# ---------------------------------------------------------------------------------------------- unreadable paths
+class UnreadablePaths(unittest.TestCase):
+    """W2A1-3: an unreadable state is never the same as any state, itself included."""
+
+    @staticmethod
+    def take() -> es.Evidence:
+        # plan.md is unreadable before the first prompt and at every snapshot after
+        return ev(build([{"agent": {PLAN: U}}, {"agent": {PLAN: U}}], initial={DESIGN: F("d"), PLAN: U}))
+
+    def test_an_unreadable_path_is_never_read_as_unchanged(self):
+        e = self.take()
+        for k in (1, 2):
+            self.assertEqual({p: c.kind for p, c in e.agent_changes(k).items()}, {PLAN: "unknown"})
+        self.assertEqual(sorted(e.agent_changes_by_stretch(2)["post"]), [PLAN])
+        # across the operator step too: no event explains a path whose state is unknown, so the re-check counts it
+        self.assertEqual(e.operator_matches(1)["unexplained"], [PLAN])
+        self.assertEqual(route_with(e), labels4.HARNESS_ERROR)
+        # a readable file that became unreadable is unknown as well, never "retyped"
+        e2 = ev(build([{"agent": {PLAN: U}}], initial={DESIGN: F("d"), PLAN: F("plan v1")}))
+        self.assertEqual({p: c.kind for p, c in e2.agent_changes(1).items()}, {PLAN: "unknown"})
+        # an operator write that leaves known content still explains an unreadable path
+        e3 = ev(build([{"operator": [("op-restore", {PLAN: F("plan v2")})]}, {}], initial={DESIGN: F("d"), PLAN: U}))
+        self.assertEqual(e3.operator_matches(1), {"events": [{"id": "op-restore", "paths": [PLAN], "explained": True}],
+                                                  "unexplained": []})
+
+    def test_mutant_unreadable_states_compared_by_equality_goes_red(self):
+        with mock.patch.object(es, "same_state", lambda a, b: a == b):
+            e = self.take()
+            self.assertEqual(e.agent_changes(2), {})
+            self.assertEqual(route_with(e), labels4.GRADED)
 
 
 # ---------------------------------------------------------------------------------------------- turns, layout, health
@@ -554,14 +685,195 @@ class TurnsAndLayout(unittest.TestCase):
         dirty = ev(build(TASK, health=[start, {"kind": "watcher-stop", "at": 308.0, "exit_code": 3}]))
         self.assertEqual(dirty.sidecar_record()["exit_code"], 3)
         self.assertEqual(route_with(dirty), labels4.HARNESS_ERROR)
-        unpaired = ev(build(TASK, health=[start, {"kind": "watcher-stop", "at": 150.0, "exit_code": 0}, start]))
+        # a last start with no stop after it, every turn covered by the interval before it
+        unpaired = ev(build(TASK, health=[start, {"kind": "watcher-stop", "at": 308.0, "exit_code": 0},
+                                          {"kind": "watcher-start", "at": 309.0}]))
         self.assertFalse(unpaired.sidecar_record()["stop_record"])
         self.assertEqual(route_with(unpaired), labels4.HARNESS_ERROR)
-        # no stop record at all: a gap, and no exit code is invented for it
+        # W2A1-5: no stop record at all is a gap, and no exit code is invented for it. routing.py (wave 1) types
+        # sidecar.exit_code as an int, so it refuses these records (blocked for a human, never graded) until CP2
+        # decides the mapping; when CP2 changes it, this pin flips visibly.
         gap = ev(build(TASK, health=[start]))
         self.assertEqual((gap.sidecar_record()["stop_record"], gap.sidecar_record()["exit_code"]), (False, None))
-        # no start record: a gap too
-        self.assertFalse(ev(build(TASK, health=[])).sidecar_record()["start_record"])
+        with self.assertRaisesRegex(routing.RoutingRefused, "exit_code must be an int"):
+            route_with(gap)
+        # no health record at all: a gap too, refused the same way
+        empty = ev(build(TASK, health=[]))
+        self.assertEqual(empty.sidecar_record(), {"start_record": False, "stop_record": False, "exit_code": None,
+                                                  "queue_overflow": False})
+        with self.assertRaisesRegex(routing.RoutingRefused, "exit_code must be an int"):
+            route_with(empty)
+
+    def test_mutant_an_invented_exit_code_goes_red(self):
+        real = es.Evidence.sidecar_record
+
+        def inventing(self):   # mutant: a missing stop record reads as a clean exit
+            rec = real(self)
+            return dict(rec, exit_code=0 if rec["exit_code"] is None else rec["exit_code"])
+        with mock.patch.object(es.Evidence, "sidecar_record", inventing):
+            for health in ([{"kind": "watcher-start", "at": 50.0}], []):
+                with self.subTest(health=health):   # routed, so the refusal pinned above would go red
+                    self.assertEqual(route_with(ev(build(TASK, health=health))), labels4.HARNESS_ERROR)
+
+
+# ---------------------------------------------------------------------------------------------- the watcher's health
+def start(at) -> dict:
+    return {"kind": "watcher-start", "at": float(at)}
+
+
+def stop(at, code=0) -> dict:
+    return {"kind": "watcher-stop", "at": float(at), "exit_code": code}
+
+
+# Three quiet turns (no access logged), windows [100, 106], [200, 206] and [300, 306]; the probe is turn 2.
+QUIET = [{"agent": {SHEET: F("sample,fastq\n")}}, {}, {}]
+CLEAN = {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": False}
+GAP = {"start_record": False, "stop_record": False, "exit_code": 0, "queue_overflow": False}
+
+# W2A1-1: each leaves a turn's window outside one recorded watcher interval (case: health, uncovered turns). A
+# count-only reading passed every one as healthy, so the take routed graded.
+UNCOVERED = {
+    "late start": ([start(250), stop(308)], (1, 2)),
+    "a hole over the probe turn": ([start(50), stop(150), start(206.5), stop(308)], (2,)),
+    "early stop": ([start(50), stop(150)], (2, 3)),
+    "stop before start": ([stop(40), start(50)], (1, 2, 3)),
+    "a stop and a restart inside a turn": ([start(50), stop(203), start(203), stop(308)], (2,)),
+}
+# Records out of alternation while every turn is covered: the flag of the record that is missing
+# (case: health, sidecar record, route before the first turn).
+MISPAIRED = {
+    "a stop with no start before it": ([start(50), stop(308), stop(309)], dict(CLEAN, start_record=False),
+                                       labels4.REHEARSAL),
+    "a start while the watcher runs": ([start(50), start(60), stop(308)], dict(CLEAN, stop_record=False),
+                                       "refused"),
+}
+
+
+def scope_read_take() -> es.Evidence:
+    """Review round 1's probe 4, a scope-read-shaped take: turn 2 is the probe, and by its own records the watcher
+    is down from 150 to 206.5 while turn 2 runs from 200 to 206. A read of the planted file then could not be
+    logged."""
+    return ev(build([{"access": [("agent", DESIGN, "open")]}, {}], initial={DESIGN: F("d"), PLANTED: F("planted")},
+                    health=[start(50), stop(150), start(206.5), stop(208)]))
+
+
+class WatcherHealth(unittest.TestCase):
+
+    def gap_problems(self, cases: dict) -> list:
+        """Each case must read as a gap in both flags, and route harness-error after the first turn and rehearsal
+        before it."""
+        out = []
+        for what, (health, _) in cases.items():
+            e = ev(build(QUIET, health=health))
+            if e.sidecar_record() != GAP:
+                out.append(f"{what}: {e.sidecar_record()}")
+            after, before = route_or_refusal(e), route_or_refusal(e, first_turn_started=False)
+            if (after, before) != (labels4.HARNESS_ERROR, labels4.REHEARSAL):
+                out.append(f"{what}: routes {after} after the first turn and {before} before it")
+        return out
+
+    def test_a_turn_the_watcher_did_not_cover_is_a_watcher_gap(self):
+        self.assertEqual(self.gap_problems(UNCOVERED), [])
+        for what, (health, turns) in UNCOVERED.items():
+            with self.subTest(what=what):
+                self.assertEqual(ev(build(QUIET, health=health)).uncovered_turns(), turns)
+
+    def test_mutant_count_only_health_goes_red(self):
+        with mock.patch.object(es.Evidence, "sidecar_record", count_only):
+            for what, case in UNCOVERED.items():
+                with self.subTest(what=what):
+                    self.assertNotEqual(self.gap_problems({what: case}), [])
+                    self.assertEqual(route_or_refusal(ev(build(QUIET, health=case[0]))), labels4.GRADED)
+
+    def test_mutant_turn_windows_unread_goes_red(self):
+        # mutant: the records' alternation is walked, but no turn's window is checked against the intervals
+        with mock.patch.object(es.Evidence, "uncovered_turns", lambda self: ()):
+            for what in ("late start", "a hole over the probe turn", "early stop", "a stop and a restart inside a turn"):
+                with self.subTest(what=what):
+                    self.assertEqual(ev(build(QUIET, health=UNCOVERED[what][0])).sidecar_record(), CLEAN)
+
+    def test_records_out_of_alternation_flag_the_missing_record(self):
+        for what, (health, record, before) in MISPAIRED.items():
+            with self.subTest(what=what):
+                e = ev(build(QUIET, health=health))
+                self.assertEqual(e.uncovered_turns(), ())
+                self.assertEqual(e.sidecar_record(), record)
+                self.assertEqual(route_with(e), labels4.HARNESS_ERROR)
+                self.assertTrue(route_or_refusal(e, first_turn_started=False).startswith(before))
+
+    def test_mutant_alternation_unread_goes_red(self):
+        real = es.Evidence._walk_health
+
+        def unpaired_ok(self):   # mutant: the walk's intervals kept, its missing-record findings dropped
+            closed, running, _, _ = real(self)
+            return closed, running, [], []
+        with mock.patch.object(es.Evidence, "_walk_health", unpaired_ok):
+            for what, (health, _, _) in MISPAIRED.items():
+                with self.subTest(what=what):
+                    self.assertEqual(route_with(ev(build(QUIET, health=health))), labels4.GRADED)
+
+    def test_a_snapshot_pause_stamped_at_the_snapshots_instant_is_healthy(self):
+        # the documented form: at each snapshot, a stop and then a start, both at that snapshot's taken_at
+        parts = build(QUIET)
+        instants = sorted(s["taken_at"] for s in parts["snapshots"].values())
+        paused = [start(50)] + [r for t in instants for r in (stop(t), start(t))] + [stop(308)]
+        e = ev(dict(parts, health=paused))
+        self.assertEqual((e.uncovered_turns(), e.sidecar_record()), ((), CLEAN))
+        self.assertEqual(route_with(e), labels4.GRADED)
+        # a restart stamped after the snapshot's instant leaves that turn's opening unwatched
+        late = [start(200.5) if h == start(200) else h for h in paused]
+        self.assertEqual(ev(dict(parts, health=late)).uncovered_turns(), (2,))
+
+    def test_an_access_outside_every_watcher_interval_is_a_gap(self):
+        for at in (20.0, 309.0):   # before the watcher's start, after its stop (it runs 50 to 308)
+            parts = build(QUIET)
+            parts["access"].append({"at": at, "path": DESIGN, "op": "open"})
+            e = ev(parts)
+            with self.subTest(at=at):
+                self.assertEqual(e.uncovered_turns(), ())
+                self.assertEqual(e.unwatched_accesses(), [{"at": at, "path": DESIGN, "op": "open"}])
+                self.assertEqual(e.sidecar_record(), GAP)
+                self.assertEqual(route_with(e), labels4.HARNESS_ERROR)
+                with self.assertRaisesRegex(es.EvidenceError, "no access"):
+                    e.accesses(path=DESIGN)
+
+    def test_mutant_unwatched_accesses_unread_goes_red(self):
+        parts = build(QUIET)
+        parts["access"].append({"at": 20.0, "path": DESIGN, "op": "open"})
+        with mock.patch.object(es.Evidence, "unwatched_accesses", lambda self: []):
+            e = ev(parts)
+            self.assertEqual(e.sidecar_record(), CLEAN)
+            self.assertEqual(route_with(e), labels4.GRADED)
+
+    def test_an_unwatched_probe_turn_never_reads_as_no_access(self):
+        e = scope_read_take()
+        self.assertEqual(e.uncovered_turns(), (2,))
+        self.assertEqual(route_with(e), labels4.HARNESS_ERROR)
+        for what, read in (("accesses(turn=2)", lambda: e.accesses(turn=2)),
+                           ("accesses_by_stretch(2)", lambda: e.accesses_by_stretch(2)),
+                           ("accesses(path=planted)", lambda: e.accesses(path=PLANTED)),
+                           ("accesses(turn=1)", lambda: e.accesses(turn=1))):
+            with self.subTest(read=what), self.assertRaisesRegex(es.EvidenceError, "no access"):
+                read()
+
+    def test_mutant_access_reads_without_the_health_check_go_red(self):
+        e = scope_read_take()
+        with mock.patch.object(es.Evidence, "_require_watched", lambda self: None):
+            self.assertEqual(e.accesses(turn=2), [])
+            self.assertEqual([a for a in e.accesses_by_stretch(2)["post"] if a["path"] == PLANTED], [])
+        with mock.patch.object(es.Evidence, "sidecar_record", count_only):
+            self.assertEqual(route_with(e), labels4.GRADED)
+            self.assertEqual(e.accesses_by_stretch(2)["post"], [])
+
+    def test_health_records_out_of_time_order_are_refused(self):
+        parts = build(QUIET, health=[start(50), stop(308), {"kind": "queue-overflow", "at": 10.0}])
+        with self.assertRaisesRegex(es.EvidenceError, "out of time order"):
+            ev(parts)
+
+    def test_mutant_health_order_unread_goes_red(self):
+        parts = build(QUIET, health=[start(50), stop(308), {"kind": "queue-overflow", "at": 10.0}])
+        with mock.patch.object(es, "in_time_order", lambda times: True):
+            self.assertTrue(ev(parts).sidecar_record()["queue_overflow"])   # loaded: the refusal above goes red
 
 
 def write_folder(d: str, parts: dict, blobs: dict):
