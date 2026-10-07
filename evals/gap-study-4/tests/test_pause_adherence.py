@@ -305,7 +305,7 @@ def literals(source: str) -> set[str]:
 # graders/*.py by default (default-deny). Only the graders named here are exempt, and each must pass the evidence-only
 # check below. w2a's endstate.py reads end-state evidence only, and its own STATE key "type" is also an argument key of
 # Claude Code's Grep tool, which turned the wave 2 trial merge red.
-EVIDENCE_ONLY_GRADERS: tuple[str, ...] = ()  # red: nothing exempt yet
+EVIDENCE_ONLY_GRADERS = ("endstate.py",)
 ENDSTATE = "endstate.py"
 # w2a's lane head, where endstate.py is read from while this tree does not hold it (the wave 2 merge does).
 W2A_HEAD = "64693c479f27e43038d607acf1bfd73ea6fef383"
@@ -350,7 +350,6 @@ def evidence_only_problems(name: str, src: str) -> list[str]:
     or a "/" beside ".jsonl". A grader that actually parses a transcript is still caught, by the import predicate or,
     once unlisted, by the default-deny raw-name sweep ("assistant", "tool_use", ...). A name on the list is a reviewed
     change."""
-    return []  # red: the evidence-only check is not built yet
     out = [f"{name} imports {m.group(0).strip()!r}" for m in EVIDENCE_IMPORT.finditer(src)]
     out += [f"{name} names a harness ({m!r})" for m in sorted({m.group(0) for m in EVIDENCE_HARNESS.finditer(src)})]
     out += [f"{name} holds a session-file literal {lit!r}" for lit in code_literals(src) if session_file_literal(lit)]

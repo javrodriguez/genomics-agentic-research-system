@@ -54,7 +54,7 @@
     {
       "path": "tests/test_pause_adherence.py",
       "status": "new",
-      "reason": "Tests for graders/pause_adherence.py (interface 3): every reading and stop class with a near-miss, source mutants, the fake-second seam with raw-type, tool-name and argument-key mutants, the source sweep of every graders/*.py against the view's claude-code tables, and the replay's join on a constructed record. Review round 1 (fold): the sweep excludes interface 8's manifest keys through transcript_view.MANIFEST_KEYS, with its mutants."
+      "reason": "Tests for graders/pause_adherence.py (interface 3): every reading and stop class with a near-miss, source mutants, the fake-second seam with raw-type, tool-name and argument-key mutants, the source sweep of every graders/*.py against the view's claude-code tables, and the replay's join on a constructed record. Review round 1 (fold): the sweep excludes interface 8's manifest keys through transcript_view.MANIFEST_KEYS, with its mutants. Integration (wave 2 merge, glitch-f3's ruling A'): the sweep is default-deny with one named exemption, EVIDENCE_ONLY_GRADERS (w2a's endstate.py), held to an evidence-only check, with its tests and mutants."
     },
     {
       "path": "COPIED.d/w2b-cp3-text-graders.json",
