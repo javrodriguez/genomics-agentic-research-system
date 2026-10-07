@@ -1,0 +1,9 @@
+# Lane w2a-cp3-endstate: the end-state reader and the harness bookkeeping table.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_endstate.py
+python3 -B -W ignore evals/gap-study-4/tests/test_harness_bookkeeping.py
+python3 -B evals/gap-study-4/harness_bookkeeping.py --check
+# Only the seam's three modules may type a harness name; endstate.py types none (and no harness's folder).
+! grep -niE "claude|fake-second|\.fake2" evals/gap-study-4/graders/endstate.py
+# The reader takes no transcript and no adapter: it imports neither the view nor the driver nor the adapter.
+! grep -nE "^[[:space:]]*(import|from)[[:space:]].*(transcript|drive|agent_adapter)" evals/gap-study-4/graders/endstate.py evals/gap-study-4/harness_bookkeeping.py
