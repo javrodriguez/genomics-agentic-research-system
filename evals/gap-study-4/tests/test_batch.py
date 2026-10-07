@@ -482,6 +482,8 @@ def history_validation_problems(cls=batch.Batch) -> list[str]:
     bad.update({
         "a cell state that is not labels4's": [dict(o, cell_state="incomplete") if i == shut else o
                                                for i, o in enumerate(capped)],
+        "a cell state that is not labels4's, below the cap": [dict(o, cell_state="incomplete", cell_reason="early")
+                                                              if i == 0 else o for i, o in enumerate(capped)],
         "a cell state without its reason": [dict(o, cell_reason=None) if i == shut else o for i, o in enumerate(capped)],
         "a half-cell at its cap without its committed state": [dict(o, cell_state=None, cell_reason=None) if i == shut
                                                                else o for i, o in enumerate(capped)],
@@ -1546,6 +1548,96 @@ def cell_cap_problems(route: str, cls=batch.Batch) -> list[str]:
     return p
 
 
+def in_flight_problems(cls=batch.Batch) -> list[str]:
+    """A drive of the same block, already running when its half-cell closed: hc-a closes at its third rehearsal
+    (slot 4) while slot 5, also hc-a, is driven beside it. Slot 5 is committed as its route says, never re-run, and
+    carries the cell state; a pause there still holds the next launch until the usage window resets; slot 1's
+    re-run and slot 5's are never registered; hc-b's slot 6 runs."""
+    p = []
+    closed = closed_state()
+    for name in ("rate-limit", "watcher-overflow", "clean"):
+        plan = {(1, 1): "preflight-fail", (1, 2): "preflight-fail", (4, 1): "preflight-fail", (5, 1): name}
+        b, out, w, d, r, win = run(0, plan=plan, cls=cls, row_list=rows_in(["hc-a", "hc-b", "hc-b", "hc-a", "hc-a",
+                                                                           "hc-b"]))
+        regs = [(e[2], e[3]) for e in kinds(w.events, "register")]
+        if regs != [(1, 1), (2, 1), (3, 1), (1, 2), (4, 1), (5, 1), (6, 1)]:
+            p.append(f"{name}: registered {regs}")
+        try:
+            four, five = r.snapshot(4), r.snapshot(5)
+        except StopIteration:
+            p.append(f"{name}: slot 4 or 5 never committed")
+            continue
+        if _fields(four, "state", "final", "rerun", "cell_state") != (labels4.REHEARSAL, True, False, closed):
+            p.append(f"{name}: slot 4 (the closing take) committed as {_fields(four, 'state', 'final', 'rerun', 'cell_state')}")
+        got = _fields(five, "final", "rerun", "cell_state", "stop")
+        if got != (True, False, closed, None) or five.get("cell_reason") != four.get("cell_reason"):
+            p.append(f"{name}: slot 5 ({five['state']}) committed as {got} ({five.get('cell_reason')!r})")
+        if pause_problems(w.events):
+            p.append(f"{name}: {pause_problems(w.events)}")
+        if [(o["slot"], o["state"]) for o in out if o["slot"] == 6] != [(6, labels4.GRADED)] or b.stopped is not None:
+            p.append(f"{name}: hc-b's slot 6 did not run, or the loop stopped ({b.stopped})")
+    return p
+
+
+class NoClosedCellBranch(batch.Batch):
+    """Mutant: every take decided by its route alone, as if its half-cell had not closed."""
+
+    def _decide(self, row, attempt, outcome):
+        return self.handlers[outcome["state"]](row, attempt, outcome)
+
+
+class ForgetsTheWindowInAClosedCell(batch.Batch):
+    """Mutant: a pause in a closed half-cell no longer holds the next launch for the usage window."""
+
+    def _decide(self, row, attempt, outcome):
+        if row["half_cell"] in self.closed_cells and outcome["state"] == labels4.PAUSE:
+            return self._fate(final=True, beyond_cap=True, cell_state=closed_state(),
+                              cell_reason=self.closed_cells[row["half_cell"]])
+        return super()._decide(row, attempt, outcome)
+
+
+class RefusesClosedCellRows(batch.Batch):
+    """Mutant: the pre-ruling restart, which refused a row whose slot ended at its cap."""
+
+    def row_problems(self, rows):
+        return super().row_problems(rows) + [f"row {r['slot']}: the slot is {self.closed[r['slot']]}" for r in rows
+                                             if r["half_cell"] in self.closed_cells and r["slot"] in self.closed]
+
+
+def commit_failure_problems(cls=batch.Batch) -> list[str]:
+    """The take that would close its half-cell fails to commit: the half-cell is not closed (a cell closes only by
+    a committed record), the failed outcome carries no cell state, and the loop stops `failed` as any commit
+    failure does."""
+    class FailsOnTheClosingTake(FakeRepo):
+        def commit_records(self, row, attempt, outcome):
+            if (row["slot"], attempt) == (1, REHEARSAL_CAP):
+                raise RuntimeError("disk full")
+            super().commit_records(row, attempt, outcome)
+    w = World()
+    b = cls(FakeDriver(w, {(1, a): "preflight-fail" for a in range(1, 10)}), FailsOnTheClosingTake(w), FakeWindow(w),
+            table=test_table(), serial=True)
+    out = b.run(rows_in(["hc-a", "hc-b"]))
+    last = out[-1]
+    p = []
+    if _fields(last, "slot", "attempt", "state", "cell_state", "cell_reason") != (1, REHEARSAL_CAP, labels4.FAILED,
+                                                                                None, None):
+        p.append(f"the failed commit's outcome is {_fields(last, 'slot', 'attempt', 'state', 'cell_state', 'cell_reason')}")
+    if b.closed_cells or not b.stopped or b.stopped["state"] != labels4.FAILED:
+        p.append(f"closed cells {b.closed_cells}, stopped {b.stopped}")
+    return p
+
+
+class KeepsTheCellOnAFailedCommit(batch.Batch):
+    """Mutant: a failed commit's outcome keeps the cell state its fate gave it."""
+
+    def _commit(self, row, attempt, outcome):
+        out = super()._commit(row, attempt, outcome)
+        if out["state"] == labels4.FAILED and "commit failed" in (out["reason"] or ""):
+            fate = self._count_in_cell(row, attempt, dict(out, state=labels4.REHEARSAL))
+            out.update(cell_state=fate["cell_state"], cell_reason=fate["cell_reason"])
+        return out
+
+
 class StopsForAHuman(batch.Batch):
     """Mutant: the pre-ruling fate at a rehearsal or pause cap, where the loop stopped for a human."""
 
@@ -1625,6 +1717,26 @@ class TestCellCaps(unittest.TestCase):
                 self.assertTrue(any(x.startswith("block: registered") for x in found), found)
                 found = cell_cap_problems(route, ForgetsClosedCells)
                 self.assertTrue(any(x.startswith("restart:") for x in found), found)
+                found = cell_cap_problems(route, RefusesClosedCellRows)
+                self.assertTrue(any(x.startswith("restart: raised BatchConfigError") for x in found), found)
+
+    def test_a_drive_running_when_its_half_cell_closed(self):
+        self.assertEqual(in_flight_problems(), [])
+
+    def test_in_flight_check_can_fail(self):
+        found = in_flight_problems(NoClosedCellBranch)
+        for name in ("watcher-overflow", "clean", "rate-limit"):
+            self.assertTrue(any(x.startswith(f"{name}: slot 5") for x in found), (name, found))
+        found = in_flight_problems(ForgetsTheWindowInAClosedCell)
+        self.assertTrue(any(x.startswith("rate-limit: ['slot 6 launched before the usage window reset']")
+                            for x in found), found)
+
+    def test_a_failed_commit_never_closes_the_half_cell(self):
+        self.assertEqual(commit_failure_problems(), [])
+
+    def test_failed_commit_check_can_fail(self):
+        self.assertTrue(any(x.startswith("the failed commit's outcome")
+                            for x in commit_failure_problems(KeepsTheCellOnAFailedCommit)))
 
     def test_cell_history_check_can_fail(self):
         found = history_validation_problems(TrustsCellHistory)
@@ -1632,16 +1744,17 @@ class TestCellCaps(unittest.TestCase):
                      "a re-run in a closed half-cell"):
             self.assertIn(f"{case}: accepted", found)
 
-        class NoStateCheck(batch.Batch):   # the outcome's own cell fields never checked
+        class NoFieldCheck(batch.Batch):   # the outcome's own cell fields never checked (the walk still runs)
             @staticmethod
             def history_problems(history):
                 return []
-
-            def cell_history_problems(self, history):
-                return []
-        found = history_validation_problems(NoStateCheck)
-        for case in ("a cell state that is not labels4's", "a cell state without its reason"):
+        found = history_validation_problems(NoFieldCheck)
+        for case in ("a cell state without its reason", "a cell state that is not labels4's, below the cap"):
             self.assertIn(f"{case}: accepted", found)
+
+        class NoStateCheck(NoFieldCheck, TrustsCellHistory):   # neither check
+            pass
+        self.assertIn("a cell state that is not labels4's: accepted", history_validation_problems(NoStateCheck))
 
 
 # ------------------------------------------------- glitch-f3's rulings (6 Oct 2026): the wait_reset contract
