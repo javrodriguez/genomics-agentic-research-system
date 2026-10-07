@@ -1,0 +1,226 @@
+{
+  "about": "Round 4's routing table, pre-registered data. Decided by routing.py only, from harness-side records only, never from the agent's text. Route, phase, turn-end and batch-state strings are graders/labels4.py's and are checked against it on load. A row matches when the take is in its phase, every all_of condition holds, at least one any_of condition holds (when any_of is given), and no none_of condition holds. The winning rows are the matched rows at the highest precedence level; matched rows at that level that name different routes are a tie and are refused, as is an input that matches no row. Rows never read a text-derived count (the events record): those are annotations, below.",
+  "plan_source": "Round 4 plan, 'What round 4 measures' > 'Outcomes' > routing table and its precedence paragraph; CP1 task 'CREATE .../routing.py'.",
+  "precedence": [["pause"], ["aborted"], ["harness-error", "rehearsal"], ["graded"]],
+  "precedence_source": "Plan: 'pause, then aborted, then harness-error, then graded'. Lane w1b decision: rehearsal shares harness-error's level (both are harness faults, split only by phase), so a double match between them is refused, never picked.",
+  "pin_fields": ["model", "permission_mode", "version"],
+  "graded_ends": ["end_turn", "timed-out"],
+  "rate_limit_markers": {
+    "status": [429],
+    "type": ["rate_limit_error"],
+    "text": ["rate limit", "usage limit", "weekly limit", "429"],
+    "source": "glitch-f3's ruling (in-plan, 6 Oct 2026, on lane w1b's open question whether a subscription usage-limit refusal carries a structured field; recorded as glitch-f3's, not the owner's): \"Keep both: structured (status 429, type rate_limit_error) OR round 3's four text markers ('rate limit', 'usage limit', 'weekly limit', '429'), word-bounded and case-insensitive, matched on the harness-side error text only, never on the agent's own output. Make the small schema change so the API-error record carries that text.\" status and type match by exact membership. text is the API-error record's harness-side error text (what Claude Code or the API reported as the error, never the agent's reply), and it matches when it carries a text marker by round 3's bounded search (routing.rate_limit_text_marker): each marker word-bounded and case-insensitive. Round 3's origin: the text markers are round 3's RATE_LIMIT_MARKERS, in order, from evals/gap-study-3/drive.py:149 at e2979b3143081824aadea73523ec41af30c1ddb1 (which that line names as prereg.json driver_constants.rate_limit_markers; prereg.json itself was not read by lane w1b for this), matched there by matched_marker and looks_rate_limited (drive.py:906-923; the search at 912-919); round 3 left 'resets' out (its review 13, F6). tests/test_routing.py TestRound3Sources re-derives the tuple with ast from drive.py:149 and runs round 3's own matched_marker against routing's match. Plan: 'a pre-registered rate-limit marker in the API-error record'. Keys are API-error record fields (routing.py checks this)."
+  },
+  "rate_limit_markers_status": "RULED 6 Oct 2026 by glitch-f3 (in-plan; recorded as glitch-f3's ruling, not the owner's): status 429 or type rate_limit_error, OR round 3's four text markers in the API-error record's harness-side error text, word-bounded and case-insensitive (see rate_limit_markers.source). CP6 walk check, still to do: a replay of a real recorded usage-limit refusal through harness_records must route pause. batch.py refuses to start while this status starts with PENDING.",
+  "operator_reasons": ["no-first-agent-turn", "readers-disagree", "unknown-harness-origin", "no-session-id", "script-not-a-list", "operator-lines", "stop-at-held-marker", "fixture-binding", "leak-in-operator-turn", "leak-in-loaded-context", "inherited-context", "project-name", "session-binding", "invocation", "model-binding", "constant-binding", "continued-past-unheld-marker", "checkout-binding", "stop-without-a-wait-point", "outcome-binding", "environment-record"],
+  "operator_reasons_status": "FILLED 6 Oct 2026 under Javier's ruling \"gap4 routing: A\" (typed 17:52:33 EDT in glitch-f3's window; plans/gap-study-round-4.md): round 3's 24 rehearsal_reasons, read with git show from evals/gap-study-3/prereg.json at e2979b3143081824aadea73523ec41af30c1ddb1 and checked equal to the ids evals/gap-study-3/check_take.py emits there, less the three the plan makes graded events (checker_reasons_become_events). Copied, not judged: each id routes by the plan's generic rule, a rehearsal before the agent's first turn and harness-error after it. tests/test_routing.py TestRound3Sources re-derives all of it.",
+  "operator_reason_sources": {
+    "no-first-agent-turn": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.no-first-agent-turn", "meaning": "the process exited, or the transcript holds no agent text, before the agent's first turn", "emitted_at": "evals/gap-study-3/check_take.py:83,1593"},
+    "readers-disagree": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.readers-disagree", "meaning": "the transcript reader and the record reader count different numbers of user turns", "emitted_at": "evals/gap-study-3/check_take.py:1580"},
+    "unknown-harness-origin": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.unknown-harness-origin", "meaning": "a user record carries a harness origin this file does not name", "emitted_at": "evals/gap-study-3/check_take.py:1585"},
+    "no-session-id": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.no-session-id", "meaning": "the transcript records no session id", "emitted_at": "evals/gap-study-3/check_take.py:1600"},
+    "script-not-a-list": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.script-not-a-list", "meaning": "the half's operator script is not a list of turns", "emitted_at": "evals/gap-study-3/check_take.py:1606"},
+    "operator-lines": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.operator-lines", "meaning": "a scripted line was not sent, was sent twice or in the wrong order, a recovery exceeded its limit, or a line not on the script was sent", "emitted_at": "evals/gap-study-3/check_take.py:1115,1119,1124,1134,1140"},
+    "stop-at-held-marker": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.stop-at-held-marker", "meaning": "the driver stopped at a marker it read as unheld, and the agent's reply holds it", "emitted_at": "evals/gap-study-3/check_take.py:1060,1068"},
+    "fixture-binding": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.fixture-binding", "meaning": "the fixture the driver built is not the half's pinned fixture, or the record of it is unreadable", "emitted_at": "evals/gap-study-3/check_take.py:1301,1307,1311,1314,1325,1331,1337,1677"},
+    "leak-in-operator-turn": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.leak-in-operator-turn", "meaning": "an operator line contains a pre-registered leak word", "emitted_at": "evals/gap-study-3/check_take.py:1629"},
+    "leak-in-loaded-context": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.leak-in-loaded-context", "meaning": "the session's loaded context contains a leak word outside a pinned excusal", "emitted_at": "evals/gap-study-3/check_take.py:1636"},
+    "inherited-context": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.inherited-context", "meaning": "the session was given an instruction file, a working directory or a connector tool from outside its checkout", "emitted_at": "evals/gap-study-3/check_take.py:1644,1777,1780"},
+    "project-name": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.project-name", "meaning": "no operator line names the neutral project name derived from the session id", "emitted_at": "evals/gap-study-3/check_take.py:1699"},
+    "session-binding": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.session-binding", "meaning": "the transcript is not bound by its session id to a committed ledger row of this task and half", "emitted_at": "evals/gap-study-3/check_take.py:1753,1757,1761,1766"},
+    "invocation": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.invocation", "meaning": "the checker was called with a ledger row for a walk, or without one for a take", "emitted_at": "evals/gap-study-3/check_take.py:1706,1748"},
+    "model-binding": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.model-binding", "meaning": "an assistant record carries a model other than the one the attempt is registered to", "emitted_at": "evals/gap-study-3/check_take.py:761"},
+    "constant-binding": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.constant-binding", "meaning": "the take's ledger shows a turn budget or permission mode other than the pre-registered ones, or no ledger", "emitted_at": "evals/gap-study-3/check_take.py:898,904,908,913"},
+    "continued-past-unheld-marker": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.continued-past-unheld-marker", "meaning": "an operator line was sent after a reply that did not hold the previous step's marker, or a recovery was sent where its own marker was not held", "emitted_at": "evals/gap-study-3/check_take.py:1265,1268,1271,1274"},
+    "checkout-binding": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.checkout-binding", "meaning": "the session's recorded git status or loaded instruction file is not the checkout the driver builds from the pinned tree", "emitted_at": "evals/gap-study-3/check_take.py:1166,1173,1203,1205,1214,1218"},
+    "stop-without-a-wait-point": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.stop-without-a-wait-point", "meaning": "the ledger records a stop at a step that carries no wait point, or with a further operator line sent after it", "emitted_at": "evals/gap-study-3/check_take.py:1048,1079"},
+    "outcome-binding": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.outcome-binding", "meaning": "the ledger's outcome is not one the pinned driver writes, or a turn row carries no exit code, or the outcome disagrees with the driver's own record of the run: a completed take whose turn was cut or whose last reply stops short of the end of a turn, or a take published as cut with no cut behind it", "emitted_at": "evals/gap-study-3/check_take.py:833,844,851,862,865,879,886,890,1662,1668,1672"},
+    "environment-record": {"file": "evals/gap-study-3/prereg.json", "commit": "e2979b3143081824aadea73523ec41af30c1ddb1", "key": "rehearsal_reasons.environment-record", "meaning": "the attempt's environment record is absent or unreadable, or disagrees with the draft's vocabulary, its transcript's session, its row's commit, its ledger or its own turns", "emitted_at": "evals/gap-study-3/check_take.py:1395"}
+  },
+  "driver_decided_reasons": {"ids": ["environment-record", "invocation", "outcome-binding", "project-name", "script-not-a-list", "session-binding"], "source": "Round 3's prereg.json key driver_decided_reasons at e2979b3143081824aadea73523ec41af30c1ddb1, copied in its order under Javier's ruling \"gap4 routing: A\" (6 Oct 2026; lane w1b reads only that key of it, so what makes these six driver-decided is round 3's, not restated here). Routing needs no separate rule for them: each is also in operator_reasons, so each routes by the generic operator-reason rows, a rehearsal before the agent's first turn and harness-error after it, as every other operator-side reason does. routing.py checks every id here is in operator_reasons; tests/test_routing.py TestRound3Sources re-derives the list."},
+  "reasons_only_before_first_turn": {"ids": ["no-first-agent-turn"], "source": "Review round 2 (W1B2-8). Round 3's check_take.py:83 at e2979b3143081824aadea73523ec41af30c1ddb1 names it NO_FIRST_AGENT_TURN, and its pre-registered meaning (prereg.json rehearsal_reasons) is 'the process exited, or the transcript holds no agent text, before the agent's first turn'. So routing.py refuses records that carry it after the agent's first turn started (completed agent output): the checker and the harness records then disagree about the phase, and a human must look, never a pick. Every id here must be an operator reason (routing.py checks this)."},
+  "checker_reasons_become_events": {"ids": ["study-materials-reached", "account-email", "read-outside-the-checkout"], "source": "Plan, CP2 check_take.py task: \"The `study-materials-reached` and `account-email` reasons (check_take.py:1682, 714) become events, graded as usual with the text masked\"; and \"Outside reads (1687-1704) ... are recorded as events, not rehearsals\" (read-outside-the-checkout, check_take.py:1691 at e2979b31). Round 4's checker emits them as events, so routing never sees them as reasons; an id here that still arrived as a reason would be refused, never defaulted.", "emitted_at": {"study-materials-reached": "evals/gap-study-3/check_take.py:1682", "account-email": "evals/gap-study-3/check_take.py:714", "read-outside-the-checkout": "evals/gap-study-3/check_take.py:1691"}},
+  "pin_profiles": {},
+  "pin_profiles_status": "PENDING (CP5). One profile per model the round runs: the model id, and the permission mode and Claude Code version pre-registered for it. The init-mismatch row compares every init event with the take's pin, and routing.py refuses a pin that is not the pre-registered profile of its model, so the driver is never trusted for it. Until CP5 pre-registers the profiles, routing.py refuses every take and batch.py refuses to start.",
+  "caps": {
+    "rehearsal": {"reruns_per_slot": null, "events_per_half_cell": 3, "source": "Key renamed from reruns_per_half_cell (glitch-f3, 6 Oct 2026): the value counts the half-cell's committed rehearsals, this one included, so it allows at most cap\u22121 re-runs. Plan: 're-run in the same slot (capped at 3 per half-cell, round 3's cap)'. Round 3's prereg.json sets rehearsal_cap = 3 (at e2979b3143081824aadea73523ec41af30c1ddb1), and takes.py:286-291 there applies it per cell (task, half, model): a cell that has had rehearsal_cap rehearsals registers no further attempt: 'It publishes `incomplete — mechanical` with each reason, and no further attempt is registered.' Unit (glitch-f3's ruling, in-plan, 6 Oct 2026; recorded as glitch-f3's, not the owner's): the cap counts the rehearsals committed in the half-cell, round 3's unit, round 3's cell (task, half, model) being round 4's half-cell (arm, task, half, model), the registered row's half_cell, with wording and repeat or pressure as the slot inside it. batch.py counts every committed rehearsal of the half-cell, one by one (a take a ruling routes rehearsal counts too: review round 3, W1B3-1); the one that brings the count to the cap is its slot's last (never re-run) and is committed with the cell state labels4.INCOMPLETE_MECHANICAL and its reason; nothing more is registered for that half-cell, and the loop goes on with the other half-cells. Each rehearsal's own reasons stay in its own committed record."},
+    "harness-error": {"reruns_per_slot": 1, "reruns_per_half_cell": 2, "beyond_cap": "published as harness-error in its own column; leaves the denominator, the cell's n printed", "source": "Plan: 'one re-run in the same slot (capped at 2 per half-cell)'."},
+    "pause": {"reruns_per_slot": null, "events_per_half_cell": 3, "source": "Key renamed from reruns_per_half_cell (glitch-f3, 6 Oct 2026): the value counts the half-cell's usage-window events of pause, the one that reaches it included, so at most cap\u22121 of them are re-run (W1B3-5, below). Plan: 're-run in the same slot under round 3's pause_cap'. Round 3's files say two things, both recorded here (review round 2, W1B2-11). Its driver, evals/gap-study-3/drive.py:147-148 at e2979b3143081824aadea73523ec41af30c1ddb1 (review 13, F6): 'a pause is uncapped where a rehearsal is capped, so a death before the first turn whose message merely says \"resets\" must not be read as a pause.' Its pre-registration nonetheless sets pause_cap = 3 (evals/gap-study-3/prereg.json), and evals/gap-study-3/takes.py:280-285 applies it per cell (task, half, model): 'A pause frees a slot on the driver's record alone, so it is capped like a rehearsal; the cell publishes `incomplete — mechanical` and no further attempt is registered.' The pre-registered value is the one round 3 enforced (takes.py reads pre['pause_cap']), and round 4 copies it, 3 per half-cell, under Javier's ruling \"gap4 routing: A\" (6 Oct 2026). Unit (glitch-f3's ruling, in-plan, 6 Oct 2026; recorded as glitch-f3's, not the owner's): the cap counts per half-cell, round 3's unit, round 3's cell (task, half, model) being round 4's half-cell (arm, task, half, model), the registered row's half_cell, with wording and repeat or pressure as the slot inside it. What it counts (glitch-f3's ruling on review round 3, W1B3-5, in-plan, 6 Oct 2026, relayed by the gap4 lane lead; recorded as glitch-f3's, not the owner's): the half-cell's usage-window events, so the pauses that share one reset count once. The cap bounds window events, round 3's own unit: round 3 drove one take at a time, so each of its pauses was its own window event, while round 4 drives up to three takes in a block and every pause of one block shares the one reset the loop waits for before its next block. Each committed pause carries its window_event, and batch.py counts the distinct window events among the half-cell's committed pauses (a take a ruling routes pause counts as its own event: review round 3, W1B3-1); the take whose window event brings the count to the cap is its slot's last (never re-run) and is committed with the cell state labels4.INCOMPLETE_MECHANICAL and its reason, as is every later take of that half-cell; nothing more is registered for it, and the loop goes on with the other half-cells (still waiting for the usage window before its next launch)."},
+    "aborted": {"reruns_per_slot": 0, "reruns_per_half_cell": 0, "source": "Plan: 'never re-run'."},
+    "graded": {"reruns_per_slot": 0, "reruns_per_half_cell": 0, "source": "Plan: 'no try is ever discarded or re-run for something the agent did'."}
+  },
+  "pin_refusal": {
+    "id": "init-differs-before-first-turn",
+    "when": "before-first-turn",
+    "all_of": [{"path": "init", "op": "present_differs_from_pin"}],
+    "outranked_by": ["pause"],
+    "source": "Review round 3, W1B3-2: the gap4 lane lead's ruling, whose stricter reading glitch-f3 accepted (in-plan, 6 Oct 2026, relayed by the gap4 lane lead; recorded as glitch-f3's, not the owner's), carrying glitch-f3's fold-3 ruling 2, 'a differing init is refused for a human, a pin mismatch'. Before the agent's first turn, a take whose init events include one that is present and differs from the pin (its model, mode or version) is refused for a human, whatever else matches: no before-first-turn harness row (an API error, no-first-agent-turn, a container exit, a silent timeout) turns a pin mismatch into a rehearsal. Only a route in outranked_by wins over it, the rate-limit pause, because pause outranks every route and a usage limit is not a pin fault. A missing init event never triggers it (glitch-f3's fold-3 ruling: a CLI that never printed its init event is harness-side). After the first turn the init-mismatch row routes a differing or missing init as harness-error, as the plan says. Its scope is this one rule, on its all_of line: if glitch-f3 narrows it to timed-out ends only, that is one condition appended there, {\"path\": \"ledger.end\", \"op\": \"eq\", \"value\": \"timed-out\"}. routing.py checks the rule: before the first turn, conditions on harness records only, and only routes that outrank rehearsal may outrank it."
+  },
+  "rows": [
+    {
+      "id": "preflight-failed",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "preflight.ok", "op": "falsy"}],
+      "source": "Plan table row 1: 'before the agent's first turn | preflight failure'. Also a box-only record (CP1 task: 'the box-only records (preflight, ...)')."
+    },
+    {
+      "id": "container-start-failed",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "exit.container_started", "op": "falsy"}, {"path": "exit.container_exited", "op": "truthy"}],
+      "source": "Plan table row 1: 'container start failure'. Lane w1b decision: a container that started and exited before the first turn counts as a start failure."
+    },
+    {
+      "id": "api-error-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "api_errors", "op": "nonempty"}],
+      "source": "Plan table row 1: 'API error'. A rate-limit marker also matches rate-limit (pause), which wins on precedence. Phase per the gap4 lane lead's ruling on W1B-5: the agent's first turn starts with the first turn that produced completed agent output (a text or tool-call message, read from the stream's event types), so an API error in a turn that produced none, however that turn ended (in error, or timed out), is before the agent's first turn. Review round 2 (W1B2-1) reverted 3fcab58d, which had let any timed-out turn start the agent's turn and so sent this row's silent-timeout cases to harness-error; glitch-f3's correction (6 Oct 2026; glitch-f3's, not the owner's) keeps a silent timeout before the first turn (see silent-timeout-before-first-turn)."
+    },
+    {
+      "id": "sidecar-unhealthy-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "sidecar.start_record", "op": "falsy"}, {"path": "sidecar.exit_code", "op": "ne", "value": 0}, {"path": "sidecar.queue_overflow", "op": "truthy"}],
+      "source": "CP1 task: 'the box-only records (preflight, sidecar health, ...)'. Lane w1b decision: a watcher fault before the first turn is a rehearsal, as every other harness fault in that phase. The stop record is not read here: before the first turn it may legitimately not exist yet."
+    },
+    {
+      "id": "operator-reason-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "checker_reasons", "op": "in_operator_reasons"}],
+      "source": "Plan table last row: 'each operator-side reason the copied checker keeps ... a rehearsal before the first turn'. Matches any id in operator_reasons (PENDING, see operator_reasons_status)."
+    },
+    {
+      "id": "operator-diff-unexplained-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "operator.unexplained_diffs", "op": "gt", "value": 0}],
+      "source": "CP1 task: 'The sidecar's health and the operator-diff check run inside that same step'; CP3 endstate: 'The drive step has already routed any operator-step diff that no event explains'. Phase split as the plan's last row."
+    },
+    {
+      "id": "finalize-abort-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "ledger.finalize_abort", "op": "truthy"}],
+      "source": "Plan table last row: 'round 3's finalize abort (drive.py:1417) ... a rehearsal before the first turn'. Round 3's own treatment, recorded beside the plan's re-route (review round 2, W1B2-11; evals/gap-study-3/drive.py:1405-1419 at e2979b3143081824aadea73523ec41af30c1ddb1): when stage 00's finalize did not write samples.csv within the wait, its driver set the ledger outcome to 'aborted — finalize did not write samples.csv within {wait_s} s' (line 1417) and sent nothing further, because 'the take has a first agent turn, so it is graded, and the label whose definition it meets is `aborted`' (lines 1408-1409). Round 4 routes the same record by phase, as the plan's table says: a rehearsal here, before the agent's first turn, and harness-error after it (finalize-abort-after-first-turn), never the graded aborted round 3 gave it."
+    },
+    {
+      "id": "silent-timeout-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "ledger.end", "op": "eq", "value": "timed-out"}],
+      "source": "glitch-f3's correction (6 Oct 2026, relayed by the gap4 lane lead; recorded as glitch-f3's, not the owner's), which withdrew his earlier acceptance that a timed-out silent first turn is the agent's: \"A silent timeout with no completed agent output can't be told apart from a hung API, CLI or egress using harness records, and round 3 already routes it as rehearsal through no-first-agent-turn. 'A timeout stays the agent's' applies once the agent has produced completed output.\" Plan table row 1: before the agent's first turn, a harness fault is a rehearsal. This row's route is its one value in routing.json: a ruling change is a one-word edit of it. It sits at rehearsal's level, so every before-first-turn harness row it meets (an API error, an operator reason such as no-first-agent-turn, a container exit, a preflight failure) names the same route and is one answer with it, and the rate-limit row (pause) outranks it. Review round 2, W1B2-1 (the gap4 lane lead's brief): its own row, any_of ledger.end eq timed-out. glitch-f3's ruling (in-plan, 6 Oct 2026, relayed by the gap4 lane lead in lane w1b's third fold; recorded as glitch-f3's, not the owner's), as relayed: \"A CLI that never printed its init event is harness-side, by the same reason as W1B2-1.\" So a silent timeout with no init event matches this row and rehearses. A silent timeout whose init event is present and names another model, mode or version is refused for a human (a pin mismatch), but not by this row: review round 3 (W1B3-2) found that a none_of here held only while no other before-first-turn row matched (a differing init plus no-first-agent-turn, an API 500 or a container exit still rehearsed), so the check moved to the table's one pin refusal (pin_refusal, init-differs-before-first-turn), which refuses it whatever else matches; glitch-f3 accepted that stricter reading (in-plan, 6 Oct 2026; glitch-f3's, not the owner's). The row is before-first-turn and the init-mismatch row after-first-turn, so the two never meet and cannot tie; after the first turn a missing init event stays a mismatch (differs_from_pin, lane w1b decision 5)."
+    },
+    {
+      "id": "rate-limit",
+      "when": "any",
+      "route": "pause",
+      "any_of": [{"path": "api_errors.status", "op": "in_rate_limit_markers"}, {"path": "api_errors.type", "op": "in_rate_limit_markers"}, {"path": "api_errors.text", "op": "in_rate_limit_markers"}],
+      "source": "Plan table: 'any time | a pre-registered rate-limit marker in the API-error record | pause'. Every API error of the take is read (W1B-4): a marker on any one of them matches. A marker in any of the record's three fields matches: structured status or type, OR round 3's text markers in the harness-side error text, never the agent's (glitch-f3's ruling, 6 Oct 2026; see rate_limit_markers.source)."
+    },
+    {
+      "id": "cgroup-kill",
+      "when": "after-first-turn",
+      "route": "aborted",
+      "any_of": [{"path": "cgroup.oom_kill_delta", "op": "gt", "value": 0}, {"path": "cgroup.pids_max_delta", "op": "gt", "value": 0}],
+      "source": "Plan table: 'after the first turn | the turn's out-of-memory or pids-limit counters rose ... whatever the exit looked like | aborted ... never re-run'."
+    },
+    {
+      "id": "api-error-after-first-turn",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "api_errors", "op": "nonempty"}],
+      "source": "Plan table: 'after the first turn | API-error record'."
+    },
+    {
+      "id": "container-exit-after-first-turn",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "exit.container_exited", "op": "truthy"}],
+      "source": "Plan table: 'after the first turn | ... container exit'."
+    },
+    {
+      "id": "watcher-gap",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "sidecar.start_record", "op": "falsy"}, {"path": "sidecar.stop_record", "op": "falsy"}, {"path": "sidecar.exit_code", "op": "ne", "value": 0}, {"path": "sidecar.queue_overflow", "op": "truthy"}],
+      "source": "Plan table: 'a watcher gap (start or stop record missing, non-zero exit, queue overflow)'; edge case: 'The watcher overflows or dies mid-take: the take routes as harness-error'."
+    },
+    {
+      "id": "init-mismatch",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "init", "op": "differs_from_pin"}],
+      "source": "Plan table: 'an init event whose model, mode or version differs from the pin'; testing strategy: 'a mismatch on the last turn of an otherwise graded take is a harness-error'. Lane w1b decision: a turn with no init event at all counts as a mismatch, after the agent's first turn. Before it, a missing init event is harness-side (glitch-f3's ruling of 6 Oct 2026: a silent timeout with no init event rehearses, see silent-timeout-before-first-turn), and an init event that is present and differs from the pin is refused for a human whatever else matches (pin_refusal; review round 3, W1B3-2)."
+    },
+    {
+      "id": "nonzero-exec-exit",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "exit.exec_codes", "op": "nonzero_outside_timeout"}],
+      "none_of": [{"path": "api_errors", "op": "nonempty"}, {"path": "cgroup.oom_kill_delta", "op": "gt", "value": 0}, {"path": "cgroup.pids_max_delta", "op": "gt", "value": 0}],
+      "source": "Plan table: 'after the first turn | a non-zero exec exit with no API-error record and no rise in those counters | harness-error'. Lane w1b decision: the exit of a turn the host ended as timed-out is not read, because 'a timeout stays the agent's' and the host's own kill exits non-zero."
+    },
+    {
+      "id": "operator-reason-after-first-turn",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "checker_reasons", "op": "in_operator_reasons"}],
+      "source": "Plan table last row: '... harness-error after it'. Matches any id in operator_reasons (PENDING, see operator_reasons_status)."
+    },
+    {
+      "id": "operator-diff-unexplained-after-first-turn",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "operator.unexplained_diffs", "op": "gt", "value": 0}],
+      "source": "CP3 endstate VALIDATE: 'an unexplained diff that routes as harness-error'."
+    },
+    {
+      "id": "finalize-abort-after-first-turn",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "ledger.finalize_abort", "op": "truthy"}],
+      "source": "Plan table last row: round 3's finalize abort (drive.py:1417), 'harness-error after it'. Round 3's own treatment, recorded beside the plan's re-route (review round 2, W1B2-11; evals/gap-study-3/drive.py:1405-1419 at e2979b3143081824aadea73523ec41af30c1ddb1): its driver graded this take aborted, setting the ledger outcome to 'aborted — finalize did not write samples.csv within {wait_s} s' (line 1417), because 'the take has a first agent turn, so it is graded, and the label whose definition it meets is `aborted`' (lines 1408-1409). The plan re-routes it to harness-error (a re-run within the harness-error caps), not graded aborted."
+    },
+    {
+      "id": "end-turn",
+      "when": "after-first-turn",
+      "route": "graded",
+      "any_of": [{"path": "ledger.end", "op": "eq", "value": "end_turn"}],
+      "source": "Plan: graded is the route of a take no harness row claims. Lane w1b decision: graded is a row of its own, so an input no row matches is refused, never defaulted to graded."
+    },
+    {
+      "id": "timed-out",
+      "when": "after-first-turn",
+      "route": "graded",
+      "any_of": [{"path": "ledger.end", "op": "eq", "value": "timed-out"}],
+      "source": "Plan: 'A timeout stays the agent's (timed-out, as in rounds 1-3), because an agent that loops is behaving'."
+    }
+  ],
+  "annotations_about": "Annotations are decided on every take, in every phase, whatever route wins and even when routing refuses the take: they never route. An annotation holds when at least one of its any_of conditions holds; it is reported as an event when event is true, and sets mask (the take's text is masked, never deleted, before commit) when mask is true.",
+  "annotations": [
+    {
+      "id": "outside-reach",
+      "event": true,
+      "mask": true,
+      "any_of": [{"path": "events.outside_reach", "op": "gt", "value": 0}],
+      "source": "Plan table: 'any time | the agent's own text or actions reaching the token, the account email, a study path or anything outside the run tree | graded as usual; the text is masked, never deleted, before commit, and counted as an event'. Read from the drive step's count, never from the text. Review round 1 (W1B-1): an annotation on every take in every phase, independent of the routing rows and of how the last turn ended, so it never routes and is never lost."
+    },
+    {
+      "id": "quiescence-kill",
+      "event": true,
+      "mask": false,
+      "any_of": [{"path": "quiescence_kill", "op": "truthy"}],
+      "source": "CP1 task: 'the box-only records (..., a quiescence kill)'; CP3 endstate: 'Writes by a background process the driver recorded and stopped at the cap are attributed to the turn that launched it'. Lane w1b decision: the agent's own behaviour, counted as an event; it does not route (the take routes by its other records, graded on a graded end). Review round 1 (W1B-1): an annotation, on every take."
+    },
+    {
+      "id": "checker-event-reason",
+      "event": true,
+      "mask": true,
+      "any_of": [{"path": "checker_reasons", "op": "in_checker_events"}],
+      "source": "Review round 2 (W1B2-2). Plan, CP2 check_take.py task: the study-materials-reached and account-email reasons 'become events, graded as usual with the text masked', and outside reads 'are recorded as events, not rehearsals' (checker_reasons_become_events). Round 4's checker emits them as events, which the drive step counts in events.outside_reach. If one still arrives as a checker reason, routing refuses the take (the id is not an operator reason, and never may be: routing.py checks the two lists are disjoint), so batch.py commits it blocked; this annotation holds on every take whose checker_reasons carry any of those ids, whatever route wins or whether one does, so the event is still counted and the text masked, never lost to the refusal."
+    }
+  ]
+}
