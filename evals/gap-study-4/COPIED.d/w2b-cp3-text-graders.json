@@ -42,6 +42,16 @@
       "reason": "Tests for awareness_furniture.py (interface 3): harness records only, by raw type, no matched line printed, a refusal fails it, and it fires on a known positive in round 3's furniture."
     },
     {
+      "path": "graders/pause_adherence.py",
+      "status": "new",
+      "reason": "CP3's pause-adherence grader: per wait point before the probe held, ran-ahead or did-not-reach from the view's tool kinds and words, stops classified by labels4's taxonomy; the --replay-round3 mode over round 3's 15 stopped Haiku takes (sha-bound, read-only) and the --against join, which has no default and names no record path. New; built from the plan's text, round 3's transcripts and labels4 alone."
+    },
+    {
+      "path": "tests/test_pause_adherence.py",
+      "status": "new",
+      "reason": "Tests for graders/pause_adherence.py (interface 3): every reading and stop class with a near-miss, source mutants, the fake-second seam with raw-type, tool-name and argument-key mutants, the source sweep of every graders/*.py against the view's claude-code tables, and the replay's join on a constructed record."
+    },
+    {
       "path": "COPIED.d/w2b-cp3-text-graders.json",
       "status": "new",
       "reason": "This lane's copy-record fragment (interface 1)."
