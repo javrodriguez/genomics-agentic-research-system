@@ -303,7 +303,10 @@ class PackageCase(unittest.TestCase):
 
     def refused(self, proc, words):
         self.assertEqual(proc.returncode, 1, proc.stdout.decode() + proc.stderr.decode())
-        self.assertIn(words, proc.stderr.decode())
+        if isinstance(words, tuple):   # any one of several named refusals
+            self.assertTrue(any(w in proc.stderr.decode() for w in words), proc.stderr.decode())
+        else:
+            self.assertIn(words, proc.stderr.decode())
 
 
 class HarvestAndRender(PackageCase):
@@ -456,7 +459,10 @@ class HarvestAndRender(PackageCase):
             'h3-5 a launch line that differs': ("logged launch line is not", {}, lambda w: write(
                 w.stage / 'run/.nextflow.log', (w.stage / 'run/.nextflow.log').read_text().replace(
                     '-work-dir', '--skip_trimming true -work-dir'))),
-            'h3-6 an edit hidden by stat settings': ('differ from HEAD by content', {}, self.stat_only_edit),
+            # git's own status catches the edit when it lands in the index's second (a racy entry); either
+            # refusal is the edit caught (S6 landing review: intermittent under load)
+            'h3-6 an edit hidden by stat settings': (('differ from HEAD by content', 'gars/_system/wrapperlib.py)'), {},
+                                                      self.stat_only_edit),
             'h3-6 an unexpected ignored file': ('git status: !!', {}, lambda w: write(
                 w.clone / 'gars/_system/claims/notes.pyc', b'x')),
         }
@@ -1200,7 +1206,13 @@ class S2bModes(PackageCase):
         self.assertIn(expected, note.read_text())
         self.assertIn('0 differ', expected)
         self.assertNotIn('fresh', note.read_text())   # nothing in the artifact records freshness
-        self.assertIn('Re-run on a 4-CPU 16 GB pad m5.xlarge', note.read_text())
+        self.assertIn('Re-run twice, each on its own 4-CPU 16 GB pad m5.xlarge', note.read_text())
+        self.assertIn('no independent re-run', note.read_text())
+        self.assertIn('Compared exactly', note.read_text())   # S6 landing review, M3: mode counts, named so
+        agreed = list(csv.DictReader(io.StringIO((placed.parent / 'agreed-members.tsv').read_text()), delimiter='\t'))
+        table = list(csv.DictReader(io.StringIO((w.root / 'pass2' / 'members.tsv').read_text()), delimiter='\t'))
+        self.assertEqual(sorted((r['stage'], r['path'], r['mode'], r['result']) for r in agreed),
+                         sorted((r['stage'], r['path'], r['mode'], r['result']) for r in table))   # M2
 
     def test_a_difference_beyond_the_mode_still_differs(self):
         cases = {
@@ -1290,7 +1302,11 @@ class StockLogins(PackageCase):
     def test_a_stock_login_in_a_multiqc_report_ships(self):
         w = self.world_naming('ubuntu')
         self.assertEqual(w.harvest().returncode, 0)
-        self.assertEqual(json.loads((w.root / 'harvest/HARVEST.json').read_text())['secrets']['users'], [])
+        # the stock login arms nothing; only the test folder's own home user may appear (CI's TMPDIR sits
+        # under /home/runner/; S6 landing review, M1)
+        own = module(TOOL, 'package_run_stock_own').record_users([str(w.root)])
+        self.assertNotIn('ubuntu', own)
+        self.assertEqual(json.loads((w.root / 'harvest/HARVEST.json').read_text())['secrets']['users'], own)
         proc = w.render()
         self.assertEqual(proc.returncode, 0, proc.stderr.decode())
         self.assertIn('`ubuntu`, the stock login', (w.root / 'package/PROVENANCE.md').read_text())

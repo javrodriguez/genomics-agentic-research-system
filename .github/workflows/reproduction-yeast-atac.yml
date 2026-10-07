@@ -3,11 +3,12 @@
 # Job `self-check` runs the package's offline verify.py and shellcheck on rerun.sh, in minutes.
 # Job `rerun` runs the package's own commands on a GitHub-hosted runner, exactly as REPRODUCE.md
 # prints them: `bash rerun.sh --out <folder>`, then `python3 verify.py --against <folder>
-# --table-out <folder>`. It passes when the re-run's result line equals the line the committed
-# landing README (reproduction/yeast-atac/README.md) states, whatever that line's counts are: the
-# README's line was measured on two pre-landing passes, and this job checks that the public runner
-# measures the same. Its member table, the package digest it verified and the machine class are
-# uploaded as the artifact `rerun-note` reads.
+# --table-out <folder>`. It passes only when the re-run's result line equals the line the committed
+# landing README (reproduction/yeast-atac/README.md) states, and every member's mode and result
+# equals reproduction/yeast-atac/agreed-members.tsv (the two pre-landing passes' agreed outcomes,
+# written by `rerun-note`), except the members a finding in package-tolerances.json names, whose
+# difference is random by cause. Its member table, the package digest it verified and the machine,
+# as Docker reports it, are uploaded as the artifact `rerun-note` reads.
 #
 # Disk: a cold-cache pass used about 15 GB of root disk (0283), more than the runner's free space,
 # so the job first removes preinstalled toolchains this re-run never uses and records free space.
@@ -32,6 +33,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: reproduction/yeast-atac
+          persist-credentials: false
       - name: The package verifies offline
         run: python3 reproduction/yeast-atac/package/verify.py
       - name: rerun.sh is shellcheck-clean
@@ -45,6 +47,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: reproduction/yeast-atac
+          persist-credentials: false
       - name: Free disk (toolchains this re-run never uses)
         run: |
           df -B1 --output=avail / | tail -1 > "$RUNNER_TEMP/free-before.txt"
@@ -57,10 +60,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: The Nextflow launcher (rerun.sh pins the version the run recorded)
+      - name: The Nextflow launcher, pinned by sha256 (rerun.sh pins the version the run recorded)
         run: |
           mkdir -p "$HOME/.local/bin"
-          curl -fsSL https://get.nextflow.io -o "$HOME/.local/bin/nextflow"
+          curl -fsSL https://github.com/nextflow-io/nextflow/releases/download/v26.04.6/nextflow \
+            -o "$HOME/.local/bin/nextflow"
+          echo "61a755edbed743cfbb568f3a6c67af68481a2f6a4d6dffcc4295e51318968281  $HOME/.local/bin/nextflow" \
+            | sha256sum -c -
           chmod +x "$HOME/.local/bin/nextflow"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Re-run from the package
@@ -84,7 +90,8 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           case "$code" in 0|2|3) ;; *) echo "verify.py could not compare (exit $code)"; exit 1 ;; esac
-          printf '%s\n%s\n' "GitHub-hosted ubuntu-latest runner (4 CPU, 16 GB), images pulled fresh" \
+          read -r ncpu mem < <(docker info --format '{{.NCPU}} {{.MemTotal}}')
+          printf '%s\n%s\n' "GitHub-hosted runner, Docker ${ncpu} CPUs and ${mem} bytes, no image cached" \
             "$(date -u +%Y-%m-%d)" > "$RUNNER_TEMP/artifact/machine.txt"
           if grep -qF -- "$line" reproduction/yeast-atac/README.md; then
             echo "the result line equals the landing README's" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -92,6 +99,30 @@ jobs:
             echo "the result line differs from the landing README's: $line" | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+      - name: Every member's mode and result equals the agreed outcome
+        run: |
+          python3 - reproduction/yeast-atac/agreed-members.tsv "$RUNNER_TEMP/artifact/members.tsv" \
+            reproduction/yeast-atac/package/outputs/package-tolerances.json <<'PY'
+          import csv, json, sys
+          agreed_path, rerun_path, tolerances_path = sys.argv[1:4]
+          def table(path):
+              with open(path, encoding='utf-8', newline='') as handle:
+                  return {(r['stage'], r['path']): (r['mode'], r['result'])
+                          for r in csv.DictReader(handle, delimiter='\t')}
+          agreed, rerun = table(agreed_path), table(rerun_path)
+          findings = {(f.get('stage'), m) for f in json.load(open(tolerances_path)).get('findings') or []
+                      for m in f.get('members') or []}
+          if set(agreed) != set(rerun):
+              sys.exit('the re-run lists other members than agreed-members.tsv')
+          bad = [k for k in sorted(agreed) if agreed[k] != rerun[k]
+                 and not (k in findings and agreed[k][0] == rerun[k][0])]
+          for stage, path in bad:
+              print('%s %s: agreed %s, re-run %s' % (stage, path, agreed[(stage, path)], rerun[(stage, path)]))
+          if bad:
+              sys.exit('%d members differ from the agreed outcome' % len(bad))
+          print('all %d members match the agreed outcome (%d finding members free to vary)'
+                % (len(agreed), len(findings & set(agreed))))
+          PY
       - name: The pass artifact (what rerun-note reads)
         if: always()
         uses: actions/upload-artifact@v4

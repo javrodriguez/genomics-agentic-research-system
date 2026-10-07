@@ -150,6 +150,18 @@ def git(repo, *args):
     return proc.stdout
 
 
+def tsv_plain(columns, rows):
+    """A tab-separated table with no label check, for files outside a package."""
+    out = io.StringIO()
+    out.write('\t'.join(columns) + '\n')
+    for row in rows:
+        cells = [str(row[c]) for c in columns]
+        if any('\t' in c or '\n' in c or '\r' in c for c in cells):
+            raise Refusal('a table cell holds a tab or a line break')
+        out.write('\t'.join(cells) + '\n')
+    return out.getvalue()
+
+
 def tsv(columns, rows):
     tables_sources(rows, columns)   # every *_source cell carries a label (S5 review r1, m1: was never called)
     out = io.StringIO()
@@ -1762,7 +1774,7 @@ def rerun_note(args):
     machine = ' and '.join(sorted(set(p['machine'] for p in passes)))
     dates = ' and '.join(sorted(set(p['date'] for p in passes)))
     runs = '%s/actions/workflows/%s' % (repository, args.workflow)
-    badge = 'https://img.shields.io/badge/re--run-%d%%20exact%%2C%%20%d%%20tolerance%%2C%%20%d%%20presence%%2C%%20%d%%20differ-informational' % (
+    badge = 'https://img.shields.io/badge/pre--landing%%20re--run-%d%%20exact%%2C%%20%d%%20tolerance%%2C%%20%d%%20presence%%2C%%20%d%%20differ-informational' % (
         counts['M'], counts['K'], counts['P'], counts['F'])
     lines = ['# %s, re-run from its reproduction package' % record.get('workflow_name', 'A GARS run'), '',
              '[![re-run counts](%s)](%s)' % (badge, runs), '',
@@ -1770,15 +1782,25 @@ def rerun_note(args):
                                                                                     p['pipeline_commit']) for p in pipes),
              '', 'Re-run: `bash package/rerun.sh --out <empty folder>`', '',
              'Verify: `python3 package/verify.py --against <that folder>`', '',
-             'Re-run on a %s, %s, from this package and the public sources it pins by checksum '
-             '(package sha256 `%s`): %s.' % (machine, dates, package_digest, compare.line(counts)), '',
-             'The re-run was a pre-landing pass in a private environment (not viewable); the public workflow\'s '
-             'runs ([%s](%s)) must show the same table.' % (args.workflow, runs), '']
+             'Re-run %s, each on its own %s, on %s (UTC), from this package and the public sources it pins '
+             '(inputs and references by checksum; container images by tag, their digests not recorded; package '
+             'sha256 `%s`): %s.' % ('twice' if len(passes) == 2 else 'once', machine, dates, package_digest,
+                                    compare.line(counts)), '',
+             ('The two passes\' member tables agree, member by member, in mode and result. ' if len(passes) == 2
+              and not unstable else '') +
+             'The re-runs were pre-landing passes run by the repository owner\'s own tooling in a private '
+             'environment (not viewable); no independent re-run by another person has happened yet. The public '
+             'workflow ([%s](%s)) re-runs the package and passes only when its result line equals the one above '
+             'and every member\'s mode and result equals agreed-members.tsv, except the members of the findings '
+             'in package/PROVENANCE.md, whose difference is random by cause.' % (args.workflow, runs), '']
     if unstable:
         lines += ['%d members differed between the two passes on the same machine type; each counts as differing, '
                   'with the cause "unstable between re-runs on the same machine type".' % len(unstable), '']
     for p in passes:
-        lines += ['| Stage | Output | Path | Members | Exact | Presence | Other | Failed | Extra | Result |',
+        lines += ['Members per output by comparison mode (compared exactly, presence only, or under a normalising '
+                  'mode); "Failed" counts the members that did not match, whatever their mode.', '',
+                  '| Stage | Output | Path | Members | Compared exactly | Presence only | Normalised | Failed | '
+                  'Extra | Result |',
                   '|---|---|---|---|---|---|---|---|---|---|']
         for o in p['outputs']:
             lines.append('| %s | %s | `%s` | %s | %s | %s | %s | %s | %s | %s |' % tuple(
@@ -1795,6 +1817,13 @@ def rerun_note(args):
     if out.resolve().parent != package.resolve().parent:
         raise Refusal('the landing README goes beside the package folder')
     out.write_text(text, encoding='utf-8')
+    # The agreed member outcomes the public workflow diffs its own member table against (S6 landing review, M2).
+    agreed = []
+    for key in sorted(keys):
+        row = members[key]
+        agreed.append({'stage': key[0], 'path': key[1], 'mode': results[0][key]['mode'], 'result': row['result']})
+    (out.parent / 'agreed-members.tsv').write_text(tsv_plain(('stage', 'path', 'mode', 'result'), agreed),
+                                                   encoding='utf-8')
     print('rerun-note: %s (%s)' % (out, compare.line(counts)))
     return 0
 

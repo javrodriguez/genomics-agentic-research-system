@@ -1,6 +1,6 @@
 ---
 date: 2026-10-05
-status: standing # draft until S6: the exemplar is in; passes 2 and 3 and the landing are open
+status: standing # draft until the landing: the exemplar and its passes 1, 2 and 3 are in
 kind: decision
 touches:
   - gars/_system/claims/package_run.py
@@ -81,7 +81,7 @@ The run's two driver faults found on the machine (stage 00 seeds the design at `
 
 ## Status
 
-Draft on the build branch `lane/repro-package`; the exemplar is in (S5); finalised at the landing (S6), with the delegated approval of its protected additions (0282).
+Draft on the build branch `lane/repro-package`; the exemplar and its re-runs are in; finalised at the landing, with the delegated approval of its protected additions (0282).
 
 ## Date
 

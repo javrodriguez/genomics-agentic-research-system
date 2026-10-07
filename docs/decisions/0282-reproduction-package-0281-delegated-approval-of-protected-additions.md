@@ -1,6 +1,6 @@
 ---
 date: 2026-10-06
-status: standing # draft until S6: the landing merge and its ceremony are open
+status: standing # draft until the landing's evidence commit: the merge's suite, scans and smoke record are recorded there
 kind: decision
 touches:
   - gars/_system/claims/package_run.py
@@ -23,11 +23,10 @@ Two things approve it, and they are kept apart here:
 - **The owner's own words, on the plan.** On 5 October 2026 Javier typed "A1 B1 C2" in the Row-orchestrator glitch-e7's window, and "gars-repro yes" in a terminal session (OrgOS T65).
   A1 approves the reproduction package plan as written (Brain `plans/gars-reproduction-package.md`), which names these additions; B1 and C2 are its two other decisions.
   Those words reached this record relayed by the Row-orchestrator; this record was not written in either window.
-- **Glitch, on the code as built, under the owner's delegation.** The owner delegated approval of protected changes on 23 September 2026, so the approval of the four files as built is written by Glitch under that delegation and labelled as such: **approved by Glitch under Javier's 23 Sep delegation**.
+- **Glitch, on the code as built, under the owner's delegation.** The owner delegated approval of protected changes on 23 September 2026, so the approval of the five files as built is written by Glitch under that delegation and labelled as such: **approved by Glitch under Javier's 23 Sep delegation**.
   No sentence in this record is the owner's except the quoted words.
 
-**Not given yet: the public push.** Landing these additions on public main waits for the owner's own typed push word; nothing here records it.
-The result line and the package's sentence frames wait for his result approval (the plan's slice S6).
+**Not given yet: the public push.** Landing these additions on public main waits for the owner's own typed push word, which also stands as his approval of the result line and the package's sentence frames; nothing here records it.
 
 ## Context
 
@@ -59,13 +58,13 @@ Outside the protected prefix, recorded for completeness: `.gitignore` gains `.ga
 
 ## Test
 
-- Full suite on the build node at every lane commit that changed these files, each verdict derived on the Mac; the latest is recorded at this record's last commit (S6).
+- Full suite on the build node at every lane commit that changed these files, each verdict derived on the Mac; the latest, on the landing merge itself, is recorded in the landing's evidence commit.
 - Mutation, on byte backups restored and sha-verified: the 5 October runs (84 mutants, all killed, named in 0281) and the 6 October hash-oracle runs (21 of 21 killed), named in 0281.
-- The landing merge, its full suite, the outgoing range's scans, the smoke delta and `audit_trailers.py` are run at slice S6 and recorded here then.
+- The landing merge's full suite, the outgoing range's scans, the smoke delta and `audit_trailers.py` are recorded in the landing's evidence commit, the merge's child.
 
 ## Status
 
-Draft. Approval of the reproduction package's protected additions only; the public push is not approved here, and this record is finalised with the landing merge at slice S6.
+Draft. Approval of the reproduction package's protected additions only; the public push is not approved here, and this record is finalised in the landing's evidence commit.
 
 ## Date
 
