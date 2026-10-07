@@ -1723,13 +1723,14 @@ def read_artifact(folder, package_digest):
         machine, date = (folder / 'machine.txt').read_text(encoding='utf-8').splitlines()[:2]
         members = read_tsv(folder / 'members.tsv')
         outputs = read_tsv(folder / 'outputs.tsv')
-    except (OSError, ValueError, UnicodeError, csv.Error):
+        line = (folder / 'result.txt').read_text(encoding='utf-8').splitlines()[0]
+    except (OSError, ValueError, UnicodeError, csv.Error, IndexError):
         raise Refusal('the pass artifact %s is incomplete' % folder.name)
     if digest != package_digest:
         raise Refusal('the pass artifact verified another package (sha256 %s)' % digest[:12])
     if not MACHINE.match(machine) or not DATE.match(date):
         raise Refusal('the pass artifact\'s machine class or date is malformed')
-    return {'machine': machine, 'date': date, 'members': members, 'outputs': outputs}
+    return {'machine': machine, 'date': date, 'members': members, 'outputs': outputs, 'line': line}
 
 
 def rerun_note(args):
@@ -1752,6 +1753,34 @@ def rerun_note(args):
     for result in results:
         if set(result) != keys:
             raise Refusal('a pass artifact does not list exactly the package\'s members')
+    # Each pass's printed table must be the rollup of that pass's own member table, in the package's modes, and
+    # of its own extra counts, and that rollup's result line must equal the line verify.py wrote beside the
+    # tables (result.txt). The extra counts appear in no other file of the artifact, so an outputs table edited
+    # there alone is caught only when the edit moves a count: an extra count changed on an output that already
+    # differs moves none and is not caught here (the landing review's round 2, m2, and the check of its fold,
+    # MINOR 1). The public workflow reads its own run's extra counts directly.
+    row_of = {}
+    for r in rows:
+        row_of.setdefault((r['stage'], compare.member_path(r)), r)
+    for number, (p, own_results) in enumerate(zip(passes, results), start=1):
+        for key in keys:
+            if own_results[key]['mode'] != row_of[key]['mode']:
+                raise Refusal('pass artifact %d names another mode for %s than the package' % (number, key[1]))
+        own = dict((key, {'row': row_of[key], 'ok': result_ok(own_results[key]['result']),
+                          'result': own_results[key]['result'], 'rerun_sha256': ''}) for key in keys)
+        try:
+            own_extra = dict(((o['stage'], o['output_path']), ['extra'] * int(o['extra'])) for o in p['outputs']
+                             if int(o['extra']))
+        except (KeyError, ValueError):
+            raise Refusal('pass artifact %d has an unreadable outputs table' % number)
+        own_rollup = compare.rollup(rows, own, own_extra)
+        rolled = [tuple(str(o[c]) for c in compare.OUTPUT_COLUMNS) for o in own_rollup['outputs']]
+        given = [tuple(str(o.get(c, '')) for c in compare.OUTPUT_COLUMNS) for o in p['outputs']]
+        if rolled != given:
+            raise Refusal('pass artifact %d: its outputs table is not the rollup of its own member table' % number)
+        if compare.line(own_rollup['counts']) != p['line']:
+            raise Refusal('pass artifact %d: its tables do not give the result line verify.py wrote (result.txt)'
+                          % number)
     members, unstable = {}, []
     for key in sorted(keys):
         seen = [(r[key]['mode'], r[key]['result']) for r in results]
@@ -1767,27 +1796,6 @@ def rerun_note(args):
             if int(o['extra']):
                 extra[(o['stage'], o['output_path'])] = ['extra']
     result = compare.rollup(rows, members, extra)
-    # Each pass's printed table must be the rollup of that pass's own member table, with the package's modes
-    # (the landing review's round 2, m2: a doctored outputs.tsv was printed as given).
-    row_of = {}
-    for r in rows:
-        row_of.setdefault((r['stage'], compare.member_path(r)), r)
-    for number, (p, own_results) in enumerate(zip(passes, results), start=1):
-        for key in keys:
-            if own_results[key]['mode'] != row_of[key]['mode']:
-                raise Refusal('pass artifact %d names another mode for %s than the package' % (number, key[1]))
-        own = dict((key, {'row': row_of[key], 'ok': result_ok(own_results[key]['result']),
-                          'result': own_results[key]['result'], 'rerun_sha256': ''}) for key in keys)
-        try:
-            own_extra = dict(((o['stage'], o['output_path']), ['extra'] * int(o['extra'])) for o in p['outputs']
-                             if int(o['extra']))
-        except (KeyError, ValueError):
-            raise Refusal('pass artifact %d has an unreadable outputs table' % number)
-        rolled = [tuple(str(o[c]) for c in compare.OUTPUT_COLUMNS)
-                  for o in compare.rollup(rows, own, own_extra)['outputs']]
-        given = [tuple(str(o.get(c, '')) for c in compare.OUTPUT_COLUMNS) for o in p['outputs']]
-        if rolled != given:
-            raise Refusal('pass artifact %d: its outputs table is not the rollup of its own member table' % number)
     record = json.loads(sorted(package.glob('records/*.manifest.json'))[0].read_text(encoding='utf-8'))
     repository = [r for r in read_tsv(package / 'code' / 'GARS.txt') if r['field'] == 'repository'][0]['value']
     pipes = read_tsv(package / 'code' / 'pipelines.tsv')

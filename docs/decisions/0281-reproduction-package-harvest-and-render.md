@@ -59,7 +59,7 @@ Its `compare.py` compares a re-run member by member under the package's declared
 
 ## What this does not close
 
-- Container digests are not recorded at run (G1); images are pinned by tag (the owner's choice C2), and recording digests at run belongs with the MS21 follow-ups.
+- Container digests are not recorded at run (G1); images are pinned by tag (the owner's choice C2), and recording digests at run is left to a later change.
 - A stage 03 analysis records no output sha256 or environment (G2), and its re-run is not automated.
 - The exemplar review's second round left gaps (6 October 2026, none loosening a check): REPRODUCE's measured disk figure is written into every package, not only this one; some cells use a label more loosely than PROVENANCE defines it; a printed hash is not checked for a path (measured on this exemplar: none of its 154 printed hashes covers a file holding one). Each changes the package's bytes, so each waits for the next package.
 - The last review of the hash-oracle rules (6 October 2026, round 3, no MAJOR) left five gaps, none shown on real inputs: hashes printed but never vetted (`software_versions` digests and the free-text evidence of the tolerances file), a CRLF HISTORY.md, the dashed account form outside the member check, an unarmed 12-digit id inside a hashed member that does not ship, and zip, xz or bz2 members searched raw.

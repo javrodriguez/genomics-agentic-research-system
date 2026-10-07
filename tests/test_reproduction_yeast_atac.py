@@ -4,12 +4,14 @@ The landing README's result line and table, and the agreed member outcomes the p
 compares a re-run against, are both rendered by `package_run.py rerun-note` from the same two
 pass artifacts. These tests bind them on every push: rolling agreed-members.tsv up through the
 package's own compare.py must give the README's line and every row of its table, the agreed members
-must be exactly the package's, in the package's modes, and the package must verify offline.
+must be exactly the package's, in the package's modes, only a finding's members may be agreed not to
+match, and the package must verify offline.
 Standard library only; no network.
 """
 import csv
 import importlib.util
 import io
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -39,6 +41,12 @@ def agreed_members():
     return {(r['stage'], r['path']): r for r in csv.DictReader(io.StringIO(text), delimiter='\t')}
 
 
+def finding_members():
+    """The members a finding of the package's frozen tolerances file names, read as the workflow reads them."""
+    tolerances = json.loads((PACKAGE / 'outputs' / 'package-tolerances.json').read_text(encoding='utf-8'))
+    return {(f.get('stage'), m) for f in tolerances.get('findings') or [] for m in f.get('members') or []}
+
+
 def readme_rows():
     """The landing README's table rows, as the tuple compare.py's OUTPUT_COLUMNS would print."""
     rows = []
@@ -61,6 +69,19 @@ class YeastAtacExemplar(unittest.TestCase):
         self.assertEqual(sorted(agreed), sorted(modes))
         for key, row in agreed.items():
             self.assertEqual(row['mode'], modes[key], key)
+
+    def test_only_a_findings_members_are_agreed_not_to_match(self):
+        """The workflow lets a finding's members match or differ and holds every other member to its agreed result,
+        so an agreed table marking any other member as not matching would let a re-run that differs there pass.
+        Two results swapped inside one output keep every count, so the rollup test alone cannot see it (the
+        follow-up check of the landing review's round 2, MAJOR 1)."""
+        findings = finding_members()
+        agreed = agreed_members()
+        self.assertTrue(findings)
+        self.assertLessEqual(findings, set(agreed))
+        not_matching = set(key for key, row in agreed.items() if not result_ok(row['result']))
+        self.assertTrue(not_matching)
+        self.assertLessEqual(not_matching, findings, sorted(not_matching - findings))
 
     def test_the_readme_line_and_table_are_the_agreed_members_rolled_up(self):
         compare = load_compare()

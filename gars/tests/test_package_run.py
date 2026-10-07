@@ -1233,6 +1233,29 @@ class EarlyProbeModes(PackageCase):
         refused_mode = run([sys.executable, TOOL, 'rerun-note', '--package', placed, '--workflow',
                             'reproduction-yeast-atac.yml', '--out', note, '--artifact', doctored])
         self.refused(refused_mode, 'names another mode')
+        # the check of that fold, MINOR 1: the extra counts appear only in outputs.tsv, so an output edited there
+        # alone (its extra count and its verdict together) is refused when the edit moves a count, by the line
+        # verify.py wrote beside the tables; an unreadable extra count is refused, never a traceback
+        (doctored / 'members.tsv').write_text((w.root / 'pass3' / 'members.tsv').read_text())
+        out_lines = table_text.splitlines(True)
+        out_head = out_lines[0].rstrip('\n').split('\t')
+        cells = out_lines[1].rstrip('\n').split('\t')
+        self.assertNotEqual(cells[out_head.index('result')], 'F')
+        cells[out_head.index('extra')] = '1'
+        cells[out_head.index('result')] = 'F'
+        (doctored / 'outputs.tsv').write_text(''.join([out_lines[0], '\t'.join(cells) + '\n'] + out_lines[2:]))
+        refused_extra = run([sys.executable, TOOL, 'rerun-note', '--package', placed, '--workflow',
+                             'reproduction-yeast-atac.yml', '--out', note, '--artifact', doctored])
+        self.refused(refused_extra, 'do not give the result line verify.py wrote (result.txt)')
+        cells[out_head.index('extra')] = 'x'
+        (doctored / 'outputs.tsv').write_text(''.join([out_lines[0], '\t'.join(cells) + '\n'] + out_lines[2:]))
+        refused_unreadable = run([sys.executable, TOOL, 'rerun-note', '--package', placed, '--workflow',
+                                  'reproduction-yeast-atac.yml', '--out', note, '--artifact', w.root / 'pass2',
+                                  '--artifact', doctored])
+        self.refused(refused_unreadable, 'pass artifact 2 has an unreadable outputs table')
+        (doctored / 'outputs.tsv').write_text(table_text)
+        self.assertEqual(run([sys.executable, TOOL, 'rerun-note', '--package', placed, '--workflow',
+                              'reproduction-yeast-atac.yml', '--out', note, '--artifact', doctored]).returncode, 0)
         agreed = list(csv.DictReader(io.StringIO((placed.parent / 'agreed-members.tsv').read_text()), delimiter='\t'))
         table = list(csv.DictReader(io.StringIO((w.root / 'pass2' / 'members.tsv').read_text()), delimiter='\t'))
         self.assertEqual(sorted((r['stage'], r['path'], r['mode'], r['result']) for r in agreed),
