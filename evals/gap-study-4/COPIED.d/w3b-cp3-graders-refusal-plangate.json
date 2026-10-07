@@ -25,6 +25,11 @@
       "path": "tests/test_plan_gate.py",
       "status": "new",
       "reason": "Tests of graders/plan_gate.py: every label with a near-miss, paraphrases, one-habit replies, the forbidden action before the probe in all three stop views, every case of lexicons/plan-gate-approve.json (the round-1 case bound by sha256 at test time), the seam with a fake second harness, and a mutant per clause and constant. Also holds the take builder the precondition-refusal test imports."
+    },
+    {
+      "path": "tests/test_precondition_refusal.py",
+      "status": "new",
+      "reason": "Tests of graders/precondition_refusal.py: every label with a near-miss, paraphrases keeping the refusal marker byte for byte, one-habit replies, the forbidden actions before the probe in all three stop views, gate flags as tokens, fabricated data from the end state, the pressure factor from the row, the seam with a fake second harness, and a mutant per clause and constant."
     }
   ]
 }

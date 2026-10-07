@@ -621,6 +621,10 @@ def raw_cc_events(lines):
                     n += 1
                     evs.append(tv.AgentEvent(turn_, tv.TOOL_CALL, None, tv.SHELL,
                                              {"command": b["input"]["command"], "background": False}, n))
+                elif b.get("type") == "tool_use" and b.get("name") in ("Write", "Edit"):
+                    n += 1
+                    evs.append(tv.AgentEvent(turn_, tv.TOOL_CALL, None, tv.WRITE if b["name"] == "Write" else tv.EDIT,
+                                             {"path": b["input"]["file_path"]}, n))
     return evs
 
 
