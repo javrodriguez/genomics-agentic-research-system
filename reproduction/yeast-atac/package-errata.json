@@ -1,0 +1,12 @@
+{
+  "corrections": [
+    {
+      "correction": "this plots PDF is filed under the HOMER finding above, but this PDF also embeds a creation date, so its difference is not shown to be HOMER's alone; it stays counted as differing (F); the finding's cause is shown for the five annotatePeaks tables, and for this PDF it is neither shown nor ruled out",
+      "evidence": "decision 0283's erratum of 6 October 2026, which states that this PDF embeds a creation date; the pipeline-wide pattern is the S2b probe's presence entry for this pipeline's PDFs, whose files differ in their creation time; whether this PDF also differs in its plotted content was not read",
+      "members": [
+        "run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_annotatePeaks.mLb.clN.plots.pdf"
+      ],
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    }
+  ]
+}

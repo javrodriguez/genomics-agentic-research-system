@@ -1,0 +1,2 @@
+stage	call	seed	seed_source
+atacseq_bulk.01_nfcore-atacseq-wrapper	every call	no-rng-in-code-path	recorded at run: manifest field random_seeds

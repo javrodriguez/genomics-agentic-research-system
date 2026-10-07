@@ -1,0 +1,121 @@
+{
+  "agent_model": "none",
+  "backend": "local",
+  "containers": [
+    {
+      "image": "quay.io/biocontainers/bwa:0.7.17--hed695b0_7",
+      "process": "NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BWA_MEM"
+    },
+    {
+      "image": "quay.io/biocontainers/multiqc:1.13--pyhdfd78af_0",
+      "process": "NFCORE_ATACSEQ:ATACSEQ:MULTIQC"
+    }
+  ],
+  "data_class": "public",
+  "execution": {
+    "complete": "2026-10-09 10:03:00.000",
+    "start": "2026-10-09 10:00:00.000"
+  },
+  "execution_config": [
+    {
+      "path": "gars/projects/yeast/_config/nextflow.awsbatch.config",
+      "role": "nextflow_config",
+      "sha256": "3b3c80042a638d221b9556004704ccf1f5eae136fe787aadea007d8942014934"
+    }
+  ],
+  "failure_class": null,
+  "gars_commit": "<GARS_COMMIT>",
+  "model_steps": [],
+  "outputs": [
+    {
+      "artifact_class": "durable",
+      "members": [
+        {
+          "path": "atac-a.mLb.clN_peaks.narrowPeak",
+          "sha256": "f302b796fd292f17aa22dc0933686ab158de3627f81817eb3da810e7b538656f"
+        },
+        {
+          "path": "consensus/consensus_peaks.mLb.clN.featureCounts.txt",
+          "sha256": "735c76c0d87e459381e6621b807c9f1dddd866c1a5eaa14d74c5d2c9c5928db0"
+        },
+        {
+          "path": "consensus/consensus_peaks.mLb.clN.saf",
+          "sha256": "609a9d983d34cceb43b3c8f35b87b02df343b9f37376fbe54e621c2a462ead00"
+        }
+      ],
+      "path": "run/results/bwa/merged_library/macs2/narrow_peak",
+      "role": "native",
+      "sha256": "sha256-tree:d2e11bcfe6b927e1057ee04323c20335d222fe562f632997afe4c48fe9a3a2a9",
+      "symlinks": [],
+      "type": "peaks"
+    }
+  ],
+  "pipeline_commit": "<PIPELINE_COMMIT>",
+  "predicate_facts": {
+    "approval_gated": false,
+    "backend": "local",
+    "design_record": true,
+    "model_step": false,
+    "reference_named": true,
+    "status": "COMPLETE",
+    "wrapper_kind": "nextflow"
+  },
+  "purpose": "fixture",
+  "random_seeds": "no-rng-in-code-path",
+  "reference": {
+    "annotation_release": "R64-1-1.fixture",
+    "build": "R64-1-1",
+    "comparison": "matched",
+    "fasta_sha256": "38d8e6d3c76fbaaad4b7181a466774cf973cc851fba4b34f8d116542e7286816",
+    "gtf_sha256": "bb3cf3ecb15fd2e6e88503da04936b008b0d5e6fb9f49dbcb8d176663a31793a",
+    "id": "R64-1-1",
+    "observed": {
+      "fasta_sha256": "38d8e6d3c76fbaaad4b7181a466774cf973cc851fba4b34f8d116542e7286816",
+      "gtf_sha256": "bb3cf3ecb15fd2e6e88503da04936b008b0d5e6fb9f49dbcb8d176663a31793a"
+    }
+  },
+  "software_versions": [
+    {
+      "path": "run/results/pipeline_info/software_versions.yml",
+      "sha256": "82eeb037211c42ccdd2101b9a81f6661bb6e1632ae361ce8770994aa99e5bf66",
+      "versions": {
+        "BWA_MEM/bwa": "0.7.17-r1188",
+        "Workflow/Nextflow": "26.04.6",
+        "Workflow/nf-core/atacseq": "v2.1.2"
+      }
+    }
+  ],
+  "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper",
+  "template_version": "v0.10.0",
+  "threads": 4,
+  "venue": "local",
+  "withheld_fields": [
+    {
+      "field": "command.sha256",
+      "reason": "it hashes a file holding values the package masks"
+    },
+    {
+      "field": "config_sha256",
+      "reason": "it hashes a file holding values the package masks"
+    },
+    {
+      "field": "samplesheet_sha256",
+      "reason": "it hashes a file holding values the package masks"
+    },
+    {
+      "field": "idempotency_key",
+      "reason": "it hashes a file holding values the package masks"
+    },
+    {
+      "field": "design_check.sha256",
+      "reason": "the file it hashes is not in this package"
+    },
+    {
+      "field": "execution_config[executor_descriptor]",
+      "reason": "executor descriptor values beyond the backend name never ship"
+    }
+  ],
+  "workflow_name": "nfcore-atacseq-wrapper",
+  "workflow_version": "2.1.2",
+  "wrapper": "atacseq_bulk"
+}

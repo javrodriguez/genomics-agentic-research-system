@@ -85,3 +85,7 @@ infra/backup/manifest.tsv
 *.tar.age
 *.tar.gpg.sha256
 *.tar.age.sha256
+
+# The stage 03 approval store sits beside the gars/ workspace and is human-owned (R-073);
+# it never belongs in the repository.
+.gars-approvals/

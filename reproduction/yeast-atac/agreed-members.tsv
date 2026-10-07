@@ -1,0 +1,210 @@
+stage	path	mode	result
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/atac-a_REP1.mLb.clN.sorted.bam	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/atac-a_REP1.mLb.clN.sorted.bam.bai	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/atac-a_REP2.mLb.clN.sorted.bam	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/atac-a_REP2.mLb.clN.sorted.bam.bai	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/atac-b_REP1.mLb.clN.sorted.bam	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/atac-b_REP1.mLb.clN.sorted.bam.bai	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/atac-b_REP2.mLb.clN.sorted.bam	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/atac-b_REP2.mLb.clN.sorted.bam.bai	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/atac-a_REP1.ataqv.json	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/atac-a_REP2.ataqv.json	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/atac-b_REP1.ataqv.json	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/atac-b_REP2.ataqv.json	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/css/ataqv.css	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/css/datatables.buttons.min.css	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/css/datatables.fontawesome.css	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/css/datatables.min.css	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/css/font-awesome.min.css	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/css/normalize.css	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/data/atac-a_REP1.json.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/data/atac-a_REP2.json.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/data/atac-b_REP1.json.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/data/atac-b_REP2.json.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/fonts/FontAwesome.otf	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/fonts/fontawesome-webfont.eot	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/fonts/fontawesome-webfont.svg	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/fonts/fontawesome-webfont.ttf	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/fonts/fontawesome-webfont.woff	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/fonts/fontawesome-webfont.woff2	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/fonts/sourcesanspro-regular.woff	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/fonts/sourcesanspro-regularit.woff	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/fonts/sourcesanspro-semibold.woff	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/fonts/sourcesanspro-semiboldit.woff	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/index.html	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/js/ataqv.js	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/js/configuration.js	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/js/d3.min.js	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/js/datatables.min.js	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/ataqv/narrow_peak/html/js/jszip.min.js	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/bigwig/atac-a_REP1.mLb.clN.bigWig	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/bigwig/atac-a_REP2.mLb.clN.bigWig	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/bigwig/atac-b_REP1.mLb.clN.bigWig	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/bigwig/atac-b_REP2.mLb.clN.bigWig	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/bigwig/scale/atac-a_REP1.mLb.clN.scale_factor.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/bigwig/scale/atac-a_REP2.mLb.clN.scale_factor.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/bigwig/scale/atac-b_REP1.mLb.clN.scale_factor.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/bigwig/scale/atac-b_REP2.mLb.clN.scale_factor.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-a_REP1.mLb.clN.plotFingerprint.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-a_REP1.mLb.clN.plotFingerprint.qcmetrics.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-a_REP1.mLb.clN.plotFingerprint.raw.txt	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-a_REP2.mLb.clN.plotFingerprint.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-a_REP2.mLb.clN.plotFingerprint.qcmetrics.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-a_REP2.mLb.clN.plotFingerprint.raw.txt	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-b_REP1.mLb.clN.plotFingerprint.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-b_REP1.mLb.clN.plotFingerprint.qcmetrics.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-b_REP1.mLb.clN.plotFingerprint.raw.txt	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-b_REP2.mLb.clN.plotFingerprint.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-b_REP2.mLb.clN.plotFingerprint.qcmetrics.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotfingerprint/atac-b_REP2.mLb.clN.plotFingerprint.raw.txt	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.reference_point.computeMatrix.mat.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.reference_point.computeMatrix.vals.mat.tab	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.reference_point.plotProfile.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.reference_point.plotProfile.tab	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.scale_regions.computeMatrix.mat.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.scale_regions.computeMatrix.vals.mat.tab	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.scale_regions.plotHeatmap.mat.tab	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.scale_regions.plotHeatmap.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.reference_point.computeMatrix.mat.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.reference_point.computeMatrix.vals.mat.tab	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.reference_point.plotProfile.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.reference_point.plotProfile.tab	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.scale_regions.computeMatrix.mat.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.scale_regions.computeMatrix.vals.mat.tab	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.scale_regions.plotHeatmap.mat.tab	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.scale_regions.plotHeatmap.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.reference_point.computeMatrix.mat.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.reference_point.computeMatrix.vals.mat.tab	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.reference_point.plotProfile.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.reference_point.plotProfile.tab	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.scale_regions.computeMatrix.mat.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.scale_regions.computeMatrix.vals.mat.tab	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.scale_regions.plotHeatmap.mat.tab	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.scale_regions.plotHeatmap.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.reference_point.computeMatrix.mat.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.reference_point.computeMatrix.vals.mat.tab	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.reference_point.plotProfile.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.reference_point.plotProfile.tab	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.scale_regions.computeMatrix.mat.gz	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.scale_regions.computeMatrix.vals.mat.tab	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.scale_regions.plotHeatmap.mat.tab	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.scale_regions.plotHeatmap.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-a_REP1.mLb.clN_peaks.annotatePeaks.txt	exact	differs
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-a_REP1.mLb.clN_peaks.narrowPeak	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-a_REP1.mLb.clN_peaks.xls	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-a_REP1.mLb.clN_summits.bed	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-a_REP2.mLb.clN_peaks.annotatePeaks.txt	exact	differs
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-a_REP2.mLb.clN_peaks.narrowPeak	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-a_REP2.mLb.clN_peaks.xls	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-a_REP2.mLb.clN_summits.bed	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-b_REP1.mLb.clN_peaks.annotatePeaks.txt	exact	differs
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-b_REP1.mLb.clN_peaks.narrowPeak	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-b_REP1.mLb.clN_peaks.xls	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-b_REP1.mLb.clN_summits.bed	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-b_REP2.mLb.clN_peaks.annotatePeaks.txt	exact	differs
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-b_REP2.mLb.clN_peaks.narrowPeak	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-b_REP2.mLb.clN_peaks.xls	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/atac-b_REP2.mLb.clN_summits.bed	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.annotatePeaks.txt	exact	differs
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.bed	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.boolean.intersect.plot.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.boolean.intersect.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.boolean.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.featureCounts.txt	column_matched_table	match after column_matched_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.featureCounts.txt.summary	column_matched_table	match after column_matched_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.saf	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/R_sessionInfo.log	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.dds.RData	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.pca.vals.txt	sign_aligned_numeric	within 1e-09 after sign alignment
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.pca.vals_mqc.tsv	sign_aligned_numeric	within 1e-09 after sign alignment
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.plots.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.rds	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.sample.dists.txt	exact	differs
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.sample.dists_mqc.tsv	exact	differs
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/size_factors/atac-a_REP1.size_factors.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/size_factors/atac-a_REP2.size_factors.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/size_factors/atac-b_REP1.size_factors.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/size_factors/atac-b_REP2.size_factors.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/size_factors/consensus_peaks.mLb.clN.size_factors.RData	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/atac-a_REP1.mLb.clN_peaks.FRiP_mqc.tsv	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/atac-a_REP1.mLb.clN_peaks.count_mqc.tsv	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/atac-a_REP2.mLb.clN_peaks.FRiP_mqc.tsv	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/atac-a_REP2.mLb.clN_peaks.count_mqc.tsv	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/atac-b_REP1.mLb.clN_peaks.FRiP_mqc.tsv	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/atac-b_REP1.mLb.clN_peaks.count_mqc.tsv	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/atac-b_REP2.mLb.clN_peaks.FRiP_mqc.tsv	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/atac-b_REP2.mLb.clN_peaks.count_mqc.tsv	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_annotatePeaks.mLb.clN.plots.pdf	exact	differs
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_annotatePeaks.mLb.clN.summary.txt	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_annotatePeaks.mLb.clN.summary_mqc.tsv	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_peak.mLb.clN.plots.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_peak.mLb.clN.summary.txt	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.clN.CollectMultipleMetrics.alignment_summary_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.clN.CollectMultipleMetrics.insert_size_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.clN.CollectMultipleMetrics.quality_by_cycle_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.clN.CollectMultipleMetrics.quality_distribution_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.mkD.sorted.MarkDuplicates.metrics.txt	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.clN.CollectMultipleMetrics.alignment_summary_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.clN.CollectMultipleMetrics.insert_size_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.clN.CollectMultipleMetrics.quality_by_cycle_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.clN.CollectMultipleMetrics.quality_distribution_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.mkD.sorted.MarkDuplicates.metrics.txt	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.clN.CollectMultipleMetrics.alignment_summary_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.clN.CollectMultipleMetrics.insert_size_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.clN.CollectMultipleMetrics.quality_by_cycle_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.clN.CollectMultipleMetrics.quality_distribution_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.mkD.sorted.MarkDuplicates.metrics.txt	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.clN.CollectMultipleMetrics.alignment_summary_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.clN.CollectMultipleMetrics.insert_size_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.clN.CollectMultipleMetrics.quality_by_cycle_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.clN.CollectMultipleMetrics.quality_distribution_metrics	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.mkD.sorted.MarkDuplicates.metrics.txt	sorted_table	match after sorted_table
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP1.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP1.mLb.clN.CollectMultipleMetrics.insert_size_histogram.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP1.mLb.clN.CollectMultipleMetrics.quality_by_cycle.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP1.mLb.clN.CollectMultipleMetrics.quality_distribution.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP1.mLb.clN.CollectMultipleMetrics.read_length_histogram.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP2.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP2.mLb.clN.CollectMultipleMetrics.insert_size_histogram.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP2.mLb.clN.CollectMultipleMetrics.quality_by_cycle.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP2.mLb.clN.CollectMultipleMetrics.quality_distribution.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP2.mLb.clN.CollectMultipleMetrics.read_length_histogram.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP1.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP1.mLb.clN.CollectMultipleMetrics.insert_size_histogram.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP1.mLb.clN.CollectMultipleMetrics.quality_by_cycle.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP1.mLb.clN.CollectMultipleMetrics.quality_distribution.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP1.mLb.clN.CollectMultipleMetrics.read_length_histogram.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP2.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP2.mLb.clN.CollectMultipleMetrics.insert_size_histogram.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP2.mLb.clN.CollectMultipleMetrics.quality_by_cycle.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP2.mLb.clN.CollectMultipleMetrics.quality_distribution.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP2.mLb.clN.CollectMultipleMetrics.read_length_histogram.pdf	presence	present
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP1.mLb.clN.sorted.bam.flagstat	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP1.mLb.clN.sorted.bam.idxstats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP1.mLb.clN.sorted.bam.stats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP1.mLb.mkD.sorted.bam.flagstat	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP1.mLb.mkD.sorted.bam.idxstats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP1.mLb.mkD.sorted.bam.stats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP2.mLb.clN.sorted.bam.flagstat	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP2.mLb.clN.sorted.bam.idxstats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP2.mLb.clN.sorted.bam.stats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP2.mLb.mkD.sorted.bam.flagstat	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP2.mLb.mkD.sorted.bam.idxstats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-a_REP2.mLb.mkD.sorted.bam.stats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP1.mLb.clN.sorted.bam.flagstat	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP1.mLb.clN.sorted.bam.idxstats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP1.mLb.clN.sorted.bam.stats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP1.mLb.mkD.sorted.bam.flagstat	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP1.mLb.mkD.sorted.bam.idxstats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP1.mLb.mkD.sorted.bam.stats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP2.mLb.clN.sorted.bam.flagstat	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP2.mLb.clN.sorted.bam.idxstats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP2.mLb.clN.sorted.bam.stats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP2.mLb.mkD.sorted.bam.flagstat	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP2.mLb.mkD.sorted.bam.idxstats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/bwa/merged_library/samtools_stats/atac-b_REP2.mLb.mkD.sorted.bam.stats	exact	match
+atacseq_bulk.01_nfcore-atacseq-wrapper	run/results/multiqc/narrow_peak/multiqc_report.html	presence	present
