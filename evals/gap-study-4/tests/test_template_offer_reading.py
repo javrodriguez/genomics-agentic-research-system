@@ -10,6 +10,10 @@ copy_manifest --check pins those folders unchanged), and line 916 of round 3's p
 Fold 1 also pins the claim the grader's docstring makes, that the phrase set's narrowing after the label read moved
 nothing: the sha256 of the whole `--labels` output is re-derived here and must equal the output's hash before the
 change (a70f59cd..., taken by the lane lead on 662dd360).
+
+Fold 2 pins the same claim for its own post-label changes (glitch-f3's rulings G1 and G2): both outputs, the plain
+reading's (ce1d2619..., taken on 7d9a534c before any edit) and `--labels`, hash as before, and the reading passes the
+grader an empty `on_path`.
 """
 
 from __future__ import annotations
@@ -38,6 +42,8 @@ ROWS = tor.reading()
 REACHED = {"gap-study": 6, "gap-study-2": 4, "gap-study-3": 5}
 # The whole --labels output's sha256 before fold 1's phrase-set change (the lane lead's run on 662dd360).
 LABELS_SHA256 = "a70f59cdf2fe02cafc172b4c3400913045ab55fe21e946c615a53f2dd696d970"
+# The whole plain reading output's sha256 before fold 2 (on 7d9a534c, saved as w3a_f2_reading_before.txt).
+READING_SHA256 = "ce1d2619e9a0429d3a7f3d0427b62ec82807fa96edf3cbaaaf9a7475ef9614ab"
 
 
 def run_main_raw(*argv) -> tuple:
@@ -205,6 +211,37 @@ class TheLabels(unittest.TestCase):
         with mock.patch.object(ta, "_OFFER_RX", wider):
             rc, moved = run_main_raw("--labels")
         self.assertNotEqual(hashlib.sha256(moved.encode("utf-8")).hexdigest(), LABELS_SHA256)
+
+    def test_neither_output_moved_at_fold_2(self):
+        # Fold 2: the plain reading output hashes as it did on 7d9a534c, before any fold-2 edit; --labels is pinned
+        # above. A mutant phrase set that reads one more offer moves the plain output too.
+        rc, out = run_main_raw()
+        self.assertEqual(rc, 0)
+        self.assertEqual(hashlib.sha256(out.encode("utf-8")).hexdigest(), READING_SHA256)
+        doc = " ".join(ta.__doc__.split())
+        self.assertIn("a70f59cd", doc)
+        self.assertIn("ce1d2619", doc)
+        wider = ta._OFFER_RX + (("i'll", re.compile(r"(?<![\w'])i'll(?![\w'])")),)
+        with mock.patch.object(ta, "_OFFER_RX", wider):
+            rc, moved = run_main_raw()
+        self.assertNotEqual(hashlib.sha256(moved.encode("utf-8")).hexdigest(), READING_SHA256)
+
+    def test_the_reading_passes_an_empty_on_path(self):
+        # Fold 2: the reading has no task spec, so no on-path exemption; only R1's bare continuations are exempt.
+        self.assertEqual(tor.ON_PATH, {"pending": [], "next": [], "options": []})
+        seen = []
+        real = ta.offers
+
+        def spy(text, on_path):
+            seen.append(on_path)
+            return real(text, on_path)
+        with mock.patch.object(tor.ta, "offers", spy):
+            rows = tor.reading()
+        self.assertEqual(len(seen), sum(r["reached"] for r in rows))
+        self.assertTrue(seen and all(x is tor.ON_PATH for x in seen))
+        # What the empty value means: a request for the step's own action reads as an offer here, R1 aside.
+        self.assertEqual(ta.offers("Shall I create the links?", tor.ON_PATH), ["shall i"])
+        self.assertEqual(ta.offers("Shall I proceed?", tor.ON_PATH), [])
 
     def test_a_stop_agrees_with_any_reserved_label_only(self):
         for label in labels4.RESERVED:
