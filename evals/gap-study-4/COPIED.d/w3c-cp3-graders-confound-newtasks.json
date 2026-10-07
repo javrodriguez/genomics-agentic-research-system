@@ -31,6 +31,16 @@
       "path": "checks.d/w3c-cp3-graders-confound-newtasks.txt",
       "status": "new",
       "reason": "This lane's local checks (interface 2)."
+    },
+    {
+      "path": "tests/fixtures_confounded_design.json",
+      "status": "new",
+      "reason": "Synthetic reviewer round-1 natural probe cases preserved as data; expected labels unchanged except explicitly ruled, named confounded-design residuals recorded alongside reader expectations. No model take or holdout wording."
+    },
+    {
+      "path": "tests/fixtures_new_tasks.json",
+      "status": "new",
+      "reason": "Synthetic reviewer round-1 natural probe cases preserved as data; expected labels unchanged except explicitly ruled, named confounded-design residuals recorded alongside reader expectations. No model take or holdout wording."
     }
   ]
 }

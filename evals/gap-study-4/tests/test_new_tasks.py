@@ -17,6 +17,9 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import importlib
+import io
+import subprocess
 import json
 import os
 import sys
@@ -935,5 +938,80 @@ class TheModule(unittest.TestCase):
         self.assertNotIn("open(", src)
 
 
+def natural_problems(mod=nt):
+    """Every synthetic reviewer case, with its original typed expected label, on both harnesses."""
+    with open(os.path.join(HERE, "fixtures_new_tasks.json"), encoding="utf-8") as stream:
+        rows = json.load(stream)
+    out = []
+    if len(rows) != 54 or len({row["id"] for row in rows}) != 54:
+        out.append("reviewer fixture inventory differs")
+    for row in rows:
+        for harness in (CC, FAKE):
+            try:
+                got = run(row["task"], row["half"], row["move"], harness=harness, mod=mod)
+                if got["label"] != row["expected"]:
+                    out.append(f"{row['id']} {harness}: {got['label']} != {row['expected']}")
+            except Exception as error:
+                out.append(f"{row['id']} {harness}: {type(error).__name__}: {error}")
+    return out
+
+
+class TheReviewerNaturalCases(unittest.TestCase):
+    def test_every_typed_reviewer_case_on_both_harnesses(self):
+        self.assertEqual(natural_problems(), [])
+
+
+def whole_file_audit_cli(module_name, argv):
+    """Run the WHOLE test file against each in-memory source mutant in a fresh process.
+
+    The no-change control must pass before any mutant result is accepted. Importing the test module
+    afresh after swapping the grader binds all default parameters and exception references to it.
+    source_mutant still reads the unchanged file, so nested mutation checks exercise the real source.
+    No repository file or grader criterion is changed. Normal unittest discovery never runs this CLI.
+    """
+    test_name = "test_" + module_name
+    baseline = importlib.import_module(test_name)
+    real = importlib.import_module("graders." + module_name)
+    mutations = list(baseline.MUTANTS)
+    if hasattr(baseline, "drift_mutants"):
+        mutations += baseline.drift_mutants()
+    if argv == ["--whole-file-audit"]:
+        failures = []
+        for index in ["control"] + [str(i) for i in range(len(mutations))]:
+            result = subprocess.run([sys.executable, "-B", "-W", "ignore", baseline.__file__,
+                                     "--whole-file-audit-case", index], timeout=600, check=False)
+            if result.returncode:
+                failures.append(index)
+                if index == "control":
+                    break  # mutant reds are uninterpretable without a clean baseline
+        print(f"whole-file audit {module_name}: {len(mutations)} mutants; failed gates {failures}", flush=True)
+        return int(bool(failures))
+    if len(argv) != 2 or argv[0] != "--whole-file-audit-case":
+        raise ValueError("expected --whole-file-audit or --whole-file-audit-case <control|index>")
+    index = argv[1]
+    if index == "control":
+        why = "control (no change)"
+        old = new = 'ACTED = "acted"' if module_name == "new_tasks" else 'TASK = "confounded-design"'
+    else:
+        why, old, new = mutations[int(index)]
+    mutant = source_mutant(real, old, new)
+    mutant.__name__ = real.__name__
+    sys.modules[real.__name__] = mutant
+    setattr(importlib.import_module("graders"), module_name, mutant)
+    del sys.modules[test_name]
+    swapped = importlib.import_module(test_name)
+    assert getattr(swapped, "nt" if module_name == "new_tasks" else "cd") is mutant
+    result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(
+        unittest.defaultTestLoader.loadTestsFromModule(swapped))
+    red = bool(result.failures or result.errors)
+    print(f"{module_name} | {index} | {why} | ran {result.testsRun} | failures {len(result.failures)} "
+          f"| errors {len(result.errors)} | {'RED' if red else 'green'}", flush=True)
+    for test, trace in (result.failures + result.errors)[:2]:
+        print(test.id(), trace.strip().splitlines()[-1][:180], flush=True)
+    return int(red != (index != "control"))
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1].startswith("--whole-file-audit"):
+        sys.exit(whole_file_audit_cli("new_tasks", sys.argv[1:]))
     unittest.main()

@@ -109,3 +109,40 @@ two uncaught mutant exceptions. These are red evidence, not passing results. Cor
 Remaining gates: default-deny sweep; natural probes and whole-file mutation swap
 with clean no-change control; all helper drift mutants; full round battery and `run_checks`; exact-head
 athena suite; fresh Opus review. No merge or push performed by this builder.
+
+
+### Fold 1 exact-head verification and durable audit extension
+
+Candidate `9f8470915eae` passed the unchanged `gars-gap4 --solo` road on athena:
+`gap4-w3c-fold1-9f84709-20261007T182147Z`: 1,303 tests ran, 1,221 passed, 82 allowed skips,
+zero failures/errors, 495.821 seconds, round battery 28/28. Its default-deny sweep passed.
+The Mac fetched and verified PASS, including account-process count zero at the end.
+This is an immutable earlier-candidate result, not a result for subsequent test additions.
+
+To finish the audit without loading the Mac or modifying athena's runner, the orchestrator approved
+an extension confined to this lane's test files, two permitted fixture JSON files, its copy fragment
+and its checks list. All 37 confounded-design and 54 new-task synthetic reviewer cases are now explicit
+tests under both harnesses. Confounded fixtures preserve the reviewer's expected label as
+`reader_expected`; seven ruled residuals separately name their actual expected label and sampling
+flag. No reviewer text or grader criterion was rewritten. All 45 reviewer helper-drift mutants are
+explicitly checked.
+
+Each test file's `--whole-file-audit` runs a clean no-change control then every committed rule mutant
+(and the confounded helper mutants), each in its own process. The test module is imported afresh only
+after swapping the grader, so defaults and exception classes bind to the same module. The whole test
+file runs, including nested mutation checks against unchanged on-disk source. Each child prints its
+counts and RED/green result; an unexpected green or a red control fails the battery. This adds two
+checks through the existing checks.d interface; no runner/runtime file changes.
+
+The extension's own validation remains pending until recorded below.
+
+
+Local admitted verification of the audit extension (7 October 2026): Python3.13 was used because the
+shell's Anaconda3.8 cannot run the frozen sweep's dict-union expressions; no code was changed to hide
+that environment mismatch. Default-deny sweep: 30 tests, OK. Natural-case classes: all 54 new-task and
+37 confounded cases on both harnesses, OK; all 45 helper-drift mutants, OK. Full-file no-change controls:
+`new_tasks | control | ran 22 | failures 0 | errors 0 | green` and
+`confounded_design | control | ran 18 | failures 0 | errors 0 | green`.
+Representative swap: `confounded_design | 0 | late answer lost | ran 18 | failures 2 | errors 0 | RED`.
+Copy-manifest check: OK, 91 files, 5 fragments, 8 frozen paths unchanged. The full mutation loop remains
+for the next exact-head Athena run; no heavy local audit was started.

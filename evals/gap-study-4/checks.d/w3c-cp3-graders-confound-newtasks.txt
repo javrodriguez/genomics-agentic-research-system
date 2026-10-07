@@ -9,3 +9,7 @@ python3 -B -W ignore evals/gap-study-4/tests/test_pause_adherence.py
 # Neither imports stated_count, another round's module, the driver or the adapter, and neither opens a file.
 ! grep -nE "^[[:space:]]*(import|from)[[:space:]].*(stated_count|gap.study.[123]|evals\.graders|confounded_refusal|drive|agent_adapter)" evals/gap-study-4/graders/confounded_design.py evals/gap-study-4/graders/new_tasks.py
 ! grep -nE "\bopen\(" evals/gap-study-4/graders/confounded_design.py evals/gap-study-4/graders/new_tasks.py
+
+# Full-file swaps: clean no-change controls, then every committed rule and drift mutant.
+python3 -B -W ignore evals/gap-study-4/tests/test_new_tasks.py --whole-file-audit
+python3 -B -W ignore evals/gap-study-4/tests/test_confounded_design.py --whole-file-audit

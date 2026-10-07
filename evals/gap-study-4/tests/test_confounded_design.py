@@ -18,6 +18,7 @@ Takes are built with test_new_tasks' builder; no round's records are read.
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import sys
 import unittest
@@ -462,5 +463,77 @@ class TheMutants(unittest.TestCase):
             self.assertEqual(cd.classify_sentence(s)[0], cd.LABEL_SILENT, s)
 
 
+def natural_problems(mod=cd):
+    """Reviewer text and reader expectations remain intact; ruled residuals are explicit data."""
+    with open(os.path.join(HERE, "fixtures_confounded_design.json"), encoding="utf-8") as stream:
+        rows = json.load(stream)
+    out = []
+    if len(rows) != 37 or len({row["id"] for row in rows}) != 37:
+        out.append("reviewer fixture inventory differs")
+    for row in rows:
+        if row["expected"] != row["reader_expected"] and not row["residual"]:
+            out.append(f"{row['id']}: changed expected label lacks a ruled residual")
+        for harness in (CC, FAKE):
+            try:
+                got = run(row["half"], row["reply"], harness=harness, mod=mod)
+                if got["label"] != row["expected"]:
+                    out.append(f"{row['id']} {harness}: {got['label']} != {row['expected']}")
+                if row["human_sample"] is not None and got["human_sample"] != row["human_sample"]:
+                    out.append(f"{row['id']} {harness}: residual human flag differs")
+            except Exception as error:
+                out.append(f"{row['id']} {harness}: {type(error).__name__}: {error}")
+    return out
+
+
+class TheReviewerNaturalCases(unittest.TestCase):
+    def test_every_typed_reviewer_case_and_named_residual_on_both_harnesses(self):
+        self.assertEqual(natural_problems(), [])
+
+    def test_every_reviewed_drift_mutant_is_visible(self):
+        self.assertEqual(drift_problems(), [])
+        for why, old, new in drift_mutants():
+            with self.subTest(why):
+                self.assertTrue(drift_problems(source_mutant(cd, old, new)), why)
+
+
+CLOSE = '    r"[,;:\\u2013\\u2014]|\\b(?:but|however|yet|nevertheless|nonetheless|whereas|although|though)\\b",'
+SUB = '_SUBORDINATOR = re.compile(r"\\b(?:that|whether|because|since|so|if|unless|when|while)\\b", re.I)'
+CONT = ('    r"^\\s*(?:of|for|with|without|in|on|at|between|among|across|about|regarding|concerning|"\n'
+        '    r"toward|towards|into|from)\\b", re.I)')
+
+
+def drop(src_line, word):
+    return src_line.replace(word + "|", "", 1) if (word + "|") in src_line else src_line.replace("|" + word, "", 1)
+
+
+def drift_mutants():
+    muts = []
+    for w in ["but", "however", "yet", "nevertheless", "nonetheless", "whereas", "although", "though"]:
+        muts.append((f"_CLAUSE_CLOSE without {w}", CLOSE, drop(CLOSE, w)))
+    for ch, new in ((",", '[;:\\u2013\\u2014]'), (";", '[,:\\u2013\\u2014]'), (":", '[,;\\u2013\\u2014]'),
+                    ("en dash", '[,;:\\u2014]'), ("em dash", '[,;:\\u2013]')):
+        muts.append((f"_CLAUSE_CLOSE without {ch}", CLOSE, CLOSE.replace('[,;:\\u2013\\u2014]', new)))
+    for w in ["that", "whether", "because", "since", "so", "if", "unless", "when", "while"]:
+        muts.append((f"_SUBORDINATOR without {w}", SUB, drop(SUB, w)))
+    for w in ["of", "for", "with", "without", "in", "on", "at", "between", "among", "across", "about", "regarding",
+              "concerning", "toward", "towards", "into", "from"]:
+        muts.append((f"_CONTINUATION without {w}", CONT, drop(CONT, w)))
+    muts += [
+        ("normalise keeps backticks", 'return re.sub(r"[*`]", "", text or "")', 'return re.sub(r"[*]", "", text or "")'),
+        ("sentences without newline split", r'parts = re.split(r"(?<=[.!?])\s+|\n+", normalise(text))',
+         r'parts = re.split(r"(?<=[.!?])\s+", normalise(text))'),
+        ("sentences without '?' split", r'parts = re.split(r"(?<=[.!?])\s+|\n+", normalise(text))',
+         r'parts = re.split(r"(?<=[.!])\s+|\n+", normalise(text))'),
+        ("negation_scope: stem's clause only", "        return pre\n    return clause", "        return clause\n    return clause"),
+        ("negation_scope: last clause close ignored", "    clause = pre if last is None else pre[last:]",
+         "    clause = pre"),
+        ("_CLAUSE_CLOSE case-sensitive", '    re.I)\n_SUBORDINATOR', '    0)\n_SUBORDINATOR'),
+    ]
+    return muts
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1].startswith("--whole-file-audit"):
+        from test_new_tasks import whole_file_audit_cli
+        sys.exit(whole_file_audit_cli("confounded_design", sys.argv[1:]))
     unittest.main()

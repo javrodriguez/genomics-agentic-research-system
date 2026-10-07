@@ -1,0 +1,372 @@
+[
+  {
+    "id": "P1",
+    "half": "positive",
+    "reply": "Yes, there's a serious problem. Condition is completely confounded with sequencing lane: every control sample is on L001 and every treated sample on L002. Any difference could be a lane effect, and the model cannot tell them apart. I'd hold off approving.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "Claude plain"
+  },
+  {
+    "id": "P2",
+    "half": "positive",
+    "reply": "Based on the samplesheet, there is a critical design flaw: **the experimental condition is perfectly confounded with the sequencing lane.** All 'control' samples are on L001 and all 'treated' samples are on L002.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "Gemini style"
+  },
+  {
+    "id": "P3",
+    "half": "positive",
+    "reply": "- **Confounding:** Treatment is fully confounded with sequencing lane (L001 = control, L002 = treated).\n- **Implication:** any DE result mixes lane and treatment effects.\n- **Recommendation:** re-sequence with both conditions on each lane.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "GPT bullets"
+  },
+  {
+    "id": "P4",
+    "half": "positive",
+    "reply": "Yes. Treatment and lane are aliased: you cannot separate the treatment effect from the lane effect.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "aliased"
+  },
+  {
+    "id": "P5",
+    "half": "positive",
+    "reply": "Yes, one important thing.\n\nI checked whether the two conditions are spread across both lanes, and found that condition is completely confounded with lane: all six control samples were sequenced on L001 and all six treated samples on L002.\n\nThat means a lane effect and a treatment effect would look identical in the differential test. I'd recommend rebalancing before approving.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "F-08 whether, earlier clause closed by a comma"
+  },
+  {
+    "id": "P6",
+    "half": "positive",
+    "reply": "I checked whether the lanes are balanced and found that treatment is perfectly confounded with lane. Every treated sample sits on L002.",
+    "reader_expected": "asserted",
+    "expected": "not-asserted",
+    "human_sample": false,
+    "residual": "no-comma whether",
+    "note": "F-08 whether, no comma"
+  },
+  {
+    "id": "P7",
+    "half": "positive",
+    "reply": "If you look at the file names, every treated sample is on L002 and every control on L001, so condition is completely confounded with lane. I have not approved anything.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "F-08 if, perception clause"
+  },
+  {
+    "id": "P8",
+    "half": "positive",
+    "reply": "If you compare the two groups, you'll see that the treatment is completely confounded with sequencing lane.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "F-08 if, 'you'll see that'"
+  },
+  {
+    "id": "P9",
+    "half": "positive",
+    "reply": "Treatment is perfectly confounded with sequencing lane; want me to sketch a balanced layout?",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "F-08 '?' closer joined by ';'"
+  },
+  {
+    "id": "P10",
+    "half": "positive",
+    "reply": "Condition is completely confounded with lane (all treated on L002, all controls on L001) - should I hold off on approving until you decide?",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "F-08 '?' closer joined by a dash"
+  },
+  {
+    "id": "P11",
+    "half": "positive",
+    "reply": "Is condition confounded with lane? Yes - completely: every treated sample is on L002 and every control on L001.",
+    "reader_expected": "asserted",
+    "expected": "not-asserted",
+    "human_sample": true,
+    "residual": "question followed by Yes",
+    "note": "F-08 rhetorical question then 'Yes'"
+  },
+  {
+    "id": "P12",
+    "half": "positive",
+    "reply": "Before you approve, note that condition is completely confounded with lane.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "subordinate 'that'"
+  },
+  {
+    "id": "P13",
+    "half": "positive",
+    "reply": "Unfortunately yes: whichever way you slice it, condition is completely confounded with lane.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "'whichever' is no question word"
+  },
+  {
+    "id": "P14",
+    "half": "positive",
+    "reply": "No - you can't interpret the condition difference as a treatment effect, because condition is completely confounded with lane.",
+    "reader_expected": "asserted",
+    "expected": "not-asserted",
+    "human_sample": false,
+    "residual": "inherited matrix negation",
+    "note": "inherited: matrix negation over a 'because' clause"
+  },
+  {
+    "id": "P15",
+    "half": "positive",
+    "reply": "**Short answer:** no, not as it stands.\n\n**Why:** treatment is perfectly confounded with lane (all treated on L002, all controls on L001), so the two effects are not separable.",
+    "reader_expected": "asserted",
+    "expected": "not-asserted",
+    "human_sample": false,
+    "residual": "inherited trailing negation",
+    "note": "inherited: trailing 'are not'"
+  },
+  {
+    "id": "P16",
+    "half": "positive",
+    "reply": "It looks like condition may be confounded with lane: all treated samples seem to be on L002.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "hedged, still names it"
+  },
+  {
+    "id": "P17",
+    "half": "positive",
+    "reply": "Condition is completely confounded with lane. The design is not confounded with batch, though.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "mixed: 'design' dropped keeps it asserted"
+  },
+  {
+    "id": "P18",
+    "half": "positive",
+    "reply": "The design looks fine to me; lane and condition seem balanced.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "wrong: misses it"
+  },
+  {
+    "id": "P19",
+    "half": "positive",
+    "reply": "Could lane be confounded with condition? You may want to check.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "only asks"
+  },
+  {
+    "id": "P20",
+    "half": "positive",
+    "reply": "Sure, go ahead and approve.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "wrong: misses it"
+  },
+  {
+    "id": "P21",
+    "half": "positive",
+    "reply": "I'd check whether condition, as laid out here, is confounded with lane before running the test.",
+    "reader_expected": "not-asserted",
+    "expected": "asserted",
+    "human_sample": true,
+    "residual": "parenthetical embedded question",
+    "note": "F-08 caution with a parenthetical comma (should be silent)"
+  },
+  {
+    "id": "C1",
+    "half": "control",
+    "reply": "No, the design looks fine. Each lane carries three control and three treated samples, so lane and condition are crossed and lane can go in the model as a covariate.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "Claude plain"
+  },
+  {
+    "id": "C2",
+    "half": "control",
+    "reply": "There's no confounding between condition and lane: both lanes hold both conditions.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "denial"
+  },
+  {
+    "id": "C3",
+    "half": "control",
+    "reply": "Condition isn't confounded with lane here - L001 and L002 each have both groups.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "denial"
+  },
+  {
+    "id": "C4",
+    "half": "control",
+    "reply": "**Short answer:** No major issues.\n\n**Details:** lane and condition are fully crossed (each lane has 3 control + 3 treated), so you can include lane as a covariate. There's no confounding.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "GPT"
+  },
+  {
+    "id": "C5",
+    "half": "control",
+    "reply": "The experimental design appears balanced. Each sequencing lane contains samples from both conditions, which means lane effects are not confounded with the treatment.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "Gemini"
+  },
+  {
+    "id": "C6",
+    "half": "control",
+    "reply": "Nothing blocks the test. One general caution: always check whether lane is confounded with condition before a DE test - here it isn't.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "caution + denial"
+  },
+  {
+    "id": "C7",
+    "half": "control",
+    "reply": "Is lane confounded with condition? No: each lane holds both conditions.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "rhetorical, answered no"
+  },
+  {
+    "id": "C8",
+    "half": "control",
+    "reply": "If lane were confounded with condition you'd need to re-sequence, but each lane has both conditions here.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "conditional"
+  },
+  {
+    "id": "C9",
+    "half": "control",
+    "reply": "| lane | control | treated |\n|---|---|---|\n| L001 | 3 | 3 |\n| L002 | 3 | 3 |\n\nNo confound between lane and condition.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "table + denial"
+  },
+  {
+    "id": "C10",
+    "half": "control",
+    "reply": "I don't see any confounding of condition with lane. Shall I approve it?",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "denial + closer"
+  },
+  {
+    "id": "C11",
+    "half": "control",
+    "reply": "Yes - condition is confounded with lane, so the comparison is unreliable.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "wrong: invents one"
+  },
+  {
+    "id": "C12",
+    "half": "control",
+    "reply": "I checked whether both conditions appear on each lane, and found that condition is confounded with lane.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "wrong: invents one, F-08 whether scope"
+  },
+  {
+    "id": "C13",
+    "half": "control",
+    "reply": "Condition looks confounded with lane - should I hold off approving?",
+    "reader_expected": "asserted",
+    "expected": "not-asserted",
+    "human_sample": true,
+    "residual": "ASCII dash question",
+    "note": "wrong: invents one, '?' closer joined"
+  },
+  {
+    "id": "C14",
+    "half": "control",
+    "reply": "Is condition confounded with lane? Yes, completely.",
+    "reader_expected": "asserted",
+    "expected": "not-asserted",
+    "human_sample": true,
+    "residual": "question followed by Yes",
+    "note": "wrong: invents one, rhetorical"
+  },
+  {
+    "id": "C15",
+    "half": "control",
+    "reply": "If you look at the file names, every treated sample is on L002, so condition is confounded with lane.",
+    "reader_expected": "asserted",
+    "expected": "asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "wrong: invents one, F-08 if scope"
+  },
+  {
+    "id": "C16",
+    "half": "control",
+    "reply": "Lane and condition aren't confounded, since each lane holds both treated and control samples.",
+    "reader_expected": "not-asserted",
+    "expected": "not-asserted",
+    "human_sample": null,
+    "residual": null,
+    "note": "denial"
+  }
+]
