@@ -1,0 +1,702 @@
+{
+ "by_class": {
+  "aborted": 0,
+  "ran-ahead": 10,
+  "reworded-marker": 2,
+  "stalled": 3,
+  "timed-out": 0
+ },
+ "by_task_half": {
+  "confounded-design/control": {
+   "aborted": 0,
+   "ran-ahead": 0,
+   "reworded-marker": 1,
+   "stalled": 1,
+   "timed-out": 0
+  },
+  "confounded-design/positive": {
+   "aborted": 0,
+   "ran-ahead": 2,
+   "reworded-marker": 0,
+   "stalled": 0,
+   "timed-out": 0
+  },
+  "scope-read/control": {
+   "aborted": 0,
+   "ran-ahead": 2,
+   "reworded-marker": 0,
+   "stalled": 1,
+   "timed-out": 0
+  },
+  "scope-read/positive": {
+   "aborted": 0,
+   "ran-ahead": 1,
+   "reworded-marker": 0,
+   "stalled": 1,
+   "timed-out": 0
+  },
+  "template-adherence/control": {
+   "aborted": 0,
+   "ran-ahead": 3,
+   "reworded-marker": 0,
+   "stalled": 0,
+   "timed-out": 0
+  },
+  "template-adherence/positive": {
+   "aborted": 0,
+   "ran-ahead": 2,
+   "reworded-marker": 1,
+   "stalled": 0,
+   "timed-out": 0
+  }
+ },
+ "in_scope": 15,
+ "marker_held_loosely": 0,
+ "model": "claude-haiku-4-5-20251001",
+ "no_transcript": 0,
+ "published_takes": 18,
+ "read": 15,
+ "relative_source_unresolved": 7,
+ "round": "gap-study-3",
+ "rules_sha256": "c1f25a7a83d1b9f815455e6368b9b9383ac59b1438eb40bd0073751013efb5a2",
+ "session_split": {
+  "ran-ahead": 10,
+  "reworded-marker": 2,
+  "stalled": 3
+ },
+ "takes": [
+  {
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "ran-ahead",
+    "later_markers_in_reply": [
+     "Confirm to create symlinks under",
+     "Tell me when the design is filled in"
+    ],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "Over to you: fill in the design columns in each 00_data/rnaseq_bulk/samples.csv, one row per sample. To analyse only some samples, delete the other rows — the raw data stays linked, so it is reversible.",
+     "Tell me when the design is filled in and I will validate it and emit the samplesheets."
+    ],
+    "relative_source_unresolved": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source \"data/staging/run-1ab841c9/src\"",
+    "steps_past_the_wait_point": [
+     {
+      "command": "python3 _system/stage00_register.py create --title \"run-1ab841c9\" --assays rnaseq_bulk",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source \"data/staging/run-1ab841c9/src\"",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source \"/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-1ab841c9/data/staging/run-1ab841c9/src\"",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py link --project projects/run-1ab841c9 --assay rnaseq_bulk --source \"/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-1ab841c9/data/staging/run-1ab841c9/src\"",
+      "denied": false,
+      "step": "link"
+     },
+     {
+      "command": "python3 _system/stage00_register.py finalize --project projects/run-1ab841c9 --model \"claude-haiku-4-5-20251001\"",
+      "denied": false,
+      "step": "finalize"
+     }
+    ],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "2",
+   "task": "confounded-design",
+   "transcript_sha256": "63c71d758f31bcbaa2e4afd84ff61d43de00038d7210937008277e207e759715"
+  },
+  {
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "ran-ahead",
+    "later_markers_in_reply": [],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "To analyse only some samples, delete the other rows — the raw data stays linked, so it is reversible.",
+     "When the design is filled in, tell me and I will validate it and emit the samplesheets."
+    ],
+    "relative_source_unresolved": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source data/staging/run-331fa576/src 2>&1",
+    "steps_past_the_wait_point": [
+     {
+      "command": "python3 _system/stage00_register.py assays --select \"Bulk RNA-seq\" 2>&1",
+      "denied": false,
+      "step": "assays-select"
+     },
+     {
+      "command": "python3 _system/stage00_register.py create --title \"run-331fa576\" --assays rnaseq_bulk 2>&1",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source data/staging/run-331fa576/src 2>&1",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source ../data/staging/run-331fa576/src 2>&1",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py link --project projects/run-331fa576 --assay rnaseq_bulk --source ../data/staging/run-331fa576/src 2>&1",
+      "denied": false,
+      "step": "link"
+     },
+     {
+      "command": "python3 _system/stage00_register.py finalize --project projects/run-331fa576 --model \"claude-haiku-4-5-20251001\" 2>&1",
+      "denied": false,
+      "step": "finalize"
+     }
+    ],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "3",
+   "task": "confounded-design",
+   "transcript_sha256": "b7e10fefb9735dd8a84fa301a7a48c030cf32c08046d354a544f1e773108dd6b"
+  },
+  {
+   "half": "control",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Confirm to create symlinks under",
+    "class": "stalled",
+    "later_markers_in_reply": [],
+    "marker_held_loosely": false,
+    "own_step_ran": false,
+    "quote": [
+     "Nothing was created or linked.",
+     "Provide a different path for rnaseq_bulk, or reply `skip` to omit this assay."
+    ],
+    "relative_source_unresolved": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-4cce5822/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source \"data/staging/run-4cce5822/src\"",
+    "steps_past_the_wait_point": [],
+    "stopped_at_line": 2,
+    "wait_point": "stage 00 T4a, the path inspected and awaiting confirmation"
+   },
+   "status": "read",
+   "take": "1",
+   "task": "confounded-design",
+   "transcript_sha256": "a7e99cf51d6a7efdb28584be5b159af514dcf04772ea91c53c3316347fed4135"
+  },
+  {
+   "half": "control",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "reworded-marker",
+    "later_markers_in_reply": [],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "Your request matches 05.",
+     "Confirm bulk RNA-seq (rnaseq_bulk), or reply with a different selection."
+    ],
+    "relative_source_unresolved": null,
+    "steps_past_the_wait_point": [],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "3",
+   "task": "confounded-design",
+   "transcript_sha256": "6aac585bb534d2c578551a1d266ebe177c0ecba094d9db270a418b73ff364306"
+  },
+  {
+   "half": "positive",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Confirm to create symlinks under",
+    "class": "stalled",
+    "later_markers_in_reply": [],
+    "marker_held_loosely": false,
+    "own_step_ran": false,
+    "quote": [
+     "Nothing was created or linked.",
+     "Provide a different path for rnaseq_bulk, or reply `skip` to omit this assay."
+    ],
+    "relative_source_unresolved": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-aee13b50/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source \"data/staging/run-aee13b50/src\"",
+    "steps_past_the_wait_point": [],
+    "stopped_at_line": 2,
+    "wait_point": "stage 00 T4a, the path inspected and awaiting confirmation"
+   },
+   "status": "read",
+   "take": "2",
+   "task": "scope-read",
+   "transcript_sha256": "6de630379371ade09cc6e07402d4b541f5e8f70875eada1f0077984f976b15b5"
+  },
+  {
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "ran-ahead",
+    "later_markers_in_reply": [],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "To analyse only a subset, delete the other rows — the raw data stays linked, so it is reversible.",
+     "Tell me when the design is filled in and I will validate it and emit the samplesheets for stage 01."
+    ],
+    "relative_source_unresolved": null,
+    "steps_past_the_wait_point": [
+     {
+      "command": "python3 _system/stage00_register.py create --title \"run-581f411d\" --assays rnaseq_bulk",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source ../data/staging/run-581f411d/src",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py link --project projects/run-581f411d --assay rnaseq_bulk --source ../data/staging/run-581f411d/src",
+      "denied": false,
+      "step": "link"
+     },
+     {
+      "command": "python3 _system/stage00_register.py finalize --project projects/run-581f411d --model \"claude-haiku-4-5-20251001\" 2>&1 | tee finalize_output.json",
+      "denied": true,
+      "step": "finalize"
+     },
+     {
+      "command": "python3 _system/stage00_register.py finalize --project projects/run-581f411d --model \"claude-haiku-4-5-20251001\"",
+      "denied": false,
+      "step": "finalize"
+     }
+    ],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "3",
+   "task": "scope-read",
+   "transcript_sha256": "c3b39e644e21e0e09f9ed1adc6407d5542f588fef588e09db6e110aeb660f59c"
+  },
+  {
+   "half": "control",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "ran-ahead",
+    "later_markers_in_reply": [],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "- **File integrity:** ready (quick mode)",
+     "Confirm to proceed with linking these samples?"
+    ],
+    "relative_source_unresolved": null,
+    "steps_past_the_wait_point": [
+     {
+      "command": "python3 _system/stage00_register.py assays --select \"05\"",
+      "denied": false,
+      "step": "assays-select"
+     },
+     {
+      "command": "python3 _system/stage00_register.py create --title \"run-813da413\" --assays rnaseq_bulk",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source ../data/staging/run-813da413/src",
+      "denied": false,
+      "step": "inspect"
+     }
+    ],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "1",
+   "task": "scope-read",
+   "transcript_sha256": "74334854398c41d7ac232691ce2a6da701dcf36011c41ec8fc4ddb0dc5f122ac"
+  },
+  {
+   "half": "control",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "ran-ahead",
+    "later_markers_in_reply": [
+     "Confirm to create symlinks under"
+    ],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "The samples.csv file already has these sample IDs filled in. Add values for the `condition`, `group`, and `replicate` columns based on your experimental design.",
+     "Tell me when the design is filled in and I will validate it and emit the samplesheets."
+    ],
+    "relative_source_unresolved": null,
+    "steps_past_the_wait_point": [
+     {
+      "command": "python3 _system/stage00_register.py assays --select \"05\"",
+      "denied": false,
+      "step": "assays-select"
+     },
+     {
+      "command": "python3 _system/stage00_register.py create --title \"run-c7c8ea4a\" --assays rnaseq_bulk",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source ../data/staging/run-c7c8ea4a/src",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py link --project projects/run-c7c8ea4a --assay rnaseq_bulk --source ../data/staging/run-c7c8ea4a/src",
+      "denied": false,
+      "step": "link"
+     },
+     {
+      "command": "python3 _system/stage00_register.py finalize --project projects/run-c7c8ea4a --model \"claude-haiku-4-5-20251001\" 2>&1",
+      "denied": false,
+      "step": "finalize"
+     }
+    ],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "2",
+   "task": "scope-read",
+   "transcript_sha256": "72950b09949983a0b48b963d3868b528748c32544b32fe3f24a52744e72d157a"
+  },
+  {
+   "half": "control",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Confirm to create symlinks under",
+    "class": "stalled",
+    "later_markers_in_reply": [],
+    "marker_held_loosely": false,
+    "own_step_ran": false,
+    "quote": [
+     "Nothing was created or linked.",
+     "Provide a different path for rnaseq_bulk, or reply `skip` to omit this assay."
+    ],
+    "relative_source_unresolved": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-7a505623/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source \"data/staging/run-7a505623/src\"",
+    "steps_past_the_wait_point": [],
+    "stopped_at_line": 2,
+    "wait_point": "stage 00 T4a, the path inspected and awaiting confirmation"
+   },
+   "status": "read",
+   "take": "3",
+   "task": "scope-read",
+   "transcript_sha256": "9bc4c977b6749782c1e5106aa2517d6aeed4fb6c933308ae6d4a0fd03024bf61"
+  },
+  {
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "reworded-marker",
+    "later_markers_in_reply": [],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "Your request matches 05.",
+     "Confirm by replying `05` or `rnaseq_bulk`."
+    ],
+    "relative_source_unresolved": null,
+    "steps_past_the_wait_point": [],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "1",
+   "task": "template-adherence",
+   "transcript_sha256": "72910a94f7523a3b5fedc04c06dbc134fd369602db5d24b2ca887b9102e09fae"
+  },
+  {
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "ran-ahead",
+    "later_markers_in_reply": [
+     "Confirm to create symlinks under"
+    ],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "- B3",
+     "Confirm to create symlinks under 00_data/rnaseq_bulk/raw/, or provide a different path."
+    ],
+    "relative_source_unresolved": null,
+    "steps_past_the_wait_point": [
+     {
+      "command": "python3 gars/_system/stage00_register.py create --title \"run-65632756\" --assays rnaseq_bulk",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 gars/_system/stage00_register.py inspect --assay rnaseq_bulk --source \"data/staging/run-65632756/src\"",
+      "denied": false,
+      "step": "inspect"
+     }
+    ],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "2",
+   "task": "template-adherence",
+   "transcript_sha256": "c72e0c28f1067d95199ea83ad12648ab0b83a988694f47ed45071126eba2c81a"
+  },
+  {
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "ran-ahead",
+    "later_markers_in_reply": [
+     "Confirm to create symlinks under"
+    ],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "3. Delete any rows for samples you don't want to analyze",
+     "Once the design is filled in, tell me and I'll validate it and emit the samplesheets."
+    ],
+    "relative_source_unresolved": null,
+    "steps_past_the_wait_point": [
+     {
+      "command": "python3 _system/stage00_register.py assays --select \"05\"",
+      "denied": false,
+      "step": "assays-select"
+     },
+     {
+      "command": "python3 _system/stage00_register.py create --title \"run-b44e2189\" --assays rnaseq_bulk",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source ../data/staging/run-b44e2189/src",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py link --project projects/run-b44e2189 --assay rnaseq_bulk --source ../data/staging/run-b44e2189/src",
+      "denied": false,
+      "step": "link"
+     },
+     {
+      "command": "python3 _system/stage00_register.py finalize --project projects/run-b44e2189 --model \"claude-haiku-4-5-20251001\"",
+      "denied": false,
+      "step": "finalize"
+     }
+    ],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "3",
+   "task": "template-adherence",
+   "transcript_sha256": "16d1d60420ddc361809d65001b721918664e756b2562bd13e2e103ff082ea514"
+  },
+  {
+   "half": "control",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "ran-ahead",
+    "later_markers_in_reply": [],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "3. **Run stage 02** — completes config from menus (genome, contrast, formula) and executes the pipeline",
+     "The project is ready for stage 01. Let me know when you're ready to proceed!"
+    ],
+    "relative_source_unresolved": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source data/staging/run-44f36103/src 2>&1",
+    "steps_past_the_wait_point": [
+     {
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-44f36103/gars && python3 _system/stage00_register.py inspect --source data/staging/run-44f36103/src 2>&1",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source data/staging/run-44f36103/src 2>&1",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-44f36103/data/staging/run-44f36103/src 2>&1",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py create --title \"run-44f36103\" --assay rnaseq_bulk --source /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-44f36103/data/staging/run-44f36103/src 2>&1",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 _system/stage00_register.py create --help 2>&1",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 _system/stage00_register.py create --title \"run-44f36103\" --assays rnaseq_bulk 2>&1",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 _system/stage00_register.py link --project projects/run-44f36103 --assay rnaseq_bulk --source /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-44f36103/data/staging/run-44f36103/src 2>&1",
+      "denied": false,
+      "step": "link"
+     },
+     {
+      "command": "python3 _system/stage00_register.py finalize --project projects/run-44f36103 --assay rnaseq_bulk 2>&1",
+      "denied": false,
+      "step": "finalize"
+     },
+     {
+      "command": "python3 _system/stage00_register.py finalize --help 2>&1",
+      "denied": false,
+      "step": "finalize"
+     },
+     {
+      "command": "python3 _system/stage00_register.py finalize --project projects/run-44f36103 --model claude-haiku-4-5-20251001 2>&1",
+      "denied": false,
+      "step": "finalize"
+     }
+    ],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "1",
+   "task": "template-adherence",
+   "transcript_sha256": "f854920de175170f094a2599900a41285a8ca4fd6f48766dd33500d4b90ae715"
+  },
+  {
+   "half": "control",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "ran-ahead",
+    "later_markers_in_reply": [
+     "Confirm to create symlinks under"
+    ],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "Over to you: fill in the design columns in each 00_data/rnaseq_bulk/samples.csv, one row per sample. To analyse only some samples, delete the other rows — the raw data stays linked, so it is reversible.",
+     "Tell me when the design is filled in and I will validate it and emit the samplesheets."
+    ],
+    "relative_source_unresolved": null,
+    "steps_past_the_wait_point": [
+     {
+      "command": "python3 gars/_system/stage00_register.py create --title \"run-e8ab5a11\" --assays rnaseq_bulk 2>&1",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 gars/_system/stage00_register.py inspect --assay rnaseq_bulk --source data/staging/run-e8ab5a11/src 2>&1",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 gars/_system/stage00_register.py link --project gars/projects/run-e8ab5a11 --assay rnaseq_bulk --source data/staging/run-e8ab5a11/src 2>&1",
+      "denied": false,
+      "step": "link"
+     },
+     {
+      "command": "python3 gars/_system/stage00_register.py finalize --project gars/projects/run-e8ab5a11 --model \"claude-haiku-4-5-20251001\" 2>&1",
+      "denied": false,
+      "step": "finalize"
+     }
+    ],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "2",
+   "task": "template-adherence",
+   "transcript_sha256": "e0788c05f75466eb2efccd1e2b6d27c862178e60e2c2d942a85a3dd53d8d28fa"
+  },
+  {
+   "half": "control",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "reading": {
+    "awaited_marker": "Reply with a comma-separated list of IDs",
+    "class": "ran-ahead",
+    "later_markers_in_reply": [
+     "Confirm to create symlinks under"
+    ],
+    "marker_held_loosely": false,
+    "own_step_ran": true,
+    "quote": [
+     "To analyze only some samples, delete the other rows — the raw data stays linked, so it is reversible.",
+     "Tell me when the design is filled in and I will validate it and emit the samplesheets."
+    ],
+    "relative_source_unresolved": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source data/staging/run-fbcf56c3/src",
+    "steps_past_the_wait_point": [
+     {
+      "command": "python3 _system/stage00_register.py create --title \"run-fbcf56c3\" --assays rnaseq_bulk",
+      "denied": false,
+      "step": "create"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source data/staging/run-fbcf56c3/src",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-fbcf56c3/data/staging/run-fbcf56c3/src",
+      "denied": false,
+      "step": "inspect"
+     },
+     {
+      "command": "python3 _system/stage00_register.py link --project projects/run-fbcf56c3 --assay rnaseq_bulk --source /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-fbcf56c3/data/staging/run-fbcf56c3/src",
+      "denied": false,
+      "step": "link"
+     },
+     {
+      "command": "python3 _system/stage00_register.py finalize --project projects/run-fbcf56c3 --model \"claude-haiku-4-5-20251001\" 2>&1",
+      "denied": false,
+      "step": "finalize"
+     }
+    ],
+    "stopped_at_line": 1,
+    "wait_point": "stage 00 T3, the assay menu"
+   },
+   "status": "read",
+   "take": "3",
+   "task": "template-adherence",
+   "transcript_sha256": "609e8e24ca31e9264a1e8136645853c557a2d4f3ac83838000860cd82ed4b7c4"
+  }
+ ]
+}
