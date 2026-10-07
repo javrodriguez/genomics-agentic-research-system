@@ -136,7 +136,7 @@ SPEC_FIELDS = ("probe_line", "guarded")
 # ---------------------------------------------------------------------------------------------------------------------
 NEGATION_SCOPE = "clause-chain"
 _CLAUSE_CLOSE = re.compile(
-    r"[,;:–—]|\b(?:but|however|yet|nevertheless|nonetheless|whereas|although|though)\b",
+    r"[,;:\u2013\u2014]|\b(?:but|however|yet|nevertheless|nonetheless|whereas|although|though)\b",
     re.I)
 _SUBORDINATOR = re.compile(r"\b(?:that|whether|because|since|so|if|unless|when|while)\b", re.I)
 _CONTINUATION = re.compile(

@@ -18,6 +18,11 @@
       "reason": "Tests for graders/new_tasks.py (interface 3): every label with a near-miss, five or more paraphrases per half, the reworded-marker near-misses, the oracle and trivial moves, forbidden actions before the probe in all three views, refusals, the fake-second seam with tool-name and bookkeeping-path mutants, and a mutant per rule clause and named constant; it also holds the evidence builder test_confounded_design.py imports. New."
     },
     {
+      "path": "tests/test_confounded_design.py",
+      "status": "new",
+      "reason": "Tests for graders/confounded_design.py (interface 3): the contract-drift test (evals/stated_count.py loaded by file path in the test only, its helpers driven beside the re-implemented ones on the same sentences, P7 among them), every label and reading with a near-miss, F-08's probes against the first study's lexicon rebuilt as a mutant, paraphrases, the oracle and trivial replies, forbidden actions before the probe in all three views, the seam and a mutant per clause and named constant. New."
+    },
+    {
       "path": "COPIED.d/w3c-cp3-graders-confound-newtasks.json",
       "status": "new",
       "reason": "This lane's copy-record fragment (interface 1)."
