@@ -322,8 +322,9 @@ def first_turn_problems() -> list[str]:
     return p
 
 
-# W1B2-4: the three harness-side records an adapter could forget, each a required keyword.
-REQUIRED_KW = ("counters", "init", "api_errors")
+# W1B2-4: the three harness-side records an adapter could forget, each a required keyword; review round 3 (W1B3-6)
+# adds the turn's host clock at its start and end, which defaulted to 0.0 before.
+REQUIRED_KW = ("counters", "init", "api_errors", "started_at", "ended_at")
 
 
 def full_turn_kw(**kw) -> dict:
@@ -356,7 +357,8 @@ def omission_problems() -> list[str]:
 
 
 class TestRequiredKeywords(unittest.TestCase):
-    """W1B2-4: counters, init and api_errors are required keywords; None stays a legal explicit init."""
+    """W1B2-4: counters, init and api_errors are required keywords; None stays a legal explicit init. W1B3-6:
+    started_at and ended_at are required keywords too."""
 
     def test_omission_raises(self):
         self.assertEqual(omission_problems(), [])
@@ -365,7 +367,9 @@ class TestRequiredKeywords(unittest.TestCase):
         self.assertIsNone(aa.TurnResult(**full_turn_kw(init=None)).init)
         self.assertEqual(aa.TurnResult(**full_turn_kw(api_errors=[])).api_errors, [])
         for bad in (dict(api_errors=None), dict(counters=None), dict(api_errors={"status": 500}),
-                    dict(api_errors=[{"status": 500, "type": "x"}]), dict(api_errors=["500"])):
+                    dict(api_errors=[{"status": 500, "type": "x"}]), dict(api_errors=["500"]),
+                    # W1B3-6: the host clock is a number of seconds, never None, a string or a bool
+                    dict(started_at=None), dict(ended_at=None), dict(started_at="1.0"), dict(ended_at=True)):
             with self.assertRaises(ValueError, msg=str(bad)):
                 aa.TurnResult(**full_turn_kw(**bad))
 

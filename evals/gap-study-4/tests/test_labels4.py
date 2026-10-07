@@ -27,6 +27,11 @@ TURN_ENDS = ("end_turn", "timed-out", "error")
 GRADED_ENDS = ("end_turn", "timed-out")
 # Round 3's cell state at a rehearsal or pause cap, as takes.py:284 and 289 print it (e2979b31).
 ROUND3_CELL_STATE = "incomplete — mechanical"
+# Review round 3, W1B3-1 (the gap4 lane lead's brief; glitch-f3 accepted it as written, 6 Oct 2026): a restart goes on
+# past a blocked take, or a take that failed after its drive started, only on a ruling committed in the repo for that
+# (slot, attempt), "one of `re-run` or `route <route>`", in "an outcome kind such as `ruling`". Typed here once.
+BRIEF_RULING_KIND = "ruling"
+BRIEF_RULINGS = ("re-run", "route")
 
 
 def plan_mismatches(mod) -> list[str]:
@@ -57,6 +62,20 @@ def cell_state_mismatches(mod) -> list[str]:
     if tuple(getattr(mod, "CELL_STATES", ())) != (ROUND3_CELL_STATE,):
         out.append("CELL_STATES")
     if ROUND3_CELL_STATE not in getattr(mod, "VOCABULARY", ()):
+        out.append("VOCABULARY")
+    return out
+
+
+def ruling_mismatches(mod) -> list[str]:
+    """W1B3-1: the ruling record's kind and its two words are labels4's, in their own group and in the vocabulary."""
+    out = []
+    if getattr(mod, "RULING", None) != BRIEF_RULING_KIND:
+        out.append("RULING")
+    if tuple(getattr(mod, "RULINGS", ())) != BRIEF_RULINGS:
+        out.append("RULINGS")
+    if (getattr(mod, "RULE_RERUN", None), getattr(mod, "RULE_ROUTE", None)) != BRIEF_RULINGS:
+        out.append("RULE_RERUN, RULE_ROUTE")
+    if not set(BRIEF_RULINGS + (BRIEF_RULING_KIND,)) <= set(getattr(mod, "VOCABULARY", ())):
         out.append("VOCABULARY")
     return out
 
@@ -110,6 +129,25 @@ class TestLabels4(unittest.TestCase):
         for bad in (("graded",), ("blocked",), ("timed-out",), (ROUND3_CELL_STATE, ROUND3_CELL_STATE)):
             with mock.patch.object(labels4, "CELL_STATES", bad):        # collides with a route, a batch state,
                 self.assertNotEqual(labels4.check_vocabulary(), [], bad)  # a turn end, or repeats
+
+    def test_ruling_words_are_the_briefs(self):
+        """W1B3-1 (glitch-f3 accepted the brief's fix as written, 6 Oct 2026; glitch-f3's, not the owner's)."""
+        self.assertEqual(ruling_mismatches(labels4), [])
+        self.assertEqual(labels4.check_vocabulary(), [])
+
+    def test_ruling_check_can_fail(self):
+        for name, bad in (("RULING", "rule"), ("RULINGS", ("re-run",)), ("RULE_RERUN", "rerun"),
+                          ("RULE_ROUTE", "reroute")):
+            with mock.patch.object(labels4, name, bad):
+                self.assertNotEqual(ruling_mismatches(labels4), [], (name, bad))
+        with mock.patch.object(labels4, "VOCABULARY", labels4.VOCABULARY - {BRIEF_RULING_KIND}):
+            self.assertIn("VOCABULARY", ruling_mismatches(labels4))
+        for name, bad in (("RULINGS", ("re-run", "re-run")),      # repeats
+                          ("RULINGS", ("re-run", "graded")),      # collides with a route
+                          ("RULING", "blocked"),                  # the kind collides with a batch state
+                          ("RULINGS", ("re-run", "timed-out"))):  # collides with a turn end
+            with mock.patch.object(labels4, name, bad):
+                self.assertNotEqual(labels4.check_vocabulary(), [], (name, bad))
 
     def test_shared_strings_are_the_same_objects_of_meaning(self):
         # A stop and a reserved label that share a string name the same event; the route

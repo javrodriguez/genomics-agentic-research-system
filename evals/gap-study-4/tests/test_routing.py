@@ -397,7 +397,8 @@ def full_box(**kw) -> dict:
 
 def a_turn(**kw) -> aa.TurnResult:
     base = dict(exit_code=0, text="(scripted)", stream_path=None, end_reason=labels4.END_TURN, init=dict(PIN),
-                api_errors=[], counters={"oom_kill_delta": 0, "pids_max_delta": 0}, agent_output=True)
+                api_errors=[], counters={"oom_kill_delta": 0, "pids_max_delta": 0}, started_at=1.0, ended_at=2.0,
+                agent_output=True)
     base.update(kw)
     return aa.TurnResult(**base)
 
@@ -412,6 +413,10 @@ def a_silent_timeout(**kw) -> aa.TurnResult:
 
 
 SILENT_TIMEOUT_ROW = "silent-timeout-before-first-turn"
+# Review round 3, W1B3-2 (the gap4 lane lead's ruling; glitch-f3 accepted the stricter reading, 6 Oct 2026): before the
+# agent's first turn, an init event that is present and differs from the pin is refused whatever else matches, and
+# only a rate-limit pause outranks it. One table-level rule, so its scope lives in one place.
+PIN_REFUSAL = "init-differs-before-first-turn"
 
 
 def silent_timeout_problems(table: dict) -> list[str]:
@@ -544,9 +549,132 @@ def missing_init_problems(table: dict) -> list[str]:
     )
     for name, turns in refuse:
         got = try_route(aa.harness_records(turns, pin=PIN, box=full_box()), table)
-        if not isinstance(got, routing.RoutingRefused) or "no row matches" not in str(got):
-            p.append(f"a silent first-turn timeout whose {name}: want refused (no row), got {got}")
+        if not isinstance(got, routing.RoutingRefused) or PIN_REFUSAL not in str(got):
+            p.append(f"a silent first-turn timeout whose {name}: want refused ({PIN_REFUSAL}), got {got}")
     return p
+
+
+OTHER_VERSION = dict(PIN, version="9.9.9")
+REFUSED_BY_PIN = "refused by the pin refusal"
+# W1B3-2, glitch-f3's ruling: "Test it with every combination the reviewer's probe2.py used: bare, plus
+# no-first-agent-turn, plus an API 500, plus a container exit (each refused), and plus a 429 (pause)." Built through
+# harness_records, as probe2.py built them; the API 500 that ends in error (probe2's last before-first-turn case) too.
+PROBE2_COMBINATIONS = {
+    "bare": ([a_silent_timeout(init=OTHER_VERSION)], {}, REFUSED_BY_PIN),
+    "plus no-first-agent-turn": ([a_silent_timeout(init=OTHER_VERSION)], {"checker_reasons": [NFAT]}, REFUSED_BY_PIN),
+    "plus an API 500": ([a_silent_timeout(init=OTHER_VERSION, api_errors=[{"status": 500, "type": "api_error",
+                                                                           "text": None}])], {}, REFUSED_BY_PIN),
+    "plus a container exit": ([a_silent_timeout(init=OTHER_VERSION)], {"container_exited": True}, REFUSED_BY_PIN),
+    "an API 500 that ended in error": ([a_silent_turn(init=OTHER_VERSION, api_errors=[{"status": 500, "type": "api_error",
+                                                                                       "text": None}])], {},
+                                       REFUSED_BY_PIN),
+    "plus a 429": ([a_silent_timeout(init=OTHER_VERSION, api_errors=[{"status": 429, "type": "rate_limit_error",
+                                                                       "text": None}])], {}, labels4.PAUSE),
+}
+
+
+def pin_refusal_problems(table: dict) -> list[str]:
+    """W1B3-2: probe2.py's combinations, a differing init before the agent's first turn: each is refused by the pin
+    refusal (named in the refusal) whatever else matches, except beside a rate limit, where the pause wins."""
+    p = []
+    for name, (turns, box, want) in PROBE2_COMBINATIONS.items():
+        got = try_route(aa.harness_records(turns, pin=PIN, box=full_box(**box)), table)
+        if want == REFUSED_BY_PIN:
+            if not isinstance(got, routing.RoutingRefused) or PIN_REFUSAL not in str(got):
+                p.append(f"{name}: want refused by {PIN_REFUSAL}, got {got if isinstance(got, Exception) else got['route']}")
+        elif isinstance(got, Exception) or (got["route"], got["rows"]) != (want, ["rate-limit"]):
+            p.append(f"{name}: want {want} via ['rate-limit'], got {got if isinstance(got, Exception) else got['route']}")
+    return p
+
+
+def pin_refusal_grid_problems(table: dict) -> list[str]:
+    """W1B3-2, whatever else matches: every before-first-turn row's witness, given a turn whose init event is present
+    and differs from the pin, is refused by the pin refusal, unless its route outranks it (the rate-limit pause); the
+    same witness with no init event on that turn routes as the row says (a missing init is never a pin fault before
+    the first turn, glitch-f3's fold-3 ruling). A preflight failure cannot have run a turn, so it carries no init."""
+    p = []
+    outranks = set(table.get("pin_refusal", {}).get("outranked_by", [labels4.PAUSE]))
+    for row in table["rows"]:
+        if labels4.BEFORE_FIRST_TURN not in row_phases(row):
+            continue
+        for alt in range(len(row["any_of"])):
+            for init in ("differs", "missing"):
+                rec, _ = witness(row, alt, labels4.BEFORE_FIRST_TURN, table)
+                if not rec["preflight"]["ok"]:
+                    continue
+                if rec["ledger"]["turns"] == 0:
+                    silent_turn(rec)
+                rec["init"][-1] = dict(OTHER_VERSION) if init == "differs" else None
+                got = try_route(rec, table)
+                if init == "differs" and row["route"] not in outranks:
+                    if not isinstance(got, routing.RoutingRefused) or PIN_REFUSAL not in str(got):
+                        p.append(f"{row['id']}[{alt}] init differs: want refused by {PIN_REFUSAL}, got "
+                                 f"{got if isinstance(got, Exception) else got['route']}")
+                elif isinstance(got, Exception) or got["route"] != row["route"] or row["id"] not in got["rows"]:
+                    p.append(f"{row['id']}[{alt}] init {init}: want {row['route']} via {row['id']}, got "
+                             f"{got if isinstance(got, Exception) else (got['route'], got['rows'])}")
+    return p
+
+
+class TestPinRefusal(unittest.TestCase):
+    """Review round 3, W1B3-2 (the gap4 lane lead's ruling; glitch-f3 accepted the stricter reading, 6 Oct 2026;
+    glitch-f3's, not the owner's)."""
+
+    def test_probe2_combinations(self):
+        self.assertEqual(pin_refusal_problems(test_table()), [])
+
+    def test_whatever_else_matches(self):
+        self.assertEqual(pin_refusal_grid_problems(test_table()), [])
+
+    def test_the_pin_check_lives_in_one_place(self):
+        """The scope is one table-level rule: no row reads the init with present_differs_from_pin, and the rule's
+        conditions sit on one line of routing.json, so narrowing it is a one-line change."""
+        self.assertEqual(one_place_problems(REAL), [])
+        with open(routing.TABLE_PATH, encoding="utf-8") as fh:
+            lines = [x for x in fh if "present_differs_from_pin" in x]
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn('"all_of"', lines[0])
+
+    def test_narrowing_to_timed_out_ends_is_one_condition(self):
+        """glitch-f3 may narrow the refusal to timed-out ends: one condition appended to its all_of. Then the API 500
+        that ended in error rehearses, and the timed-out combinations stay refused."""
+        t = test_table()
+        t["pin_refusal"]["all_of"].append({"path": "ledger.end", "op": "eq", "value": labels4.TIMED_OUT})
+        self.assertEqual(routing.check_table(t), [])
+        self.assertEqual(pin_refusal_problems(t), ["an API 500 that ended in error: want refused by "
+                                                   f"{PIN_REFUSAL}, got rehearsal"])
+
+    def test_the_rule_is_checked(self):
+        """routing.json's pin refusal is a closed rule: its phase is before the first turn (after it, the plan routes a
+        differing init harness-error), its conditions read harness records, and only a route that outranks rehearsal
+        may outrank it."""
+        bad = {
+            "after the first turn": lambda r: r.update(when=labels4.AFTER_FIRST_TURN),
+            "any time": lambda r: r.update(when=labels4.ANY_TIME),
+            "no condition": lambda r: r.update(all_of=[]),
+            "a text-derived count": lambda r: r["all_of"].append({"path": "events.outside_reach", "op": "gt", "value": 0}),
+            "an unknown op": lambda r: r["all_of"][0].update(op="looks_wrong"),
+            "graded outranks it": lambda r: r.update(outranked_by=[labels4.PAUSE, labels4.GRADED]),
+            "rehearsal outranks it": lambda r: r.update(outranked_by=[labels4.REHEARSAL]),
+            "a route that is no route": lambda r: r.update(outranked_by=["success"]),
+            "no source": lambda r: r.update(source=""),
+            "an extra key": lambda r: r.update(route=labels4.REHEARSAL),
+            "an id a row has": lambda r: r.update(id=SILENT_TIMEOUT_ROW),
+        }
+        for name, edit in bad.items():
+            t = copy.deepcopy(REAL)
+            edit(t["pin_refusal"])
+            self.assertTrue(any("pin_refusal" in x for x in routing.check_table(t)), name)
+        t = copy.deepcopy(REAL)
+        del t["pin_refusal"]
+        self.assertIn("missing pin_refusal", routing.check_table(t))
+
+
+def one_place_problems(table: dict) -> list[str]:
+    """Every condition reading the init with present_differs_from_pin, outside the pin refusal (W1B3-2: one place)."""
+    return [f"{x.get('id')}: {g} reads present_differs_from_pin" for x in table["rows"] + table["annotations"]
+            for g in ("all_of", "any_of", "none_of") for c in x.get(g, [])
+            if isinstance(c, dict) and c.get("op") == "present_differs_from_pin"]
 
 
 SEAM_VARIANTS = {   # how the seam's one silent turn ended (W1B-5; W1B2-1)
@@ -652,6 +780,11 @@ def _reach(n=1):
     return _set("events.outside_reach", n)
 
 
+def _differs(value="9.9.9", field="version"):
+    """The last turn's init event: present and differing from the pin in `field`, or None (no init event)."""
+    return lambda r: r["init"].__setitem__(-1, None if value is None else dict(r["pin"], **{field: value}))
+
+
 _end_error = (lambda code: (lambda r: set_end(r, labels4.END_ERROR, code)))
 E500 = {"status": 500, "type": "api_error", "text": None}
 E429 = {"status": 429, "type": "rate_limit_error", "text": None}
@@ -728,6 +861,23 @@ SCENARIOS = {
     "a silent turn with no init, then a silent timeout under another model -> refused (glitch-f3, fold 3)":
         Sc(_sc(B, [silent_turn, silent_timeout, lambda r: r["init"].__setitem__(0, None),
                    lambda r: r["init"].__setitem__(1, dict(PIN, model="x"))]), REFUSED, None),
+    # W1B3-2 (the gap4 lane lead's ruling; glitch-f3 accepted the stricter reading, 6 Oct 2026): before the first turn a
+    # present init that differs from the pin is refused whatever else matches; only a rate-limit pause outranks it
+    "W1B3-2: a differing init, bare -> refused": Sc(_sc(B, [silent_timeout, _differs()]), REFUSED, None),
+    "W1B3-2: a differing init plus no-first-agent-turn -> refused":
+        Sc(_sc(B, [silent_timeout, _set("checker_reasons", [NFAT]), _differs()]), REFUSED, None),
+    "W1B3-2: a differing init plus an API 500 -> refused": Sc(_sc(B, [silent_timeout, _apis(E500), _differs()]), REFUSED, None),
+    "W1B3-2: a differing init plus a container exit -> refused":
+        Sc(_sc(B, [silent_timeout, _set("exit.container_exited", True), _differs()]), REFUSED, None),
+    "W1B3-2: a differing init plus a 429 -> pause": Sc(_sc(B, [silent_timeout, _rate, _differs()]), "pause", ["rate-limit"],
+                                                       ["api-error-before-first-turn", "silent-timeout-before-first-turn",
+                                                        "rate-limit"]),
+    "W1B3-2: a differing init on an API 500 that ended in error -> refused (the stricter reading)":
+        Sc(_sc(B, [_apis(E500), _differs()]), REFUSED, None),
+    "W1B3-2: a differing init plus a usage limit in the error text -> pause":
+        Sc(_sc(B, [_apis(EUSAGE), _differs()]), "pause", ["rate-limit"], ["api-error-before-first-turn", "rate-limit"]),
+    "W1B3-2: a missing init beside an API 500 -> rehearsal": Sc(_sc(B, [_apis(E500), _differs(None)]), "rehearsal",
+                                                               ["api-error-before-first-turn"], ["api-error-before-first-turn"]),
     "a silent error turn, then a silent timeout": Sc(_sc(B, [silent_turn, silent_timeout]), "rehearsal", ["silent-timeout-before-first-turn"]),
     "a timeout after completed output grades (glitch-f3)": Sc(_sc(A, [_multi_turn(1), silent_timeout]), "graded", ["timed-out"]),
     "one turn with output that timed out grades (glitch-f3)": Sc(_sc(B, [output_timeout]), "graded", ["timed-out"]),
@@ -1197,19 +1347,27 @@ def agent_text_problems(table: dict) -> list[str]:
     return p
 
 
+# What each cap counts, as its source must say it (glitch-f3's rulings: rehearsals one by one, fold 3; pauses by their
+# usage-window events, the pauses that share one reset counting once, W1B3-5).
+CAP_COUNTS = {labels4.REHEARSAL: ("rehearsals committed in the half-cell",),
+              labels4.PAUSE: ("usage-window events", "pauses that share one reset count once", "W1B3-5")}
+
+
 def cap_unit_problems(table: dict) -> list[str]:
-    """glitch-f3's cap ruling, stated where the caps live: each of the rehearsal and pause sources cites the
-    ruling, names round 4's half-cell (arm, task, half, model) as round 3's cell, says what is counted (that
-    route's committed outcomes in the half-cell) and that the loop goes on, and no longer calls it open."""
+    """glitch-f3's cap rulings, stated where the caps live: each of the rehearsal and pause sources cites the
+    ruling, names round 4's half-cell (arm, task, half, model) as round 3's cell, says what is counted (rehearsals one
+    by one; pauses by usage-window event, W1B3-5) and that the loop goes on, no longer calls it open, and no longer
+    says the key kept its old name (W1B3-4)."""
     p = []
     for route in (labels4.REHEARSAL, labels4.PAUSE):
         src = table["caps"][route]["source"]
-        for cite in ("glitch-f3's ruling", "(arm, task, half, model)", f"{route}s committed in the half-cell",
-                     "the loop goes on"):
+        for cite in ("glitch-f3's ruling", "(arm, task, half, model)", "the loop goes on") + CAP_COUNTS[route]:
             if cite not in src:
                 p.append(f"{route}: the cap's source does not say {cite!r}")
         if "open question" in src:
             p.append(f"{route}: the cap's unit is still left open in its source")
+        if "The key keeps its name" in src:
+            p.append(f"{route}: the cap's source still says the key kept its old name (W1B3-4)")
     return p
 
 
