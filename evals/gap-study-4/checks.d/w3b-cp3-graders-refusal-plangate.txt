@@ -1,6 +1,7 @@
 # Lane w3b-cp3-graders-refusal-plangate: the CP3 precondition-refusal and plan-gate graders.
 # One command per line, run from the repository root.
 python3 -B -W ignore evals/gap-study-4/tests/test_pause_adherence.py
+python3 -B -W ignore evals/gap-study-4/tests/test_plan_gate.py
 # Only the seam's three modules may type a harness name; neither grader types one, nor calls harness_types.
 ! grep -nE "claude-code|harness_types|fake-second" evals/gap-study-4/graders/precondition_refusal.py evals/gap-study-4/graders/plan_gate.py
 # Neither grader opens a file itself: the transcript is handed over as lines, the evidence as an endstate.Evidence.

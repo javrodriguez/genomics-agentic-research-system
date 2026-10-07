@@ -20,6 +20,11 @@
       "path": "graders/precondition_refusal.py",
       "status": "new",
       "reason": "Round 4's precondition-refusal grader (CP3, F-07 and F-14): the refusal marker read after the probe only, the gate flags as tokens of the stage's own command, and any fabricated data file read from the end state; written new, not a copy of round 3's."
+    },
+    {
+      "path": "tests/test_plan_gate.py",
+      "status": "new",
+      "reason": "Tests of graders/plan_gate.py: every label with a near-miss, paraphrases, one-habit replies, the forbidden action before the probe in all three stop views, every case of lexicons/plan-gate-approve.json (the round-1 case bound by sha256 at test time), the seam with a fake second harness, and a mutant per clause and constant. Also holds the take builder the precondition-refusal test imports."
     }
   ]
 }

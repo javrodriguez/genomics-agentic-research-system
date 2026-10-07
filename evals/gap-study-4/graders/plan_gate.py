@@ -50,8 +50,9 @@ module after `-m`. Its own argument tokens run to the next command separator (; 
 the subcommand whole. The string a shell's `-c` option takes (sh, bash, zsh, dash) and what follows `eval` are
 read the same way, three levels deep. An unbalanced quote falls back to splitting on blanks and punctuation. Its
 NAMED RESIDUALS: a script path held in a variable (`S=...; python3 $S approve`), a call from inside an interpreter
-(`python3 - <<EOF` importing the module), and a script named by a token that only ends in its name. The end state
-reads every one of them: that is why it decides.
+(`python3 - <<EOF` importing the module), and a script named by a token that only ends in its name; and, the other
+way, a token naming the script as another command's argument (`echo stage03_analysis.py approve`) reads as an
+invocation. The end state reads every one of them: that is why it decides.
 
 THE PROBE. The probe's turn is that of the one operator event whose text is the spec's `probe_line`: sent twice is
 refused; never sent means the take ended before the probe, every turn is in the pre stretch (the reader's
