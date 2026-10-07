@@ -34,7 +34,8 @@ in the folder is refused (evidence is read only from the sidecar's own folder, a
                             operator's writes that follow turn k. One per turn
     snapshots/post-<k>.json the whole tree after turn k at quiescence, before the operator's writes: post-N is the
                             snapshot after the last turn. One per turn
-        each                {"label": "<its file stem>", "taken_at": num, "entries": {path: STATE}}
+        each                {"label": "<its file stem>", "taken_at": num, "entries": {path: STATE}}. `taken_at`
+                            is the instant the snapshot begins (its pause's stop; THE WATCHER'S HEALTH)
     access.jsonl            the watcher's log of the consequential paths: {"at": num, "path": str, "op": "open" |
                             "modify" | "delete"} per line
     health.jsonl            the sidecar's health records, in time order (else refused): {"kind": "watcher-start",
@@ -65,7 +66,9 @@ WHO CHANGED WHAT.
     events of that step. The drive step has already routed a step no event explains (routing.json's
     operator-diff rows); `operator_check()` only re-verifies it, in the count `routing.py` reads. That count also
     takes every modify or delete the watcher logged after post-N: a write the end state graders read (post-N)
-    misses, because the quiescence cap did not stop its writer.
+    misses, because the quiescence cap did not stop its writer. So the count carries a second cause: such a take
+    rides routing.json's operator-diff-unexplained-after-first-turn row, whose id names an operator diff for what
+    is a quiescence-cap failure. `operator_check()["problems"]` names the true cause of each count.
   - An access is attributed by its time: to turn k in (pre-k, post-k], to the operator step after turn k in
     (post-k, pre-(k+1)], to `setup` before pre-1 and `after` past post-N. An access in turn k after its `ended_at`
     is marked late (the background stretch of the turn).
@@ -79,9 +82,12 @@ THE WATCHER'S HEALTH. A gap in the watcher routes the take `harness-error` (rout
     with a start; queue-overflow records may fall anywhere. A start and the stop right after it bound one recorded
     interval [start, stop], closed at both ends.
   - A snapshot pause (the snapshot opens every file, so the sidecar pauses the watcher while it snapshots) is
-    recorded as a watcher-stop with exit_code 0 and then a watcher-start, both stamped with that snapshot's own
-    `taken_at`: the snapshot and its pause share one instant, so a pause never opens a hole inside a turn's window.
-  - Each turn's window, pre-k to post-k (the two snapshots' `taken_at`), must lie inside one recorded interval.
+    recorded as a watcher-stop with exit_code 0 and then a watcher-start, each stamped when it happens: the stop at
+    the instant the snapshot begins, which is that snapshot's `taken_at`, and the start when the watcher is
+    re-armed after it. No health record is ever stamped at a time it did not happen.
+  - Each turn's window, from its `started_at` to post-k's `taken_at`, must lie inside one recorded interval: the
+    watcher was re-armed after pre-k's snapshot before the turn started, and ran until post-k's snapshot began. A
+    re-arm after the turn started leaves the turn's opening unwatched, and is a gap.
   - Every access must lie inside an interval the records show the watcher running: a closed one, or after a start
     no stop closed (up to the next start, or for ever after the last).
   - `sidecar_record()` reports routing.py's `sidecar` shape:
@@ -681,8 +687,11 @@ class Evidence:
 
     def accesses(self, *, path: str | None = None, turn: int | None = None) -> list:
         """Every access, time-ordered, with `where` and `late` (in turn k after its ended_at: the background
-        stretch). Filtered to one path and/or one turn when given. Refused unless the watcher's health is clean
-        (see THE WATCHER'S HEALTH): an empty list here always means the watcher saw no such access."""
+        stretch). Filtered to one path and/or one turn when given; a turn that is not 1..N is refused, as
+        `agent_changes` refuses it. Refused unless the watcher's health is clean (see THE WATCHER'S HEALTH): an
+        empty list here always means the watcher saw no such access."""
+        if turn is not None:
+            self._turn(turn)
         self._require_watched()
         return [a for a in self._located()
                 if (path is None or a["path"] == path) and (turn is None or a["where"] == (IN_TURN, turn))]
@@ -738,10 +747,11 @@ class Evidence:
         return tuple(self._walk_health()[0])
 
     def uncovered_turns(self) -> tuple:
-        """The turns whose window, pre-k to post-k, lies inside no one recorded interval."""
+        """The turns whose window, from the turn's `started_at` to post-k's `taken_at`, lies inside no one recorded
+        interval: the watcher must be re-armed after pre-k's snapshot before the turn starts."""
         closed = self.watcher_intervals()
         return tuple(t.k for t in self.turns
-                     if not any(s <= self.taken_at(PRE, t.k) and self.taken_at(POST, t.k) <= e for s, e in closed))
+                     if not any(s <= t.started_at and self.taken_at(POST, t.k) <= e for s, e in closed))
 
     def unwatched_accesses(self) -> list:
         """The accesses stamped outside every interval the records show the watcher running (closed, or after a
@@ -757,8 +767,8 @@ class Evidence:
         _, _, missing_start, missing_stop = self._walk_health()
         uncovered, unwatched = self.uncovered_turns(), self.unwatched_accesses()
         problems = missing_start + missing_stop
-        problems += [f"turn {k} (pre-{k} at {self.taken_at(PRE, k)} to post-{k} at {self.taken_at(POST, k)}) lies "
-                     f"inside no one recorded watcher interval" for k in uncovered]
+        problems += [f"turn {k} (from its start at {self.turns[k - 1].started_at} to post-{k} at "
+                     f"{self.taken_at(POST, k)}) lies inside no one recorded watcher interval" for k in uncovered]
         problems += [f"the access at {a['at']} ({a['op']} {a['path']}) lies outside every recorded watcher interval"
                      for a in unwatched]
         return {"missing_start": missing_start, "missing_stop": missing_stop, "uncovered_turns": uncovered,
