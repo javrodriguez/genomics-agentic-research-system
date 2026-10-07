@@ -714,9 +714,10 @@ class TemplateTests(Base):
         t4a = self.contract(S00)["templates"]["T4a"]
         self.assertEqual(t4a["dynamic_key_sites"], [])
         self.assertEqual(sorted(p["label"] for p in t4a["unbound"]), ["r1", "r2"])
-        # not vacuous: the executor reads its descriptor's field names from a file
-        # (executorlib.py:201-205), so rnaseq-de's T2 carries those sites, and a key missing
-        # from that vocabulary is unknown
+        # not vacuous on published data: the executor descriptor's run-time keys
+        # (executorlib.py:205) reach status's flow through a whole-dict read, an
+        # over-approximation the limits name (status emits none of them), so rnaseq-de's T2
+        # carries the site; the binding rule itself is checked with a synthetic missing key
         cited(self, EXL, 205, "values[key] = _strip_value(rest)")
         t2 = self.contract(RNADE)["templates"]["T2"]
         self.assertIn("%s:205" % EXL, t2["dynamic_key_sites"])
