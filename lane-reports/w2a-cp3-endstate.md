@@ -165,7 +165,8 @@ instead of stopping the probe.
   - `accesses()` and `accesses_by_stretch()` refuse unless `sidecar_record()` is clean. `operator_matches` and the
     new after-check read the log through `_located()`, so `box_records()` still reaches routing on an unhealthy take.
   - The docstring's new section, THE WATCHER'S HEALTH, says how a snapshot pause is recorded: a `watcher-stop`
-    (exit 0) and then a `watcher-start`, both stamped with that snapshot's own `taken_at`.
+    (exit 0) and then a `watcher-start`, both stamped with that snapshot's own `taken_at`. (Fold 2, W2A2-1, replaced
+    this rule: each record is stamped when it happens, and a turn's window runs from its `started_at`.)
 - Re-run of the fold copies: P2 to P5 now read `{False, False, 0, False}` and route `harness-error`. The access reads
   in P2, P5 and P6 are refused, and each refusal names the uncovered turns and the unwatched accesses. Probe 4 now
   reads `{False, False, 0, False}` and routes `harness-error`, and its probe-stretch read is refused.
@@ -181,7 +182,9 @@ instead of stopping the probe.
     `accesses(turn=2)`, `accesses_by_stretch(2)`, `accesses(path=planted)` and `accesses(turn=1)` are all refused.
   - `test_health_records_out_of_time_order_are_refused`.
   - `test_a_snapshot_pause_stamped_at_the_snapshots_instant_is_healthy`: the documented pause reads clean and
-    `graded`, and a restart stamped half a second late leaves turn 2 uncovered.
+    `graded`, and a restart stamped half a second late leaves turn 2 uncovered. (Fold 2, W2A2-1, replaced it with
+    `test_a_snapshot_pause_stamped_when_it_happens_is_healthy`: that half-second re-arm, before turn 2 starts, is
+    now clean.)
 - Mutants, each red against the guard tests above:
   - count-only health (the round 1 code): each of the reviewer's four cases goes red alone, and probe 4's take
     routes `graded`;
@@ -270,9 +273,13 @@ Blindness stays unverified for this lane, and the home session records it so.
 1. **An uncovered turn or an unwatched access clears both flags.** Before the first turn, routing reads only
    `start_record` (wave 1's row), so a gap has to reach that flag to rehearse there. An uncovered turn also has no
    covering start and stop pair.
-2. **An alternation fault with every turn covered clears only the missing record's flag.** As a result, a stop-side
-   fault alone before the first turn (a second start, for example) matches no before-first-turn row, and routing
-   refuses the records: blocked for a human, never graded. `MISPAIRED` pins this, so a CP2 change shows up.
+2. **An alternation fault with every turn covered clears only the missing record's flag.** A stop-side fault alone
+   (a second start, for example) is ignored before the first turn, as wave 1's row intends; the take routes by its
+   own reason. (Reworded in fold 2, W2A2-5. Wave 1's before-first-turn watcher row reads no stop record: "before
+   the first turn it may legitimately not exist yet". A real take that ends there has its own reason row, such as a
+   container that never started, and rehearses by it. Only a constructed take with no reason is refused, exactly as
+   a clean one is: "no row matches these records (phase before-first-turn)". `MISPAIRED` pins that refusal and fold
+   2's `test_before_the_first_turn_the_take_routes_by_its_own_reason` pins the rehearsal, so a CP2 change shows up.)
 3. **Health out of time order is refused, not routed.** Like snapshots out of order, it is malformed evidence, not a gap.
 4. **An unwatched access is a gap, not a refusal at construction.** It routes `harness-error`, and the access
    reads refuse it, but construction does not, so the drive step can still route the take.
@@ -293,10 +300,13 @@ Blindness stays unverified for this lane, and the home session records it so.
 9. **W2A1-6: `home_paths` stays required and non-empty.** `run_tree_paths` is required and may be empty.
 
 ### Open questions from fold 1 (for CP2 unless marked)
-1. **A stop-side health fault alone before the first turn** is refused by routing (decision 2). Should the drive
-   step map it to a rehearsal?
+1. **A stop-side health fault alone before the first turn** is ignored before the first turn, as wave 1's row
+   intends; the take routes by its own reason (decision 2). (Reworded in fold 2, W2A2-5. Left for CP2 only if it
+   adds the stop record to that row, which flips `MISPAIRED`'s pin.)
 2. **The pause stamp is binding.** CP2's sidecar must stamp each snapshot pause exactly as the docstring says. If it
    restarts the watcher after the snapshot's instant, every take reads uncovered and routes `harness-error`.
+   (Superseded in fold 2, W2A2-1: every health record is now stamped when it happens, and the re-arm must come
+   before the turn starts. See Fold 2.)
 3. **Persistently unreadable paths** (for example special files the sidecar records as unreadable) now route every
    multi-turn take `harness-error` through the operator re-check (decision 6). CP2 should measure this on a stub take.
 4. **An operator event on an excluded path** (probe 2's P11, unchanged): an event that writes `.git/index` reads as a
@@ -332,3 +342,140 @@ $ python3 evals/gap-study-4/run_checks.py               -> run_checks: 15 of 15 
 - **The mutation run.** 17 guard tests pass on the fold's code, and each goes red under its mutant (23 mutant rows).
 - **The reviewer's probe 3, re-run.** The real code passes. The same 13 mutant rows are red as in the review, and
   the merged-list row against the same-task guard stays green, as the reviewer expected.
+
+## Fold 2: review round 2
+
+Review round 2 (a fresh `claude-opus-5-5`, on `86c25837`) returned PASS with no MAJOR: two MINORs that loosen a check (W2A2-1, W2A2-2) and four NITs.
+The loop is closed, so there is no review round 3.
+Under the stop rule the two MINORs are folded as the reviewer wrote them, red first.
+On glitch-f3's ruling, NITs are folded only where they are cheap and touch no checked behaviour: W2A2-5 and W2A2-6 as wording, W2A2-3 and W2A2-4 recorded, not folded.
+The gap4 lane lead's local build agent folded them on the Mac, in the worktree `gap4-w2a-fold` on branch `gap4/w2a-cp3-endstate-fold`:
+- `84537558`: red tests only.
+  On the unchanged reader, 4 tests are red (12 failures, counting subtests).
+- `cdf58157`: the fixes, in `graders/endstate.py` alone.
+- The commit that adds this section: this report.
+
+`git diff 86c25837 --stat` touches `graders/endstate.py`, `tests/test_endstate.py` and this report, nothing else.
+Nothing was pushed or merged.
+
+### Per finding: reproduced, fixed, tested, mutated
+
+The reviewer's probes were copied to new names in the session scratchpad (`w2a_f2_probe6a.py`, case A of probe 6, and `w2a_f2_probe7.py`); they already pointed at this worktree.
+The originals were not edited.
+
+**W2A2-1 (MINOR): the pause stamp forced a start stamped when the watcher was not running, and hid a late re-arm.**
+- Reproduced on `86c25837` with `w2a_f2_probe7.py`.
+  Turn 2 runs from 201 to 203; pre-2 is at 200 and post-2 at 206.
+  - A truthful re-arm at 200.5, before turn 2 starts, read `uncovered (2,) -> harness-error`: a false gap.
+  - A truthful re-arm at 202.5, after turn 2 started, read `uncovered (2,) -> harness-error`.
+    Stamped at 200.0, as the old rule told the sidecar, the same take read `uncovered () -> graded`.
+- Fixed in `graders/endstate.py`:
+  - Every health record is stamped when it happens.
+    A snapshot's `taken_at` is the instant it begins (its pause's stop), and the re-arm is stamped when the watcher is re-armed.
+  - `uncovered_turns()` requires each turn's window, from its `started_at` to post-k's `taken_at`, to lie inside one recorded interval, so the re-arm must come before the turn starts.
+  - The docstring's pause rule (THE WATCHER'S HEALTH), the snapshot's `taken_at` field and the uncovered-turn problem text say the same.
+- Re-run: the re-arm at 200.5 now reads `uncovered () -> graded`, and the one at 202.5 still reads `uncovered (2,) -> harness-error`.
+  The fold's reader and the reviewer's started_at-window variant agree on all three rows.
+- Test: `WatcherHealth.test_a_snapshot_pause_stamped_when_it_happens_is_healthy` replaces fold 1's 200.5 case.
+  - A re-arm at 200, 200.5 or 201 (at or before turn 2's `started_at`) is clean and `graded`.
+  - A re-arm at 202.5 (after it) is a gap in both flags and routes `harness-error`.
+  - Every snapshot re-armed half a second after it begins is clean.
+  - The docstring holds both phrases of the new rule.
+- Mutants, each red against that test:
+  - the window measured from pre-k (the reviewer's; `test_mutant_window_from_pre_k_goes_red`);
+  - the window measured from the turn's end, so a late re-arm passes (mine; `test_mutant_window_from_turn_end_goes_red`);
+  - the docstring without one phrase or the other (two rows, mutation script only).
+
+**W2A2-2 (MINOR): `accesses(turn=k)` never validated k.**
+- Reproduced on `86c25837` with `w2a_f2_probe6a.py`: `accesses(turn=0 | 4 | 99 | "2")` each returned `[]`, while `agent_changes` refused each (`turn 4 is not 1..3`).
+- Fixed: `accesses()` calls `self._turn(turn)` when a turn is given, before the health check, and its docstring says so.
+- Re-run: each of the four now prints `REFUSED(EvidenceError): turn ... is not 1..3`, as `agent_changes` does.
+- Test: `TurnsAndLayout.test_an_access_read_for_a_turn_the_take_does_not_have_is_refused`.
+  0, N+1, 99, "2", 2.0, True and -1 are each refused by both reads, and turn 2 still reads its one logged open.
+- Mutant: `accesses_without_the_turn_check()` rebuilds `accesses` in memory from its own source with the call replaced by `pass`.
+  It refuses to build unless the call is there exactly once, so it can never be the real code by accident.
+  Red: `test_mutant_accesses_without_the_turn_check_goes_red` shows the four reads return `[]` again.
+
+**W2A2-5 (NIT): folded as wording, plus the optional test-only pin.**
+- Fold 1's decision 2 and its open question 1 are reworded above to "ignored before the first turn, as wave 1's row intends; the take routes by its own reason", each marked as reworded in fold 2.
+- Pin: `WatcherHealth.test_before_the_first_turn_the_take_routes_by_its_own_reason`.
+  - With `container_started` False, a clean take, a start while the watcher runs, and a stop with no start before it each route `rehearsal`.
+  - With no reason at all, the clean take and the stop-side fault are both refused with `no row matches these records (phase before-first-turn)`.
+  - It pins unchanged behaviour, so it passes on both sides of the fix.
+- Mutant: a missing stop record read as "no exit known" (`exit_code` None), which routing refuses before any reason; red (`test_mutant_a_stop_side_fault_read_as_no_exit_goes_red`).
+
+**W2A2-6 (NIT): folded as wording.**
+- `endstate.py`'s docstring (WHO CHANGED WHAT) now says the after-post-N write count rides `operator-diff-unexplained-after-first-turn`, and so carries a second cause, a quiescence-cap failure.
+  `operator_check()["problems"]` names the true cause of each count.
+- So a take whose only fault is a write after post-N is recorded under that row, and the published `harness-error` column names an operator diff for it.
+  This lane feeds only the two box keys it owns; a key of its own is for CP2 (open question 3 below).
+- Test (mine, binding the sentence to the data): `PlanFixtures.test_a_write_after_the_end_rides_the_operator_diff_row_and_names_its_own_cause`.
+  For a take whose only fault is a modify at 307 (post-3 is at 306), routing's winning rows are exactly `["operator-diff-unexplained-after-first-turn"]`.
+  Its one problem starts `after the last turn:` and names the quiescence cap, and the docstring holds the sentence.
+- Mutants, each red: the problem renamed as an operator-step diff (`test_mutant_an_after_write_named_as_an_operator_diff_goes_red`, and the script), and the docstring without the sentence (script).
+
+**W2A2-3 and W2A2-4 (NITs): recorded, not folded (stop rule; glitch-f3).**
+Both would change checked behaviour, so they are recorded here for CP2 and CP4.
+- W2A2-3: the closed STATE has no type for a socket, FIFO or device, so the sidecar can only record one as `unreadable`.
+  - A special file present in a 1-turn take reads as a phantom `unknown` agent change, and the take routes `graded`.
+  - One the agent makes in turn 1 of 3 reads created, unknown, unknown, and the operator re-check counts 2, so the take routes `harness-error` and is re-run.
+    The plan says no try is ever re-run for something the agent did; this fails closed for multi-turn takes.
+  - The reviewer's fix: a `{"type": "special", "kind": "socket" | "fifo" | "char" | "block"}` STATE compared by equality, so a lasting special file reads as no change.
+    For CP2, with fold 1's open question 3.
+- W2A2-4: `harness_bookkeeping.pattern_problems` refuses only the literal `**`.
+  `**/*`, `*/**` and `*` pass, and in `run_tree_paths` such a pattern would hide every agent change in the run tree.
+  The reviewer's fix: refuse any pattern whose first segment holds a wildcard, in both lists (every current entry passes: `.claude`, `.fake2`, `.fake2-run`), with those three cases added to `test_check_table_can_fail`.
+  Until then, the only backstop is CP4 running `exclusion_conflicts` per task under every harness.
+
+### Decisions (fold 2's own, the local build agent's; none is Javier's or glitch-f3's)
+1. **The turn check in `accesses()` runs before the health check.**
+   A bad turn is named as a bad turn even on an unhealthy take; both refusals are `EvidenceError`.
+2. **W2A2-2's refused set adds 2.0, True and -1** to the reviewer's 0, N+1, 99 and "2".
+   2.0 and True matter because `("turn", 2) == ("turn", 2.0)` and `1 == True` in Python, so the unchanged filter matched them to turns 2 and 1.
+3. **The W2A2-2 mutant is built from `accesses`' own source**, with the one call replaced by `pass`, and refuses to build unless the call is there exactly once.
+4. **W2A2-1 gets a second mutant**, the window measured from the turn's end, so the late-re-arm half of the test is shown to bind too.
+5. **W2A2-5's pin and W2A2-6's test pin unchanged behaviour**, each with a mutant.
+   The new docstring phrases are pinned as fold 1 pinned W2A1-7's and W2A1-8's, with docstring mutants in the mutation script.
+6. **Fold 1's superseded text is kept and marked, never deleted**: its decision 2, its open questions 1 and 2, and the W2A1-1 pause bullets.
+7. **The reader does not require a watcher-stop at each snapshot's `taken_at`.**
+   That would be stricter, but it is beyond the finding, and it would refuse every constructed take without pauses (the tests' default health has none).
+   Open question 2 below.
+
+### Open questions from fold 2 (for CP2 unless marked)
+1. **The reader cannot tell a truthful stamp from a false one.**
+   Fold 2 removes the reason a working sidecar had to stamp a start it never made, and a late re-arm stamped truthfully now reads as a gap.
+   A sidecar that stamped a re-arm earlier than it happened would still pass.
+   CP2's sidecar tests should prove each record is stamped when it happens (a fake clock across a slow snapshot), and that the driver sends the next line only after the re-arm.
+2. **Should the reader require a watcher-stop at each snapshot's `taken_at`?** (decision 7)
+   If the watcher ran through a snapshot, the snapshot's own opens of the consequential paths would be logged just after `taken_at`, inside the next turn's (pre-k, post-k] window or the operator step after post-k.
+   The reader would then read a pre-k snapshot's open of a planted file as the agent's access in turn k.
+   CP2 decides whether the sidecar's tests alone guard this, or the reader also checks it.
+3. **A box key of its own for the after-post-N write count** (W2A2-6), with its own routing row, so the published `harness-error` column names a quiescence-cap failure as such.
+   That changes `agent_adapter.BOX_KEYS` and `routing.json`, wave 1's files, so it is CP2's.
+4. **W2A2-3 (a `special` STATE type) for CP2, and W2A2-4 (a first-segment wildcard guard) for CP2 or CP4**, as recorded above.
+
+### Tests and checks run (fold 2, on the Mac, `PYTHONDONTWRITEBYTECODE=1`, `mac_slot.py light-ok` before each batch)
+- **Red first, on the unchanged reader.** With the red tests committed (`84537558`) and `graders/endstate.py` still at `86c25837`:
+  ```
+  $ python3 -W ignore evals/gap-study-4/tests/test_endstate.py            -> Ran 64 tests ... FAILED (failures=12)
+  ```
+  The red tests are W2A2-1's pause test (3 failures), W2A2-2's refusal test (7, one per refused turn), W2A2-2's mutant (it refuses to build: the call is not there yet) and W2A2-6's test (the docstring sentence).
+  The W2A2-5 pin, its mutant and the W2A2-1 mutant demos pass on both sides, as pins of unchanged behaviour and in-memory mutants do.
+- **On the fix (`cdf58157`):**
+  ```
+  $ python3 -W ignore evals/gap-study-4/tests/test_endstate.py            -> Ran 64 tests ... OK
+  $ python3 -W ignore evals/gap-study-4/tests/test_harness_bookkeeping.py -> Ran 14 tests ... OK
+  $ python3 evals/gap-study-4/harness_bookkeeping.py --check              -> harness_bookkeeping: ok: 1 harness(es): claude-code
+  ```
+- **The mutation run** (`w2a_fold2_mutants.py` in the session scratchpad, in memory only): the 4 guard tests fold 2 adds or changes pass on the real code, and all 8 mutant rows are red.
+  ```
+  real code: 4 guard(s) all PASS; mutants: 8 row(s) all RED
+  ```
+- **The pre-fold reader, loaded from git in memory** (`w2a_fold2_oldreader.py`): `accesses(turn=2.0)` returned turn 2's open and `accesses(turn=True)` turn 1's, so decision 2's two extra cases were live.
+- **The battery and the checks** ran on `cdf58157` under `mac_slot.py acquire --kind heavy --owner gap4-w2a-fold --minutes 20 --wait 1800`, granted at 02:05 EDT once the load fell below the second-slot bar, and released at 02:12.
+  This report was modified, uncommitted, in the working tree; the battery and the checks do not read it.
+  ```
+  $ python3 -W ignore evals/gap-study-4/test_round4.py   -> test_round4: 514 run, 0 skipped, 0 expected failures   (506 + 8)
+  $ python3 evals/gap-study-4/run_checks.py               -> run_checks: 15 of 15 commands passed
+  ```
+- `git status --porcelain --ignored` showed only this report after every run, and nothing once it was committed.
