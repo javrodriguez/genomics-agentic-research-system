@@ -4,12 +4,12 @@
     {
       "path": "graders/endstate.py",
       "status": "new",
-      "reason": "CP3's end-state reader, which every action-reading v4 grader imports; round 3 had none (it read no snapshots). It defines the sidecar's evidence folder as a closed layout (CP2 builds the sidecar), reads the agent's changes per turn and per stretch, the operator's changes matched to logged events, timestamped accesses per path, turn and stretch, and re-verifies the operator-diff check; exclusions are git's, the helpers' and the take's own harness's (interface 8)."
+      "reason": "CP3's end-state reader, which every action-reading v4 grader imports; round 3 had none (it read no snapshots). It defines the sidecar's evidence folder as a closed layout (CP2 builds the sidecar), reads the agent's changes per turn and per stretch, the operator's changes matched to logged events, timestamped accesses per path, turn and stretch, the watcher's health in time order (a turn or access its records do not cover is a watcher gap, never \"no access\"), and re-verifies the operator-diff check; exclusions are git's, the helpers' and the take's own harness's (interface 8)."
     },
     {
       "path": "harness_bookkeeping.py",
       "status": "new",
-      "reason": "Interface 8's third seam table: each harness's own bookkeeping paths, keyed by AgentAdapter.name, refusing an unknown name. Its one real entry, claude-code, is grounded in the identical copy drive.py:241-242 and round 3's prereg key run_location.excluded_from_the_run_tree; new in round 4."
+      "reason": "Interface 8's third seam table: each harness's own bookkeeping paths (home-relative and run-tree-relative), keyed by AgentAdapter.name, refusing an unknown name. Its one real entry, claude-code, is grounded in the identical copy drive.py:241-242 and :170 and round 3's prereg key run_location.excluded_from_the_run_tree; new in round 4."
     },
     {
       "path": "tests/test_endstate.py",
