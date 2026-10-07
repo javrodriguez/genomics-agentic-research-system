@@ -42,11 +42,11 @@
     {
      "id": "W-reentry",
      "decision": "Where to resume a sub-stage whose STATUS is VALIDATING, ARTIFACT_MISSING, STALE or FAILED",
-     "goes_wrong": "Step 2 stops only on SUBMITTED, RUNNING or COMPLETE, so read literally the other states fall through to check, prepare and submit; only step 7's 'On a later invocation' implies jumping to the status call and collect. A literal reading re-prepares a finished run, rewriting its params and reproducibility manifest, and tries to submit it again",
+     "goes_wrong": "Step 2 stops only on SUBMITTED, RUNNING or COMPLETE, so read literally the other states fall through to check, prepare and submit; only step 7's 'On a later invocation' implies jumping to the status call and collect. A literal reading re-prepares a finished run, rewriting its generated files and reproducibility manifest, and tries to submit it again",
      "severity": 5,
-     "detection": 4,
+     "detection": 3,
      "occurrence": null,
-     "why_rank": "Wasted work and a rewritten provenance file rather than a wrong result: the executor's duplicate-submission refusal and collect's gates stand behind it",
+     "why_rank": "Wasted work and a rewritten provenance file rather than a wrong result; the executor's duplicate-submission refusal stops the resubmission",
      "fix": "Step 2 branches every STATUS value to its step, as the router's steps 6-9 do; better, the wrapper reports the next action from STATUS",
      "fix_rung": "R0",
      "defects": [
@@ -78,13 +78,27 @@
     {
      "id": "D-handoff",
      "decision": "Which input path to pass, and which sub-stage to name as its supplier at collect",
-     "goes_wrong": "The router resolves the inputs at its step 9 and the sub-stage contract starts afresh; the path and the supplying sub-stage travel only in the conversation, so the model carries or re-derives them. A wrong --h5ad-from or --counts-from records the wrong provenance; a wrong path feeds the wrong object",
+     "goes_wrong": "For single-cell clustering and spatial counts the router resolves the input and the sub-stage contract starts afresh; for DE the sub-stage resolves its own inputs, but collect runs on a later visit. The path and the supplying sub-stage travel only in the conversation, so the model carries or re-derives them. A wrong --h5ad-from or --counts-from records false provenance; a wrong path feeds the wrong object",
      "severity": 6,
-     "detection": 4,
+     "detection": 6,
      "occurrence": null,
-     "why_rank": "collect cross-checks counts against the samplesheet and rnaseq-de's prepare refuses a non-canonical design, so most wrong inputs are caught; the provenance line is not",
-     "fix": "Each sub-stage resolves its own inputs (rnaseq-de already does at its step 3) and collect derives the supplier from the resolver",
+     "why_rank": "False provenance in the permanent record, visible in HISTORY.md only to a reader who checks it; collect's cross-checks and DE's canonical-design refusal catch most wrong inputs",
+     "fix": "Each sub-stage resolves its own inputs and collect derives the supplier from the resolver",
      "fix_rung": "R0"
+    },
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ]
     }
    ],
    "note": "Exit 3 (no such project) has no branch."
@@ -103,11 +117,26 @@
     "helper exit codes",
     "negative scope rules"
    ],
-   "rung_now": "R0",
+   "rung_now": "R5",
    "rung_target": "R0",
-   "question": 2,
+   "question": 1,
    "rung_why": "Generation is code.",
-   "unsaid": [],
+   "unsaid": [
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ]
+    }
+   ],
    "note": "The extractor's static exit 2 (wrapperlib.py:925, scripts tree not generated-only) is reachable here (downstream-v2 key) and has no branch; exit 3 has none either."
   },
   "5": {
@@ -134,13 +163,13 @@
    "unsaid": [
     {
      "id": "W-submit",
-     "decision": "What to do when the executor refuses the submission",
-     "goes_wrong": "No step branches on submit's exit: each sub-stage's submit step says only to capture job_id before T2 announces 'Submitted as job <job_id>', and stage 03's step 7 handles only an approval refusal. A venue-preflight refusal (unclassified or expired dataset, a route or memory rule) or a duplicate-submission refusal exits 1 or 2 with no branch, so the model either reports a submission that did not happen or improvises, for example by editing the config's memory declaration until the venue rule passes",
-     "severity": 7,
-     "detection": 6,
+     "decision": "What to do when GARS's pre-submission check refuses the job",
+     "goes_wrong": "Before a job is queued, the executor checks the dataset's class, purpose and route (the venue rules) and refuses a duplicate. The router's Definitions say to report every refusal and stop, but the sub-stage's submit step says only to capture job_id and the next step announces 'Submitted as job <job_id>' with no branch for exit 1 or 2; the model either announces a submission that did not happen, or changes the executor or memory settings itself to get past the refusal",
+     "severity": 5,
+     "detection": 3,
      "occurrence": null,
-     "why_rank": "The venue rules are a data-policy gate; an improvised way past one is a breach only a reader of the transcript would see",
-     "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; never change config to pass a venue rule",
+     "why_rank": "A setting changed without the user, or a false 'submitted'; the next STATUS read shows nothing was queued",
+     "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; settings change only on the user's word",
      "fix_rung": "R4",
      "defects": [
       "D12"
@@ -221,11 +250,11 @@
     {
      "id": "W-poll",
      "decision": "When to refresh a submitted job's STATUS, and who does it",
-     "goes_wrong": "Only executorlib.py status moves STATUS from SUBMITTED to VALIDATING, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's status call is reached only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
-     "severity": 5,
+     "goes_wrong": "STATUS moves from SUBMITTED to VALIDATING when executorlib.py status (or collect's own gate) asks the scheduler, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's own status step is behind both, so it runs only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+     "severity": 4,
      "detection": 2,
      "occurrence": null,
-     "why_rank": "A stall, not a wrong result, and a visible one; but every assay passes through it",
+     "why_rank": "A stall the user has to sort out, and a visible one; but every assay passes through it",
      "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
      "fix_rung": "R0",
      "defects": [
@@ -246,6 +275,17 @@
      "defects": [
       "D15"
      ]
+    },
+    {
+     "id": "W-jobid",
+     "decision": "Which job id to ask the scheduler about on a later visit",
+     "goes_wrong": "Step 7 calls status with <job_id>, but a STATUS line carries a job id only while SUBMITTED or RUNNING; a VALIDATING or STALE line carries none, so the model takes the id from its memory of an earlier session or from somewhere else",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A wrong id fails loudly (status exits 1 for an unknown job) and status updates only the job submit recorded",
+     "fix": "The status call takes the sub-stage, and code looks up its recorded job",
+     "fix_rung": "R0"
     }
    ]
   },
@@ -275,13 +315,27 @@
     {
      "id": "D-handoff",
      "decision": "Which input path to pass, and which sub-stage to name as its supplier at collect",
-     "goes_wrong": "The router resolves the inputs at its step 9 and the sub-stage contract starts afresh; the path and the supplying sub-stage travel only in the conversation, so the model carries or re-derives them. A wrong --h5ad-from or --counts-from records the wrong provenance; a wrong path feeds the wrong object",
+     "goes_wrong": "For single-cell clustering and spatial counts the router resolves the input and the sub-stage contract starts afresh; for DE the sub-stage resolves its own inputs, but collect runs on a later visit. The path and the supplying sub-stage travel only in the conversation, so the model carries or re-derives them. A wrong --h5ad-from or --counts-from records false provenance; a wrong path feeds the wrong object",
      "severity": 6,
-     "detection": 4,
+     "detection": 6,
      "occurrence": null,
-     "why_rank": "collect cross-checks counts against the samplesheet and rnaseq-de's prepare refuses a non-canonical design, so most wrong inputs are caught; the provenance line is not",
-     "fix": "Each sub-stage resolves its own inputs (rnaseq-de already does at its step 3) and collect derives the supplier from the resolver",
+     "why_rank": "False provenance in the permanent record, visible in HISTORY.md only to a reader who checks it; collect's cross-checks and DE's canonical-design refusal catch most wrong inputs",
+     "fix": "Each sub-stage resolves its own inputs and collect derives the supplier from the resolver",
      "fix_rung": "R0"
+    },
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ]
     }
    ],
    "note": "Exit 3 (no such project) has no branch."
@@ -308,15 +362,29 @@
     {
      "id": "G-date",
      "decision": "What today's date is, for the HISTORY.md entry",
-     "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace, and no registered command reads the clock, so the permanent record carries the model's belief about the date",
-     "severity": 3,
+     "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+     "severity": 2,
      "detection": 9,
      "occurrence": null,
-     "why_rank": "A wrong date misleads a later reader of the record but changes no result; nothing ever checks it",
-     "fix": "The helper stamps the date (it already imports datetime) and appends the entry itself",
+     "why_rank": "A wrong but harmless detail in a record; nothing ever checks it",
+     "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
      "fix_rung": "R0",
      "defects": [
       "D17"
+     ]
+    },
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
      ]
     }
    ]

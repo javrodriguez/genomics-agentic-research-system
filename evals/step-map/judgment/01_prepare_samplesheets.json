@@ -47,27 +47,52 @@
    "unsaid": [
     {
      "id": "S01-declare",
-     "decision": "Mapping the user's words to strandedness, unit of replication, reference release and pairing",
-     "goes_wrong": "T9 asks for values; users say 'dUTP', 'TruSeq stranded' or 'same donors'. The model maps the words to allowed values and hand-edits the YAML with no rule for the mapping; a wrong strandedness reaches nf-core silently and miscounts reads",
+     "decision": "Turning the user's words into strandedness, replication unit, release and pairing",
+     "goes_wrong": "T9 lists the allowed values and the contract says to write exactly what the user supplied, and the check refuses a value outside the list. What no rule covers: an answer in other words ('dUTP', 'TruSeq stranded', 'same donors'), which the model may translate into an allowed value rather than re-ask, and a pairing the user mentions in passing, which only a warning ever flags. A wrong but allowed strandedness passes every check",
      "severity": 9,
-     "detection": 8,
+     "detection": 6,
      "occurrence": null,
-     "why_rank": "A wrong setting gives a complete, plausible, wrong result; HISTORY quotes the user's words, but nothing checks the mapping against them",
-     "fix": "A closed menu per key with each value's meaning, as stage 02's menus do; the user picks; code writes the YAML and the HISTORY line",
+     "why_rank": "Wrong strandedness miscounts reads into a plausible, wrong result; nf-core flags a mismatch only in the MultiQC report's strandedness section, which the next human check points to",
+     "fix": "A numbered menu per setting with each value's meaning, as stage 02 offers genomes; an answer outside it is re-asked; code writes the YAML and the HISTORY line",
      "fix_rung": "R1"
     },
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core wrapper subcommand, reads of _config/ and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
-     "severity": 6,
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
      "detection": 2,
      "occurrence": null,
-     "why_rank": "The guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
      "fix_rung": "R4",
      "defects": [
       "D16"
+     ]
+    },
+    {
+     "id": "G-project",
+     "decision": "Which project (and assay) the user's words mean",
+     "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a project directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right step on the wrong project",
+     "severity": 6,
+     "detection": 5,
+     "occurrence": null,
+     "why_rank": "The right analysis on the wrong project; the stage's opening message names the project, unasked, before anything runs",
+     "fix": "A resolver lists the matching projects and assays; the model renders them, the user picks",
+     "fix_rung": "R1"
+    },
+    {
+     "id": "G-date",
+     "decision": "What today's date is, for the HISTORY.md entry",
+     "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+     "severity": 2,
+     "detection": 9,
+     "occurrence": null,
+     "why_rank": "A wrong but harmless detail in a record; nothing ever checks it",
+     "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
+     "fix_rung": "R0",
+     "defects": [
+      "D17"
      ]
     }
    ]
@@ -87,11 +112,26 @@
     "definitions shared with helper code",
     "negative scope rules"
    ],
-   "rung_now": "R0",
+   "rung_now": "R5",
    "rung_target": "R0",
-   "question": 2,
+   "question": 1,
    "rung_why": "Every validation rule is code.",
-   "unsaid": []
+   "unsaid": [
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ]
+    }
+   ]
   },
   "4": {
    "actor": [
@@ -165,12 +205,12 @@
     {
      "id": "S01-yes",
      "decision": "Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both",
-     "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read, and the writer's --confirm-exclusions and --force are passed by the model with nothing tying them to an answer; --force also overwrites any edits the user made to the samplesheets",
-     "severity": 7,
-     "detection": 4,
+     "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read. Written rules say the two switches need the user's confirmation, but nothing in code ties --confirm-exclusions or --force to an answer; --force also overwrites any edits the user made to the samplesheets",
+     "severity": 8,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "An unconsented exclusion analyses a subset the user did not choose; T2's counts and HISTORY show it afterwards",
-     "fix": "A fixed answer per gate (`exclude`, `overwrite`), and the writer refuses a flag with no matching recorded answer",
+     "why_rank": "An unconsented exclusion runs the analysis on samples the user did not choose; T2's counts and HISTORY show it afterwards, unasked",
+     "fix": "A fixed answer per gate (`exclude`, `overwrite`), and the writer refuses a switch with no matching recorded answer",
      "fix_rung": "R2"
     }
    ]
@@ -198,12 +238,12 @@
     {
      "id": "S01-yes",
      "decision": "Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both",
-     "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read, and the writer's --confirm-exclusions and --force are passed by the model with nothing tying them to an answer; --force also overwrites any edits the user made to the samplesheets",
-     "severity": 7,
-     "detection": 4,
+     "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read. Written rules say the two switches need the user's confirmation, but nothing in code ties --confirm-exclusions or --force to an answer; --force also overwrites any edits the user made to the samplesheets",
+     "severity": 8,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "An unconsented exclusion analyses a subset the user did not choose; T2's counts and HISTORY show it afterwards",
-     "fix": "A fixed answer per gate (`exclude`, `overwrite`), and the writer refuses a flag with no matching recorded answer",
+     "why_rank": "An unconsented exclusion runs the analysis on samples the user did not choose; T2's counts and HISTORY show it afterwards, unasked",
+     "fix": "A fixed answer per gate (`exclude`, `overwrite`), and the writer refuses a switch with no matching recorded answer",
      "fix_rung": "R2"
     }
    ]
@@ -232,9 +272,9 @@
      "decision": "How to run an accepted deep check when the cohort needs scheduling",
      "goes_wrong": "Step 8 says to submit the writer with sbatch; sbatch is not registered and the guard refuses it, and nothing generates a script for the writer, so the model either runs the check on the login node or quietly drops it",
      "severity": 5,
-     "detection": 2,
+     "detection": 6,
      "occurrence": null,
-     "why_rank": "Either a killed login-node job or a check the user asked for and did not get; HISTORY records 'none' if it was dropped",
+     "why_rank": "Wasted or killed work, or a check the user asked for and did not get; HISTORY records 'none' for a reader who looks",
      "fix": "The deep check runs through the executor with a generated script, like every pipeline",
      "fix_rung": "R0"
     }
@@ -257,11 +297,26 @@
     "read-only file modes",
     "guard deny rules"
    ],
-   "rung_now": "R0",
+   "rung_now": "R5",
    "rung_target": "R0",
-   "question": 2,
+   "question": 1,
    "rung_why": "The writer is code; the flags it receives were decided at steps 6-8 (S01-yes).",
-   "unsaid": [],
+   "unsaid": [
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ]
+    }
+   ],
    "note": "The step's command omits --verify-integrity full, which its own prose requires when step 8 was accepted (pilot)."
   },
   "10": {
@@ -303,13 +358,13 @@
    "unsaid": [
     {
      "id": "S01-gate",
-     "decision": "What the writer's exit 1 means",
-     "goes_wrong": "Step 11 says exit 1 means the exit gate failed after writing, but the writer also exits 1 before writing (validation, deep check); T3 says nothing was written in both cases",
-     "severity": 3,
+     "decision": "What the writer's exit 1 means, and what it leaves on disk",
+     "goes_wrong": "Step 11 says exit 1 means the exit gate failed after writing, but the writer also exits 1 before writing (validation, the deep check); T3 says 'nothing was written' in both cases, while a real exit-gate failure leaves the wrong artifacts in place, and every later consumer accepts them by their existence",
+     "severity": 8,
      "detection": 3,
      "occurrence": null,
-     "why_rank": "A misreport of what is on disk, not a wrong result",
-     "fix": "Distinct exit codes, or a phase field the reply keys on",
+     "why_rank": "Wrong samplesheets could feed the pipeline, but the failure is shown and the user usually re-runs stage 01",
+     "fix": "Distinct codes or a phase field the reply keys on, and the writer removes what it wrote when its own gate fails",
      "fix_rung": "R0",
      "defects": [
       "D5"
@@ -355,15 +410,29 @@
     {
      "id": "G-date",
      "decision": "What today's date is, for the HISTORY.md entry",
-     "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace, and no registered command reads the clock, so the permanent record carries the model's belief about the date",
-     "severity": 3,
+     "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+     "severity": 2,
      "detection": 9,
      "occurrence": null,
-     "why_rank": "A wrong date misleads a later reader of the record but changes no result; nothing ever checks it",
-     "fix": "The helper stamps the date (it already imports datetime) and appends the entry itself",
+     "why_rank": "A wrong but harmless detail in a record; nothing ever checks it",
+     "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
      "fix_rung": "R0",
      "defects": [
       "D17"
+     ]
+    },
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
      ]
     }
    ]
@@ -388,11 +457,11 @@
     {
      "id": "S01-offer",
      "decision": "Whether to take values for the remaining config decisions in free text",
-     "goes_wrong": "Step 14 says to offer to write values the user gives; the T4 note says never to, because stage 02 offers menus. A model that follows step 14 writes a reference path or a contrast by hand, the config then has no <REQUIRED> markers, and stage 02 skips its menus",
-     "severity": 7,
+     "goes_wrong": "Step 14 says to offer to write values the user gives; the T4 note says never to, because stage 02 offers menus. A model that follows step 14 writes a reference path or a contrast by hand; if stage 02 then judges no decisions remain, it skips its menus, which are what keep the FASTA and annotation paired and the contrast to real levels",
+     "severity": 8,
      "detection": 5,
      "occurrence": null,
-     "why_rank": "It bypasses the closed menus that keep FASTA and annotation paired and contrasts to real levels; stage 02's human check may still catch it",
+     "why_rank": "The wrong reference or contrast runs if the menus are skipped; the router's human check asks the user to confirm the reference and contrast before the first sub-stage",
      "fix": "Delete step 14's offer; T4 already says stage 02 will offer menus",
      "fix_rung": "R4",
      "defects": [

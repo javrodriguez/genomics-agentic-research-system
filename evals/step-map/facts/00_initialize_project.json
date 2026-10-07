@@ -4,6 +4,9 @@
  "call_sites": [
   {
    "branch_calls": [],
+   "by_table": {
+    "3": "T9"
+   },
    "command": "python3 _system/stage00_register.py assays",
    "emitted": [
     0,
@@ -15,17 +18,14 @@
    "ruled_out": {},
    "step": "3",
    "tool": "stage00_register.assays",
-   "unhandled": [
-    3
-   ],
-   "unhandled_sites": {
-    "3": [
-     "gars/_system/stage00_register.py:291"
-    ]
-   }
+   "unhandled": [],
+   "unhandled_sites": {}
   },
   {
    "branch_calls": [],
+   "by_table": {
+    "3": "T9"
+   },
    "command": "python3 _system/stage00_register.py assays --select \"<exactly what the user replied>\"",
    "emitted": [
     0,
@@ -41,17 +41,14 @@
    "ruled_out": {},
    "step": "4",
    "tool": "stage00_register.assays",
-   "unhandled": [
-    3
-   ],
-   "unhandled_sites": {
-    "3": [
-     "gars/_system/stage00_register.py:291"
-    ]
-   }
+   "unhandled": [],
+   "unhandled_sites": {}
   },
   {
    "branch_calls": [],
+   "by_table": {
+    "3": "T9"
+   },
    "command": "python3 _system/stage00_register.py create --title \"<title>\" --assays <assay_id> [<assay_id> ...]",
    "emitted": [
     0,
@@ -67,16 +64,8 @@
    "ruled_out": {},
    "step": "6",
    "tool": "stage00_register.create",
-   "unhandled": [
-    3
-   ],
-   "unhandled_sites": {
-    "3": [
-     "gars/_system/stage00_register.py:366",
-     "gars/_system/stage00_register.py:378",
-     "gars/_system/stage00_register.py:395"
-    ]
-   }
+   "unhandled": [],
+   "unhandled_sites": {}
   },
   {
    "branch_calls": [
@@ -86,6 +75,7 @@
      "tool": "stage00_register.inspect"
     }
    ],
+   "by_table": {},
    "command": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path>",
    "emitted": [
     0,
@@ -107,6 +97,10 @@
   },
   {
    "branch_calls": [],
+   "by_table": {
+    "2": "template field",
+    "3": "T9"
+   },
    "command": "python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>",
    "emitted": [
     0,
@@ -123,21 +117,12 @@
    "ruled_out": {},
    "step": "12",
    "tool": "stage00_register.link",
-   "unhandled": [
-    2,
-    3
-   ],
-   "unhandled_sites": {
-    "2": [
-     "gars/_system/stage00_register.py:510"
-    ],
-    "3": [
-     "gars/_system/stage00_register.py:500"
-    ]
-   }
+   "unhandled": [],
+   "unhandled_sites": {}
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model \"<model id>\"",
    "emitted": [
     0,
@@ -168,6 +153,37 @@
    }
   }
  ],
+ "exit_rules_without_reply": [],
+ "exit_table": {
+  "codes": {
+   "0": {
+    "line": 177,
+    "meaning": "ok",
+    "needs_template_field": false,
+    "reply": "continue"
+   },
+   "1": {
+    "line": 178,
+    "meaning": "failure; report and stop",
+    "needs_template_field": false,
+    "reply": "T9"
+   },
+   "2": {
+    "line": 179,
+    "meaning": "refused; its `template` field names the reply",
+    "needs_template_field": true,
+    "reply": "T5 / T7 / T8"
+   },
+   "3": {
+    "line": 180,
+    "meaning": "usage or precondition error",
+    "needs_template_field": false,
+    "reply": "T9"
+   }
+  },
+  "script": "_system/stage00_register.py",
+  "source": "gars/00_initialize_project/CONTEXT.md:175"
+ },
  "fenced_non_commands": [],
  "file_mentions_unclassified": [
   {

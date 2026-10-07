@@ -13,45 +13,13 @@
  "contracts": 14,
  "empty_findings": [],
  "exits": {
+  "by_stage_table": 6,
   "call_sites": 73,
   "emitted": 230,
   "handled": 85,
   "ruled_out": 7,
-  "unhandled": 101,
+  "unhandled": 95,
   "unhandled_list": [
-   {
-    "codes": [
-     3
-    ],
-    "contract": "00_initialize_project",
-    "step": "3",
-    "tool": "stage00_register.assays"
-   },
-   {
-    "codes": [
-     3
-    ],
-    "contract": "00_initialize_project",
-    "step": "4",
-    "tool": "stage00_register.assays"
-   },
-   {
-    "codes": [
-     3
-    ],
-    "contract": "00_initialize_project",
-    "step": "6",
-    "tool": "stage00_register.create"
-   },
-   {
-    "codes": [
-     2,
-     3
-    ],
-    "contract": "00_initialize_project",
-    "step": "12",
-    "tool": "stage00_register.link"
-   },
    {
     "codes": [
      2
@@ -59,14 +27,6 @@
     "contract": "00_initialize_project",
     "step": "15",
     "tool": "stage00_register.finalize"
-   },
-   {
-    "codes": [
-     3
-    ],
-    "contract": "01_prepare_samplesheets",
-    "step": "9",
-    "tool": "stage01_samplesheet"
    },
    {
     "codes": [

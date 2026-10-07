@@ -4,6 +4,7 @@
  "call_sites": [
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay rnaseq_bulk --consumes counts_gene design",
    "emitted": [
     0,
@@ -25,6 +26,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py check --project projects/<title> --counts projects/{project}/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv --design projects/{project}/01_samplesheets/rnaseq_bulk_design.csv",
    "emitted": [
     0,
@@ -50,6 +52,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py prepare --project projects/<title>",
    "emitted": [
     0,
@@ -82,6 +85,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh",
    "emitted": [
     0,
@@ -111,6 +115,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
    "emitted": [
     0,
@@ -149,6 +154,7 @@
      "tool": "executor.status"
     }
    ],
+   "by_table": {},
    "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py collect --project projects/<title> --model \"<the exact model id you are running as>\" --counts-from <the sub-stage the resolver named>",
    "emitted": [
     0,
@@ -177,6 +183,13 @@
    }
   }
  ],
+ "exit_rules_without_reply": [
+  {
+   "line": 58,
+   "text": "Exit codes are the stage-helper standard: 0 ok, 1 failure, 2 refused, 3 usage."
+  }
+ ],
+ "exit_table": null,
  "fenced_non_commands": [],
  "file_mentions_unclassified": [
   {

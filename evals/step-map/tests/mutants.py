@@ -154,6 +154,12 @@ MUTANTS = [
     ("history-rules-off", "HISTORY.md appends are not file actions",
      '    actions.sort(key=lambda a: a["line"])',
      '    actions = [a for a in actions if not a["path"].endswith("HISTORY.md")]\n    actions.sort(key=lambda a: a["line"])'),
+    ("ignore-exit-table", "a stage-wide exit table is not handling",
+     '        if table and table["script"] == tool["argv"][1]:',
+     '        if False:'),
+    ("template-field-ignored", "a table row that needs the template field handles every site",
+     '                if row["needs_template_field"]:\n                    if real and all(sets_template_field(src, s["at"]) for s in real):',
+     '                if row["needs_template_field"]:\n                    if True:'),
 ]
 
 

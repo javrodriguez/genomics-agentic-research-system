@@ -15,10 +15,10 @@
      "id": "X-cutandrun-resume",
      "decision": "Whether a re-run after a FAILED run is a --resume-refresh, a fresh run or a new analysis",
      "goes_wrong": "Definitions describe re-preparing a FAILED run in place so a params change rides -resume from cached tasks, but no step says when; the model decides whether the user's 'try again with X' qualifies, and the gate checks only that STATUS says FAILED and Nextflow state exists",
-     "severity": 5,
-     "detection": 4,
+     "severity": 4,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "A resumed run mixes cached and new tasks by design; the risk is a params change the user did not mean to apply to cached results",
+     "why_rank": "Confusion over what was re-run rather than a wrong result: Nextflow re-runs every task whose parameters changed",
      "fix": "A recovery step in the Process naming the conditions and asking the user to choose resume or a fresh run",
      "fix_rung": "R3"
     }

@@ -4,6 +4,7 @@
  "call_sites": [
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/configure.py genomes --assay <Assay ID>",
    "emitted": [
     0,
@@ -26,6 +27,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>",
    "emitted": [
     0,
@@ -53,6 +55,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/configure.py peaks",
    "emitted": [
     0
@@ -68,6 +71,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>] --dry-run",
    "emitted": [
     0,
@@ -101,6 +105,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --consumes <type> [<type> ...]",
    "emitted": [
     0,
@@ -126,6 +131,8 @@
    }
   }
  ],
+ "exit_rules_without_reply": [],
+ "exit_table": null,
  "fenced_non_commands": [],
  "file_mentions_unclassified": [
   {

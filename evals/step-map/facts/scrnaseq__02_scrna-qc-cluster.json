@@ -4,6 +4,7 @@
  "call_sites": [
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py check --project projects/<title> --h5ad projects/{project}/02_bioinformatics/{assay}/01_input/run/input.h5ad",
    "emitted": [
     0,
@@ -29,6 +30,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py prepare --project projects/<title>",
    "emitted": [
     0,
@@ -60,6 +62,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh",
    "emitted": [
     0,
@@ -89,6 +92,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
    "emitted": [
     0,
@@ -116,6 +120,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
    "emitted": [
     0,
@@ -154,6 +159,7 @@
      "tool": "executor.status"
     }
    ],
+   "by_table": {},
    "command": "python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py collect --project projects/<title> --model \"<the exact model id you are running as>\" --h5ad-from <the sub-stage that supplied the matrix>",
    "emitted": [
     0,
@@ -182,6 +188,13 @@
    }
   }
  ],
+ "exit_rules_without_reply": [
+  {
+   "line": 57,
+   "text": "Exit codes are the stage-helper standard: 0 ok, 1 failure, 2 refused (a gate), 3 usage."
+  }
+ ],
+ "exit_table": null,
  "fenced_non_commands": [],
  "file_mentions_unclassified": [
   {

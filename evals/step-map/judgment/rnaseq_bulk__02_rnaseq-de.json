@@ -138,13 +138,13 @@
    "unsaid": [
     {
      "id": "W-submit",
-     "decision": "What to do when the executor refuses the submission",
-     "goes_wrong": "No step branches on submit's exit: each sub-stage's submit step says only to capture job_id before T2 announces 'Submitted as job <job_id>', and stage 03's step 7 handles only an approval refusal. A venue-preflight refusal (unclassified or expired dataset, a route or memory rule) or a duplicate-submission refusal exits 1 or 2 with no branch, so the model either reports a submission that did not happen or improvises, for example by editing the config's memory declaration until the venue rule passes",
-     "severity": 7,
-     "detection": 6,
+     "decision": "What to do when GARS's pre-submission check refuses the job",
+     "goes_wrong": "Before a job is queued, the executor checks the dataset's class, purpose and route (the venue rules) and refuses a duplicate. The router's Definitions say to report every refusal and stop, but the sub-stage's submit step says only to capture job_id and the next step announces 'Submitted as job <job_id>' with no branch for exit 1 or 2; the model either announces a submission that did not happen, or changes the executor or memory settings itself to get past the refusal",
+     "severity": 5,
+     "detection": 3,
      "occurrence": null,
-     "why_rank": "The venue rules are a data-policy gate; an improvised way past one is a breach only a reader of the transcript would see",
-     "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; never change config to pass a venue rule",
+     "why_rank": "A setting changed without the user, or a false 'submitted'; the next STATUS read shows nothing was queued",
+     "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; settings change only on the user's word",
      "fix_rung": "R4",
      "defects": [
       "D12"
@@ -192,12 +192,12 @@
     {
      "id": "D-handoff",
      "decision": "Which input path to pass, and which sub-stage to name as its supplier at collect",
-     "goes_wrong": "The router resolves the inputs at its step 9 and the sub-stage contract starts afresh; the path and the supplying sub-stage travel only in the conversation, so the model carries or re-derives them. A wrong --h5ad-from or --counts-from records the wrong provenance; a wrong path feeds the wrong object",
+     "goes_wrong": "For single-cell clustering and spatial counts the router resolves the input and the sub-stage contract starts afresh; for DE the sub-stage resolves its own inputs, but collect runs on a later visit. The path and the supplying sub-stage travel only in the conversation, so the model carries or re-derives them. A wrong --h5ad-from or --counts-from records false provenance; a wrong path feeds the wrong object",
      "severity": 6,
-     "detection": 4,
+     "detection": 6,
      "occurrence": null,
-     "why_rank": "collect cross-checks counts against the samplesheet and rnaseq-de's prepare refuses a non-canonical design, so most wrong inputs are caught; the provenance line is not",
-     "fix": "Each sub-stage resolves its own inputs (rnaseq-de already does at its step 3) and collect derives the supplier from the resolver",
+     "why_rank": "False provenance in the permanent record, visible in HISTORY.md only to a reader who checks it; collect's cross-checks and DE's canonical-design refusal catch most wrong inputs",
+     "fix": "Each sub-stage resolves its own inputs and collect derives the supplier from the resolver",
      "fix_rung": "R0"
     },
     {
@@ -216,6 +216,24 @@
     }
    ],
    "note": "The two status calls inside its exit branches are branch actions, not new call sites."
+  },
+  "9": {
+   "extra_unsaid": [
+    {
+     "id": "D-sigcount",
+     "decision": "The 'significant at padj < 0.05' count in the DE completion message",
+     "goes_wrong": "T6 shows 'Significant at padj < 0.05: <n>', but collect returns only genes_tested; the registered summary verb computes the count, yet no step calls it, so the model counts the table itself",
+     "severity": 4,
+     "detection": 6,
+     "occurrence": null,
+     "why_rank": "A misleading headline number the user may quote; the table it summarises is correct and sits in a file the user is pointed to",
+     "fix": "Step 9 calls the summary verb and T6 quotes it",
+     "fix_rung": "R0",
+     "defects": [
+      "D20"
+     ]
+    }
+   ]
   }
  }
 }

@@ -86,14 +86,14 @@
       "defects": [
        "D3"
       ],
-      "detection": 3,
+      "detection": 5,
       "fix": "assays takes the title and returns create's sanitized form, so T3 renders code's answer",
       "fix_rung": "R0",
       "goes_wrong": "A first reply may carry the title with an assay or a path; the model decides what the title is, and T3 shows a sanitized directory name that only create (step 6) computes, so the model sanitizes it itself, which Definitions forbid",
       "id": "S00-title",
       "occurrence": null,
       "severity": 3,
-      "why_rank": "A wrong title is awkward to undo but changes no data, and T3b shows the real directory before any data is linked"
+      "why_rank": "A misleading message at worst: T3b shows the real directory before any data is linked"
      }
     ]
    },
@@ -137,14 +137,8 @@
       "prose_handling": [],
       "source": "gars/00_initialize_project/CONTEXT.md:201",
       "tool": "stage00_register.assays",
-      "unhandled": [
-       3
-      ],
-      "unhandled_emit_sites": {
-       "3": [
-        "gars/_system/stage00_register.py:291"
-       ]
-      }
+      "unhandled": [],
+      "unhandled_emit_sites": {}
      }
     ],
     "file_actions": [],
@@ -179,7 +173,7 @@
      "the user's earlier phrase naming an assay"
     ],
     "kind": "judgment",
-    "note": "Exit 3 (assay map missing) has no branch here or at step 4 (D2).",
+    "note": "Exit 3 (assay map missing) is routed to T9 by the stage's exit table (00:180), whose text says a project was created; none exists yet at this step (D1).",
     "question": 1,
     "rung_now": "R5",
     "rung_target": "R0",
@@ -242,14 +236,8 @@
       "prose_handling": [],
       "source": "gars/00_initialize_project/CONTEXT.md:211",
       "tool": "stage00_register.assays",
-      "unhandled": [
-       3
-      ],
-      "unhandled_emit_sites": {
-       "3": [
-        "gars/_system/stage00_register.py:291"
-       ]
-      }
+      "unhandled": [],
+      "unhandled_emit_sites": {}
      }
     ],
     "file_actions": [],
@@ -370,16 +358,8 @@
       "prose_handling": [],
       "source": "gars/00_initialize_project/CONTEXT.md:222",
       "tool": "stage00_register.create",
-      "unhandled": [
-       3
-      ],
-      "unhandled_emit_sites": {
-       "3": [
-        "gars/_system/stage00_register.py:366",
-        "gars/_system/stage00_register.py:378",
-        "gars/_system/stage00_register.py:395"
-       ]
-      }
+      "unhandled": [],
+      "unhandled_emit_sites": {}
      }
     ],
     "file_actions": [],
@@ -409,7 +389,7 @@
      "the title"
     ],
     "kind": "judgment",
-    "note": "Exit 3 (title sanitizes to nothing, map or stamp missing) has no branch (the pilot's create exit 3).",
+    "note": "Exit 3 (title sanitizes to nothing, map or stamp missing) is routed to T9 by the stage's exit table (00:180), whose text says a project was created; none was (D1). The pilot listed this as unbranched.",
     "question": 2,
     "rung_now": "R0",
     "rung_target": "R0",
@@ -589,8 +569,8 @@
       "goes_wrong": "An agent may run inspect, link and finalize only on a folder listed in data_sources.tsv; no contract mentions that file, so the reply to the refusal is the model's own: ask the user to run the step, ask them to declare the folder, or stop",
       "id": "S00-guard",
       "occurrence": null,
-      "severity": 7,
-      "why_rank": "Stage 00 cannot finish in a guarded session without the human's declaration and the contract offers no compliant road; the refusal itself is loud"
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one"
      }
     ]
    },
@@ -684,14 +664,14 @@
        "D4",
        "D22"
       ],
-      "detection": 3,
+      "detection": 4,
       "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",
       "fix_rung": "R1",
-      "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), so the model then improvises a road around it",
+      "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), and a malformed pattern crashes inspect, so the model then improvises a road around it",
       "id": "S00-pattern",
       "occurrence": null,
       "severity": 8,
-      "why_rank": "Sample identity feeds every later step, but T4a lists the derived IDs for confirmation and the stage's human check asks the same"
+      "why_rank": "Sample identity feeds every later step, but T4a asks the user to confirm the derived IDs"
      }
     ]
    },
@@ -783,18 +763,8 @@
       "prose_handling": [],
       "source": "gars/00_initialize_project/CONTEXT.md:249",
       "tool": "stage00_register.link",
-      "unhandled": [
-       2,
-       3
-      ],
-      "unhandled_emit_sites": {
-       "2": [
-        "gars/_system/stage00_register.py:510"
-       ],
-       "3": [
-        "gars/_system/stage00_register.py:500"
-       ]
-      }
+      "unhandled": [],
+      "unhandled_emit_sites": {}
      }
     ],
     "file_actions": [],
@@ -836,7 +806,7 @@
      "the inspected path"
     ],
     "kind": "judgment",
-    "note": "Exit 2 (pilot) and exit 3 (D1) have no branch.",
+    "note": "Exit 2 is routed by link's template field (T5) and exit 3 to T9 by the stage's exit table (00:179-180); T9's wording is wrong for link's precondition (D1). The pilot listed exit 2 as unbranched.",
     "question": 1,
     "rung_now": "R5",
     "rung_target": "R1",
@@ -844,14 +814,14 @@
     "unsaid": [
      {
       "decision": "Whether the user's reply to T4a is a yes before link runs",
-      "detection": 3,
+      "detection": 5,
       "fix": "A fixed answer (`link`), re-asked on anything else",
       "fix_rung": "R1",
       "goes_wrong": "T4a asks to 'Confirm ... or provide a different path' with no fixed answer; 'looks fine, but what about the undetermined files?' is the model's to read, and link cannot be undone inside the stage (re-linking needs --force, which is forbidden)",
       "id": "S00-yes",
       "occurrence": null,
-      "severity": 6,
-      "why_rank": "Wrong files stay linked until the user deletes the project, but T4b and the human check show what was linked"
+      "severity": 7,
+      "why_rank": "Files linked without real consent stay linked until the user deletes the project; T4b and the stage's human check show what was linked"
      }
     ]
    },
@@ -930,14 +900,14 @@
     "unsaid": [
      {
       "decision": "What happens to an assay after the user replies `skip`",
-      "detection": 1,
+      "detection": 2,
       "fix": "A helper drops the skipped assay's empty directory, or finalize ignores an assay marked skipped",
       "fix_rung": "R0",
       "goes_wrong": "T5 offers skip, but nothing removes the skipped assay: its raw/ stays empty and finalize fails on it ('raw/ is empty'), leaving a half-made project the contract tells the agent not to delete",
       "id": "S00-skip",
       "occurrence": null,
-      "severity": 4,
-      "why_rank": "A loud failure, but a dead end the user did not choose"
+      "severity": 5,
+      "why_rank": "A dead end the user did not choose, but a loud one at finalize"
      }
     ]
    },
@@ -1069,7 +1039,7 @@
      "the model's own id"
     ],
     "kind": "judgment",
-    "note": "Exit 2 (class, purpose, agreement or lock refusals) has no branch (pilot). The --sample-id-pattern this step repeats is refused by the guard (D4).",
+    "note": "Exit 2 (class, purpose, agreement or lock refusals) sets no template field, so the stage's exit table names no reply for it (pilot, confirmed). The --sample-id-pattern this step repeats is refused by the guard (D4).",
     "question": 1,
     "rung_now": "R5",
     "rung_target": "R3",
@@ -1176,6 +1146,7 @@
   {
    "decision": "The dataset's data class and purpose, passed to finalize",
    "detection": 8,
+   "elsewhere": [],
    "fix": "A step asks class and purpose from a closed menu built from the data policy table, T6 shows them, and finalize's refusals get a branch",
    "fix_rung": "R3",
    "goes_wrong": "Step 15's command carries --data-class and --purpose, but T1 promises to collect only the title, the assays and the paths, and no step asks. The model picks both, finalize locks them in dataset.tsv, and T6 never shows them. The guard lets an agent register 'public' only for a source a human declared public, so the class is fenced; the purpose (fixture, internal, pilot, commercial) is not, and it decides where the project's jobs may run: each class permits a list of venue and purpose pairs (data_policy.tsv, permitted_backends) and the local machine accepts only 'fixture' (venue_policy.py:56-87); retention follows the class, not the purpose",
@@ -1197,6 +1168,7 @@
   {
    "decision": "Which menu entry the user's earlier phrase matches ('Your request matches 01')",
    "detection": 5,
+   "elsewhere": [],
    "fix": "`assays --select` on the original phrase returns the match or the ambiguity; the model only renders it",
    "fix_rung": "R0",
    "goes_wrong": "Definitions forbid resolving a phrase yourself, yet step 3 asks the model to say which entry the request matches; 'RNA-seq' could be bulk or single-cell, the user tends to confirm a suggestion with one word, and a wrong suggestion creates the wrong assay's directories and config",
@@ -1221,10 +1193,11 @@
     "D4",
     "D22"
    ],
-   "detection": 3,
+   "detection": 4,
+   "elsewhere": [],
    "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",
    "fix_rung": "R1",
-   "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), so the model then improvises a road around it",
+   "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), and a malformed pattern crashes inspect, so the model then improvises a road around it",
    "group": 0,
    "id": "S00-pattern",
    "occurrence": null,
@@ -1238,40 +1211,20 @@
      "step": "10"
     }
    ],
-   "why_rank": "Sample identity feeds every later step, but T4a lists the derived IDs for confirmation and the stage's human check asks the same"
-  },
-  {
-   "decision": "What to do when the guard refuses inspect or link because no human declared the source public",
-   "detection": 2,
-   "fix": "Definitions name data_sources.tsv; a branch sends a template asking the human to declare the folder or run the step",
-   "fix_rung": "R4",
-   "goes_wrong": "An agent may run inspect, link and finalize only on a folder listed in data_sources.tsv; no contract mentions that file, so the reply to the refusal is the model's own: ask the user to run the step, ask them to declare the folder, or stop",
-   "group": 0,
-   "id": "S00-guard",
-   "occurrence": null,
-   "rank_in_stage": 4,
-   "severity": 7,
-   "stage": "Stage 00: register the project and its raw data",
-   "where": [
-    {
-     "contract": "00_initialize_project",
-     "source": "gars/00_initialize_project/CONTEXT.md:234-238",
-     "step": "9"
-    }
-   ],
-   "why_rank": "Stage 00 cannot finish in a guarded session without the human's declaration and the contract offers no compliant road; the refusal itself is loud"
+   "why_rank": "Sample identity feeds every later step, but T4a asks the user to confirm the derived IDs"
   },
   {
    "decision": "Whether the user's reply to T4a is a yes before link runs",
-   "detection": 3,
+   "detection": 5,
+   "elsewhere": [],
    "fix": "A fixed answer (`link`), re-asked on anything else",
    "fix_rung": "R1",
    "goes_wrong": "T4a asks to 'Confirm ... or provide a different path' with no fixed answer; 'looks fine, but what about the undetermined files?' is the model's to read, and link cannot be undone inside the stage (re-linking needs --force, which is forbidden)",
    "group": 0,
    "id": "S00-yes",
    "occurrence": null,
-   "rank_in_stage": 5,
-   "severity": 6,
+   "rank_in_stage": 4,
+   "severity": 7,
    "stage": "Stage 00: register the project and its raw data",
    "where": [
     {
@@ -1280,11 +1233,34 @@
      "step": "12"
     }
    ],
-   "why_rank": "Wrong files stay linked until the user deletes the project, but T4b and the human check show what was linked"
+   "why_rank": "Files linked without real consent stay linked until the user deletes the project; T4b and the stage's human check show what was linked"
+  },
+  {
+   "decision": "What to do when the guard refuses inspect or link because no human declared the source public",
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Definitions name data_sources.tsv; a branch sends a template asking the human to declare the folder or run the step",
+   "fix_rung": "R4",
+   "goes_wrong": "An agent may run inspect, link and finalize only on a folder listed in data_sources.tsv; no contract mentions that file, so the reply to the refusal is the model's own: ask the user to run the step, ask them to declare the folder, or stop",
+   "group": 0,
+   "id": "S00-guard",
+   "occurrence": null,
+   "rank_in_stage": 5,
+   "severity": 5,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:234-238",
+     "step": "9"
+    }
+   ],
+   "why_rank": "A dead end with no compliant road, but a loud one"
   },
   {
    "decision": "What happens to an assay after the user replies `skip`",
-   "detection": 1,
+   "detection": 2,
+   "elsewhere": [],
    "fix": "A helper drops the skipped assay's empty directory, or finalize ignores an assay marked skipped",
    "fix_rung": "R0",
    "goes_wrong": "T5 offers skip, but nothing removes the skipped assay: its raw/ stays empty and finalize fails on it ('raw/ is empty'), leaving a half-made project the contract tells the agent not to delete",
@@ -1292,7 +1268,7 @@
    "id": "S00-skip",
    "occurrence": null,
    "rank_in_stage": 6,
-   "severity": 4,
+   "severity": 5,
    "stage": "Stage 00: register the project and its raw data",
    "where": [
     {
@@ -1301,14 +1277,15 @@
      "step": "14"
     }
    ],
-   "why_rank": "A loud failure, but a dead end the user did not choose"
+   "why_rank": "A dead end the user did not choose, but a loud one at finalize"
   },
   {
    "decision": "Which part of the user's reply is the project title, and what its directory name is",
    "defects": [
     "D3"
    ],
-   "detection": 3,
+   "detection": 5,
+   "elsewhere": [],
    "fix": "assays takes the title and returns create's sanitized form, so T3 renders code's answer",
    "fix_rung": "R0",
    "goes_wrong": "A first reply may carry the title with an assay or a path; the model decides what the title is, and T3 shows a sanitized directory name that only create (step 6) computes, so the model sanitizes it itself, which Definitions forbid",
@@ -1325,7 +1302,7 @@
      "step": "2"
     }
    ],
-   "why_rank": "A wrong title is awkward to undo but changes no data, and T3b shows the real directory before any data is linked"
+   "why_rank": "A misleading message at worst: T3b shows the real directory before any data is linked"
   }
  ]
 }

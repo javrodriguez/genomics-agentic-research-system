@@ -4,6 +4,7 @@
  "call_sites": [
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --list",
    "emitted": [
     0,
@@ -33,6 +34,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/stage03_analysis.py create --project projects/<title> --slug <slug>",
    "emitted": [
     0,
@@ -56,6 +58,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>",
    "emitted": [
     0,
@@ -87,6 +90,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
    "emitted": [
     0,
@@ -116,6 +120,7 @@
   },
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model \"<model id>\"",
    "emitted": [
     0,
@@ -143,6 +148,8 @@
    }
   }
  ],
+ "exit_rules_without_reply": [],
+ "exit_table": null,
  "fenced_non_commands": [],
  "file_mentions_unclassified": [
   {

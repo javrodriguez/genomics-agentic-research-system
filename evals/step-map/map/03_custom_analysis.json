@@ -100,14 +100,14 @@
     "unsaid": [
      {
       "decision": "Which project, and which assay's artifacts, the analysis draws on",
-      "detection": 3,
+      "detection": 4,
       "fix": "List every assay's artifacts and let the plan name each input's assay",
       "fix_rung": "R0",
       "goes_wrong": "Step 1 lists artifacts for 'the relevant assay'; in a project with several assays the model picks one, and the plan's Inputs inherit that choice",
       "id": "S03-assay",
       "occurrence": null,
-      "severity": 5,
-      "why_rank": "The plan's Inputs table shows the choice before approval"
+      "severity": 6,
+      "why_rank": "The right analysis on the wrong data, but the plan the user approves lists its inputs"
      },
      {
       "decision": "How to spell a call the guard accepts only through the dispatcher",
@@ -535,18 +535,18 @@
       "why_rank": "A wasted session or a stalled one, visibly"
      },
      {
-      "decision": "What to do when the executor refuses the submission",
+      "decision": "Which reply reports a refused submission in stage 03",
       "defects": [
        "D12"
       ],
-      "detection": 6,
-      "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; never change config to pass a venue rule",
+      "detection": 2,
+      "fix": "Step 7 branches submit's exit 1 and 2 to T5 with the refusal verbatim",
       "fix_rung": "R4",
-      "goes_wrong": "No step branches on submit's exit: each sub-stage's submit step says only to capture job_id before T2 announces 'Submitted as job <job_id>', and stage 03's step 7 handles only an approval refusal. A venue-preflight refusal (unclassified or expired dataset, a route or memory rule) or a duplicate-submission refusal exits 1 or 2 with no branch, so the model either reports a submission that did not happen or improvises, for example by editing the config's memory declaration until the venue rule passes",
-      "id": "W-submit",
+      "goes_wrong": "Stage 03's Definitions say to report every refusal and stop (03:111), but step 7 names only T3 for an approval refusal and T4 for a submission; a venue or duplicate refusal has no template, so the model picks one",
+      "id": "S03-submit",
       "occurrence": null,
-      "severity": 7,
-      "why_rank": "The venue rules are a data-policy gate; an improvised way past one is a breach only a reader of the transcript would see"
+      "severity": 3,
+      "why_rank": "A wrong or misleading message about a refusal that the user still sees"
      },
      {
       "decision": "How to spell a call the guard accepts only through the dispatcher",
@@ -561,6 +561,31 @@
       "occurrence": null,
       "severity": 4,
       "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     },
+     {
+      "decision": "In what order, and with what dependencies, several analysis scripts run",
+      "detection": 3,
+      "fix": "The plan's Execution section lists the scripts in order and the executor runs them as one job, or with declared dependencies",
+      "fix_rung": "R2",
+      "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists, or read a stale copy left by an earlier attempt",
+      "id": "S03-order",
+      "occurrence": null,
+      "severity": 6,
+      "why_rank": "Mostly a crashed job that verify reports; a stale input is the rare, worse case"
+     },
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
      }
     ]
    },
@@ -852,13 +877,27 @@
        "D17"
       ],
       "detection": 9,
-      "fix": "The helper stamps the date (it already imports datetime) and appends the entry itself",
+      "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
       "fix_rung": "R0",
-      "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace, and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+      "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
       "id": "G-date",
       "occurrence": null,
-      "severity": 3,
-      "why_rank": "A wrong date misleads a later reader of the record but changes no result; nothing ever checks it"
+      "severity": 2,
+      "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
+     },
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
      }
     ]
    },
@@ -867,340 +906,9 @@
  ],
  "unsaid_ranked": [
   {
-   "decision": "What today's date is, for the HISTORY.md entry",
-   "defects": [
-    "D17"
-   ],
-   "detection": 9,
-   "fix": "The helper stamps the date (it already imports datetime) and appends the entry itself",
-   "fix_rung": "R0",
-   "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace, and no registered command reads the clock, so the permanent record carries the model's belief about the date",
-   "group": 1,
-   "id": "G-date",
-   "occurrence": null,
-   "rank_in_stage": 6,
-   "severity": 3,
-   "stage": "Stage 01: validate the design and write samplesheets",
-   "where": [
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:298-300",
-     "step": "13"
-    },
-    {
-     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
-     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:114-116",
-     "step": "9"
-    },
-    {
-     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
-     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:107-109",
-     "step": "9"
-    },
-    {
-     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
-     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:129-131",
-     "step": "9"
-    },
-    {
-     "contract": "methylseq__01_nfcore-methylseq-wrapper",
-     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:102-104",
-     "step": "9"
-    },
-    {
-     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:111-113",
-     "step": "9"
-    },
-    {
-     "contract": "rnaseq_bulk__02_rnaseq-de",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:127-131",
-     "step": "9"
-    },
-    {
-     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
-     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:134-136",
-     "step": "9"
-    },
-    {
-     "contract": "scrnaseq__02_scrna-qc-cluster",
-     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:100-101",
-     "step": "9"
-    },
-    {
-     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
-     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:115-117",
-     "step": "9"
-    },
-    {
-     "contract": "spatialvi__02_spatial-cluster-count",
-     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:147-148",
-     "step": "9"
-    },
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
-     "step": "10"
-    }
-   ],
-   "why_rank": "A wrong date misleads a later reader of the record but changes no result; nothing ever checks it"
-  },
-  {
-   "decision": "How to spell a call the guard accepts only through the dispatcher",
-   "defects": [
-    "D15"
-   ],
-   "detection": 2,
-   "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
-   "fix_rung": "R0",
-   "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
-   "group": 2,
-   "id": "G-door",
-   "occurrence": null,
-   "rank_in_stage": 7,
-   "severity": 4,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:165-178",
-     "step": "9"
-    },
-    {
-     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
-     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100-101",
-     "step": "5"
-    },
-    {
-     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
-     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104-106",
-     "step": "7"
-    },
-    {
-     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
-     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:93-94",
-     "step": "5"
-    },
-    {
-     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
-     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:97-99",
-     "step": "7"
-    },
-    {
-     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
-     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:115-116",
-     "step": "5"
-    },
-    {
-     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
-     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:119-121",
-     "step": "7"
-    },
-    {
-     "contract": "methylseq__01_nfcore-methylseq-wrapper",
-     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:88-89",
-     "step": "5"
-    },
-    {
-     "contract": "methylseq__01_nfcore-methylseq-wrapper",
-     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:92-94",
-     "step": "7"
-    },
-    {
-     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:97-98",
-     "step": "5"
-    },
-    {
-     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:101-103",
-     "step": "7"
-    },
-    {
-     "contract": "rnaseq_bulk__02_rnaseq-de",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:103-111",
-     "step": "3"
-    },
-    {
-     "contract": "rnaseq_bulk__02_rnaseq-de",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:112-114",
-     "step": "4"
-    },
-    {
-     "contract": "rnaseq_bulk__02_rnaseq-de",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:115-116",
-     "step": "5"
-    },
-    {
-     "contract": "rnaseq_bulk__02_rnaseq-de",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:117-118",
-     "step": "6"
-    },
-    {
-     "contract": "rnaseq_bulk__02_rnaseq-de",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:119-121",
-     "step": "7"
-    },
-    {
-     "contract": "rnaseq_bulk__02_rnaseq-de",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:122-126",
-     "step": "8"
-    },
-    {
-     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
-     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:123-123",
-     "step": "5"
-    },
-    {
-     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
-     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:124-125",
-     "step": "6"
-    },
-    {
-     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
-     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:126-126",
-     "step": "7"
-    },
-    {
-     "contract": "scrnaseq__02_scrna-qc-cluster",
-     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:92-92",
-     "step": "5"
-    },
-    {
-     "contract": "scrnaseq__02_scrna-qc-cluster",
-     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:93-93",
-     "step": "6"
-    },
-    {
-     "contract": "scrnaseq__02_scrna-qc-cluster",
-     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94-95",
-     "step": "7"
-    },
-    {
-     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
-     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:104-104",
-     "step": "5"
-    },
-    {
-     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
-     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:105-105",
-     "step": "6"
-    },
-    {
-     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
-     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:106-107",
-     "step": "7"
-    },
-    {
-     "contract": "spatialvi__02_spatial-cluster-count",
-     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:135-135",
-     "step": "5"
-    },
-    {
-     "contract": "spatialvi__02_spatial-cluster-count",
-     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:136-136",
-     "step": "6"
-    },
-    {
-     "contract": "spatialvi__02_spatial-cluster-count",
-     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:137-138",
-     "step": "7"
-    },
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
-     "step": "1"
-    },
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
-     "step": "7"
-    },
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:148-150",
-     "step": "8"
-    }
-   ],
-   "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
-  },
-  {
-   "decision": "What to do when the executor refuses the submission",
-   "defects": [
-    "D12"
-   ],
-   "detection": 6,
-   "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; never change config to pass a venue rule",
-   "fix_rung": "R4",
-   "goes_wrong": "No step branches on submit's exit: each sub-stage's submit step says only to capture job_id before T2 announces 'Submitted as job <job_id>', and stage 03's step 7 handles only an approval refusal. A venue-preflight refusal (unclassified or expired dataset, a route or memory rule) or a duplicate-submission refusal exits 1 or 2 with no branch, so the model either reports a submission that did not happen or improvises, for example by editing the config's memory declaration until the venue rule passes",
-   "group": 3,
-   "id": "W-submit",
-   "occurrence": null,
-   "rank_in_stage": 1,
-   "severity": 7,
-   "stage": "Stage 02 sub-stages: run the pipelines",
-   "where": [
-    {
-     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
-     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100-101",
-     "step": "5"
-    },
-    {
-     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
-     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:93-94",
-     "step": "5"
-    },
-    {
-     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
-     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:115-116",
-     "step": "5"
-    },
-    {
-     "contract": "methylseq__01_nfcore-methylseq-wrapper",
-     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:88-89",
-     "step": "5"
-    },
-    {
-     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:97-98",
-     "step": "5"
-    },
-    {
-     "contract": "rnaseq_bulk__02_rnaseq-de",
-     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:117-118",
-     "step": "6"
-    },
-    {
-     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
-     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:123-123",
-     "step": "5"
-    },
-    {
-     "contract": "scrnaseq__02_scrna-qc-cluster",
-     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:92-92",
-     "step": "5"
-    },
-    {
-     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
-     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:104-104",
-     "step": "5"
-    },
-    {
-     "contract": "spatialvi__02_spatial-cluster-count",
-     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:135-135",
-     "step": "5"
-    },
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
-     "step": "7"
-    }
-   ],
-   "why_rank": "The venue rules are a data-policy gate; an improvised way past one is a breach only a reader of the transcript would see"
-  },
-  {
    "decision": "How the approved method becomes code",
    "detection": 8,
+   "elsewhere": [],
    "fix": "Show the scripts for approval and bind their hashes into the approval record, as the plan's already is",
    "fix_rung": "R3",
    "goes_wrong": "The model writes the analysis scripts after approval; approval binds PLAN.md, not the scripts, and verify checks only that declared outputs exist, are non-empty and came from executor runs of unchanged scripts. A script that departs from the approved method, reads inputs the plan does not list, or computes the statistic differently passes every gate",
@@ -1221,7 +929,8 @@
   },
   {
    "decision": "Which project, and which assay's artifacts, the analysis draws on",
-   "detection": 3,
+   "detection": 4,
+   "elsewhere": [],
    "fix": "List every assay's artifacts and let the plan name each input's assay",
    "fix_rung": "R0",
    "goes_wrong": "Step 1 lists artifacts for 'the relevant assay'; in a project with several assays the model picks one, and the plan's Inputs inherit that choice",
@@ -1229,7 +938,7 @@
    "id": "S03-assay",
    "occurrence": null,
    "rank_in_stage": 2,
-   "severity": 5,
+   "severity": 6,
    "stage": "Stage 03: custom analysis",
    "where": [
     {
@@ -1238,18 +947,113 @@
      "step": "1"
     }
    ],
-   "why_rank": "The plan's Inputs table shows the choice before approval"
+   "why_rank": "The right analysis on the wrong data, but the plan the user approves lists its inputs"
+  },
+  {
+   "decision": "In what order, and with what dependencies, several analysis scripts run",
+   "detection": 3,
+   "elsewhere": [],
+   "fix": "The plan's Execution section lists the scripts in order and the executor runs them as one job, or with declared dependencies",
+   "fix_rung": "R2",
+   "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists, or read a stale copy left by an earlier attempt",
+   "group": 4,
+   "id": "S03-order",
+   "occurrence": null,
+   "rank_in_stage": 3,
+   "severity": 6,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "Mostly a crashed job that verify reports; a stale input is the rare, worse case"
+  },
+  {
+   "decision": "How to proceed when the guard refuses a step on a non-public project",
+   "defects": [
+    "D16"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 router: settings menus and routing",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+   "fix_rung": "R4",
+   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+   "group": 4,
+   "id": "G-closed",
+   "occurrence": null,
+   "rank_in_stage": 4,
+   "severity": 5,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
+     "step": "10"
+    }
+   ],
+   "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+  },
+  {
+   "decision": "How to spell a call the guard accepts only through the dispatcher",
+   "defects": [
+    "D15"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 02 router: settings menus and routing",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+   "fix_rung": "R0",
+   "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+   "group": 4,
+   "id": "G-door",
+   "occurrence": null,
+   "rank_in_stage": 5,
+   "severity": 4,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
+     "step": "1"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:148-150",
+     "step": "8"
+    }
+   ],
+   "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
   },
   {
    "decision": "How to 'monitor the job' after T4",
    "detection": 2,
+   "elsewhere": [],
    "fix": "Return after T4; the next invocation calls status once",
    "fix_rung": "R4",
    "goes_wrong": "Step 7 says to monitor the job; every other contract forbids polling in a loop and no step says when to check, so the model polls, sleeps, or waits for the user",
    "group": 4,
    "id": "S03-monitor",
    "occurrence": null,
-   "rank_in_stage": 3,
+   "rank_in_stage": 6,
    "severity": 3,
    "stage": "Stage 03: custom analysis",
    "where": [
@@ -1260,6 +1064,59 @@
     }
    ],
    "why_rank": "A wasted session or a stalled one, visibly"
+  },
+  {
+   "decision": "Which reply reports a refused submission in stage 03",
+   "defects": [
+    "D12"
+   ],
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Step 7 branches submit's exit 1 and 2 to T5 with the refusal verbatim",
+   "fix_rung": "R4",
+   "goes_wrong": "Stage 03's Definitions say to report every refusal and stop (03:111), but step 7 names only T3 for an approval refusal and T4 for a submission; a venue or duplicate refusal has no template, so the model picks one",
+   "group": 4,
+   "id": "S03-submit",
+   "occurrence": null,
+   "rank_in_stage": 7,
+   "severity": 3,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A wrong or misleading message about a refusal that the user still sees"
+  },
+  {
+   "decision": "What today's date is, for the HISTORY.md entry",
+   "defects": [
+    "D17"
+   ],
+   "detection": 9,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
+   "fix_rung": "R0",
+   "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+   "group": 4,
+   "id": "G-date",
+   "occurrence": null,
+   "rank_in_stage": 8,
+   "severity": 2,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
+     "step": "10"
+    }
+   ],
+   "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
   }
  ]
 }

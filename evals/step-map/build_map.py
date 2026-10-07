@@ -254,15 +254,21 @@ def group_of(cid):
 
 
 def rank(unsaid_index, contracts):
+    """One entry per decision per stage group it touches: a decision that recurs across stages
+    is ranked in each of them, on its own scores, at its earliest step in that stage."""
     out = []
     for uid, entry in unsaid_index.items():
         u = entry["unsaid"]
-        where = sorted(entry["where"])
-        first = where[0]
-        out.append(dict(u, group=group_of(first[2]),
-                        where=[{"contract": w[2], "step": w[3], "source": w[4]} for w in where],
-                        _key=(group_of(first[2]), -u["severity"], -u["detection"],
-                              -(u["occurrence"] or 0), first[0], first[1])))
+        by_group = {}
+        for w in sorted(entry["where"]):
+            by_group.setdefault(group_of(w[2]), []).append(w)
+        for group, where in sorted(by_group.items()):
+            first = where[0]
+            out.append(dict(u, group=group,
+                            where=[{"contract": w[2], "step": w[3], "source": w[4]} for w in where],
+                            elsewhere=sorted(GROUPS[g][0] for g in by_group if g != group),
+                            _key=(group, -u["severity"], -u["detection"],
+                                  -(u["occurrence"] or 0), first[0], first[1])))
     out.sort(key=lambda r: r["_key"])
     rank_in_group = {}
     for r in out:
@@ -307,15 +313,38 @@ def render(maps, ranked, summary, contracts):
         "`rung now` is where the step sits today; `target` is the lowest workable rung the fix would"
         " reach.",
         "",
-        "Scores, each 1 to 10: **severity**, the worst downstream consequence (10 a wrong scientific"
-        " result or a data-policy breach that nothing flags; 7 the stage dead-ends with no compliant"
-        " road; 5 wasted compute or a recoverable confusion; 3 a wrong or misleading message; 1"
-        " cosmetic) and **detection**, the chance the error escapes every later check (1 a code gate"
-        " always catches it; 3 a later code check usually does; 5 the stage's human check would if"
-        " done; 7 only an attentive expert notices; 10 nothing later can see it)."
-        " **Occurrence** is unmeasured for every decision here (no Gap Study pair has measured one),"
-        " so it is left empty and never decides a rank. Ranking: severity, then detection, then the"
-        " earliest step; scores are never multiplied.",
+        "Scores, each 1 to 10, applied to every decision by these anchors.",
+        "",
+        "**Severity**, the worst downstream consequence if the model gets it wrong:"
+        " 10 a data-policy breach on non-public data, or a wrong scientific result nothing flags;"
+        " 9 a wrong scientific result, complete and plausible, the user may act on;"
+        " 8 the wrong analysis runs (wrong assay, settings, samples or inputs), or a permanent"
+        " governance record is wrong;"
+        " 7 the user's data or work is changed irreversibly without consent;"
+        " 6 false provenance in the permanent record, or the right analysis on the wrong project;"
+        " 5 the stage dead-ends with no compliant road, compute is wasted, or a setting is changed"
+        " without the user;"
+        " 4 a stall or confusion the user has to sort out;"
+        " 3 a wrong or misleading message;"
+        " 2 a wrong but harmless detail in a record;"
+        " 1 cosmetic.",
+        "",
+        "**Detection**, the chance the error escapes every later check:"
+        " 1 a code gate always catches it before harm;"
+        " 2 it fails loudly at once (a refusal, a crash);"
+        " 3 a later code check usually catches it;"
+        " 4 the user is asked to confirm it before it takes effect;"
+        " 5 it is shown to the user unasked, or the stage's human check covers it;"
+        " 6 it sits in a record or report the user is pointed to, for one who looks closely;"
+        " 7 only an attentive expert notices it in the outputs;"
+        " 8 nothing shows it; only reading the files or the transcript reveals it;"
+        " 9 nothing shows it and nothing later checks it;"
+        " 10 nothing could ever reveal it.",
+        "",
+        "**Occurrence** is unmeasured for every decision here (no paired measurement exists yet),"
+        " so it is left empty and never decides a rank. Ranking, within each stage: severity, then"
+        " detection, then the earliest step; scores are never multiplied. A decision that recurs in"
+        " several stages is ranked in each of them.",
         "",
         "## Counts (extracted)",
         "",
@@ -328,8 +357,10 @@ def render(maps, ranked, summary, contracts):
         " uninstantiable) |" % (s["command_accounting"]["seen"], s["command_accounting"]["mapped"],
                                 s["command_accounting"]["unregistered"],
                                 s["command_accounting"]["uninstantiable"]),
-        "| Unregistered commands named in steps | %s |" % ", ".join(
-            "`%s`" % x for x in s["unregistered_in_process"]),
+        "| Unregistered commands steps need | %s |" % "; ".join(
+            "`%s` (%s)" % (x, ", ".join(sorted({u["kind"] for u in s["unregistered_calls"]
+                                               if u["executable"] == x})))
+            for x in s["unregistered_in_process"]),
         "| Call sites with exit branches compared | %d |" % s["exits"]["call_sites"],
         "| Exit codes the helpers can emit there (static) | %d |" % s["exits"]["emitted"],
         "| Codes the contract branches on | %d |" % s["exits"]["handled"],
@@ -396,7 +427,8 @@ def render(maps, ranked, summary, contracts):
                 where = "%s and %d more" % (", ".join(
                     "%s %s" % (w["contract"], w["step"]) for w in r["where"][:2]), len(r["where"]) - 2)
             lines.append("| %d | %s | %s | %s | %d | %d | %s → %s |" % (
-                r["rank_in_stage"], r["id"], md_escape(where), md_escape(r["decision"]),
+                r["rank_in_stage"], r["id"], md_escape(where + (" (also in: %s)" % "; ".join(
+                    r["elsewhere"]) if r["elsewhere"] else "")), md_escape(r["decision"]),
                 r["severity"], r["detection"], md_escape(r["fix"]), r["fix_rung"]))
         lines.append("")
     lines += ["## Every step", ""]

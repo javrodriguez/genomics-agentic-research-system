@@ -41,24 +41,24 @@
    "rung_why": "Matching words to a project directory and an Assay ID has no rule; stage 00's normalising resolver exists for assays but is not used here.",
    "unsaid": [
     {
-     "id": "R-project",
-     "decision": "Which project and assay the user's words mean",
-     "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right pipeline on the wrong project",
+     "id": "G-project",
+     "decision": "Which project (and assay) the user's words mean",
+     "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a project directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right step on the wrong project",
      "severity": 6,
-     "detection": 3,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "T1 shows the project and assay before anything runs, so an attentive user catches it",
-     "fix": "A resolver lists the matching projects and assays; the model renders, the user picks",
+     "why_rank": "The right analysis on the wrong project; the stage's opening message names the project, unasked, before anything runs",
+     "fix": "A resolver lists the matching projects and assays; the model renders them, the user picks",
      "fix_rung": "R1"
     },
     {
      "id": "G-closed",
      "decision": "How to proceed when the guard refuses a step on a non-public project",
-     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core wrapper subcommand, reads of _config/ and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
-     "severity": 6,
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
      "detection": 2,
      "occurrence": null,
-     "why_rank": "The guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
      "fix_rung": "R4",
      "defects": [
@@ -116,9 +116,9 @@
      "decision": "How a scrnaseq user's library chemistry gets into the config",
      "goes_wrong": "configure.py makes chemistry scrnaseq's decision and has a protocols menu, but step 3a and T8 name only the genome, contrast and peak menus; the model either asks in free text and passes the user's words to apply, or never asks. apply accepts any listed chemistry, and a wrong but listed one runs to completion with barcodes read at the wrong offsets",
      "severity": 9,
-     "detection": 8,
+     "detection": 7,
      "occurrence": null,
-     "why_rank": "The seeded config calls it its most dangerous key: a wrong value produces a plausible matrix and no error, and the wrapper's check refuses only a chemistry the aligner cannot run",
+     "why_rank": "A plausible, scrambled or empty-looking matrix and no error; only an attentive expert reading the cell counts notices",
      "fix": "Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it",
      "fix_rung": "R1",
      "defects": [
@@ -128,11 +128,11 @@
     {
      "id": "R-formula",
      "decision": "Turning the user's words about the model ('account for batch') into a DE formula",
-     "goes_wrong": "Scope allows a formula 'the user gave you', and users give words, not formula syntax; the model writes the formula and apply checks only its form, so a wrong covariate or interaction becomes the tested model",
+     "goes_wrong": "Scope allows a formula 'the user gave you', and users give words, not formula syntax; the model writes the formula and apply checks only that each term names a column of the design table, so a wrong covariate or interaction becomes the tested model",
      "severity": 9,
      "detection": 4,
      "occurrence": null,
-     "why_rank": "A wrong model changes every p-value; T9 shows the formula before writing, a real check only for a user who reads formula syntax",
+     "why_rank": "A wrong model changes every p-value; T9 asks the user to confirm the formula, a real check only for a user who reads formula syntax",
      "fix": "Formula choices built from the design table's own columns, as the contrasts are, confirmed in T9",
      "fix_rung": "R1"
     },
@@ -150,6 +150,17 @@
       "D8",
       "D9"
      ]
+    },
+    {
+     "id": "R-factor",
+     "decision": "Which design factor the contrast compares",
+     "goes_wrong": "contrasts and apply default to --factor condition, which no contract mentions, and apply also accepts a typed factor,numerator,denominator; when the design carries another factor the user cares about, the model decides which one the menu is built from, or types a contrast itself",
+     "severity": 6,
+     "detection": 4,
+     "occurrence": null,
+     "why_rank": "Usually condition is the only experimental factor, and T9 shows the contrast for confirmation",
+     "fix": "The contrast menu lists the factor with each pair, and apply refuses a typed contrast",
+     "fix_rung": "R1"
     }
    ]
   },
@@ -228,11 +239,11 @@
     {
      "id": "W-poll",
      "decision": "When to refresh a submitted job's STATUS, and who does it",
-     "goes_wrong": "Only executorlib.py status moves STATUS from SUBMITTED to VALIDATING, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's status call is reached only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
-     "severity": 5,
+     "goes_wrong": "STATUS moves from SUBMITTED to VALIDATING when executorlib.py status (or collect's own gate) asks the scheduler, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's own status step is behind both, so it runs only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+     "severity": 4,
      "detection": 2,
      "occurrence": null,
-     "why_rank": "A stall, not a wrong result, and a visible one; but every assay passes through it",
+     "why_rank": "A stall the user has to sort out, and a visible one; but every assay passes through it",
      "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
      "fix_rung": "R0",
      "defects": [
@@ -265,10 +276,10 @@
      "id": "R-failed",
      "decision": "What to do once the user decides how to resolve a failed or cancelled sub-stage",
      "goes_wrong": "T6 says corrected inputs need prepare again; nothing says how a retry is approved (the executor requires a human's approve-action) or when cutandrun's prepare --resume-refresh applies, so the model improvises the re-run",
-     "severity": 5,
+     "severity": 4,
      "detection": 3,
      "occurrence": null,
-     "why_rank": "The executor's retry policy refuses an unapproved retry, so the usual harm is a muddled recovery",
+     "why_rank": "A muddled recovery the user has to sort out; the executor's retry policy refuses an unapproved retry",
      "fix": "A written recovery branch per failure class, naming the human's approval command",
      "fix_rung": "R4"
     }

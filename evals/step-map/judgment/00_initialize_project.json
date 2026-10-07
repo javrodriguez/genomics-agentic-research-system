@@ -45,9 +45,9 @@
      "decision": "Which part of the user's reply is the project title, and what its directory name is",
      "goes_wrong": "A first reply may carry the title with an assay or a path; the model decides what the title is, and T3 shows a sanitized directory name that only create (step 6) computes, so the model sanitizes it itself, which Definitions forbid",
      "severity": 3,
-     "detection": 3,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "A wrong title is awkward to undo but changes no data, and T3b shows the real directory before any data is linked",
+     "why_rank": "A misleading message at worst: T3b shows the real directory before any data is linked",
      "fix": "assays takes the title and returns create's sanitized form, so T3 renders code's answer",
      "fix_rung": "R0",
      "defects": [
@@ -89,7 +89,7 @@
      "fix_rung": "R0"
     }
    ],
-   "note": "Exit 3 (assay map missing) has no branch here or at step 4 (D2)."
+   "note": "Exit 3 (assay map missing) is routed to T9 by the stage's exit table (00:180), whose text says a project was created; none exists yet at this step (D1)."
   },
   "4": {
    "actor": [
@@ -151,7 +151,7 @@
    "question": 2,
    "rung_why": "Pure code once the IDs are passed.",
    "unsaid": [],
-   "note": "Exit 3 (title sanitizes to nothing, map or stamp missing) has no branch (the pilot's create exit 3)."
+   "note": "Exit 3 (title sanitizes to nothing, map or stamp missing) is routed to T9 by the stage's exit table (00:180), whose text says a project was created; none was (D1). The pilot listed this as unbranched."
   },
   "7": {
    "actor": [
@@ -216,10 +216,10 @@
      "id": "S00-guard",
      "decision": "What to do when the guard refuses inspect or link because no human declared the source public",
      "goes_wrong": "An agent may run inspect, link and finalize only on a folder listed in data_sources.tsv; no contract mentions that file, so the reply to the refusal is the model's own: ask the user to run the step, ask them to declare the folder, or stop",
-     "severity": 7,
+     "severity": 5,
      "detection": 2,
      "occurrence": null,
-     "why_rank": "Stage 00 cannot finish in a guarded session without the human's declaration and the contract offers no compliant road; the refusal itself is loud",
+     "why_rank": "A dead end with no compliant road, but a loud one",
      "fix": "Definitions name data_sources.tsv; a branch sends a template asking the human to declare the folder or run the step",
      "fix_rung": "R4"
     }
@@ -251,11 +251,11 @@
     {
      "id": "S00-pattern",
      "decision": "Turning the user's description of their file names into a sample-ID regex",
-     "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), so the model then improvises a road around it",
+     "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), and a malformed pattern crashes inspect, so the model then improvises a road around it",
      "severity": 8,
-     "detection": 3,
+     "detection": 4,
      "occurrence": null,
-     "why_rank": "Sample identity feeds every later step, but T4a lists the derived IDs for confirmation and the stage's human check asks the same",
+     "why_rank": "Sample identity feeds every later step, but T4a asks the user to confirm the derived IDs",
      "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",
      "fix_rung": "R1",
      "defects": [
@@ -313,15 +313,15 @@
      "id": "S00-yes",
      "decision": "Whether the user's reply to T4a is a yes before link runs",
      "goes_wrong": "T4a asks to 'Confirm ... or provide a different path' with no fixed answer; 'looks fine, but what about the undetermined files?' is the model's to read, and link cannot be undone inside the stage (re-linking needs --force, which is forbidden)",
-     "severity": 6,
-     "detection": 3,
+     "severity": 7,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "Wrong files stay linked until the user deletes the project, but T4b and the human check show what was linked",
+     "why_rank": "Files linked without real consent stay linked until the user deletes the project; T4b and the stage's human check show what was linked",
      "fix": "A fixed answer (`link`), re-asked on anything else",
      "fix_rung": "R1"
     }
    ],
-   "note": "Exit 2 (pilot) and exit 3 (D1) have no branch."
+   "note": "Exit 2 is routed by link's template field (T5) and exit 3 to T9 by the stage's exit table (00:179-180); T9's wording is wrong for link's precondition (D1). The pilot listed exit 2 as unbranched."
   },
   "13": {
    "actor": [
@@ -362,10 +362,10 @@
      "id": "S00-skip",
      "decision": "What happens to an assay after the user replies `skip`",
      "goes_wrong": "T5 offers skip, but nothing removes the skipped assay: its raw/ stays empty and finalize fails on it ('raw/ is empty'), leaving a half-made project the contract tells the agent not to delete",
-     "severity": 4,
-     "detection": 1,
+     "severity": 5,
+     "detection": 2,
      "occurrence": null,
-     "why_rank": "A loud failure, but a dead end the user did not choose",
+     "why_rank": "A dead end the user did not choose, but a loud one at finalize",
      "fix": "A helper drops the skipped assay's empty directory, or finalize ignores an assay marked skipped",
      "fix_rung": "R0"
     }
@@ -408,7 +408,7 @@
      "fix_rung": "R3"
     }
    ],
-   "note": "Exit 2 (class, purpose, agreement or lock refusals) has no branch (pilot). The --sample-id-pattern this step repeats is refused by the guard (D4)."
+   "note": "Exit 2 (class, purpose, agreement or lock refusals) sets no template field, so the stage's exit table names no reply for it (pilot, confirmed). The --sample-id-pattern this step repeats is refused by the guard (D4)."
   },
   "16": {
    "actor": [

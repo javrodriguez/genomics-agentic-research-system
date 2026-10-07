@@ -12,7 +12,13 @@ Each step has two kinds of field.
 Rungs: R0 pure code; R1 code checks the form; R2 model proposes, code verifies; R3 model proposes, a human confirms; R4 model judges under a written rule; R5 unsaid. A step's rung is placed by the first of the method's ordered questions that applies (Q1 unsaid decision, Q2 an algorithm can do it, Q3 code can verify it, Q4 wrong output acts outside, is irreversible or becomes a claim, Q5 otherwise).
 `rung now` is where the step sits today; `target` is the lowest workable rung the fix would reach.
 
-Scores, each 1 to 10: **severity**, the worst downstream consequence (10 a wrong scientific result or a data-policy breach that nothing flags; 7 the stage dead-ends with no compliant road; 5 wasted compute or a recoverable confusion; 3 a wrong or misleading message; 1 cosmetic) and **detection**, the chance the error escapes every later check (1 a code gate always catches it; 3 a later code check usually does; 5 the stage's human check would if done; 7 only an attentive expert notices; 10 nothing later can see it). **Occurrence** is unmeasured for every decision here (no Gap Study pair has measured one), so it is left empty and never decides a rank. Ranking: severity, then detection, then the earliest step; scores are never multiplied.
+Scores, each 1 to 10, applied to every decision by these anchors.
+
+**Severity**, the worst downstream consequence if the model gets it wrong: 10 a data-policy breach on non-public data, or a wrong scientific result nothing flags; 9 a wrong scientific result, complete and plausible, the user may act on; 8 the wrong analysis runs (wrong assay, settings, samples or inputs), or a permanent governance record is wrong; 7 the user's data or work is changed irreversibly without consent; 6 false provenance in the permanent record, or the right analysis on the wrong project; 5 the stage dead-ends with no compliant road, compute is wasted, or a setting is changed without the user; 4 a stall or confusion the user has to sort out; 3 a wrong or misleading message; 2 a wrong but harmless detail in a record; 1 cosmetic.
+
+**Detection**, the chance the error escapes every later check: 1 a code gate always catches it before harm; 2 it fails loudly at once (a refusal, a crash); 3 a later code check usually catches it; 4 the user is asked to confirm it before it takes effect; 5 it is shown to the user unasked, or the stage's human check covers it; 6 it sits in a record or report the user is pointed to, for one who looks closely; 7 only an attentive expert notices it in the outputs; 8 nothing shows it; only reading the files or the transcript reveals it; 9 nothing shows it and nothing later checks it; 10 nothing could ever reveal it.
+
+**Occurrence** is unmeasured for every decision here (no paired measurement exists yet), so it is left empty and never decides a rank. Ranking, within each stage: severity, then detection, then the earliest step; scores are never multiplied. A decision that recurs in several stages is ranked in each of them.
 
 ## Counts (extracted)
 
@@ -22,11 +28,11 @@ Scores, each 1 to 10: **severity**, the worst downstream consequence (10 a wrong
 | Numbered steps | 142 |
 | Response templates | 94 |
 | Commands named in steps | 93 (80 mapped to a registry tool, 13 unregistered, 0 uninstantiable) |
-| Unregistered commands named in steps | `date`, `sbatch` |
+| Unregistered commands steps need | `date` (implicit); `sbatch` (executable) |
 | Call sites with exit branches compared | 73 |
 | Exit codes the helpers can emit there (static) | 230 |
 | Codes the contract branches on | 85 |
-| Non-zero codes with no branch (static) | 101 |
+| Non-zero codes with no branch (static) | 95 |
 | Fixed answers (accept tokens) | `cancel`, `skip`, `verify` |
 | Template placeholders | 385 seen: 152 graded against the backing call's keys (key, label, unbound, no source), 233 not graded (context words, choices, model-written text, artifact paths); by kind: artifact 50, choice 19, composed 69, generic 95, key 79, label 17, no_source 38, unbound 18 |
 | Exit codes ruled unreachable by a cited reading | 7 (rulings re-checked against their lines on every run) |
@@ -41,22 +47,22 @@ Scores, each 1 to 10: **severity**, the worst downstream consequence (10 a wrong
 
 | Rung now | Steps |
 |---|---|
-| R0 | 27 |
+| R0 | 3 |
 | R1 | 0 |
 | R2 | 0 |
 | R3 | 4 |
 | R4 | 34 |
-| R5 | 77 |
+| R5 | 101 |
 
 An R5 step is one with at least one decision no rule covers; most carry only a low-severity cross-cutting one. By each R5 step's worst unsaid decision:
 
 | Worst unsaid decision in the step | R5 steps |
 |---|---|
-| severity 7-10 | 20 |
-| severity 5-6 | 32 |
-| severity 1-4 | 25 |
+| severity 7-10 | 11 |
+| severity 5-6 | 67 |
+| severity 1-4 | 23 |
 
-Of the severity 1-4 steps, the unsaid decisions are: G-date (12 steps); G-door (9 steps); S00-skip (1 step); S00-title (1 step); S01-gate (1 step); S01-route (1 step).
+Of the severity 1-4 steps, the unsaid decisions are: G-door, W-jobid, W-poll (10 steps); G-door (9 steps); R-failed (1 step); S00-title (1 step); S01-route (1 step); W-poll (1 step).
 
 ## Top unsaid decisions per stage (judgment, ranked)
 
@@ -66,53 +72,67 @@ Of the severity 1-4 steps, the unsaid decisions are: G-date (12 steps); G-door (
 |---|---|---|---|---|---|---|
 | 1 | S00-class | 00_initialize_project 15 | The dataset's data class and purpose, passed to finalize | 8 | 8 | A step asks class and purpose from a closed menu built from the data policy table, T6 shows them, and finalize's refusals get a branch → R3 |
 | 2 | S00-match | 00_initialize_project 3 | Which menu entry the user's earlier phrase matches ('Your request matches 01') | 8 | 5 | `assays --select` on the original phrase returns the match or the ambiguity; the model only renders it → R0 |
-| 3 | S00-pattern | 00_initialize_project 10 | Turning the user's description of their file names into a sample-ID regex | 8 | 3 | The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number → R1 |
-| 4 | S00-guard | 00_initialize_project 9 | What to do when the guard refuses inspect or link because no human declared the source public | 7 | 2 | Definitions name data_sources.tsv; a branch sends a template asking the human to declare the folder or run the step → R4 |
-| 5 | S00-yes | 00_initialize_project 12 | Whether the user's reply to T4a is a yes before link runs | 6 | 3 | A fixed answer (`link`), re-asked on anything else → R1 |
-| 6 | S00-skip | 00_initialize_project 14 | What happens to an assay after the user replies `skip` | 4 | 1 | A helper drops the skipped assay's empty directory, or finalize ignores an assay marked skipped → R0 |
-| 7 | S00-title | 00_initialize_project 2 | Which part of the user's reply is the project title, and what its directory name is | 3 | 3 | assays takes the title and returns create's sanitized form, so T3 renders code's answer → R0 |
+| 3 | S00-pattern | 00_initialize_project 10 | Turning the user's description of their file names into a sample-ID regex | 8 | 4 | The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number → R1 |
+| 4 | S00-yes | 00_initialize_project 12 | Whether the user's reply to T4a is a yes before link runs | 7 | 5 | A fixed answer (`link`), re-asked on anything else → R1 |
+| 5 | S00-guard | 00_initialize_project 9 | What to do when the guard refuses inspect or link because no human declared the source public | 5 | 2 | Definitions name data_sources.tsv; a branch sends a template asking the human to declare the folder or run the step → R4 |
+| 6 | S00-skip | 00_initialize_project 14 | What happens to an assay after the user replies `skip` | 5 | 2 | A helper drops the skipped assay's empty directory, or finalize ignores an assay marked skipped → R0 |
+| 7 | S00-title | 00_initialize_project 2 | Which part of the user's reply is the project title, and what its directory name is | 3 | 5 | assays takes the title and returns create's sanitized form, so T3 renders code's answer → R0 |
 
 ### Stage 01: validate the design and write samplesheets
 
 | Rank | Id | Where | Decision the model makes silently | Sev | Det | Fix |
 |---|---|---|---|---|---|---|
-| 1 | S01-declare | 01_prepare_samplesheets 2 | Mapping the user's words to strandedness, unit of replication, reference release and pairing | 9 | 8 | A closed menu per key with each value's meaning, as stage 02's menus do; the user picks; code writes the YAML and the HISTORY line → R1 |
-| 2 | S01-offer | 01_prepare_samplesheets 14 | Whether to take values for the remaining config decisions in free text | 7 | 5 | Delete step 14's offer; T4 already says stage 02 will offer menus → R4 |
-| 3 | S01-yes | 01_prepare_samplesheets 6, 01_prepare_samplesheets 7 | Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both | 7 | 4 | A fixed answer per gate (`exclude`, `overwrite`), and the writer refuses a flag with no matching recorded answer → R2 |
-| 4 | G-closed | 01_prepare_samplesheets 2, 02_bioinformatics 2 | How to proceed when the guard refuses a step on a non-public project | 6 | 2 | Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops → R4 |
-| 5 | S01-deep | 01_prepare_samplesheets 8 | How to run an accepted deep check when the cohort needs scheduling | 5 | 2 | The deep check runs through the executor with a generated script, like every pipeline → R0 |
-| 6 | G-date | 01_prepare_samplesheets 13, atacseq_bulk__01_nfcore-atacseq-wrapper 9 and 10 more | What today's date is, for the HISTORY.md entry | 3 | 9 | The helper stamps the date (it already imports datetime) and appends the entry itself → R0 |
-| 7 | S01-gate | 01_prepare_samplesheets 11 | What the writer's exit 1 means | 3 | 3 | Distinct exit codes, or a phase field the reply keys on → R0 |
+| 1 | S01-declare | 01_prepare_samplesheets 2 | Turning the user's words into strandedness, replication unit, release and pairing | 9 | 6 | A numbered menu per setting with each value's meaning, as stage 02 offers genomes; an answer outside it is re-asked; code writes the YAML and the HISTORY line → R1 |
+| 2 | S01-yes | 01_prepare_samplesheets 6, 01_prepare_samplesheets 7 | Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both | 8 | 5 | A fixed answer per gate (`exclude`, `overwrite`), and the writer refuses a switch with no matching recorded answer → R2 |
+| 3 | S01-offer | 01_prepare_samplesheets 14 | Whether to take values for the remaining config decisions in free text | 8 | 5 | Delete step 14's offer; T4 already says stage 02 will offer menus → R4 |
+| 4 | S01-gate | 01_prepare_samplesheets 11 | What the writer's exit 1 means, and what it leaves on disk | 8 | 3 | Distinct codes or a phase field the reply keys on, and the writer removes what it wrote when its own gate fails → R0 |
+| 5 | G-project | 01_prepare_samplesheets 2 (also in: Stage 02 router: settings menus and routing) | Which project (and assay) the user's words mean | 6 | 5 | A resolver lists the matching projects and assays; the model renders them, the user picks → R1 |
+| 6 | S01-deep | 01_prepare_samplesheets 8 | How to run an accepted deep check when the cohort needs scheduling | 5 | 6 | The deep check runs through the executor with a generated script, like every pipeline → R0 |
+| 7 | G-closed | 01_prepare_samplesheets 2, 01_prepare_samplesheets 3 and 2 more (also in: Stage 02 router: settings menus and routing; Stage 02 sub-stages: run the pipelines; Stage 03: custom analysis) | How to proceed when the guard refuses a step on a non-public project | 5 | 2 | Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops → R4 |
 | 8 | S01-route | 01_prepare_samplesheets 5 | Which failures send the user back to T9 and which stop the stage | 3 | 1 | The check's JSON marks each failure's owner (config or design) → R0 |
+| 9 | G-date | 01_prepare_samplesheets 13, 01_prepare_samplesheets 2 (also in: Stage 02 sub-stages: run the pipelines; Stage 03: custom analysis) | What today's date is, for the HISTORY.md entry | 2 | 9 | The helper stamps the date itself, as stage 00's finalize already does, and appends the entry → R0 |
 
 ### Stage 02 router: settings menus and routing
 
 | Rank | Id | Where | Decision the model makes silently | Sev | Det | Fix |
 |---|---|---|---|---|---|---|
-| 1 | R-protocol | 02_bioinformatics 3a | How a scrnaseq user's library chemistry gets into the config | 9 | 8 | Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it → R1 |
+| 1 | R-protocol | 02_bioinformatics 3a | How a scrnaseq user's library chemistry gets into the config | 9 | 7 | Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it → R1 |
 | 2 | R-formula | 02_bioinformatics 3a | Turning the user's words about the model ('account for batch') into a DE formula | 9 | 4 | Formula choices built from the design table's own columns, as the contrasts are, confirmed in T9 → R1 |
-| 3 | R-project | 02_bioinformatics 2 | Which project and assay the user's words mean | 6 | 3 | A resolver lists the matching projects and assays; the model renders, the user picks → R1 |
-| 4 | R-failed | 02_bioinformatics 8 | What to do once the user decides how to resolve a failed or cancelled sub-stage | 5 | 3 | A written recovery branch per failure class, naming the human's approval command → R4 |
-| 5 | W-poll | 02_bioinformatics 7, atacseq_bulk__01_nfcore-atacseq-wrapper 7 and 9 more | When to refresh a submitted job's STATUS, and who does it | 5 | 2 | The router calls status once before routing a SUBMITTED or RUNNING sub-stage → R0 |
-| 6 | R-required | 02_bioinformatics 3a | Whether the config still has decisions to make | 4 | 2 | Code reports the pending decisions (the wrappers' config_unfilled check already computes them) → R0 |
-| 7 | G-door | 02_bioinformatics 9, atacseq_bulk__01_nfcore-atacseq-wrapper 5 and 30 more | How to spell a call the guard accepts only through the dispatcher | 4 | 2 | Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project → R0 |
+| 3 | G-project | 02_bioinformatics 2 (also in: Stage 01: validate the design and write samplesheets) | Which project (and assay) the user's words mean | 6 | 5 | A resolver lists the matching projects and assays; the model renders them, the user picks → R1 |
+| 4 | R-factor | 02_bioinformatics 3a | Which design factor the contrast compares | 6 | 4 | The contrast menu lists the factor with each pair, and apply refuses a typed contrast → R1 |
+| 5 | G-closed | 02_bioinformatics 2 (also in: Stage 01: validate the design and write samplesheets; Stage 02 sub-stages: run the pipelines; Stage 03: custom analysis) | How to proceed when the guard refuses a step on a non-public project | 5 | 2 | Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops → R4 |
+| 6 | R-failed | 02_bioinformatics 8 | What to do once the user decides how to resolve a failed or cancelled sub-stage | 4 | 3 | A written recovery branch per failure class, naming the human's approval command → R4 |
+| 7 | R-required | 02_bioinformatics 3a | Whether the config still has decisions to make | 4 | 2 | Code reports the pending decisions (the wrappers' config_unfilled check already computes them) → R0 |
+| 8 | W-poll | 02_bioinformatics 7 (also in: Stage 02 sub-stages: run the pipelines) | When to refresh a submitted job's STATUS, and who does it | 4 | 2 | The router calls status once before routing a SUBMITTED or RUNNING sub-stage → R0 |
+| 9 | G-door | 02_bioinformatics 9 (also in: Stage 02 sub-stages: run the pipelines; Stage 03: custom analysis) | How to spell a call the guard accepts only through the dispatcher | 4 | 2 | Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project → R0 |
 
 ### Stage 02 sub-stages: run the pipelines
 
 | Rank | Id | Where | Decision the model makes silently | Sev | Det | Fix |
 |---|---|---|---|---|---|---|
-| 1 | W-submit | atacseq_bulk__01_nfcore-atacseq-wrapper 5, chipseq_bulk__01_nfcore-chipseq-wrapper 5 and 9 more | What to do when the executor refuses the submission | 7 | 6 | Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; never change config to pass a venue rule → R4 |
-| 2 | D-handoff | rnaseq_bulk__02_rnaseq-de 8, scrnaseq__02_scrna-qc-cluster 3 and 3 more | Which input path to pass, and which sub-stage to name as its supplier at collect | 6 | 4 | Each sub-stage resolves its own inputs (rnaseq-de already does at its step 3) and collect derives the supplier from the resolver → R0 |
-| 3 | W-reentry | atacseq_bulk__01_nfcore-atacseq-wrapper 2, chipseq_bulk__01_nfcore-chipseq-wrapper 2 and 8 more | Where to resume a sub-stage whose STATUS is VALIDATING, ARTIFACT_MISSING, STALE or FAILED | 5 | 4 | Step 2 branches every STATUS value to its step, as the router's steps 6-9 do; better, the wrapper reports the next action from STATUS → R0 |
-| 4 | X-cutandrun-resume | cutandrun__01_nfcore-cutandrun-wrapper 4 | Whether a re-run after a FAILED run is a --resume-refresh, a fresh run or a new analysis | 5 | 4 | A recovery step in the Process naming the conditions and asking the user to choose resume or a fresh run → R3 |
+| 1 | D-handoff | rnaseq_bulk__02_rnaseq-de 8, scrnaseq__02_scrna-qc-cluster 3 and 3 more | Which input path to pass, and which sub-stage to name as its supplier at collect | 6 | 6 | Each sub-stage resolves its own inputs and collect derives the supplier from the resolver → R0 |
+| 2 | W-reentry | atacseq_bulk__01_nfcore-atacseq-wrapper 2, chipseq_bulk__01_nfcore-chipseq-wrapper 2 and 8 more | Where to resume a sub-stage whose STATUS is VALIDATING, ARTIFACT_MISSING, STALE or FAILED | 5 | 3 | Step 2 branches every STATUS value to its step, as the router's steps 6-9 do; better, the wrapper reports the next action from STATUS → R0 |
+| 3 | W-submit | atacseq_bulk__01_nfcore-atacseq-wrapper 5, chipseq_bulk__01_nfcore-chipseq-wrapper 5 and 8 more | What to do when GARS's pre-submission check refuses the job | 5 | 3 | Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; settings change only on the user's word → R4 |
+| 4 | G-closed | atacseq_bulk__01_nfcore-atacseq-wrapper 3, atacseq_bulk__01_nfcore-atacseq-wrapper 4 and 35 more (also in: Stage 01: validate the design and write samplesheets; Stage 02 router: settings menus and routing; Stage 03: custom analysis) | How to proceed when the guard refuses a step on a non-public project | 5 | 2 | Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops → R4 |
+| 5 | D-sigcount | rnaseq_bulk__02_rnaseq-de 9 | The 'significant at padj < 0.05' count in the DE completion message | 4 | 6 | Step 9 calls the summary verb and T6 quotes it → R0 |
+| 6 | X-cutandrun-resume | cutandrun__01_nfcore-cutandrun-wrapper 4 | Whether a re-run after a FAILED run is a --resume-refresh, a fresh run or a new analysis | 4 | 5 | A recovery step in the Process naming the conditions and asking the user to choose resume or a fresh run → R3 |
+| 7 | G-door | atacseq_bulk__01_nfcore-atacseq-wrapper 5, atacseq_bulk__01_nfcore-atacseq-wrapper 7 and 26 more (also in: Stage 02 router: settings menus and routing; Stage 03: custom analysis) | How to spell a call the guard accepts only through the dispatcher | 4 | 2 | Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project → R0 |
+| 8 | W-poll | atacseq_bulk__01_nfcore-atacseq-wrapper 7, chipseq_bulk__01_nfcore-chipseq-wrapper 7 and 8 more (also in: Stage 02 router: settings menus and routing) | When to refresh a submitted job's STATUS, and who does it | 4 | 2 | The router calls status once before routing a SUBMITTED or RUNNING sub-stage → R0 |
+| 9 | W-jobid | atacseq_bulk__01_nfcore-atacseq-wrapper 7, chipseq_bulk__01_nfcore-chipseq-wrapper 7 and 8 more | Which job id to ask the scheduler about on a later visit | 4 | 2 | The status call takes the sub-stage, and code looks up its recorded job → R0 |
+| 10 | G-date | atacseq_bulk__01_nfcore-atacseq-wrapper 9, chipseq_bulk__01_nfcore-chipseq-wrapper 9 and 8 more (also in: Stage 01: validate the design and write samplesheets; Stage 03: custom analysis) | What today's date is, for the HISTORY.md entry | 2 | 9 | The helper stamps the date itself, as stage 00's finalize already does, and appends the entry → R0 |
 
 ### Stage 03: custom analysis
 
 | Rank | Id | Where | Decision the model makes silently | Sev | Det | Fix |
 |---|---|---|---|---|---|---|
 | 1 | S03-scripts | 03_custom_analysis 7 | How the approved method becomes code | 9 | 8 | Show the scripts for approval and bind their hashes into the approval record, as the plan's already is → R3 |
-| 2 | S03-assay | 03_custom_analysis 1 | Which project, and which assay's artifacts, the analysis draws on | 5 | 3 | List every assay's artifacts and let the plan name each input's assay → R0 |
-| 3 | S03-monitor | 03_custom_analysis 7 | How to 'monitor the job' after T4 | 3 | 2 | Return after T4; the next invocation calls status once → R4 |
+| 2 | S03-assay | 03_custom_analysis 1 | Which project, and which assay's artifacts, the analysis draws on | 6 | 4 | List every assay's artifacts and let the plan name each input's assay → R0 |
+| 3 | S03-order | 03_custom_analysis 7 | In what order, and with what dependencies, several analysis scripts run | 6 | 3 | The plan's Execution section lists the scripts in order and the executor runs them as one job, or with declared dependencies → R2 |
+| 4 | G-closed | 03_custom_analysis 10, 03_custom_analysis 7 (also in: Stage 01: validate the design and write samplesheets; Stage 02 router: settings menus and routing; Stage 02 sub-stages: run the pipelines) | How to proceed when the guard refuses a step on a non-public project | 5 | 2 | Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops → R4 |
+| 5 | G-door | 03_custom_analysis 1, 03_custom_analysis 7, 03_custom_analysis 8 (also in: Stage 02 router: settings menus and routing; Stage 02 sub-stages: run the pipelines) | How to spell a call the guard accepts only through the dispatcher | 4 | 2 | Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project → R0 |
+| 6 | S03-monitor | 03_custom_analysis 7 | How to 'monitor the job' after T4 | 3 | 2 | Return after T4; the next invocation calls status once → R4 |
+| 7 | S03-submit | 03_custom_analysis 7 | Which reply reports a refused submission in stage 03 | 3 | 2 | Step 7 branches submit's exit 1 and 2 to T5 with the refusal verbatim → R4 |
+| 8 | G-date | 03_custom_analysis 10 (also in: Stage 01: validate the design and write samplesheets; Stage 02 sub-stages: run the pipelines) | What today's date is, for the HISTORY.md entry | 2 | 9 | The helper stamps the date itself, as stage 00's finalize already does, and appends the entry → R0 |
 
 ## Every step
 
@@ -122,16 +142,16 @@ Of the severity 1-4 steps, the unsaid decisions are: G-date (12 steps); G-door (
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R4 | none | none | question | fixed response templates, wait points, one action per step | none |
 | 2 | model | R5 → R0 | none | none | no | written rules only, one action per step | S00-title |
-| 3 | helper+model | R5 → R0 | stage00_register.assays | stage00_register.assays [3] | gate | closed menus built by code, fixed response templates, wait points, helper exit codes | S00-match |
-| 4 | model+helper | R0 → R0 | stage00_register.assays | stage00_register.assays [3] | no | closed vocabularies, typed tool calls, helper exit codes, written rules only | none |
+| 3 | helper+model | R5 → R0 | stage00_register.assays | none | gate | closed menus built by code, fixed response templates, wait points, helper exit codes | S00-match |
+| 4 | model+helper | R0 → R0 | stage00_register.assays | none | no | closed vocabularies, typed tool calls, helper exit codes, written rules only | none |
 | 5 | model | R4 → R4 | none | none | gate | helper exit codes, fixed response templates, wait points | none |
-| 6 | model+helper | R0 → R0 | stage00_register.create | stage00_register.create [3] | no | typed tool calls, helper exit codes, closed vocabularies | none |
+| 6 | model+helper | R0 → R0 | stage00_register.create | none | no | typed tool calls, helper exit codes, closed vocabularies | none |
 | 7 | model | R4 → R4 | none | none | gate | helper exit codes, fixed response templates, wait points | none |
 | 8 | model | R4 → R4 | none | none | question | fixed response templates, wait points, one action per step | none |
 | 9 | model+helper+guard | R5 → R4 | stage00_register.inspect | none | no | typed tool calls, guard deny rules, negative scope rules, helper exit codes | S00-guard |
 | 10 | model+helper+human | R5 → R1 | stage00_register.inspect | none | gate (skip) | helper exit codes, negative scope rules, fixed response templates, wait points, guard deny rules | S00-pattern |
 | 11 | model+human | R3 → R3 | none | none | gate | fixed response templates, wait points, negative scope rules | none |
-| 12 | model+helper+guard | R5 → R1 | stage00_register.link | stage00_register.link [2, 3] | no | typed tool calls, helper exit codes, negative scope rules, guard deny rules | S00-yes |
+| 12 | model+helper+guard | R5 → R1 | stage00_register.link | none | no | typed tool calls, helper exit codes, negative scope rules, guard deny rules | S00-yes |
 | 13 | model | R4 → R4 | none | none | no | fixed response templates | none |
 | 14 | model | R5 → R0 | none | none | no | written rules only, one action per step | S00-skip |
 | 15 | model+helper+guard | R5 → R3 | stage00_register.finalize | stage00_register.finalize [2] | no | typed tool calls, exit gates that check content, history entries written by helpers, read-only file modes, guard deny rules, closed vocabularies | S00-class |
@@ -143,18 +163,18 @@ Of the severity 1-4 steps, the unsaid decisions are: G-date (12 steps); G-door (
 | Step | Actor | Rung now → target | Calls (tool) | No-branch exits | Wait | Controls | Unsaid |
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R4 | none | none | no | fixed response templates | none |
-| 2 | model+human+guard | R5 → R1 | none | none | gate | closed vocabularies, fixed response templates, wait points, written rules only, guard deny rules | S01-declare, G-closed |
-| 3 | model+helper | R0 → R0 | stage01_samplesheet | none | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules | none |
+| 2 | model+human+guard | R5 → R1 | none | none | gate | closed vocabularies, fixed response templates, wait points, written rules only, guard deny rules | S01-declare, G-closed, G-project, G-date |
+| 3 | model+helper | R5 → R0 | stage01_samplesheet | none | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules | G-closed |
 | 4 | model | R4 → R4 | none | none | no | helper exit codes, fixed response templates | none |
 | 5 | model | R5 → R0 | none | none | handoff | helper exit codes, fixed response templates, negative scope rules | S01-route |
 | 6 | model+human | R5 → R2 | none | none | gate (cancel) | fixed response templates, wait points, negative scope rules | S01-yes |
 | 7 | model+human | R5 → R2 | none | none | gate (cancel) | fixed response templates, wait points, negative scope rules | S01-yes |
 | 8 | model+human | R5 → R0 | `sbatch` (unregistered) | none | gate (skip, verify) | fixed response templates, wait points, closed vocabularies | S01-deep |
-| 9 | model+helper | R0 → R0 | stage01_samplesheet | stage01_samplesheet [3] | no | typed tool calls, helper exit codes, exit gates that check content, read-only file modes, guard deny rules | none |
+| 9 | model+helper | R5 → R0 | stage01_samplesheet | none | no | typed tool calls, helper exit codes, exit gates that check content, read-only file modes, guard deny rules | G-closed |
 | 10 | model | R4 → R4 | none | none | gate (cancel) | helper exit codes, fixed response templates, negative scope rules | none |
 | 11 | model | R5 → R0 | none | none | handoff | helper exit codes, exit gates that check content, fixed response templates | S01-gate |
 | 12 | model | R4 → R4 | none | none | no | fixed response templates | none |
-| 13 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, written rules only, guard deny rules | G-date |
+| 13 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, written rules only, guard deny rules | G-date, G-closed |
 | 14 | model | R5 → R4 | none | none | handoff | fixed response templates, one human check per stage | S01-offer |
 
 ### `gars/02_bioinformatics/CONTEXT.md`
@@ -162,9 +182,9 @@ Of the severity 1-4 steps, the unsaid decisions are: G-date (12 steps); G-door (
 | Step | Actor | Rung now → target | Calls (tool) | No-branch exits | Wait | Controls | Unsaid |
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R4 | none | none | no | fixed response templates | none |
-| 2 | model | R5 → R1 | none | none | no | fixed response templates, written rules only | R-project, G-closed |
+| 2 | model | R5 → R1 | none | none | no | fixed response templates, written rules only | G-project, G-closed |
 | 3 | model | R4 → R0 | none | none | no | written rules only, fixed response templates | none |
-| 3a | model+helper+human | R5 → R1 | configure.apply, configure.contrasts, configure.genomes, configure.peaks | configure.genomes [3]; configure.contrasts [1, 3]; configure.apply [3] | gate | closed menus built by code, closed vocabularies, fixed response templates, wait points, typed tool calls, helper exit codes | R-protocol, R-formula, R-required |
+| 3a | model+helper+human | R5 → R1 | configure.apply, configure.contrasts, configure.genomes, configure.peaks | configure.genomes [3]; configure.contrasts [1, 3]; configure.apply [3] | gate | closed menus built by code, closed vocabularies, fixed response templates, wait points, typed tool calls, helper exit codes | R-protocol, R-formula, R-required, R-factor |
 | 4 | model | R4 → R0 | none | none | no | written rules only, negative scope rules | none |
 | 5 | model | R4 → R0 | none | none | no | definitions shared with helper code, fixed response templates, a session-start state render | none |
 | 6 | model | R4 → R0 | none | none | handoff | written rules only, definitions shared with helper code | none |
@@ -181,13 +201,13 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
-| 3 | model+helper | R0 → R0 | nfcore_atacseq_wrapper.check | nfcore_atacseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_atacseq_wrapper.prepare | nfcore_atacseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 3 | model+helper | R5 → R0 | nfcore_atacseq_wrapper.check | nfcore_atacseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | G-closed |
+| 4 | model+helper | R5 → R0 | nfcore_atacseq_wrapper.prepare | nfcore_atacseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | G-closed |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model | R4 → R4 | none | none | no | fixed response templates, negative scope rules | none |
-| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
-| 8 | model+helper | R0 → R0 | nfcore_atacseq_wrapper.collect | nfcore_atacseq_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | none |
-| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date |
+| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door, W-jobid |
+| 8 | model+helper | R5 → R0 | nfcore_atacseq_wrapper.collect | nfcore_atacseq_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | G-closed |
+| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date, G-closed |
 
 ### `gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md`
 
@@ -197,13 +217,13 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
-| 3 | model+helper | R0 → R0 | nfcore_chipseq_wrapper.check | nfcore_chipseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_chipseq_wrapper.prepare | nfcore_chipseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 3 | model+helper | R5 → R0 | nfcore_chipseq_wrapper.check | nfcore_chipseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | G-closed |
+| 4 | model+helper | R5 → R0 | nfcore_chipseq_wrapper.prepare | nfcore_chipseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | G-closed |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model | R4 → R4 | none | none | no | fixed response templates, negative scope rules | none |
-| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
-| 8 | model+helper | R0 → R0 | nfcore_chipseq_wrapper.collect | nfcore_chipseq_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | none |
-| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date |
+| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door, W-jobid |
+| 8 | model+helper | R5 → R0 | nfcore_chipseq_wrapper.collect | nfcore_chipseq_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | G-closed |
+| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date, G-closed |
 
 ### `gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md`
 
@@ -213,13 +233,13 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
-| 3 | model+helper | R0 → R0 | nfcore_cutandrun_wrapper.check | nfcore_cutandrun_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R5 → R4 | nfcore_cutandrun_wrapper.prepare | nfcore_cutandrun_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | X-cutandrun-resume |
+| 3 | model+helper | R5 → R0 | nfcore_cutandrun_wrapper.check | nfcore_cutandrun_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | G-closed |
+| 4 | model+helper | R5 → R4 | nfcore_cutandrun_wrapper.prepare | nfcore_cutandrun_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | G-closed, X-cutandrun-resume |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model | R4 → R4 | none | none | no | fixed response templates, negative scope rules | none |
-| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
-| 8 | model+helper | R0 → R0 | nfcore_cutandrun_wrapper.collect | nfcore_cutandrun_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | none |
-| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date |
+| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door, W-jobid |
+| 8 | model+helper | R5 → R0 | nfcore_cutandrun_wrapper.collect | nfcore_cutandrun_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | G-closed |
+| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date, G-closed |
 
 ### `gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md`
 
@@ -229,13 +249,13 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
-| 3 | model+helper | R0 → R0 | nfcore_methylseq_wrapper.check | nfcore_methylseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_methylseq_wrapper.prepare | nfcore_methylseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 3 | model+helper | R5 → R0 | nfcore_methylseq_wrapper.check | nfcore_methylseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | G-closed |
+| 4 | model+helper | R5 → R0 | nfcore_methylseq_wrapper.prepare | nfcore_methylseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | G-closed |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model | R4 → R4 | none | none | no | fixed response templates, negative scope rules | none |
-| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
-| 8 | model+helper | R0 → R0 | nfcore_methylseq_wrapper.collect | nfcore_methylseq_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | none |
-| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date |
+| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door, W-jobid |
+| 8 | model+helper | R5 → R0 | nfcore_methylseq_wrapper.collect | nfcore_methylseq_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | G-closed |
+| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date, G-closed |
 
 ### `gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`
 
@@ -245,13 +265,13 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
-| 3 | model+helper | R0 → R0 | nfcore_rnaseq_wrapper.check | nfcore_rnaseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_rnaseq_wrapper.prepare | nfcore_rnaseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 3 | model+helper | R5 → R0 | nfcore_rnaseq_wrapper.check | nfcore_rnaseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | G-closed |
+| 4 | model+helper | R5 → R0 | nfcore_rnaseq_wrapper.prepare | nfcore_rnaseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | G-closed |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model | R4 → R4 | none | none | no | fixed response templates, negative scope rules | none |
-| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
-| 8 | model+helper | R0 → R0 | nfcore_rnaseq_wrapper.collect | nfcore_rnaseq_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | none |
-| 9 | model | R5 → R0 | `date` (unregistered) | none | handoff | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date |
+| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door, W-jobid |
+| 8 | model+helper | R5 → R0 | nfcore_rnaseq_wrapper.collect | nfcore_rnaseq_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | G-closed |
+| 9 | model | R5 → R0 | `date` (unregistered) | none | handoff | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date, G-closed |
 
 ### `gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md`
 
@@ -265,9 +285,9 @@ Judgment inherits `judgment/_shape_downstream.json`; overrides are marked.
 | 4 | model+helper | R5 → R0 | rnaseq_de.check | rnaseq_de.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules | G-door |
 | 5 | model+helper | R5 → R0 | rnaseq_de.prepare | rnaseq_de.prepare [2, 3] | no | typed tool calls, helper exit codes, negative scope rules | G-door |
 | 6 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules, fixed response templates | W-submit, G-door |
-| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
+| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door, W-jobid |
 | 8 | model+helper | R5 → R0 | executor.status, rnaseq_de.collect | rnaseq_de.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | D-handoff, G-door |
-| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date |
+| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date, G-closed, D-sigcount |
 
 ### `gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md`
 
@@ -277,13 +297,13 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
-| 3 | model+helper | R0 → R0 | nfcore_scrnaseq_wrapper.check | nfcore_scrnaseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_scrnaseq_wrapper.prepare | nfcore_scrnaseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 3 | model+helper | R5 → R0 | nfcore_scrnaseq_wrapper.check | nfcore_scrnaseq_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | G-closed |
+| 4 | model+helper | R5 → R0 | nfcore_scrnaseq_wrapper.prepare | nfcore_scrnaseq_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | G-closed |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model+helper | R5 → R4 | executor.status | executor.status [1, 2] | no | typed tool calls, fixed response templates, negative scope rules | G-door |
-| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
-| 8 | model+helper | R0 → R0 | nfcore_scrnaseq_wrapper.collect | nfcore_scrnaseq_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | none |
-| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date |
+| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door, W-jobid |
+| 8 | model+helper | R5 → R0 | nfcore_scrnaseq_wrapper.collect | nfcore_scrnaseq_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | G-closed |
+| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date, G-closed |
 
 ### `gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md`
 
@@ -293,13 +313,13 @@ Judgment inherits `judgment/_shape_downstream.json`; overrides are marked.
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
-| 3 | model+helper | R5 → R0 | scrna_qc_cluster.check | scrna_qc_cluster.check [3] | no | typed tool calls, helper exit codes, negative scope rules | D-handoff |
-| 4 | model+helper | R0 → R0 | scrna_qc_cluster.prepare | scrna_qc_cluster.prepare [2, 3] | no | typed tool calls, helper exit codes, negative scope rules | none |
+| 3 | model+helper | R5 → R0 | scrna_qc_cluster.check | scrna_qc_cluster.check [3] | no | typed tool calls, helper exit codes, negative scope rules | D-handoff, G-closed |
+| 4 | model+helper | R5 → R0 | scrna_qc_cluster.prepare | scrna_qc_cluster.prepare [2, 3] | no | typed tool calls, helper exit codes, negative scope rules | G-closed |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model+helper | R5 → R4 | executor.status | executor.status [1, 2] | no | typed tool calls, fixed response templates, negative scope rules | G-door |
-| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
-| 8 | model+helper | R5 → R0 | executor.status, scrna_qc_cluster.collect | scrna_qc_cluster.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | D-handoff |
-| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date |
+| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door, W-jobid |
+| 8 | model+helper | R5 → R0 | executor.status, scrna_qc_cluster.collect | scrna_qc_cluster.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | D-handoff, G-closed |
+| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date, G-closed |
 
 ### `gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md`
 
@@ -309,13 +329,13 @@ Judgment inherits `judgment/_shape_wrapper.json`; overrides are marked.
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
-| 3 | model+helper | R0 → R0 | nfcore_spatialvi_wrapper.check | nfcore_spatialvi_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | none |
-| 4 | model+helper | R0 → R0 | nfcore_spatialvi_wrapper.prepare | nfcore_spatialvi_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | none |
+| 3 | model+helper | R5 → R0 | nfcore_spatialvi_wrapper.check | nfcore_spatialvi_wrapper.check [3] | no | typed tool calls, helper exit codes, definitions shared with helper code, negative scope rules, guard deny rules | G-closed |
+| 4 | model+helper | R5 → R0 | nfcore_spatialvi_wrapper.prepare | nfcore_spatialvi_wrapper.prepare [3] | no | typed tool calls, helper exit codes, guard deny rules, negative scope rules | G-closed |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model+helper | R5 → R4 | executor.status | executor.status [1, 2] | no | typed tool calls, fixed response templates, negative scope rules | G-door |
-| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
-| 8 | model+helper | R0 → R0 | nfcore_spatialvi_wrapper.collect | nfcore_spatialvi_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | none |
-| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date |
+| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door, W-jobid |
+| 8 | model+helper | R5 → R0 | nfcore_spatialvi_wrapper.collect | nfcore_spatialvi_wrapper.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | G-closed |
+| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date, G-closed |
 
 ### `gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md`
 
@@ -325,13 +345,13 @@ Judgment inherits `judgment/_shape_downstream.json`; overrides are marked.
 |---|---|---|---|---|---|---|---|
 | 1 | model | R4 → R0 | none | none | no | fixed response templates | none |
 | 2 | model | R5 → R0 | none | none | no | definitions shared with helper code, written rules only | W-reentry |
-| 3 | model+helper | R5 → R0 | spatial_cluster_count.check | spatial_cluster_count.check [3] | no | typed tool calls, helper exit codes, negative scope rules | D-handoff |
-| 4 | model+helper | R0 → R0 | spatial_cluster_count.prepare | spatial_cluster_count.prepare [2, 3] | no | typed tool calls, helper exit codes, negative scope rules | none |
+| 3 | model+helper | R5 → R0 | spatial_cluster_count.check | spatial_cluster_count.check [3] | no | typed tool calls, helper exit codes, negative scope rules | D-handoff, G-closed |
+| 4 | model+helper | R5 → R0 | spatial_cluster_count.prepare | spatial_cluster_count.prepare [2, 3] | no | typed tool calls, helper exit codes, negative scope rules | G-closed |
 | 5 | model+helper+scheduler+guard | R5 → R4 | executor.submit | executor.submit [1, 2] | no | typed tool calls, run markers bound to script hashes, guard deny rules | W-submit, G-door |
 | 6 | model+helper | R5 → R4 | executor.status | executor.status [1, 2] | no | typed tool calls, fixed response templates, negative scope rules | G-door |
-| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door |
-| 8 | model+helper | R5 → R0 | executor.status, spatial_cluster_count.collect | spatial_cluster_count.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | D-handoff |
-| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date |
+| 7 | model+helper | R5 → R0 | executor.status | executor.status [1, 2] | no | typed tool calls, definitions shared with helper code, negative scope rules | W-poll, G-door, W-jobid |
+| 8 | model+helper | R5 → R0 | executor.status, spatial_cluster_count.collect | spatial_cluster_count.collect [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | D-handoff, G-closed |
+| 9 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only, guard deny rules | G-date, G-closed |
 
 ### `gars/03_custom_analysis/CONTEXT.md`
 
@@ -343,8 +363,8 @@ Judgment inherits `judgment/_shape_downstream.json`; overrides are marked.
 | 4 | model | R4 → R4 | none | none | handoff | fixed response templates, wait points, the plan gate | none |
 | 5 | model+human | R3 → R3 | none | none | handoff | the plan gate, fixed response templates, wait points | none |
 | 6 | human+helper+model | R3 → R3 | none | none | handoff | the plan gate, guard deny rules, fixed response templates | none |
-| 7 | model+helper+scheduler+guard | R5 → R3 | executor.submit | executor.submit [1, 2] | no | the plan gate, run markers bound to script hashes, typed tool calls, negative scope rules, guard deny rules | S03-scripts, S03-monitor, W-submit, G-door |
+| 7 | model+helper+scheduler+guard | R5 → R3 | executor.submit | executor.submit [1, 2] | no | the plan gate, run markers bound to script hashes, typed tool calls, negative scope rules, guard deny rules | S03-scripts, S03-monitor, S03-submit, G-door, S03-order, G-closed |
 | 8 | model+helper | R5 → R4 | executor.status | executor.status [1, 2] | no | typed tool calls, fixed response templates, negative scope rules | G-door |
 | 9 | model+helper | R0 → R0 | stage03_analysis.verify | stage03_analysis.verify [3] | no | typed tool calls, exit gates that check content, run markers bound to script hashes, helper exit codes, history entries written by helpers | none |
-| 10 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only | G-date |
+| 10 | model | R5 → R0 | `date` (unregistered) | none | no | history entries written by helpers, fixed response templates, written rules only | G-date, G-closed |
 

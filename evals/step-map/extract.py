@@ -435,6 +435,75 @@ def instantiate(command):
     return fill(minimal), fill(maximal), sorted(set(missing))
 
 
+
+# --- stage-wide exit tables ------------------------------------------------------------------------
+# Stages 00 and 01 carry a Definitions table, "The script's exit codes. These, and not your reading
+# of its output, determine the branch", mapping each code of the stage's own script to a reply. That
+# table is handling for every call of that script in the stage. A row whose meaning says the JSON's
+# `template` field names the reply handles a code only at emit sites that set that field.
+
+def parse_exit_table(doc):
+    """The Definitions table headed `| Code | Meaning | Reply |`, with the script it governs (the
+    first `_system/...py` named in the Purpose section). None when the contract has none."""
+    sec = section(doc, "Definitions")
+    if sec is None:
+        return None
+    rows, head = {}, None
+    for i in range(sec["start"] + 1, sec["end"] + 1):
+        if i in doc["fenced"]:
+            continue
+        cells = [c.strip() for c in doc["lines"][i - 1].strip().strip("|").split("|")]
+        if head is None:
+            if cells[:3] == ["Code", "Meaning", "Reply"]:
+                head = i
+            continue
+        if not doc["lines"][i - 1].strip().startswith("|"):
+            break
+        if len(cells) >= 3 and re.fullmatch(r"\d", cells[0]):
+            rows[cells[0]] = {"meaning": cells[1], "reply": cells[2], "line": i,
+                              "needs_template_field": "template" in cells[1]}
+    if head is None:
+        return None
+    purpose = section(doc, "Purpose")
+    script = None
+    if purpose:
+        text = "\n".join(doc["lines"][purpose["start"]:purpose["end"]])
+        m = re.search(r"`(_system/[A-Za-z0-9_./-]+\.py)`", text)
+        script = m.group(1) if m else None
+    return {"line": head, "script": script, "codes": rows}
+
+
+def exit_rules_without_reply(doc):
+    """Sentences that name the exit codes and say to branch on them, but map no reply."""
+    sec = section(doc, "Definitions")
+    out = []
+    if sec is None:
+        return out
+    text, offsets = prose(doc, sec["start"] + 1, sec["end"])
+    for m in re.finditer(r"Exit codes are the stage-helper standard[^.]*\.", text):
+        out.append({"line": line_at(offsets, m.start()), "text": m.group(0)[:160]})
+    return out
+
+
+def sets_template_field(src, at):
+    """Whether the statements leading to the emit site at `path:line`, in its own block, set the
+    result's `template` field."""
+    path, line = at.rsplit(":", 1)
+    lines = src.text(path).split("\n")
+    line = int(line)
+    indent = len(lines[line - 1]) - len(lines[line - 1].lstrip())
+    for k in range(line - 2, -1, -1):
+        text = lines[k]
+        if not text.strip():
+            continue
+        here = len(text) - len(text.lstrip())
+        if here < indent:
+            return False
+        if here == indent and re.search(r"""\[["']template["']\]\s*=""", text):
+            return True
+    return False
+
+
 # --- calls in a step -----------------------------------------------------------------------------
 
 PROSE_CALL_RE = re.compile(r"\b[Rr]un (?:the wrapper's )?`(check|prepare|collect|summary)`")
@@ -1610,6 +1679,7 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
     doc = parse_markdown(text)
     steps = parse_steps(doc)
     templates = parse_templates(doc)
+    table = parse_exit_table(doc)
     wrapper = wrapper_prefix(doc)
     assay, substage = contract_assay(path)
     findings = []
@@ -1675,7 +1745,20 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
         site["handled"] = sorted(site["handled"])
         site["emitted"] = emitted
         site["ruled_out"] = ruled
-        site["unhandled"] = [c for c in emitted if c != 0 and c not in site["handled"]]
+        site["by_table"] = {}
+        if table and table["script"] == tool["argv"][1]:
+            for code in emitted:
+                row = table["codes"].get(str(code))
+                if code == 0 or row is None or code in site["handled"]:
+                    continue
+                real = [s for s in exits.get(str(code), []) if s["how"] != "argparse"]
+                if row["needs_template_field"]:
+                    if real and all(sets_template_field(src, s["at"]) for s in real):
+                        site["by_table"][str(code)] = "template field"
+                else:
+                    site["by_table"][str(code)] = row["reply"]
+        site["unhandled"] = [c for c in emitted if c != 0 and c not in site["handled"]
+                             and str(c) not in site["by_table"]]
         site["unhandled_sites"] = {str(c): [s["at"] for s in exits.get(str(c), [])
                                             if s["how"] != "argparse"]
                                    for c in site["unhandled"]}
@@ -1737,6 +1820,12 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
     return {"path": path, "id": contract_id(path), "assay": assay, "substage": substage,
             "sections": sections, "steps": out_steps, "templates": out_templates,
             "call_sites": call_sites, "prose_flags": flags, "wrapper_invocation": wrapper[0],
+            "exit_table": None if table is None else {
+                "source": "%s:%d" % (path, table["line"]), "script": table["script"],
+                "codes": {c: {"reply": r["reply"], "meaning": r["meaning"], "line": r["line"],
+                              "needs_template_field": r["needs_template_field"]}
+                          for c, r in sorted(table["codes"].items())}},
+            "exit_rules_without_reply": exit_rules_without_reply(doc),
             "fenced_non_commands": fenced_other,
             "file_mentions_unclassified": file_unclassified, "findings": findings}
 
@@ -2029,6 +2118,7 @@ def summarize(contracts, helpers, registry):
                   "handled": sum(len(cs["handled"]) for cs in sites),
                   "unhandled": sum(len(cs["unhandled"]) for cs in sites),
                   "ruled_out": sum(len(cs["ruled_out"]) for cs in sites),
+                  "by_stage_table": sum(len(cs["by_table"]) for cs in sites),
                   "unhandled_list": [{"contract": c["id"], "step": cs["step"], "tool": cs["tool"],
                                       "codes": cs["unhandled"]}
                                      for c in contracts for cs in c["call_sites"] if cs["unhandled"]]},

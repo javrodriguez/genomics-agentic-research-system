@@ -4,6 +4,7 @@
  "call_sites": [
   {
    "branch_calls": [],
+   "by_table": {},
    "command": "python3 _system/stage01_samplesheet.py --project projects/<title> --check",
    "emitted": [
     0,
@@ -25,6 +26,9 @@
   },
   {
    "branch_calls": [],
+   "by_table": {
+    "3": "T6"
+   },
    "command": "python3 _system/stage01_samplesheet.py --project projects/<title> --model \"<model id>\" [--confirm-exclusions] [--force]",
    "emitted": [
     0,
@@ -42,19 +46,41 @@
    "ruled_out": {},
    "step": "9",
    "tool": "stage01_samplesheet",
-   "unhandled": [
-    3
-   ],
-   "unhandled_sites": {
-    "3": [
-     "gars/_system/stage01_samplesheet.py:1021",
-     "gars/_system/stage01_samplesheet.py:1026",
-     "gars/_system/stage01_samplesheet.py:1031",
-     "gars/_system/stage01_samplesheet.py:1040"
-    ]
-   }
+   "unhandled": [],
+   "unhandled_sites": {}
   }
  ],
+ "exit_rules_without_reply": [],
+ "exit_table": {
+  "codes": {
+   "0": {
+    "line": 209,
+    "meaning": "clean (checked, or written)",
+    "needs_template_field": false,
+    "reply": "T2 then T4"
+   },
+   "1": {
+    "line": 210,
+    "meaning": "validation failed; nothing written",
+    "needs_template_field": false,
+    "reply": "T3"
+   },
+   "2": {
+    "line": 211,
+    "meaning": "a human gate is uncleared; nothing written",
+    "needs_template_field": false,
+    "reply": "T7 and/or T5"
+   },
+   "3": {
+    "line": 212,
+    "meaning": "preconditions not met",
+    "needs_template_field": false,
+    "reply": "T6"
+   }
+  },
+  "script": "_system/stage01_samplesheet.py",
+  "source": "gars/01_prepare_samplesheets/CONTEXT.md:207"
+ },
  "fenced_non_commands": [],
  "file_mentions_unclassified": [
   {
