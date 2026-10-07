@@ -23,7 +23,7 @@
    "rung_target": "R4",
    "question": 1,
    "rung_why": "Here step 6 calls status once before T2; the call's direct spelling is refused wherever a non-public project exists (G-door), and T2's 'Submitted to Slurm' and squeue line are template defects (D18).",
-   "unsaid": [
+   "silent": [
     {
      "id": "G-door",
      "decision": "How to spell a call the guard accepts only through the dispatcher",
@@ -36,7 +36,8 @@
      "fix_rung": "R0",
      "defects": [
       "D15"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   }

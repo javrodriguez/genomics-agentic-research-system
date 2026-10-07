@@ -6,6 +6,267 @@
  "path": "gars/03_custom_analysis/CONTEXT.md",
  "schema": "stepmap-map/1",
  "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "silent_ranked": [
+  {
+   "decision": "How the approved method becomes code",
+   "detection": 8,
+   "elsewhere": [],
+   "fix": "Show the scripts for approval and bind their hashes into the approval record, as the plan's already is",
+   "fix_rung": "R3",
+   "goes_wrong": "The model writes the analysis scripts after approval; approval binds PLAN.md, not the scripts, and verify checks only that declared outputs exist, are non-empty and came from executor runs of unchanged scripts. A script that departs from the approved method, reads inputs the plan does not list, or computes the statistic differently passes every gate",
+   "group": 4,
+   "id": "S03-scripts",
+   "kind": "unchecked",
+   "occurrence": null,
+   "rank_in_stage": 1,
+   "severity": 9,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan (the contract itself records the gap, 03:89-94)"
+  },
+  {
+   "decision": "In what order, and with what dependencies, several analysis scripts run",
+   "detection": 8,
+   "elsewhere": [],
+   "fix": "The plan's Execution section lists the scripts in order and the executor runs them as one job, or with declared dependencies",
+   "fix_rung": "R2",
+   "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists (it crashes), or read a stale copy left by an earlier attempt, which passes verify",
+   "group": 4,
+   "id": "S03-order",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 2,
+   "severity": 9,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A stale input gives a wrong result that verify accepts; only reading the run records reveals the order"
+  },
+  {
+   "decision": "Which project, and which assay's artifacts, the analysis draws on",
+   "detection": 4,
+   "elsewhere": [],
+   "fix": "List every assay's artifacts and let the plan name each input's assay",
+   "fix_rung": "R0",
+   "goes_wrong": "Step 1 lists artifacts for 'the relevant assay'; in a project with several assays the model picks one, and the plan's Inputs inherit that choice",
+   "group": 4,
+   "id": "S03-assay",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 3,
+   "severity": 8,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
+     "step": "1"
+    }
+   ],
+   "why_rank": "The analysis runs on the wrong inputs, but the plan the user approves lists them"
+  },
+  {
+   "decision": "How to proceed when the guard refuses a step on a non-public project",
+   "defects": [
+    "D16"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 router: settings menus and routing",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+   "fix_rung": "R4",
+   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+   "group": 4,
+   "id": "G-closed",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 4,
+   "severity": 5,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:119-120",
+     "step": "2"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:121-126",
+     "step": "3"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:128-130",
+     "step": "5"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
+     "step": "10"
+    }
+   ],
+   "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+  },
+  {
+   "decision": "What to do when the plan's approval has expired before verify",
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Step 9 branches the expiry to a template naming the new-analysis road",
+   "fix_rung": "R4",
+   "goes_wrong": "An approval lasts 24 hours; verify then refuses (stage03_analysis.py:199, 245-246, 395-402) and approve refuses to re-approve a stamped plan (326-330), so the only road is a new analysis and a full re-run. No step names it, and T3's 'I will fix the plan' is wrong for an expiry",
+   "group": 4,
+   "id": "S03-expiry",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 5,
+   "severity": 5,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:151-156",
+     "step": "9"
+    }
+   ],
+   "why_rank": "A dead end with no compliant road named, but a loud one"
+  },
+  {
+   "decision": "How to spell a call the guard accepts only through the dispatcher",
+   "defects": [
+    "D15"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 02 router: settings menus and routing",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+   "fix_rung": "R0",
+   "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+   "group": 4,
+   "id": "G-door",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 6,
+   "severity": 4,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
+     "step": "1"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:148-150",
+     "step": "8"
+    }
+   ],
+   "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+  },
+  {
+   "decision": "How to 'monitor the job' after T4",
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Return after T4; the next invocation calls status once",
+   "fix_rung": "R4",
+   "goes_wrong": "Step 7 says to monitor the job; every other contract forbids polling in a loop and no step says when to check, so the model polls, sleeps, or waits for the user",
+   "group": 4,
+   "id": "S03-monitor",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 7,
+   "severity": 3,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A wasted session or a stalled one, visibly"
+  },
+  {
+   "decision": "Which reply reports a refused submission in stage 03",
+   "defects": [
+    "D12"
+   ],
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Step 7 branches submit's exit 1 and 2 to T5 with the refusal verbatim",
+   "fix_rung": "R4",
+   "goes_wrong": "Stage 03's Definitions say to report every refusal and stop (03:111), but step 7 names only T3 for an approval refusal and T4 for a submission; a venue or duplicate refusal has no template, so the model picks one",
+   "group": 4,
+   "id": "S03-submit",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 8,
+   "severity": 3,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A wrong or misleading message about a refusal that the user still sees"
+  },
+  {
+   "decision": "What today's date is, for the HISTORY.md entry",
+   "defects": [
+    "D17"
+   ],
+   "detection": 9,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
+   "fix_rung": "R0",
+   "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+   "group": 4,
+   "id": "G-date",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 9,
+   "severity": 2,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
+     "step": "10"
+    }
+   ],
+   "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
+  }
+ ],
  "steps": [
   {
    "extracted": {
@@ -97,7 +358,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "Listing is code; which project and assay to list is the model's choice, and the resolver's direct spelling is a door (G-door).",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Which project, and which assay's artifacts, the analysis draws on",
       "detection": 4,
@@ -105,9 +366,10 @@
       "fix_rung": "R0",
       "goes_wrong": "Step 1 lists artifacts for 'the relevant assay'; in a project with several assays the model picks one, and the plan's Inputs inherit that choice",
       "id": "S03-assay",
+      "kind": "unsaid",
       "occurrence": null,
-      "severity": 6,
-      "why_rank": "The right analysis on the wrong data, but the plan the user approves lists its inputs"
+      "severity": 8,
+      "why_rank": "The analysis runs on the wrong inputs, but the plan the user approves lists them"
      },
      {
       "decision": "How to spell a call the guard accepts only through the dispatcher",
@@ -119,6 +381,7 @@
       "fix_rung": "R0",
       "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
       "id": "G-door",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 4,
       "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
@@ -202,11 +465,27 @@
     ],
     "kind": "judgment",
     "note": "Exit 3 has no branch.",
-    "question": 5,
-    "rung_now": "R4",
+    "question": 1,
+    "rung_now": "R5",
     "rung_target": "R4",
     "rung_why": "Allocation is code; the slug is a cosmetic name under a written rule.",
-    "unsaid": []
+    "silent": [
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
    },
    "n": "2"
   },
@@ -254,11 +533,27 @@
      "the closed artifact vocabulary"
     ],
     "kind": "judgment",
-    "question": 4,
-    "rung_now": "R3",
+    "question": 1,
+    "rung_now": "R5",
     "rung_target": "R3",
     "rung_why": "The judgment the stage exists for, gated by the human's approval of the plan; approve checks the form (markers, output types, relative paths).",
-    "unsaid": []
+    "silent": [
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
    },
    "n": "3"
   },
@@ -299,7 +594,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "A fixed hand-off to the human gate.",
-    "unsaid": []
+    "silent": []
    },
    "n": "4"
   },
@@ -350,11 +645,27 @@
      "the user's requested changes"
     ],
     "kind": "judgment",
-    "question": 4,
-    "rung_now": "R3",
+    "question": 1,
+    "rung_now": "R5",
     "rung_target": "R3",
     "rung_why": "The model edits, the human re-reads before approving.",
-    "unsaid": []
+    "silent": [
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
    },
    "n": "5"
   },
@@ -399,7 +710,7 @@
     "rung_now": "R3",
     "rung_target": "R3",
     "rung_why": "The human approves in their own terminal; the guard refuses approve to the agent.",
-    "unsaid": []
+    "silent": []
    },
    "n": "6"
   },
@@ -511,7 +822,7 @@
     "rung_now": "R5",
     "rung_target": "R3",
     "rung_why": "The model writes the computation; approval binds the plan, not the scripts, and nothing reads the code against the plan.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "How the approved method becomes code",
       "detection": 8,
@@ -519,9 +830,10 @@
       "fix_rung": "R3",
       "goes_wrong": "The model writes the analysis scripts after approval; approval binds PLAN.md, not the scripts, and verify checks only that declared outputs exist, are non-empty and came from executor runs of unchanged scripts. A script that departs from the approved method, reads inputs the plan does not list, or computes the statistic differently passes every gate",
       "id": "S03-scripts",
+      "kind": "unchecked",
       "occurrence": null,
       "severity": 9,
-      "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan"
+      "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan (the contract itself records the gap, 03:89-94)"
      },
      {
       "decision": "How to 'monitor the job' after T4",
@@ -530,6 +842,7 @@
       "fix_rung": "R4",
       "goes_wrong": "Step 7 says to monitor the job; every other contract forbids polling in a loop and no step says when to check, so the model polls, sleeps, or waits for the user",
       "id": "S03-monitor",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 3,
       "why_rank": "A wasted session or a stalled one, visibly"
@@ -544,6 +857,7 @@
       "fix_rung": "R4",
       "goes_wrong": "Stage 03's Definitions say to report every refusal and stop (03:111), but step 7 names only T3 for an approval refusal and T4 for a submission; a venue or duplicate refusal has no template, so the model picks one",
       "id": "S03-submit",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 3,
       "why_rank": "A wrong or misleading message about a refusal that the user still sees"
@@ -558,20 +872,22 @@
       "fix_rung": "R0",
       "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
       "id": "G-door",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 4,
       "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
      },
      {
       "decision": "In what order, and with what dependencies, several analysis scripts run",
-      "detection": 3,
+      "detection": 8,
       "fix": "The plan's Execution section lists the scripts in order and the executor runs them as one job, or with declared dependencies",
       "fix_rung": "R2",
-      "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists, or read a stale copy left by an earlier attempt",
+      "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists (it crashes), or read a stale copy left by an earlier attempt, which passes verify",
       "id": "S03-order",
+      "kind": "unsaid",
       "occurrence": null,
-      "severity": 6,
-      "why_rank": "Mostly a crashed job that verify reports; a stale input is the rare, worse case"
+      "severity": 9,
+      "why_rank": "A stale input gives a wrong result that verify accepts; only reading the run records reveals the order"
      },
      {
       "decision": "How to proceed when the guard refuses a step on a non-public project",
@@ -583,6 +899,7 @@
       "fix_rung": "R4",
       "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 5,
       "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
@@ -679,7 +996,7 @@
     "rung_now": "R5",
     "rung_target": "R4",
     "rung_why": "A written failure branch, but the status call's direct spelling is a door (G-door) and its own exits have no branch (D13).",
-    "unsaid": [
+    "silent": [
      {
       "decision": "How to spell a call the guard accepts only through the dispatcher",
       "defects": [
@@ -690,6 +1007,7 @@
       "fix_rung": "R0",
       "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
       "id": "G-door",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 4,
       "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
@@ -794,11 +1112,24 @@
     ],
     "kind": "judgment",
     "note": "Exit 3 has no branch.",
-    "question": 2,
-    "rung_now": "R0",
+    "question": 1,
+    "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "verify checks approval, execution evidence and that declared outputs exist and are non-empty.",
-    "unsaid": []
+    "silent": [
+     {
+      "decision": "What to do when the plan's approval has expired before verify",
+      "detection": 2,
+      "fix": "Step 9 branches the expiry to a template naming the new-analysis road",
+      "fix_rung": "R4",
+      "goes_wrong": "An approval lasts 24 hours; verify then refuses (stage03_analysis.py:199, 245-246, 395-402) and approve refuses to re-approve a stamped plan (326-330), so the only road is a new analysis and a full re-run. No step names it, and T3's 'I will fix the plan' is wrong for an expiry",
+      "id": "S03-expiry",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road named, but a loud one"
+     }
+    ]
    },
    "n": "9"
   },
@@ -870,7 +1201,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "Copying is written, but the date has no source the agent can reach.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "What today's date is, for the HISTORY.md entry",
       "defects": [
@@ -881,6 +1212,7 @@
       "fix_rung": "R0",
       "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
       "id": "G-date",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 2,
       "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
@@ -895,6 +1227,7 @@
       "fix_rung": "R4",
       "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 5,
       "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
@@ -902,221 +1235,6 @@
     ]
    },
    "n": "10"
-  }
- ],
- "unsaid_ranked": [
-  {
-   "decision": "How the approved method becomes code",
-   "detection": 8,
-   "elsewhere": [],
-   "fix": "Show the scripts for approval and bind their hashes into the approval record, as the plan's already is",
-   "fix_rung": "R3",
-   "goes_wrong": "The model writes the analysis scripts after approval; approval binds PLAN.md, not the scripts, and verify checks only that declared outputs exist, are non-empty and came from executor runs of unchanged scripts. A script that departs from the approved method, reads inputs the plan does not list, or computes the statistic differently passes every gate",
-   "group": 4,
-   "id": "S03-scripts",
-   "occurrence": null,
-   "rank_in_stage": 1,
-   "severity": 9,
-   "stage": "Stage 03: custom analysis",
-   "where": [
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
-     "step": "7"
-    }
-   ],
-   "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan"
-  },
-  {
-   "decision": "Which project, and which assay's artifacts, the analysis draws on",
-   "detection": 4,
-   "elsewhere": [],
-   "fix": "List every assay's artifacts and let the plan name each input's assay",
-   "fix_rung": "R0",
-   "goes_wrong": "Step 1 lists artifacts for 'the relevant assay'; in a project with several assays the model picks one, and the plan's Inputs inherit that choice",
-   "group": 4,
-   "id": "S03-assay",
-   "occurrence": null,
-   "rank_in_stage": 2,
-   "severity": 6,
-   "stage": "Stage 03: custom analysis",
-   "where": [
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
-     "step": "1"
-    }
-   ],
-   "why_rank": "The right analysis on the wrong data, but the plan the user approves lists its inputs"
-  },
-  {
-   "decision": "In what order, and with what dependencies, several analysis scripts run",
-   "detection": 3,
-   "elsewhere": [],
-   "fix": "The plan's Execution section lists the scripts in order and the executor runs them as one job, or with declared dependencies",
-   "fix_rung": "R2",
-   "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists, or read a stale copy left by an earlier attempt",
-   "group": 4,
-   "id": "S03-order",
-   "occurrence": null,
-   "rank_in_stage": 3,
-   "severity": 6,
-   "stage": "Stage 03: custom analysis",
-   "where": [
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
-     "step": "7"
-    }
-   ],
-   "why_rank": "Mostly a crashed job that verify reports; a stale input is the rare, worse case"
-  },
-  {
-   "decision": "How to proceed when the guard refuses a step on a non-public project",
-   "defects": [
-    "D16"
-   ],
-   "detection": 2,
-   "elsewhere": [
-    "Stage 01: validate the design and write samplesheets",
-    "Stage 02 router: settings menus and routing",
-    "Stage 02 sub-stages: run the pipelines"
-   ],
-   "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
-   "fix_rung": "R4",
-   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
-   "group": 4,
-   "id": "G-closed",
-   "occurrence": null,
-   "rank_in_stage": 4,
-   "severity": 5,
-   "stage": "Stage 03: custom analysis",
-   "where": [
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
-     "step": "7"
-    },
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
-     "step": "10"
-    }
-   ],
-   "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
-  },
-  {
-   "decision": "How to spell a call the guard accepts only through the dispatcher",
-   "defects": [
-    "D15"
-   ],
-   "detection": 2,
-   "elsewhere": [
-    "Stage 02 router: settings menus and routing",
-    "Stage 02 sub-stages: run the pipelines"
-   ],
-   "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
-   "fix_rung": "R0",
-   "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
-   "group": 4,
-   "id": "G-door",
-   "occurrence": null,
-   "rank_in_stage": 5,
-   "severity": 4,
-   "stage": "Stage 03: custom analysis",
-   "where": [
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
-     "step": "1"
-    },
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
-     "step": "7"
-    },
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:148-150",
-     "step": "8"
-    }
-   ],
-   "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
-  },
-  {
-   "decision": "How to 'monitor the job' after T4",
-   "detection": 2,
-   "elsewhere": [],
-   "fix": "Return after T4; the next invocation calls status once",
-   "fix_rung": "R4",
-   "goes_wrong": "Step 7 says to monitor the job; every other contract forbids polling in a loop and no step says when to check, so the model polls, sleeps, or waits for the user",
-   "group": 4,
-   "id": "S03-monitor",
-   "occurrence": null,
-   "rank_in_stage": 6,
-   "severity": 3,
-   "stage": "Stage 03: custom analysis",
-   "where": [
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
-     "step": "7"
-    }
-   ],
-   "why_rank": "A wasted session or a stalled one, visibly"
-  },
-  {
-   "decision": "Which reply reports a refused submission in stage 03",
-   "defects": [
-    "D12"
-   ],
-   "detection": 2,
-   "elsewhere": [],
-   "fix": "Step 7 branches submit's exit 1 and 2 to T5 with the refusal verbatim",
-   "fix_rung": "R4",
-   "goes_wrong": "Stage 03's Definitions say to report every refusal and stop (03:111), but step 7 names only T3 for an approval refusal and T4 for a submission; a venue or duplicate refusal has no template, so the model picks one",
-   "group": 4,
-   "id": "S03-submit",
-   "occurrence": null,
-   "rank_in_stage": 7,
-   "severity": 3,
-   "stage": "Stage 03: custom analysis",
-   "where": [
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
-     "step": "7"
-    }
-   ],
-   "why_rank": "A wrong or misleading message about a refusal that the user still sees"
-  },
-  {
-   "decision": "What today's date is, for the HISTORY.md entry",
-   "defects": [
-    "D17"
-   ],
-   "detection": 9,
-   "elsewhere": [
-    "Stage 01: validate the design and write samplesheets",
-    "Stage 02 sub-stages: run the pipelines"
-   ],
-   "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
-   "fix_rung": "R0",
-   "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
-   "group": 4,
-   "id": "G-date",
-   "occurrence": null,
-   "rank_in_stage": 8,
-   "severity": 2,
-   "stage": "Stage 03: custom analysis",
-   "where": [
-    {
-     "contract": "03_custom_analysis",
-     "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
-     "step": "10"
-    }
-   ],
-   "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
   }
  ]
 }

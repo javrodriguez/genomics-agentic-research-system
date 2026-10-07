@@ -6,6 +6,245 @@
  "path": "gars/00_initialize_project/CONTEXT.md",
  "schema": "stepmap-map/1",
  "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "silent_ranked": [
+  {
+   "decision": "The dataset's data class and purpose, passed to finalize",
+   "detection": 8,
+   "elsewhere": [],
+   "fix": "A step asks class and purpose from a closed menu built from the data policy table; a non-public answer goes to the person's own terminal, since the guard refuses it from an agent; T6 shows both; finalize's refusals get a branch",
+   "fix_rung": "R3",
+   "goes_wrong": "Step 15's command carries --data-class and --purpose, but T1 promises to collect only the title, the assays and the paths, and no step asks. The model picks both, finalize locks them in dataset.tsv, and T6 never shows them. The guard refuses any class but 'public' from an agent, and 'public' only for a source a human declared public, so the class is fenced; the purpose (fixture, internal, pilot, commercial) is not, and it decides where the project's jobs may run: each class permits a list of venue and purpose pairs (data_policy.tsv, permitted_backends) and the local machine accepts only 'fixture' (venue_policy.py:56-87); retention follows the class, not the purpose",
+   "group": 0,
+   "id": "S00-class",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 1,
+   "severity": 8,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:256-276",
+     "step": "15"
+    }
+   ],
+   "why_rank": "A permanent, machine-enforced record of how the data may be used, chosen without asking and never shown back"
+  },
+  {
+   "decision": "Whether the user's reply to T4a is a yes before link runs",
+   "detection": 5,
+   "elsewhere": [],
+   "fix": "A fixed answer (`link`), re-asked on anything else",
+   "fix_rung": "R1",
+   "goes_wrong": "T4a asks to 'Confirm ... or provide a different path' with no fixed answer; 'looks fine, but what about the undetermined files?' is the model's to read. Files linked on a misread yes enter the cohort, and link cannot be undone inside the stage (re-linking needs --force, which is forbidden)",
+   "group": 0,
+   "id": "S00-yes",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 2,
+   "severity": 8,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:246-253",
+     "step": "12"
+    }
+   ],
+   "why_rank": "The wrong files can enter the analysis; T4b and the stage's human check show what was linked, unasked"
+  },
+  {
+   "decision": "Which sample-ID pattern finalize gets when assays used different ones",
+   "detection": 5,
+   "elsewhere": [],
+   "fix": "finalize takes a pattern per assay, recorded at inspect",
+   "fix_rung": "R0",
+   "goes_wrong": "Step 15 says to add 'the same --sample-id-pattern if one was used at step 9', but finalize takes one pattern and applies it to every assay (stage00_register.py:656-664); in a project with several assays, each read its own way, the model picks one, and the others then fail finalize or get mis-derived sample IDs",
+   "group": 0,
+   "id": "S00-onepattern",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 3,
+   "severity": 8,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:256-276",
+     "step": "15"
+    }
+   ],
+   "why_rank": "Mis-derived IDs feed the analysis; T6's sample counts and the stage's human check show them, unasked (in a guarded session the pattern road is refused anyway)"
+  },
+  {
+   "decision": "Which menu entry the user's earlier phrase matches ('Your request matches 01')",
+   "detection": 4,
+   "elsewhere": [],
+   "fix": "`assays --select` on the original phrase returns the match or the ambiguity; the model only renders it",
+   "fix_rung": "R0",
+   "goes_wrong": "Definitions forbid resolving a phrase yourself, yet step 3 asks the model to say which entry the request matches; 'RNA-seq' could be bulk or single-cell, the user tends to confirm a suggestion with one word, and a wrong suggestion creates the wrong assay's directories and config",
+   "group": 0,
+   "id": "S00-match",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 4,
+   "severity": 8,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:198-207",
+     "step": "3"
+    }
+   ],
+   "why_rank": "A wrong assay runs the wrong pipeline on the data; the suggestion sits inside the menu the user answers before anything is created"
+  },
+  {
+   "decision": "Turning the user's description of their file names into a sample-ID regex",
+   "defects": [
+    "D4",
+    "D22"
+   ],
+   "detection": 4,
+   "elsewhere": [],
+   "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",
+   "fix_rung": "R1",
+   "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), and a malformed pattern crashes inspect, so the model then improvises a road around it",
+   "group": 0,
+   "id": "S00-pattern",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 5,
+   "severity": 8,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:240-243",
+     "step": "10"
+    }
+   ],
+   "why_rank": "Sample identity feeds every later step, but T4a asks the user to confirm the derived IDs"
+  },
+  {
+   "decision": "How to run a full integrity check the user asks for on a large cohort",
+   "detection": 6,
+   "elsewhere": [],
+   "fix": "The full check runs through the executor with a generated script",
+   "fix_rung": "R0",
+   "goes_wrong": "Definitions say to submit a full check with sbatch above about 10 GB (00:127-130); step 15 says to run finalize only in the foreground, and sbatch is not registered, so the model runs it on the login node, drops it, or improvises",
+   "group": 0,
+   "id": "S00-fullcheck",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 6,
+   "severity": 5,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:256-276",
+     "step": "15"
+    }
+   ],
+   "why_rank": "A killed or skipped check; HISTORY records the mode that actually ran"
+  },
+  {
+   "decision": "What to do when the guard refuses inspect or link because no human declared the source public",
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Definitions name data_sources.tsv; a branch sends a template asking the human to declare the folder or run the step",
+   "fix_rung": "R4",
+   "goes_wrong": "An agent may run inspect, link and finalize only on a folder listed in data_sources.tsv; no contract mentions that file, so the reply to the refusal is the model's own: ask the user to run the step, ask them to declare the folder, or stop",
+   "group": 0,
+   "id": "S00-guard",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 7,
+   "severity": 5,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:234-238",
+     "step": "9"
+    }
+   ],
+   "why_rank": "A dead end with no compliant road, but a loud one"
+  },
+  {
+   "decision": "What happens to an assay after the user replies `skip`",
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "A helper drops the skipped assay's empty directory, or finalize ignores an assay marked skipped",
+   "fix_rung": "R0",
+   "goes_wrong": "T5 offers skip, but nothing removes the skipped assay: its raw/ stays empty and finalize fails on it ('raw/ is empty'), leaving a half-made project the contract tells the agent not to delete",
+   "group": 0,
+   "id": "S00-skip",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 8,
+   "severity": 5,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:255-255",
+     "step": "14"
+    }
+   ],
+   "why_rank": "A dead end the user did not choose, but a loud one at finalize"
+  },
+  {
+   "decision": "Which part of the user's reply is the project title, and what its directory name is",
+   "defects": [
+    "D3"
+   ],
+   "detection": 5,
+   "elsewhere": [],
+   "fix": "assays takes the title and returns create's sanitized form, so T3 renders code's answer",
+   "fix_rung": "R0",
+   "goes_wrong": "A first reply may carry the title with an assay or a path; the model decides what the title is, and T3 shows a sanitized directory name that only create (step 6) computes, so the model sanitizes it itself, which Definitions forbid",
+   "group": 0,
+   "id": "S00-title",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 9,
+   "severity": 3,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:196-197",
+     "step": "2"
+    }
+   ],
+   "why_rank": "A misleading message at worst: T3b shows the real directory before any data is linked"
+  },
+  {
+   "decision": "The read-1 and read-2 counts T4a asks for",
+   "detection": 4,
+   "elsewhere": [],
+   "fix": "inspect returns the per-read counts, or T4a drops them",
+   "fix_rung": "R0",
+   "goes_wrong": "T4a shows '<n> R1 / <n> R2', which inspect does not return; the model counts the files itself, which Scope forbids, or leaves them out",
+   "group": 0,
+   "id": "S00-counts",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 10,
+   "severity": 3,
+   "stage": "Stage 00: register the project and its raw data",
+   "where": [
+    {
+     "contract": "00_initialize_project",
+     "source": "gars/00_initialize_project/CONTEXT.md:244-245",
+     "step": "11"
+    }
+   ],
+   "why_rank": "A wrong count in a message the user is asked to confirm"
+  }
+ ],
  "steps": [
   {
    "extracted": {
@@ -44,7 +283,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "Fixed text with no choice in it; nothing for code to compute.",
-    "unsaid": []
+    "silent": []
    },
    "n": "1"
   },
@@ -80,7 +319,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "The model decides which part of a reply is the title, and T3 then needs the sanitized form before any helper has computed it (D3).",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Which part of the user's reply is the project title, and what its directory name is",
       "defects": [
@@ -91,6 +330,7 @@
       "fix_rung": "R0",
       "goes_wrong": "A first reply may carry the title with an assay or a path; the model decides what the title is, and T3 shows a sanitized directory name that only create (step 6) computes, so the model sanitizes it itself, which Definitions forbid",
       "id": "S00-title",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 3,
       "why_rank": "A misleading message at worst: T3b shows the real directory before any data is linked"
@@ -178,17 +418,18 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "The menu is code's, but the 'Your request matches NN' line asks the model to resolve a phrase with no rule (Definitions forbid exactly that); normalisation in code already does it.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Which menu entry the user's earlier phrase matches ('Your request matches 01')",
-      "detection": 5,
+      "detection": 4,
       "fix": "`assays --select` on the original phrase returns the match or the ambiguity; the model only renders it",
       "fix_rung": "R0",
       "goes_wrong": "Definitions forbid resolving a phrase yourself, yet step 3 asks the model to say which entry the request matches; 'RNA-seq' could be bulk or single-cell, the user tends to confirm a suggestion with one word, and a wrong suggestion creates the wrong assay's directories and config",
       "id": "S00-match",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 8,
-      "why_rank": "A wrong assay runs the wrong pipeline on the data; T3b names the assay, but only a user who reads it carefully catches the slip"
+      "why_rank": "A wrong assay runs the wrong pipeline on the data; the suggestion sits inside the menu the user answers before anything is created"
      }
     ]
    },
@@ -271,7 +512,7 @@
     "rung_now": "R0",
     "rung_target": "R0",
     "rung_why": "Resolution of the reply is code's; the model only quotes it.",
-    "unsaid": []
+    "silent": []
    },
    "n": "4"
   },
@@ -312,7 +553,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "A written branch on an exit code; nothing to decide.",
-    "unsaid": []
+    "silent": []
    },
    "n": "5"
   },
@@ -394,7 +635,7 @@
     "rung_now": "R0",
     "rung_target": "R0",
     "rung_why": "Pure code once the IDs are passed.",
-    "unsaid": []
+    "silent": []
    },
    "n": "6"
   },
@@ -436,7 +677,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "The helper names the template; the model sends it.",
-    "unsaid": []
+    "silent": []
    },
    "n": "7"
   },
@@ -477,7 +718,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "A fixed template; the order of assays is create's list.",
-    "unsaid": []
+    "silent": []
    },
    "n": "8"
   },
@@ -560,7 +801,7 @@
     "rung_now": "R5",
     "rung_target": "R4",
     "rung_why": "The scan is code's, but the guard runs it for an agent only on a source a human declared public, and no contract says what to do when it refuses.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "What to do when the guard refuses inspect or link because no human declared the source public",
       "detection": 2,
@@ -568,6 +809,7 @@
       "fix_rung": "R4",
       "goes_wrong": "An agent may run inspect, link and finalize only on a folder listed in data_sources.tsv; no contract mentions that file, so the reply to the refusal is the model's own: ask the user to run the step, ask them to declare the folder, or stop",
       "id": "S00-guard",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 5,
       "why_rank": "A dead end with no compliant road, but a loud one"
@@ -652,12 +894,12 @@
      "the user's description of their file names"
     ],
     "kind": "judgment",
-    "note": "The re-run is a branch action of step 9's inspect. A malformed pattern crashes inspect with a traceback, exit 1 and no JSON, which no step handles (D22).",
+    "note": "The re-run is a branch action of step 9's inspect. A malformed pattern crashes inspect with a traceback and exit 1; the stage's exit table sends exit 1 to T9, whose text ('failed its exit checks') is wrong here and whose table needs a failures list a traceback never gives (D22).",
     "question": 1,
     "rung_now": "R5",
     "rung_target": "R1",
     "rung_why": "Scope forbids composing a pattern while the step asks for 'their answer as a regex': the rule contradicts itself, and the guard refuses every named-group pattern (D4).",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Turning the user's description of their file names into a sample-ID regex",
       "defects": [
@@ -669,6 +911,7 @@
       "fix_rung": "R1",
       "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), and a malformed pattern crashes inspect, so the model then improvises a road around it",
       "id": "S00-pattern",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 8,
       "why_rank": "Sample identity feeds every later step, but T4a asks the user to confirm the derived IDs"
@@ -712,11 +955,24 @@
     ],
     "kind": "judgment",
     "note": "T4a's read-1 and read-2 counts are not in inspect's JSON (pilot defect); the model would have to count files itself, which Scope forbids.",
-    "question": 4,
-    "rung_now": "R3",
+    "question": 1,
+    "rung_now": "R5",
     "rung_target": "R3",
     "rung_why": "The human confirms the derived IDs before anything is written.",
-    "unsaid": []
+    "silent": [
+     {
+      "decision": "The read-1 and read-2 counts T4a asks for",
+      "detection": 4,
+      "fix": "inspect returns the per-read counts, or T4a drops them",
+      "fix_rung": "R0",
+      "goes_wrong": "T4a shows '<n> R1 / <n> R2', which inspect does not return; the model counts the files itself, which Scope forbids, or leaves them out",
+      "id": "S00-counts",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 3,
+      "why_rank": "A wrong count in a message the user is asked to confirm"
+     }
+    ]
    },
    "n": "11"
   },
@@ -811,17 +1067,18 @@
     "rung_now": "R5",
     "rung_target": "R1",
     "rung_why": "Link is code, but whether the reply is a yes has no rule and the link cannot be undone inside the stage.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Whether the user's reply to T4a is a yes before link runs",
       "detection": 5,
       "fix": "A fixed answer (`link`), re-asked on anything else",
       "fix_rung": "R1",
-      "goes_wrong": "T4a asks to 'Confirm ... or provide a different path' with no fixed answer; 'looks fine, but what about the undetermined files?' is the model's to read, and link cannot be undone inside the stage (re-linking needs --force, which is forbidden)",
+      "goes_wrong": "T4a asks to 'Confirm ... or provide a different path' with no fixed answer; 'looks fine, but what about the undetermined files?' is the model's to read. Files linked on a misread yes enter the cohort, and link cannot be undone inside the stage (re-linking needs --force, which is forbidden)",
       "id": "S00-yes",
+      "kind": "unsaid",
       "occurrence": null,
-      "severity": 7,
-      "why_rank": "Files linked without real consent stay linked until the user deletes the project; T4b and the stage's human check show what was linked"
+      "severity": 8,
+      "why_rank": "The wrong files can enter the analysis; T4b and the stage's human check show what was linked, unasked"
      }
     ]
    },
@@ -860,7 +1117,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "A fixed template on code's count.",
-    "unsaid": []
+    "silent": []
    },
    "n": "13"
   },
@@ -897,7 +1154,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "The loop is written, but what a `skip` leaves behind is not.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "What happens to an assay after the user replies `skip`",
       "detection": 2,
@@ -905,6 +1162,7 @@
       "fix_rung": "R0",
       "goes_wrong": "T5 offers skip, but nothing removes the skipped assay: its raw/ stays empty and finalize fails on it ('raw/ is empty'), leaving a half-made project the contract tells the agent not to delete",
       "id": "S00-skip",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 5,
       "why_rank": "A dead end the user did not choose, but a loud one at finalize"
@@ -1044,17 +1302,42 @@
     "rung_now": "R5",
     "rung_target": "R3",
     "rung_why": "Finalize is code, but its --data-class and --purpose arguments come from nowhere in the dialogue; the model picks them and they lock.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "The dataset's data class and purpose, passed to finalize",
       "detection": 8,
-      "fix": "A step asks class and purpose from a closed menu built from the data policy table, T6 shows them, and finalize's refusals get a branch",
+      "fix": "A step asks class and purpose from a closed menu built from the data policy table; a non-public answer goes to the person's own terminal, since the guard refuses it from an agent; T6 shows both; finalize's refusals get a branch",
       "fix_rung": "R3",
-      "goes_wrong": "Step 15's command carries --data-class and --purpose, but T1 promises to collect only the title, the assays and the paths, and no step asks. The model picks both, finalize locks them in dataset.tsv, and T6 never shows them. The guard lets an agent register 'public' only for a source a human declared public, so the class is fenced; the purpose (fixture, internal, pilot, commercial) is not, and it decides where the project's jobs may run: each class permits a list of venue and purpose pairs (data_policy.tsv, permitted_backends) and the local machine accepts only 'fixture' (venue_policy.py:56-87); retention follows the class, not the purpose",
+      "goes_wrong": "Step 15's command carries --data-class and --purpose, but T1 promises to collect only the title, the assays and the paths, and no step asks. The model picks both, finalize locks them in dataset.tsv, and T6 never shows them. The guard refuses any class but 'public' from an agent, and 'public' only for a source a human declared public, so the class is fenced; the purpose (fixture, internal, pilot, commercial) is not, and it decides where the project's jobs may run: each class permits a list of venue and purpose pairs (data_policy.tsv, permitted_backends) and the local machine accepts only 'fixture' (venue_policy.py:56-87); retention follows the class, not the purpose",
       "id": "S00-class",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 8,
       "why_rank": "A permanent, machine-enforced record of how the data may be used, chosen without asking and never shown back"
+     },
+     {
+      "decision": "Which sample-ID pattern finalize gets when assays used different ones",
+      "detection": 5,
+      "fix": "finalize takes a pattern per assay, recorded at inspect",
+      "fix_rung": "R0",
+      "goes_wrong": "Step 15 says to add 'the same --sample-id-pattern if one was used at step 9', but finalize takes one pattern and applies it to every assay (stage00_register.py:656-664); in a project with several assays, each read its own way, the model picks one, and the others then fail finalize or get mis-derived sample IDs",
+      "id": "S00-onepattern",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 8,
+      "why_rank": "Mis-derived IDs feed the analysis; T6's sample counts and the stage's human check show them, unasked (in a guarded session the pattern road is refused anyway)"
+     },
+     {
+      "decision": "How to run a full integrity check the user asks for on a large cohort",
+      "detection": 6,
+      "fix": "The full check runs through the executor with a generated script",
+      "fix_rung": "R0",
+      "goes_wrong": "Definitions say to submit a full check with sbatch above about 10 GB (00:127-130); step 15 says to run finalize only in the foreground, and sbatch is not registered, so the model runs it on the login node, drops it, or improvises",
+      "id": "S00-fullcheck",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A killed or skipped check; HISTORY records the mode that actually ran"
      }
     ]
    },
@@ -1095,7 +1378,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "A written branch; T9's columns need the model to split failure strings (D19).",
-    "unsaid": []
+    "silent": []
    },
    "n": "16"
   },
@@ -1137,172 +1420,9 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "A fixed hand-off on code's numbers.",
-    "unsaid": []
+    "silent": []
    },
    "n": "17"
-  }
- ],
- "unsaid_ranked": [
-  {
-   "decision": "The dataset's data class and purpose, passed to finalize",
-   "detection": 8,
-   "elsewhere": [],
-   "fix": "A step asks class and purpose from a closed menu built from the data policy table, T6 shows them, and finalize's refusals get a branch",
-   "fix_rung": "R3",
-   "goes_wrong": "Step 15's command carries --data-class and --purpose, but T1 promises to collect only the title, the assays and the paths, and no step asks. The model picks both, finalize locks them in dataset.tsv, and T6 never shows them. The guard lets an agent register 'public' only for a source a human declared public, so the class is fenced; the purpose (fixture, internal, pilot, commercial) is not, and it decides where the project's jobs may run: each class permits a list of venue and purpose pairs (data_policy.tsv, permitted_backends) and the local machine accepts only 'fixture' (venue_policy.py:56-87); retention follows the class, not the purpose",
-   "group": 0,
-   "id": "S00-class",
-   "occurrence": null,
-   "rank_in_stage": 1,
-   "severity": 8,
-   "stage": "Stage 00: register the project and its raw data",
-   "where": [
-    {
-     "contract": "00_initialize_project",
-     "source": "gars/00_initialize_project/CONTEXT.md:256-276",
-     "step": "15"
-    }
-   ],
-   "why_rank": "A permanent, machine-enforced record of how the data may be used, chosen without asking and never shown back"
-  },
-  {
-   "decision": "Which menu entry the user's earlier phrase matches ('Your request matches 01')",
-   "detection": 5,
-   "elsewhere": [],
-   "fix": "`assays --select` on the original phrase returns the match or the ambiguity; the model only renders it",
-   "fix_rung": "R0",
-   "goes_wrong": "Definitions forbid resolving a phrase yourself, yet step 3 asks the model to say which entry the request matches; 'RNA-seq' could be bulk or single-cell, the user tends to confirm a suggestion with one word, and a wrong suggestion creates the wrong assay's directories and config",
-   "group": 0,
-   "id": "S00-match",
-   "occurrence": null,
-   "rank_in_stage": 2,
-   "severity": 8,
-   "stage": "Stage 00: register the project and its raw data",
-   "where": [
-    {
-     "contract": "00_initialize_project",
-     "source": "gars/00_initialize_project/CONTEXT.md:198-207",
-     "step": "3"
-    }
-   ],
-   "why_rank": "A wrong assay runs the wrong pipeline on the data; T3b names the assay, but only a user who reads it carefully catches the slip"
-  },
-  {
-   "decision": "Turning the user's description of their file names into a sample-ID regex",
-   "defects": [
-    "D4",
-    "D22"
-   ],
-   "detection": 4,
-   "elsewhere": [],
-   "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",
-   "fix_rung": "R1",
-   "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), and a malformed pattern crashes inspect, so the model then improvises a road around it",
-   "group": 0,
-   "id": "S00-pattern",
-   "occurrence": null,
-   "rank_in_stage": 3,
-   "severity": 8,
-   "stage": "Stage 00: register the project and its raw data",
-   "where": [
-    {
-     "contract": "00_initialize_project",
-     "source": "gars/00_initialize_project/CONTEXT.md:240-243",
-     "step": "10"
-    }
-   ],
-   "why_rank": "Sample identity feeds every later step, but T4a asks the user to confirm the derived IDs"
-  },
-  {
-   "decision": "Whether the user's reply to T4a is a yes before link runs",
-   "detection": 5,
-   "elsewhere": [],
-   "fix": "A fixed answer (`link`), re-asked on anything else",
-   "fix_rung": "R1",
-   "goes_wrong": "T4a asks to 'Confirm ... or provide a different path' with no fixed answer; 'looks fine, but what about the undetermined files?' is the model's to read, and link cannot be undone inside the stage (re-linking needs --force, which is forbidden)",
-   "group": 0,
-   "id": "S00-yes",
-   "occurrence": null,
-   "rank_in_stage": 4,
-   "severity": 7,
-   "stage": "Stage 00: register the project and its raw data",
-   "where": [
-    {
-     "contract": "00_initialize_project",
-     "source": "gars/00_initialize_project/CONTEXT.md:246-253",
-     "step": "12"
-    }
-   ],
-   "why_rank": "Files linked without real consent stay linked until the user deletes the project; T4b and the stage's human check show what was linked"
-  },
-  {
-   "decision": "What to do when the guard refuses inspect or link because no human declared the source public",
-   "detection": 2,
-   "elsewhere": [],
-   "fix": "Definitions name data_sources.tsv; a branch sends a template asking the human to declare the folder or run the step",
-   "fix_rung": "R4",
-   "goes_wrong": "An agent may run inspect, link and finalize only on a folder listed in data_sources.tsv; no contract mentions that file, so the reply to the refusal is the model's own: ask the user to run the step, ask them to declare the folder, or stop",
-   "group": 0,
-   "id": "S00-guard",
-   "occurrence": null,
-   "rank_in_stage": 5,
-   "severity": 5,
-   "stage": "Stage 00: register the project and its raw data",
-   "where": [
-    {
-     "contract": "00_initialize_project",
-     "source": "gars/00_initialize_project/CONTEXT.md:234-238",
-     "step": "9"
-    }
-   ],
-   "why_rank": "A dead end with no compliant road, but a loud one"
-  },
-  {
-   "decision": "What happens to an assay after the user replies `skip`",
-   "detection": 2,
-   "elsewhere": [],
-   "fix": "A helper drops the skipped assay's empty directory, or finalize ignores an assay marked skipped",
-   "fix_rung": "R0",
-   "goes_wrong": "T5 offers skip, but nothing removes the skipped assay: its raw/ stays empty and finalize fails on it ('raw/ is empty'), leaving a half-made project the contract tells the agent not to delete",
-   "group": 0,
-   "id": "S00-skip",
-   "occurrence": null,
-   "rank_in_stage": 6,
-   "severity": 5,
-   "stage": "Stage 00: register the project and its raw data",
-   "where": [
-    {
-     "contract": "00_initialize_project",
-     "source": "gars/00_initialize_project/CONTEXT.md:255-255",
-     "step": "14"
-    }
-   ],
-   "why_rank": "A dead end the user did not choose, but a loud one at finalize"
-  },
-  {
-   "decision": "Which part of the user's reply is the project title, and what its directory name is",
-   "defects": [
-    "D3"
-   ],
-   "detection": 5,
-   "elsewhere": [],
-   "fix": "assays takes the title and returns create's sanitized form, so T3 renders code's answer",
-   "fix_rung": "R0",
-   "goes_wrong": "A first reply may carry the title with an assay or a path; the model decides what the title is, and T3 shows a sanitized directory name that only create (step 6) computes, so the model sanitizes it itself, which Definitions forbid",
-   "group": 0,
-   "id": "S00-title",
-   "occurrence": null,
-   "rank_in_stage": 7,
-   "severity": 3,
-   "stage": "Stage 00: register the project and its raw data",
-   "where": [
-    {
-     "contract": "00_initialize_project",
-     "source": "gars/00_initialize_project/CONTEXT.md:196-197",
-     "step": "2"
-    }
-   ],
-   "why_rank": "A misleading message at worst: T3b shows the real directory before any data is linked"
   }
  ]
 }

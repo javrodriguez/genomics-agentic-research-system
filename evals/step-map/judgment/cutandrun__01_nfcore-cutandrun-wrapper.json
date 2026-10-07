@@ -10,7 +10,7 @@
    "rung_target": "R4",
    "question": 1,
    "rung_why": "Prepare is code, but whether to pass --resume-refresh (decision 0038) is described only in Definitions; no step says when.",
-   "extra_unsaid": [
+   "extra_silent": [
     {
      "id": "X-cutandrun-resume",
      "decision": "Whether a re-run after a FAILED run is a --resume-refresh, a fresh run or a new analysis",
@@ -20,7 +20,8 @@
      "occurrence": null,
      "why_rank": "Confusion over what was re-run rather than a wrong result: Nextflow re-runs every task whose parameters changed",
      "fix": "A recovery step in the Process naming the conditions and asking the user to choose resume or a fresh run",
-     "fix_rung": "R3"
+     "fix_rung": "R3",
+     "kind": "unsaid"
     }
    ]
   }

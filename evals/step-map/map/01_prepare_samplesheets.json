@@ -6,6 +6,261 @@
  "path": "gars/01_prepare_samplesheets/CONTEXT.md",
  "schema": "stepmap-map/1",
  "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "silent_ranked": [
+  {
+   "decision": "Turning the user's words into strandedness, replication unit, release and pairing",
+   "detection": 6,
+   "elsewhere": [],
+   "fix": "A numbered menu per setting with each value's meaning, as stage 02 offers genomes; an answer outside it is re-asked; code writes the YAML and the HISTORY line",
+   "fix_rung": "R1",
+   "goes_wrong": "T9 lists the allowed values and the contract says to write exactly what the user supplied and never invent values (01:251-254); the check refuses anything outside the list. But nothing checks that the value written is what the user said: a model that translates 'dUTP' or 'TruSeq stranded' into an allowed value breaks the rule unseen, and a pairing mentioned in passing is only ever flagged with a warning. A wrong but allowed strandedness passes every check",
+   "group": 1,
+   "id": "S01-declare",
+   "kind": "unchecked",
+   "occurrence": null,
+   "rank_in_stage": 1,
+   "severity": 9,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
+     "step": "2"
+    }
+   ],
+   "why_rank": "Wrong strandedness miscounts reads into a plausible, wrong result; nf-core flags a mismatch only in the MultiQC report's strandedness section, which the next human check points to"
+  },
+  {
+   "decision": "Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both",
+   "detection": 5,
+   "elsewhere": [],
+   "fix": "A fixed answer per gate (`exclude`, `overwrite`), and the writer refuses a switch with no matching recorded answer",
+   "fix_rung": "R2",
+   "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read. Written rules say the two switches need the user's confirmation, but nothing in code ties --confirm-exclusions or --force to an answer; --force also overwrites any edits the user made to the samplesheets",
+   "group": 1,
+   "id": "S01-yes",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 2,
+   "severity": 8,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:273-275",
+     "step": "6"
+    },
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:276-276",
+     "step": "7"
+    }
+   ],
+   "why_rank": "An unconsented exclusion runs the analysis on samples the user did not choose; T2's counts and HISTORY show it afterwards, unasked"
+  },
+  {
+   "decision": "Whether to take values for the remaining config decisions in free text",
+   "defects": [
+    "D6"
+   ],
+   "detection": 5,
+   "elsewhere": [],
+   "fix": "Delete step 14's offer; T4 already says stage 02 will offer menus",
+   "fix_rung": "R4",
+   "goes_wrong": "Step 14 says to offer to write values the user gives; the T4 note says never to, because stage 02 offers menus. A model that follows step 14 writes a reference path or a contrast by hand; if stage 02 then judges no decisions remain, it skips its menus, which are what keep the FASTA and annotation paired and the contrast to real levels",
+   "group": 1,
+   "id": "S01-offer",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 3,
+   "severity": 8,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:301-304",
+     "step": "14"
+    }
+   ],
+   "why_rank": "The wrong reference or contrast runs if the menus are skipped; the router's human check asks the user to confirm the reference and contrast before the first sub-stage"
+  },
+  {
+   "decision": "What the writer's exit 1 means, and what it leaves on disk",
+   "defects": [
+    "D5"
+   ],
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Distinct codes or a phase field the reply keys on, and the writer removes what it wrote when its own gate fails",
+   "fix_rung": "R0",
+   "goes_wrong": "Step 11 says exit 1 means the exit gate failed after writing, but the writer also exits 1 before writing (validation, the deep check); T3 says 'nothing was written' in both cases, while a real exit-gate failure leaves the wrong artifacts in place, and every later consumer accepts them by their existence",
+   "group": 1,
+   "id": "S01-gate",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 4,
+   "severity": 8,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:295-296",
+     "step": "11"
+    }
+   ],
+   "why_rank": "Wrong samplesheets could feed the pipeline, but the failure is loud at once"
+  },
+  {
+   "decision": "Which project (and assay) the user's words mean",
+   "detection": 5,
+   "elsewhere": [
+    "Stage 02 router: settings menus and routing"
+   ],
+   "fix": "A resolver lists the matching projects and assays; the model renders them, the user picks",
+   "fix_rung": "R1",
+   "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a project directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right step on the wrong project",
+   "group": 1,
+   "id": "G-project",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 5,
+   "severity": 6,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
+     "step": "2"
+    }
+   ],
+   "why_rank": "The right analysis on the wrong project; the stage's opening message names the project, unasked, before anything runs"
+  },
+  {
+   "decision": "How to run an accepted deep check when the cohort needs scheduling",
+   "detection": 6,
+   "elsewhere": [],
+   "fix": "The deep check runs through the executor with a generated script, like every pipeline",
+   "fix_rung": "R0",
+   "goes_wrong": "Step 8 says to submit the writer with sbatch; sbatch is not registered and the guard refuses it, and nothing generates a script for the writer, so the model either runs the check on the login node or quietly drops it",
+   "group": 1,
+   "id": "S01-deep",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 6,
+   "severity": 5,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:277-280",
+     "step": "8"
+    }
+   ],
+   "why_rank": "Wasted or killed work, or a check the user asked for and did not get; HISTORY records 'none' for a reader who looks"
+  },
+  {
+   "decision": "How to proceed when the guard refuses a step on a non-public project",
+   "defects": [
+    "D16"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 02 router: settings menus and routing",
+    "Stage 02 sub-stages: run the pipelines",
+    "Stage 03: custom analysis"
+   ],
+   "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+   "fix_rung": "R4",
+   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+   "group": 1,
+   "id": "G-closed",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 7,
+   "severity": 5,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
+     "step": "2"
+    },
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:261-268",
+     "step": "3"
+    },
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:281-291",
+     "step": "9"
+    },
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:298-300",
+     "step": "13"
+    }
+   ],
+   "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+  },
+  {
+   "decision": "Which failures send the user back to T9 and which stop the stage",
+   "detection": 1,
+   "elsewhere": [],
+   "fix": "The check's JSON marks each failure's owner (config or design)",
+   "fix_rung": "R0",
+   "goes_wrong": "Step 5 returns 'undeclared config values' to step 2 and stops on the rest, with no list; subject_undeclared is a samples.csv problem whose name sounds like config",
+   "group": 1,
+   "id": "S01-route",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 8,
+   "severity": 3,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:270-272",
+     "step": "5"
+    }
+   ],
+   "why_rank": "The next check catches a wrong turn at once"
+  },
+  {
+   "decision": "What today's date is, for the HISTORY.md entry",
+   "defects": [
+    "D17"
+   ],
+   "detection": 9,
+   "elsewhere": [
+    "Stage 02 sub-stages: run the pipelines",
+    "Stage 03: custom analysis"
+   ],
+   "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
+   "fix_rung": "R0",
+   "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+   "group": 1,
+   "id": "G-date",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 9,
+   "severity": 2,
+   "stage": "Stage 01: validate the design and write samplesheets",
+   "where": [
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
+     "step": "2"
+    },
+    {
+     "contract": "01_prepare_samplesheets",
+     "source": "gars/01_prepare_samplesheets/CONTEXT.md:298-300",
+     "step": "13"
+    }
+   ],
+   "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
+  }
+ ],
  "steps": [
   {
    "extracted": {
@@ -40,7 +295,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "Fixed text.",
-    "unsaid": []
+    "silent": []
    },
    "n": "1"
   },
@@ -124,14 +379,15 @@
     "rung_now": "R5",
     "rung_target": "R1",
     "rung_why": "The allowed values are closed, but turning the user's words into them, and hand-editing the YAML, has no rule; the check (step 3) already reports the missing keys the model looks for here.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Turning the user's words into strandedness, replication unit, release and pairing",
       "detection": 6,
       "fix": "A numbered menu per setting with each value's meaning, as stage 02 offers genomes; an answer outside it is re-asked; code writes the YAML and the HISTORY line",
       "fix_rung": "R1",
-      "goes_wrong": "T9 lists the allowed values and the contract says to write exactly what the user supplied, and the check refuses a value outside the list. What no rule covers: an answer in other words ('dUTP', 'TruSeq stranded', 'same donors'), which the model may translate into an allowed value rather than re-ask, and a pairing the user mentions in passing, which only a warning ever flags. A wrong but allowed strandedness passes every check",
+      "goes_wrong": "T9 lists the allowed values and the contract says to write exactly what the user supplied and never invent values (01:251-254); the check refuses anything outside the list. But nothing checks that the value written is what the user said: a model that translates 'dUTP' or 'TruSeq stranded' into an allowed value breaks the rule unseen, and a pairing mentioned in passing is only ever flagged with a warning. A wrong but allowed strandedness passes every check",
       "id": "S01-declare",
+      "kind": "unchecked",
       "occurrence": null,
       "severity": 9,
       "why_rank": "Wrong strandedness miscounts reads into a plausible, wrong result; nf-core flags a mismatch only in the MultiQC report's strandedness section, which the next human check points to"
@@ -146,6 +402,7 @@
       "fix_rung": "R4",
       "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 5,
       "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
@@ -157,6 +414,7 @@
       "fix_rung": "R1",
       "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a project directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right step on the wrong project",
       "id": "G-project",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 6,
       "why_rank": "The right analysis on the wrong project; the stage's opening message names the project, unasked, before anything runs"
@@ -171,6 +429,7 @@
       "fix_rung": "R0",
       "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
       "id": "G-date",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 2,
       "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
@@ -257,7 +516,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "Every validation rule is code.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "How to proceed when the guard refuses a step on a non-public project",
       "defects": [
@@ -268,6 +527,7 @@
       "fix_rung": "R4",
       "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 5,
       "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
@@ -310,7 +570,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "A written branch.",
-    "unsaid": []
+    "silent": []
    },
    "n": "4"
   },
@@ -353,7 +613,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "Rendering is written; which failures return to T9 has no rule.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Which failures send the user back to T9 and which stop the stage",
       "detection": 1,
@@ -361,6 +621,7 @@
       "fix_rung": "R0",
       "goes_wrong": "Step 5 returns 'undeclared config values' to step 2 and stops on the rest, with no list; subject_undeclared is a samples.csv problem whose name sounds like config",
       "id": "S01-route",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 3,
       "why_rank": "The next check catches a wrong turn at once"
@@ -410,7 +671,7 @@
     "rung_now": "R5",
     "rung_target": "R2",
     "rung_why": "The gate is written, but only `cancel` is a fixed answer; what counts as a yes, and whether one yes covers T7 and T5, has no rule, and the flag that clears it is the model's to pass.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both",
       "detection": 5,
@@ -418,6 +679,7 @@
       "fix_rung": "R2",
       "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read. Written rules say the two switches need the user's confirmation, but nothing in code ties --confirm-exclusions or --force to an answer; --force also overwrites any edits the user made to the samplesheets",
       "id": "S01-yes",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 8,
       "why_rank": "An unconsented exclusion runs the analysis on samples the user did not choose; T2's counts and HISTORY show it afterwards, unasked"
@@ -467,7 +729,7 @@
     "rung_now": "R5",
     "rung_target": "R2",
     "rung_why": "The same free-text yes as step 6 (S01-yes), here before an overwrite.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both",
       "detection": 5,
@@ -475,6 +737,7 @@
       "fix_rung": "R2",
       "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read. Written rules say the two switches need the user's confirmation, but nothing in code ties --confirm-exclusions or --force to an answer; --force also overwrites any edits the user made to the samplesheets",
       "id": "S01-yes",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 8,
       "why_rank": "An unconsented exclusion runs the analysis on samples the user did not choose; T2's counts and HISTORY show it afterwards, unasked"
@@ -544,7 +807,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "The offer and its fixed answers are written; how to schedule an accepted large check is not (sbatch is unregistered and refused; no script exists to submit).",
-    "unsaid": [
+    "silent": [
      {
       "decision": "How to run an accepted deep check when the cohort needs scheduling",
       "detection": 6,
@@ -552,6 +815,7 @@
       "fix_rung": "R0",
       "goes_wrong": "Step 8 says to submit the writer with sbatch; sbatch is not registered and the guard refuses it, and nothing generates a script for the writer, so the model either runs the check on the login node or quietly drops it",
       "id": "S01-deep",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 5,
       "why_rank": "Wasted or killed work, or a check the user asked for and did not get; HISTORY records 'none' for a reader who looks"
@@ -679,7 +943,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "The writer is code; the flags it receives were decided at steps 6-8 (S01-yes).",
-    "unsaid": [
+    "silent": [
      {
       "decision": "How to proceed when the guard refuses a step on a non-public project",
       "defects": [
@@ -690,6 +954,7 @@
       "fix_rung": "R4",
       "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 5,
       "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
@@ -739,7 +1004,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "A written branch.",
-    "unsaid": []
+    "silent": []
    },
    "n": "10"
   },
@@ -780,20 +1045,21 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "The step reads every exit 1 as an exit-gate failure; the writer also exits 1 before writing (D5), and the model must decide which happened.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "What the writer's exit 1 means, and what it leaves on disk",
       "defects": [
        "D5"
       ],
-      "detection": 3,
+      "detection": 2,
       "fix": "Distinct codes or a phase field the reply keys on, and the writer removes what it wrote when its own gate fails",
       "fix_rung": "R0",
       "goes_wrong": "Step 11 says exit 1 means the exit gate failed after writing, but the writer also exits 1 before writing (validation, the deep check); T3 says 'nothing was written' in both cases, while a real exit-gate failure leaves the wrong artifacts in place, and every later consumer accepts them by their existence",
       "id": "S01-gate",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 8,
-      "why_rank": "Wrong samplesheets could feed the pipeline, but the failure is shown and the user usually re-runs stage 01"
+      "why_rank": "Wrong samplesheets could feed the pipeline, but the failure is loud at once"
      }
     ]
    },
@@ -832,7 +1098,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "A fixed template on code's counts.",
-    "unsaid": []
+    "silent": []
    },
    "n": "12"
   },
@@ -902,7 +1168,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "Copying is written, but the date the model must write in has no source the agent can reach.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "What today's date is, for the HISTORY.md entry",
       "defects": [
@@ -913,6 +1179,7 @@
       "fix_rung": "R0",
       "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
       "id": "G-date",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 2,
       "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
@@ -927,6 +1194,7 @@
       "fix_rung": "R4",
       "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 5,
       "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
@@ -971,7 +1239,7 @@
     "rung_now": "R5",
     "rung_target": "R4",
     "rung_why": "Step 14 and the T4 note give opposite rules on taking values in free text (D6).",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Whether to take values for the remaining config decisions in free text",
       "defects": [
@@ -982,6 +1250,7 @@
       "fix_rung": "R4",
       "goes_wrong": "Step 14 says to offer to write values the user gives; the T4 note says never to, because stage 02 offers menus. A model that follows step 14 writes a reference path or a contrast by hand; if stage 02 then judges no decisions remain, it skips its menus, which are what keep the FASTA and annotation paired and the contrast to real levels",
       "id": "S01-offer",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 8,
       "why_rank": "The wrong reference or contrast runs if the menus are skipped; the router's human check asks the user to confirm the reference and contrast before the first sub-stage"
@@ -989,252 +1258,6 @@
     ]
    },
    "n": "14"
-  }
- ],
- "unsaid_ranked": [
-  {
-   "decision": "Turning the user's words into strandedness, replication unit, release and pairing",
-   "detection": 6,
-   "elsewhere": [],
-   "fix": "A numbered menu per setting with each value's meaning, as stage 02 offers genomes; an answer outside it is re-asked; code writes the YAML and the HISTORY line",
-   "fix_rung": "R1",
-   "goes_wrong": "T9 lists the allowed values and the contract says to write exactly what the user supplied, and the check refuses a value outside the list. What no rule covers: an answer in other words ('dUTP', 'TruSeq stranded', 'same donors'), which the model may translate into an allowed value rather than re-ask, and a pairing the user mentions in passing, which only a warning ever flags. A wrong but allowed strandedness passes every check",
-   "group": 1,
-   "id": "S01-declare",
-   "occurrence": null,
-   "rank_in_stage": 1,
-   "severity": 9,
-   "stage": "Stage 01: validate the design and write samplesheets",
-   "where": [
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
-     "step": "2"
-    }
-   ],
-   "why_rank": "Wrong strandedness miscounts reads into a plausible, wrong result; nf-core flags a mismatch only in the MultiQC report's strandedness section, which the next human check points to"
-  },
-  {
-   "decision": "Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both",
-   "detection": 5,
-   "elsewhere": [],
-   "fix": "A fixed answer per gate (`exclude`, `overwrite`), and the writer refuses a switch with no matching recorded answer",
-   "fix_rung": "R2",
-   "goes_wrong": "Only `cancel` is fixed; 'ok' or 'yes, but keep sample 4' is the model's to read. Written rules say the two switches need the user's confirmation, but nothing in code ties --confirm-exclusions or --force to an answer; --force also overwrites any edits the user made to the samplesheets",
-   "group": 1,
-   "id": "S01-yes",
-   "occurrence": null,
-   "rank_in_stage": 2,
-   "severity": 8,
-   "stage": "Stage 01: validate the design and write samplesheets",
-   "where": [
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:273-275",
-     "step": "6"
-    },
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:276-276",
-     "step": "7"
-    }
-   ],
-   "why_rank": "An unconsented exclusion runs the analysis on samples the user did not choose; T2's counts and HISTORY show it afterwards, unasked"
-  },
-  {
-   "decision": "Whether to take values for the remaining config decisions in free text",
-   "defects": [
-    "D6"
-   ],
-   "detection": 5,
-   "elsewhere": [],
-   "fix": "Delete step 14's offer; T4 already says stage 02 will offer menus",
-   "fix_rung": "R4",
-   "goes_wrong": "Step 14 says to offer to write values the user gives; the T4 note says never to, because stage 02 offers menus. A model that follows step 14 writes a reference path or a contrast by hand; if stage 02 then judges no decisions remain, it skips its menus, which are what keep the FASTA and annotation paired and the contrast to real levels",
-   "group": 1,
-   "id": "S01-offer",
-   "occurrence": null,
-   "rank_in_stage": 3,
-   "severity": 8,
-   "stage": "Stage 01: validate the design and write samplesheets",
-   "where": [
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:301-304",
-     "step": "14"
-    }
-   ],
-   "why_rank": "The wrong reference or contrast runs if the menus are skipped; the router's human check asks the user to confirm the reference and contrast before the first sub-stage"
-  },
-  {
-   "decision": "What the writer's exit 1 means, and what it leaves on disk",
-   "defects": [
-    "D5"
-   ],
-   "detection": 3,
-   "elsewhere": [],
-   "fix": "Distinct codes or a phase field the reply keys on, and the writer removes what it wrote when its own gate fails",
-   "fix_rung": "R0",
-   "goes_wrong": "Step 11 says exit 1 means the exit gate failed after writing, but the writer also exits 1 before writing (validation, the deep check); T3 says 'nothing was written' in both cases, while a real exit-gate failure leaves the wrong artifacts in place, and every later consumer accepts them by their existence",
-   "group": 1,
-   "id": "S01-gate",
-   "occurrence": null,
-   "rank_in_stage": 4,
-   "severity": 8,
-   "stage": "Stage 01: validate the design and write samplesheets",
-   "where": [
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:295-296",
-     "step": "11"
-    }
-   ],
-   "why_rank": "Wrong samplesheets could feed the pipeline, but the failure is shown and the user usually re-runs stage 01"
-  },
-  {
-   "decision": "Which project (and assay) the user's words mean",
-   "detection": 5,
-   "elsewhere": [
-    "Stage 02 router: settings menus and routing"
-   ],
-   "fix": "A resolver lists the matching projects and assays; the model renders them, the user picks",
-   "fix_rung": "R1",
-   "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a project directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right step on the wrong project",
-   "group": 1,
-   "id": "G-project",
-   "occurrence": null,
-   "rank_in_stage": 5,
-   "severity": 6,
-   "stage": "Stage 01: validate the design and write samplesheets",
-   "where": [
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
-     "step": "2"
-    }
-   ],
-   "why_rank": "The right analysis on the wrong project; the stage's opening message names the project, unasked, before anything runs"
-  },
-  {
-   "decision": "How to run an accepted deep check when the cohort needs scheduling",
-   "detection": 6,
-   "elsewhere": [],
-   "fix": "The deep check runs through the executor with a generated script, like every pipeline",
-   "fix_rung": "R0",
-   "goes_wrong": "Step 8 says to submit the writer with sbatch; sbatch is not registered and the guard refuses it, and nothing generates a script for the writer, so the model either runs the check on the login node or quietly drops it",
-   "group": 1,
-   "id": "S01-deep",
-   "occurrence": null,
-   "rank_in_stage": 6,
-   "severity": 5,
-   "stage": "Stage 01: validate the design and write samplesheets",
-   "where": [
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:277-280",
-     "step": "8"
-    }
-   ],
-   "why_rank": "Wasted or killed work, or a check the user asked for and did not get; HISTORY records 'none' for a reader who looks"
-  },
-  {
-   "decision": "How to proceed when the guard refuses a step on a non-public project",
-   "defects": [
-    "D16"
-   ],
-   "detection": 2,
-   "elsewhere": [
-    "Stage 02 router: settings menus and routing",
-    "Stage 02 sub-stages: run the pipelines",
-    "Stage 03: custom analysis"
-   ],
-   "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
-   "fix_rung": "R4",
-   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
-   "group": 1,
-   "id": "G-closed",
-   "occurrence": null,
-   "rank_in_stage": 7,
-   "severity": 5,
-   "stage": "Stage 01: validate the design and write samplesheets",
-   "where": [
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
-     "step": "2"
-    },
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:261-268",
-     "step": "3"
-    },
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:281-291",
-     "step": "9"
-    },
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:298-300",
-     "step": "13"
-    }
-   ],
-   "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
-  },
-  {
-   "decision": "Which failures send the user back to T9 and which stop the stage",
-   "detection": 1,
-   "elsewhere": [],
-   "fix": "The check's JSON marks each failure's owner (config or design)",
-   "fix_rung": "R0",
-   "goes_wrong": "Step 5 returns 'undeclared config values' to step 2 and stops on the rest, with no list; subject_undeclared is a samples.csv problem whose name sounds like config",
-   "group": 1,
-   "id": "S01-route",
-   "occurrence": null,
-   "rank_in_stage": 8,
-   "severity": 3,
-   "stage": "Stage 01: validate the design and write samplesheets",
-   "where": [
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:270-272",
-     "step": "5"
-    }
-   ],
-   "why_rank": "The next check catches a wrong turn at once"
-  },
-  {
-   "decision": "What today's date is, for the HISTORY.md entry",
-   "defects": [
-    "D17"
-   ],
-   "detection": 9,
-   "elsewhere": [
-    "Stage 02 sub-stages: run the pipelines",
-    "Stage 03: custom analysis"
-   ],
-   "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
-   "fix_rung": "R0",
-   "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
-   "group": 1,
-   "id": "G-date",
-   "occurrence": null,
-   "rank_in_stage": 9,
-   "severity": 2,
-   "stage": "Stage 01: validate the design and write samplesheets",
-   "where": [
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
-     "step": "2"
-    },
-    {
-     "contract": "01_prepare_samplesheets",
-     "source": "gars/01_prepare_samplesheets/CONTEXT.md:298-300",
-     "step": "13"
-    }
-   ],
-   "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
   }
  ]
 }

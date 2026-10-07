@@ -25,15 +25,16 @@
    "rung_target": "R0",
    "question": 1,
    "rung_why": "Listing is code; which project and assay to list is the model's choice, and the resolver's direct spelling is a door (G-door).",
-   "unsaid": [
+   "silent": [
     {
      "id": "S03-assay",
+     "kind": "unsaid",
      "decision": "Which project, and which assay's artifacts, the analysis draws on",
      "goes_wrong": "Step 1 lists artifacts for 'the relevant assay'; in a project with several assays the model picks one, and the plan's Inputs inherit that choice",
-     "severity": 6,
+     "severity": 8,
      "detection": 4,
      "occurrence": null,
-     "why_rank": "The right analysis on the wrong data, but the plan the user approves lists its inputs",
+     "why_rank": "The analysis runs on the wrong inputs, but the plan the user approves lists them",
      "fix": "List every assay's artifacts and let the plan name each input's assay",
      "fix_rung": "R0"
     },
@@ -49,7 +50,8 @@
      "fix_rung": "R0",
      "defects": [
       "D15"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   },
@@ -66,12 +68,28 @@
     "typed tool calls",
     "written rules only"
    ],
-   "rung_now": "R4",
+   "rung_now": "R5",
    "rung_target": "R4",
-   "question": 5,
+   "question": 1,
    "rung_why": "Allocation is code; the slug is a cosmetic name under a written rule.",
-   "unsaid": [],
-   "note": "Exit 3 has no branch."
+   "note": "Exit 3 has no branch.",
+   "silent": [
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ],
+     "kind": "unsaid"
+    }
+   ]
   },
   "3": {
    "actor": [
@@ -88,11 +106,27 @@
     "closed vocabularies",
     "written rules only"
    ],
-   "rung_now": "R3",
+   "rung_now": "R5",
    "rung_target": "R3",
-   "question": 4,
+   "question": 1,
    "rung_why": "The judgment the stage exists for, gated by the human's approval of the plan; approve checks the form (markers, output types, relative paths).",
-   "unsaid": []
+   "silent": [
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ],
+     "kind": "unsaid"
+    }
+   ]
   },
   "4": {
    "actor": [
@@ -111,7 +145,7 @@
    "rung_target": "R4",
    "question": 5,
    "rung_why": "A fixed hand-off to the human gate.",
-   "unsaid": []
+   "silent": []
   },
   "5": {
    "actor": [
@@ -127,11 +161,27 @@
     "fixed response templates",
     "wait points"
    ],
-   "rung_now": "R3",
+   "rung_now": "R5",
    "rung_target": "R3",
-   "question": 4,
+   "question": 1,
    "rung_why": "The model edits, the human re-reads before approving.",
-   "unsaid": []
+   "silent": [
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ],
+     "kind": "unsaid"
+    }
+   ]
   },
   "6": {
    "actor": [
@@ -153,7 +203,7 @@
    "rung_target": "R3",
    "question": 4,
    "rung_why": "The human approves in their own terminal; the guard refuses approve to the agent.",
-   "unsaid": []
+   "silent": []
   },
   "7": {
    "actor": [
@@ -178,7 +228,7 @@
    "rung_target": "R3",
    "question": 1,
    "rung_why": "The model writes the computation; approval binds the plan, not the scripts, and nothing reads the code against the plan.",
-   "unsaid": [
+   "silent": [
     {
      "id": "S03-scripts",
      "decision": "How the approved method becomes code",
@@ -186,9 +236,10 @@
      "severity": 9,
      "detection": 8,
      "occurrence": null,
-     "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan",
+     "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan (the contract itself records the gap, 03:89-94)",
      "fix": "Show the scripts for approval and bind their hashes into the approval record, as the plan's already is",
-     "fix_rung": "R3"
+     "fix_rung": "R3",
+     "kind": "unchecked"
     },
     {
      "id": "S03-monitor",
@@ -199,7 +250,8 @@
      "occurrence": null,
      "why_rank": "A wasted session or a stalled one, visibly",
      "fix": "Return after T4; the next invocation calls status once",
-     "fix_rung": "R4"
+     "fix_rung": "R4",
+     "kind": "unsaid"
     },
     {
      "id": "S03-submit",
@@ -213,7 +265,8 @@
      "fix_rung": "R4",
      "defects": [
       "D12"
-     ]
+     ],
+     "kind": "unsaid"
     },
     {
      "id": "G-door",
@@ -227,16 +280,18 @@
      "fix_rung": "R0",
      "defects": [
       "D15"
-     ]
+     ],
+     "kind": "unsaid"
     },
     {
      "id": "S03-order",
+     "kind": "unsaid",
      "decision": "In what order, and with what dependencies, several analysis scripts run",
-     "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists, or read a stale copy left by an earlier attempt",
-     "severity": 6,
-     "detection": 3,
+     "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists (it crashes), or read a stale copy left by an earlier attempt, which passes verify",
+     "severity": 9,
+     "detection": 8,
      "occurrence": null,
-     "why_rank": "Mostly a crashed job that verify reports; a stale input is the rare, worse case",
+     "why_rank": "A stale input gives a wrong result that verify accepts; only reading the run records reveals the order",
      "fix": "The plan's Execution section lists the scripts in order and the executor runs them as one job, or with declared dependencies",
      "fix_rung": "R2"
     },
@@ -252,7 +307,8 @@
      "fix_rung": "R4",
      "defects": [
       "D16"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   },
@@ -275,7 +331,7 @@
    "rung_target": "R4",
    "question": 1,
    "rung_why": "A written failure branch, but the status call's direct spelling is a door (G-door) and its own exits have no branch (D13).",
-   "unsaid": [
+   "silent": [
     {
      "id": "G-door",
      "decision": "How to spell a call the guard accepts only through the dispatcher",
@@ -288,7 +344,8 @@
      "fix_rung": "R0",
      "defects": [
       "D15"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   },
@@ -309,12 +366,25 @@
     "helper exit codes",
     "history entries written by helpers"
    ],
-   "rung_now": "R0",
+   "rung_now": "R5",
    "rung_target": "R0",
-   "question": 2,
+   "question": 1,
    "rung_why": "verify checks approval, execution evidence and that declared outputs exist and are non-empty.",
-   "unsaid": [],
-   "note": "Exit 3 has no branch."
+   "note": "Exit 3 has no branch.",
+   "silent": [
+    {
+     "id": "S03-expiry",
+     "kind": "unsaid",
+     "decision": "What to do when the plan's approval has expired before verify",
+     "goes_wrong": "An approval lasts 24 hours; verify then refuses (stage03_analysis.py:199, 245-246, 395-402) and approve refuses to re-approve a stamped plan (326-330), so the only road is a new analysis and a full re-run. No step names it, and T3's 'I will fix the plan' is wrong for an expiry",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road named, but a loud one",
+     "fix": "Step 9 branches the expiry to a template naming the new-analysis road",
+     "fix_rung": "R4"
+    }
+   ]
   },
   "10": {
    "actor": [
@@ -333,7 +403,7 @@
    "rung_target": "R0",
    "question": 1,
    "rung_why": "Copying is written, but the date has no source the agent can reach.",
-   "unsaid": [
+   "silent": [
     {
      "id": "G-date",
      "decision": "What today's date is, for the HISTORY.md entry",
@@ -346,7 +416,8 @@
      "fix_rung": "R0",
      "defects": [
       "D17"
-     ]
+     ],
+     "kind": "unsaid"
     },
     {
      "id": "G-closed",
@@ -360,7 +431,8 @@
      "fix_rung": "R4",
      "defects": [
       "D16"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   }

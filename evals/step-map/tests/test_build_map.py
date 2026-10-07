@@ -158,22 +158,35 @@ class Validator(unittest.TestCase):
 
     def test_occurrence_needs_a_measurement(self):
         self.edit("00_initialize_project.json",
-                  lambda d: d["steps"]["15"]["unsaid"][0].update(occurrence=3))
+                  lambda d: d["steps"]["15"]["silent"][0].update(occurrence=3))
         self.refuses("no measurement cited")
 
     def test_score_range(self):
         self.edit("00_initialize_project.json",
-                  lambda d: d["steps"]["15"]["unsaid"][0].update(severity=11))
+                  lambda d: d["steps"]["15"]["silent"][0].update(severity=11))
         self.refuses("integer 1-10")
 
     def test_unknown_defect(self):
         self.edit("00_initialize_project.json",
-                  lambda d: d["steps"]["2"]["unsaid"][0].update(defects=["D99"]))
+                  lambda d: d["steps"]["2"]["silent"][0].update(defects=["D99"]))
         self.refuses("D99")
+
+    def test_kind_is_closed(self):
+        self.edit("00_initialize_project.json",
+                  lambda d: d["steps"]["15"]["silent"][0].update(kind="maybe"))
+        self.refuses("unsaid or unchecked")
+
+    def test_unchecked_only_step_is_r4(self):
+        def fn(d):
+            row = d["steps"]["14"]                    # its only decision, S00-skip, is unique
+            row["silent"][0]["kind"] = "unchecked"
+            row.update(rung_now="R3", rung_target="R0", question=2)
+        self.edit("00_initialize_project.json", fn)
+        self.refuses("is R4 (a written rule with no audit)")
 
     def test_same_id_different_content(self):
         def fn(d):
-            d["steps"]["6"]["unsaid"][0]["severity"] = 6
+            d["steps"]["6"]["silent"][0]["severity"] = 6
         self.edit("01_prepare_samplesheets.json", fn)
         self.refuses("defined twice")
 

@@ -10,15 +10,15 @@ The fixes would go into the batch of GARS fixes that opens after the freeze on 1
 - `not a real risk: ...`, if you think the agent would never get this wrong, or it would not matter;
 - `different fix: ...`, if the risk is right but you would fix it another way.
 
-Each item ends with a "Your answer:" line for this. Your reasons are what I most need: they set how the rest of the 34 decisions are ranked.
+Each item ends with a "Your answer:" line for this. Your reasons are what I most need: they set how the rest of the 40 decisions are ranked.
 It should take about two hours; the items are independent, so you can stop and resume anywhere.
 
-_Written 7 Oct 2026 from the full step map of GARS as of commit `a626cdc2`, and corrected the same night after two independent reviews._
+_Written 7 Oct 2026 from the full step map of GARS as of commit `a626cdc2`, and corrected the same night after independent reviews._
 
 ## How this was done
 
 I read every numbered step of all 14 GARS stage contracts (142 steps) and asked, at each one, what the agent still decides on its own.
-I found 34 such decisions.
+I found 40 such decisions. Most have no rule at all; a few are covered by a written rule that nothing checks, and those are marked.
 Each was scored on two fixed 1-to-10 scales and ranked first by harm, then by slip-through.
 Harm is how bad the outcome would be if the agent got it wrong: 9 is a wrong scientific result, 8 the wrong analysis running, 5 a dead end or wasted compute, 3 a misleading message.
 Slip-through is how likely the mistake is to get past everything after it: 4 means you are asked to confirm it first, 5 that it is shown to you without asking, 8 that nothing shows it at all.
@@ -33,53 +33,51 @@ How often an agent actually gets each one wrong has not been measured for any of
 The opening message promises to ask only for the title, the assay types and the data paths, and no step asks for these two, so the agent fills them in itself.
 
 **What can go wrong.** Both are written into the project's permanent record and cannot be changed afterwards, and the closing message never shows them to the user.
-GARS's safety layer only lets the agent say "public" for a folder a person has declared public, which limits the damage for the class.
+GARS's safety layer refuses any class but "public" from the agent, and "public" only for a folder a person has declared public, which limits the damage for the class.
 Nothing limits the purpose, and the purpose decides where the project's jobs may run: each class allows only certain machine-and-purpose pairs, and the local machine accepts only test fixtures. (How long the data may be kept follows the class, not the purpose.)
 
 **Why it ranks first here.** Harm 8, slip-through 8: a permanent record of how the data may be used, chosen without asking and never shown back.
 
-**Proposed fix.** Ask both from a fixed list taken from GARS's own data-policy table, show them in the closing message, and give the script's refusals an answer.
+**Proposed fix.** Ask both from a fixed list taken from GARS's own data-policy table (a non-public answer goes to the person's own terminal, since the safety layer refuses it from the agent), show them in the closing message, and give the script's refusals an answer.
 
 Your answer:
 
-### 2. "Your request matches 01": the agent matches the user's words to an assay
+### 2. What counts as "yes" before the raw files are linked
 
-<!-- S00-match -->
-**What the agent decides on its own.** If the user's first message names an assay ("RNA-seq of liver"), the contract asks the agent to say which menu entry that matches, so the user can confirm with one word.
-The same contract forbids the agent to match assay names itself, because the script does that matching carefully and refuses anything ambiguous.
+<!-- S00-yes -->
+**What the agent decides on its own.** After checking a data folder, the agent shows what it found (file counts, sample names) and asks the user to "Confirm ... or provide a different path".
+There is no fixed answer, so a reply like "looks fine, but what about the undetermined files?" is the agent's to read as a yes or a no.
 
-**What can go wrong.** "RNA-seq" could mean bulk or single-cell.
-A user who sees "Your request matches 01" will usually reply "01", and the project is then built for the wrong assay, which runs the wrong pipeline on the data.
+**What can go wrong.** On a misread yes, the wrong files are linked into the project and enter the analysis; the stage forbids re-linking, so undoing it means deleting the project and starting again.
 
-**Why it ranks here.** Harm 8, slip-through 5: the next message names the assay without asking, so only a user who reads it carefully catches the slip.
+**Why it ranks here.** Harm 8, slip-through 5: the next message and the stage's final check show what was linked, but without asking.
 
-**Proposed fix.** Let the script match the original words (it already can) and have the agent only show its answer.
+**Proposed fix.** A fixed word (for example "link"), asked again on any other reply.
 
 Your answer:
 
-### 3. Sample names: the agent writes the pattern that reads them
+### 3. One sample-name pattern for several assays
 
-<!-- S00-pattern -->
-**What the agent decides on its own.** When the FASTQ file names do not follow the standard Illumina convention, the contract asks the user how to read the sample name, and then tells the agent to pass "their answer as a regular expression".
-Users answer in words ("the sample is the part before _R1"), so in practice the agent writes the expression, which another line of the same contract forbids.
+<!-- S00-onepattern -->
+**What the agent decides on its own.** When a data folder's file names do not follow the standard convention, the user explains how to read them and the agent passes that pattern on. The step that finishes the project then takes only one pattern and applies it to every assay.
+In a project with two or more assays whose files were read in different ways, the agent picks one pattern for all of them.
 
-**What can go wrong.** A wrong expression merges two samples into one or splits one sample into several, and every later step inherits it.
-Two more problems sit on the same road: GARS's safety layer refuses any such expression, because it needs the characters `<` and `>`, and a malformed expression crashes the script with no readable answer. In a guarded session the agent therefore has to improvise.
+**What can go wrong.** The other assays then either fail the final check or, worse, get wrong sample names, which every later step inherits.
 
-**Why it ranks here.** Harm 8, slip-through 4: the derived sample names are shown and you are asked to confirm them before anything is linked.
+**Why it ranks here.** Harm 8, slip-through 5: the closing message's sample counts and the stage's final check (confirm the sample names) show it, without asking. (In a session where GARS's safety layer is active, the pattern road is refused anyway; see the defects list.)
 
-**Proposed fix.** The script proposes a few candidate patterns from the actual file names, the user picks one by number, and the safety layer accepts the chosen one.
+**Proposed fix.** The finishing step takes a pattern per assay, recorded when each folder was checked.
 
 Your answer:
 
 ## Stage 01: checking the design and writing the samplesheets
 
-### 1. The user's words become pipeline settings
+### 1. The user's words become pipeline settings (a rule exists; nothing checks it)
 
 <!-- S01-declare -->
 **What the agent decides on its own.** Before validating, the stage asks the user for missing settings: strandedness, the unit of replication, the reference release, and whether samples are paired.
-The question lists the allowed values, the contract says to write exactly what the user supplied, and the check rejects anything outside the list.
-What no rule covers is an answer in other words ("dUTP", "TruSeq stranded", "same donors"): the agent may translate it into an allowed value instead of asking again, and a pairing the user mentions in passing is only ever flagged with a warning.
+The question lists the allowed values, and the contract says to write exactly what the user supplied and never invent values; the check rejects anything outside the list.
+But nothing checks that the value written is what the user said: an agent that turns "dUTP" or "TruSeq stranded" into an allowed value breaks that rule unseen, and a pairing the user mentions in passing is only ever flagged with a warning.
 
 **What can go wrong.** A wrong but allowed strandedness passes every check and miscounts reads, which gives a complete, plausible, wrong result.
 nf-core reports a strandedness mismatch only as a warning in the quality report's strandedness section.
@@ -126,23 +124,23 @@ Your answer:
 
 <!-- R-protocol -->
 **What the agent decides on its own.** For single-cell RNA-seq, the library chemistry (10x v2, v3, Drop-seq and so on) is the setting the seeded settings file itself calls its most dangerous.
-GARS has a script that offers it as a menu, and the settings script lists it as single-cell's decision, but the router's steps only ever offer the genome, contrast and peak-type menus.
-So the agent either asks in free text and passes the user's words on, or never asks.
+GARS has a script that offers it as a menu, and the settings script lists it as single-cell's decision, but the router's steps only ever offer the genome, contrast and peak-type menus, and the command they give for writing the settings has no place for the chemistry; for single-cell that command stops with an error.
+So the agent either adds the chemistry itself, turning the user's words into one of the listed values, or stalls.
 
-**What can go wrong.** A wrong but valid chemistry runs to completion and reads the cell barcodes at the wrong positions, producing a plausible, scrambled or empty-looking matrix and no error.
+**What can go wrong.** A wrong but listed chemistry runs to completion and, in the seeded file's words, parses barcodes at the wrong offsets, producing a plausible matrix and no error.
 The pre-flight check refuses only a chemistry the chosen aligner cannot run.
 
-**Why it ranks first here.** Harm 9, slip-through 7: only an expert reading the cell counts closely would notice.
+**Why it ranks first here.** Harm 9, slip-through 5: the single-cell step's human check tells you to compare cell counts with the number loaded, and names wrong chemistry as one cause.
 
-**Proposed fix.** Add the chemistry menu to the router's settings step for single-cell, and show the choice in the confirmation message. The code already exists; only the contract omits it.
+**Proposed fix.** Add the chemistry menu to the router's settings step for single-cell, and show the choice in the confirmation message. The menu code already exists; only the contract omits it.
 
 Your answer:
 
-### 2. The user's words about the statistical model become a formula
+### 2. The user's words about the statistical model become a formula (a rule exists; nothing checks it)
 
 <!-- R-formula -->
-**What the agent decides on its own.** The differential-expression formula defaults to "~ condition", and the contract allows a different formula "the user gave you".
-Users rarely give formula syntax; they say "account for batch" or "the donors are paired", and the agent writes the formula.
+**What the agent decides on its own.** The differential-expression formula defaults to "~ condition", and the contract allows only a formula "the user gave you".
+Users rarely give formula syntax; they say "account for batch" or "the donors are paired", and the agent can write the formula for them, which nothing detects.
 The settings script checks only that each term names a column of the design table.
 
 **What can go wrong.** A wrong covariate or interaction becomes the model that is tested, and every p-value changes.
@@ -153,16 +151,18 @@ The settings script checks only that each term names a column of the design tabl
 
 Your answer:
 
-### 3. Which project and assay the user means
+### 3. Which design factor the contrast compares
 
-<!-- G-project -->
-**What the agent decides on its own.** "Run the RNA one on my liver project": the agent matches those words to a project folder and an assay by reading the folders and the assay table itself. Stage 01 makes the same match from the project title.
+<!-- R-factor -->
+**What the agent decides on its own.** The contrast menu is built from one factor of the design table, "condition" by default, and no contract mentions how to choose another.
+The settings script also accepts a contrast typed out in full, although the contract says never to type one.
+When the design carries another factor the user cares about, the agent decides which factor the menu is built from, or types a contrast itself.
 
-**What can go wrong.** The right step runs on the wrong project.
+**What can go wrong.** The comparison runs on the wrong factor. The router's own human check says of a wrong contrast that nothing downstream can detect it: it produces a complete, confident, wrong result.
 
-**Why it ranks here.** Harm 6, slip-through 5: the opening message names the project and assay before anything runs, though it does not ask.
+**Why it ranks here.** Harm 9, slip-through 4: you are asked to confirm the contrast before it is written.
 
-**Proposed fix.** A script lists the matching projects and assays, the agent shows them, the user picks.
+**Proposed fix.** The menu names the factor beside each pair, and the settings script refuses a typed contrast.
 
 Your answer:
 
@@ -170,33 +170,29 @@ Your answer:
 
 These ten contracts share two shapes (seven nf-core pipelines, three analyses that follow them), so each item below applies to several of them.
 
-### 1. Carrying the input file into the analysis, and naming where it came from
+### 1. Carrying the input file into the analysis
 
-<!-- D-handoff -->
-**What the agent decides on its own.** The three analyses that follow a pipeline (differential expression, single-cell clustering, spatial cluster counts) need an input file and, when their results are collected, the name of the step that produced it.
-For clustering and spatial counts the router finds the input and the analysis contract then starts afresh; differential expression finds its own input, but collection happens on a later visit.
-Either way the path and the producer's name travel only in the conversation, so the agent carries or re-derives them, sometimes in a later session.
+<!-- D-input -->
+**What the agent decides on its own.** Single-cell clustering and spatial cluster counts each need an input file found by the router. The analysis contract then starts afresh, so the path travels only in the conversation, and the agent carries it over or works it out again, sometimes in a later session.
 
-**What can go wrong.** A wrong path analyses the wrong object; a wrong producer name records false provenance in the project's history.
+**What can go wrong.** A wrong path analyses the wrong object.
 
-**Why it ranks first here.** Harm 6, slip-through 6: the scripts' own checks catch most wrong inputs, but nothing checks the provenance line, which only a careful reader of the history would catch.
+**Why it ranks first here.** Harm 8, slip-through 3: the final check compares each sample's results with the samplesheet, which catches many wrong inputs.
 
-**Proposed fix.** Each analysis finds its own input with GARS's resolver, and the final check takes the producer's name from the resolver, not from the agent.
+**Proposed fix.** Each analysis finds its own input with GARS's resolver, as the differential-expression step already does.
 
 Your answer:
 
-### 2. Where to pick up again after a job has finished
+### 2. Naming where the input came from
 
-<!-- W-reentry -->
-**What the agent decides on its own.** A sub-stage is visited twice: once to submit the job, and again later to collect the results.
-On the second visit, the first steps say to stop only if the job is still queued, running or already complete; for every other state (finished and waiting to be checked, failed, stale) the steps read in order lead back into check, prepare and submit.
-Only a later step's phrase "on a later invocation" hints that the agent should jump ahead to collecting.
+<!-- D-supplier -->
+**What the agent decides on its own.** When the three follow-on analyses collect their results, the agent passes the name of the step that produced their input; that name is written into the project's history as provenance. It comes from the conversation, often in a later session.
 
-**What can go wrong.** Read literally, a finished run is prepared again (rewriting its generated files and its reproducibility record) and submitted again; the duplicate is refused, and the collection waits until the agent works out the jump.
+**What can go wrong.** A wrong name is false provenance in the permanent record.
 
-**Why it ranks here.** Harm 5, slip-through 3: wasted work and a rewritten provenance file rather than a wrong result, and the duplicate refusal stops it.
+**Why it ranks here.** Harm 6, slip-through 8: nothing checks the line.
 
-**Proposed fix.** The first steps route each job state to its own step, as the router already does; better, the script says which step comes next.
+**Proposed fix.** The collecting step takes the producer's name from the resolver, not from the agent.
 
 Your answer:
 
@@ -206,9 +202,9 @@ Your answer:
 **What the agent decides on its own.** Before a job is queued, GARS checks that the data's class and purpose allow it to run where it is going, and refuses a duplicate.
 The router's text says to report every refusal and stop, but the sub-stage's own steps say only "capture the job id", and the next message announces "Submitted as job ..." with no answer for a refusal.
 
-**What can go wrong.** The agent announces a submission that never happened, or changes the executor or memory setting itself to get past the refusal, without asking you.
+**What can go wrong.** The agent can announce a submission that never happened, or change the executor or memory setting itself to get past the refusal, without asking you.
 
-**Why it ranks here.** Harm 5, slip-through 3: a setting changed without you, or a false "submitted"; the next status read shows nothing was queued.
+**Why it ranks here.** Harm 5, slip-through 5: a setting changed without you, or a false "submitted"; the next status display shows nothing was queued.
 
 **Proposed fix.** Give the submit step an answer for each refusal: report it word for word and stop; settings change only on your word.
 
@@ -216,12 +212,12 @@ Your answer:
 
 ## Stage 03: custom analysis
 
-### 1. The approved plan becomes code that nobody reviews
+### 1. The approved plan becomes code that nobody reviews (a rule exists; nothing checks it)
 
 <!-- S03-scripts -->
 **What the agent decides on its own.** In stage 03 the user approves a written plan, in their own terminal, before anything runs.
-After approval, the agent writes the analysis scripts that carry the plan out.
-The approval locks the plan text, not the scripts, and the final check confirms only that the promised output files exist, are not empty, and came from recorded runs of unchanged scripts.
+After approval, the agent writes the analysis scripts that carry the plan out. The contract says to execute the approved plan literally, and records itself that approval binds the plan, not the scripts.
+The final check confirms only that the promised output files exist, are not empty, and came from recorded runs of unchanged scripts.
 
 **What can go wrong.** A script that departs from the approved method, reads data the plan does not list, or computes the statistic differently passes every check.
 
@@ -231,38 +227,38 @@ The approval locks the plan text, not the scripts, and the final check confirms 
 
 Your answer:
 
-### 2. Which project and assay the analysis draws on
+### 2. The order in which several analysis scripts run
+
+<!-- S03-order -->
+**What the agent decides on its own.** An analysis may need several scripts, one feeding the next. The contract says to submit every script, but gives no order and no way to make one wait for another; all of them share a single "done" marker, and the final check looks at each script's own run, not their order.
+
+**What can go wrong.** A script that reads another's output can run before that output exists, and crash; or it can read a stale copy left by an earlier attempt, and the final check then accepts a wrong result.
+
+**Why it ranks here.** Harm 9, slip-through 8: the stale-copy case passes every check; only the run records would show the order.
+
+**Proposed fix.** The plan lists its scripts in order, and GARS runs them as one job, or with declared dependencies.
+
+Your answer:
+
+### 3. Which project and assay the analysis draws on
 
 <!-- S03-assay -->
 **What the agent decides on its own.** Stage 03 starts by listing the available results for "the relevant assay"; in a project with several assays, the agent picks one, and the plan's inputs inherit that choice.
 
 **What can go wrong.** The plan is built on the wrong assay's results.
 
-**Why it ranks here.** Harm 6, slip-through 4: the plan you approve lists its inputs, so a careful read catches it.
+**Why it ranks here.** Harm 8, slip-through 4: the plan you approve lists its inputs, so a careful read catches it.
 
 **Proposed fix.** List every assay's results and let the plan name the assay of each input.
 
 Your answer:
 
-### 3. The order in which several analysis scripts run
-
-<!-- S03-order -->
-**What the agent decides on its own.** An analysis may need several scripts, one feeding the next. The contract says to submit every script, but gives no order and no way to make one wait for another; all of them share a single "done" marker, and the final check looks at each script's own run, not their order.
-
-**What can go wrong.** A script that reads another's output can run before that output exists, which usually crashes it, or, more rarely, read a stale copy left by an earlier attempt.
-
-**Why it ranks here.** Harm 6, slip-through 3: most bad orderings fail loudly and the final check reports them; the stale copy is the rare, quieter case.
-
-**Proposed fix.** The plan lists its scripts in order, and GARS runs them as one job, or with declared dependencies.
-
-Your answer:
-
 ## What else the map found
 
-- **22 defects that need no model run to fix**, in `evals/step-map/DEFECTS.md`, each with the exact file and line, for the post-freeze fix batch that opens on 16 Oct. One more was withdrawn when a reviewer showed that a stage-wide table in the contract already covers it. The ones worth knowing about:
-  - In a workspace that holds any non-public project, the safety layer refuses the job-submission, job-status and resolver commands exactly as the contracts spell them (38 places in 12 contracts), and accepts only a different spelling no contract mentions.
+- **22 defects that need no model run to fix**, in `evals/step-map/DEFECTS.md`, each with the exact file and line, for the post-freeze fix batch that opens on 16 Oct. A 23rd was withdrawn, and another reworded, when a reviewer showed that a stage-wide table in the contract already covers part of them. The ones worth knowing about:
+  - In a workspace that holds any non-public project, the safety layer refuses the job-submission, job-status, resolver and differential-expression commands exactly as the contracts spell them (38 places in 12 contracts), and accepts only a different spelling no contract mentions.
   - Once a job has been handed back to the user, no step the agent reaches refreshes its status, so a finished job can look "still running" until someone runs the status command by hand.
   - No contract says what happens on a non-public project, where the safety layer refuses most steps.
-  - The date in every history entry is whatever the agent believes today's date is.
-- **The first trial map of stages 00 and 01 mostly holds up.** Two of its findings did not survive the corrected check: it said the registration script's "create" and "link" steps had unhandled failure codes, but a table in the stage's own definitions routes them (one of them to a message whose wording is then wrong). Its three top decisions (the classification, settings from free text, what counts as a yes) all remain in the top ranks. One decision it did not rank, "Your request matches 01", now sits second in stage 00.
+  - In every history entry after stage 00, the date is whatever the agent believes today's date is.
+- **The first trial map of stages 00 and 01 mostly holds up.** Two of its findings did not survive the corrected check: it said the registration script's "create" and "link" steps had unhandled failure codes, but a table in the stage's own definitions routes them (one of them to a message whose wording is then wrong). Its top decisions (the classification, settings from free text, what counts as a yes) all remain in the top ranks.
 - **The full map** is `evals/step-map/MAP.md`: every step, who acts, how much is already code, and every silent decision with its scores. Its facts were pulled out by code from GARS itself and can be re-derived; the judgments are mine and are marked as such.

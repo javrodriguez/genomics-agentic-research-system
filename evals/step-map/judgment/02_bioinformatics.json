@@ -19,7 +19,7 @@
    "rung_target": "R4",
    "question": 5,
    "rung_why": "Fixed text.",
-   "unsaid": []
+   "silent": []
   },
   "2": {
    "actor": [
@@ -39,7 +39,7 @@
    "rung_target": "R1",
    "question": 1,
    "rung_why": "Matching words to a project directory and an Assay ID has no rule; stage 00's normalising resolver exists for assays but is not used here.",
-   "unsaid": [
+   "silent": [
     {
      "id": "G-project",
      "decision": "Which project (and assay) the user's words mean",
@@ -49,7 +49,8 @@
      "occurrence": null,
      "why_rank": "The right analysis on the wrong project; the stage's opening message names the project, unasked, before anything runs",
      "fix": "A resolver lists the matching projects and assays; the model renders them, the user picks",
-     "fix_rung": "R1"
+     "fix_rung": "R1",
+     "kind": "unsaid"
     },
     {
      "id": "G-closed",
@@ -63,7 +64,8 @@
      "fix_rung": "R4",
      "defects": [
       "D16"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   },
@@ -83,7 +85,7 @@
    "rung_target": "R0",
    "question": 2,
    "rung_why": "An existence check the model makes by hand; code could (the wrappers' check already does).",
-   "unsaid": []
+   "silent": []
   },
   "3a": {
    "actor": [
@@ -110,15 +112,16 @@
    "rung_target": "R1",
    "question": 1,
    "rung_why": "The menus are code and T9 is a human confirmation (R1 plus R3), but three decisions inside the step have no rule: whether any decisions remain, how a scrnaseq chemistry is chosen, and how words become a formula.",
-   "unsaid": [
+   "silent": [
     {
      "id": "R-protocol",
+     "kind": "unsaid",
      "decision": "How a scrnaseq user's library chemistry gets into the config",
-     "goes_wrong": "configure.py makes chemistry scrnaseq's decision and has a protocols menu, but step 3a and T8 name only the genome, contrast and peak menus; the model either asks in free text and passes the user's words to apply, or never asks. apply accepts any listed chemistry, and a wrong but listed one runs to completion with barcodes read at the wrong offsets",
+     "goes_wrong": "configure.py makes chemistry scrnaseq's decision and has a protocols menu, but step 3a and T8 name only the genome, contrast and peak menus, and 3a's apply line carries no --protocol, so for scrnaseq it exits 3 (configure.py:411-414). The model either adds --protocol itself, translating the user's words into one of the listed chemistries, or stalls; a wrong but listed chemistry runs to completion and parses barcodes with the wrong layout",
      "severity": 9,
-     "detection": 7,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "A plausible, scrambled or empty-looking matrix and no error; only an attentive expert reading the cell counts notices",
+     "why_rank": "A plausible wrong matrix and no error; the scrnaseq sub-stage's human check tells every user to compare cell counts with the number loaded and names wrong chemistry as a cause",
      "fix": "Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it",
      "fix_rung": "R1",
      "defects": [
@@ -134,7 +137,8 @@
      "occurrence": null,
      "why_rank": "A wrong model changes every p-value; T9 asks the user to confirm the formula, a real check only for a user who reads formula syntax",
      "fix": "Formula choices built from the design table's own columns, as the contrasts are, confirmed in T9",
-     "fix_rung": "R1"
+     "fix_rung": "R1",
+     "kind": "unchecked"
     },
     {
      "id": "R-required",
@@ -149,16 +153,18 @@
      "defects": [
       "D8",
       "D9"
-     ]
+     ],
+     "kind": "unsaid"
     },
     {
      "id": "R-factor",
+     "kind": "unsaid",
      "decision": "Which design factor the contrast compares",
      "goes_wrong": "contrasts and apply default to --factor condition, which no contract mentions, and apply also accepts a typed factor,numerator,denominator; when the design carries another factor the user cares about, the model decides which one the menu is built from, or types a contrast itself",
-     "severity": 6,
+     "severity": 9,
      "detection": 4,
      "occurrence": null,
-     "why_rank": "Usually condition is the only experimental factor, and T9 shows the contrast for confirmation",
+     "why_rank": "A wrong contrast gives a complete, confident, wrong result (the router's own human check says nothing downstream can detect it); T9 asks the user to confirm the contrast",
      "fix": "The contrast menu lists the factor with each pair, and apply refuses a typed contrast",
      "fix_rung": "R1"
     }
@@ -180,7 +186,7 @@
    "rung_target": "R0",
    "question": 2,
    "rung_why": "Reading a table code already parses (stage 00's assays returns the sub-stages).",
-   "unsaid": []
+   "silent": []
   },
   "5": {
    "actor": [
@@ -199,7 +205,7 @@
    "rung_target": "R0",
    "question": 2,
    "rung_why": "The model reads files and builds a table that project_state.py already renders.",
-   "unsaid": []
+   "silent": []
   },
   "6": {
    "actor": [
@@ -217,7 +223,7 @@
    "rung_target": "R0",
    "question": 2,
    "rung_why": "A written ordering rule over a closed enum; code could pick the next sub-stage.",
-   "unsaid": []
+   "silent": []
   },
   "7": {
    "actor": [
@@ -235,7 +241,7 @@
    "rung_target": "R0",
    "question": 1,
    "rung_why": "The router stops on a submitted job without refreshing it, and no step anywhere says who refreshes STATUS.",
-   "unsaid": [
+   "silent": [
     {
      "id": "W-poll",
      "decision": "When to refresh a submitted job's STATUS, and who does it",
@@ -249,7 +255,8 @@
      "defects": [
       "D10",
       "D13"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   },
@@ -271,7 +278,7 @@
    "rung_target": "R4",
    "question": 1,
    "rung_why": "Stopping is written; what follows the user's decision is not.",
-   "unsaid": [
+   "silent": [
     {
      "id": "R-failed",
      "decision": "What to do once the user decides how to resolve a failed or cancelled sub-stage",
@@ -281,7 +288,8 @@
      "occurrence": null,
      "why_rank": "A muddled recovery the user has to sort out; the executor's retry policy refuses an unapproved retry",
      "fix": "A written recovery branch per failure class, naming the human's approval command",
-     "fix_rung": "R4"
+     "fix_rung": "R4",
+     "kind": "unsaid"
     }
    ]
   },
@@ -304,7 +312,8 @@
    "rung_target": "R0",
    "question": 1,
    "rung_why": "Resolution is code, but its direct spelling is refused wherever a non-public project exists and the contract names no other (G-door); the resolved paths then travel to the sub-stage in the conversation (D-handoff, judged there).",
-   "unsaid": [
+   "note": "Exit 3 (no such project, nothing to resolve) has no branch.",
+   "silent": [
     {
      "id": "G-door",
      "decision": "How to spell a call the guard accepts only through the dispatcher",
@@ -317,10 +326,10 @@
      "fix_rung": "R0",
      "defects": [
       "D15"
-     ]
+     ],
+     "kind": "unsaid"
     }
-   ],
-   "note": "Exit 3 (no such project, nothing to resolve) has no branch."
+   ]
   },
   "10": {
    "actor": [
@@ -337,7 +346,7 @@
    "rung_target": "R4",
    "question": 5,
    "rung_why": "A hand-off by path; where the sub-stage resumes is judged in its step 2 (W-reentry).",
-   "unsaid": []
+   "silent": []
   }
  }
 }

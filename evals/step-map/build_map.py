@@ -90,18 +90,18 @@ def expand(contract_id, steps_in_facts):
                           % (contract_id, own["inherits"]))
         for n, row in shape["steps"].items():
             rows[n] = dict(row, inherited_from=own["inherits"])
-    drop = set(own.get("drop_unsaid", []))
+    drop = set(own.get("drop_silent", []))
     for n, row in own.get("steps", {}).items():
         base = rows.get(n, {})
         merged = dict(base)
-        merged.update({k: v for k, v in row.items() if k not in ("unsaid", "extra_unsaid")})
-        unsaid = row["unsaid"] if "unsaid" in row else base.get("unsaid", [])
-        merged["unsaid"] = list(unsaid) + list(row.get("extra_unsaid", []))
-        if row and "inherited_from" in base and set(row) - {"extra_unsaid"}:
+        merged.update({k: v for k, v in row.items() if k not in ("silent", "extra_silent")})
+        silent = row["silent"] if "silent" in row else base.get("silent", [])
+        merged["silent"] = list(silent) + list(row.get("extra_silent", []))
+        if row and "inherited_from" in base and set(row) - {"extra_silent"}:
             merged["inherited_from"] = base["inherited_from"] + " (overridden)"
         rows[n] = merged
     for n in rows:
-        rows[n]["unsaid"] = [u for u in rows[n].get("unsaid", []) if u["id"] not in drop]
+        rows[n]["silent"] = [u for u in rows[n].get("silent", []) if u["id"] not in drop]
     missing = [n for n in steps_in_facts if n not in rows]
     extra = [n for n in rows if n not in steps_in_facts]
     if missing or extra:
@@ -113,7 +113,7 @@ def expand(contract_id, steps_in_facts):
 def validate_row(contract_id, n, row, defects):
     where = "%s step %s" % (contract_id, n)
     for key in ("actor", "inputs", "evidence", "controls", "rung_now", "rung_target", "question",
-                "rung_why", "unsaid"):
+                "rung_why", "silent"):
         if key not in row:
             raise Invalid("%s: judgment field %s missing" % (where, key))
     bad = [a for a in row["actor"] if a not in ACTORS]
@@ -136,14 +136,20 @@ def validate_row(contract_id, n, row, defects):
         raise Invalid("%s: target %s is placed by question %d, not %s"
                       % (where, row["rung_target"], QUESTION_FOR[row["rung_target"]],
                          row["question"]))
-    if bool(row["unsaid"]) != (row["rung_now"] == "R5"):
+    kinds = {u.get("kind") for u in row["silent"]}
+    if not kinds <= {"unsaid", "unchecked"}:
+        raise Invalid("%s: a silent decision's kind is unsaid or unchecked, not %s" % (where, kinds))
+    if ("unsaid" in kinds) != (row["rung_now"] == "R5"):
         raise Invalid("%s: a step with an unsaid decision is R5 today, and an R5 step names one"
                       % where)
-    for u in row["unsaid"]:
-        for key in ("id", "decision", "goes_wrong", "severity", "detection", "occurrence",
+    if kinds == {"unchecked"} and row["rung_now"] != "R4":
+        raise Invalid("%s: a step whose only silent decisions are covered by an unchecked rule is "
+                      "R4 (a written rule with no audit)" % where)
+    for u in row["silent"]:
+        for key in ("id", "kind", "decision", "goes_wrong", "severity", "detection", "occurrence",
                     "why_rank", "fix", "fix_rung"):
             if key not in u:
-                raise Invalid("%s: unsaid %s lacks %s" % (where, u.get("id"), key))
+                raise Invalid("%s: silent decision %s lacks %s" % (where, u.get("id"), key))
         for key in ("severity", "detection"):
             if not isinstance(u[key], int) or not 1 <= u[key] <= 10:
                 raise Invalid("%s: %s %s must be an integer 1-10" % (where, u["id"], key))
@@ -218,7 +224,7 @@ def build():
             validate_row(cid, step["n"], row, defects)
             judgment = {key: row[key] for key in ("actor", "inputs", "evidence", "controls",
                                                   "rung_now", "rung_target", "question",
-                                                  "rung_why", "unsaid")}
+                                                  "rung_why", "silent")}
             judgment["kind"] = "judgment"
             if row.get("inherited_from"):
                 judgment["inherited_from"] = row["inherited_from"]
@@ -226,10 +232,10 @@ def build():
                 judgment["note"] = row["note"]
             steps.append({"n": step["n"], "extracted": step_facts(contract, step),
                           "judgment": judgment})
-            for u in row["unsaid"]:
+            for u in row["silent"]:
                 entry = unsaid_index.setdefault(u["id"], {"unsaid": u, "where": []})
                 if entry["unsaid"] != u:
-                    raise Invalid("unsaid id %s is defined twice with different content" % u["id"])
+                    raise Invalid("decision id %s is defined twice with different content" % u["id"])
                 entry["where"].append((order.index(cid), k, cid, step["n"], step["source"]))
         maps[cid] = {"schema": "stepmap-map/1", "sha": summary["sha"], "id": cid,
                      "path": contract["path"], "judgment_by": meta["by"],
@@ -237,7 +243,7 @@ def build():
                      "steps": steps}
     ranked = rank(unsaid_index, contracts)
     for cid in maps:
-        maps[cid]["unsaid_ranked"] = [r for r in ranked if any(w["contract"] == cid
+        maps[cid]["silent_ranked"] = [r for r in ranked if any(w["contract"] == cid
                                                                for w in r["where"])]
     return maps, ranked, summary, contracts
 
@@ -301,9 +307,14 @@ def render(maps, ranked, summary, contracts):
         "Each step has two kinds of field.",
         "**Extracted** fields (calls, exit branches, templates, waits, file actions, guard decisions)"
         " come from code and carry their source as `path:line` at the pin; `facts/` holds them in full.",
-        "**Judgment** fields (actor, inputs, evidence, controls, rung, unsaid decisions and their"
+        "**Judgment** fields (actor, inputs, evidence, controls, rung, silent decisions and their"
         " scores) are a reviewer's reading under the method in `gars-step-map-method.md`; they are"
         " marked `\"kind\": \"judgment\"` in `map/`.",
+        "",
+        "A **silent decision** is one the model makes with nobody and nothing checking it, of two"
+        " kinds: **unsaid**, where no rule covers it (the step is R5), and **unchecked**, where a"
+        " written rule covers it but nothing enforces or audits it (the step is R4 without the"
+        " audit R4 calls for). Both are ranked together; each table says which kind.",
         "",
         "Rungs: R0 pure code; R1 code checks the form; R2 model proposes, code verifies;"
         " R3 model proposes, a human confirms; R4 model judges under a written rule; R5 unsaid."
@@ -404,7 +415,7 @@ def render(maps, ranked, summary, contracts):
     low_only = {}
     for m in maps.values():
         for st in m["steps"]:
-            unsaid = st["judgment"]["unsaid"]
+            unsaid = [u for u in st["judgment"]["silent"] if u["kind"] == "unsaid"]
             if not unsaid:
                 continue
             top = max(u["severity"] for u in unsaid)
@@ -420,17 +431,17 @@ def render(maps, ranked, summary, contracts):
         ["Of the severity 1-4 steps, the unsaid decisions are: %s." % "; ".join(
             "%s (%d step%s)" % (k, v, "" if v == 1 else "s")
             for k, v in sorted(low_only.items(), key=lambda kv: (-kv[1], kv[0]))), ""]
-    lines += ["## Top unsaid decisions per stage (judgment, ranked)", ""]
+    lines += ["## Silent decisions per stage (judgment, ranked)", ""]
     for k, (title, _) in enumerate(GROUPS):
-        lines += ["### " + title, "", "| Rank | Id | Where | Decision the model makes silently |"
-                  " Sev | Det | Fix |", "|---|---|---|---|---|---|---|"]
+        lines += ["### " + title, "", "| Rank | Id | Kind | Where | Decision the model makes silently |"
+                  " Sev | Det | Fix |", "|---|---|---|---|---|---|---|---|"]
         for r in [r for r in ranked if r["group"] == k]:
             where = ", ".join(sorted({"%s %s" % (w["contract"], w["step"]) for w in r["where"]}))
             if len(r["where"]) > 3:
                 where = "%s and %d more" % (", ".join(
                     "%s %s" % (w["contract"], w["step"]) for w in r["where"][:2]), len(r["where"]) - 2)
-            lines.append("| %d | %s | %s | %s | %d | %d | %s → %s |" % (
-                r["rank_in_stage"], r["id"], md_escape(where + (" (also in: %s)" % "; ".join(
+            lines.append("| %d | %s | %s | %s | %s | %d | %d | %s → %s |" % (
+                r["rank_in_stage"], r["id"], r["kind"], md_escape(where + (" (also in: %s)" % "; ".join(
                     r["elsewhere"]) if r["elsewhere"] else "")), md_escape(r["decision"]),
                 r["severity"], r["detection"], md_escape(r["fix"]), r["fix_rung"]))
         lines.append("")
@@ -440,7 +451,7 @@ def render(maps, ranked, summary, contracts):
         if m["inherits"]:
             lines += ["Judgment inherits `judgment/%s.json`; overrides are marked." % m["inherits"], ""]
         lines += ["| Step | Actor | Rung now → target | Calls (tool) | No-branch exits | Wait |"
-                  " Controls | Unsaid |", "|---|---|---|---|---|---|---|---|"]
+                  " Controls | Silent decisions |", "|---|---|---|---|---|---|---|---|"]
         for st in m["steps"]:
             j, x = st["judgment"], st["extracted"]
             calls = ", ".join(sorted({c["tool"] or ("`%s` (unregistered)" % c["command"])
@@ -453,7 +464,7 @@ def render(maps, ranked, summary, contracts):
             lines.append("| %s | %s | %s → %s | %s | %s | %s | %s | %s |" % (
                 st["n"], "+".join(j["actor"]), j["rung_now"], j["rung_target"], md_escape(calls),
                 md_escape(nob), md_escape(wait), md_escape(", ".join(j["controls"])),
-                ", ".join(u["id"] for u in j["unsaid"]) or "none"))
+                ", ".join(u["id"] for u in j["silent"]) or "none"))
         lines.append("")
     return "\n".join(lines) + "\n"
 
@@ -493,7 +504,8 @@ def main(argv=None):
         return 1 if problems else 0
     write_all(maps, md)
     steps = sum(len(m["steps"]) for m in maps.values())
-    print("map: %d contracts, %d steps, %d unsaid decisions ranked" % (len(maps), steps, len(ranked)))
+    print("map: %d contracts, %d steps, %d silent decisions (%d stage entries)" % (
+        len(maps), steps, len({r["id"] for r in ranked}), len(ranked)))
     return 0
 
 

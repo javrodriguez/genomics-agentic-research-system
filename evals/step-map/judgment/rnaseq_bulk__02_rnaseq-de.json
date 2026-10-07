@@ -24,7 +24,7 @@
    "rung_target": "R0",
    "question": 1,
    "rung_why": "rnaseq-de resolves its own inputs (the other downstream sub-stages do not); the resolver's direct spelling is refused wherever a non-public project exists (G-door).",
-   "unsaid": [
+   "silent": [
     {
      "id": "G-door",
      "decision": "How to spell a call the guard accepts only through the dispatcher",
@@ -37,7 +37,8 @@
      "fix_rung": "R0",
      "defects": [
       "D15"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   },
@@ -60,7 +61,8 @@
    "rung_target": "R0",
    "question": 1,
    "rung_why": "The check is code on paths resolved in this same contract; its direct spelling is refused wherever a non-public project exists (G-door).",
-   "unsaid": [
+   "note": "Exit 3 (no such project) has no branch.",
+   "silent": [
     {
      "id": "G-door",
      "decision": "How to spell a call the guard accepts only through the dispatcher",
@@ -73,10 +75,10 @@
      "fix_rung": "R0",
      "defects": [
       "D15"
-     ]
+     ],
+     "kind": "unsaid"
     }
-   ],
-   "note": "Exit 3 (no such project) has no branch."
+   ]
   },
   "5": {
    "actor": [
@@ -96,7 +98,7 @@
    "rung_target": "R0",
    "question": 1,
    "rung_why": "Generation is code; the direct spelling is refused wherever a non-public project exists (G-door), and the design_not_canonical refusal (exit 2) has no branch (D14).",
-   "unsaid": [
+   "silent": [
     {
      "id": "G-door",
      "decision": "How to spell a call the guard accepts only through the dispatcher",
@@ -109,7 +111,8 @@
      "fix_rung": "R0",
      "defects": [
       "D15"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   },
@@ -135,20 +138,21 @@
    "rung_target": "R4",
    "question": 1,
    "rung_why": "Submission and the hand-off in one step, with no branch for a refused submission.",
-   "unsaid": [
+   "silent": [
     {
      "id": "W-submit",
      "decision": "What to do when GARS's pre-submission check refuses the job",
      "goes_wrong": "Before a job is queued, the executor checks the dataset's class, purpose and route (the venue rules) and refuses a duplicate. The router's Definitions say to report every refusal and stop, but the sub-stage's submit step says only to capture job_id and the next step announces 'Submitted as job <job_id>' with no branch for exit 1 or 2; the model either announces a submission that did not happen, or changes the executor or memory settings itself to get past the refusal",
      "severity": 5,
-     "detection": 3,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "A setting changed without the user, or a false 'submitted'; the next STATUS read shows nothing was queued",
+     "why_rank": "A setting changed without the user, or a false 'submitted'; the next status display shows nothing was queued",
      "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; settings change only on the user's word",
      "fix_rung": "R4",
      "defects": [
       "D12"
-     ]
+     ],
+     "kind": "unsaid"
     },
     {
      "id": "G-door",
@@ -162,7 +166,8 @@
      "fix_rung": "R0",
      "defects": [
       "D15"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   },
@@ -188,16 +193,18 @@
    "rung_target": "R0",
    "question": 1,
    "rung_why": "The gate is code (including the BH check), but --counts-from comes from the conversation (D-handoff) and the direct spelling is a door (G-door).",
-   "unsaid": [
+   "note": "The two status calls inside its exit branches are branch actions, not new call sites.",
+   "silent": [
     {
-     "id": "D-handoff",
-     "decision": "Which input path to pass, and which sub-stage to name as its supplier at collect",
-     "goes_wrong": "For single-cell clustering and spatial counts the router resolves the input and the sub-stage contract starts afresh; for DE the sub-stage resolves its own inputs, but collect runs on a later visit. The path and the supplying sub-stage travel only in the conversation, so the model carries or re-derives them. A wrong --h5ad-from or --counts-from records false provenance; a wrong path feeds the wrong object",
+     "id": "D-supplier",
+     "kind": "unsaid",
+     "decision": "Which sub-stage to name as the input's supplier at collect",
+     "goes_wrong": "collect records the supplier the model passes (--h5ad-from, --counts-from) without checking it; on the later visit that collects, the model carries or re-derives it from the conversation",
      "severity": 6,
-     "detection": 6,
+     "detection": 8,
      "occurrence": null,
-     "why_rank": "False provenance in the permanent record, visible in HISTORY.md only to a reader who checks it; collect's cross-checks and DE's canonical-design refusal catch most wrong inputs",
-     "fix": "Each sub-stage resolves its own inputs and collect derives the supplier from the resolver",
+     "why_rank": "False provenance in the permanent record; nothing checks the line",
+     "fix": "collect derives the supplier from the resolver",
      "fix_rung": "R0"
     },
     {
@@ -212,26 +219,27 @@
      "fix_rung": "R0",
      "defects": [
       "D15"
-     ]
+     ],
+     "kind": "unsaid"
     }
-   ],
-   "note": "The two status calls inside its exit branches are branch actions, not new call sites."
+   ]
   },
   "9": {
-   "extra_unsaid": [
+   "extra_silent": [
     {
      "id": "D-sigcount",
      "decision": "The 'significant at padj < 0.05' count in the DE completion message",
      "goes_wrong": "T6 shows 'Significant at padj < 0.05: <n>', but collect returns only genes_tested; the registered summary verb computes the count, yet no step calls it, so the model counts the table itself",
-     "severity": 4,
+     "severity": 3,
      "detection": 6,
      "occurrence": null,
-     "why_rank": "A misleading headline number the user may quote; the table it summarises is correct and sits in a file the user is pointed to",
+     "why_rank": "A misleading headline number; the table it summarises is correct and sits in a file the user is pointed to",
      "fix": "Step 9 calls the summary verb and T6 quotes it",
      "fix_rung": "R0",
      "defects": [
       "D20"
-     ]
+     ],
+     "kind": "unsaid"
     }
    ]
   }

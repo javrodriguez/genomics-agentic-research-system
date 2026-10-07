@@ -6,6 +6,243 @@
  "path": "gars/02_bioinformatics/CONTEXT.md",
  "schema": "stepmap-map/1",
  "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "silent_ranked": [
+  {
+   "decision": "How a scrnaseq user's library chemistry gets into the config",
+   "defects": [
+    "D7"
+   ],
+   "detection": 5,
+   "elsewhere": [],
+   "fix": "Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it",
+   "fix_rung": "R1",
+   "goes_wrong": "configure.py makes chemistry scrnaseq's decision and has a protocols menu, but step 3a and T8 name only the genome, contrast and peak menus, and 3a's apply line carries no --protocol, so for scrnaseq it exits 3 (configure.py:411-414). The model either adds --protocol itself, translating the user's words into one of the listed chemistries, or stalls; a wrong but listed chemistry runs to completion and parses barcodes with the wrong layout",
+   "group": 2,
+   "id": "R-protocol",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 1,
+   "severity": 9,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+     "step": "3a"
+    }
+   ],
+   "why_rank": "A plausible wrong matrix and no error; the scrnaseq sub-stage's human check tells every user to compare cell counts with the number loaded and names wrong chemistry as a cause"
+  },
+  {
+   "decision": "Turning the user's words about the model ('account for batch') into a DE formula",
+   "detection": 4,
+   "elsewhere": [],
+   "fix": "Formula choices built from the design table's own columns, as the contrasts are, confirmed in T9",
+   "fix_rung": "R1",
+   "goes_wrong": "Scope allows a formula 'the user gave you', and users give words, not formula syntax; the model writes the formula and apply checks only that each term names a column of the design table, so a wrong covariate or interaction becomes the tested model",
+   "group": 2,
+   "id": "R-formula",
+   "kind": "unchecked",
+   "occurrence": null,
+   "rank_in_stage": 2,
+   "severity": 9,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+     "step": "3a"
+    }
+   ],
+   "why_rank": "A wrong model changes every p-value; T9 asks the user to confirm the formula, a real check only for a user who reads formula syntax"
+  },
+  {
+   "decision": "Which design factor the contrast compares",
+   "detection": 4,
+   "elsewhere": [],
+   "fix": "The contrast menu lists the factor with each pair, and apply refuses a typed contrast",
+   "fix_rung": "R1",
+   "goes_wrong": "contrasts and apply default to --factor condition, which no contract mentions, and apply also accepts a typed factor,numerator,denominator; when the design carries another factor the user cares about, the model decides which one the menu is built from, or types a contrast itself",
+   "group": 2,
+   "id": "R-factor",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 3,
+   "severity": 9,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+     "step": "3a"
+    }
+   ],
+   "why_rank": "A wrong contrast gives a complete, confident, wrong result (the router's own human check says nothing downstream can detect it); T9 asks the user to confirm the contrast"
+  },
+  {
+   "decision": "Which project (and assay) the user's words mean",
+   "detection": 5,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets"
+   ],
+   "fix": "A resolver lists the matching projects and assays; the model renders them, the user picks",
+   "fix_rung": "R1",
+   "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a project directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right step on the wrong project",
+   "group": 2,
+   "id": "G-project",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 4,
+   "severity": 6,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:122-123",
+     "step": "2"
+    }
+   ],
+   "why_rank": "The right analysis on the wrong project; the stage's opening message names the project, unasked, before anything runs"
+  },
+  {
+   "decision": "How to proceed when the guard refuses a step on a non-public project",
+   "defects": [
+    "D16"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 sub-stages: run the pipelines",
+    "Stage 03: custom analysis"
+   ],
+   "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+   "fix_rung": "R4",
+   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+   "group": 2,
+   "id": "G-closed",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 5,
+   "severity": 5,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:122-123",
+     "step": "2"
+    }
+   ],
+   "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+  },
+  {
+   "decision": "What to do once the user decides how to resolve a failed or cancelled sub-stage",
+   "detection": 3,
+   "elsewhere": [],
+   "fix": "A written recovery branch per failure class, naming the human's approval command",
+   "fix_rung": "R4",
+   "goes_wrong": "T6 says corrected inputs need prepare again; nothing says how a retry is approved (the executor requires a human's approve-action) or when cutandrun's prepare --resume-refresh applies, so the model improvises the re-run",
+   "group": 2,
+   "id": "R-failed",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 6,
+   "severity": 4,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:162-164",
+     "step": "8"
+    }
+   ],
+   "why_rank": "A muddled recovery the user has to sort out; the executor's retry policy refuses an unapproved retry"
+  },
+  {
+   "decision": "Whether the config still has decisions to make",
+   "defects": [
+    "D8",
+    "D9"
+   ],
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Code reports the pending decisions (the wrappers' config_unfilled check already computes them)",
+   "fix_rung": "R0",
+   "goes_wrong": "3a is skipped when 'no <REQUIRED> markers are left', judged by the model reading YAML; every seeded config carries the word in its header comment and spatialvi has no decisions registered, so a literal reading re-asks a finished config or runs apply for spatialvi, which exits 3 with no branch",
+   "group": 2,
+   "id": "R-required",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 7,
+   "severity": 4,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+     "step": "3a"
+    }
+   ],
+   "why_rank": "A stall or a needless question, not a wrong result"
+  },
+  {
+   "decision": "When to refresh a submitted job's STATUS, and who does it",
+   "defects": [
+    "D10",
+    "D13"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
+   "fix_rung": "R0",
+   "goes_wrong": "STATUS moves from SUBMITTED to VALIDATING when executorlib.py status (or collect's own gate) asks the scheduler, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's own status step is behind both, so it runs only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+   "group": 2,
+   "id": "W-poll",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 8,
+   "severity": 4,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:160-161",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A stall the user has to sort out, and a visible one; but every assay passes through it"
+  },
+  {
+   "decision": "How to spell a call the guard accepts only through the dispatcher",
+   "defects": [
+    "D15"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 02 sub-stages: run the pipelines",
+    "Stage 03: custom analysis"
+   ],
+   "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+   "fix_rung": "R0",
+   "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+   "group": 2,
+   "id": "G-door",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 9,
+   "severity": 4,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:165-178",
+     "step": "9"
+    }
+   ],
+   "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+  }
+ ],
  "steps": [
   {
    "extracted": {
@@ -40,7 +277,7 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "Fixed text.",
-    "unsaid": []
+    "silent": []
    },
    "n": "1"
   },
@@ -80,7 +317,7 @@
     "rung_now": "R5",
     "rung_target": "R1",
     "rung_why": "Matching words to a project directory and an Assay ID has no rule; stage 00's normalising resolver exists for assays but is not used here.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "Which project (and assay) the user's words mean",
       "detection": 5,
@@ -88,6 +325,7 @@
       "fix_rung": "R1",
       "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a project directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right step on the wrong project",
       "id": "G-project",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 6,
       "why_rank": "The right analysis on the wrong project; the stage's opening message names the project, unasked, before anything runs"
@@ -102,6 +340,7 @@
       "fix_rung": "R4",
       "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
       "id": "G-closed",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 5,
       "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
@@ -157,7 +396,7 @@
     "rung_now": "R4",
     "rung_target": "R0",
     "rung_why": "An existence check the model makes by hand; code could (the wrappers' check already does).",
-    "unsaid": []
+    "silent": []
    },
    "n": "3"
   },
@@ -421,20 +660,21 @@
     "rung_now": "R5",
     "rung_target": "R1",
     "rung_why": "The menus are code and T9 is a human confirmation (R1 plus R3), but three decisions inside the step have no rule: whether any decisions remain, how a scrnaseq chemistry is chosen, and how words become a formula.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "How a scrnaseq user's library chemistry gets into the config",
       "defects": [
        "D7"
       ],
-      "detection": 7,
+      "detection": 5,
       "fix": "Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it",
       "fix_rung": "R1",
-      "goes_wrong": "configure.py makes chemistry scrnaseq's decision and has a protocols menu, but step 3a and T8 name only the genome, contrast and peak menus; the model either asks in free text and passes the user's words to apply, or never asks. apply accepts any listed chemistry, and a wrong but listed one runs to completion with barcodes read at the wrong offsets",
+      "goes_wrong": "configure.py makes chemistry scrnaseq's decision and has a protocols menu, but step 3a and T8 name only the genome, contrast and peak menus, and 3a's apply line carries no --protocol, so for scrnaseq it exits 3 (configure.py:411-414). The model either adds --protocol itself, translating the user's words into one of the listed chemistries, or stalls; a wrong but listed chemistry runs to completion and parses barcodes with the wrong layout",
       "id": "R-protocol",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 9,
-      "why_rank": "A plausible, scrambled or empty-looking matrix and no error; only an attentive expert reading the cell counts notices"
+      "why_rank": "A plausible wrong matrix and no error; the scrnaseq sub-stage's human check tells every user to compare cell counts with the number loaded and names wrong chemistry as a cause"
      },
      {
       "decision": "Turning the user's words about the model ('account for batch') into a DE formula",
@@ -443,6 +683,7 @@
       "fix_rung": "R1",
       "goes_wrong": "Scope allows a formula 'the user gave you', and users give words, not formula syntax; the model writes the formula and apply checks only that each term names a column of the design table, so a wrong covariate or interaction becomes the tested model",
       "id": "R-formula",
+      "kind": "unchecked",
       "occurrence": null,
       "severity": 9,
       "why_rank": "A wrong model changes every p-value; T9 asks the user to confirm the formula, a real check only for a user who reads formula syntax"
@@ -458,6 +699,7 @@
       "fix_rung": "R0",
       "goes_wrong": "3a is skipped when 'no <REQUIRED> markers are left', judged by the model reading YAML; every seeded config carries the word in its header comment and spatialvi has no decisions registered, so a literal reading re-asks a finished config or runs apply for spatialvi, which exits 3 with no branch",
       "id": "R-required",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 4,
       "why_rank": "A stall or a needless question, not a wrong result"
@@ -469,9 +711,10 @@
       "fix_rung": "R1",
       "goes_wrong": "contrasts and apply default to --factor condition, which no contract mentions, and apply also accepts a typed factor,numerator,denominator; when the design carries another factor the user cares about, the model decides which one the menu is built from, or types a contrast itself",
       "id": "R-factor",
+      "kind": "unsaid",
       "occurrence": null,
-      "severity": 6,
-      "why_rank": "Usually condition is the only experimental factor, and T9 shows the contrast for confirmation"
+      "severity": 9,
+      "why_rank": "A wrong contrast gives a complete, confident, wrong result (the router's own human check says nothing downstream can detect it); T9 asks the user to confirm the contrast"
      }
     ]
    },
@@ -522,7 +765,7 @@
     "rung_now": "R4",
     "rung_target": "R0",
     "rung_why": "Reading a table code already parses (stage 00's assays returns the sub-stages).",
-    "unsaid": []
+    "silent": []
    },
    "n": "4"
   },
@@ -574,7 +817,7 @@
     "rung_now": "R4",
     "rung_target": "R0",
     "rung_why": "The model reads files and builds a table that project_state.py already renders.",
-    "unsaid": []
+    "silent": []
    },
    "n": "5"
   },
@@ -614,7 +857,7 @@
     "rung_now": "R4",
     "rung_target": "R0",
     "rung_why": "A written ordering rule over a closed enum; code could pick the next sub-stage.",
-    "unsaid": []
+    "silent": []
    },
    "n": "6"
   },
@@ -652,7 +895,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "The router stops on a submitted job without refreshing it, and no step anywhere says who refreshes STATUS.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "When to refresh a submitted job's STATUS, and who does it",
       "defects": [
@@ -664,6 +907,7 @@
       "fix_rung": "R0",
       "goes_wrong": "STATUS moves from SUBMITTED to VALIDATING when executorlib.py status (or collect's own gate) asks the scheduler, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's own status step is behind both, so it runs only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
       "id": "W-poll",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 4,
       "why_rank": "A stall the user has to sort out, and a visible one; but every assay passes through it"
@@ -708,7 +952,7 @@
     "rung_now": "R5",
     "rung_target": "R4",
     "rung_why": "Stopping is written; what follows the user's decision is not.",
-    "unsaid": [
+    "silent": [
      {
       "decision": "What to do once the user decides how to resolve a failed or cancelled sub-stage",
       "detection": 3,
@@ -716,6 +960,7 @@
       "fix_rung": "R4",
       "goes_wrong": "T6 says corrected inputs need prepare again; nothing says how a retry is approved (the executor requires a human's approve-action) or when cutandrun's prepare --resume-refresh applies, so the model improvises the re-run",
       "id": "R-failed",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 4,
       "why_rank": "A muddled recovery the user has to sort out; the executor's retry policy refuses an unapproved retry"
@@ -823,7 +1068,7 @@
     "rung_now": "R5",
     "rung_target": "R0",
     "rung_why": "Resolution is code, but its direct spelling is refused wherever a non-public project exists and the contract names no other (G-door); the resolved paths then travel to the sub-stage in the conversation (D-handoff, judged there).",
-    "unsaid": [
+    "silent": [
      {
       "decision": "How to spell a call the guard accepts only through the dispatcher",
       "defects": [
@@ -834,6 +1079,7 @@
       "fix_rung": "R0",
       "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
       "id": "G-door",
+      "kind": "unsaid",
       "occurrence": null,
       "severity": 4,
       "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
@@ -886,237 +1132,9 @@
     "rung_now": "R4",
     "rung_target": "R4",
     "rung_why": "A hand-off by path; where the sub-stage resumes is judged in its step 2 (W-reentry).",
-    "unsaid": []
+    "silent": []
    },
    "n": "10"
-  }
- ],
- "unsaid_ranked": [
-  {
-   "decision": "How a scrnaseq user's library chemistry gets into the config",
-   "defects": [
-    "D7"
-   ],
-   "detection": 7,
-   "elsewhere": [],
-   "fix": "Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it",
-   "fix_rung": "R1",
-   "goes_wrong": "configure.py makes chemistry scrnaseq's decision and has a protocols menu, but step 3a and T8 name only the genome, contrast and peak menus; the model either asks in free text and passes the user's words to apply, or never asks. apply accepts any listed chemistry, and a wrong but listed one runs to completion with barcodes read at the wrong offsets",
-   "group": 2,
-   "id": "R-protocol",
-   "occurrence": null,
-   "rank_in_stage": 1,
-   "severity": 9,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
-     "step": "3a"
-    }
-   ],
-   "why_rank": "A plausible, scrambled or empty-looking matrix and no error; only an attentive expert reading the cell counts notices"
-  },
-  {
-   "decision": "Turning the user's words about the model ('account for batch') into a DE formula",
-   "detection": 4,
-   "elsewhere": [],
-   "fix": "Formula choices built from the design table's own columns, as the contrasts are, confirmed in T9",
-   "fix_rung": "R1",
-   "goes_wrong": "Scope allows a formula 'the user gave you', and users give words, not formula syntax; the model writes the formula and apply checks only that each term names a column of the design table, so a wrong covariate or interaction becomes the tested model",
-   "group": 2,
-   "id": "R-formula",
-   "occurrence": null,
-   "rank_in_stage": 2,
-   "severity": 9,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
-     "step": "3a"
-    }
-   ],
-   "why_rank": "A wrong model changes every p-value; T9 asks the user to confirm the formula, a real check only for a user who reads formula syntax"
-  },
-  {
-   "decision": "Which project (and assay) the user's words mean",
-   "detection": 5,
-   "elsewhere": [
-    "Stage 01: validate the design and write samplesheets"
-   ],
-   "fix": "A resolver lists the matching projects and assays; the model renders them, the user picks",
-   "fix_rung": "R1",
-   "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a project directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right step on the wrong project",
-   "group": 2,
-   "id": "G-project",
-   "occurrence": null,
-   "rank_in_stage": 3,
-   "severity": 6,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:122-123",
-     "step": "2"
-    }
-   ],
-   "why_rank": "The right analysis on the wrong project; the stage's opening message names the project, unasked, before anything runs"
-  },
-  {
-   "decision": "Which design factor the contrast compares",
-   "detection": 4,
-   "elsewhere": [],
-   "fix": "The contrast menu lists the factor with each pair, and apply refuses a typed contrast",
-   "fix_rung": "R1",
-   "goes_wrong": "contrasts and apply default to --factor condition, which no contract mentions, and apply also accepts a typed factor,numerator,denominator; when the design carries another factor the user cares about, the model decides which one the menu is built from, or types a contrast itself",
-   "group": 2,
-   "id": "R-factor",
-   "occurrence": null,
-   "rank_in_stage": 4,
-   "severity": 6,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
-     "step": "3a"
-    }
-   ],
-   "why_rank": "Usually condition is the only experimental factor, and T9 shows the contrast for confirmation"
-  },
-  {
-   "decision": "How to proceed when the guard refuses a step on a non-public project",
-   "defects": [
-    "D16"
-   ],
-   "detection": 2,
-   "elsewhere": [
-    "Stage 01: validate the design and write samplesheets",
-    "Stage 02 sub-stages: run the pipelines",
-    "Stage 03: custom analysis"
-   ],
-   "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
-   "fix_rung": "R4",
-   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, reads of _config/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
-   "group": 2,
-   "id": "G-closed",
-   "occurrence": null,
-   "rank_in_stage": 5,
-   "severity": 5,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:122-123",
-     "step": "2"
-    }
-   ],
-   "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
-  },
-  {
-   "decision": "What to do once the user decides how to resolve a failed or cancelled sub-stage",
-   "detection": 3,
-   "elsewhere": [],
-   "fix": "A written recovery branch per failure class, naming the human's approval command",
-   "fix_rung": "R4",
-   "goes_wrong": "T6 says corrected inputs need prepare again; nothing says how a retry is approved (the executor requires a human's approve-action) or when cutandrun's prepare --resume-refresh applies, so the model improvises the re-run",
-   "group": 2,
-   "id": "R-failed",
-   "occurrence": null,
-   "rank_in_stage": 6,
-   "severity": 4,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:162-164",
-     "step": "8"
-    }
-   ],
-   "why_rank": "A muddled recovery the user has to sort out; the executor's retry policy refuses an unapproved retry"
-  },
-  {
-   "decision": "Whether the config still has decisions to make",
-   "defects": [
-    "D8",
-    "D9"
-   ],
-   "detection": 2,
-   "elsewhere": [],
-   "fix": "Code reports the pending decisions (the wrappers' config_unfilled check already computes them)",
-   "fix_rung": "R0",
-   "goes_wrong": "3a is skipped when 'no <REQUIRED> markers are left', judged by the model reading YAML; every seeded config carries the word in its header comment and spatialvi has no decisions registered, so a literal reading re-asks a finished config or runs apply for spatialvi, which exits 3 with no branch",
-   "group": 2,
-   "id": "R-required",
-   "occurrence": null,
-   "rank_in_stage": 7,
-   "severity": 4,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
-     "step": "3a"
-    }
-   ],
-   "why_rank": "A stall or a needless question, not a wrong result"
-  },
-  {
-   "decision": "When to refresh a submitted job's STATUS, and who does it",
-   "defects": [
-    "D10",
-    "D13"
-   ],
-   "detection": 2,
-   "elsewhere": [
-    "Stage 02 sub-stages: run the pipelines"
-   ],
-   "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
-   "fix_rung": "R0",
-   "goes_wrong": "STATUS moves from SUBMITTED to VALIDATING when executorlib.py status (or collect's own gate) asks the scheduler, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's own status step is behind both, so it runs only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
-   "group": 2,
-   "id": "W-poll",
-   "occurrence": null,
-   "rank_in_stage": 8,
-   "severity": 4,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:160-161",
-     "step": "7"
-    }
-   ],
-   "why_rank": "A stall the user has to sort out, and a visible one; but every assay passes through it"
-  },
-  {
-   "decision": "How to spell a call the guard accepts only through the dispatcher",
-   "defects": [
-    "D15"
-   ],
-   "detection": 2,
-   "elsewhere": [
-    "Stage 02 sub-stages: run the pipelines",
-    "Stage 03: custom analysis"
-   ],
-   "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
-   "fix_rung": "R0",
-   "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
-   "group": 2,
-   "id": "G-door",
-   "occurrence": null,
-   "rank_in_stage": 9,
-   "severity": 4,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:165-178",
-     "step": "9"
-    }
-   ],
-   "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
   }
  ]
 }
