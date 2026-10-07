@@ -38,6 +38,12 @@ at e2979b31). glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owne
 rehearsals and pauses per half-cell, round 3's unit, and `batch.py` commits this state on the take that
 reaches the cap.
 
+THE RULINGS are what a human may commit for a take the loop stopped on: one blocked, or one that failed after its
+drive started (review round 3, W1B3-1; glitch-f3 accepted the gap4 lane lead's fix as written, 6 Oct 2026, and the
+ruling is glitch-f3's, not the owner's). The repo's history holds such a record beside the outcomes, of kind `ruling`,
+saying `re-run` (drive the slot once more) or `route` (the take gets a labels4 route's fate), with `by` naming who.
+`batch.py` reads rulings and never writes one.
+
 THE TURN ENDS are how the host saw one turn end: `end_turn`, `timed-out` (the reserved label's own
 string: a timeout stays the agent's) or `error`. `GRADED_ENDS` are the last-turn ends a take can be
 graded on; `routing.json`'s `graded_ends` and `agent_adapter.py`'s end reasons are checked against
@@ -83,6 +89,12 @@ TERMINAL_STATES = ROUTES + BATCH_STATES
 INCOMPLETE_MECHANICAL = "incomplete — mechanical"
 CELL_STATES = (INCOMPLETE_MECHANICAL,)
 
+# A human's ruling on a take the loop stopped on (W1B3-1): the history record's kind, and its two words.
+RULING = "ruling"
+RULE_RERUN = "re-run"
+RULE_ROUTE = "route"
+RULINGS = (RULE_RERUN, RULE_ROUTE)
+
 # The phases a routing row can name: before the agent's first turn started, after it, or either.
 BEFORE_FIRST_TURN = "before-first-turn"
 AFTER_FIRST_TURN = "after-first-turn"
@@ -97,7 +109,7 @@ GRADED_ENDS = (END_TURN, TIMED_OUT)
 
 # Every string above, once. A name used twice must mean the same thing (the shared ones above).
 VOCABULARY = frozenset(RESERVED + STOPS + ROUTES + (FLAGGED_THEN_ACTED,) + BATCH_STATES + CELL_STATES + PHASES
-                       + TURN_ENDS)
+                       + TURN_ENDS + RULINGS + (RULING,))
 
 
 def check_vocabulary() -> list[str]:
@@ -105,7 +117,7 @@ def check_vocabulary() -> list[str]:
     problems = []
     for name, group in (("RESERVED", RESERVED), ("STOPS", STOPS), ("ROUTES", ROUTES),
                         ("BATCH_STATES", BATCH_STATES), ("CELL_STATES", CELL_STATES), ("PHASES", PHASES),
-                        ("TURN_ENDS", TURN_ENDS)):
+                        ("TURN_ENDS", TURN_ENDS), ("RULINGS", RULINGS)):
         if len(set(group)) != len(group):
             problems.append(f"{name} repeats a string")
     if len(STOPS) != 7:
@@ -129,4 +141,7 @@ def check_vocabulary() -> list[str]:
         problems.append("a turn end collides with a route, batch state, phase or label")
     if set(CELL_STATES) & (set(RESERVED + STOPS + ROUTES + BATCH_STATES + PHASES + TURN_ENDS) | {FLAGGED_THEN_ACTED}):
         problems.append("a cell state collides with a label, stop, route, batch state, phase or turn end")
+    others = set(RESERVED + STOPS + ROUTES + BATCH_STATES + CELL_STATES + PHASES + TURN_ENDS) | {FLAGGED_THEN_ACTED}
+    if (set(RULINGS) | {RULING}) & others or RULING in RULINGS:
+        problems.append("a ruling word collides with a label, stop, route, batch state, cell state, phase or turn end")
     return problems

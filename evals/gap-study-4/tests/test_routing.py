@@ -487,19 +487,18 @@ class TestSilentTimeout(unittest.TestCase):
             self.assertIn(cite, src)
 
     def test_missing_init_check_can_fail(self):
-        def silent_row_none_of(op):
+        def pin_check(op):   # W1B3-2: the pin check is routing.json's pin refusal, no longer the silent row's none_of
             t = test_table()
-            row = next(r for r in t["rows"] if r["id"] == SILENT_TIMEOUT_ROW)
             if op is None:
-                del row["none_of"]
+                t["pin_refusal"]["outranked_by"] = list(labels4.ROUTES)   # neutralized: every route outranks it
             else:
-                row["none_of"][0]["op"] = op
+                t["pin_refusal"]["all_of"][0]["op"] = op
             return t
-        # (a) lane decision 5's old none_of: a missing init counts as a mismatch, so it is refused
-        found = missing_init_problems(silent_row_none_of("differs_from_pin"))
+        # (a) lane decision 5's old rule: a missing init counts as a mismatch, so it is refused
+        found = missing_init_problems(pin_check("differs_from_pin"))
         self.assertTrue(any(x.startswith(f"{NO_INIT_TIMEOUT}: refused") for x in found), found)
         # (b) the pin check dropped: a differing init rehearses instead of being refused
-        found = missing_init_problems(silent_row_none_of(None))
+        found = missing_init_problems(pin_check(None))
         for field in ("model", "mode", "version"):
             self.assertTrue(any(f"init {field} differs: want refused" in x for x in found), (field, found))
         real = routing.holds

@@ -53,16 +53,23 @@ is `before-first-turn`, else `after-first-turn` (`any` is both). A turn that tim
 completed output has not started it: glitch-f3's correction (6 Oct 2026; glitch-f3's, not the
 owner's) routes a bare silent timeout as a rehearsal on its own row, because harness records
 cannot tell it from a hung API, CLI or egress (review round 2, W1B2-1, reverting 3fcab58d).
-That row reads the init events with `present_differs_from_pin`, not `differs_from_pin`: a CLI
-that never printed its init event is harness-side too, so a silent timeout with no init event
-rehearses, while one whose init event differs from the pin matches no row and is refused for a
-human (glitch-f3's ruling, 6 Oct 2026; glitch-f3's, not the owner's). After the first turn the
-init-mismatch row keeps `differs_from_pin`, where a missing init event is a mismatch.
+A CLI that never printed its init event is harness-side too, so a silent timeout with no init event
+rehearses (glitch-f3's ruling, 6 Oct 2026; glitch-f3's, not the owner's). After the first turn the
+init-mismatch row reads `differs_from_pin`, where a missing init event is a mismatch.
 A row matches when the take is in the row's phase, every `all_of` condition holds, at least one
 `any_of` condition holds, and no `none_of` condition holds.
 The matched rows at the highest precedence level win. If none match, or the winners name more
 than one route, `route()` raises `RoutingRefused`: never a default, never a pick. Records already
 committed are refused too, since a route decided after the commit cannot free its slot.
+
+THE PIN REFUSAL (review round 3, W1B3-2: the gap4 lane lead's ruling; glitch-f3 accepted its stricter
+reading, 6 Oct 2026; glitch-f3's, not the owner's). routing.json's `pin_refusal` is one rule beside
+the rows: when the take is in its phase (before the agent's first turn) and every `all_of` condition
+holds (an init event that is present and differs from the pin, `present_differs_from_pin`), `route()`
+refuses the take for a human, whatever rows match, unless the winning route is one the rule names in
+`outranked_by` (the rate-limit pause: a usage limit is not a pin fault). It is one rule, not a
+`none_of` on each before-first-turn row, so the scope lives in one place: narrowing it (to timed-out
+ends, say) is one condition appended to its `all_of`.
 
 RATE-LIMIT MARKERS (glitch-f3's ruling, 6 Oct 2026). An API error carries a rate-limit marker when
 its status or type is one of routing.json's markers for that field (exact membership), or when its
@@ -243,7 +250,8 @@ def check_table(table: dict) -> list[str]:
                 p.append(f"caps.{r} has no events_per_half_cell")
     for key in ("pin_fields", "graded_ends", "rate_limit_markers", "rate_limit_markers_status", "operator_reasons",
                 "operator_reasons_status", "driver_decided_reasons", "reasons_only_before_first_turn",
-                "checker_reasons_become_events", "pin_profiles", "pin_profiles_status", "rows", "annotations"):
+                "checker_reasons_become_events", "pin_profiles", "pin_profiles_status", "pin_refusal", "rows",
+                "annotations"):
         if key not in table:
             p.append(f"missing {key}")
     if p:
@@ -310,9 +318,12 @@ def check_table(table: dict) -> list[str]:
             for m in v:
                 if not _is_str(m) or not m or m != m.lower():
                     p.append(f"rate_limit_markers {k!r}: text marker {m!r} must be a non-empty lower-case string")
+    p += _pin_refusal_problems(table["pin_refusal"], order)
     ids = [row.get("id") for row in table["rows"]] + [a.get("id") for a in table["annotations"]]
+    if isinstance(table["pin_refusal"], dict):
+        ids.append(table["pin_refusal"].get("id"))
     if len(set(ids)) != len(ids):
-        p.append("row and annotation ids repeat")
+        p.append("row, annotation and pin_refusal ids repeat")
     seen_routes = set()
     for row in table["rows"]:
         rid = row.get("id")
@@ -348,6 +359,38 @@ def check_table(table: dict) -> list[str]:
         if not a.get("any_of"):
             p.append(f"{aid}: any_of must hold at least one condition")
         _condition_problems(aid, a.get("any_of", []), p)
+    return p
+
+
+PIN_REFUSAL_KEYS = ("id", "when", "all_of", "outranked_by", "source")
+
+
+def _pin_refusal_problems(rule, order: dict) -> list[str]:
+    """W1B3-2: the pin refusal is a closed rule. Its phase is before the agent's first turn (after it, the plan routes
+    a differing init as harness-error, the init-mismatch row); its conditions read harness records only; and only a
+    route that outranks rehearsal may outrank it (else a pin mismatch could rehearse or grade)."""
+    if not isinstance(rule, dict) or set(rule) != set(PIN_REFUSAL_KEYS):
+        return [f"pin_refusal must hold exactly {list(PIN_REFUSAL_KEYS)}"]
+    p = []
+    if not _is_str(rule["id"]) or not rule["id"]:
+        p.append("pin_refusal: no id")
+    if rule["when"] != labels4.BEFORE_FIRST_TURN:
+        p.append(f"pin_refusal: phase {rule['when']!r}, not {labels4.BEFORE_FIRST_TURN!r} (after the first turn the "
+                 f"plan routes a differing init as harness-error)")
+    if not isinstance(rule["all_of"], list) or not rule["all_of"]:
+        p.append("pin_refusal: all_of must hold at least one condition")
+    else:
+        _condition_problems("pin_refusal", rule["all_of"], p)
+        for c in rule["all_of"]:
+            if isinstance(c, dict) and c.get("path", "").partition(".")[0] in ANNOTATION_ONLY:
+                p.append(f"pin_refusal reads {c.get('path')!r}, a text-derived count only annotations may read")
+    outranks = rule["outranked_by"]
+    if not isinstance(outranks, list) or not all(r in labels4.ROUTES for r in outranks):
+        p.append(f"pin_refusal: outranked_by must list labels4 routes, got {outranks!r}")
+    elif labels4.REHEARSAL in order and any(order.get(r, len(order)) >= order[labels4.REHEARSAL] for r in outranks):
+        p.append(f"pin_refusal: only a route that outranks rehearsal may outrank it, got {outranks}")
+    if not rule["source"]:
+        p.append("pin_refusal: no source cited")
     return p
 
 
@@ -538,6 +581,14 @@ def matches(row: dict, records: dict, table: dict) -> bool:
     return not any(holds(c, records, table) for c in row.get("none_of", []))
 
 
+def pin_refusal_holds(records: dict, table: dict) -> bool:
+    """routing.json's pin refusal holds on these records (W1B3-2): its phase, and every all_of condition."""
+    rule = table["pin_refusal"]
+    if rule["when"] not in (labels4.ANY_TIME, phase_of(records)):
+        return False
+    return all(holds(c, records, table) for c in rule["all_of"])
+
+
 def annotate(records: dict, table: dict | None = None) -> dict:
     """The take's annotations, on every take in every phase, whatever route wins (or none does).
 
@@ -565,12 +616,18 @@ def route(records: dict, table: dict | None = None) -> dict:
         raise RoutingRefused("; ".join(problems))
     notes = annotate(records, table)
     matched = [row for row in table["rows"] if matches(row, records, table)]
-    if not matched:
-        raise RoutingRefused(f"no row matches these records (phase {phase_of(records)})")
     level = {r: i for i, lvl in enumerate(table["precedence"]) for r in lvl}
-    top = min(level[row["route"]] for row in matched)
+    top = min((level[row["route"]] for row in matched), default=None)
     winners = [row for row in matched if level[row["route"]] == top]
     routes = sorted({row["route"] for row in winners})
+    rule = table["pin_refusal"]
+    if pin_refusal_holds(records, table) and not set(routes) & set(rule["outranked_by"]):
+        # W1B3-2: whatever else matches; only a route the rule names (the rate-limit pause) outranks it
+        raise RoutingRefused(f"{rule['id']}: before the agent's first turn an init event is present and differs from "
+                             f"the pin: a pin mismatch, refused for a human whatever else matches "
+                             f"(matched {[m['id'] for m in matched]}; only {rule['outranked_by']} outranks it)")
+    if not matched:
+        raise RoutingRefused(f"no row matches these records (phase {phase_of(records)})")
     if len(routes) > 1:
         raise RoutingRefused(f"tie at equal precedence: {routes} from {[w['id'] for w in winners]}")
     return {

@@ -52,7 +52,8 @@ THE RECORD. `TurnResult` carries, for one turn:
                     {"oom_kill_delta": int, "pids_max_delta": int}, non-negative. Never defaulted:
                     an adapter that forgot them would turn an out-of-memory kill (aborted, never
                     re-run) into a harness-error re-run (review round 2, W1B2-4)
-    started_at, ended_at   host clock (seconds since the epoch) at the turn's start and end
+    started_at, ended_at   REQUIRED keywords: the host clock (seconds since the epoch, an int or a float) at the
+                    turn's start and end; never defaulted (review round 3, W1B3-6: they defaulted to 0.0)
     agent_output    REQUIRED bool: True when the host-captured stream holds at least one completed
                     agent message (text or tool call) for this turn. It is read from the stream's
                     event types, never from their content. A turn that produced no completed agent
@@ -117,8 +118,13 @@ class _Required:
 
 
 REQUIRED = _Required()
-# W1B2-4: the harness-side records an adapter must state on every turn (None is a legal explicit init).
-REQUIRED_KEYWORDS = ("init", "api_errors", "counters")
+# W1B2-4: the harness-side records an adapter must state on every turn (None is a legal explicit init); W1B3-6: the
+# turn's host clock too.
+REQUIRED_KEYWORDS = ("init", "api_errors", "counters", "started_at", "ended_at")
+
+
+def _clock(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
 @dataclass(frozen=True)
@@ -130,8 +136,8 @@ class TurnResult:
     init: dict | None = REQUIRED          # required keyword; an explicit None is legal
     api_errors: list = REQUIRED           # required keyword; [] when the turn met none
     counters: dict = REQUIRED             # required keyword
-    started_at: float = 0.0
-    ended_at: float = 0.0
+    started_at: float = REQUIRED          # required keyword (W1B3-6)
+    ended_at: float = REQUIRED            # required keyword (W1B3-6)
     agent_output: bool | None = None   # required: see THE RECORD; None is refused
 
     def __post_init__(self):
@@ -151,6 +157,8 @@ class TurnResult:
             raise ValueError(f"api_errors must be a list ([] for none) of dicts carrying {API_ERROR_FIELDS}")
         if not isinstance(self.agent_output, bool):
             raise ValueError("agent_output must be a bool: did the turn's stream hold a completed agent message?")
+        if not (_clock(self.started_at) and _clock(self.ended_at)):
+            raise ValueError("started_at and ended_at must be the host clock in seconds (an int or a float)")
         if self.ended_at < self.started_at:
             raise ValueError("a turn cannot end before it starts")
 
