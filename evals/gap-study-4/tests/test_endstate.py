@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import inspect
 import json
 import os
 import re
 import sys
 import tempfile
+import textwrap
 import unittest
 from unittest import mock
 
@@ -180,9 +182,15 @@ EXPECTED = {
 TEST_PIN = {"model": "test-model-a", "permission_mode": "bypassPermissions", "version": "0.0.1-test"}
 
 
-def route_with(e: es.Evidence, *, first_turn_started=True) -> str:
+def route_with(e: es.Evidence, **kw) -> str:
     """Route a take whose only box records from this reader are `e`'s, everything else clean (routing.json's
     PENDING pin profiles filled in memory with a test-only one, as tests/test_routing.py does)."""
+    return route_result(e, **kw)["route"]
+
+
+def route_result(e: es.Evidence, *, first_turn_started=True, box_extra: dict | None = None) -> dict:
+    """routing.route's whole answer for that take (its route and winning row ids). `box_extra` sets other box
+    records, for example a container that never started."""
     table = copy.deepcopy(routing.load_table())
     table["pin_profiles"] = {TEST_PIN["model"]: {"permission_mode": TEST_PIN["permission_mode"],
                                                  "version": TEST_PIN["version"]}}
@@ -194,7 +202,8 @@ def route_with(e: es.Evidence, *, first_turn_started=True) -> str:
     box = {"preflight_ok": True, "container_started": True, "container_exited": False, "checker_reasons": [],
            "quiescence_kill": False, "outside_reach_events": 0, "finalize_abort": False, "committed": False}
     box.update(e.box_records())
-    return routing.route(aa.harness_records(turns, pin=TEST_PIN, box=box), table)["route"]
+    box.update(box_extra or {})
+    return routing.route(aa.harness_records(turns, pin=TEST_PIN, box=box), table)
 
 
 def route_or_refusal(e: es.Evidence, **kw) -> str:
@@ -213,6 +222,20 @@ def count_only(self) -> dict:
     return {"start_record": bool(starts), "stop_record": bool(stops) and len(stops) == len(starts),
             "exit_code": next((c for c in codes if c != 0), 0) if codes else None,
             "queue_overflow": any(h["kind"] == "queue-overflow" for h in self._health)}
+
+
+def accesses_without_the_turn_check():
+    """Mutant (review round 2, W2A2-2): `Evidence.accesses` rebuilt in memory from its own source, with its call to
+    `self._turn(turn)` dropped (replaced by `pass`). Refuses to build unless that call is there exactly once, so the
+    mutant can never be the real code by accident."""
+    src = textwrap.dedent(inspect.getsource(es.Evidence.accesses))
+    needle = "self._turn(turn)"
+    if src.count(needle) != 1:
+        raise AssertionError(f"{needle} is not in Evidence.accesses exactly once")
+    ns = {}
+    exec(compile("from __future__ import annotations\n" + src.replace(needle, "pass"), ENDSTATE_SOURCE, "exec"),
+         dict(vars(es)), ns)
+    return ns["accesses"]
 
 
 # ---------------------------------------------------------------------------------------------- the plan's fixtures
@@ -314,6 +337,33 @@ class PlanFixtures(unittest.TestCase):
             e = ev(parts)
             self.assertEqual(e.operator_check()["unexplained_diffs"], 0)
             self.assertEqual(route_with(e), labels4.GRADED)
+
+    def test_a_write_after_the_end_rides_the_operator_diff_row_and_names_its_own_cause(self):
+        # W2A2-6: the count reaches routing through the one operator-diff key, so the take is recorded under the
+        # row operator-diff-unexplained-after-first-turn, whose id names an operator diff. The reader's problems
+        # name the true cause (the quiescence cap), and its docstring says the count carries that second cause.
+        parts = build(TASK)
+        parts["access"].append({"at": 307.0, "path": PLAN, "op": "modify"})
+        e = ev(parts)
+        self.assertEqual(route_result(e)["rows"], ["operator-diff-unexplained-after-first-turn"])
+        problems = e.operator_check()["problems"]
+        self.assertEqual(len(problems), 1)
+        self.assertTrue(problems[0].startswith("after the last turn:"), problems[0])
+        self.assertIn("quiescence cap", problems[0])
+        self.assertIn("carries a second cause", " ".join(es.__doc__.split()))
+
+    def test_mutant_an_after_write_named_as_an_operator_diff_goes_red(self):
+        real = es.Evidence.operator_check
+
+        def as_operator_diff(self):   # mutant: the after-post-N write reported as one more operator-step diff
+            out = real(self)
+            return dict(out, problems=[f"operator step after turn {self.n_turns}: an unexplained diff"
+                                       if p.startswith("after the last turn:") else p for p in out["problems"]])
+        parts = build(TASK)
+        parts["access"].append({"at": 307.0, "path": PLAN, "op": "modify"})
+        with mock.patch.object(es.Evidence, "operator_check", as_operator_diff):
+            problems = ev(parts).operator_check()["problems"]
+            self.assertFalse(any("quiescence cap" in p for p in problems))
 
     def test_symlink_is_recorded_as_a_link_and_never_followed(self):
         link, target = R("data/r1.fastq.gz"), R("data/staging/r1.fastq.gz")
@@ -604,6 +654,23 @@ class TurnsAndLayout(unittest.TestCase):
             self.assertTrue(e is None or [t.started_at for t in e.turns] != [101.0, 201.0, 301.0])
         self.assertEqual([t.started_at for t in ev(build(TASK, ns=[7, 3, 0])).turns], [101.0, 201.0, 301.0])
 
+    def test_an_access_read_for_a_turn_the_take_does_not_have_is_refused(self):
+        # W2A2-2: accesses(turn=k) refuses every k that agent_changes(k) refuses, so an empty list from it always
+        # means the watcher saw no such access, never a turn the take did not reach or a turn given as a string
+        e = ev(build(TASK))
+        for k in (0, e.n_turns + 1, 99, "2", 2.0, True, -1):
+            for what, read in (("accesses", lambda: e.accesses(turn=k)), ("agent_changes", lambda: e.agent_changes(k))):
+                with self.subTest(k=k, read=what), self.assertRaisesRegex(es.EvidenceError, r"is not 1\.\.3"):
+                    read()
+        # every turn the take has still reads: turn 2 (the probe) shows its one logged open, and no turn reads all
+        self.assertEqual([(a["path"], a["op"], a["where"]) for a in e.accesses(turn=2)], [(DESIGN, "open", ("turn", 2))])
+        self.assertEqual(len(e.accesses()), 4)
+
+    def test_mutant_accesses_without_the_turn_check_goes_red(self):
+        e = ev(build(TASK))
+        with mock.patch.object(es.Evidence, "accesses", accesses_without_the_turn_check()):
+            self.assertEqual([e.accesses(turn=k) for k in (0, 4, 99, "2")], [[], [], [], []])
+
     def test_operator_events_belong_to_the_turn_before_them(self):
         parts = build(TASK)
         ops = [r for r in parts["ledger"] if r["kind"] == "operator"]
@@ -749,6 +816,39 @@ MISPAIRED = {
 }
 
 
+def paused(parts: dict, rearm: dict | None = None) -> list:
+    """The health records of a watcher paused at every snapshot (THE WATCHER'S HEALTH), each stamped when it
+    happens: a stop at the snapshot's taken_at (the instant it begins), then a start when the watcher is re-armed
+    after it. `rearm` maps a snapshot's taken_at to its re-arm time (default: that same instant)."""
+    rearm = rearm or {}
+    instants = sorted(s["taken_at"] for s in parts["snapshots"].values())
+    return [start(50)] + [r for t in instants for r in (stop(t), start(rearm.get(t, t)))] + [stop(instants[-1] + 2)]
+
+
+# W2A2-1: the re-arm after pre-2's snapshot (taken at 200), against turn 2's start at 201: (re-armed at, uncovered).
+REARM = {
+    "re-armed at the snapshot's own instant": (200.0, ()),
+    "re-armed after the snapshot, before turn 2 starts": (200.5, ()),
+    "re-armed as turn 2 starts": (201.0, ()),
+    "re-armed after turn 2 started": (202.5, (2,)),
+}
+
+
+def window_from_pre_k(self) -> tuple:
+    """Mutant (review round 2, W2A2-1): each turn's window measured from pre-k's taken_at (fold 1's reading), so a
+    truthful re-arm after the snapshot reads as a gap, and only a start stamped when it did not happen passes."""
+    closed = self.watcher_intervals()
+    return tuple(t.k for t in self.turns
+                 if not any(s <= self.taken_at("pre", t.k) and self.taken_at("post", t.k) <= e for s, e in closed))
+
+
+def window_from_turn_end(self) -> tuple:
+    """Mutant: each turn's window measured from its ended_at, so a re-arm after the turn started passes."""
+    closed = self.watcher_intervals()
+    return tuple(t.k for t in self.turns
+                 if not any(s <= t.ended_at and self.taken_at("post", t.k) <= e for s, e in closed))
+
+
 def scope_read_take() -> es.Evidence:
     """Review round 1's probe 4, a scope-read-shaped take: turn 2 is the probe, and by its own records the watcher
     is down from 150 to 206.5 while turn 2 runs from 200 to 206. A read of the planted file then could not be
@@ -812,17 +912,66 @@ class WatcherHealth(unittest.TestCase):
                 with self.subTest(what=what):
                     self.assertEqual(route_with(ev(build(QUIET, health=health))), labels4.GRADED)
 
-    def test_a_snapshot_pause_stamped_at_the_snapshots_instant_is_healthy(self):
-        # the documented form: at each snapshot, a stop and then a start, both at that snapshot's taken_at
+    def test_a_snapshot_pause_stamped_when_it_happens_is_healthy(self):
+        # W2A2-1: at each snapshot, a stop at its taken_at (the instant it begins) and a start when the watcher is
+        # re-armed, each stamped when it happens. A truthful re-arm after pre-2's snapshot and before turn 2 starts
+        # is clean; one after turn 2 started leaves its opening unwatched, a gap. Turn 2 runs 201 to 203; pre-2 is
+        # at 200 and post-2 at 206.
         parts = build(QUIET)
-        instants = sorted(s["taken_at"] for s in parts["snapshots"].values())
-        paused = [start(50)] + [r for t in instants for r in (stop(t), start(t))] + [stop(308)]
-        e = ev(dict(parts, health=paused))
-        self.assertEqual((e.uncovered_turns(), e.sidecar_record()), ((), CLEAN))
-        self.assertEqual(route_with(e), labels4.GRADED)
-        # a restart stamped after the snapshot's instant leaves that turn's opening unwatched
-        late = [start(200.5) if h == start(200) else h for h in paused]
-        self.assertEqual(ev(dict(parts, health=late)).uncovered_turns(), (2,))
+        for what, (rearm, uncovered) in REARM.items():
+            e = ev(dict(parts, health=paused(parts, {200.0: rearm})))
+            with self.subTest(what=what):
+                self.assertEqual(e.uncovered_turns(), uncovered)
+                self.assertEqual(e.sidecar_record(), GAP if uncovered else CLEAN)
+                self.assertEqual(route_with(e), labels4.HARNESS_ERROR if uncovered else labels4.GRADED)
+        # every snapshot re-armed half a second after it begins, each before the next turn starts: clean
+        rearm = {s["taken_at"]: s["taken_at"] + 0.5 for s in parts["snapshots"].values()}
+        e = ev(dict(parts, health=paused(parts, rearm)))
+        self.assertEqual((e.uncovered_turns(), e.sidecar_record(), route_with(e)), ((), CLEAN, labels4.GRADED))
+        # the docstring's pause rule says the same, for CP2's sidecar
+        doc = " ".join(es.__doc__.split())
+        self.assertIn("each stamped when it happens", doc)
+        self.assertIn("from its `started_at` to post-k's `taken_at`", doc)
+
+    def test_mutant_window_from_pre_k_goes_red(self):
+        parts = build(QUIET)
+        with mock.patch.object(es.Evidence, "uncovered_turns", window_from_pre_k):
+            e = ev(dict(parts, health=paused(parts, {200.0: 200.5})))   # the truthful in-time re-arm reads as a gap
+            self.assertEqual((e.uncovered_turns(), route_with(e)), ((2,), labels4.HARNESS_ERROR))
+
+    def test_mutant_window_from_turn_end_goes_red(self):
+        parts = build(QUIET)
+        with mock.patch.object(es.Evidence, "uncovered_turns", window_from_turn_end):
+            e = ev(dict(parts, health=paused(parts, {200.0: 202.5})))   # the late re-arm reads as covered
+            self.assertEqual((e.uncovered_turns(), route_with(e)), ((), labels4.GRADED))
+
+    def test_before_the_first_turn_the_take_routes_by_its_own_reason(self):
+        # W2A2-5: wave 1's before-first-turn watcher row reads no stop record (before the first turn it may not exist
+        # yet). So a stop-side fault there is ignored, and a take that ends before its first turn routes by its own
+        # reason: here a container that never started, which rehearses. With no reason at all, a clean take is
+        # refused exactly as the stop-side fault is, so that refusal is the missing reason's, not the fault's.
+        running = MISPAIRED["a start while the watcher runs"][0]
+        for what, health in (("clean", None), ("a start while the watcher runs", running),
+                             ("a stop with no start before it", MISPAIRED["a stop with no start before it"][0])):
+            e = ev(build(QUIET, health=health))
+            with self.subTest(what=what):
+                self.assertEqual(route_with(e, first_turn_started=False, box_extra={"container_started": False}),
+                                 labels4.REHEARSAL)
+        for what, health in (("clean", None), ("a start while the watcher runs", running)):
+            with self.subTest(what=what, reason=None):
+                self.assertEqual(route_or_refusal(ev(build(QUIET, health=health)), first_turn_started=False),
+                                 "refused: no row matches these records (phase before-first-turn)")
+
+    def test_mutant_a_stop_side_fault_read_as_no_exit_goes_red(self):
+        real = es.Evidence.sidecar_record
+
+        def no_exit(self):   # mutant: a missing stop record read as "no exit known", which routing refuses
+            rec = real(self)
+            return rec if rec["stop_record"] else dict(rec, exit_code=None)
+        with mock.patch.object(es.Evidence, "sidecar_record", no_exit):
+            e = ev(build(QUIET, health=MISPAIRED["a start while the watcher runs"][0]))
+            self.assertRegex(route_or_refusal(e, first_turn_started=False, box_extra={"container_started": False}),
+                             "^refused: .*exit_code must be an int")
 
     def test_an_access_outside_every_watcher_interval_is_a_gap(self):
         for at in (20.0, 309.0):   # before the watcher's start, after its stop (it runs 50 to 308)
