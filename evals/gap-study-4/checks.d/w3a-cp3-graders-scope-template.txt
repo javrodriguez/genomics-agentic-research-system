@@ -2,3 +2,4 @@
 # One command per line, run from the repository root.
 python3 -B evals/gap-study-4/template_offer_reading.py
 python3 -B evals/gap-study-4/template_offer_reading.py --labels
+python3 -B -W ignore evals/gap-study-4/tests/test_template_adherence.py
