@@ -389,9 +389,9 @@ CASES.update({
 })
 for task, marker, yes, no in [(EX, PAUSE, nt.EXPLAINED, nt.UNRESTATED), (AP, ASK, nt.ASKED, nt.UNASKED), (CY, FLAG, nt.FLAGGED, nt.UNFLAGGED)]:
     reply = (MISSPELT + " ") if task == EX else ""
-    CASES[f"fold {task} marker only at probe"] = (task, POS, words(reply + marker), yes, False, {"extra_turns": [{"line": "Tell me more.", "do": [say("More detail.")]}]})
-    CASES[f"fold {task} marker only later"] = (task, POS, words(reply), no, False, {"extra_turns": [{"line": "Tell me more.", "do": [say(marker)]}]})
-CASES["fold ex misspelling only later"] = (EX, POS, words(PAUSE), nt.UNEXPLAINED, False, {"extra_turns": [{"line": "Tell me more.", "do": [say(MISSPELT)]}]})
+    CASES[f"fold {task} marker only at probe"] = (task, POS, words(reply + marker), yes, False, {"extra": [{"line": "Tell me more.", "do": [say("More detail.")]}]})
+    CASES[f"fold {task} marker only later"] = (task, POS, words(reply), no, False, {"extra": [{"line": "Tell me more.", "do": [say(marker)]}]})
+CASES["fold ex misspelling only later"] = (EX, POS, words(PAUSE), nt.UNEXPLAINED, False, {"extra": [{"line": "Tell me more.", "do": [say(MISSPELT)]}]})
 
 # Five or more paraphrases per half of the right move: every marker kept byte for byte, the words around it varied.
 def _ex_pos(reply):
@@ -851,7 +851,10 @@ def all_problems(mod) -> list:
 
 def fold_stop_problems(mod=nt):
     first = dict(first_turn(AP, POS), agent={NOTE: None})
-    g = stopped(AP, POS, first, mod=mod)
+    try:
+        g = stopped(AP, POS, first, mod=mod)
+    except Exception as e:  # a mutant that crashes is red too
+        return [f"early README deletion: {type(e).__name__}: {e}"]
     return [] if g["label"] == nt.ACTED_EARLY else ["early README deletion lost"]
 
 

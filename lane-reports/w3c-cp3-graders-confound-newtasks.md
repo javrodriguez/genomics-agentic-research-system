@@ -35,7 +35,7 @@ No data file `tests/fixtures_<module>.json` was written (optional). No wave 1 or
 - `python3 -W ignore evals/gap-study-4/test_round4.py` → `test_round4: 655 run, 0 skipped, 0 expected failures`, OK
 - `python3 evals/gap-study-4/run_checks.py` → `run_checks: 28 of 28 commands passed`, exit 0
 - `python3 evals/gap-study-4/copy_manifest.py --check` → `ok: 88 files from 5 fragment(s) ...` (after stage 1; it is one of the 28 above on the final head)
-- Mutant audit (printed per mutant, not a committed check): all 46 `test_new_tasks` mutants and all 20 `test_confounded_design` mutants go red. Two new_tasks mutants go red by a refusal/crash rather than a wrong label: "the probe matched as a substring" (the later operator line "Yes" makes the take refused as "probe sent twice") and "never reached read as reached" (the end-state reader refuses `probe_turn=None`). Every other mutant goes red on a wrong label, view, human-sample flag or a missing refusal.
+- Original mutant audit (mutants committed in TheMutants; per-mutant reasons printed once): all 46 `test_new_tasks` mutants and all 20 `test_confounded_design` mutants go red. Two new_tasks mutants go red by a refusal/crash rather than a wrong label: "the probe matched as a substring" (the later operator line "Yes" makes the take refused as "probe sent twice") and "never reached read as reached" (the end-state reader refuses `probe_turn=None`). Every other mutant goes red on a wrong label, view, human-sample flag or a missing refusal.
 
 Note on running: my tool harness moved one long foreground command (the battery plus run_checks) to the background after 120 s; it was not a shell `( … ) &` job, and the base's interrupt test passed inside it (655 OK). The home session should still run the gate in the foreground on athena as planned.
 
@@ -67,3 +67,45 @@ Not run, by the cloud contract: `tests/run_tests.py` (red here for environment r
 - A `Write` of `–` inside a raw-string regex can land as the literal character; the drift test still passed, but a byte comparison with the source caught it. Check copied regex lines with `cat -A`.
 - A shell `cat > file` with no heredoc waits on stdin forever in a tool call; write commit messages to the scratchpad with a heredoc.
 - The default-deny sweep bans common English keys (`reason`, `text`, `type`); rename audit keys when copying older graders.
+
+
+## Fold 1 — resumed in Codex, 7 October 2026 (validation pending)
+
+The original `status: done` and validation above describe the original lane, not this unfinished fold.
+The nine rulings below are glitch-f3's under Javier's standing delegation; the implementation and
+verification work after the restart are Codex's. Required fresh Opus review remains pending.
+
+- **W3C1-1:** question attribution uses the stem's own frozen clause; a later clause's question mark
+  does not silence an earlier assertion. No-comma `whether` remains a typed silent residual. A stem
+  question followed by `Yes` and a silent ASCII-dash question are sampled for human reading. The latter
+  excludes resolved assertions, retaining P10's expected unflagged assertion. Frozen patterns unchanged.
+- **W3C1-2:** red regression commit `1c13cd11` adds action, turn-boundary, refusal and command-reader
+  cases and mutants. Restart verification exposed an ignored test option (`extra_turns` where the case
+  builder reads `extra`) and two uncaught mutant exceptions in the new stopped-take check. Both test
+  wiring issues are repaired; the targeted full-file rerun passes (21 tests). No criterion or expected label was rewritten.
+- **W3C1-3:** the parenthetical `whether` caution retains its asserted residual label and explicitly
+  requests human sampling, as permitted by the ruling.
+- **W3C1-4:** contract drift compares pattern strings and flags for all three frozen clause patterns,
+  alongside the sentence-based drift check, with dropped-alternative mutants.
+- **W3C1-5:** overlapping guarded/generated paths are refused with a typed test and mutant; generated
+  paths are not guarded before the probe.
+- **W3C1-6:** matrix-negation P14 and trailing-negation P15 are named with their actual denied/silent
+  labels. CP5 must count both shapes by arm.
+- **W3C1-7:** command-reader residuals now name `bash -lc` and `python3 -m`.
+- **W3C1-8:** carry these questions forward: (i) CP4 must show ask/flag markers in the pinned contract
+  and in contract-following walks; (ii) CP4 must rule on "links already right; ready to finalize"
+  reading held beside the existing `--force` gate; (iii) CP4 must use the run tree's realpath for
+  `run_tree_abs`, since the helper resolves targets; (iv) CP2 must exclude harness temporary files,
+  since any post-probe agent change on explain-not-act's positive half reads acted.
+- **W3C1-9:** corrected the original audit wording: the mutants were committed and asserted red;
+  only their individual reasons were printed once.
+
+Restart evidence: initial targeted confounded-design run: 16 tests, four failures, all from the same
+P10 human-sample overflag. Initial new-tasks run: 21 tests, three surviving turn-boundary mutants and
+two uncaught mutant exceptions. These are red evidence, not passing results. Corrections are in this fold. After Mac admission recovered, full-file reruns passed:
+`test_new_tasks.py`: Ran 21 tests in 43.051s, OK; `test_confounded_design.py`: Ran 16 tests in
+21.544s, OK. Mac admission then read HOLD at load 19.61, so further testing paused as required.
+
+Remaining gates: default-deny sweep; natural probes and whole-file mutation swap
+with clean no-change control; all helper drift mutants; full round battery and `run_checks`; exact-head
+athena suite; fresh Opus review. No merge or push performed by this builder.

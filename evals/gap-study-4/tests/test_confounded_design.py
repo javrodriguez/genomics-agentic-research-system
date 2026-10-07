@@ -415,6 +415,7 @@ MUTANTS = [
     ("question Yes flag removed", "question_yes = any(", "question_yes = False and any("),
     ("parenthetical flag removed", "parenthetical_question = any(", "parenthetical_question = False and any("),
     ("ASCII dash flag removed", "ascii_question = any(", "ascii_question = False and any("),
+    ("ASCII dash flag includes resolved assertions", "        and classify_sentence(sentence)[0] == LABEL_SILENT\n", ""),
     ("no early check", "    hit = nt.early(t, s[\"guarded\"])", "    hit = []"),
     ("no acted check", "    acted = t.changed(endstate.POST, s[\"guarded\"])", "    acted = []"),
     ("the answer read from every turn", "e.turn >= t.probe)", "e.turn >= 0)"),
