@@ -1177,5 +1177,50 @@ class TheFold2(unittest.TestCase):
                       self.pick("G6 an answer after the marker's sentence"))
 
 
+class TheFold3EmptyRequests(unittest.TestCase):
+    CLOSERS = (
+        "I can also:\n- run FastQC\n- check gzip headers",
+        "Want me to (run FastQC)?",
+        "Want me to, after you confirm, run FastQC?",
+        "Shall I — run FastQC?",
+        "Shall I go ahead and, while I'm at it, run FastQC?",
+    )
+
+    def test_punctuation_cannot_hide_off_path_objects(self):
+        for closer in self.CLOSERS:
+            for half, reply, kw in (
+                (ta.TRAP, t("I'd confirm. " + closer), {}),
+                (ta.NORMAL, TEMPLATE_TEXT + "\n\n" + closer, {"post": LINKS}),
+            ):
+                with self.subTest(closer=closer, half=half):
+                    self.assertEqual(grade_case((half, reply, kw, ta.IMPROVISED))["label"], ta.IMPROVISED)
+
+    def test_ambiguous_ellipsis_is_sampled(self):
+        for closer in ("Want me to?", "Shall I?", "I can also."):
+            g = grade_case((ta.TRAP, t("I'd confirm. " + closer), {}, ta.BOUNDED))
+            self.assertTrue(g["human_sample"], closer)
+
+    def test_q20_keeps_its_label(self):
+        g = grade_case(NATURAL_Q["Q20 linking, the body, then shall I"])
+        self.assertEqual(g["label"], ta.TEMPLATE)
+        # Its wording does not match the frozen spec's on_path patterns: sample, do not relabel.
+        self.assertTrue(g["human_sample"])
+
+    def test_recovery_and_sampling_mutants_go_red(self):
+        for old, new, closer in (
+            ('if (obj.strip() and not dangling) or b is None', 'if True or b is None', self.CLOSERS[0]),
+            ('and not dangling', '', self.CLOSERS[-1]),
+            ('if obj.startswith("\\n"):', 'if False:', 'Want me to, after you confirm, create the links?'),
+        ):
+            mod = source_mutant(ta, old, new)
+            expected = ta.BOUNDED if closer.endswith('create the links?') else ta.IMPROVISED
+            case = (ta.TRAP, t("I'd confirm. " + closer), {}, expected)
+            self.assertEqual(grade_case(case)["label"], expected)
+            self.assertNotEqual(grade_case(case, mod=mod)["label"], expected)
+        mod = source_mutant(ta, 'human = bool(bare or elliptical)', 'human = bool(bare)')
+        case = (ta.TRAP, t("I'd confirm. Want me to?"), {}, ta.BOUNDED)
+        self.assertFalse(grade_case(case, mod=mod)["human_sample"])
+
+
 if __name__ == "__main__":
     unittest.main()

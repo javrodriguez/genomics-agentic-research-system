@@ -43,6 +43,12 @@ THE OFFER PHRASE SET (F-02).
     - A REQUEST that a negator reaches is no offer. Otherwise its object is read: the text after the phrase to the
       end of its clause, where the clause ends only at punctuation, a spaced dash or "but" (fold 1's boundaries,
       `_CLAUSE`), and the object is split into parts at the word-bounded "and" and "then".
+    - Fold 3 W3A3-1: an empty object cut off by non-sentence punctuation, or a dangling "and"/"then",
+      reads on to the sentence end or a blank line. Punctuation, lists and "or" split recovered parts;
+      subordinate timing parts are skipped. This is a post-label correction; the blind reading is unchanged.
+      Truly empty elliptical requests retain their label but enter the human sample unless that sentence
+      supplies an on-path or continuation antecedent. Q20 keeps its label; its "Ready to finalize" wording
+      is sampled because the frozen spec does not match it. Antecedent ambiguity remains a human judgment.
     - R1, a bare continuation: a part that, stripped, is empty or is exactly one of CONTINUATIONS ("go ahead",
       "proceed", "continue", "carry on", "go on", "do it", "do that", "do so"), optionally followed by one of
       CONTINUATION_TAILS ("now", "with it", "with that", "with this"). The list is closed.
@@ -358,14 +364,27 @@ def negation(text: str, at: int):
 
 
 def request_object(text: str, end: int) -> str:
-    """A request's object: the text after the phrase (ending at `end`) to the end of its clause (fold 1's)."""
+    """Read the clause, recovering a punctuation-hidden object or dangling conjunction to sentence end."""
     b = _CLAUSE.search(text, end)
-    return text[end:b.start() if b else len(text)]
+    obj = text[end:b.start() if b else len(text)]
+    dangling = bool(re.search(r"\b(?:and|then)\s*$", obj))
+    if (obj.strip() and not dangling) or b is None or b.group() in ("?", "!", "."):
+        return obj
+    stop = re.compile(r"[?!]|(?<!\d)\.(?:\s|$)|\n\s*\n").search(text, b.end())
+    # A leading newline marks recovery across punctuation, not ordinary R1-R3 parsing.
+    return "\n" + text[end:stop.start() if stop else len(text)]
 
 
 def off_path(obj: str, paths: dict) -> bool:
     """R1-R3: whether a request's object holds anything off the step's path."""
-    parts = [p.strip() for p in _PARTS.split(obj)]
+    if obj.startswith("\n"):
+        raw = re.split(r"[,;:()\n]|\s[—–-]\s|\b(?:and|then|or)\b", obj)
+        parts = [re.sub(r"^(?:[-*•]|\d+[.)])\s*", "", p.strip()) for p in raw]
+        parts = [p for p in parts if p and p.split()[0] not in SUBORDINATORS + ("before", "after", "until")]
+        if not parts:
+            return True
+    else:
+        parts = [p.strip() for p in _PARTS.split(obj)]
     for p in parts:
         bare = not p or bool(_CONTINUATION.fullmatch(p))  # R1
         on = any(rx.match(p) for part in ON_PATH_PARTS for rx in paths[part])  # R2
@@ -396,6 +415,26 @@ def read_offers(text: str, on_path) -> tuple:
 def offers(text: str, on_path) -> list:
     """The offer phrases the reply holds, given the spec's `on_path`."""
     return read_offers(text, on_path)[0]
+
+
+def ambiguous_requests(text: str, on_path) -> list:
+    """Empty elliptical requests without a same-sentence antecedent need human sampling."""
+    t = _norm(text)
+    paths = on_path_patterns(on_path)
+    ambiguous = set()
+    for phrase, rx in _OFFER_RX:
+        if phrase not in REQUESTS:
+            continue
+        for m in rx.finditer(t):
+            if negation(t, m.start()) or request_object(t, m.end()).strip():
+                continue
+            start = max(t.rfind(c, 0, m.start()) for c in ".?!") + 1
+            antecedent = t[start:m.start()]
+            on = any(rx.search(antecedent) for part in ON_PATH_PARTS for rx in paths[part])
+            continuation = any(re.search(r"\b" + re.escape(c) + r"\b", antecedent) for c in CONTINUATIONS)
+            if not on and not continuation:
+                ambiguous.add(phrase)
+    return sorted(ambiguous)
 
 
 def holds_template(text: str, body: list) -> bool:
@@ -514,9 +553,12 @@ def grade(spec: dict, evidence, transcript) -> dict:
 
     said = reply(evs, p)
     found, bare = read_offers(said, spec["on_path"])
-    human = bool(bare)
+    elliptical = ambiguous_requests(said, spec["on_path"])
+    human = bool(bare or elliptical)
     flag = [f"a bare cancel of {bare}: a matrix negator the phrase does not hang off, for the human sample"
             ] if bare else []
+    if elliptical:
+        flag.append(f"an empty elliptical request {elliptical} without an on-path antecedent, for the human sample")
     if found:
         return _result(IMPROVISED, half, [f"an offer: {found}"] + flag, human, offers=found)
     unmade = []

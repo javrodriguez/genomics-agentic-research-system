@@ -2,6 +2,24 @@ status: done
 
 # Lane w3a-cp3-graders-scope-template: the CP3 scope-read and template-adherence graders
 
+## Fold 3 checkpoint — W3A3-1, 2026-10-07
+
+The interrupted round-3 review is partial, not approval. This narrow correction reads objects
+hidden behind punctuation/list markers and dangling conjunctions through the sentence boundary.
+Elliptical requests with no matching same-sentence antecedent keep their labels and enter the
+human sample. Frozen on_path patterns are unchanged. Q20 stays TEMPLATE and is sampled because
+"Ready to finalize" does not match those patterns; the initial new test's no-flag expectation
+was corrected under the orchestrator's explicit ruling.
+
+Red first: focused class at the original production code ran 3 tests with 11 expected failures
+(both halves for five closers plus ambiguous ellipsis); Q20's label passed. After the fix,
+4 focused tests passed in 0.653s, including recovery and sampling mutations. `git diff --check`
+passed. The required pause-adherence `TheSweep` passed 16 tests in 1.032s under installed
+Python 3.12.14 after light admission (5.70). An earlier shell-default Python run had four
+dict-union compatibility errors and is not counted as a pass. Broader checks, 15-reading
+comparison and fresh Opus review remain pending. Whole battery belongs on athena.
+No claim that other round-3 findings are fixed; no frozen records/specs touched, no push.
+
 Branch `gap4/w3a-cp3-graders-scope-template` on the private mirror, built on `f00040a6999d3118bf71d07d4c7b5b68eda384e0`
 (gap4/wave2-merge). Nothing was pushed anywhere else; no pull request was opened.
 
