@@ -60,14 +60,18 @@ documented inputs for that tool; any other key refuses the take.
                        other attachment type in CC_ATTACHMENT_TYPES, and every record type in
                        CC_HARNESS_PAYLOAD, is harness.
     a record with `isSidechain` true (a sub-agent's) is refused: the view reads the main thread only.
+    a record the harness wrote itself is refused, never read as the agent's or the operator's words
+    (review round 1, W2B1-6): one carrying an `isMeta` or `isApiErrorMessage` key, whatever its value
+    (round 3's 54 transcripts carry neither on any of their 6,208 records), and an `assistant` record
+    whose `message.model` is `<synthetic>` (round 3 has none).
 
 THE RAW FIELDS THE `claude-code` PARSER READS (interface 6; a closed list):
 
-    every record      type, isSidechain
+    every record      type, isSidechain, isMeta, isApiErrorMessage (either key present refuses it)
     user              message.content (a string, or a list of blocks), origin.kind
       tool_result     type, tool_use_id, content (a string, or a list of blocks:
                       text -> text; tool_reference -> tool_name)
-    assistant         message.content (a list of blocks)
+    assistant         message.model (`<synthetic>` refuses it), message.content (a list of blocks)
       text            type, text
       thinking        type, thinking
       tool_use        type, id, name, input (its keys checked against CC_TOOLS; the values read are
@@ -91,6 +95,12 @@ THE FUNCTIONS.
 ROUND 3'S HARNESS. Round 3's takes carry no `agent` field (each `driver-ledger.json` has
 `claude_version` and no harness name), so ROUND3_HARNESS names it once, here, beside the table. The
 replay and the furniture check take the harness from it; no grader types the string.
+
+THE MANIFEST KEYS. Interface 8: wherever a take's `model` is recorded, `agent` is recorded beside it, as
+{"harness": AgentAdapter.name, "version": AgentAdapter.version()}. MANIFEST_KEYS names those four words
+once. They are the manifest's words, not a harness's, so the source sweep of `graders/*.py` excludes
+them even where one is also a raw name (`model` is a Claude Code attachment type) (review round 1,
+W2B1-7): a grader that records a take's model and agent never trips it.
 
 No model is called anywhere in this module. Standard library only.
 """
@@ -234,6 +244,10 @@ CC_HARNESS_PAYLOAD = {
 CC_RECORD_TYPES = ("user", "assistant", "attachment") + tuple(CC_HARNESS_PAYLOAD)
 CC_TASK_NOTIFICATION = "task-notification"
 CC_QUEUED_COMMAND = "queued_command"
+# Records the harness wrote itself (W2B1-6): either key present, whatever its value, refuses the record; so does an
+# assistant record whose model is CC_SYNTHETIC_MODEL. Round 3's 54 transcripts hold none of them.
+CC_REFUSED_FLAGS = ("isMeta", "isApiErrorMessage")
+CC_SYNTHETIC_MODEL = "<synthetic>"
 
 
 class ClaudeCodeSessionParser:
@@ -256,6 +270,9 @@ class ClaudeCodeSessionParser:
             raise ViewError(f"unknown record type: {t!r}")
         if r.get("isSidechain") is True:
             raise ViewError("a sidechain record (a sub-agent's): the view reads the main thread only")
+        for flag in CC_REFUSED_FLAGS:
+            if flag in r:
+                raise ViewError(f"a record carrying {flag}: the harness wrote it itself, refused")
         if t == "user":
             return self._user(r)
         if t == "assistant":
@@ -306,6 +323,8 @@ class ClaudeCodeSessionParser:
 
     def _assistant(self, r) -> list[RawItem]:
         msg = r.get("message")
+        if isinstance(msg, dict) and msg.get("model") == CC_SYNTHETIC_MODEL:
+            raise ViewError("an assistant record whose model is <synthetic>: the harness wrote it itself, refused")
         content = msg.get("content") if isinstance(msg, dict) else None
         if not isinstance(content, list):
             raise ViewError("an assistant record whose content is not a list of blocks")
@@ -344,6 +363,9 @@ PARSERS = {"claude-code": ClaudeCodeSessionParser()}
 
 # Round 3's takes carry no harness name; this is the one place it is written.
 ROUND3_HARNESS = "claude-code"
+
+# Interface 8's manifest keys: `model`, and `agent` = {"harness": ..., "version": ...} beside it (W2B1-7).
+MANIFEST_KEYS = ("model", "agent", "harness", "version")
 
 
 # ---- the view ------------------------------------------------------------------------------------

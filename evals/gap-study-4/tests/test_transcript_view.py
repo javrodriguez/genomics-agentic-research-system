@@ -311,6 +311,9 @@ def near_miss_problems(view=tv) -> list[str]:
          tv.AGENT_TEXT),
         ("agent-text near-miss: the same words as reasoning", {"type": "assistant", "message": {"content": [
             {"type": "thinking", "thinking": "hi", "signature": ""}]}}, tv.AGENT_REASONING),
+        # W2B1-6's near-miss: an assistant record with a real model is the agent's (only <synthetic> is refused).
+        ("agent-text: a model's own record", {"type": "assistant", "message": {
+            "model": "claude-haiku-4-5-20251001", "content": [{"type": "text", "text": "hi"}]}}, tv.AGENT_TEXT),
         ("harness", {"type": "attachment", "attachment": {"type": "date", "date": "hi"}}, tv.HARNESS),
         ("harness near-miss: an operator line with the same words", {"type": "user", "message": {"content": "hi"}},
          tv.OPERATOR),
@@ -412,6 +415,14 @@ class TheView(unittest.TestCase):
 
     def test_every_refusal(self):
         self.assertEqual(refusal_problems(), [])
+
+    def test_the_refusal_check_fires_on_a_view_that_reads_harness_written_records(self):  # review round 1, W2B1-6
+        with mock.patch.object(tv, "CC_REFUSED_FLAGS", ()):
+            self.assertEqual(refusal_problems(), ["not refused: a meta user record",
+                                                  "not refused: a record carrying isMeta, even false",
+                                                  "not refused: an API-error assistant record"])
+        with mock.patch.object(tv, "CC_SYNTHETIC_MODEL", object()):
+            self.assertEqual(refusal_problems(), ["not refused: a synthetic assistant record"])
 
     def test_the_refusal_check_fires_on_a_view_that_defaults_the_harness(self):
         with mock.patch.object(tv, "_parser", lambda h: tv.PARSERS.get(h, tv.PARSERS[CC])):

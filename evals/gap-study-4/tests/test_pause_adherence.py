@@ -17,6 +17,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
@@ -283,11 +284,12 @@ class TheSeam(unittest.TestCase):
 
 def cc_raw_names() -> set[str]:
     """Claude Code's record types, block types, attachment types, tool names and argument keys, read from the
-    view's tables (never typed here), less the view's own vocabulary (a view word a grader may use)."""
+    view's tables (never typed here), less the view's own vocabulary (a view word a grader may use) and interface
+    8's manifest keys, tv.MANIFEST_KEYS (a grader that records a take's model and agent; review round 1, W2B1-7)."""
     p = tv.PARSERS[CC]
     names = set(p.record_types) | set(p.block_types) | set(p.attachment_types) | set(p.tools)
     names |= {k for _, _, allowed in p.tools.values() for k in allowed}
-    return names - tv.VOCABULARY
+    return names - tv.VOCABULARY - set(tv.MANIFEST_KEYS)
 
 
 def literals(source: str) -> set[str]:
@@ -301,6 +303,29 @@ def sweep_problems(sources: dict[str, str]) -> list[str]:
 
 def grader_sources() -> dict[str, str]:
     return {f.name: f.read_text(encoding="utf-8") for f in sorted((HERE.parent / "graders").glob("*.py"))}
+
+
+def manifest_problems() -> list[str]:
+    srcs = grader_sources()
+    mutated = dict(srcs)
+    mutated["pause_adherence.py"] = (srcs["pause_adherence.py"]
+                                     + '\n_ROW = {"model": "m", "agent": {"harness": "h", "version": "v"}}\n')
+    return sweep_problems(mutated)
+
+
+def exclusion_problems() -> list[str]:
+    """The sweep excludes exactly the view's own words and the manifest keys, and of Claude Code's raw names that
+    is at most {command, path, pattern} (the view's arg names) and {model} (a manifest key)."""
+    p = tv.PARSERS[CC]
+    allk = set(p.record_types) | set(p.block_types) | set(p.attachment_types) | set(p.tools) | {
+        k for _, _, allowed in p.tools.values() for k in allowed}
+    excluded = tv.VOCABULARY | set(tv.MANIFEST_KEYS)
+    out = []
+    if allk - cc_raw_names() != allk & excluded:
+        out.append("the sweep excludes other than the view's words and the manifest keys")
+    if not allk & excluded <= {"command", "path", "pattern", "model"}:
+        out.append(f"the exclusion reaches raw names {sorted(allk & excluded - {'command', 'path', 'pattern', 'model'})}")
+    return out
 
 
 class TheSweep(unittest.TestCase):
@@ -334,18 +359,19 @@ class TheSweep(unittest.TestCase):
     def test_a_grader_may_record_the_manifest_keys(self):  # review round 1, W2B1-7
         # Interface 8: wherever a take's `model` is recorded, `agent` ({harness, version}) is recorded beside it. A
         # grader that records them is not typing a raw name, though `model` is also a Claude Code attachment type.
-        srcs = grader_sources()
-        mutated = dict(srcs)
-        mutated["pause_adherence.py"] = (srcs["pause_adherence.py"]
-                                         + '\n_ROW = {"model": "m", "agent": {"harness": "h", "version": "v"}}\n')
-        self.assertEqual(sweep_problems(mutated), [])
+        self.assertEqual(manifest_problems(), [])
+        self.assertEqual(tv.MANIFEST_KEYS, ("model", "agent", "harness", "version"))
+
+    def test_the_manifest_check_fires_on_a_sweep_without_the_shared_constant(self):
+        with mock.patch.object(tv, "MANIFEST_KEYS", ()):
+            self.assertEqual(manifest_problems(), ["pause_adherence.py types ['model']"])
 
     def test_the_exclusion_is_only_the_views_own_words(self):
-        p = tv.PARSERS[CC]
-        allk = set(p.record_types) | set(p.block_types) | set(p.attachment_types) | set(p.tools) | {
-            k for _, _, allowed in p.tools.values() for k in allowed}
-        self.assertEqual(allk - cc_raw_names(), allk & tv.VOCABULARY)
-        self.assertLessEqual(allk & tv.VOCABULARY, {"command", "path", "pattern"})
+        self.assertEqual(exclusion_problems(), [])
+
+    def test_the_exclusion_check_fires_on_a_wider_exclusion(self):
+        with mock.patch.object(tv, "MANIFEST_KEYS", tv.MANIFEST_KEYS + ("Bash",)):
+            self.assertTrue(exclusion_problems())
 
 
 # ---- the replay -----------------------------------------------------------------------------------
