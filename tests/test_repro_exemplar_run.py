@@ -1,6 +1,6 @@
 """The exemplar driver (scripts/repro_exemplar_run.py) on a stub GARS: every helper it calls is a stand-in
 that logs its argv and leaves just enough state behind, so the order, the arguments, the `none` model and
-every stop are shown without a pipeline, a cloud or a model. Its first real run is the S3 pad lifetime."""
+every stop are shown without a pipeline, a cloud or a model. Its first real run was the exemplar's, on the launch pad."""
 import json
 import os
 from pathlib import Path
@@ -35,7 +35,7 @@ if name == 'stage00_register.py' and args[0] == 'create':
         'compute:\n  mem: 64G\n  derived_dir: %s\n' % os.environ['STUB_DERIVED'])
 if name == 'stage00_register.py' and args[0] == 'link':
     (project / '00_data/atacseq_bulk/raw').mkdir(parents=True)
-# GARS seeds samples.csv at finalize, never at link (stage00_register.py:694-704 at 0f602ea0; S3, 6 Oct)
+# GARS seeds samples.csv at finalize, never at link (stage00_register.py:694-704 at 0f602ea0; the exemplar run, 6 Oct)
 if name == 'stage00_register.py' and args[0] == 'finalize':
     (project / '00_data/atacseq_bulk/samples.csv').write_text(
         'sample_id,condition,group,replicate\n' + ''.join(s + ',,,\n' for s in os.environ['STUB_SAMPLES'].split()))
@@ -46,7 +46,7 @@ if name == 'nfcore_atacseq_wrapper.py' and args[0] == 'prepare':
     (sub / 'params.yaml').write_text('# generated\n' + os.environ.get('STUB_PARAMS', 'save_reference: true\n'))
     (sub / 'submit.sh').write_text('#!/bin/bash\n')
 if name == 'executorlib.py' and args[0] == 'submit':
-    # executorlib prints its object indented over several lines (S3, 6 Oct: job 4657)
+    # executorlib prints its object indented over several lines (the exemplar run, 6 Oct: job 4657)
     print(json.dumps({'command': 'submit', 'job_id': '4242', 'ok': True}, indent=2))
 if name == 'executorlib.py' and args[0] == 'status':
     states = os.environ['STUB_STATES'].split()

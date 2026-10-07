@@ -397,7 +397,7 @@ artifact each stage produces.
 
 ## Status
 
-- **1399 tests** in `tests/run_tests.py`, with the reproduction package (0281-0283) in; CI was green on main at `5c142aa` ([run 37059655674](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/37059655674)), with the Gap Study token correction in.
+- **1402 tests** in `tests/run_tests.py`, with the reproduction package (0281-0283) in; CI was green on main at `5c142aa` ([run 37059655674](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/37059655674)), with the Gap Study token correction in.
 - **Seven assays are wired; most are proven live** — the table below.
 - **Build log:** the row-by-row status and its dated evidence are in
   [DEVELOPMENT.md](DEVELOPMENT.md#status-moved-from-the-readme-30-sep-2026); the definition-of-done

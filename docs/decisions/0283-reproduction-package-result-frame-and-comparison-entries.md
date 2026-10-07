@@ -1,6 +1,6 @@
 ---
 date: 2026-10-05
-status: standing # draft until S6: the frame, rules and entries are frozen; passes 1, 2 and 3 are in; the landing is open
+status: standing # draft until the landing: the frame, rules and entries are frozen; passes 1, 2 and 3 are in
 kind: decision
 touches:
   - gars/_system/claims/package_run.py
@@ -13,8 +13,8 @@ symptoms:
 ---
 # The reproduction package's result frame and comparison entries, frozen before any result exists
 
-The owner approved the reproduction package plan on 5 October 2026 (he typed "A1 B1 C2" in the Row-orchestrator window, and "gars-repro yes" in a terminal session, OrgOS T65).
-The frame and the rules below are the plan's own (Brain `plans/gars-reproduction-package.md`, section 8), frozen here at slice S0 by the build lane under that approval.
+The owner approved the reproduction package plan on 5 October 2026 in his own typed words: "A1 B1 C2", taking the plan's three recommended options, and "gars-repro yes".
+The frame and the rules below are the plan's own (its section 8; the plan is the owner's private working document and is not published), frozen here before any result existed, under that approval.
 No other sentence in this record is the owner's.
 
 ## Context
@@ -43,7 +43,7 @@ Nested directory outputs are compared member by member against the manifest's `m
 
 **The modes.**
 `exact` (sha256) is the default for every member, and `presence` exists from the first build.
-A further mode is added only when a probe reads a cause for it from the bytes: `bam_body` (md5 of the alignment records with the header removed, sorted by coordinate and name), `sorted_table` (rows sorted, comment lines carrying dates or paths removed, then exact), `numeric` (named columns within an absolute and a relative threshold, whose bounds are frozen in this record at S2b).
+A further mode is added only when a probe reads a cause for it from the bytes: `bam_body` (md5 of the alignment records with the header removed, sorted by coordinate and name), `sorted_table` (rows sorted, comment lines carrying dates or paths removed, then exact), `numeric` (named columns within an absolute and a relative threshold, whose bounds are frozen in this record from the early probe).
 These are the package's own modes, declared in its `compare.py`; they are not 0097's, and `scripts/rerun_check.py` and `_references/tolerances.yaml` are not touched.
 
 **The entry rule.**
@@ -68,10 +68,11 @@ Only the result line's counts, for one fixture run, never "GARS is reproducible"
 
 ## Entries
 
-Frozen 5 October 2026 from S2b, before S3, under glitch-e7's rulings of the same day (the Row-orchestrator's words under the owner's delegation, not the owner's).
-S2b ran plain nf-core/atacseq 2.1.2 (commit `1a1dbe52ffbd82256c941a032b0e22abbd925b8a`) twice on one fresh m5.xlarge launch-pad machine, local executor in Docker, with the recorded clamp: 651 files compared, 342 equal, 309 different.
+Frozen 5 October 2026 from the early probe (the origin `S2b-preregistered` names it), before the exemplar ran, under the coordinating session's rulings of the same day (made under the owner's delegation, not his own words).
+The early probe ran plain nf-core/atacseq 2.1.2 (commit `1a1dbe52ffbd82256c941a032b0e22abbd925b8a`) twice on one fresh m5.xlarge cloud machine, local executor in Docker, with the recorded clamp: 651 files compared, 342 equal, 309 different.
 Every BAM, BAM index, bigWig and narrowPeak file, and the SAF and consensus BED files, were byte-identical across the two runs.
-The evidence is the results tarball, sha256 `919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0`, kept on the build machine and in the pad's private evidence prefix.
+The sha256 values of this record's evidence files (the probe's results tarball here; the passes' artifacts and the re-judgment below) are hashes of the owner's held evidence, published now so the files can be checked when they are released.
+The evidence is the probe's results tarball, sha256 `919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0`.
 
 **Two modes added beyond the three named above, both ruled on 5 October 2026:**
 `column_matched_table` (a featureCounts table, compared exactly after its columns are matched by sample name) and `sign_aligned_numeric` (a PCA table, compared per sample after each component's sign is aligned, every value within an absolute 1e-9).
@@ -89,30 +90,30 @@ Each mode applies only to the file kinds its definition names (`compare.py`'s `k
 - nf-core/atacseq 2.1.2's HOMER peak annotation is not deterministic: for a peak equally near two genes it names one or the other between runs (for example YOL103W-A or YOL103W-B), because `genome/genes.bed` lists tied genes in a different order each run. Six annotation files under the recorded outputs carry it, so every output that holds them (the peaks folder and the merged-library tree) counts as differing.
 - The DESeq2 sample-distance tables hold the same distances with samples in completion order; no mode is declared for them, so they count as differing too.
 
-The expected result for a re-run that behaves as S2b did, before any pass: of 6 outputs, the bigWig folder and the consensus BED match exactly (M = 2), the counts table within the stated tolerance (K = 1), the MultiQC report present but not byte-comparable (P = 1), and the peaks folder and merged-library tree differ (F = 2), causes in PROVENANCE.md.
+The expected result for a re-run that behaves as the early probe did, before any pass: of 6 outputs, the bigWig folder and the consensus BED match exactly (M = 2), the counts table within the stated tolerance (K = 1), the MultiQC report present but not byte-comparable (P = 1), and the peaks folder and merged-library tree differ (F = 2), causes in PROVENANCE.md.
 Pass 1 compares against the AWS Batch record, a different machine type, so its own differences may add `pass-1` entries, each counted apart.
 
-**Erratum, 6 October 2026 (S5 review round 1; the entries file and the frame above are unchanged):**
+**Erratum, 6 October 2026 (the exemplar review's first round; the entries file and the frame above are unchanged):**
 - `column_matched_table` also drops the table's `#` comment lines (featureCounts' program and command line) before comparing, and `sign_aligned_numeric` compares a PCA table's numbers only, not its header row or `#` comment lines; the shipped PROVENANCE.md declares both.
 - A file a re-run holds inside a recorded directory output that the run did not record counts that output as differing (F), beside the four rollup rules above.
-- "Six annotation files" above are five annotatePeaks tables and the plots PDF drawn from them; that PDF also embeds a creation date, so its difference is not shown to be HOMER's alone. The package's own PROVENANCE carries this correction under "Corrections", from the lane file `reproduction/yeast-atac/package-errata.json` (decision 0281).
+- "Six annotation files" above are five annotatePeaks tables and the plots PDF drawn from them; that PDF also embeds a creation date, so its difference is not shown to be HOMER's alone. The package's own PROVENANCE carries this correction under "Corrections", from the file `reproduction/yeast-atac/package-errata.json` beside the package (decision 0281).
 - A match under a normalising mode is reported as `match after <mode>`, apart from a byte-identical `match`, so no member tally can conflate the two.
 
 ## Pass 1
 
-Run 6 October 2026 on a fresh m5.xlarge launch-pad machine (4 vCPU, 16,550,289,408 bytes of memory for Docker, no container image cached), by the package's own `rerun.sh` and `verify.py --against`, against the exemplar's AWS Batch record: `rerun.sh` exit 0 in 2026 seconds.
+Run 6 October 2026 on a fresh m5.xlarge cloud machine (4 vCPU, 16,550,289,408 bytes of memory for Docker, no container image cached), by the package's own `rerun.sh` and `verify.py --against`, against the exemplar's AWS Batch record: `rerun.sh` exit 0 in 2026 seconds.
 **Result: of 6 outputs (209 files), 2 matched exactly, 1 within the stated tolerance, 1 present but not byte-comparable, 2 differ (causes in PROVENANCE.md)**, the expected result above.
 Members: 105 byte-identical, 39 equal after their declared normalisation (37 `sorted_table`, 2 `column_matched_table`), 2 within 1e-9 after sign alignment (the PCA), 55 present (`presence`), 8 differ; the 8 are exactly the two findings above (the HOMER annotation files and the plots PDF drawn from them; the two sample-distance tables).
 No `pass-1` entry was needed: every member that did not match exactly is covered by an `S2b-preregistered` entry or a finding.
-Pass 1 ran against an earlier render of the same harvest, with the same re-run commands; it is **re-judged** offline against the package of record (`f5964ece…`, decision 0281) by that package's own `verify.py --against` over pass 1's re-run folder, and reads the same line (exit 2; the re-judgment's output and member table are the artifact `rejudge-f5964ece.tgz`, sha256 `d4d33c4d0acc78c640c36e1cc7de09e6ca81e3cf5c98ce17ae2c0281ac21f87c`, kept with the pass's evidence outside the repository).
+Pass 1 ran against an earlier render of the same harvest, with the same re-run commands; it is **re-judged** offline against the package of record (`f5964ece…`, decision 0281) by that package's own `verify.py --against` over pass 1's re-run folder, and reads the same line (exit 2; the re-judgment's output and member table are the artifact `rejudge-f5964ece.tgz`, sha256 `d4d33c4d0acc78c640c36e1cc7de09e6ca81e3cf5c98ce17ae2c0281ac21f87c`).
 A cold-cache pass raised the machine's root-disk use by 15.02 GB (container images included); the re-run folder held 0.90 GB.
 
 ## Passes 2 and 3 (the claim passes)
 
-Run 6 and 7 October 2026 after the S5 review's last round, on the package of record (`f5964ece…`, decision 0281), each on its own fresh m5.xlarge launch-pad machine (launch-pad lifetimes 7 and 8; 4 vCPU, 16,550,252,544 and 16,550,240,256 bytes of memory for Docker; no container image cached), by the package's own `rerun.sh` and `verify.py --against --table-out`: `rerun.sh` exit 0 in 2034 and 2111 seconds.
+Run 6 and 7 October 2026 after the exemplar review's last round, on the package of record (`f5964ece…`, decision 0281), each on its own fresh m5.xlarge cloud machine (4 vCPU, 16,550,252,544 and 16,550,240,256 bytes of memory for Docker; no container image cached), by the package's own `rerun.sh` and `verify.py --against --table-out`: `rerun.sh` exit 0 in 2034 and 2111 seconds.
 **Both read: of 6 outputs (209 files), 2 matched exactly, 1 within the stated tolerance, 1 present but not byte-comparable, 2 differ (causes in PROVENANCE.md).**
 **They agree** under the rule above: the two member tables are identical, member by member, in mode and in result (209 members, none disagreeing), and equal pass 1's re-judgment: 105 byte-identical, 37 after `sorted_table`, 2 after `column_matched_table`, 2 within 1e-9 after sign alignment, 55 present, 8 differ (the two findings).
-The pass artifacts (`repro-pass2.tgz`, sha256 `6769d3187d866dbf7835141ee5536ab1faaa0d7836510f0fb0cfe1380d701587`; `repro-pass3.tgz`, sha256 `7613fd7bcd1240abd50752e5a370ff2efa3a30f668d87a6d994c1fc54d255c2d`) are kept outside the repository; `reproduction/yeast-atac/README.md` is `package_run.py rerun-note`'s rendering of them.
+`reproduction/yeast-atac/README.md` is `package_run.py rerun-note`'s rendering of the two pass artifacts (`repro-pass2.tgz`, sha256 `6769d3187d866dbf7835141ee5536ab1faaa0d7836510f0fb0cfe1380d701587`; `repro-pass3.tgz`, sha256 `7613fd7bcd1240abd50752e5a370ff2efa3a30f668d87a6d994c1fc54d255c2d`).
 Root-disk use rose by 15.05 GB and 15.02 GB over each pass's start.
 
 ## What this does not close
@@ -121,11 +122,11 @@ Root-disk use rose by 15.05 GB and 15.02 GB over each pass's start.
 
 ## Test
 
-`gars/tests/test_package_run.py` (slice S1) holds the rollup and the exit codes: a `presence` member counted in M or K, a `presence` output dropped from N, or a skipped member must each make a test fail (mutation-checked).
+`gars/tests/test_package_run.py` holds the rollup and the exit codes: a `presence` member counted in M or K, a `presence` output dropped from N, or a skipped member must each make a test fail (mutation-checked).
 
 ## Status
 
-Draft, on the build branch `lane/repro-package`; the frame, rules and entries are frozen and passes 1, 2 and 3 are in; finalised with the landing (S6).
+Draft, on the build branch `lane/repro-package`; the frame, rules and entries are frozen and passes 1, 2 and 3 are in; finalised with the landing.
 
 ## Date
 

@@ -47,7 +47,7 @@ PACKAGING = 'supplied at packaging from '
 COMPUTED = 'computed at packaging from '
 NOT_RECORDED_LABEL = 'not recorded by the run'
 WITHHELD = 'withheld'
-# Every *_source cell starts with one of these (S5 review r1, m1: an absent field is "not recorded by
+# Every *_source cell starts with one of these (the exemplar review's round 1, m1: an absent field is "not recorded by
 # the run", a rewritten value is "computed at packaging", and a withheld hash says so).
 LABELS = (RUN, HARVEST, PACKAGING.strip(), COMPUTED.strip(), NOT_RECORDED_LABEL, WITHHELD)
 NOT_RECORDED = 'not recorded'
@@ -66,7 +66,7 @@ COMPARISON_MODES = ('exact', 'presence', 'sorted_table', 'column_matched_table',
 NORMALISED_MODES = ('sorted_table', 'column_matched_table', 'sign_aligned_numeric')
 NORMALISED = 'computed at packaging from bytes matching the record'
 # Stock cloud logins: the login every launch-pad box is made with, and the user the SSM agent's
-# environment reports. Neither names a person, so neither arms the sweep (glitch-e7's ruling (a),
+# environment reports. Neither names a person, so neither arms the sweep (the coordinating session's ruling (a),
 # 5 Oct 2026). Every other user name the records carry stays armed.
 STOCK_LOGINS = {'ubuntu': "the stock login of the launch pad's Ubuntu cloud image",
                 'root': "the user the SSM agent's environment reports on the pad"}
@@ -77,7 +77,7 @@ STORAGE_URI = re.compile(r'(?i)(?<![A-Za-z0-9+.-])(s3[an]?|gs|gcs|az|abfss?|wasb
 ARN_ACCOUNT = re.compile(r'arn:aws[a-z-]*:[a-z0-9-]*:[a-z0-9-]*:([0-9]{12}):')
 BOUNDED_12 = re.compile(r'(?<![0-9A-Fa-f])[0-9]{12}(?![0-9A-Fa-f])')
 # A twelve-digit run is spared only when the whole token around it is a decimal number: MACS2's summary
-# printed 408.955439056357 (S3, 6 Oct 2026). A run after any other dot (us-east-1.<id>, v1.2.<id>,
+# printed 408.955439056357 (the exemplar run, 6 Oct 2026). A run after any other dot (us-east-1.<id>, v1.2.<id>,
 # run1.<id>) is still an id (review of the oracle fix, MINOR 1). The real account id is also armed as a
 # literal from the harvest's records.
 TOKEN_SPLIT = re.compile(r'[\s,;"\'()\[\]{}<>=|]+')
@@ -163,7 +163,7 @@ def tsv_plain(columns, rows):
 
 
 def tsv(columns, rows):
-    tables_sources(rows, columns)   # every *_source cell carries a label (S5 review r1, m1: was never called)
+    tables_sources(rows, columns)   # every *_source cell carries a label (the exemplar review's round 1, m1: was never called)
     out = io.StringIO()
     out.write('\t'.join(columns) + '\n')
     for row in rows:
@@ -1284,7 +1284,7 @@ class Render(object):
         """A recorded output's sha256 is printed for comparison, so an output holding a bucket, account
         id, approver or user name would make that hash an oracle. A presence member is compared by no
         hash, so when what it holds is only the runs bucket or the account id (the AWS Batch road's
-        MultiQC report names the S3 work folder; S3, 6 Oct 2026), its sha256 is withheld and cited by
+        MultiQC report names the S3 work folder; the exemplar run, 6 Oct 2026), its sha256 is withheld and cited by
         field name (plan 4.2's hash-oracle rule), and the sweep is armed with it; anything else, or any
         other mode, is refused. Returns what a withheld member holds, else None. A member too large to
         harvest was not read, and PROVENANCE says so."""
@@ -1709,7 +1709,7 @@ OK_RESULTS = ('match', 'present')
 
 def result_ok(result):
     """A member result compare.py counts as matching: byte-identical, present, a normalised match
-    (`match after <mode>`) or a sign-aligned one (`within ... after sign alignment`). S5 review r1:
+    (`match after <mode>`) or a sign-aligned one (`within ... after sign alignment`). The exemplar review's round 1:
     the landing README had counted the last two as differing."""
     return result in OK_RESULTS or result.startswith(('match after ', 'within '))
 MACHINE = re.compile(r'[A-Za-z0-9 .,/()+-]{1,80}\Z')
@@ -1738,7 +1738,7 @@ def rerun_note(args):
     package_digest = sha256_file(package / 'SHA256SUMS')
     if not re.match(r'[a-z0-9-]+\.yml\Z', args.workflow):
         raise Refusal('--workflow is a workflow file name such as reproduction-yeast-atac.yml')
-    # the README links the workflow's runs, so the workflow must exist in this repository (S5 review r2, M7)
+    # the README links the workflow's runs, so the workflow must exist in this repository (the exemplar review's round 2, M7)
     workflow = package.resolve().parents[2] / '.github' / 'workflows' / args.workflow
     if not workflow.is_file():
         raise Refusal('no workflow %s in this repository; the landing README would link a page that does '
@@ -1767,6 +1767,27 @@ def rerun_note(args):
             if int(o['extra']):
                 extra[(o['stage'], o['output_path'])] = ['extra']
     result = compare.rollup(rows, members, extra)
+    # Each pass's printed table must be the rollup of that pass's own member table, with the package's modes
+    # (the landing review's round 2, m2: a doctored outputs.tsv was printed as given).
+    row_of = {}
+    for r in rows:
+        row_of.setdefault((r['stage'], compare.member_path(r)), r)
+    for number, (p, own_results) in enumerate(zip(passes, results), start=1):
+        for key in keys:
+            if own_results[key]['mode'] != row_of[key]['mode']:
+                raise Refusal('pass artifact %d names another mode for %s than the package' % (number, key[1]))
+        own = dict((key, {'row': row_of[key], 'ok': result_ok(own_results[key]['result']),
+                          'result': own_results[key]['result'], 'rerun_sha256': ''}) for key in keys)
+        try:
+            own_extra = dict(((o['stage'], o['output_path']), ['extra'] * int(o['extra'])) for o in p['outputs']
+                             if int(o['extra']))
+        except (KeyError, ValueError):
+            raise Refusal('pass artifact %d has an unreadable outputs table' % number)
+        rolled = [tuple(str(o[c]) for c in compare.OUTPUT_COLUMNS)
+                  for o in compare.rollup(rows, own, own_extra)['outputs']]
+        given = [tuple(str(o.get(c, '')) for c in compare.OUTPUT_COLUMNS) for o in p['outputs']]
+        if rolled != given:
+            raise Refusal('pass artifact %d: its outputs table is not the rollup of its own member table' % number)
     record = json.loads(sorted(package.glob('records/*.manifest.json'))[0].read_text(encoding='utf-8'))
     repository = [r for r in read_tsv(package / 'code' / 'GARS.txt') if r['field'] == 'repository'][0]['value']
     pipes = read_tsv(package / 'code' / 'pipelines.tsv')
@@ -1790,9 +1811,10 @@ def rerun_note(args):
               and not unstable else '') +
              'The re-runs were pre-landing passes run by the repository owner\'s own tooling in a private '
              'environment (not viewable); no independent re-run by another person has happened yet. The public '
-             'workflow ([%s](%s)) re-runs the package and passes only when its result line equals the one above '
-             'and every member\'s mode and result equals agreed-members.tsv, except the members of the findings '
-             'in package/PROVENANCE.md, whose difference is random by cause.' % (args.workflow, runs), '']
+             'workflow ([%s](%s)) re-runs the package and passes only when its result line equals the one above, '
+             'no output holds a file the run did not record, and every member\'s mode and result equals '
+             'agreed-members.tsv; the members of a finding in package/PROVENANCE.md, whose difference has a cause '
+             'stated there (Findings and Corrections), may match or differ.' % (args.workflow, runs), '']
     if unstable:
         lines += ['%d members differed between the two passes on the same machine type; each counts as differing, '
                   'with the cause "unstable between re-runs on the same machine type".' % len(unstable), '']
@@ -1817,7 +1839,7 @@ def rerun_note(args):
     if out.resolve().parent != package.resolve().parent:
         raise Refusal('the landing README goes beside the package folder')
     out.write_text(text, encoding='utf-8')
-    # The agreed member outcomes the public workflow diffs its own member table against (S6 landing review, M2).
+    # The agreed member outcomes the public workflow diffs its own member table against (the landing review, M2).
     agreed = []
     for key in sorted(keys):
         row = members[key]

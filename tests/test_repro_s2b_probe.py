@@ -1,4 +1,4 @@
-"""The S2b probe's file-by-file comparison, on two small result trees (the `run` verb needs the pad)."""
+"""The early probe's file-by-file comparison, on two small result trees (the `run` verb needs a cloud machine)."""
 import importlib.util
 from pathlib import Path
 import subprocess

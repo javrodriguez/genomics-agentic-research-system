@@ -16,7 +16,7 @@ so a stop at any later step still leaves it to be carried off the machine (revie
 
 Each step is the documented helper call the stage contracts name (stage00_register.py, stage01_samplesheet.py,
 configure.py, the ATAC wrapper's check, prepare and collect, executorlib.py submit and status), with the answers
-the 4 Oct take card gave for this fixture; the model a navigation would run is `none`, and the run records it.
+fixed for this fixture before its first run (4 October 2026); the model a navigation would run is `none`, and the run records it.
 It never retries a failed step, never edits a record by hand, and stops at the first non-zero exit with the
 step named. The machine's own lifetime (up, down) is the operator's, never this script's.
 Every step and its exit code go to <out>/run.log; exit 0 when the package verified, 1 at the first failure,
@@ -36,13 +36,13 @@ import time
 ASSAY = 'atacseq_bulk'
 SUBSTAGE = '02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper'
 WRAPPER = '_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py'
-# The design the take card wrote (gars-demo-v2 docs/launchpad-card-epigenome-a.md, "The design").
+# The fixture's design, fixed before its first run (4 October 2026): two conditions, two replicates each.
 DESIGN = ('sample_id,condition,group,replicate\n'
           'atac-a-r1,a,atac-a,1\natac-a-r2,a,atac-a,2\natac-b-r1,b,atac-b,1\natac-b-r2,b,atac-b,2\n')
 SAMPLES = ('atac-a-r1', 'atac-a-r2', 'atac-b-r1', 'atac-b-r2')
 STAGE01_LINES = (('unit_of_replication', 'sample'), ('reference_release', 'R64-1-1'))
 GENOME, PEAKS = 'R64-1-1', 'narrow'
-MEMORY = ('  mem: 64G\n', '  mem: 8G\n')   # the local venue's memory rule (take card, step 4b)
+MEMORY = ('  mem: 64G\n', '  mem: 8G\n')   # the local venue's memory rule, as the fixture's first run set it
 TERMINAL = ('COMPLETED', 'FAILED', 'CANCELLED', 'ARTIFACT_MISSING')
 # package_run.py's CLONE_IGNORED_OK, checked here before stage 00 so a clone harvest would refuse is
 # refused before the paid run, not after it (a test holds the two equal).
@@ -84,7 +84,7 @@ class Run(object):
         if proc.returncode != 0:
             raise Stop('step %s exited %d; see %s' % (step, proc.returncode, self.log))
         if want_json:
-            # executorlib prints one object indented over several lines (S3, 6 Oct); a helper that
+            # executorlib prints one object indented over several lines (the exemplar run, 6 Oct); a helper that
             # prints notes first ends with its object, so the last line opening a parseable object wins.
             lines = text.strip().splitlines()
             for start in range(len(lines) - 1, -1, -1):
@@ -158,13 +158,13 @@ class Run(object):
                                   '--data-class', 'public', '--purpose', 'fixture', '--agreement-ref', 'none',
                                   '--model', 'none'])
         # finalize seeds samples.csv (the header and the sample ids, design columns empty) and keeps it
-        # thereafter; the design is written after it, as the take card's second window did.
+        # thereafter; the design is written after it, as the fixture's first run did.
         design = self.project / '00_data' / ASSAY / 'samples.csv'
         seeded = design.read_text(encoding='utf-8').splitlines() if design.is_file() else []
         if not seeded or seeded[0] != DESIGN.splitlines()[0] or sorted(l.split(',')[0] for l in seeded[1:]) != list(SAMPLES):
-            raise Stop('step 00.design: the seeded samples.csv is not the header and the four samples the card names')
+            raise Stop('step 00.design: the seeded samples.csv is not the header and the four samples of the design')
         design.write_text(DESIGN, encoding='utf-8')
-        self.note('step 00.design: samples.csv written (the take card\'s four rows)')
+        self.note('step 00.design: samples.csv written (the design\'s four rows)')
 
     def stage01(self):
         config = self.project / '_config' / (ASSAY + '.yaml')

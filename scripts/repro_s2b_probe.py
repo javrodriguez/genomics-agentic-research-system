@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""S2b, the early probe of the reproduction package (decision 0283): plain nf-core/atacseq at the pinned
+"""The early probe of the reproduction package (decision 0283): plain nf-core/atacseq at the pinned
 commit, run twice on the yeast fixture with GARS's own parameters and the recorded resource clamp, on one
 fresh 4 vCPU / 16 GB machine, then compared file by file. It measures re-run against re-run, so any
 difference it finds needs a cause read from the bytes before it may become a comparison entry.
@@ -176,10 +176,10 @@ def run(args):
             return 1
     code = compare(argparse.Namespace(a=str(out / 'run1' / 'results'), b=str(out / 'run2' / 'results'),
                                       out=str(out / 'compare')))
-    # The S2b acceptance item of review h3-7: where a real run's outputs (MultiQC's report, the trace, the
-    # tables) name the box's user, the launch folder or a bucket, before render meets them in the paid S3.
+    # An acceptance item of review h3-7 for this probe: where a real run's outputs (MultiQC's report, the trace, the
+    # tables) name the box's user, the launch folder or a bucket, before render meets them in the paid exemplar run.
     # The user the run's own paths name (its launch folder's home), never the environment's user: on the
-    # pad the SSM environment reports root while the run is the stock login's (S2b, 5 Oct 2026).
+    # cloud machine the SSM environment reports root while the run is the stock login's (this probe, 5 Oct 2026).
     users = sorted(set(re.findall(r'/(?:home|Users)/([^/]+)/', str(out) + '/'))) or ['(no home folder)']
     scan(out / 'run1', users + [str(out / 'run1'), 's3://'], out / 'compare' / 'names.tsv')
     return code

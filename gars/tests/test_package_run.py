@@ -37,7 +37,7 @@ ACTOR = 'fixture-approver-q7x'
 STAGE_REL = '02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper'
 STAGE = 'atacseq_bulk.01_nfcore-atacseq-wrapper'
 LABELS = ('recorded at run', 'computed at harvest', 'supplied at packaging from ', 'computed at packaging from ',
-          'not recorded by the run', 'withheld')   # the six defined labels (S5 review r1, m1)
+          'not recorded by the run', 'withheld')   # the six defined labels (the exemplar review's round 1, m1)
 GIT_ENV = {'GIT_AUTHOR_NAME': 'fixture', 'GIT_AUTHOR_EMAIL': 'fixture@example.invalid',
            'GIT_COMMITTER_NAME': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture@example.invalid',
            'GIT_AUTHOR_DATE': '2026-10-05T12:00:00Z', 'GIT_COMMITTER_DATE': '2026-10-05T12:00:00Z'}
@@ -162,7 +162,7 @@ class World(object):
                        'export NXF_SYNTAX_PARSER=v1\ncd "%s"\nnextflow run "%s" \\\n    -c "%s" \\\n'
                        '    -params-file "%s/params.yaml" \\\n    -work-dir "s3://%s/work/yeast-atacseq_bulk" \\\n'
                        '    $RESUME\n' % (self.clone / 'gars', self.stage, checkout, executor_config, self.stage, BUCKET))
-        # Nextflow's own log names the launch line (h3-5); a real launch line is an S2b acceptance item.
+        # Nextflow's own log names the launch line (h3-5); a real launch line was checked by the early probe.
         write(self.stage / 'run' / '.nextflow.log',
               'Oct-09 10:00:00.000 [main] DEBUG nextflow.cli.Launcher - $> nextflow run %s -c %s -params-file %s/params.yaml '
               '-work-dir s3://%s/work/yeast-atacseq_bulk\n' % (checkout, executor_config, self.stage, BUCKET))
@@ -460,7 +460,7 @@ class HarvestAndRender(PackageCase):
                 w.stage / 'run/.nextflow.log', (w.stage / 'run/.nextflow.log').read_text().replace(
                     '-work-dir', '--skip_trimming true -work-dir'))),
             # git's own status catches the edit when it lands in the index's second (a racy entry); either
-            # refusal is the edit caught (S6 landing review: intermittent under load)
+            # refusal is the edit caught (the landing review: intermittent under load)
             'h3-6 an edit hidden by stat settings': (('differ from HEAD by content', 'gars/_system/wrapperlib.py)'), {},
                                                       self.stat_only_edit),
             'h3-6 an unexpected ignored file': ('git status: !!', {}, lambda w: write(
@@ -490,7 +490,7 @@ class HarvestAndRender(PackageCase):
 
     def test_h3_8_users_come_from_the_records_and_a_tool_image_is_not_a_user(self):
         tool = module(TOOL, 'package_run_users')
-        # the stock login is never armed (glitch-e7's ruling (a)); a real name always is
+        # the stock login is never armed (the coordinating session's ruling (a)); a real name always is
         self.assertEqual(tool.record_users(['/home/ubuntu/x', '"/Users/jdoe/y"', '/home/conda/z']), ['jdoe'])
         self.assertFalse(tool.user_named('container nf-core/ubuntu:20.04', 'ubuntu'))
         self.assertTrue(tool.user_named('ran as ubuntu on the box', 'ubuntu'))
@@ -1077,8 +1077,8 @@ def s2b_entries(**override):
     return entries
 
 
-class S2bModes(PackageCase):
-    """The four modes S2b measured (decision 0283), each on the kinds it is declared for only."""
+class EarlyProbeModes(PackageCase):
+    """The four modes the early probe measured (decision 0283), each on the kinds it is declared for only."""
 
     def world_with(self, entries, findings=None):
         w = self.world()
@@ -1176,7 +1176,7 @@ class S2bModes(PackageCase):
         self.assertIn('no finding or entry names', proc.stdout.decode())
 
     def test_rerun_note_counts_normalised_and_sign_aligned_matches_as_compare_does(self):
-        """The landing README's line equals compare.py's own line for the same pass (S5 review r1: rerun-note
+        """The landing README's line equals compare.py's own line for the same pass (the exemplar review's round 1: rerun-note
         had counted `match after <mode>` and sign-aligned members as differing, and had no test)."""
         w = self.world_with(s2b_entries())
         self.assertEqual(w.harvest().returncode, 0)
@@ -1199,7 +1199,7 @@ class S2bModes(PackageCase):
         argv = [sys.executable, TOOL, 'rerun-note', '--package', placed, '--workflow', 'reproduction-yeast-atac.yml',
                 '--out', note] + artifacts
         refused = run(argv)
-        self.refused(refused, 'no workflow reproduction-yeast-atac.yml in this repository')   # S5 review r2, M7
+        self.refused(refused, 'no workflow reproduction-yeast-atac.yml in this repository')   # the exemplar review's round 2, M7
         write(repo / '.github' / 'workflows' / 'reproduction-yeast-atac.yml', 'name: x\n')
         proc = run(argv)
         self.assertEqual(proc.returncode, 0, proc.stderr.decode())
@@ -1208,7 +1208,31 @@ class S2bModes(PackageCase):
         self.assertNotIn('fresh', note.read_text())   # nothing in the artifact records freshness
         self.assertIn('Re-run twice, each on its own 4-CPU 16 GB pad m5.xlarge', note.read_text())
         self.assertIn('no independent re-run', note.read_text())
-        self.assertIn('Compared exactly', note.read_text())   # S6 landing review, M3: mode counts, named so
+        self.assertIn('Compared exactly', note.read_text())   # the landing review, M3: mode counts, named so
+        # the landing review's round 2, m2: a pass whose outputs table is not its own members' rollup, or
+        # whose members carry another mode than the package's, is refused, never printed
+        doctored = w.root / 'pass3-doctored'
+        shutil.copytree(str(w.root / 'pass3'), str(doctored))
+        table_text = (doctored / 'outputs.tsv').read_text()
+        lines_ = table_text.splitlines(True)
+        cells = lines_[1].rstrip('\n').split('\t')
+        cells[3] = str(int(cells[3]) + 1)
+        lines_[1] = '\t'.join(cells) + '\n'
+        (doctored / 'outputs.tsv').write_text(''.join(lines_))
+        refused_table = run([sys.executable, TOOL, 'rerun-note', '--package', placed, '--workflow',
+                             'reproduction-yeast-atac.yml', '--out', note, '--artifact', w.root / 'pass2',
+                             '--artifact', doctored])
+        self.refused(refused_table, 'is not the rollup of its own member table')
+        (doctored / 'outputs.tsv').write_text(table_text)
+        member_lines = (doctored / 'members.tsv').read_text().splitlines(True)
+        head = member_lines[0].rstrip('\n').split('\t')
+        first = member_lines[1].rstrip('\n').split('\t')
+        first[head.index('mode')] = 'presence' if first[head.index('mode')] != 'presence' else 'exact'
+        member_lines[1] = '\t'.join(first) + '\n'
+        (doctored / 'members.tsv').write_text(''.join(member_lines))
+        refused_mode = run([sys.executable, TOOL, 'rerun-note', '--package', placed, '--workflow',
+                            'reproduction-yeast-atac.yml', '--out', note, '--artifact', doctored])
+        self.refused(refused_mode, 'names another mode')
         agreed = list(csv.DictReader(io.StringIO((placed.parent / 'agreed-members.tsv').read_text()), delimiter='\t'))
         table = list(csv.DictReader(io.StringIO((w.root / 'pass2' / 'members.tsv').read_text()), delimiter='\t'))
         self.assertEqual(sorted((r['stage'], r['path'], r['mode'], r['result']) for r in agreed),
@@ -1289,7 +1313,7 @@ class S2bModes(PackageCase):
 
 
 class StockLogins(PackageCase):
-    """glitch-e7's ruling (a), 5 Oct 2026: the pad's stock login is not a private name; any other is."""
+    """The coordinating session's ruling (a), 5 Oct 2026: the launch pad's stock login is not a private name; any other is."""
 
     def world_naming(self, user):
         w = self.world()
@@ -1303,7 +1327,7 @@ class StockLogins(PackageCase):
         w = self.world_naming('ubuntu')
         self.assertEqual(w.harvest().returncode, 0)
         # the stock login arms nothing; only the test folder's own home user may appear (CI's TMPDIR sits
-        # under /home/runner/; S6 landing review, M1)
+        # under /home/runner/; the landing review, M1)
         own = module(TOOL, 'package_run_stock_own').record_users([str(w.root)])
         self.assertNotIn('ubuntu', own)
         self.assertEqual(json.loads((w.root / 'harvest/HARVEST.json').read_text())['secrets']['users'], own)
@@ -1317,7 +1341,7 @@ class StockLogins(PackageCase):
         self.refused(w.render(), 'its recorded sha256 would confirm')
 
     def presence_report(self, text, presence=True):
-        """S3, 6 Oct 2026: on the AWS Batch road MultiQC prints the S3 work folder, so the recorded
+        """The exemplar run, 6 Oct 2026: on the AWS Batch road MultiQC prints the S3 work folder, so the recorded
         report holds the runs bucket and the account id inside its name."""
         w = self.world()
         add_members(w, {REPORT: text})
@@ -1379,7 +1403,7 @@ class StockLogins(PackageCase):
     SUMMARY = 'run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_peak.mLb.clN.summary.txt'
 
     def test_a_decimal_with_twelve_fraction_digits_is_not_an_id(self):
-        """S3, 6 Oct 2026: MACS2's peak summary printed a mean of 408.955439056357, whose twelve
+        """The exemplar run, 6 Oct 2026: MACS2's peak summary printed a mean of 408.955439056357, whose twelve
         fraction digits the bounded sweep read as an account-shaped id."""
         w = self.world()
         add_members(w, {self.SUMMARY: 'Min.\tMean\tmeasure\n192\t408.955439056357\tlength\n'})
@@ -1395,7 +1419,7 @@ class StockLogins(PackageCase):
         self.refused(w.render(), 'a 12-digit id')
 
     def test_a_presence_report_holding_a_user_name_beside_the_bucket_still_refuses(self):
-        """glitch-f3's condition (a), 6 Oct 2026: only a file whose sole sensitive content is the runs
+        """The coordinating session's condition (a), 6 Oct 2026: only a file whose sole sensitive content is the runs
         bucket or the account id has its sha256 withheld; a second kind of value beside it refuses."""
         w = self.world_naming('jdoe-q7')
         add_members(w, {REPORT: '<html>work dir s3://%s/work, launched in /home/jdoe-q7/run</html>\n' % BUCKET})
@@ -1415,7 +1439,7 @@ class StockLogins(PackageCase):
         self.refused(w.render(), 'a user name')
 
     def test_the_twelve_digit_sweep_catches_every_id_form_and_spares_only_a_fraction(self):
-        """glitch-f3's condition (b), 6 Oct 2026: an account-shaped run is caught bare, inside an ARN,
+        """The coordinating session's condition (b), 6 Oct 2026: an account-shaped run is caught bare, inside an ARN,
         after a colon or a slash, at a line's start or end; only digits.digits fractions are exempt.
         A synthetic id, never a real one."""
         id_like = module(TOOL, 'package_run_bounded').id_like
@@ -1663,7 +1687,7 @@ class StockLogins(PackageCase):
         self.assertEqual(proc.returncode, 1, proc.stdout.decode())
 
     def test_a_history_naming_a_bare_bucket_keeps_its_hash_out_of_methods(self):
-        """Review round 2, m2, pinned on a stage-03 world (glitch-f3's ruling, 6 Oct 2026): a bucket armed
+        """Review round 2, m2, pinned on a stage-03 world (the coordinating session's ruling, 6 Oct 2026): a bucket armed
         with no account id in its name, written bare in HISTORY.md, marks that file as holding a masked
         value, so the sha256 METHODS.md would print for it never leaves in the package."""
         global BUCKET
@@ -1695,8 +1719,8 @@ class StockLogins(PackageCase):
         self.assertEqual(tool.record_users(['/home/ubuntu/x', '/home/ec2-user/y', '/Users/root/z']), ['ec2-user'])
 
 
-class S5Review(PackageCase):
-    """The S5 review's round 1 fixes (6 Oct 2026)."""
+class ExemplarReviewRound1(PackageCase):
+    """The exemplar review's round 1 fixes (6 Oct 2026)."""
 
     def test_render_names_the_commit_whose_package_run_rendered_it(self):
         w = self.world()
@@ -1739,7 +1763,7 @@ class S5Review(PackageCase):
         self.assertTrue(tool.tsv(('value', 'value_source'), [{'value': 'x', 'value_source': 'withheld: x'}]))
 
     def test_verify_checks_the_mode_of_every_row_of_a_member_listed_twice(self):
-        """S5 review r1, m3: a mode edit on the first of two rows of a nested member fails offline."""
+        """The exemplar review's round 1, m3: a mode edit on the first of two rows of a nested member fails offline."""
         w = self.world()
         member = NARROW + '/qc/atac-a.mLb.clN.frip.txt'
         add_members(w, {member: 'frip\t0.42\n'})
@@ -1762,7 +1786,7 @@ class S5Review(PackageCase):
         self.assertEqual(proc.returncode, 1, proc.stdout.decode())
 
     def test_a_normalised_match_is_reported_apart_from_a_byte_identical_one(self):
-        """S5 review r1, M2: compare's member result names the mode a normalised match needed."""
+        """The exemplar review's round 1, M2: compare's member result names the mode a normalised match needed."""
         tool = module(CLAIMS / 'package' / 'compare.py', 'compare_normalised')
         import tempfile
         with tempfile.TemporaryDirectory() as folder:
@@ -1775,8 +1799,8 @@ class S5Review(PackageCase):
             self.assertEqual(result, 'match after sorted_table')
 
 
-class S5ReviewRound2(PackageCase):
-    """S5 review round 2's two check-loosening MINORs (6 Oct 2026), fixed under the stop rule."""
+class ExemplarReviewRound2(PackageCase):
+    """The exemplar review's round 2: its two check-loosening MINORs (6 Oct 2026), fixed under the stop rule."""
 
     PCA = ('#id: pca\n#plot_type: scatter\n"sample"\t"PC1: 58% variance"\t"PC2: 24% variance"\n'
            '"atac-b_REP1"\t-7.23271284930167\t0.170213954159205\n"atac-a_REP1"\t3.9928642939662\t-7.35246771408569\n')

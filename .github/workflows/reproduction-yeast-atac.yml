@@ -4,10 +4,11 @@
 # Job `rerun` runs the package's own commands on a GitHub-hosted runner, exactly as REPRODUCE.md
 # prints them: `bash rerun.sh --out <folder>`, then `python3 verify.py --against <folder>
 # --table-out <folder>`. It passes only when the re-run's result line equals the line the committed
-# landing README (reproduction/yeast-atac/README.md) states, and every member's mode and result
-# equals reproduction/yeast-atac/agreed-members.tsv (the two pre-landing passes' agreed outcomes,
-# written by `rerun-note`), except the members a finding in package-tolerances.json names, whose
-# difference is random by cause. Its member table, the package digest it verified and the machine,
+# landing README (reproduction/yeast-atac/README.md) states, no output holds a file the run did not
+# record, and every member's mode and result equals reproduction/yeast-atac/agreed-members.tsv (the
+# two pre-landing passes' agreed outcomes, written by `rerun-note`); the members a finding in
+# package-tolerances.json names, whose difference has a cause stated in PROVENANCE.md, may match or
+# differ, but never go missing. Its member table, the package digest it verified and the machine,
 # as Docker reports it, are uploaded as the artifact `rerun-note` reads.
 #
 # Disk: a cold-cache pass used about 15 GB of root disk (0283), more than the runner's free space,
@@ -102,9 +103,9 @@ jobs:
       - name: Every member's mode and result equals the agreed outcome
         run: |
           python3 - reproduction/yeast-atac/agreed-members.tsv "$RUNNER_TEMP/artifact/members.tsv" \
-            reproduction/yeast-atac/package/outputs/package-tolerances.json <<'PY'
+            reproduction/yeast-atac/package/outputs/package-tolerances.json "$RUNNER_TEMP/artifact/outputs.tsv" <<'PY'
           import csv, json, sys
-          agreed_path, rerun_path, tolerances_path = sys.argv[1:4]
+          agreed_path, rerun_path, tolerances_path, outputs_path = sys.argv[1:5]
           def table(path):
               with open(path, encoding='utf-8', newline='') as handle:
                   return {(r['stage'], r['path']): (r['mode'], r['result'])
@@ -115,11 +116,16 @@ jobs:
           if set(agreed) != set(rerun):
               sys.exit('the re-run lists other members than agreed-members.tsv')
           bad = [k for k in sorted(agreed) if agreed[k] != rerun[k]
-                 and not (k in findings and agreed[k][0] == rerun[k][0])]
+                 and not (k in findings and agreed[k][0] == rerun[k][0] and rerun[k][1] in ('match', 'differs'))]
           for stage, path in bad:
               print('%s %s: agreed %s, re-run %s' % (stage, path, agreed[(stage, path)], rerun[(stage, path)]))
-          if bad:
-              sys.exit('%d members differ from the agreed outcome' % len(bad))
+          with open(outputs_path, encoding='utf-8', newline='') as handle:
+              extra = [r for r in csv.DictReader(handle, delimiter='\t') if r['extra'] != '0']
+          for r in extra:
+              print('%s %s: %s file(s) the run did not record' % (r['stage'], r['output_path'], r['extra']))
+          if bad or extra:
+              sys.exit('%d members differ from the agreed outcome; %d outputs hold unrecorded files'
+                       % (len(bad), len(extra)))
           print('all %d members match the agreed outcome (%d finding members free to vary)'
                 % (len(agreed), len(findings & set(agreed))))
           PY
