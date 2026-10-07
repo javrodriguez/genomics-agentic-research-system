@@ -1,0 +1,25 @@
+{
+  "lane": "w2b-cp3-text-graders",
+  "files": [
+    {
+      "path": "transcript_view.py",
+      "status": "new",
+      "reason": "Interface 8's harness-neutral transcript view: the closed AgentEvent record, event kinds and tool kinds, the parser table keyed by AgentAdapter.name (only claude-code, Claude Code's session-file transcript, its tables built from round 3's 54 transcripts), turns by operator line, ROUND3_HARNESS; new in round 4."
+    },
+    {
+      "path": "tests/test_transcript_view.py",
+      "status": "new",
+      "reason": "Tests for transcript_view.py (interface 3): every kind and tool kind with a near-miss, every refusal, turns, the fake-second seam with its mutants; it also holds the test-only fake-second parser and renderer the grader tests import."
+    },
+    {
+      "path": "COPIED.d/w2b-cp3-text-graders.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w2b-cp3-text-graders.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}
