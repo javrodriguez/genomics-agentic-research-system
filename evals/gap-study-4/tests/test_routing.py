@@ -1408,6 +1408,25 @@ def _print_text(lines: list[str]) -> str:
     return "".join(v.value for v in call.args[0].values if isinstance(v, ast.Constant))
 
 
+class TestCapKeyNames(unittest.TestCase):
+    """glitch-f3 (6 Oct 2026): rehearsal and pause count events per half-cell under events_per_half_cell; the old
+    name reruns_per_half_cell, whose meaning changed, is refused there."""
+
+    def test_the_real_table_uses_the_new_name(self):
+        for r in (labels4.REHEARSAL, labels4.PAUSE):
+            self.assertIn("events_per_half_cell", REAL["caps"][r])
+            self.assertNotIn("reruns_per_half_cell", REAL["caps"][r])
+        self.assertIn("reruns_per_half_cell", REAL["caps"][labels4.HARNESS_ERROR])
+
+    def test_the_old_name_is_refused(self):
+        for r in (labels4.REHEARSAL, labels4.PAUSE):
+            t = copy.deepcopy(REAL)
+            t["caps"][r]["reruns_per_half_cell"] = t["caps"][r].pop("events_per_half_cell")
+            got = routing.check_table(t)
+            self.assertTrue(any("carries reruns_per_half_cell" in g for g in got), (r, got))
+            self.assertTrue(any("has no events_per_half_cell" in g for g in got), (r, got))
+
+
 class TestRound3Sources(unittest.TestCase):
     """Javier's ruling "gap4 routing: A" (6 Oct 2026, 17:52:33 EDT): round 3's operator-side reasons and its
     pause cap are copied into routing.json from round 3's committed files, each with its source. These tests
@@ -1446,7 +1465,7 @@ class TestRound3Sources(unittest.TestCase):
     def test_the_pause_cap_is_round_3s(self):
         pre = json.loads(self.show("evals/gap-study-3/prereg.json"))
         cap = REAL["caps"][labels4.PAUSE]
-        self.assertEqual(cap["reruns_per_half_cell"], int(pre["pause_cap"]))
+        self.assertEqual(cap["events_per_half_cell"], int(pre["pause_cap"]))
         self.assertIn("evals/gap-study-3/prereg.json", cap["source"])
         self.assertIn(self.COMMIT, cap["source"])
 
@@ -1454,7 +1473,7 @@ class TestRound3Sources(unittest.TestCase):
         """W1B2-11 (lane w1b's addition): the plan's 'round 3's cap' is prereg.json's rehearsal_cap."""
         pre = json.loads(self.show("evals/gap-study-3/prereg.json"))
         cap = REAL["caps"][labels4.REHEARSAL]
-        self.assertEqual(cap["reruns_per_half_cell"], int(pre["rehearsal_cap"]))
+        self.assertEqual(cap["events_per_half_cell"], int(pre["rehearsal_cap"]))
         self.assertIn(self.COMMIT, cap["source"])
 
     def test_driver_decided_reasons_are_round_3s(self):

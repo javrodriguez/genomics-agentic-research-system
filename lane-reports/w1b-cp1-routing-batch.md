@@ -76,8 +76,8 @@ All read with `git show e2979b31:<path>` only, within: prereg.json's keys `rehea
 | `checker_reasons_become_events` | `study-materials-reached`, `account-email`, `read-outside-the-checkout` | plan CP2; check_take.py:1682, 714, 1691 |
 | `driver_decided_reasons` | `environment-record`, `invocation`, `outcome-binding`, `project-name`, `script-not-a-list`, `session-binding` (each also an operator reason, so routed by the generic rows) | prereg.json |
 | `reasons_only_before_first_turn` | `no-first-agent-turn` | check_take.py:83; its prereg.json meaning |
-| `caps.pause.reruns_per_half_cell` | 3, the half-cell's count of pauses (round 3's unit, glitch-f3's ruling; the key keeps its name) | prereg.json `pause_cap`; takes.py:280-285 (drive.py:147-148 says a pause is uncapped; the pre-registration and takes.py cap it) |
-| `caps.rehearsal.reruns_per_half_cell` | 3 (the plan's "round 3's cap"), the half-cell's count of rehearsals (round 3's unit, glitch-f3's ruling) | prereg.json `rehearsal_cap`; takes.py:286-291 |
+| `caps.pause.events_per_half_cell` | 3, the half-cell's count of pauses (round 3's unit, glitch-f3's ruling; renamed by his call) | prereg.json `pause_cap`; takes.py:280-285 (drive.py:147-148 says a pause is uncapped; the pre-registration and takes.py cap it) |
+| `caps.rehearsal.events_per_half_cell` | 3 (the plan's "round 3's cap"), the half-cell's count of rehearsals (round 3's unit, glitch-f3's ruling) | prereg.json `rehearsal_cap`; takes.py:286-291 |
 | `rate_limit_markers.text` | `rate limit`, `usage limit`, `weekly limit`, `429`, in order, matched by round 3's own bounded search | drive.py:149, 912-919 |
 | finalize abort | round 3 graded it `aborted`; the plan re-routes it (rehearsal before the first turn, harness-error after) | drive.py:1408-1409, 1417 |
 
@@ -123,7 +123,7 @@ batch.py --states             {"routes": ["graded", "rehearsal", "pause", "harne
 13. The rehearsal cap's value is also bound to prereg.json's `rehearsal_cap` (the plan says "round 3's cap").
 14. The `checks.d` pins-only line goes red on purpose once CP5 fills the pin profiles, so the check is replaced, not forgotten.
 15. Every `emitted_at` check reads only check_take.py's reason-id lines and lines 80-95; any other line is dropped unread.
-16. (fold 3) The cap key keeps its name, `reruns_per_half_cell`, because other lanes may read it; for rehearsal and pause its value is now the half-cell's count of that route (so at most cap - 1 re-runs), and both sources say so. Renaming it is the lane lead's call.
+16. (fold 3, then glitch-f3's call) For rehearsal and pause the cap key is renamed `events_per_half_cell`: its value counts that route's committed outcomes per half-cell, this one included, so it allows at most cap-1 re-runs. `routing.check_table` refuses the old name `reruns_per_half_cell` there (tested, with a red mutant); harness-error, aborted and graded keep `reruns_per_half_cell`, whose meaning did not change. One accessor, `batch.half_cell_cap`, reads both.
 17. (fold 3) The take that brings its half-cell to the cap is committed `final` (its slot's last record), with `beyond_cap` and no `stop`; harness-error beyond its cap was already final.
 18. (fold 3) The cell state is two outcome keys, `cell_state` (None or `labels4.INCOMPLETE_MECHANICAL`) and `cell_reason` (the count and the cap). Every outcome of the half-cell committed after it closed carries them too, so a committed record always says its cell's state at commit time.
 19. (fold 3) A drive of the same block already running when its half-cell closed is committed as its route says, but never re-run (a harness-error there included, since nothing more may be registered for the cell), and a pause there still holds the next launch for the usage window. A re-run granted earlier in that block to another slot of the half-cell is dropped unregistered; its record keeps `rerun: true` (true when committed), and the closing take's record is why.
@@ -141,7 +141,7 @@ batch.py --states             {"routes": ["graded", "rehearsal", "pause", "harne
 5. **RULED by glitch-f3** (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): the `wait_reset()` contract. Was: the restart's wait after a pause relied on CP2's `wait_reset()` returning once the window has reset, rather than waiting a full window again, and nothing wrote that down. What changed: `batch.py` states the contract (returns promptly when the usage window has already reset; blocks until it resets otherwise; raises on failure, and the loop then stops as `failed` per W1B2-5), and fake-driven tests bind the loop's side of it (decisions 11, 23). CP2's real window must keep it.
 6. Still open from the cloud build: the tie rule (decision 2) against the plan's "refuses a double match at equal precedence"; CP5's at-most-three-open-rows rule in `takes.py`; `graders/` has no `__init__.py` (imported as a namespace package).
 7. CP6 walk check named in `rate_limit_markers_status`: replay a real recorded usage-limit refusal through `harness_records` and see it route pause.
-8. (fold 3) `caps.rehearsal` and `caps.pause` keep the key `reruns_per_half_cell` though its value now counts that route's outcomes per half-cell (decision 16). Rename it (and update every reader, CP5's included), or keep the name with the sources saying what it counts? The lane lead's call.
+8. RULED (glitch-f3, 6 Oct 2026): rename the key. Done: `events_per_half_cell` for rehearsal and pause, the old name refused there (decision 16).
 
 ## Lessons worth keeping
 

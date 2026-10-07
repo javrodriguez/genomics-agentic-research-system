@@ -233,6 +233,14 @@ def check_table(table: dict) -> list[str]:
     for r in labels4.ROUTES:
         if r not in caps:
             p.append(f"no cap for route {r}")
+    # glitch-f3 (6 Oct 2026): rehearsal and pause count events per half-cell, under a name that says so; the old
+    # name, whose meaning changed, is refused there, so no reader can take it for re-runs.
+    for r in (labels4.REHEARSAL, labels4.PAUSE):
+        if r in caps and isinstance(caps[r], dict):
+            if "reruns_per_half_cell" in caps[r]:
+                p.append(f"caps.{r} carries reruns_per_half_cell; its per-half-cell cap is events_per_half_cell")
+            if "events_per_half_cell" not in caps[r]:
+                p.append(f"caps.{r} has no events_per_half_cell")
     for key in ("pin_fields", "graded_ends", "rate_limit_markers", "rate_limit_markers_status", "operator_reasons",
                 "operator_reasons_status", "driver_decided_reasons", "reasons_only_before_first_turn",
                 "checker_reasons_become_events", "pin_profiles", "pin_profiles_status", "rows", "annotations"):

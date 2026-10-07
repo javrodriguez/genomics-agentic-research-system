@@ -172,11 +172,25 @@ class BatchConfigError(RuntimeError):
     untrustworthy history."""
 
 
+# glitch-f3 (6 Oct 2026): the per-cell cap of a route counted per cell (rehearsal, pause) is named
+# events_per_half_cell, the count of that route's committed outcomes, this one included (so at most cap-1 re-runs);
+# harness-error keeps reruns_per_half_cell, the re-runs granted. A key whose meaning changed keeps no old name.
+HALF_CELL_KEY = {labels4.REHEARSAL: "events_per_half_cell", labels4.PAUSE: "events_per_half_cell"}
+
+
+def half_cell_key(route: str) -> str:
+    return HALF_CELL_KEY.get(route, "reruns_per_half_cell")
+
+
+def half_cell_cap(table: dict, route: str):
+    return table["caps"][route].get(half_cell_key(route))
+
+
 def pending_caps(table: dict) -> list[str]:
     """Routes that can re-run but whose half-cell cap is still null in routing.json."""
     out = []
     for r in (labels4.REHEARSAL, labels4.HARNESS_ERROR, labels4.PAUSE):
-        if table["caps"][r].get("reruns_per_half_cell") is None:
+        if half_cell_cap(table, r) is None:
             out.append(r)
     return out
 
@@ -313,7 +327,7 @@ class Batch:
             reaches = False
             if state in CELL_CAPPED_ROUTES:
                 counts[(cell, state)] += 1
-                reaches = counts[(cell, state)] >= self.table["caps"][state]["reruns_per_half_cell"]
+                reaches = counts[(cell, state)] >= half_cell_cap(self.table, state)
             should = cell in closed or reaches
             carries = o["cell_state"] == labels4.INCOMPLETE_MECHANICAL
             if should and not carries:
@@ -577,7 +591,7 @@ class Batch:
 
     def _within_cap(self, row, route) -> bool:
         cap = self.table["caps"][route]
-        per_cell = cap.get("reruns_per_half_cell")
+        per_cell = half_cell_cap(self.table, route)
         per_slot = cap.get("reruns_per_slot")
         if per_cell is not None and self.reruns[(row["half_cell"], route)] >= per_cell:
             return False
@@ -600,7 +614,7 @@ class Batch:
         is its slot's last, and it closes the half-cell `incomplete — mechanical`, with why, in its own committed
         record; the loop goes on with the other half-cells."""
         route, cell = outcome["state"], row["half_cell"]
-        cap = self.table["caps"][route]["reruns_per_half_cell"]
+        cap = half_cell_cap(self.table, route)
         count = self.cell_counts[(cell, route)] + 1          # every committed one, and this take
         if count < cap:
             return self._fate(rerun=True)

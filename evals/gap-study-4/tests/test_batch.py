@@ -50,9 +50,9 @@ PIN = dict(PROFILES["test-model-a"], model="test-model-a")
 OTHER_PIN = dict(PROFILES["test-model-b"], model="test-model-b")
 # The real pause cap: round 3's pause_cap (3 per half-cell), filled under Javier's ruling "gap4 routing: A"
 # and re-derived from round 3's prereg.json by test_routing.py's TestRound3Sources.
-PAUSE_CAP = routing.load_table()["caps"][labels4.PAUSE]["reruns_per_half_cell"]
+PAUSE_CAP = routing.load_table()["caps"][labels4.PAUSE]["events_per_half_cell"]
 # Round 3's rehearsal_cap (3 per half-cell), re-derived from round 3's prereg.json by test_routing.py too.
-REHEARSAL_CAP = routing.load_table()["caps"][labels4.REHEARSAL]["reruns_per_half_cell"]
+REHEARSAL_CAP = routing.load_table()["caps"][labels4.REHEARSAL]["events_per_half_cell"]
 FAKE_TOKEN = "FAKE-TOKEN-in-memory-0000"            # never a real token
 FAKE_EMAIL = "fake.account@example.invalid"         # never a real address
 MASK_MARK = "[masked]"
@@ -374,9 +374,13 @@ def history_problems(history) -> list[str]:
         cap = t["caps"][route]
         cells = collections.Counter(o["half_cell"] for o in history if o["state"] == route and o["rerun"])
         slots = collections.Counter(o["slot"] for o in history if o["state"] == route and o["rerun"])
-        if cap["reruns_per_half_cell"] is not None:
-            p += [f"{route}: {n} re-runs in half-cell {hc}, cap {cap['reruns_per_half_cell']}"
-                  for hc, n in cells.items() if n > cap["reruns_per_half_cell"]]
+        per_cell = batch.half_cell_cap(t, route)
+        if per_cell is not None:
+            # events_per_half_cell (rehearsal, pause) counts the route's outcomes, so at most cap-1 are re-run;
+            # reruns_per_half_cell (harness-error) counts the re-runs themselves
+            most = per_cell - 1 if batch.half_cell_key(route) == "events_per_half_cell" else per_cell
+            p += [f"{route}: {n} re-runs in half-cell {hc}, at most {most}"
+                  for hc, n in cells.items() if n > most]
         if cap["reruns_per_slot"] is not None:
             p += [f"{route}: {n} re-runs of slot {s}, cap {cap['reruns_per_slot']}"
                   for s, n in slots.items() if n > cap["reruns_per_slot"]]
@@ -692,7 +696,7 @@ def gate_problems() -> list[str]:
     and the complete one accepted."""
     p = []
     bad = {
-        "pause cap pending": lambda t: t["caps"][labels4.PAUSE].update(reruns_per_half_cell=None),
+        "pause cap pending": lambda t: t["caps"][labels4.PAUSE].update(events_per_half_cell=None),
         "operator_reasons empty": lambda t: t.update(operator_reasons=[]),
         "operator_reasons_status PENDING": lambda t: t.update(operator_reasons_status="PENDING: not read"),
         "pin_profiles empty": lambda t: t.update(pin_profiles={}),
