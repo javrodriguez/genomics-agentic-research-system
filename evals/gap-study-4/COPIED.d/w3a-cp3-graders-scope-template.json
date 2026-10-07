@@ -1,0 +1,25 @@
+{
+  "lane": "w3a-cp3-graders-scope-template",
+  "files": [
+    {
+      "path": "graders/template_adherence.py",
+      "status": "new",
+      "reason": "CP3's template-adherence grader v4: template means the stage's own template bodies, from the spec, byte for byte (F-03); bounded is a read-only answer, no action in the end state and the wait point restated, as the label decision template-adherence.bounded defines it; the offer phrase set fixed from a blind reading of rounds 1-3's 27 positive takes (F-02), word-bounded and negation-scoped; actions read from graders/endstate.py, words from transcript_view.py only. New; round 2's grader is never imported."
+    },
+    {
+      "path": "template_offer_reading.py",
+      "status": "new",
+      "reason": "The blind reading behind template_adherence's offer phrase set (F-02): a model's reading of the replies after the probe of exactly the 27 positive-half template-adherence transcripts of rounds 1-3, parsed from their raw records (the view refuses most of rounds 1-2's), with no label opened. Not a grader. New."
+    },
+    {
+      "path": "checks.d/w3a-cp3-graders-scope-template.txt",
+      "status": "new",
+      "reason": "Lane w3a's local checks (interface 2): one command per line, run by run_checks.py. New."
+    },
+    {
+      "path": "COPIED.d/w3a-cp3-graders-scope-template.json",
+      "status": "new",
+      "reason": "Lane w3a's copy-record fragment (interface 1). New."
+    }
+  ]
+}
