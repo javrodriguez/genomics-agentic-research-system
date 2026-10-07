@@ -117,6 +117,8 @@ class PinTests(Base):
 
 
 class PublishedFactsTests(Base):
+    @unittest.skipIf(os.environ.get("STEPMAP_NO_SNAPSHOT") == "1",
+                     "mutant run: the snapshot fails on any output change, so it never counts")
     def test_committed_facts_equal_a_fresh_extraction(self):
         """The facts under evals/step-map/facts/ are re-derived and diffed byte for byte."""
         published = HERE.parent / "facts"
@@ -222,7 +224,15 @@ class ExitMentionTests(Base):
 
     def test_exit_non_zero(self):
         cited(self, RNADE, 110, "Exit non-zero → reply T5")
-        self.assertEqual(X.exit_codes("Exit non-zero → reply T5"), [1, 2, 3])
+        self.assertEqual(X.exit_codes("Exit non-zero → reply T5"), [X.NONZERO])
+
+    def test_non_zero_covers_only_the_codes_the_call_emits(self):
+        # rnaseq-de step 3's resolver emits 0, 1 and 3 (resolve_artifact.py:138-166): "Exit
+        # non-zero" there handles 1 and 3, not a 2 the helper never emits.
+        cited(self, "gars/_system/resolve_artifact.py", 31, "EXIT_OK, EXIT_UNRESOLVED, EXIT_USAGE = 0, 1, 3")
+        site = [s for s in self.contract(RNADE)["call_sites"] if s["step"] == "3"][0]
+        self.assertEqual(site["emitted"], [0, 1, 3])
+        self.assertEqual(site["handled"], [1, 3])
 
     def test_lowercase_parenthesised(self):
         cited(self, S03, 132, "report that it refused (exit 2)")
@@ -522,9 +532,17 @@ class ReachabilityTests(Base):
         calls = [c for c in self.step(S02, "3a")["calls"] if c["kind"] == "prose-rerun"]
         self.assertEqual([c["tool"] for c in calls], ["configure.apply"])
         self.assertNotIn("--dry-run", calls[0]["command"])
-        site = self.site(S02, "3a", "configure.apply")
-        self.assertIn(1, site["handled"])
-        self.assertEqual([b["kind"] for b in site["branch_calls"]], ["prose-rerun"])
+        sites = [s for s in self.contract(S02)["call_sites"]
+                 if s["step"] == "3a" and s["tool"] == "configure.apply"]
+        self.assertEqual(len(sites), 2)   # the dry run and the confirmed write are two calls
+        dry, write = sites
+        self.assertIn("--dry-run", dry["command"])
+        self.assertNotIn("--dry-run", write["command"])
+        # the contract's "Exit 1 -> report its error" follows the re-run sentence
+        self.assertEqual(write["handled"], [1])
+        self.assertEqual(write["unhandled"], [3])
+        self.assertEqual(dry["handled"], [])
+        self.assertEqual(dry["branch_calls"], [])
 
     def test_branch_calls_are_declared_not_graded(self):
         site = self.site(RNADE, "8", "rnaseq_de.collect")
@@ -629,12 +647,22 @@ class TemplateTests(Base):
         cited(self, scqc, 165, "| Cells after QC | <n> |")
         rows = {p["line"]: (p["binding"], p.get("key")) for p in
                 self.contract(scqc)["templates"]["T6"]["placeholders"] if p["text"] == "<n>"}
-        self.assertEqual(rows[164], ("unbound", None))   # n_cells_in is in summary.json only
-        self.assertEqual(rows[165], ("label", "cells_after_qc"))
+        self.assertNotEqual(rows[164][0], "label")       # n_cells_in is in summary.json only
+        self.assertNotEqual(rows[165][0], "label")       # a per-sample dict, not a count
         cited(self, scqc, 116, "Thresholds: min_genes <n> | min_cells <n> | max_mito <n>% | HVG <n>")
         t1 = [p["binding"] for p in self.contract(scqc)["templates"]["T1"]["placeholders"]
               if p["line"] == 116]
         self.assertEqual(t1, ["no_source"] * 4)
+
+    def test_a_per_sample_dict_is_not_a_count(self):
+        # result["cells_after_qc"] is `summary.get("cells_after_qc") or {}`, one entry per sample
+        # (scrna_qc_cluster.py:461, 490), so "Cells after QC: <n>" has no count behind it.
+        cited(self, "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py", 461,
+              'after = summary.get("cells_after_qc") or {}')
+        scqc = "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md"
+        cited(self, scqc, 165, "| Cells after QC | <n> |")
+        row = [p for p in self.contract(scqc)["templates"]["T6"]["placeholders"] if p["line"] == 165]
+        self.assertNotEqual(row[0]["binding"], "label")
 
     def test_sanitized_title_unbound_before_create(self):
         cited(self, S00, 305, "Project title: <raw> -> directory <sanitized>")
@@ -675,6 +703,19 @@ class TemplateTests(Base):
         self.assertNotIn("target", voc)      # a symlink field in output_evidence, never emitted
         self.assertIn("failures", voc)
 
+    def test_unexplained_dynamic_keys_make_absence_unknown(self):
+        """Where the backing flow writes keys computed at run time that no key domain explains, a
+        missing key is reported as unknown, never as unbound."""
+        for c in self.result["contracts"]:
+            for t in c["templates"].values():
+                if t["dynamic_key_sites"]:
+                    self.assertNotIn("unbound", [p["binding"] for p in t["placeholders"]],
+                                     "%s %s" % (c["id"], t["id"]))
+        t4a = self.contract(S00)["templates"]["T4a"]
+        self.assertEqual(t4a["dynamic_key_sites"], [])
+        self.assertEqual(sorted(p["label"] for p in t4a["unbound"]), ["r1", "r2"])
+        self.assertGreater(self.result["summary"]["placeholder_accounting"]["by_binding"].get("unknown", 0), 0)
+
     def test_key_check_is_not_vacuous(self):
         vocab = X.key_vocabulary(self.src, ["_system/stage01_samplesheet.py"])
         self.assertIn("included_gb", vocab)
@@ -706,7 +747,9 @@ class CommandTests(Base):
         backtick spans that start with an executable, prose wrapper verbs, 're-run' phrases,
         "today's date") equals the calls the extractor found."""
         import re as _re
-        execs = set(X.EXECUTABLES)
+        execs = {"python3", "python", "bash", "sh", "sbatch", "squeue", "scancel", "sacct", "date",
+                 "git", "source", "conda", "mamba", "pip", "pip3", "nextflow", "rm", "mv", "cp",
+                 "ls", "cat", "head", "tail", "grep", "rg", "find", "wc", "stat", "shasum"}
         total = 0
         for path in EXPECTED_CONTRACTS:
             lines = show(path).split("\n")
@@ -947,6 +990,11 @@ def main(argv=None):
 
 
 class AccountingTests(Base):
+    def test_graded_means_checked_against_keys(self):
+        acc = self.result["summary"]["placeholder_accounting"]
+        graded = sum(acc["by_binding"].get(b, 0) for b in ("key", "label", "unbound"))
+        self.assertEqual(acc["graded"], graded)
+
     def test_placeholders_recounted_independently(self):
         """The test's own count of <...> placeholders inside the first fence after each bold
         template heading equals the placeholders the extractor graded or declined to grade."""
