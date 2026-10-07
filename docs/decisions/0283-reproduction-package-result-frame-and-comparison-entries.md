@@ -1,6 +1,6 @@
 ---
 date: 2026-10-05
-status: standing # draft until the landing: the frame, rules and entries are frozen; passes 1, 2 and 3 are in
+status: standing
 kind: decision
 touches:
   - gars/_system/claims/package_run.py
@@ -126,7 +126,7 @@ Root-disk use rose by 15.05 GB and 15.02 GB over each pass's start.
 
 ## Status
 
-Draft, on the build branch `lane/repro-package`; the frame, rules and entries are frozen and passes 1, 2 and 3 are in; finalised with the landing.
+Standing. The frame, rules and entries are frozen and passes 1, 2 and 3 are in; the public push waits for the owner's word.
 
 ## Date
 

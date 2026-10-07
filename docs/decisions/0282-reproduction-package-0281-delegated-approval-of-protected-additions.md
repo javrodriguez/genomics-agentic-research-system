@@ -1,6 +1,6 @@
 ---
 date: 2026-10-06
-status: standing # draft until the landing's evidence commit: the merge's suite, scans and smoke record are recorded there
+status: standing
 kind: decision
 touches:
   - gars/_system/claims/package_run.py
@@ -60,11 +60,24 @@ Outside the protected prefix, recorded for completeness: `.gitignore` gains `.ga
 
 - Full suite on a separate test machine at every build-branch commit that changed these files, each verdict derived on the build machine; the latest, on the landing merge itself, is recorded in the landing's evidence commit.
 - Mutation, on byte backups restored and sha-verified: the 5 October runs (84 mutants, all killed, named in 0281) and the 6 October hash-oracle runs (21 of 21 killed), named in 0281.
-- The landing merge's full suite, the outgoing range's scans, the smoke delta and `audit_trailers.py` are recorded in the landing's evidence commit, the merge's child.
+- The landing's own checks, on 7 October 2026, each on a byte backup restored and sha-verified: `rerun-note`'s result-line binding (3 of 3 mutants killed); the exemplar's binding test, driven on doctored agreed tables (two results swapped inside one output; a finding's member agreed as missing), each failing it while the committed table passes; the workflow's member step, driven on seven cases, each as designed.
+
+Glitch verified the landing merge `db146434ab3d202576c93ad6e6cbc1016a05d11f` (first parent public main `a626cdc2`, second parent the build branch's head `1638a86a`), a true merge.
+The branch's commits up to the render commit `f1dc0931` are kept as built; the seven after it were re-created before landing with the same trees, authors, committers and dates, six of them with reworded messages.
+
+- The combination: public main had moved past the branch's base by two record commits (0287 and 0288), which share no file with the branch but the generated `docs/decisions/CONTEXT.md`, rebuilt by `build_index.sh`; `tests/check_counts.py` clean (1403 tests), `tests/check_contracts.py` 14 contracts clean, `scripts/release_check.py --check` 13 of 13 byte-stable.
+- Full suite at the merge on a separate test machine (Linux), sent as a bundle after a gitleaks scan of the commits the public remote does not yet serve: run `land-repro6-db14643-20261007T055537Z`, verdict derived on the build machine: `PASS kind=gars commit=db146434ab3d state=done rc=0 ran=1403 passed=1321 failures=0 errors=0 skipped=82`.
+- The outgoing range `a626cdc2..db146434` (33 commits: the branch's 32, two of them merges, and the landing merge): no gitleaks finding under either ruleset (gitleaks 8.30.0, 30 non-merge commits); the run's bucket, the AWS account id (plain and dashed), the run's workspace path, and the owner's user name and e-mail appear in no file version, commit message or identity in it (252 file versions read).
+- The smoke delta (row 14's ceremony), with the build Mac booked exclusively for it: one run of three `claude-opus-5-5` sessions at the merge's tree (7 October 2026, 02:55-02:57 EDT, booking `repro-smoke`), prompt and suite hashes equal to the previous record's (`prompt_sha256` `cf32c619…`, `suite_sha256` `ea2f1cde…`); run-1 3/3; `delta` `0/1`, `no change` against `evals/runs/smoke/smoke-20261005-methods-prose.json` (the nearest earlier checked first-parent Bench, `1a6e4a77`), floor `evals/runs/smoke/smoke-20260926-row-14-activation.json` (`0/1`); an ordinary record; `smoke.py score` verdict ok, 0 findings, 3 of 3 records read, 15 tasks regraded, 15 outputs hashed (`evals/runs/smoke/smoke-20261007-repro-package.json`).
+- Fresh-context reviews of the landing (Claude Code, Opus 5.5, each in its own checkout with no remote, never shown the producer's transcript; threat model: a check passes a wrong re-run or doctored input, a public text says more than its evidence or keeps an internal reference, or a private value leaks); each review_sha256 is a hash of the owner's held evidence, as labelled above:
+  - round 1, on the first landing merge: CHANGES (3 MAJOR, 10 MINOR), review_sha256 `d7a4868fbb6e126e16f98846642b5f14c4afa8b25ff6c34cfce181a1f3b2f19c`; every MAJOR and each check-loosening MINOR folded;
+  - round 2, on the second: PASS (no MAJOR, 7 MINOR), review_sha256 `9eea6db94f9b25c4b36d459d9bc947853427d8a9b37d8bb58476739af2ae8ffe`; its two check-loosening MINORs folded, and three false or stale sentences fixed beyond the stop rule (a named departure);
+  - one-round checks of each fold, until one found no MAJOR: CHANGES (1 MAJOR), review_sha256 `74bbc4116312a17724315540e0a76d48c76def300fd384d840386cb04d837a03`; CHANGES (1 MAJOR), review_sha256 `541e98b6a030b3f185f95ef2761356e61d22e96b2af7aef06b730f1aaa62466d`; CHANGES (1 MAJOR, on the merge message), review_sha256 `6de52c3aa6249c044ccc5cdca9ac7129e4a8c3e3c4c372386eb932009144170d`; PASS (no MAJOR, one MINOR on the merge message's wording, not folded: it loosens no check), review_sha256 `823310ea1534dd1de6410848877168c20ca526b04eb417ea3e38d0fc71a8b704`.
+- `python3 gars/_system/hooks/audit_trailers.py`, from the landing worktree's root at this records commit: `verified db146434ab3d202576c93ad6e6cbc1016a05d11f (Bench previous: evals/runs/smoke/smoke-20261005-methods-prose.json)` and `trailers audit: 15/15 _system first-parent commits since activation f3abe50 verified; graded 15 of 15 seen`, exit 0 (run on this commit before its last amendment, which added only this line, and again after it).
 
 ## Status
 
-Draft. Approval of the reproduction package's protected additions only; the public push is not approved here, and this record is finalised in the landing's evidence commit.
+Standing. Approval of the reproduction package's protected additions only; the public push is not approved here.
 
 ## Date
 
