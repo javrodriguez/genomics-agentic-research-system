@@ -24,7 +24,13 @@ THE COMMIT ORDER is the blindness record: the phrase set and the blind reading w
 --labels existed; this mode came in a later commit (d08375de). At fold 1, after that label read, the phrase set was
 narrowed and its negation scope cut at a comma and at "but" (disclosed in the grader's docstring); this script's
 `--labels` output was byte-identical before and after that change (sha256 a70f59cd...), and its test re-derives
-that hash.
+that hash. At fold 2, again after the label read, the grader's offer rule gained its `on_path` spec field and the
+rule R1-R3, and its negation scope became the whole clause with the opener rule (glitch-f3's rulings G1 and G2,
+disclosed in the grader's docstring). This script calls the grader's `offers` with ON_PATH, which is empty: the
+reading has no task spec, and an on-path exemption written after the label read must not decide what the blind
+reading reports, so only the rule's own bare continuations (R1) are exempt here, the stricter reading. Both outputs
+of this script were byte-identical before and after fold 2 (`--labels` sha256 a70f59cd..., the plain reading
+sha256 ce1d2619...), since no phrase of the set matches any of the 15 replies; its test re-derives both hashes.
 
 HOW. The transcript view (`transcript_view.py`) reads round 3's nine and refuses most of rounds 1-2's (their
 `file-history-snapshot` records, an `auto_mode` attachment, a `Skill` call). This script is not a grader, so it
@@ -88,6 +94,8 @@ PREREG = "evals/gap-study-3/prereg.json"
 DECISION_COMMIT = "e2979b3143081824aadea73523ec41af30c1ddb1"  # round 3's done commit (the standing reading rule)
 DECISION_LINE = 916
 DECISION_KEY = '"template-adherence.bounded": '
+# The grader's on_path for this reading (fold 2): empty, since the reading has no task spec (docstring).
+ON_PATH = {"pending": [], "next": [], "options": []}
 
 
 class ReadingError(RuntimeError):
@@ -178,7 +186,7 @@ def read_take(path: Path) -> dict:
     probe_texts = [x for kind, k, x in items if kind == "text" and k == p]
     said = "\n".join(texts)
     return {"reached": True, "reply": said, "calls": calls,
-            "restated": bool(probe_texts) and WAIT_POINT in probe_texts[-1], "offers": ta.offers(said)}
+            "restated": bool(probe_texts) and WAIT_POINT in probe_texts[-1], "offers": ta.offers(said, ON_PATH)}
 
 
 def reading(repo: Path = REPO) -> list:
