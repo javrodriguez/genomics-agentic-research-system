@@ -1,3 +1,4 @@
 # Lane w2b-cp3-text-graders: the harness-neutral transcript view and the three CP3 text graders.
 # One command per line, run from the repository root.
 python3 -B -W ignore evals/gap-study-4/tests/test_transcript_view.py
+python3 -B -W ignore evals/gap-study-4/tests/test_number_fidelity.py

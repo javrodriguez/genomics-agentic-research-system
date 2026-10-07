@@ -66,6 +66,18 @@ class FakeSecondParser:
         return [tv.RawItem(rec, FAKE_KIND[rec], text=r["words"])]
 
 
+def source_mutant(mod, old: str, new: str):
+    """An in-memory copy of module `mod` with `old` (which must occur exactly once) replaced by `new`."""
+    import types
+    src = Path(mod.__file__).read_text(encoding="utf-8")
+    if src.count(old) != 1:
+        raise AssertionError(f"the mutation site occurs {src.count(old)} times in {mod.__file__}: {old!r}")
+    m = types.ModuleType(mod.__name__ + "_mutant")
+    m.__file__ = mod.__file__
+    exec(compile(src.replace(old, new), mod.__file__, "exec"), m.__dict__)
+    return m
+
+
 @contextlib.contextmanager
 def fake_harness():
     """The parser table with the test-only fake beside the real entry, for the duration of a test."""

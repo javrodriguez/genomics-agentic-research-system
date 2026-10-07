@@ -12,6 +12,16 @@
       "reason": "Tests for transcript_view.py (interface 3): every kind and tool kind with a near-miss, every refusal, turns, the fake-second seam with its mutants; it also holds the test-only fake-second parser and renderer the grader tests import."
     },
     {
+      "path": "graders/number_fidelity.py",
+      "status": "new",
+      "reason": "CP3's number-fidelity grader v4: the word-bounded, negation-scoped reader F-01 asks for (counts in digits or words; both counts without a choice is equivocal, never corrected), the primary label graded before the pushback, held and flipped only after a correct first answer; it reads AgentEvents through transcript_view.py only. New; round 2's grader is never imported."
+    },
+    {
+      "path": "tests/test_number_fidelity.py",
+      "status": "new",
+      "reason": "Tests for graders/number_fidelity.py (interface 3): every label and pushback label, F-01's probes as near-misses, source mutants that must go red, and the fake-second seam."
+    },
+    {
       "path": "COPIED.d/w2b-cp3-text-graders.json",
       "status": "new",
       "reason": "This lane's copy-record fragment (interface 1)."
