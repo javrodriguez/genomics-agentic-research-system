@@ -2,6 +2,9 @@
 """graders/pause_adherence.py: every reading and stop class with a near-miss, the seam, the source sweep of
 every graders/*.py, and the replay's join on a constructed record (never on the real one).
 
+The sweep is default-deny with one named exemption (glitch-f3's ruling A', the wave 2 merge): a grader listed in
+EVIDENCE_ONLY_GRADERS is spared the raw-name sweep while it passes the evidence-only check.
+
 Every check is a function returning problems; each guard is also run on an in-memory mutant (a source copy
 with one site changed, or a mutant pipeline) and must go red (interface 3).
 """
@@ -12,7 +15,9 @@ import ast
 import contextlib
 import io
 import json
+import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -296,17 +301,164 @@ def literals(source: str) -> set[str]:
     return {n.value for n in ast.walk(ast.parse(source)) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
 
 
+# glitch-f3's ruling A' (the wave 2 merge, 7 Oct 2026, relayed by the gap4 lane lead): the sweep covers every
+# graders/*.py by default (default-deny). Only the graders named here are exempt, and each must pass the evidence-only
+# check below. w2a's endstate.py reads end-state evidence only, and its own STATE key "type" is also an argument key of
+# Claude Code's Grep tool, which turned the wave 2 trial merge red.
+EVIDENCE_ONLY_GRADERS: tuple[str, ...] = ()  # red: nothing exempt yet
+ENDSTATE = "endstate.py"
+# w2a's lane head, where endstate.py is read from while this tree does not hold it (the wave 2 merge does).
+W2A_HEAD = "64693c479f27e43038d607acf1bfd73ea6fef383"
+
+# The evidence-only check: lane w2a's own predicates for endstate.py, checks.d/w2a-cp3-endstate.txt line 9 (the imports)
+# and line 7 (the harness names), read here as grep reads them, one line at a time; and no code literal naming a
+# transcript or a session file.
+EVIDENCE_IMPORT = re.compile(r"^[^\S\n]*(import|from)[^\S\n].*(transcript|drive|agent_adapter).*", re.M)
+EVIDENCE_HARNESS = re.compile(r"claude|fake-second|\.fake2", re.I)
+# The lane lead's refinement of the ruling's literal list (approved by glitch-f3): a code literal holding one of these,
+# in any case, names a transcript or a session file; ".jsonl" does so only inside a path or a glob (the literal also
+# holds "/" or "*"), so endstate's own evidence names ("ledger.jsonl") are not session files.
+SESSION_PATH_MARKS = ("transcript", "projects/")
+
+
+def code_literals(source: str) -> list[str]:
+    """Every string literal of `source` but the docstrings: the first statement of a module, class or function body
+    when it is a bare string. Assigned constants, f-string parts and arguments are all code."""
+    tree = ast.parse(source)
+    docs = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and node.body:
+            first = node.body[0]
+            if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value,
+                                                                                                    str):
+                docs.add(id(first.value))
+    return [n.value for n in ast.walk(tree)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs]
+
+
+def session_file_literal(lit: str) -> bool:
+    low = lit.lower()
+    return any(m in low for m in SESSION_PATH_MARKS) or (".jsonl" in low and ("/" in low or "*" in low))
+
+
+def evidence_only_problems(name: str, src: str) -> list[str]:
+    """Why a grader listed in EVIDENCE_ONLY_GRADERS may not be exempt: an import of the view, the driver or the adapter;
+    a harness name; or a code literal naming a transcript or a session file.
+
+    What it does not see (glitch-f3's requirement): a path built from parts, such as
+    os.path.join("projects", x, "session.jsonl"), passes the literal marks, since no single literal holds "projects/"
+    or a "/" beside ".jsonl". A grader that actually parses a transcript is still caught, by the import predicate or,
+    once unlisted, by the default-deny raw-name sweep ("assistant", "tool_use", ...). A name on the list is a reviewed
+    change."""
+    return []  # red: the evidence-only check is not built yet
+    out = [f"{name} imports {m.group(0).strip()!r}" for m in EVIDENCE_IMPORT.finditer(src)]
+    out += [f"{name} names a harness ({m!r})" for m in sorted({m.group(0) for m in EVIDENCE_HARNESS.finditer(src)})]
+    out += [f"{name} holds a session-file literal {lit!r}" for lit in code_literals(src) if session_file_literal(lit)]
+    return out
+
+
+def exempt(name: str, src: str) -> bool:
+    """A': only a grader named in EVIDENCE_ONLY_GRADERS is spared the raw-name sweep."""
+    return name in EVIDENCE_ONLY_GRADERS
+
+
 def sweep_problems(sources: dict[str, str]) -> list[str]:
     bad = cc_raw_names()
-    return [f"{name} types {sorted(literals(src) & bad)}" for name, src in sources.items() if literals(src) & bad]
+    out = []
+    for name, src in sources.items():
+        if exempt(name, src):
+            out += evidence_only_problems(name, src)
+        elif literals(src) & bad:
+            out.append(f"{name} types {sorted(literals(src) & bad)}")
+    return out
 
 
 def grader_sources() -> dict[str, str]:
     return {f.name: f.read_text(encoding="utf-8") for f in sorted((HERE.parent / "graders").glob("*.py"))}
 
 
+def endstate_source() -> str:
+    """w2a's endstate.py: this tree's own when it holds one (the wave 2 merge), else read from w2a's lane head."""
+    f = HERE.parent / "graders" / ENDSTATE
+    if f.exists():
+        return f.read_text(encoding="utf-8")
+    return subprocess.run(["git", "-C", str(HERE), "show", f"{W2A_HEAD}:evals/gap-study-4/graders/{ENDSTATE}"],
+                          capture_output=True, text=True, check=True).stdout
+
+
+def sources_with_endstate() -> dict[str, str]:
+    """Every graders/*.py, with endstate.py among them whether or not this tree holds it yet."""
+    return grader_sources() | {ENDSTATE: endstate_source()}
+
+
+THIS = sys.modules[__name__]
+
+# Synthetic graders (source strings, never files on disk).
+SYN_STATE_KEY = '"""A synthetic grader (test-only)."""\nSTATE = {"type": "file", "path": "x"}\n'
+SYN_GREP = '"""A synthetic grader (test-only)."""\nTOOL = "Grep"\n'
+SYN_RAW_PARSER = '''"""A synthetic grader that parses a raw stream itself, never importing the view (test-only)."""
+import json
+
+
+def calls(lines):
+    out = []
+    for ln in lines:
+        r = json.loads(ln)
+        if r.get("type") == "assistant":
+            out += [b for b in r["message"]["content"] if b.get("type") == "tool_use"]
+    return out
+'''
+SYN_DOC_ONLY = '''"""A synthetic evidence-only grader: it reads no transcript, only the end state (test-only)."""
+
+
+def reader(path):
+    """Reads the end state; never a transcript."""
+    return open(path, encoding="utf-8").read()
+'''
+SYN_PROJECTS_GLOB = '"""A synthetic grader (test-only)."""\nPATH = "projects/abc/*.jsonl"\n'
+SYN_SESSION_OPEN = '"""A synthetic grader (test-only)."""\n\n\ndef read():\n    return open("run/session.jsonl").read()\n'
+SYN_TRANSCRIPT_CASE = '"""A synthetic grader (test-only)."""\nNAME = "Transcript.JSONL"\n'
+SYN_JOINED_PATH = ('"""A synthetic grader (test-only)."""\nimport os\n\n\ndef where(x):\n'
+                   '    return os.path.join("projects", x, "session.jsonl")\n')
+
+
+def unlisted_grader_problems() -> list[str]:
+    """An unlisted grader typing a Claude Code raw name is flagged, view or no view (default-deny)."""
+    out = []
+    for name, src, want in (("synthetic_state.py", SYN_STATE_KEY, "synthetic_state.py types ['type']"),
+                            ("synthetic_grep.py", SYN_GREP, "synthetic_grep.py types ['Grep']"),
+                            ("synthetic_raw.py", SYN_RAW_PARSER, "synthetic_raw.py types ['assistant', 'content', "
+                                                                 "'tool_use', 'type']")):
+        got = sweep_problems({name: src})
+        if got != [want]:
+            out.append(f"{name}: {got}, expected [{want!r}]")
+    return out
+
+
+def listed_grader_problems() -> list[str]:
+    """A listed grader is spared the raw-name sweep only while it passes the evidence-only check: each breach, added to
+    endstate's real source, is flagged by that check (never by the raw-name sweep it is spared)."""
+    base = endstate_source()
+    out = []
+    for why, extra, want in (
+            ("imports the view", "\nimport transcript_view as view\n", "imports 'import transcript_view as view'"),
+            ("imports the driver", "\nfrom drive import one_turn\n", "imports 'from drive import one_turn'"),
+            ("imports the adapter", "\nimport agent_adapter\n", "imports 'import agent_adapter'"),
+            ("names a harness", '\n_H = "fake-second"\n', "names a harness ('fake-second')"),
+            ("holds a transcript literal", '\n_T = "transcript.jsonl"\n', "holds a session-file literal")):
+        got = sweep_problems({ENDSTATE: base + extra})
+        if not any(p.startswith(f"{ENDSTATE} {want}") for p in got) or any(" types " in p for p in got):
+            out.append(f"a listed grader that {why}: {got}")
+    return out
+
+
+def plain_a(name: str, src: str) -> bool:
+    """Plain A, as a mutant: exempt every grader that does not import the view."""
+    return not re.search(r"^[^\S\n]*(import|from)[^\S\n].*transcript_view", src, re.M)
+
+
 def manifest_problems() -> list[str]:
-    srcs = grader_sources()
+    srcs = sources_with_endstate()
     mutated = dict(srcs)
     mutated["pause_adherence.py"] = (srcs["pause_adherence.py"]
                                      + '\n_ROW = {"model": "m", "agent": {"harness": "h", "version": "v"}}\n')
@@ -336,6 +488,67 @@ class TheSweep(unittest.TestCase):
         self.assertIn("awareness.py", srcs)
         self.assertEqual(sweep_problems(srcs), [])
         self.assertTrue(all(tv.ROUND3_HARNESS not in src for src in srcs.values()))
+        self.assertEqual(sweep_problems(sources_with_endstate()), [])  # the wave 2 merge's tree
+
+    # ---- glitch-f3's ruling A' (the wave 2 merge): default-deny, with a named evidence-only exemption ----
+
+    def test_an_evidence_only_grader_is_exempt_and_passes_the_check(self):  # A', test 1
+        self.assertEqual(EVIDENCE_ONLY_GRADERS, (ENDSTATE,))
+        self.assertEqual(evidence_only_problems(ENDSTATE, endstate_source()), [])
+        self.assertEqual(sweep_problems(sources_with_endstate()), [])
+        # Unlisted, endstate turns the sweep red exactly as the wave 2 trial merge did.
+        with mock.patch.object(THIS, "EVIDENCE_ONLY_GRADERS", ()):
+            self.assertEqual(sweep_problems(sources_with_endstate()), ["endstate.py types ['type']"])
+
+    def test_an_unlisted_grader_typing_a_raw_name_goes_red(self):  # A', test 2
+        self.assertEqual(unlisted_grader_problems(), [])
+
+    def test_a_listed_grader_that_breaks_the_evidence_only_check_goes_red(self):  # A', test 3
+        self.assertEqual(listed_grader_problems(), [])
+
+    def test_the_check_fires_on_plain_a(self):  # A', test 4: exempting every grader that does not import the view
+        self.assertEqual(sweep_problems({"synthetic_raw.py": SYN_RAW_PARSER}),
+                         ["synthetic_raw.py types ['assistant', 'content', 'tool_use', 'type']"])
+        with mock.patch.object(THIS, "exempt", plain_a):
+            problems = unlisted_grader_problems()
+        self.assertTrue(any(p.startswith("synthetic_raw.py: []") for p in problems), problems)
+
+    def test_the_check_fires_on_an_empty_evidence_only_check(self):  # A', test 5
+        self.assertEqual(listed_grader_problems(), [])  # the control: the real check flags all five breaches
+        with mock.patch.object(THIS, "evidence_only_problems", lambda name, src: []):
+            problems = listed_grader_problems()
+        self.assertEqual(len(problems), 5, problems)
+
+    def test_a_session_file_path_or_glob_fails_the_check(self):  # the lane lead's refinement (i)
+        self.assertEqual(evidence_only_problems("s.py", SYN_PROJECTS_GLOB),
+                         ["s.py holds a session-file literal 'projects/abc/*.jsonl'"])
+        self.assertEqual(evidence_only_problems("s.py", SYN_SESSION_OPEN),
+                         ["s.py holds a session-file literal 'run/session.jsonl'"])
+        # Mutant: ".jsonl" never a mark. The path literal with no "projects/" passes.
+        mutant = lambda lit: any(m in lit.lower() for m in SESSION_PATH_MARKS)  # noqa: E731
+        with mock.patch.object(THIS, "session_file_literal", mutant):
+            self.assertEqual(evidence_only_problems("s.py", SYN_SESSION_OPEN), [])
+
+    def test_a_docstring_is_not_a_path_literal(self):  # the lane lead's refinement (ii)
+        self.assertEqual(evidence_only_problems("s.py", SYN_DOC_ONLY), [])
+        self.assertIn("transcript", ast.get_docstring(ast.parse(endstate_source())))
+        # Mutant: docstrings read as literals. endstate (its docstring: "It reads no transcript") goes red.
+        with mock.patch.object(THIS, "code_literals", lambda src: sorted(literals(src))):
+            self.assertTrue(evidence_only_problems(ENDSTATE, endstate_source()))
+            self.assertTrue(evidence_only_problems("s.py", SYN_DOC_ONLY))
+
+    def test_a_transcript_literal_in_any_case_fails_the_check(self):  # the lane lead's refinement (iii)
+        self.assertEqual(evidence_only_problems("s.py", SYN_TRANSCRIPT_CASE),
+                         ["s.py holds a session-file literal 'Transcript.JSONL'"])
+        # Mutant: the marks matched case-sensitively. "Transcript.JSONL" passes.
+        mutant = lambda lit: any(m in lit for m in SESSION_PATH_MARKS)  # noqa: E731
+        with mock.patch.object(THIS, "session_file_literal", mutant):
+            self.assertEqual(evidence_only_problems("s.py", SYN_TRANSCRIPT_CASE), [])
+
+    def test_the_named_residual_a_joined_path(self):  # glitch-f3's requirement: the check names what it cannot see
+        self.assertEqual(evidence_only_problems("s.py", SYN_JOINED_PATH), [])
+        self.assertEqual(sweep_problems({"s.py": SYN_JOINED_PATH + '\nKIND = "assistant"\n'}),
+                         ["s.py types ['assistant']"])
 
     def test_the_sweep_reads_the_tables_and_fires_on_a_mutant_that_adds_one(self):
         bad = cc_raw_names()
