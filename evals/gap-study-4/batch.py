@@ -357,8 +357,8 @@ class Batch:
         self._replay(history)
 
     # ---------------------------------------------------------------------------- the history
-    @staticmethod
-    def history_problems(history) -> list[str]:
+    @classmethod
+    def history_problems(cls, history) -> list[str]:
         """Why the committed outcomes and rulings cannot be trusted (empty when they can)."""
         if not isinstance(history, list):
             return ["history must be a list of committed outcomes"]
@@ -367,7 +367,7 @@ class Batch:
         last_event, event_slots = 0, collections.defaultdict(set)
         for i, o in enumerate(history):
             if is_ruling(o):
-                p += Batch._ruling_problems(i, o, seen, ruled, pending)
+                p += cls._ruling_problems(i, o, seen, ruled, pending)
                 continue
             if not isinstance(o, dict) or set(o) != set(OUTCOME_KEYS):
                 p.append(f"history[{i}] must hold exactly the committed outcome keys")

@@ -643,6 +643,42 @@ class TestPinRefusal(unittest.TestCase):
         self.assertEqual(pin_refusal_problems(t), ["an API 500 that ended in error: want refused by "
                                                    f"{PIN_REFUSAL}, got rehearsal"])
 
+    def test_pin_refusal_check_can_fail(self):
+        """Each of probe2's combinations has a mutant that turns it red (glitch-f3's ruling on W1B3-2)."""
+        refused = ("bare", "plus no-first-agent-turn", "plus an API 500", "plus a container exit",
+                   "an API 500 that ended in error")
+        t = test_table()
+        t["pin_refusal"]["outranked_by"] = list(labels4.ROUTES)        # the refusal neutralized
+        found = pin_refusal_problems(t)
+        for name in refused:
+            self.assertTrue(any(x.startswith(f"{name}: want refused") for x in found), (name, found))
+        t = test_table()                                               # the fold-3 table: the check a none_of on one row
+        t["pin_refusal"]["outranked_by"] = list(labels4.ROUTES)
+        next(r for r in t["rows"] if r["id"] == SILENT_TIMEOUT_ROW)["none_of"] = [
+            {"path": "init", "op": "present_differs_from_pin"}]
+        found = pin_refusal_problems(t) + scenario_problems(t)
+        for name in ("plus no-first-agent-turn", "plus an API 500", "plus a container exit"):   # the review's finding
+            self.assertTrue(any(x.startswith(f"{name}: want refused by {PIN_REFUSAL}, got rehearsal") for x in found),
+                            (name, found))
+        self.assertTrue(any(x.startswith("W1B3-2: a differing init plus no-first-agent-turn -> refused: want refused")
+                            for x in found), found)
+        t = test_table()
+        t["pin_refusal"]["outranked_by"] = []                          # the pause exception dropped
+        found = pin_refusal_problems(t) + scenario_problems(t)
+        self.assertTrue(any(x.startswith("plus a 429: want pause") for x in found), found)
+        self.assertTrue(any(x.startswith("W1B3-2: a differing init plus a 429 -> pause: refused") for x in found), found)
+        t = test_table()
+        t["pin_refusal"]["all_of"][0]["op"] = "differs_from_pin"      # a missing init taken for a pin fault
+        self.assertTrue(any("init missing: want" in x for x in pin_refusal_grid_problems(t)))
+        with mock.patch.object(routing, "pin_refusal_holds", lambda records, table: False):
+            self.assertTrue(any("init differs: want refused" in x for x in pin_refusal_grid_problems(test_table())))
+
+    def test_one_place_check_can_fail(self):
+        t = copy.deepcopy(REAL)
+        next(r for r in t["rows"] if r["id"] == SILENT_TIMEOUT_ROW)["none_of"] = [
+            {"path": "init", "op": "present_differs_from_pin"}]
+        self.assertEqual(one_place_problems(t), [f"{SILENT_TIMEOUT_ROW}: none_of reads present_differs_from_pin"])
+
     def test_the_rule_is_checked(self):
         """routing.json's pin refusal is a closed rule: its phase is before the first turn (after it, the plan routes a
         differing init harness-error), its conditions read harness records, and only a route that outranks rehearsal
@@ -1072,7 +1108,8 @@ def all_problems(table: dict) -> list[str]:
     for row in table["rows"]:
         p += _guarded(f"row {row['id']}", row_problems, row, table)
     for name, fn in (("grid", grid_problems), ("annotation grid", annotation_grid_problems),
-                     ("seam", seam_problems), ("scenarios", scenario_problems), ("tie", tie_problems)):
+                     ("seam", seam_problems), ("scenarios", scenario_problems), ("tie", tie_problems),
+                     ("pin refusal", pin_refusal_problems), ("pin refusal grid", pin_refusal_grid_problems)):
         p += _guarded(name, fn, table)
     return p
 
@@ -1175,6 +1212,27 @@ def mutants(table: dict):
         t = copy.deepcopy(table)
         del t["pin_fields"][j]
         yield f"pin_fields: {f} dropped", t
+    rule = table["pin_refusal"]                                                # W1B3-2
+    t = copy.deepcopy(table)
+    del t["pin_refusal"]
+    yield "pin_refusal: removed", t
+    for other in labels4.PHASES:
+        if other != rule["when"]:
+            t = copy.deepcopy(table)
+            t["pin_refusal"]["when"] = other
+            yield f"pin_refusal: phase -> {other}", t
+    for j, c in enumerate(rule["all_of"]):
+        key, val = _CONDITION_MUTANT[c["op"]]
+        t = copy.deepcopy(table)
+        t["pin_refusal"]["all_of"][j][key] = val
+        yield f"pin_refusal: all_of[{j}] {c['op']} mutated", t
+        t = copy.deepcopy(table)
+        del t["pin_refusal"]["all_of"][j]
+        yield f"pin_refusal: all_of[{j}] {c['op']} deleted", t
+    for name, outranks in (("emptied", []), ("every route", list(labels4.ROUTES)), ("rehearsal", [labels4.REHEARSAL])):
+        t = copy.deepcopy(table)
+        t["pin_refusal"]["outranked_by"] = outranks
+        yield f"pin_refusal: outranked_by {name}", t
     levels = table["precedence"]
     for k in range(len(levels) - 1):
         t = copy.deepcopy(table)
@@ -1470,6 +1528,14 @@ class TestRoutingTable(unittest.TestCase):
             t = copy.deepcopy(REAL)
             t["caps"][route]["source"] += " Unit: still an open question in the lane report."
             self.assertTrue(any("left open" in x for x in cap_unit_problems(t)), route)
+            t = copy.deepcopy(REAL)                                    # W1B3-4: the stale sentence back
+            t["caps"][route]["source"] += (" The key keeps its name, reruns_per_half_cell: for rehearsal and pause its "
+                                           "value is that count.")
+            self.assertTrue(any("kept its old name" in x for x in cap_unit_problems(t)), route)
+        t = copy.deepcopy(REAL)                                        # W1B3-5: the pause's unit back to each take
+        t["caps"][labels4.PAUSE]["source"] = t["caps"][labels4.PAUSE]["source"].replace(
+            "the pauses that share one reset count once", "every pause counts")
+        self.assertTrue(any("pauses that share one reset count once" in x for x in cap_unit_problems(t)))
 
     def test_no_first_agent_turn_after_the_first_turn_is_refused(self):
         """W1B2-8: the reason says "before the first turn"; carried after it started, the records disagree."""
@@ -2042,7 +2108,8 @@ class TestGridAndMutations(unittest.TestCase):
             for what in ("removed", "event flipped", "mask flipped"):
                 self.assertIn(f"annotation {a['id']}: {what}", described)
         for what in ("rate_limit_markers: status[0]", "rate_limit_markers: type[0]", "graded_ends: timed-out dropped",
-                     "rate_limit_markers: text deleted"):
+                     "rate_limit_markers: text deleted", "pin_refusal: removed", "pin_refusal: outranked_by emptied",
+                     "pin_refusal: all_of[0] present_differs_from_pin mutated", "pin_refusal: phase -> after-first-turn"):
             self.assertIn(what, described)
         for j in range(len(REAL["rate_limit_markers"]["text"])):   # every text marker, alone (glitch-f3's ruling)
             self.assertIn(f"rate_limit_markers: text[{j}]", described)

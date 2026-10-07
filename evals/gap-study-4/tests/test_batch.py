@@ -2117,6 +2117,17 @@ def ruled_route_problems(cls=batch.Batch) -> list[str]:
             p.append(f"route rehearsal: registered {regs}, committed {outcomes_of(out)}, skipped {b.skipped}")
     except Exception as e:  # noqa: BLE001
         p.append(f"route rehearsal: the restart raised {type(e).__name__}: {e}")
+    # rehearsal, below the cap: the ruled take is hc-a's first rehearsal, so the slot's re-run rehearses as its second
+    # and the next as its third, which closes hc-a (never a fourth attempt)
+    _, _, _, _, r1, _ = run(1, plan={(1, 1): "unlisted-reason"})
+    try:
+        _, out, w, *_ = restart(r1, rows(1), plan={(1, a): "preflight-fail" for a in (2, 3, 4)}, start_attempts={1: 1},
+                                cls=cls, serial=True, rulings=[route_ruling(1, 1, labels4.REHEARSAL)])
+        got = [(o["slot"], o["attempt"], o["state"], o["rerun"], o["cell_state"] is not None) for o in out]
+        if got != [(1, 2, labels4.REHEARSAL, True, False), (1, 3, labels4.REHEARSAL, False, True)]:
+            p.append(f"route rehearsal below the cap: the restart committed {got}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"route rehearsal below the cap: the restart raised {type(e).__name__}: {e}")
     # pause: the restart waits for the usage window before it re-runs the slot
     _, _, _, _, r1, _ = run(1, plan={(1, 1): "unlisted-reason"})
     try:
@@ -2301,6 +2312,9 @@ def fold4_bad_histories() -> dict:
     _, _, _, _, rg, _ = run(2, plan={(1, 1): "watcher-overflow"})
     good = rg.history()
     capped = capped_history()                                              # slot 1 pauses three times, serially
+    _, _, _, _, rr, _ = run(0, plan={(1, 1): "preflight-fail", (1, 2): "preflight-fail", (1, 3): "unlisted-reason"},
+                            serial=True, row_list=rows_in(["hc-a"]))      # two rehearsals, then blocked
+    closed_by_ruling = rr.history() + [route_ruling(1, 3, labels4.REHEARSAL)]   # the ruled third closes hc-a
 
     def later(o, **kw):
         return dict(copy.deepcopy(o), **kw)
@@ -2328,6 +2342,8 @@ def fold4_bad_histories() -> dict:
         "a window event on a take that is no pause": (at(good, 0, window_event=1), "window_event"),
         "a pause with no window event": (at(capped, 0, window_event=None), "window_event"),
         "a window event reopened": (at(capped, 2, window_event=capped[0].get("window_event")), "reopened"),
+        "a take of a half-cell a ruling closed, without the cell state": (
+            closed_by_ruling + [later(graded2, slot=2, attempt=1)], "does not carry its cell state"),
     }
 
 
@@ -2375,6 +2391,246 @@ class TestWindowEvents(unittest.TestCase):
     def test_one_block_one_pause(self):
         self.assertEqual(one_window_problems(), [])
 
+
+
+# ------------------------------------------- review round 3 (fold 4): every new guard's mutant goes red
+class NoRulingRefusal(batch.Batch):
+    """Mutant: the pre-fold-4 restart, which drove a stopped take's slot again with no ruling."""
+
+    def _replay(self, history):
+        super()._replay(history)
+        self.unruled.clear()
+
+
+class ForgetsTheDriveStarted(batch.Batch):
+    """Mutant: a driver that raised is recorded as if its drive never started."""
+
+    def _drive_step(self, row, attempt, cid, err):
+        out = super()._drive_step(row, attempt, cid, err)
+        if (out["reason"] or "").startswith("drive failed"):
+            out["drive_started"] = False
+        return out
+
+
+class RulingPerSlot(batch.Batch):
+    """Mutant: a ruling is keyed by slot, so a spent ruling lets a later stopped take of the slot go on."""
+
+    def _replay(self, history):
+        super()._replay(history)
+        ruled_slots = {slot for slot, _ in self.ruled}
+        for slot in [s for s in self.unruled if s in ruled_slots]:
+            attempt, _ = self.unruled.pop(slot)
+            self.owed[slot] = (attempt + 1, "an earlier ruling reused")
+
+
+class RouteAsRerun(batch.Batch):
+    """Mutant: a route ruling read as a re-run, the route's fate ignored."""
+
+    def _apply_ruling(self, r, o):
+        return super()._apply_ruling(dict(r, ruling=labels4.RULE_RERUN, route=None), o)
+
+
+class RulingSpendsNothing(batch.Batch):
+    """Mutant: a ruled harness-error spends none of the slot's or half-cell's re-runs."""
+
+    def _apply_ruling(self, r, o):
+        saved = (copy.deepcopy(self.reruns), copy.deepcopy(self.slot_reruns))
+        fate = super()._apply_ruling(r, o)
+        self.reruns, self.slot_reruns = saved
+        return fate
+
+
+class WritesARuling(batch.Batch):
+    """Mutant: batch writes a ruling of its own for a blocked take."""
+
+    def _commit(self, row, attempt, outcome):
+        out = super()._commit(row, attempt, outcome)
+        if out["state"] == labels4.BLOCKED:
+            try:
+                self.repo.commit_records(row, attempt, {"kind": labels4.RULING, "slot": row["slot"], "attempt": attempt,
+                                                        "ruling": labels4.RULE_RERUN, "route": None, "by": "batch"})
+            except Exception:  # noqa: BLE001 - the fake committer cannot write it; it was handed it all the same
+                pass
+        return out
+
+
+class OverwritesTheLeak(batch.Batch):
+    """Mutant: the pre-fold-4 leak, which turned the take into `failed`."""
+
+    def _drive_step(self, row, attempt, cid, err):
+        out = super()._drive_step(row, attempt, cid, err)
+        if out["leaked_container"] is not None:
+            out["state"] = labels4.FAILED
+        return out
+
+
+class LeakGoesOn(batch.Batch):
+    """Mutant: a leak never stops the loop."""
+
+    def _commit(self, row, attempt, outcome):
+        out = super()._commit(row, attempt, outcome)
+        if out["leaked_container"] is not None and self.stopped and "leaked" in (self.stopped["reason"] or ""):
+            self.stopped = None
+        return out
+
+
+class OwesNothing(batch.Batch):
+    """Mutant: the pre-fold-4 restart, which never checked the rows against the drives its history owes."""
+
+    def _replay(self, history):
+        super()._replay(history)
+        self.owed.clear()
+
+
+class OwesInClosedCells(batch.Batch):
+    """Mutant: a re-run of a half-cell that has since closed is still owed."""
+
+    def _replay(self, history):
+        super()._replay(history)
+        for o in history:
+            if (not batch.is_ruling(o) and o["rerun"] and o["half_cell"] in self.closed_cells
+                    and o["slot"] not in self.closed):
+                self.owed[o["slot"]] = (o["attempt"] + 1, "owed in a closed half-cell")
+
+
+class ReplayCountsEachPause(batch.Batch):
+    """Mutant: a restart counts each committed pause as its own event (the live loop still counts window events)."""
+
+    def _replay(self, history):
+        super()._replay(history)
+        for o in history:
+            if not batch.is_ruling(o) and o["state"] == labels4.PAUSE:
+                self.cell_events[(o["half_cell"], o["state"])].add(("take", o["slot"], o["attempt"]))
+
+
+class OneWindowForever(batch.Batch):
+    """Mutant: every pause of the run shares one window event, as if the window never reset."""
+
+    def _window_event(self):
+        self.last_window_event = self.last_window_event or 1
+        return self.last_window_event
+
+
+class RulingsUnchecked(batch.Batch):
+    """Mutant: rulings read without their checks."""
+
+    @staticmethod
+    def _ruling_problems(i, r, seen, ruled, pending):
+        if pending.get(r.get("slot"), (None,))[0] == r.get("attempt"):
+            del pending[r["slot"]]
+        return []
+
+
+def per_take_events(outcome):
+    """Mutant of batch.cell_event: each paused take its own event (the reviewer's W1B3-5 reading)."""
+    return ("take", outcome["slot"], outcome["attempt"])
+
+
+def restart_waits_mutant(old: str, new: str):
+    """W1B3-3: batch.restart_waits with its block window edited in its source (the reviewer's [-2:] and [-1:])."""
+    src = textwrap.dedent(inspect.getsource(batch.restart_waits))
+    assert src.count(old) == 1, (old, src)
+    ns = dict(vars(batch))
+    exec(compile(src.replace(old, new), "<restart_waits mutant>", "exec"), ns)   # noqa: S102 - an in-memory mutant
+    return ns["restart_waits"]
+
+
+class TestFold4Mutants(unittest.TestCase):
+    """Every guard review round 3's fold added, run against a mutant of what it guards: each goes red."""
+
+    def test_refusal_check_can_fail(self):
+        found = refusal_problems(NoRulingRefusal)
+        for name in STOPPED_TAKES:
+            self.assertTrue(any(x.startswith(f"{name}: the restart drove it again") for x in found), (name, found))
+
+    def test_drive_started_check_can_fail(self):
+        def records_or_decision(o):   # the brief's parenthetical alone: a raising driver leaves neither
+            return o["state"] == labels4.BLOCKED or (o["state"] == labels4.FAILED
+                                                     and (o["records"] is not None or o["decision"] is not None))
+        with mock.patch.object(batch, "needs_ruling", records_or_decision):
+            self.assertTrue(any(x.startswith("the restart drove it again") for x in raised_after_first_turn_problems()))
+            found = refusal_problems()
+        for name in ("failed: the driver raised", "failed: the driver raised after the agent's first turn"):
+            self.assertTrue(any(x.startswith(f"{name}: the restart drove it again") for x in found), (name, found))
+        with mock.patch.object(batch, "needs_ruling", lambda o: o["state"] == labels4.BLOCKED):   # failed never ruled
+            self.assertTrue(any(x.startswith("failed: routing raised: the restart drove it again")
+                                for x in refusal_problems()))
+        with mock.patch.object(batch, "needs_ruling", lambda o: o["state"] in labels4.BATCH_STATES):   # every failed
+            found = nothing_ran_problems()
+        self.assertEqual(sum("the restart raised BatchConfigError" in x for x in found), 3, found)
+        found = raised_after_first_turn_problems(ForgetsTheDriveStarted)
+        self.assertTrue(any(x.startswith("committed failed, drive_started False") for x in found), found)
+
+    def test_ruled_rerun_check_can_fail(self):
+        self.assertTrue(any(x.startswith("a spent ruling: attempt 2's blocked take was driven again")
+                            for x in ruled_rerun_problems(RulingPerSlot)))
+        found = ruled_rerun_problems(NoRulingRefusal)   # without the refusal the spent ruling is never asked for
+        self.assertTrue(any(x.startswith("a spent ruling") for x in found), found)
+
+    def test_ruled_route_check_can_fail(self):
+        found = ruled_route_problems(RouteAsRerun)
+        for case in ("route graded: the ruled slot was driven again", "route harness-error: the restart committed",
+                     "route rehearsal:"):
+            self.assertTrue(any(x.startswith(case) for x in found), (case, found))
+        found = ruled_route_problems(RulingSpendsNothing)
+        self.assertTrue(any(x.startswith("route harness-error: the restart committed") for x in found), found)
+        with mock.patch.object(batch, "effective_route",
+                               lambda e: None if batch.is_ruling(e) else e["state"]):   # a ruled pause never waits
+            found = ruled_route_problems()
+        self.assertTrue(any(x.startswith("route pause:") for x in found), found)
+
+    def test_never_writes_a_ruling_check_can_fail(self):
+        self.assertTrue(any("not an outcome" in x for x in never_writes_a_ruling_problems(WritesARuling)))
+
+    def test_leak_check_can_fail(self):
+        found = remove_problems(OverwritesTheLeak)
+        self.assertTrue(any(x.startswith("the leaked take was committed failed") for x in found), found)
+        found = remove_problems(LeakGoesOn)
+        self.assertTrue(any(x.startswith("the loop did not stop after the block") for x in found), found)
+
+    def test_owed_check_can_fail(self):
+        found = owed_problems(OwesNothing)
+        for name in ("a harness-error's re-run", "a pause's re-run", "a take that failed before anything ran"):
+            self.assertTrue(any(x.startswith(f"{name} left out: accepted") for x in found), (name, found))
+        self.assertTrue(any(x.startswith("a closed half-cell's re-runs were still owed")
+                            for x in owed_problems(OwesInClosedCells)))
+
+    def test_pause_window_check_can_fail(self):
+        """W1B3-3: the reviewer's two surviving mutants of the restart's pause window now go red."""
+        with mock.patch.object(batch, "restart_waits", restart_waits_mutant("[-BLOCK:]", "[-2:]")):
+            found = pause_window_problems()
+        self.assertTrue(any(x.startswith("pause first:") for x in found), found)
+        with mock.patch.object(batch, "restart_waits", restart_waits_mutant("[-BLOCK:]", "[-1:]")):
+            found = pause_window_problems()
+        for where in ("first", "in the middle"):
+            self.assertTrue(any(x.startswith(f"pause {where}:") for x in found), (where, found))
+
+    def test_window_event_check_can_fail(self):
+        """W1B3-5: counting each paused take (the reviewer's reading) closes the half-cell on one usage-limit event."""
+        with mock.patch.object(batch, "cell_event", per_take_events):
+            found = one_window_problems()
+            self.assertTrue(any(x.startswith("one window: the block's three pauses committed as") for x in found), found)
+            self.assertTrue(any(x.startswith("block:") for x in cell_cap_problems(labels4.PAUSE)))
+        found = one_window_problems(ReplayCountsEachPause)
+        self.assertTrue(any(x.startswith("restart:") for x in found), found)
+        self.assertFalse(any(x.startswith("one window") for x in found), found)   # the live count is untouched
+        self.assertTrue(any("registered past its half-cell's cap" in x for x in cell_cap_problems(labels4.PAUSE,
+                                                                                                  OneWindowForever)))
+
+    def test_fold4_history_check_can_fail(self):
+        found = history_validation_problems(RulingsUnchecked)
+        for case in ("a ruling with an unknown word", "a ruling that names no maker", "a ruling for a take that needs none",
+                     "two rulings for one take"):
+            self.assertTrue(any(x.startswith(case) for x in found), (case, found))
+
+        class Trusting(batch.Batch):
+            @staticmethod
+            def history_problems(history):
+                return []
+        found = history_validation_problems(Trusting)
+        for case in ("a window event on a take that is no pause", "a window event reopened",
+                     "a drive that never started, with records", "a blocked slot driven again with no ruling"):
+            self.assertTrue(any(x.startswith(case) for x in found), (case, found))
 
 
 # ---------------------------------------------------------------------------- import boundary

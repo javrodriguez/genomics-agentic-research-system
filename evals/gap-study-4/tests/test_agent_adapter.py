@@ -382,6 +382,29 @@ class TestRequiredKeywords(unittest.TestCase):
         with mock.patch.object(aa.TurnResult, "__init__", defaulting):
             self.assertIn("counters omitted: accepted", omission_problems())
 
+        def clock_defaulted(self, *args, **kw):   # W1B3-6's mutant: the pre-fold-4 dataclass, the clock defaulted to 0.0
+            kw.setdefault("started_at", 0.0)
+            kw.setdefault("ended_at", 0.0)
+            real_init(self, *args, **kw)
+        with mock.patch.object(aa.TurnResult, "__init__", clock_defaulted):
+            found = omission_problems()
+        for name in ("started_at", "ended_at"):   # accepted, or refused for another reason: never the required keyword
+            self.assertTrue(any(x.startswith(f"{name} omitted:") for x in found), (name, found))
+
+    def test_clock_type_check_can_fail(self):
+        """W1B3-6: with the clock's type check gone, None, a string or a bool is taken for the host clock."""
+        with mock.patch.object(aa, "_clock", lambda v: True):
+            accepted = []
+            for bad in (dict(started_at=None), dict(ended_at=None), dict(started_at="1.0"), dict(ended_at=True)):
+                try:
+                    aa.TurnResult(**full_turn_kw(**bad))
+                    accepted.append(bad)
+                except ValueError:
+                    pass
+                except TypeError:   # None or a string compared with a number: a crash, not the refusal
+                    accepted.append(bad)
+        self.assertEqual(len(accepted), 4, accepted)
+
 
 API_ERROR_FIELDS_WANT = ("status", "type", "text")   # glitch-f3's ruling, typed once here
 USAGE = {"status": None, "type": None, "text": "Claude usage limit reached; resets at 9pm"}
