@@ -31,7 +31,7 @@ def _lines():
     return [
         {"type": "attachment", "attachment": {"type": "skill_listing", "content": f"{SECRET} this is a test {SECRET}"}},
         {"type": "attachment", "attachment": {"type": "date", "date": "this is a test; this is a test"}},
-        {"type": "last-prompt", "lastPrompt": "a trap"},
+        {"type": "last-prompt", "lastPrompt": "this is a trap"},
         {"type": "user", "message": {"content": f"this is a test {SECRET}"}},
         {"type": "assistant", "message": {"content": [{"type": "text", "text": f"this is a test {SECRET}"}]}},
         {"type": "assistant", "message": {"content": [{"type": "thinking", "thinking": "this is a test",
@@ -53,7 +53,7 @@ def run(mod, files):
 
 
 EXPECTED = {("this is a test", "attachment:skill_listing"): 1, ("this is a test", "attachment:date"): 2,
-            ("a trap", "last-prompt"): 1}
+            ("this is a trap", "last-prompt"): 1}
 
 
 def furniture_problems(mod=af) -> list[str]:
