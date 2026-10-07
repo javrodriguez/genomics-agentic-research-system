@@ -1,0 +1,1374 @@
+{
+ "assay": "rnaseq_bulk",
+ "blob": "e21243b4bc39bc6c8570d0f4e4c6796e4e3e9523",
+ "call_sites": [
+  {
+   "branch_calls": [],
+   "command": "python3 _system/configure.py genomes --assay <Assay ID>",
+   "emitted": [
+    0,
+    3
+   ],
+   "handled": [],
+   "line": 135,
+   "prose_handling": [],
+   "step": "3a",
+   "tool": "configure.genomes",
+   "unhandled": [
+    3
+   ],
+   "unhandled_sites": {
+    "3": [
+     "gars/_system/configure.py:177"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>",
+   "emitted": [
+    0,
+    1,
+    3
+   ],
+   "handled": [],
+   "line": 136,
+   "prose_handling": [],
+   "step": "3a",
+   "tool": "configure.contrasts",
+   "unhandled": [
+    1,
+    3
+   ],
+   "unhandled_sites": {
+    "1": [
+     "gars/_system/configure.py:213"
+    ],
+    "3": [
+     "gars/_system/configure.py:205"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/configure.py peaks",
+   "emitted": [
+    0
+   ],
+   "handled": [],
+   "line": 137,
+   "prose_handling": [],
+   "step": "3a",
+   "tool": "configure.peaks",
+   "unhandled": [],
+   "unhandled_sites": {}
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>] --dry-run",
+   "emitted": [
+    0,
+    1,
+    3
+   ],
+   "handled": [
+    1
+   ],
+   "line": 144,
+   "prose_handling": [
+    "If that sub-stage is `FAILED:<reason>` or `CANCELLED`, reply T6 with its recorded error and stop."
+   ],
+   "step": "3a",
+   "tool": "configure.apply",
+   "unhandled": [
+    3
+   ],
+   "unhandled_sites": {
+    "3": [
+     "gars/_system/configure.py:319",
+     "gars/_system/configure.py:324",
+     "gars/_system/configure.py:329",
+     "gars/_system/configure.py:350",
+     "gars/_system/configure.py:354",
+     "gars/_system/configure.py:388",
+     "gars/_system/configure.py:414"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --consumes <type> [<type> ...]",
+   "emitted": [
+    0,
+    1,
+    3
+   ],
+   "handled": [
+    1
+   ],
+   "line": 170,
+   "prose_handling": [],
+   "step": "9",
+   "tool": "resolve_artifact",
+   "unhandled": [
+    3
+   ],
+   "unhandled_sites": {
+    "3": [
+     "gars/_system/resolve_artifact.py:138",
+     "gars/_system/resolve_artifact.py:140"
+    ]
+   }
+  }
+ ],
+ "fenced_non_commands": [],
+ "file_mentions_unclassified": [
+  {
+   "line": 140,
+   "sentence": "Then, with the numbers the user gave: Reply T9 showing what it would write and **wait for confirmation**.",
+   "step": "3a"
+  }
+ ],
+ "findings": [],
+ "id": "02_bioinformatics",
+ "path": "gars/02_bioinformatics/CONTEXT.md",
+ "prose_flags": [
+  {
+   "flag": "--dry-run",
+   "guard": {
+    "allowed_where_intended": true,
+    "dispatcher": {
+     "decisions": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     }
+    },
+    "forms": {
+     "maximal": {
+      "command": "python3 _system/configure.py apply --project projects/demo --assay rnaseq_bulk --genome 1 --contrast 1 --formula \"~ condition\" --peaks-type 1",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+       },
+       "mixed": {
+        "allow": false,
+        "reason": "Blocked: ~ condition starts with a tilde, which this path check does not resolve; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: spell the workspace-relative path out."
+       },
+       "public": {
+        "allow": true,
+        "reason": ""
+       }
+      }
+     },
+     "minimal": {
+      "command": "python3 _system/configure.py apply --project projects/demo --assay rnaseq_bulk --genome 1",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+       },
+       "mixed": {
+        "allow": true,
+        "reason": ""
+       },
+       "public": {
+        "allow": true,
+        "reason": ""
+       }
+      }
+     }
+    },
+    "intended": "public",
+    "missing_placeholders": [],
+    "status": "checked"
+   },
+   "in_command": true,
+   "line": 149,
+   "prohibited": false,
+   "removal": true,
+   "step": "3a",
+   "target_step": "3a",
+   "target_tool": "configure.apply",
+   "value": null,
+   "variant": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>]"
+  }
+ ],
+ "schema": "stepmap-facts/1",
+ "sections": [
+  {
+   "end": 8,
+   "name": "Purpose",
+   "start": 3
+  },
+  {
+   "end": 14,
+   "name": "Inputs",
+   "start": 9
+  },
+  {
+   "end": 29,
+   "name": "Scope Boundaries",
+   "start": 15
+  },
+  {
+   "end": 43,
+   "name": "Scope Boundaries additions for the config",
+   "start": 30
+  },
+  {
+   "end": 119,
+   "name": "Definitions",
+   "start": 44
+  },
+  {
+   "end": 181,
+   "name": "Process",
+   "start": 120
+  },
+  {
+   "end": 300,
+   "name": "Response Format",
+   "start": 182
+  },
+  {
+   "end": 312,
+   "name": "OUTPUT",
+   "start": 301
+  },
+  {
+   "end": 321,
+   "name": "Human check",
+   "start": 313
+  }
+ ],
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "steps": [
+  {
+   "calls": [],
+   "end": 121,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "1",
+   "source": "gars/02_bioinformatics/CONTEXT.md:121-121",
+   "start": 121,
+   "templates": [
+    "T1"
+   ],
+   "text": "1. Activated when the user asks to run bioinformatics, or names an assay to process. Reply T1.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 123,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "2",
+   "source": "gars/02_bioinformatics/CONTEXT.md:122-123",
+   "start": 122,
+   "templates": [
+    "T5"
+   ],
+   "text": "2. Resolve the project and the Assay ID. If the project does not exist, or the Assay ID is not in the assay map, reply T5 and stop.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 125,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "3",
+   "source": "gars/02_bioinformatics/CONTEXT.md:124-125",
+   "start": 124,
+   "templates": [
+    "T5"
+   ],
+   "text": "3. Check preconditions: `01_samplesheets/<Assay ID>_samplesheet.csv` and `_design.csv` exist and are non-empty. If not, reply T5 and stop — stage 01 has not run.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/configure.py genomes --assay <Assay ID>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/configure.py genomes --assay rnaseq_bulk",
+        "decisions": {
+         "closed": {
+          "allow": true,
+          "reason": ""
+         },
+         "fresh": {
+          "allow": true,
+          "reason": ""
+         },
+         "fresh_declared": {
+          "allow": true,
+          "reason": ""
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 135,
+     "literal": "python3 _system/configure.py genomes --assay <Assay ID>",
+     "tool": "configure.genomes"
+    },
+    {
+     "command": "python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>",
+     "comment": "# de assays",
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "literal_with_comment": {
+        "command": "python3 _system/configure.py contrasts --project projects/demo --assay rnaseq_bulk   # de assays",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; quote a literal # in an argument, for example grep -n \\\"#\\\" CONTEXT.md.\", \"field\": \"command\", \"message\": \"an unquoted word-start # starts a shell comment (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; quote a literal # in an argument, for example grep -n \\\"#\\\" CONTEXT.md.\", \"field\": \"command\", \"message\": \"an unquoted word-start # starts a shell comment (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; quote a literal # in an argument, for example grep -n \\\"#\\\" CONTEXT.md.\", \"field\": \"command\", \"message\": \"an unquoted word-start # starts a shell comment (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; quote a literal # in an argument, for example grep -n \\\"#\\\" CONTEXT.md.\", \"field\": \"command\", \"message\": \"an unquoted word-start # starts a shell comment (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "public": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; quote a literal # in an argument, for example grep -n \\\"#\\\" CONTEXT.md.\", \"field\": \"command\", \"message\": \"an unquoted word-start # starts a shell comment (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         }
+        }
+       },
+       "minimal": {
+        "command": "python3 _system/configure.py contrasts --project projects/demo --assay rnaseq_bulk",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.contrasts '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.contrasts '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.contrasts '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 136,
+     "literal": "python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>   # de assays",
+     "tool": "configure.contrasts"
+    },
+    {
+     "command": "python3 _system/configure.py peaks",
+     "comment": "# peaks assays",
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "literal_with_comment": {
+        "command": "python3 _system/configure.py peaks                                                     # peaks assays",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; quote a literal # in an argument, for example grep -n \\\"#\\\" CONTEXT.md.\", \"field\": \"command\", \"message\": \"an unquoted word-start # starts a shell comment (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; quote a literal # in an argument, for example grep -n \\\"#\\\" CONTEXT.md.\", \"field\": \"command\", \"message\": \"an unquoted word-start # starts a shell comment (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; quote a literal # in an argument, for example grep -n \\\"#\\\" CONTEXT.md.\", \"field\": \"command\", \"message\": \"an unquoted word-start # starts a shell comment (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; quote a literal # in an argument, for example grep -n \\\"#\\\" CONTEXT.md.\", \"field\": \"command\", \"message\": \"an unquoted word-start # starts a shell comment (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "public": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; quote a literal # in an argument, for example grep -n \\\"#\\\" CONTEXT.md.\", \"field\": \"command\", \"message\": \"an unquoted word-start # starts a shell comment (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         }
+        }
+       },
+       "minimal": {
+        "command": "python3 _system/configure.py peaks",
+        "decisions": {
+         "closed": {
+          "allow": true,
+          "reason": ""
+         },
+         "fresh": {
+          "allow": true,
+          "reason": ""
+         },
+         "fresh_declared": {
+          "allow": true,
+          "reason": ""
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 137,
+     "literal": "python3 _system/configure.py peaks                                                     # peaks assays",
+     "tool": "configure.peaks"
+    },
+    {
+     "command": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>] --dry-run",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "maximal": {
+        "command": "python3 _system/configure.py apply --project projects/demo --assay rnaseq_bulk --genome 1 --contrast 1 --formula \"~ condition\" --peaks-type 1 --dry-run",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: ~ condition starts with a tilde, which this path check does not resolve; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: spell the workspace-relative path out."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       },
+       "minimal": {
+        "command": "python3 _system/configure.py apply --project projects/demo --assay rnaseq_bulk --genome 1 --dry-run",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 144,
+     "literal": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>] --dry-run",
+     "tool": "configure.apply"
+    }
+   ],
+   "end": 153,
+   "exit_mentions": [
+    {
+     "codes": [
+      1
+     ],
+     "line": 149
+    }
+   ],
+   "file_actions": [],
+   "n": "3a",
+   "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+   "start": 126,
+   "templates": [
+    "T8",
+    "T9"
+   ],
+   "text": "3a. **Complete the config before routing anything.** Stage 00 seeded `_config/<Assay ID>.yaml` with every derivable value filled and the scientific decisions marked `<REQUIRED>`. Resolve them by menu, never by asking the user to type a path or a level name: The decisions are per-assay (`ASSAY_DECISIONS` in `_system/configure.py`): every assay chooses a genome; an assay with a `de` block additionally chooses a contrast (and may give a formula); an assay with a `peaks` block chooses a peak type. Reply T8 rendering the genome menu plus this assay's decision menu. Wait. Then, with the numbers the user gave: Reply T9 showing what it would write and **wait for confirmation**. On confirmation, re-run without `--dry-run`. Exit 1 → report its `error` and return to T8; never retry with a value the user did not choose. Skip 3a entirely when the config has no `<REQUIRED>` markers left — a completed config is not a question to re-ask.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "gate",
+    "templates": [
+     "T8",
+     "T9"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 154,
+   "exit_mentions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh_declared": {
+       "allow": true,
+       "reason": ""
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 154,
+     "path": "_references/assay_stage_skill_map.md",
+     "phrase": "from `_references/assay_stage_skill_map.md`",
+     "tool": "Read"
+    }
+   ],
+   "n": "4",
+   "source": "gars/02_bioinformatics/CONTEXT.md:154-154",
+   "start": 154,
+   "templates": [],
+   "text": "4. Read the Sub-stages column for this assay from `_references/assay_stage_skill_map.md`.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 156,
+   "exit_mentions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh_declared": {
+       "allow": true,
+       "reason": ""
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 155,
+     "path": "{substage_dir}/STATUS",
+     "phrase": "Read each sub-stage's STATUS file",
+     "tool": "Read"
+    }
+   ],
+   "n": "5",
+   "source": "gars/02_bioinformatics/CONTEXT.md:155-156",
+   "start": 155,
+   "templates": [
+    "T2"
+   ],
+   "text": "5. Read each sub-stage's STATUS file, treating a missing file as `NOT_STARTED`. Reply T2 with the full sub-stage status table, including VALIDATING, ARTIFACT_MISSING and STALE.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 159,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "6",
+   "source": "gars/02_bioinformatics/CONTEXT.md:157-159",
+   "start": 157,
+   "templates": [
+    "T4"
+   ],
+   "text": "6. Identify the first sub-stage that is not `COMPLETE`. If every sub-stage is `COMPLETE`, reply T4 and stop. VALIDATING, ARTIFACT_MISSING and STALE continue to step 10, where the sub-stage contract runs its collect step and reports its gate result.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "handoff",
+    "templates": [
+     "T4"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 161,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "7",
+   "source": "gars/02_bioinformatics/CONTEXT.md:160-161",
+   "start": 160,
+   "templates": [
+    "T3"
+   ],
+   "text": "7. If that sub-stage is `SUBMITTED` or `RUNNING`, reply T3 with how to check on it, and stop. Do not resubmit. After polling, VALIDATING, ARTIFACT_MISSING and STALE go to step 10.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 164,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "8",
+   "source": "gars/02_bioinformatics/CONTEXT.md:162-164",
+   "start": 162,
+   "templates": [
+    "T6"
+   ],
+   "text": "8. If that sub-stage is `FAILED:<reason>` or `CANCELLED`, reply T6 with its recorded error and stop. Resolving a failure or cancellation is the user's decision, not an automatic retry. VALIDATING, ARTIFACT_MISSING and STALE instead go to step 10.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --consumes <type> [<type> ...]",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/resolve_artifact.py --project projects/demo --assay rnaseq_bulk --consumes counts_gene",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py resolve_artifact '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py resolve_artifact '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py resolve_artifact '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: resolve_artifact is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py resolve_artifact '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 170,
+     "literal": "python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --consumes <type> [<type> ...]",
+     "tool": "resolve_artifact"
+    }
+   ],
+   "end": 178,
+   "exit_mentions": [
+    {
+     "codes": [
+      1
+     ],
+     "line": 176
+    }
+   ],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh_declared": {
+       "allow": true,
+       "reason": ""
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 165,
+     "path": "_references/assay_stage_skill_map.md",
+     "phrase": "read its `Consumes` column from the assay map",
+     "tool": "Read"
+    }
+   ],
+   "n": "9",
+   "source": "gars/02_bioinformatics/CONTEXT.md:165-178",
+   "start": 165,
+   "templates": [
+    "T7"
+   ],
+   "text": "9. If that sub-stage is `NOT_STARTED`, read its `Consumes` column from the assay map and resolve every listed type; VALIDATING, ARTIFACT_MISSING and STALE bypass this initial-input routing and go to step 10's collect hand-off: Do not perform this search yourself — the reverse-order scan, the `native` preference and the STATUS gate are the script's, and reading `OUTPUTS.tsv` by eye is how a consumer silently picks a matrix reshaped for someone else's parser. Exit 1 → reply T7 naming its `missing` and `declared_but_absent` entries and stop. **Never dispatch a sub-stage whose inputs are absent, and never regenerate a missing artifact.**",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 180,
+   "exit_mentions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh_declared": {
+       "allow": true,
+       "reason": ""
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 179,
+     "path": "02_bioinformatics/{assay}/{substage}/CONTEXT.md",
+     "phrase": "Read `02_bioinformatics/<Assay ID>/<NN_name>/CONTEXT.md`",
+     "tool": "Read"
+    }
+   ],
+   "n": "10",
+   "source": "gars/02_bioinformatics/CONTEXT.md:179-180",
+   "start": 179,
+   "templates": [],
+   "text": "10. Read `02_bioinformatics/<Assay ID>/<NN_name>/CONTEXT.md` and execute that contract. It owns everything from here, including its own response templates.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  }
+ ],
+ "substage": "01_nfcore-rnaseq-wrapper",
+ "templates": {
+  "T1": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [],
+   "commands_for_user": [],
+   "id": "T1",
+   "line": 189,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 192,
+     "text": "<title>"
+    },
+    {
+     "binding": "generic",
+     "line": 193,
+     "text": "<Assay ID>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/CONTEXT.md:189",
+   "title": "Start",
+   "unbound": []
+  },
+  "T2": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [],
+   "commands_for_user": [],
+   "id": "T2",
+   "line": 196,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 200,
+     "text": "<n>"
+    },
+    {
+     "binding": "generic",
+     "line": 200,
+     "text": "<NN_name>"
+    },
+    {
+     "binding": "no_source",
+     "label": "skill",
+     "line": 200,
+     "text": "<skill>"
+    },
+    {
+     "binding": "no_source",
+     "label": "reason",
+     "line": 200,
+     "text": "<reason>"
+    },
+    {
+     "binding": "generic",
+     "line": 202,
+     "text": "<NN_name>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/CONTEXT.md:196",
+   "title": "Sub-stage status",
+   "unbound": []
+  },
+  "T3": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [],
+   "commands_for_user": [
+    {
+     "command": "squeue -j <job_id>",
+     "line": 209
+    }
+   ],
+   "id": "T3",
+   "line": 205,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 207,
+     "text": "<NN_name>"
+    },
+    {
+     "binding": "choice",
+     "line": 207,
+     "text": "<SUBMITTED|RUNNING>"
+    },
+    {
+     "binding": "no_source",
+     "label": "job_id",
+     "line": 207,
+     "text": "<job_id>"
+    },
+    {
+     "binding": "generic",
+     "line": 207,
+     "text": "<timestamp>"
+    },
+    {
+     "binding": "no_source",
+     "label": "job_id",
+     "line": 209,
+     "text": "<job_id>"
+    },
+    {
+     "binding": "no_source",
+     "label": "reason",
+     "line": 211,
+     "text": "<reason>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/CONTEXT.md:205",
+   "title": "Already running",
+   "unbound": []
+  },
+  "T4": {
+   "accept_tokens": [],
+   "ask": "handoff",
+   "backing_tools": [],
+   "commands_for_user": [],
+   "id": "T4",
+   "line": 214,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 216,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "generic",
+     "line": 220,
+     "text": "<NN_name>"
+    },
+    {
+     "binding": "generic",
+     "line": 220,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "generic",
+     "line": 220,
+     "text": "<NN_name>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/CONTEXT.md:214",
+   "title": "All sub-stages complete",
+   "unbound": []
+  },
+  "T5": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [],
+   "commands_for_user": [],
+   "id": "T5",
+   "line": 265,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 271,
+     "text": "<title>"
+    },
+    {
+     "binding": "generic",
+     "line": 272,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "generic",
+     "line": 273,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "generic",
+     "line": 274,
+     "text": "<Assay ID>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/CONTEXT.md:265",
+   "title": "Preconditions not met",
+   "unbound": []
+  },
+  "T6": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [],
+   "commands_for_user": [],
+   "id": "T6",
+   "line": 279,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 281,
+     "text": "<NN_name>"
+    },
+    {
+     "binding": "no_source",
+     "label": "reason",
+     "line": 281,
+     "text": "<reason>"
+    },
+    {
+     "binding": "generic",
+     "line": 281,
+     "text": "<timestamp>"
+    },
+    {
+     "binding": "no_source",
+     "label": "error_code",
+     "line": 281,
+     "text": "<error_code>"
+    },
+    {
+     "binding": "composed",
+     "line": 283,
+     "text": "<verbatim error from the sub-stage log>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/CONTEXT.md:279",
+   "title": "Sub-stage failed or cancelled",
+   "unbound": []
+  },
+  "T7": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "resolve_artifact"
+   ],
+   "commands_for_user": [],
+   "id": "T7",
+   "line": 289,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 291,
+     "text": "<NN_name>"
+    },
+    {
+     "binding": "generic",
+     "line": 295,
+     "text": "<type>"
+    },
+    {
+     "binding": "composed",
+     "line": 295,
+     "text": "<sub-stage or ->"
+    }
+   ],
+   "source": "gars/02_bioinformatics/CONTEXT.md:289",
+   "title": "Required artifacts missing",
+   "unbound": []
+  },
+  "T8": {
+   "accept_tokens": [],
+   "ask": "gate",
+   "backing_tools": [
+    "configure.genomes",
+    "configure.contrasts",
+    "configure.peaks",
+    "configure.apply"
+   ],
+   "commands_for_user": [],
+   "id": "T8",
+   "line": 229,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 231,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "unbound",
+     "label": "decision",
+     "line": 231,
+     "text": "<n>"
+    },
+    {
+     "binding": "generic",
+     "line": 231,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "composed",
+     "line": 239,
+     "text": "<the assay's second decision menu>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/CONTEXT.md:229",
+   "title": "Config decisions",
+   "unbound": [
+    {
+     "binding": "unbound",
+     "label": "decision",
+     "line": 231,
+     "text": "<n>"
+    }
+   ]
+  },
+  "T9": {
+   "accept_tokens": [],
+   "ask": "gate",
+   "backing_tools": [
+    "configure.genomes",
+    "configure.contrasts",
+    "configure.peaks",
+    "configure.apply"
+   ],
+   "commands_for_user": [],
+   "id": "T9",
+   "line": 251,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 253,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "composed",
+     "line": 255,
+     "text": "<genome id>"
+    },
+    {
+     "binding": "key",
+     "label": "species",
+     "line": 255,
+     "text": "<species>"
+    },
+    {
+     "binding": "key",
+     "label": "source",
+     "line": 255,
+     "text": "<source>"
+    },
+    {
+     "binding": "generic",
+     "line": 256,
+     "text": "<path>"
+    },
+    {
+     "binding": "generic",
+     "line": 257,
+     "text": "<path>"
+    },
+    {
+     "binding": "composed",
+     "line": 258,
+     "text": "<path or \"none — indices will be built, ~40 min and 43 GB\">"
+    }
+   ],
+   "source": "gars/02_bioinformatics/CONTEXT.md:251",
+   "title": "Config to confirm",
+   "unbound": []
+  }
+ },
+ "wrapper_invocation": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py"
+}

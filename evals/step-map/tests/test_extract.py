@@ -115,6 +115,22 @@ class PinTests(Base):
         self.assertEqual(diff, "")
 
 
+class PublishedFactsTests(Base):
+    def test_committed_facts_equal_a_fresh_extraction(self):
+        """The facts under evals/step-map/facts/ are re-derived and diffed byte for byte."""
+        published = HERE.parent / "facts"
+        tmp = tempfile.mkdtemp(prefix="stepmap-facts-")
+        try:
+            X.write(self.result, tmp)
+            fresh = sorted(os.listdir(tmp))
+            self.assertEqual(sorted(os.listdir(str(published))), fresh)
+            for name in fresh:
+                with open(os.path.join(tmp, name), "rb") as a, open(str(published / name), "rb") as b:
+                    self.assertEqual(a.read(), b.read(), "facts/%s differs from a fresh extraction" % name)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 class ContractDiscoveryTests(Base):
     def test_fourteen_contracts(self):
         self.assertEqual(sorted(c["path"] for c in self.result["contracts"]),
@@ -213,12 +229,12 @@ class HelperExitTests(Base):
         return self.result["helpers"][tool]["exits"]
 
     def test_create_emits(self):
-        cited(self, REG00, 367, "return emit(result, EXIT_USAGE)")
+        cited(self, REG00, 366, "return emit(result, EXIT_USAGE)")
         cited(self, REG00, 373, "return emit(result, EXIT_REFUSED)")
         cited(self, REG00, 390, "return emit(result, EXIT_REFUSED)")
         sites = self.sites("stage00_register.create")
         self.assertEqual(sorted(int(c) for c in sites), [0, 2, 3])
-        self.assertIn("%s:367" % REG00, [s["at"] for s in sites["3"]])
+        self.assertIn("%s:366" % REG00, [s["at"] for s in sites["3"]])
         self.assertIn("%s:390" % REG00, [s["at"] for s in sites["2"]])
 
     def test_link_emits(self):
@@ -308,6 +324,95 @@ class UnhandledExitTests(Base):
         self.assertIn(2, self.unhandled(RNADE, "rnaseq_de.prepare"))
 
 
+class ProseFlagTests(Base):
+    def flag(self, path, step, flag):
+        hits = [e for e in self.contract(path)["prose_flags"] if e["step"] == step and e["flag"] == flag]
+        self.assertTrue(hits, "no %s flag at step %s of %s" % (flag, step, path))
+        return hits[0]
+
+    def test_pilot_writer_command_omits_verify_flag(self):
+        # 01:283 requires `--verify-integrity full` when step 8 was accepted; the step's own
+        # command (01:286) does not carry it.
+        cited(self, S01, 283, "`--verify-integrity full` only if step 8 was accepted")
+        cited(self, S01, 286, '--model "<model id>" [--confirm-exclusions] [--force]')
+        e = self.flag(S01, "9", "--verify-integrity")
+        self.assertIs(e["in_command"], False)
+        self.assertEqual(e["target_tool"], "stage01_samplesheet")
+        # the bracketed optional flags are part of the command
+        self.assertIs(self.flag(S01, "9", "--confirm-exclusions")["in_command"], True)
+        self.assertIs(self.flag(S01, "9", "--force")["in_command"], True)
+
+    def test_sample_id_pattern_variant_refused_where_intended(self):
+        cited(self, S00, 242, "`inspect` with `--sample-id-pattern '<their answer as a regex with named groups")
+        e = self.flag(S00, "10", "--sample-id-pattern")
+        self.assertEqual((e["target_tool"], e["target_step"]), ("stage00_register.inspect", "9"))
+        g = e["guard"]
+        self.assertEqual(g["intended"], "fresh_declared")
+        self.assertIs(g["allowed_where_intended"], False)
+
+    def test_flag_attaches_to_the_call_before_it_not_a_branch_call(self):
+        # 02.02:122-123: `--counts-from` modifies collect; status calls sit inside exit branches.
+        cited(self, RNADE, 123, "(decision 0024) and `--counts-from <the sub-stage the resolver named>`")
+        e = self.flag(RNADE, "8", "--counts-from")
+        self.assertEqual(e["target_tool"], "rnaseq_de.collect")
+        self.assertIs(e["in_command"], True)
+
+    def test_prohibited_flag(self):
+        cited(self, S00, 252, "Never add `--force`.")
+        e = self.flag(S00, "12", "--force")
+        self.assertIs(e["prohibited"], True)
+        self.assertIs(e["guard"]["allowed_where_intended"], False)
+
+
+class ReachabilityTests(Base):
+    def site(self, path, step, tool):
+        hits = [s for s in self.contract(path)["call_sites"] if s["step"] == step and s["tool"] == tool]
+        self.assertEqual(len(hits), 1)
+        return hits[0]
+
+    def test_check_mode_cannot_emit_the_writers_gate(self):
+        # stage01_samplesheet.py:1069-1073 returns before the blocked branch (1085) in --check.
+        cited(self, REG01, 1069, "if args.check:")
+        cited(self, REG01, 1085, "return emit(result, EXIT_NEEDS_CONFIRM)")
+        self.assertEqual(self.site(S01, "3", "stage01_samplesheet")["emitted"], [0, 1, 3])
+        self.assertEqual(self.site(S01, "9", "stage01_samplesheet")["emitted"], [0, 1, 2, 3])
+
+    def test_assays_without_select_cannot_refuse(self):
+        cited(self, REG00, 296, "if args.select is None:")
+        self.assertEqual(self.site(S00, "3", "stage00_register.assays")["emitted"], [0, 3])
+
+    def test_status_inside_an_exit_branch_opens_no_region(self):
+        # 02.02:122-126: "Exit 2 -> ... call status ..., Exit 1 -> ... call status" both answer
+        # collect; the status calls are branch actions.
+        cited(self, RNADE, 124, "run did not complete: call `python3 <workspace>/_system/executorlib.py status")
+        site = self.site(RNADE, "8", "rnaseq_de.collect")
+        self.assertEqual(site["handled"], [0, 1, 2])
+        self.assertEqual([b["tool"] for b in site["branch_calls"]], ["executor.status"] * 2)
+        self.assertEqual([s["tool"] for s in self.contract(RNADE)["call_sites"]
+                          if s["step"] == "8"], ["rnaseq_de.collect"])
+
+    def test_prose_handling_recorded(self):
+        cited(self, S03, 145, "If approval is absent, changed or expired, reply T3 with the refusal and stop")
+        site = self.site(S03, "7", "executor.submit")
+        self.assertEqual(site["unhandled"], [1, 2])
+        self.assertTrue(any(p.startswith("If approval is absent") for p in site["prose_handling"]))
+
+
+class BackingTests(Base):
+    def test_status_table_is_filled_from_files_the_agent_reads(self):
+        cited(self, S02, 155, "5. Read each sub-stage's STATUS file")
+        self.assertEqual(self.contract(S02)["templates"]["T2"]["backing_tools"], [])
+
+    def test_completion_template_backed_by_collect(self):
+        t6 = self.contract(SCC)["templates"]["T6"]
+        self.assertEqual(t6["backing_tools"], ["spatial_cluster_count.collect"])
+
+    def test_start_template_has_no_source(self):
+        t1 = self.contract(RNA01)["templates"]["T1"]
+        self.assertEqual(t1["backing_tools"], [])
+        self.assertIn("no_source", [p["binding"] for p in t1["placeholders"]])
+
+
 class TemplateTests(Base):
     def test_stage00_templates(self):
         cited(self, S00, 335, "**T4a — Path inspected, awaiting confirmation**")
@@ -369,6 +474,13 @@ class CommandTests(Base):
         unreg = [c for c in self.step(S01, "8")["calls"] if c["tool"] is None]
         self.assertEqual([c["executable"] for c in unreg], ["sbatch"])
 
+    def test_unknown_placeholder_is_reported_not_guessed(self):
+        minimal, maximal, missing = X.instantiate(
+            'python3 _system/x.py run --project projects/<title> [--extra <unknown thing>]')
+        self.assertEqual(minimal, "python3 _system/x.py run --project projects/{project}")
+        self.assertEqual(missing, ["<unknown thing>"])
+        self.assertIn("--extra <unknown thing>", maximal)
+
     def test_every_seen_command_is_accounted_for(self):
         acc = self.result["summary"]["command_accounting"]
         self.assertEqual(acc["seen"], acc["mapped"] + acc["unregistered"] + acc["uninstantiable"])
@@ -384,6 +496,7 @@ class GuardTests(Base):
 
     @classmethod
     def tearDownClass(cls):
+        cls.guard.close()
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def test_sample_id_pattern_refused(self):

@@ -1,0 +1,1349 @@
+{
+ "assay": "rnaseq_bulk",
+ "blob": "a8ce7d799e79733b8e1d41a26c9e8c597f773987",
+ "call_sites": [
+  {
+   "branch_calls": [],
+   "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay rnaseq_bulk --consumes counts_gene design",
+   "emitted": [
+    0,
+    1,
+    3
+   ],
+   "handled": [
+    1,
+    2,
+    3
+   ],
+   "line": 106,
+   "prose_handling": [],
+   "step": "3",
+   "tool": "resolve_artifact",
+   "unhandled": [],
+   "unhandled_sites": {}
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py check --project projects/<title> --counts projects/{project}/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv --design projects/{project}/01_samplesheets/rnaseq_bulk_design.csv",
+   "emitted": [
+    0,
+    1,
+    3
+   ],
+   "handled": [
+    1
+   ],
+   "line": 112,
+   "prose_handling": [],
+   "step": "4",
+   "tool": "rnaseq_de.check",
+   "unhandled": [
+    3
+   ],
+   "unhandled_sites": {
+    "3": [
+     "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:262"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py prepare --project projects/<title>",
+   "emitted": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "handled": [
+    0,
+    1
+   ],
+   "line": 115,
+   "prose_handling": [],
+   "step": "5",
+   "tool": "rnaseq_de.prepare",
+   "unhandled": [
+    2,
+    3
+   ],
+   "unhandled_sites": {
+    "2": [
+     "gars/_system/wrapperlib.py:925",
+     "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:280"
+    ],
+    "3": [
+     "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:274"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh",
+   "emitted": [
+    0,
+    1,
+    2
+   ],
+   "handled": [],
+   "line": 117,
+   "prose_handling": [],
+   "step": "6",
+   "tool": "executor.submit",
+   "unhandled": [
+    1,
+    2
+   ],
+   "unhandled_sites": {
+    "1": [
+     "gars/_system/executorlib.py:1420",
+     "gars/_system/executorlib.py:1431"
+    ],
+    "2": [
+     "gars/_system/executorlib.py:1395",
+     "gars/_system/executorlib.py:1419"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+   "emitted": [
+    0,
+    1,
+    2
+   ],
+   "handled": [],
+   "line": 119,
+   "prose_handling": [],
+   "step": "7",
+   "tool": "executor.status",
+   "unhandled": [
+    1,
+    2
+   ],
+   "unhandled_sites": {
+    "1": [
+     "gars/_system/executorlib.py:1448"
+    ],
+    "2": [
+     "gars/_system/executorlib.py:1395"
+    ]
+   }
+  },
+  {
+   "branch_calls": [
+    {
+     "line": 124,
+     "tool": "executor.status"
+    },
+    {
+     "line": 125,
+     "tool": "executor.status"
+    }
+   ],
+   "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py collect --project projects/<title> --model \"<the exact model id you are running as>\" --counts-from <the sub-stage the resolver named>",
+   "emitted": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "handled": [
+    0,
+    1,
+    2
+   ],
+   "line": 122,
+   "prose_handling": [],
+   "step": "8",
+   "tool": "rnaseq_de.collect",
+   "unhandled": [
+    3
+   ],
+   "unhandled_sites": {
+    "3": [
+     "gars/_system/wrapperlib.py:185",
+     "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:392"
+    ]
+   }
+  }
+ ],
+ "fenced_non_commands": [],
+ "file_mentions_unclassified": [],
+ "findings": [],
+ "id": "rnaseq_bulk__02_rnaseq-de",
+ "path": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md",
+ "prose_flags": [
+  {
+   "flag": "--counts",
+   "in_command": true,
+   "line": 112,
+   "prohibited": false,
+   "removal": false,
+   "step": "4",
+   "target_step": "4",
+   "target_tool": "rnaseq_de.check",
+   "value": null,
+   "variant": null
+  },
+  {
+   "flag": "--design",
+   "in_command": true,
+   "line": 112,
+   "prohibited": false,
+   "removal": false,
+   "step": "4",
+   "target_step": "4",
+   "target_tool": "rnaseq_de.check",
+   "value": null,
+   "variant": null
+  },
+  {
+   "flag": "--model",
+   "in_command": true,
+   "line": 122,
+   "prohibited": false,
+   "removal": false,
+   "step": "8",
+   "target_step": "8",
+   "target_tool": "rnaseq_de.collect",
+   "value": "\"<the exact model id you are running as>\"",
+   "variant": null
+  },
+  {
+   "flag": "--counts-from",
+   "in_command": true,
+   "line": 123,
+   "prohibited": false,
+   "removal": false,
+   "step": "8",
+   "target_step": "8",
+   "target_tool": "rnaseq_de.collect",
+   "value": "<the sub-stage the resolver named>",
+   "variant": null
+  }
+ ],
+ "schema": "stepmap-facts/1",
+ "sections": [
+  {
+   "end": 18,
+   "name": "Purpose",
+   "start": 3
+  },
+  {
+   "end": 27,
+   "name": "Inputs",
+   "start": 19
+  },
+  {
+   "end": 44,
+   "name": "Scope Boundaries",
+   "start": 28
+  },
+  {
+   "end": 98,
+   "name": "Definitions",
+   "start": 45
+  },
+  {
+   "end": 132,
+   "name": "Process",
+   "start": 99
+  },
+  {
+   "end": 206,
+   "name": "Response Format",
+   "start": 133
+  },
+  {
+   "end": 220,
+   "name": "OUTPUT",
+   "start": 207
+  },
+  {
+   "end": 226,
+   "name": "Human check",
+   "start": 221
+  }
+ ],
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "steps": [
+  {
+   "calls": [],
+   "end": 100,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "1",
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:100-100",
+   "start": 100,
+   "templates": [
+    "T1"
+   ],
+   "text": "1. Reply T1.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 102,
+   "exit_mentions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh_declared": {
+       "allow": true,
+       "reason": ""
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 101,
+     "path": "{substage_dir}/STATUS",
+     "phrase": "Read the STATUS file",
+     "tool": "Read"
+    }
+   ],
+   "n": "2",
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:101-102",
+   "start": 101,
+   "templates": [],
+   "text": "2. Read the STATUS file. If `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — the router handles those states.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay rnaseq_bulk --consumes counts_gene design",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/resolve_artifact.py --project projects/demo --assay rnaseq_bulk --consumes counts_gene design",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py resolve_artifact '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py resolve_artifact '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py resolve_artifact '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: resolve_artifact is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py resolve_artifact '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 106,
+     "literal": "python3 _system/resolve_artifact.py --project projects/<title> --assay rnaseq_bulk --consumes counts_gene design",
+     "tool": "resolve_artifact"
+    }
+   ],
+   "end": 111,
+   "exit_mentions": [
+    {
+     "codes": [
+      1,
+      2,
+      3
+     ],
+     "line": 110
+    }
+   ],
+   "file_actions": [],
+   "n": "3",
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:103-111",
+   "start": 103,
+   "templates": [
+    "T5"
+   ],
+   "text": "3. Resolve the inputs: Exit non-zero → reply T5 naming its `missing` entries and stop. Never dispatch without resolved inputs, and never regenerate a missing artifact.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py check --project projects/<title> --counts projects/{project}/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv --design projects/{project}/01_samplesheets/rnaseq_bulk_design.csv",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py check --project projects/demo --counts projects/demo/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv --design projects/demo/01_samplesheets/rnaseq_bulk_design.csv",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py rnaseq_de.check '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py rnaseq_de.check '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py rnaseq_de.check '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: rnaseq_de.check is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py rnaseq_de.check '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "prose",
+     "line": 112,
+     "literal": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py check --project projects/<title> --counts projects/{project}/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv --design projects/{project}/01_samplesheets/rnaseq_bulk_design.csv",
+     "tool": "rnaseq_de.check"
+    }
+   ],
+   "end": 114,
+   "exit_mentions": [
+    {
+     "codes": [
+      1
+     ],
+     "line": 112
+    }
+   ],
+   "file_actions": [],
+   "n": "4",
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:112-114",
+   "start": 112,
+   "templates": [
+    "T5"
+   ],
+   "text": "4. Run the wrapper's `check` with the resolved `--counts` and `--design`. Exit 1 → reply T5 with its `failures` verbatim and stop: `design` failures mean the design or contrast needs the user, `config_unfilled` means the stage 02 menus have not run.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py prepare --project projects/<title>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py prepare --project projects/demo --counts projects/demo/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv --design projects/demo/01_samplesheets/rnaseq_bulk_design.csv",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py rnaseq_de.prepare '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py rnaseq_de.prepare '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py rnaseq_de.prepare '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: rnaseq_de.prepare is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py rnaseq_de.prepare '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "prose",
+     "line": 115,
+     "literal": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py prepare --project projects/<title>",
+     "tool": "rnaseq_de.prepare"
+    }
+   ],
+   "end": 116,
+   "exit_mentions": [
+    {
+     "codes": [
+      1
+     ],
+     "line": 115
+    },
+    {
+     "codes": [
+      0
+     ],
+     "line": 115
+    }
+   ],
+   "file_actions": [],
+   "n": "5",
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:115-116",
+   "start": 115,
+   "templates": [
+    "T5"
+   ],
+   "text": "5. Run `prepare` with the same paths. Exit 1 → reply T5. Exit 0 → it wrote `scripts/run_de.py`, `submit.sh` and the reproducibility bundle.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 <scenario-root>/public/gars/_system/executorlib.py submit --workspace projects/demo projects/demo/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/submit.sh",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.submit '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.submit '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.submit '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: executor.submit is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py executor.submit '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 117,
+     "literal": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh",
+     "tool": "executor.submit"
+    }
+   ],
+   "end": 118,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "6",
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:117-118",
+   "start": 117,
+   "templates": [
+    "T2"
+   ],
+   "text": "6. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh`; capture `job_id` from the JSON. Submit has written `SUBMITTED`; no status call is needed yet. Reply T2 and stop.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 <scenario-root>/public/gars/_system/executorlib.py status --workspace projects/demo 4242",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: executor.status is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py executor.status '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 119,
+     "literal": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "tool": "executor.status"
+    }
+   ],
+   "end": 121,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "7",
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:119-121",
+   "start": 119,
+   "templates": [
+    "T3"
+   ],
+   "text": "7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: ask `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`, `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. Not yet terminal → reply T3, stop; the status call has already refreshed STATUS.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py collect --project projects/<title> --model \"<the exact model id you are running as>\" --counts-from <the sub-stage the resolver named>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: {\"alternative\": \"Next: ask the human to restore or review the configuration and run the sub-stage prepare step before collecting.\", \"field\": \"config_sha256\", \"message\": \"config or manifest config_sha256 missing/unreadable (R-073; decision 0058).\", \"rule\": \"R-073\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: {\"alternative\": \"Next: ask the human to restore or review the configuration and run the sub-stage prepare step before collecting.\", \"field\": \"config_sha256\", \"message\": \"config or manifest config_sha256 missing/unreadable (R-073; decision 0058).\", \"rule\": \"R-073\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py collect --project projects/demo --model \"claude-opus-5-5\" --counts-from 01_nfcore-rnaseq-wrapper",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py rnaseq_de.collect '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: ask the human to restore or review the configuration and run the sub-stage prepare step before collecting.\", \"field\": \"config_sha256\", \"message\": \"config or manifest config_sha256 missing/unreadable (R-073; decision 0058).\", \"rule\": \"R-073\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: ask the human to restore or review the configuration and run the sub-stage prepare step before collecting.\", \"field\": \"config_sha256\", \"message\": \"config or manifest config_sha256 missing/unreadable (R-073; decision 0058).\", \"rule\": \"R-073\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: rnaseq_de.collect is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py rnaseq_de.collect '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "prose",
+     "line": 122,
+     "literal": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py collect --project projects/<title> --model \"<the exact model id you are running as>\" --counts-from <the sub-stage the resolver named>",
+     "tool": "rnaseq_de.collect"
+    },
+    {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 <scenario-root>/public/gars/_system/executorlib.py status --workspace projects/demo 4242",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: executor.status is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py executor.status '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 124,
+     "literal": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "tool": "executor.status"
+    },
+    {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 <scenario-root>/public/gars/_system/executorlib.py status --workspace projects/demo 4242",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: executor.status is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py executor.status '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 125,
+     "literal": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "tool": "executor.status"
+    }
+   ],
+   "end": 126,
+   "exit_mentions": [
+    {
+     "codes": [
+      2
+     ],
+     "line": 123
+    },
+    {
+     "codes": [
+      1
+     ],
+     "line": 125
+    }
+   ],
+   "file_actions": [],
+   "n": "8",
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:122-126",
+   "start": 122,
+   "templates": [
+    "T4"
+   ],
+   "text": "8. If the job has finished, run `collect` with `--model \"<the exact model id you are running as>\"` (decision 0024) and `--counts-from <the sub-stage the resolver named>`. Exit 2 → the run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the scheduler log path, stop. Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "date",
+     "comment": null,
+     "executable": "date",
+     "guard": {
+      "allowed_where_intended": false,
+      "forms": {
+       "minimal": {
+        "command": "date",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "public": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "implicit",
+     "line": 131,
+     "literal": "date",
+     "tool": null
+    }
+   ],
+   "end": 131,
+   "exit_mentions": [
+    {
+     "codes": [
+      0
+     ],
+     "line": 127
+    }
+   ],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/HISTORY.md is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/HISTORY.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/HISTORY.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 130,
+     "path": "projects/{project}/HISTORY.md",
+     "phrase": "Append its `history_entry` to the project's `HISTORY.md`",
+     "tool": "Edit"
+    }
+   ],
+   "n": "9",
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:127-131",
+   "start": 127,
+   "templates": [
+    "T6"
+   ],
+   "text": "9. Exit 0 → `collect` has written `OUTPUTS.tsv` (`de_results` native, `counts_gene` **adapted**, `gene_id_map` native — the role marking is what stops a later consumer mistaking the reshaped matrix for 02.01's authoritative one) and `STATUS COMPLETE`. Append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>` with today's date, and reply T6.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  }
+ ],
+ "substage": "02_rnaseq-de",
+ "templates": {
+  "T1": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [],
+   "commands_for_user": [],
+   "id": "T1",
+   "line": 143,
+   "placeholders": [
+    {
+     "binding": "no_source",
+     "label": "de.formula",
+     "line": 147,
+     "text": "<de.formula>"
+    },
+    {
+     "binding": "no_source",
+     "label": "de.contrast",
+     "line": 147,
+     "text": "<de.contrast>"
+    },
+    {
+     "artifact": "counts_gene",
+     "binding": "artifact",
+     "line": 148,
+     "text": "<resolved counts_gene path>"
+    },
+    {
+     "binding": "generic",
+     "line": 148,
+     "text": "<sub-stage>"
+    },
+    {
+     "artifact": "design",
+     "binding": "artifact",
+     "line": 149,
+     "text": "<resolved design path>"
+    },
+    {
+     "binding": "no_source",
+     "label": "sample",
+     "line": 149,
+     "text": "<n>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:143",
+   "title": "Start",
+   "unbound": []
+  },
+  "T2": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "executor.submit"
+   ],
+   "commands_for_user": [
+    {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "line": 159
+    }
+   ],
+   "id": "T2",
+   "line": 152,
+   "placeholders": [
+    {
+     "binding": "key",
+     "label": "job_id",
+     "line": 154,
+     "text": "<job_id>"
+    },
+    {
+     "binding": "generic",
+     "line": 159,
+     "text": "<workspace>"
+    },
+    {
+     "artifact": "project",
+     "binding": "artifact",
+     "line": 159,
+     "text": "<project dir>"
+    },
+    {
+     "binding": "key",
+     "label": "job_id",
+     "line": 159,
+     "text": "<job_id>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:152",
+   "title": "Submitted",
+   "unbound": []
+  },
+  "T3": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "executor.status"
+   ],
+   "commands_for_user": [
+    {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "line": 167
+    }
+   ],
+   "id": "T3",
+   "line": 163,
+   "placeholders": [
+    {
+     "binding": "key",
+     "label": "job_id",
+     "line": 165,
+     "text": "<job_id>"
+    },
+    {
+     "binding": "key",
+     "label": "state",
+     "line": 165,
+     "text": "<state>"
+    },
+    {
+     "binding": "generic",
+     "line": 165,
+     "text": "<timestamp>"
+    },
+    {
+     "binding": "generic",
+     "line": 167,
+     "text": "<workspace>"
+    },
+    {
+     "artifact": "project",
+     "binding": "artifact",
+     "line": 167,
+     "text": "<project dir>"
+    },
+    {
+     "binding": "key",
+     "label": "job_id",
+     "line": 167,
+     "text": "<job_id>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:163",
+   "title": "Still running",
+   "unbound": []
+  },
+  "T4": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "rnaseq_de.collect"
+   ],
+   "commands_for_user": [],
+   "id": "T4",
+   "line": 170,
+   "placeholders": [
+    {
+     "binding": "choice",
+     "line": 172,
+     "text": "<stage: run|exit gate>"
+    },
+    {
+     "binding": "composed",
+     "line": 174,
+     "text": "<verbatim wrapper failures or scheduler error>"
+    },
+    {
+     "binding": "composed",
+     "line": 177,
+     "text": "<log file>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:170",
+   "title": "Failed",
+   "unbound": []
+  },
+  "T5": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "resolve_artifact",
+    "rnaseq_de.check",
+    "rnaseq_de.prepare"
+   ],
+   "commands_for_user": [],
+   "id": "T5",
+   "line": 180,
+   "placeholders": [
+    {
+     "binding": "composed",
+     "line": 184,
+     "text": "<the resolver's missing entries, or the wrapper's failures, verbatim>"
+    },
+    {
+     "binding": "composed",
+     "line": 186,
+     "text": "<what the user must do: complete 02.01 / fix the design / complete the config menus>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:180",
+   "title": "Preconditions not met",
+   "unbound": []
+  },
+  "T6": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "rnaseq_de.collect"
+   ],
+   "commands_for_user": [],
+   "id": "T6",
+   "line": 189,
+   "placeholders": [
+    {
+     "binding": "label",
+     "label": "genes tested",
+     "line": 200,
+     "text": "<n>"
+    },
+    {
+     "binding": "generic",
+     "line": 200,
+     "text": "<n>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:189",
+   "title": "Complete",
+   "unbound": []
+  }
+ },
+ "wrapper_invocation": "python3 _system/wrappers/rnaseq-de/rnaseq_de.py"
+}

@@ -1,0 +1,1294 @@
+{
+ "assay": "rnaseq_bulk",
+ "blob": "b896f84f244d273a89efdd065a9cd50ea0d516de",
+ "call_sites": [
+  {
+   "branch_calls": [],
+   "command": "python3 _system/stage01_samplesheet.py --project projects/<title> --check",
+   "emitted": [
+    0,
+    1,
+    3
+   ],
+   "handled": [
+    0,
+    1,
+    3
+   ],
+   "line": 264,
+   "prose_handling": [],
+   "step": "3",
+   "tool": "stage01_samplesheet",
+   "unhandled": [],
+   "unhandled_sites": {}
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/stage01_samplesheet.py --project projects/<title> --model \"<model id>\" [--confirm-exclusions] [--force]",
+   "emitted": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "handled": [
+    0,
+    1,
+    2
+   ],
+   "line": 286,
+   "prose_handling": [],
+   "step": "9",
+   "tool": "stage01_samplesheet",
+   "unhandled": [
+    3
+   ],
+   "unhandled_sites": {
+    "3": [
+     "gars/_system/stage01_samplesheet.py:1021",
+     "gars/_system/stage01_samplesheet.py:1026",
+     "gars/_system/stage01_samplesheet.py:1031",
+     "gars/_system/stage01_samplesheet.py:1040"
+    ]
+   }
+  }
+ ],
+ "fenced_non_commands": [],
+ "file_mentions_unclassified": [
+  {
+   "line": 254,
+   "sentence": "py apply` to supply these: its stage-02 menus do not write them.",
+   "step": "2"
+  },
+  {
+   "line": 271,
+   "sentence": "Write no outputs.",
+   "step": "5"
+  },
+  {
+   "line": 295,
+   "sentence": "Exit 1 at this point means the **exit gate** failed: the artifacts were written and then found wrong on re-read.",
+   "step": "11"
+  },
+  {
+   "line": 303,
+   "sentence": "Offer to write values they give you; never choose one yourself.",
+   "step": "14"
+  }
+ ],
+ "findings": [],
+ "id": "01_prepare_samplesheets",
+ "path": "gars/01_prepare_samplesheets/CONTEXT.md",
+ "prose_flags": [
+  {
+   "flag": "--confirm-exclusions",
+   "in_command": true,
+   "line": 282,
+   "prohibited": false,
+   "removal": false,
+   "step": "9",
+   "target_step": "9",
+   "target_tool": "stage01_samplesheet",
+   "value": null,
+   "variant": null
+  },
+  {
+   "flag": "--force",
+   "in_command": true,
+   "line": 282,
+   "prohibited": false,
+   "removal": false,
+   "step": "9",
+   "target_step": "9",
+   "target_tool": "stage01_samplesheet",
+   "value": null,
+   "variant": null
+  },
+  {
+   "flag": "--verify-integrity",
+   "guard": {
+    "allowed_where_intended": true,
+    "dispatcher": {
+     "decisions": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     }
+    },
+    "forms": {
+     "maximal": {
+      "command": "python3 _system/stage01_samplesheet.py --project projects/demo --model \"claude-opus-5-5\" --confirm-exclusions --force --verify-integrity full",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+       },
+       "mixed": {
+        "allow": true,
+        "reason": ""
+       },
+       "public": {
+        "allow": true,
+        "reason": ""
+       }
+      }
+     },
+     "minimal": {
+      "command": "python3 _system/stage01_samplesheet.py --project projects/demo --model \"claude-opus-5-5\" --verify-integrity full",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+       },
+       "mixed": {
+        "allow": true,
+        "reason": ""
+       },
+       "public": {
+        "allow": true,
+        "reason": ""
+       }
+      }
+     }
+    },
+    "intended": "public",
+    "missing_placeholders": [],
+    "status": "checked"
+   },
+   "in_command": false,
+   "line": 283,
+   "prohibited": false,
+   "removal": false,
+   "step": "9",
+   "target_step": "9",
+   "target_tool": "stage01_samplesheet",
+   "value": "full",
+   "variant": "python3 _system/stage01_samplesheet.py --project projects/<title> --model \"<model id>\" [--confirm-exclusions] [--force] --verify-integrity full"
+  },
+  {
+   "flag": "--model",
+   "in_command": true,
+   "line": 289,
+   "prohibited": false,
+   "removal": false,
+   "step": "9",
+   "target_step": "9",
+   "target_tool": "stage01_samplesheet",
+   "value": null,
+   "variant": null
+  }
+ ],
+ "schema": "stepmap-facts/1",
+ "sections": [
+  {
+   "end": 13,
+   "name": "Purpose",
+   "start": 3
+  },
+  {
+   "end": 26,
+   "name": "Inputs",
+   "start": 14
+  },
+  {
+   "end": 52,
+   "name": "Scope Boundaries",
+   "start": 27
+  },
+  {
+   "end": 246,
+   "name": "Definitions",
+   "start": 53
+  },
+  {
+   "end": 305,
+   "name": "Process",
+   "start": 247
+  },
+  {
+   "end": 424,
+   "name": "Response Format",
+   "start": 306
+  },
+  {
+   "end": 444,
+   "name": "OUTPUT",
+   "start": 425
+  },
+  {
+   "end": 458,
+   "name": "Human check",
+   "start": 445
+  }
+ ],
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "steps": [
+  {
+   "calls": [],
+   "end": 248,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "1",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:248-248",
+   "start": 248,
+   "templates": [
+    "T1"
+   ],
+   "text": "1. Activated when the user asks to prepare samplesheets or to proceed past stage 00. Reply T1.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 260,
+   "exit_mentions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/_config/rnaseq_bulk.yaml is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/_config/rnaseq_bulk.yaml is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/_config/rnaseq_bulk.yaml is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 249,
+     "path": "projects/{project}/_config/{assay}.yaml",
+     "phrase": "Read each assay config",
+     "tool": "Read"
+    },
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/_config/rnaseq_bulk.yaml is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/_config/rnaseq_bulk.yaml is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/_config/rnaseq_bulk.yaml is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 251,
+     "path": "projects/{project}/_config/{assay}.yaml",
+     "phrase": "Write exactly their supplied values into the existing `_config/<Assay ID>.yaml`",
+     "tool": "Edit"
+    },
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/HISTORY.md is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/HISTORY.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/HISTORY.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 256,
+     "path": "projects/{project}/HISTORY.md",
+     "phrase": "append a HISTORY.md",
+     "tool": "Edit"
+    }
+   ],
+   "n": "2",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:249-260",
+   "start": 249,
+   "templates": [
+    "T9"
+   ],
+   "text": "2. Resolve the project directory from the title. Read each assay config for the declarations above. For each undeclared RNA strandedness or RNA/ATAC replication unit or reference release, send T9 listing only missing keys and wait for the user's values. Write exactly their supplied values into the existing `_config/<Assay ID>.yaml` path (0019), adding missing top-level keys and preserving other settings. Never invent values or use `configure.py apply` to supply these: its stage-02 menus do not write them. If the user declares experimental pairing, record `paired: paired` (or explicit `unpaired`). Whenever the agent writes unit_of_replication, reference_release or paired, append a HISTORY.md entry quoting the user's answer verbatim and naming each key and value using the declaration-line format in Definitions, one key per line. This applies to T9 and unsolicited pairing declarations. Reference paths and the genome menu remain stage 02's responsibility. Then validate.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "gate",
+    "templates": [
+     "T9"
+    ]
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage01_samplesheet.py --project projects/<title> --check",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/stage01_samplesheet.py --project projects/demo --check",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 264,
+     "literal": "python3 _system/stage01_samplesheet.py --project projects/<title> --check",
+     "tool": "stage01_samplesheet"
+    }
+   ],
+   "end": 268,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "3",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:261-268",
+   "start": 261,
+   "templates": [],
+   "text": "3. Run the validator, from the workspace root: It needs no conda environment; when library_index is present it streams up to 1,000 records per FASTQ. Parse its JSON; branch on its **exit code** per Definitions.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 269,
+   "exit_mentions": [
+    {
+     "codes": [
+      3
+     ],
+     "line": 269
+    }
+   ],
+   "file_actions": [],
+   "n": "4",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:269-269",
+   "start": 269,
+   "templates": [
+    "T6"
+   ],
+   "text": "4. Exit 3 → reply T6 using its `error` field, and stop.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 272,
+   "exit_mentions": [
+    {
+     "codes": [
+      1
+     ],
+     "line": 270
+    }
+   ],
+   "file_actions": [],
+   "n": "5",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:270-272",
+   "start": 270,
+   "templates": [
+    "T3",
+    "T9"
+   ],
+   "text": "5. Exit 1 → reply T3, rendering every entry of every assay's `failures` array verbatim in the table. Write no outputs. For undeclared config values, return to step 2 and T9; for other failures, stop and await the user’s correction. Never repair design rows.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "handoff",
+    "templates": [
+     "T3",
+     "T9"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 275,
+   "exit_mentions": [
+    {
+     "codes": [
+      0
+     ],
+     "line": 273
+    }
+   ],
+   "file_actions": [],
+   "n": "6",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:273-275",
+   "start": 273,
+   "templates": [
+    "T7"
+   ],
+   "text": "6. Exit 0 with `exclusions_pending: true` → reply T7 listing every assay's `exclusions`, and wait. Never proceed on a silent exclusion, and never infer that a missing row was an oversight. On `cancel`, stop.",
+   "wait": {
+    "accept_tokens": [
+     "cancel"
+    ],
+    "kind": "gate",
+    "templates": [
+     "T7"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 276,
+   "exit_mentions": [
+    {
+     "codes": [
+      0
+     ],
+     "line": 276
+    }
+   ],
+   "file_actions": [],
+   "n": "7",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:276-276",
+   "start": 276,
+   "templates": [
+    "T5"
+   ],
+   "text": "7. Exit 0 with a non-empty `existing_outputs` → reply T5 listing them, and wait. On `cancel`, stop.",
+   "wait": {
+    "accept_tokens": [
+     "cancel"
+    ],
+    "kind": "gate",
+    "templates": [
+     "T5"
+    ]
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "sbatch",
+     "comment": null,
+     "executable": "sbatch",
+     "guard": {
+      "allowed_where_intended": false,
+      "forms": {
+       "minimal": {
+        "command": "sbatch",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "public": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "executable",
+     "line": 280,
+     "literal": "sbatch",
+     "tool": null
+    }
+   ],
+   "end": 280,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "8",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:277-280",
+   "start": 277,
+   "templates": [
+    "T8"
+   ],
+   "text": "8. Reply T8 offering the optional deep integrity check, quoting `included_gb` and `full_check_estimate_min` from step 3, and wait. Ask even when the cohort is small; the answer is recorded, so it must be the user's. If they accept and `full_check_needs_scheduling` is true, submit the step-9 command with `sbatch` instead of running it inline.",
+   "wait": {
+    "accept_tokens": [
+     "skip",
+     "verify"
+    ],
+    "kind": "gate",
+    "templates": [
+     "T8"
+    ]
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage01_samplesheet.py --project projects/<title> --model \"<model id>\" [--confirm-exclusions] [--force]",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "maximal": {
+        "command": "python3 _system/stage01_samplesheet.py --project projects/demo --model \"claude-opus-5-5\" --confirm-exclusions --force",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       },
+       "minimal": {
+        "command": "python3 _system/stage01_samplesheet.py --project projects/demo --model \"claude-opus-5-5\"",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage01_samplesheet '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 286,
+     "literal": "python3 _system/stage01_samplesheet.py --project projects/<title> --model \"<model id>\" [--confirm-exclusions] [--force]",
+     "tool": "stage01_samplesheet"
+    }
+   ],
+   "end": 291,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "9",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:281-291",
+   "start": 281,
+   "templates": [],
+   "text": "9. Once every applicable gate is confirmed, run the writer with exactly the flags the user cleared — `--confirm-exclusions` only if step 6 happened, `--force` only if step 7 did, and `--verify-integrity full` only if step 8 was accepted: `--model` is the exact model id you are running as; it lands in the `history_entry` beside the template version. Omit it only if you cannot name your model — the script then records `unknown`.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 294,
+   "exit_mentions": [
+    {
+     "codes": [
+      2
+     ],
+     "line": 293
+    }
+   ],
+   "file_actions": [],
+   "n": "10",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:293-294",
+   "start": 293,
+   "templates": [
+    "T5",
+    "T7"
+   ],
+   "text": "10. Exit 2 → a gate you believed cleared was not. Reply T5 or T7 as its `blocked` array indicates and return to step 6. Never re-run adding a flag the user did not confirm.",
+   "wait": {
+    "accept_tokens": [
+     "cancel"
+    ],
+    "kind": "gate",
+    "templates": [
+     "T5",
+     "T7"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 296,
+   "exit_mentions": [
+    {
+     "codes": [
+      1
+     ],
+     "line": 295
+    }
+   ],
+   "file_actions": [],
+   "n": "11",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:295-296",
+   "start": 295,
+   "templates": [
+    "T3"
+   ],
+   "text": "11. Exit 1 at this point means the **exit gate** failed: the artifacts were written and then found wrong on re-read. Reply T3 with the `exit_gate` failures and stop. Do not repair them.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "handoff",
+    "templates": [
+     "T3"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 297,
+   "exit_mentions": [
+    {
+     "codes": [
+      0
+     ],
+     "line": 297
+    }
+   ],
+   "file_actions": [],
+   "n": "12",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:297-297",
+   "start": 297,
+   "templates": [
+    "T2"
+   ],
+   "text": "12. Exit 0 → reply T2 using each assay's `counts`.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "date",
+     "comment": null,
+     "executable": "date",
+     "guard": {
+      "allowed_where_intended": false,
+      "forms": {
+       "minimal": {
+        "command": "date",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "public": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "implicit",
+     "line": 299,
+     "literal": "date",
+     "tool": null
+    }
+   ],
+   "end": 300,
+   "exit_mentions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/HISTORY.md is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/HISTORY.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/HISTORY.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 298,
+     "path": "projects/{project}/HISTORY.md",
+     "phrase": "Append the script's `history_entry` to the project's `HISTORY.md`",
+     "tool": "Edit"
+    }
+   ],
+   "n": "13",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:298-300",
+   "start": 298,
+   "templates": [],
+   "text": "13. Append the script's `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>` with today's date. Do not restate its numbers in your own words — they are the script's counts, not your recollection.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 304,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "14",
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:301-304",
+   "start": 301,
+   "templates": [
+    "T4"
+   ],
+   "text": "14. Reply T4 using `wrote`, each assay's `counts`, and its `config_unfilled` — the scientific decisions still outstanding in `_config/<Assay ID>.yaml`. Stage 00 seeded that file, so the user is completing it, not authoring it. Offer to write values they give you; never choose one yourself.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "handoff",
+    "templates": [
+     "T4"
+    ]
+   }
+  }
+ ],
+ "substage": "01_nfcore-rnaseq-wrapper",
+ "templates": {
+  "T1": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [],
+   "commands_for_user": [],
+   "id": "T1",
+   "line": 323,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 326,
+     "text": "<title>"
+    }
+   ],
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:323",
+   "title": "Start",
+   "unbound": []
+  },
+  "T2": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "stage01_samplesheet"
+   ],
+   "commands_for_user": [],
+   "id": "T2",
+   "line": 330,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 334,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "key",
+     "label": "samplesheet_rows",
+     "line": 334,
+     "text": "<samplesheet_rows>"
+    },
+    {
+     "binding": "key",
+     "label": "samples_included",
+     "line": 334,
+     "text": "<samples_included>"
+    },
+    {
+     "binding": "key",
+     "label": "samples_total",
+     "line": 334,
+     "text": "<samples_total>"
+    },
+    {
+     "binding": "key",
+     "label": "groups",
+     "line": 334,
+     "text": "<groups>"
+    },
+    {
+     "binding": "key",
+     "label": "layout",
+     "line": 334,
+     "text": "<layout>"
+    },
+    {
+     "binding": "key",
+     "label": "strandedness",
+     "line": 334,
+     "text": "<strandedness>"
+    },
+    {
+     "binding": "composed",
+     "line": 337,
+     "text": "<recorded DEGRADE flags and limitations, if any>"
+    },
+    {
+     "binding": "composed",
+     "line": 338,
+     "text": "<checks recorded not_checkable, if any>"
+    }
+   ],
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:330",
+   "title": "Validation passed",
+   "unbound": []
+  },
+  "T3": {
+   "accept_tokens": [],
+   "ask": "handoff",
+   "backing_tools": [
+    "stage01_samplesheet"
+   ],
+   "commands_for_user": [],
+   "id": "T3",
+   "line": 341,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 347,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "key",
+     "label": "check",
+     "line": 347,
+     "text": "<check>"
+    },
+    {
+     "binding": "key",
+     "label": "detail",
+     "line": 347,
+     "text": "<detail>"
+    }
+   ],
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:341",
+   "title": "Validation failed",
+   "unbound": []
+  },
+  "T4": {
+   "accept_tokens": [],
+   "ask": "handoff",
+   "backing_tools": [
+    "stage01_samplesheet"
+   ],
+   "commands_for_user": [],
+   "id": "T4",
+   "line": 352,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 354,
+     "text": "<title>"
+    },
+    {
+     "binding": "generic",
+     "line": 358,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "key",
+     "label": "samplesheet_rows",
+     "line": 358,
+     "text": "<samplesheet_rows>"
+    },
+    {
+     "binding": "key",
+     "label": "design_rows",
+     "line": 358,
+     "text": "<design_rows>"
+    },
+    {
+     "binding": "generic",
+     "line": 358,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "generic",
+     "line": 358,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "generic",
+     "line": 358,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "unbound",
+     "label": "decision",
+     "line": 360,
+     "text": "<n>"
+    },
+    {
+     "binding": "generic",
+     "line": 360,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "generic",
+     "line": 368,
+     "text": "<Assay ID>"
+    }
+   ],
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:352",
+   "title": "Stage complete",
+   "unbound": [
+    {
+     "binding": "unbound",
+     "label": "decision",
+     "line": 360,
+     "text": "<n>"
+    }
+   ]
+  },
+  "T5": {
+   "accept_tokens": [
+    "cancel"
+   ],
+   "ask": "gate",
+   "backing_tools": [
+    "stage01_samplesheet"
+   ],
+   "commands_for_user": [],
+   "id": "T5",
+   "line": 378,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 380,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "key",
+     "label": "existing_outputs",
+     "line": 381,
+     "text": "<existing_outputs>"
+    }
+   ],
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:378",
+   "title": "Existing samplesheets",
+   "unbound": []
+  },
+  "T6": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "stage01_samplesheet"
+   ],
+   "commands_for_user": [],
+   "id": "T6",
+   "line": 386,
+   "placeholders": [
+    {
+     "binding": "key",
+     "label": "error",
+     "line": 390,
+     "text": "<error>"
+    }
+   ],
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:386",
+   "title": "Preconditions not met",
+   "unbound": []
+  },
+  "T7": {
+   "accept_tokens": [
+    "cancel"
+   ],
+   "ask": "gate",
+   "backing_tools": [
+    "stage01_samplesheet"
+   ],
+   "commands_for_user": [],
+   "id": "T7",
+   "line": 411,
+   "placeholders": [
+    {
+     "binding": "label",
+     "label": "sample(s)",
+     "line": 413,
+     "text": "<n>"
+    },
+    {
+     "binding": "generic",
+     "line": 417,
+     "text": "<sample_id>"
+    },
+    {
+     "binding": "key",
+     "label": "file_rows",
+     "line": 417,
+     "text": "<file_rows>"
+    },
+    {
+     "binding": "key",
+     "label": "samples_included",
+     "line": 419,
+     "text": "<samples_included>"
+    },
+    {
+     "binding": "key",
+     "label": "samples_total",
+     "line": 419,
+     "text": "<samples_total>"
+    }
+   ],
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:411",
+   "title": "Samples excluded, awaiting confirmation",
+   "unbound": []
+  },
+  "T8": {
+   "accept_tokens": [
+    "verify",
+    "skip"
+   ],
+   "ask": "gate",
+   "backing_tools": [
+    "stage01_samplesheet"
+   ],
+   "commands_for_user": [],
+   "id": "T8",
+   "line": 395,
+   "placeholders": [
+    {
+     "binding": "key",
+     "label": "samples_included",
+     "line": 399,
+     "text": "<samples_included>"
+    },
+    {
+     "binding": "key",
+     "label": "included_gb",
+     "line": 403,
+     "text": "<included_gb>"
+    },
+    {
+     "binding": "key",
+     "label": "full_check_estimate_min",
+     "line": 404,
+     "text": "<full_check_estimate_min>"
+    },
+    {
+     "binding": "composed",
+     "line": 404,
+     "text": "<, submitted to Slurm if needs_scheduling>"
+    }
+   ],
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:395",
+   "title": "Deep integrity check offered",
+   "unbound": []
+  },
+  "T9": {
+   "accept_tokens": [],
+   "ask": "gate",
+   "backing_tools": [
+    "stage01_samplesheet"
+   ],
+   "commands_for_user": [],
+   "id": "T9",
+   "line": 313,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 315,
+     "text": "<Assay ID>"
+    }
+   ],
+   "source": "gars/01_prepare_samplesheets/CONTEXT.md:313",
+   "title": "Missing declarations",
+   "unbound": []
+  }
+ },
+ "wrapper_invocation": null
+}

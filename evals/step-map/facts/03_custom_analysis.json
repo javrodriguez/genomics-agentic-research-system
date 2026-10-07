@@ -1,0 +1,1146 @@
+{
+ "assay": "rnaseq_bulk",
+ "blob": "c022d5a741859c626c35100f6b20a8ca97a63042",
+ "call_sites": [
+  {
+   "branch_calls": [],
+   "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --list",
+   "emitted": [
+    0,
+    1,
+    3
+   ],
+   "handled": [],
+   "line": 116,
+   "prose_handling": [
+    "If nothing is resolvable — no completed sub-stage declares any artifact and stage 01 has emitted nothing — reply T1 and stop."
+   ],
+   "step": "1",
+   "tool": "resolve_artifact",
+   "unhandled": [
+    1,
+    3
+   ],
+   "unhandled_sites": {
+    "1": [
+     "gars/_system/resolve_artifact.py:149"
+    ],
+    "3": [
+     "gars/_system/resolve_artifact.py:138",
+     "gars/_system/resolve_artifact.py:140"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/stage03_analysis.py create --project projects/<title> --slug <slug>",
+   "emitted": [
+    0,
+    2,
+    3
+   ],
+   "handled": [
+    2
+   ],
+   "line": 119,
+   "prose_handling": [],
+   "step": "2",
+   "tool": "stage03_analysis.create",
+   "unhandled": [
+    3
+   ],
+   "unhandled_sites": {
+    "3": [
+     "gars/_system/stage03_analysis.py:164",
+     "gars/_system/stage03_analysis.py:169"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>",
+   "emitted": [
+    0,
+    1,
+    2
+   ],
+   "handled": [],
+   "line": 137,
+   "prose_handling": [
+    "If approval is absent, changed or expired, reply T3 with the refusal and stop; a new approval is the user's."
+   ],
+   "step": "7",
+   "tool": "executor.submit",
+   "unhandled": [
+    1,
+    2
+   ],
+   "unhandled_sites": {
+    "1": [
+     "gars/_system/executorlib.py:1420",
+     "gars/_system/executorlib.py:1431"
+    ],
+    "2": [
+     "gars/_system/executorlib.py:1395",
+     "gars/_system/executorlib.py:1419"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+   "emitted": [
+    0,
+    1,
+    2
+   ],
+   "handled": [],
+   "line": 148,
+   "prose_handling": [
+    "If execution fails, call `python3 <workspace>/_system/executorlib."
+   ],
+   "step": "8",
+   "tool": "executor.status",
+   "unhandled": [
+    1,
+    2
+   ],
+   "unhandled_sites": {
+    "1": [
+     "gars/_system/executorlib.py:1448"
+    ],
+    "2": [
+     "gars/_system/executorlib.py:1395"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model \"<model id>\"",
+   "emitted": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "handled": [
+    0,
+    1,
+    2
+   ],
+   "line": 152,
+   "prose_handling": [],
+   "step": "9",
+   "tool": "stage03_analysis.verify",
+   "unhandled": [
+    3
+   ],
+   "unhandled_sites": {
+    "3": [
+     "gars/_system/stage03_analysis.py:386"
+    ]
+   }
+  }
+ ],
+ "fenced_non_commands": [],
+ "file_mentions_unclassified": [
+  {
+   "line": 131,
+   "sentence": "If they report that it refused (exit 2), ask for its `blocked` reasons, reply T3 with them verbatim, fix the plan (that is a draft edit, allowed), and return to step 4.",
+   "step": "6"
+  },
+  {
+   "line": 142,
+   "sentence": "Never write `run/` yourself or from a script.",
+   "step": "7"
+  }
+ ],
+ "findings": [],
+ "id": "03_custom_analysis",
+ "path": "gars/03_custom_analysis/CONTEXT.md",
+ "prose_flags": [
+  {
+   "flag": "--model",
+   "in_command": true,
+   "line": 153,
+   "prohibited": false,
+   "removal": false,
+   "step": "9",
+   "target_step": "9",
+   "target_tool": "stage03_analysis.verify",
+   "value": null,
+   "variant": null
+  }
+ ],
+ "schema": "stepmap-facts/1",
+ "sections": [
+  {
+   "end": 15,
+   "name": "Purpose",
+   "start": 3
+  },
+  {
+   "end": 25,
+   "name": "Inputs",
+   "start": 16
+  },
+  {
+   "end": 50,
+   "name": "Scope Boundaries",
+   "start": 26
+  },
+  {
+   "end": 112,
+   "name": "Definitions",
+   "start": 51
+  },
+  {
+   "end": 159,
+   "name": "Process",
+   "start": 113
+  },
+  {
+   "end": 235,
+   "name": "Response Format",
+   "start": 160
+  },
+  {
+   "end": 248,
+   "name": "OUTPUT",
+   "start": 236
+  },
+  {
+   "end": 254,
+   "name": "Human check",
+   "start": 249
+  }
+ ],
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "steps": [
+  {
+   "calls": [
+    {
+     "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --list",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/resolve_artifact.py --project projects/demo --assay rnaseq_bulk --list",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py resolve_artifact '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py resolve_artifact '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py resolve_artifact '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: resolve_artifact is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py resolve_artifact '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 116,
+     "literal": "python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --list",
+     "tool": "resolve_artifact"
+    }
+   ],
+   "end": 118,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "1",
+   "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
+   "start": 114,
+   "templates": [
+    "T1"
+   ],
+   "text": "1. Activated when the user asks for a custom or downstream analysis of an existing project. Identify the project; run `python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --list` for the relevant assay. If nothing is resolvable — no completed sub-stage declares any artifact and stage 01 has emitted nothing — reply T1 and stop.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage03_analysis.py create --project projects/<title> --slug <slug>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/stage03_analysis.py create --project projects/demo --slug qc-look",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage03_analysis.create '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage03_analysis.create '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage03_analysis.create '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 119,
+     "literal": "python3 _system/stage03_analysis.py create --project projects/<title> --slug <slug>",
+     "tool": "stage03_analysis.create"
+    }
+   ],
+   "end": 120,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "2",
+   "source": "gars/03_custom_analysis/CONTEXT.md:119-120",
+   "start": 119,
+   "templates": [],
+   "text": "2. Run `python3 _system/stage03_analysis.py create --project projects/<title> --slug <slug>`, with a short kebab-case slug named after the goal.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 126,
+   "exit_mentions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/03_custom_analysis/01_qc-look/PLAN.md is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/03_custom_analysis/01_qc-look/PLAN.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/03_custom_analysis/01_qc-look/PLAN.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 121,
+     "path": "projects/{project}/03_custom_analysis/01_qc-look/PLAN.md",
+     "phrase": "replace every `<FILL: ...>` marker in the created `PLAN.md`",
+     "tool": "Edit"
+    }
+   ],
+   "n": "3",
+   "source": "gars/03_custom_analysis/CONTEXT.md:121-126",
+   "start": 121,
+   "templates": [],
+   "text": "3. Draft the plan: replace every `<FILL: ...>` marker in the created `PLAN.md`. Inputs come from step 1's resolution; Outputs use the closed vocabulary, preferring a specific type (`counts_gene`, `de_results`, …) over a generic one (`table`, `figure`, `report`) wherever one fits; Execution keeps its `Runs: batch` line unless the user explicitly asked for the login node. This is the step where your judgment belongs — spend it here, not at the keyboard later.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 127,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "4",
+   "source": "gars/03_custom_analysis/CONTEXT.md:127-127",
+   "start": 127,
+   "templates": [
+    "T2"
+   ],
+   "text": "4. Reply T2 and stop. The user reads the plan, edits it if they wish, and answers.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "handoff",
+    "templates": [
+     "T2"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 130,
+   "exit_mentions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/03_custom_analysis/01_qc-look/PLAN.md is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/03_custom_analysis/01_qc-look/PLAN.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/03_custom_analysis/01_qc-look/PLAN.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 128,
+     "path": "projects/{project}/03_custom_analysis/01_qc-look/PLAN.md",
+     "phrase": "apply them to `PLAN.md`",
+     "tool": "Edit"
+    }
+   ],
+   "n": "5",
+   "source": "gars/03_custom_analysis/CONTEXT.md:128-130",
+   "start": 128,
+   "templates": [
+    "T2"
+   ],
+   "text": "5. If the user asks for changes, apply them to `PLAN.md` (it is still DRAFT), then reply T2 again with what changed. If they decline the analysis, stop; the DRAFT directory remains as the record that it was considered.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "handoff",
+    "templates": [
+     "T2"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 134,
+   "exit_mentions": [
+    {
+     "codes": [
+      2
+     ],
+     "line": 132
+    }
+   ],
+   "file_actions": [],
+   "n": "6",
+   "source": "gars/03_custom_analysis/CONTEXT.md:131-134",
+   "start": 131,
+   "templates": [
+    "T2",
+    "T3"
+   ],
+   "text": "6. The user approves by running the command T2 gave them, in their own terminal. If they report that it refused (exit 2), ask for its `blocked` reasons, reply T3 with them verbatim, fix the plan (that is a draft edit, allowed), and return to step 4. Never argue past the gate, and never run `approve` yourself.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "handoff",
+    "templates": [
+     "T2"
+    ]
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 <scenario-root>/public/gars/_system/executorlib.py submit --workspace projects/demo projects/demo/03_custom_analysis/01_qc-look/scripts/run.sh",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.submit '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.submit '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.submit '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: executor.submit is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py executor.submit '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 137,
+     "literal": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>",
+     "tool": "executor.submit"
+    }
+   ],
+   "end": 147,
+   "exit_mentions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/03_custom_analysis/01_qc-look/scripts/run.sh is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107); an agent never writes inside a closed project either (decision 0141): a door may compare or run what is there. Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/03_custom_analysis/01_qc-look/scripts/run.sh is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107); an agent never writes inside a closed project either (decision 0141): a door may compare or run what is there. Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/03_custom_analysis/01_qc-look/scripts/run.sh is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107); an agent never writes inside a closed project either (decision 0141): a door may compare or run what is there. Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 135,
+     "path": "projects/{project}/03_custom_analysis/01_qc-look/scripts/run.sh",
+     "phrase": "write its scripts under `scripts/`",
+     "tool": "Write"
+    }
+   ],
+   "n": "7",
+   "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+   "start": 135,
+   "templates": [
+    "T3",
+    "T4"
+   ],
+   "text": "7. Execute the approved plan literally: write its scripts under `scripts/`. Each script must exit non-zero when any command fails; use `set -euo pipefail`. Submit **every script** through `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>` in the environment the plan names. Submit checks `PLAN.md` in the analysis directory even for scripts in subfolders, generates a launcher under `run/`, and records script and launcher hashes with the job id. The executor launcher clears the old marker, runs the script, and writes `run/.gars_run_complete` only on exit 0; it removes the marker on failure. Never write `run/` yourself or from a script. `Runs: login-node (user-requested)` uses the local backend through the same submit call; the executor still owns the marker. A run through no executor is refused by verify. If approval is absent, changed or expired, reply T3 with the refusal and stop; a new approval is the user's. On submission reply T4 and monitor the job. Steps outside the approved plan do not happen.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 <scenario-root>/public/gars/_system/executorlib.py status --workspace projects/demo 4242",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: executor.status is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py executor.status '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 148,
+     "literal": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "tool": "executor.status"
+    }
+   ],
+   "end": 150,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "8",
+   "source": "gars/03_custom_analysis/CONTEXT.md:148-150",
+   "start": 148,
+   "templates": [
+    "T5"
+   ],
+   "text": "8. If execution fails, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T5 with the actual error, and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a changed method is a new plan.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model \"<model id>\"",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/stage03_analysis.py verify --project projects/demo --analysis 01_qc-look --model \"claude-opus-5-5\"",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage03_analysis.verify '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage03_analysis.verify '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage03_analysis.verify '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 152,
+     "literal": "python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model \"<model id>\"",
+     "tool": "stage03_analysis.verify"
+    }
+   ],
+   "end": 156,
+   "exit_mentions": [
+    {
+     "codes": [
+      1
+     ],
+     "line": 154
+    },
+    {
+     "codes": [
+      2
+     ],
+     "line": 155
+    }
+   ],
+   "file_actions": [],
+   "n": "9",
+   "source": "gars/03_custom_analysis/CONTEXT.md:151-156",
+   "start": 151,
+   "templates": [
+    "T5"
+   ],
+   "text": "9. On execution success, run `python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model \"<model id>\"`. `--model` is the exact model id you are running as (decision 0024); omit only if you cannot name it. Exit 1 → declared outputs are missing or empty: reply T5, stop. Exit 2 → approval or execution evidence is missing or invalid; report the refusal verbatim and stop as in step 8.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "date",
+     "comment": null,
+     "executable": "date",
+     "guard": {
+      "allowed_where_intended": false,
+      "forms": {
+       "minimal": {
+        "command": "date",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "public": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "implicit",
+     "line": 158,
+     "literal": "date",
+     "tool": null
+    }
+   ],
+   "end": 158,
+   "exit_mentions": [
+    {
+     "codes": [
+      0
+     ],
+     "line": 157
+    }
+   ],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/HISTORY.md is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/HISTORY.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/HISTORY.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 157,
+     "path": "projects/{project}/HISTORY.md",
+     "phrase": "append the returned `history_entry` to the project's `HISTORY.md`",
+     "tool": "Edit"
+    }
+   ],
+   "n": "10",
+   "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
+   "start": 157,
+   "templates": [
+    "T6"
+   ],
+   "text": "10. Exit 0 → append the returned `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>` with today's date, and reply T6.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  }
+ ],
+ "substage": "01_nfcore-rnaseq-wrapper",
+ "templates": {
+  "T1": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "resolve_artifact"
+   ],
+   "commands_for_user": [],
+   "id": "T1",
+   "line": 170,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 173,
+     "text": "<project_title>"
+    },
+    {
+     "binding": "composed",
+     "line": 175,
+     "text": "<resolver problems / skipped sub-stages, verbatim>"
+    }
+   ],
+   "source": "gars/03_custom_analysis/CONTEXT.md:170",
+   "title": "Nothing to analyse",
+   "unbound": []
+  },
+  "T2": {
+   "accept_tokens": [],
+   "ask": "handoff",
+   "backing_tools": [
+    "stage03_analysis.create"
+   ],
+   "commands_for_user": [
+    {
+     "command": "python3 _system/stage03_analysis.py approve --project projects/<project_title> --analysis <NN_slug>",
+     "line": 193
+    }
+   ],
+   "id": "T2",
+   "line": 180,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 182,
+     "text": "<project_title>"
+    },
+    {
+     "binding": "generic",
+     "line": 182,
+     "text": "<NN_slug>"
+    },
+    {
+     "binding": "composed",
+     "line": 184,
+     "text": "<the Goal section's first sentence>"
+    },
+    {
+     "binding": "unbound",
+     "label": "artifact",
+     "line": 185,
+     "text": "<n>"
+    },
+    {
+     "binding": "composed",
+     "line": 185,
+     "text": "<types, comma-separated>"
+    },
+    {
+     "binding": "label",
+     "label": "declared",
+     "line": 186,
+     "text": "<n>"
+    },
+    {
+     "binding": "composed",
+     "line": 186,
+     "text": "<types, comma-separated>"
+    },
+    {
+     "binding": "choice",
+     "line": 187,
+     "text": "<login node | batch>"
+    },
+    {
+     "binding": "generic",
+     "line": 193,
+     "text": "<project_title>"
+    },
+    {
+     "binding": "generic",
+     "line": 193,
+     "text": "<NN_slug>"
+    }
+   ],
+   "source": "gars/03_custom_analysis/CONTEXT.md:180",
+   "title": "Plan ready for review",
+   "unbound": [
+    {
+     "binding": "unbound",
+     "label": "artifact",
+     "line": 185,
+     "text": "<n>"
+    }
+   ]
+  },
+  "T3": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "stage03_analysis.create",
+    "executor.submit"
+   ],
+   "commands_for_user": [],
+   "id": "T3",
+   "line": 198,
+   "placeholders": [
+    {
+     "binding": "composed",
+     "line": 202,
+     "text": "<blocked reasons, verbatim>"
+    }
+   ],
+   "source": "gars/03_custom_analysis/CONTEXT.md:198",
+   "title": "Approval blocked",
+   "unbound": []
+  },
+  "T4": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "executor.submit"
+   ],
+   "commands_for_user": [],
+   "id": "T4",
+   "line": 207,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 209,
+     "text": "<NN_slug>"
+    },
+    {
+     "binding": "generic",
+     "line": 209,
+     "text": "<jobid>"
+    }
+   ],
+   "source": "gars/03_custom_analysis/CONTEXT.md:207",
+   "title": "Scheduled",
+   "unbound": []
+  },
+  "T5": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "executor.status",
+    "stage03_analysis.verify"
+   ],
+   "commands_for_user": [],
+   "id": "T5",
+   "line": 213,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 215,
+     "text": "<NN_slug>"
+    },
+    {
+     "binding": "generic",
+     "line": 215,
+     "text": "<step>"
+    },
+    {
+     "binding": "composed",
+     "line": 217,
+     "text": "<the actual error, verbatim>"
+    }
+   ],
+   "source": "gars/03_custom_analysis/CONTEXT.md:213",
+   "title": "Failed",
+   "unbound": []
+  },
+  "T6": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "stage03_analysis.verify"
+   ],
+   "commands_for_user": [],
+   "id": "T6",
+   "line": 224,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 226,
+     "text": "<NN_slug>"
+    },
+    {
+     "binding": "generic",
+     "line": 230,
+     "text": "<path>"
+    },
+    {
+     "binding": "generic",
+     "line": 230,
+     "text": "<type>"
+    },
+    {
+     "binding": "generic",
+     "line": 233,
+     "text": "<NN_slug>"
+    }
+   ],
+   "source": "gars/03_custom_analysis/CONTEXT.md:224",
+   "title": "Complete",
+   "unbound": []
+  }
+ },
+ "wrapper_invocation": null
+}

@@ -1,0 +1,1106 @@
+{
+ "assay": "atacseq_bulk",
+ "blob": "2af34e9a09db81fb218f311b20b0022e991cb75f",
+ "call_sites": [
+  {
+   "branch_calls": [],
+   "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py check --project projects/<title>",
+   "emitted": [
+    0,
+    1,
+    3
+   ],
+   "handled": [
+    1
+   ],
+   "line": 95,
+   "prose_handling": [],
+   "step": "3",
+   "tool": "nfcore_atacseq_wrapper.check",
+   "unhandled": [
+    3
+   ],
+   "unhandled_sites": {
+    "3": [
+     "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:110"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py prepare --project projects/<title>",
+   "emitted": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "handled": [
+    0,
+    1
+   ],
+   "line": 98,
+   "prose_handling": [],
+   "step": "4",
+   "tool": "nfcore_atacseq_wrapper.prepare",
+   "unhandled": [
+    2,
+    3
+   ],
+   "unhandled_sites": {
+    "2": [
+     "gars/_system/wrapperlib.py:925"
+    ],
+    "3": [
+     "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:177"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh",
+   "emitted": [
+    0,
+    1,
+    2
+   ],
+   "handled": [],
+   "line": 100,
+   "prose_handling": [],
+   "step": "5",
+   "tool": "executor.submit",
+   "unhandled": [
+    1,
+    2
+   ],
+   "unhandled_sites": {
+    "1": [
+     "gars/_system/executorlib.py:1420",
+     "gars/_system/executorlib.py:1431"
+    ],
+    "2": [
+     "gars/_system/executorlib.py:1395",
+     "gars/_system/executorlib.py:1419"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+   "emitted": [
+    0,
+    1,
+    2
+   ],
+   "handled": [],
+   "line": 104,
+   "prose_handling": [],
+   "step": "7",
+   "tool": "executor.status",
+   "unhandled": [
+    1,
+    2
+   ],
+   "unhandled_sites": {
+    "1": [
+     "gars/_system/executorlib.py:1448"
+    ],
+    "2": [
+     "gars/_system/executorlib.py:1395"
+    ]
+   }
+  },
+  {
+   "branch_calls": [],
+   "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py collect --project projects/<title> --model \"<the exact model id you are running as>\"",
+   "emitted": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "handled": [
+    0,
+    1,
+    2
+   ],
+   "line": 109,
+   "prose_handling": [],
+   "step": "8",
+   "tool": "nfcore_atacseq_wrapper.collect",
+   "unhandled": [
+    3
+   ],
+   "unhandled_sites": {
+    "3": [
+     "gars/_system/wrapperlib.py:185",
+     "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:225"
+    ]
+   }
+  }
+ ],
+ "fenced_non_commands": [],
+ "file_mentions_unclassified": [
+  {
+   "line": 113,
+   "sentence": "Preserve the failure; do not poll to replace it.",
+   "step": "8"
+  }
+ ],
+ "findings": [],
+ "id": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+ "path": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md",
+ "prose_flags": [
+  {
+   "flag": "--model",
+   "in_command": true,
+   "line": 110,
+   "prohibited": false,
+   "removal": false,
+   "step": "8",
+   "target_step": "8",
+   "target_tool": "nfcore_atacseq_wrapper.collect",
+   "value": "\"<the exact model id you are running as>\"",
+   "variant": null
+  }
+ ],
+ "schema": "stepmap-facts/1",
+ "sections": [
+  {
+   "end": 14,
+   "name": "Purpose",
+   "start": 3
+  },
+  {
+   "end": 22,
+   "name": "Inputs",
+   "start": 15
+  },
+  {
+   "end": 40,
+   "name": "Scope Boundaries",
+   "start": 23
+  },
+  {
+   "end": 90,
+   "name": "Definitions",
+   "start": 41
+  },
+  {
+   "end": 117,
+   "name": "Process",
+   "start": 91
+  },
+  {
+   "end": 190,
+   "name": "Response Format",
+   "start": 118
+  },
+  {
+   "end": 206,
+   "name": "OUTPUT",
+   "start": 191
+  },
+  {
+   "end": 212,
+   "name": "Human check",
+   "start": 207
+  }
+ ],
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "steps": [
+  {
+   "calls": [],
+   "end": 92,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "1",
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:92-92",
+   "start": 92,
+   "templates": [
+    "T1"
+   ],
+   "text": "1. Reply T1.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 94,
+   "exit_mentions": [],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh": {
+       "allow": true,
+       "reason": ""
+      },
+      "fresh_declared": {
+       "allow": true,
+       "reason": ""
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 93,
+     "path": "{substage_dir}/STATUS",
+     "phrase": "Read the STATUS file",
+     "tool": "Read"
+    }
+   ],
+   "n": "2",
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:93-94",
+   "start": 93,
+   "templates": [],
+   "text": "2. Read the STATUS file. If it is `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — stage 02's router already handles those states and should not have routed here.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py check --project projects/<title>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py check --project projects/demo",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py nfcore_atacseq_wrapper.check '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py nfcore_atacseq_wrapper.check '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py nfcore_atacseq_wrapper.check '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "prose",
+     "line": 95,
+     "literal": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py check --project projects/<title>",
+     "tool": "nfcore_atacseq_wrapper.check"
+    }
+   ],
+   "end": 97,
+   "exit_mentions": [
+    {
+     "codes": [
+      1
+     ],
+     "line": 95
+    }
+   ],
+   "file_actions": [],
+   "n": "3",
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:95-97",
+   "start": 95,
+   "templates": [
+    "T5"
+   ],
+   "text": "3. Run the wrapper's `check`. Exit 1 → reply T5 with its `failures` verbatim and stop. Do not fix causes yourself: `config_unfilled` means the stage 02 menus have not run, `samplesheet` means stage 01 must be re-run, `pipeline` means the pinned checkout is missing or wrong.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py prepare --project projects/<title>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py prepare --project projects/demo",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py nfcore_atacseq_wrapper.prepare '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py nfcore_atacseq_wrapper.prepare '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py nfcore_atacseq_wrapper.prepare '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "prose",
+     "line": 98,
+     "literal": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py prepare --project projects/<title>",
+     "tool": "nfcore_atacseq_wrapper.prepare"
+    }
+   ],
+   "end": 99,
+   "exit_mentions": [
+    {
+     "codes": [
+      1
+     ],
+     "line": 98
+    },
+    {
+     "codes": [
+      0
+     ],
+     "line": 98
+    }
+   ],
+   "file_actions": [],
+   "n": "4",
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:98-99",
+   "start": 98,
+   "templates": [
+    "T5"
+   ],
+   "text": "4. Run `prepare`. Exit 1 → reply T5 (same rule). Exit 0 → it wrote `params.yaml`, `submit.sh` and the reproducibility bundle; report nothing yet.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 <scenario-root>/public/gars/_system/executorlib.py submit --workspace projects/demo projects/demo/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/submit.sh",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.submit '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.submit '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.submit '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: executor.submit is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py executor.submit '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 100,
+     "literal": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh",
+     "tool": "executor.submit"
+    }
+   ],
+   "end": 101,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "5",
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100-101",
+   "start": 100,
+   "templates": [],
+   "text": "5. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh`. It prints one JSON object; `job_id` is the field. Capture it.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 103,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "6",
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:102-103",
+   "start": 102,
+   "templates": [
+    "T2"
+   ],
+   "text": "6. Submit has written `SUBMITTED`; no status call is needed yet. Reply T2 and stop. Do not wait, poll, or sleep.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 <scenario-root>/public/gars/_system/executorlib.py status --workspace projects/demo 4242",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py executor.status '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: executor.status is a door reached only through the dispatcher while a non-public project exists, because only the dispatcher filters its output (R-061/R-074; decisions 0107, 0141). Next: use python3 _system/tool_call.py executor.status '<json>'."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "inline",
+     "line": 104,
+     "literal": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "tool": "executor.status"
+    }
+   ],
+   "end": 106,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "7",
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104-106",
+   "start": 104,
+   "templates": [
+    "T3"
+   ],
+   "text": "7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: ask `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`, `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. If `PENDING` or `RUNNING`, reply T3, stop; the status call has already refreshed STATUS.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py collect --project projects/<title> --model \"<the exact model id you are running as>\"",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: {\"alternative\": \"Next: ask the human to restore or review the configuration and run the sub-stage prepare step before collecting.\", \"field\": \"config_sha256\", \"message\": \"config or manifest config_sha256 missing/unreadable (R-073; decision 0058).\", \"rule\": \"R-073\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: {\"alternative\": \"Next: ask the human to restore or review the configuration and run the sub-stage prepare step before collecting.\", \"field\": \"config_sha256\", \"message\": \"config or manifest config_sha256 missing/unreadable (R-073; decision 0058).\", \"rule\": \"R-073\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py collect --project projects/demo --model \"claude-opus-5-5\"",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py nfcore_atacseq_wrapper.collect '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: ask the human to restore or review the configuration and run the sub-stage prepare step before collecting.\", \"field\": \"config_sha256\", \"message\": \"config or manifest config_sha256 missing/unreadable (R-073; decision 0058).\", \"rule\": \"R-073\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: ask the human to restore or review the configuration and run the sub-stage prepare step before collecting.\", \"field\": \"config_sha256\", \"message\": \"config or manifest config_sha256 missing/unreadable (R-073; decision 0058).\", \"rule\": \"R-073\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "prose",
+     "line": 109,
+     "literal": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py collect --project projects/<title> --model \"<the exact model id you are running as>\"",
+     "tool": "nfcore_atacseq_wrapper.collect"
+    }
+   ],
+   "end": 113,
+   "exit_mentions": [
+    {
+     "codes": [
+      2
+     ],
+     "line": 111
+    },
+    {
+     "codes": [
+      1
+     ],
+     "line": 112
+    }
+   ],
+   "file_actions": [],
+   "n": "8",
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:107-113",
+   "start": 107,
+   "templates": [
+    "T4"
+   ],
+   "text": "8. If status reports `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`, reply T4 with that reason and the scheduler log path, stop. If the scheduler reports `COMPLETED`, STATUS is `VALIDATING`; run `collect` with `--model \"<the exact model id you are running as>\"` (decision 0024). Exit 2 → collection is refused: reply T4 with the wrapper's error and scheduler log path, stop. Exit 1 → the exit gate failed and collect wrote `FAILED:EXIT_1`: reply T4 with its `failures` verbatim, stop. Preserve the failure; do not poll to replace it.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "date",
+     "comment": null,
+     "executable": "date",
+     "guard": {
+      "allowed_where_intended": false,
+      "forms": {
+       "minimal": {
+        "command": "date",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "public": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "implicit",
+     "line": 116,
+     "literal": "date",
+     "tool": null
+    }
+   ],
+   "end": 116,
+   "exit_mentions": [
+    {
+     "codes": [
+      0
+     ],
+     "line": 114
+    }
+   ],
+   "file_actions": [
+    {
+     "guard": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/closed/gars/projects/demo/HISTORY.md is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh/gars/projects/demo/HISTORY.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: <scenario-root>/fresh_declared/gars/projects/demo/HISTORY.md is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     },
+     "line": 114,
+     "path": "projects/{project}/HISTORY.md",
+     "phrase": "Append its `history_entry` to the project's `HISTORY.md`",
+     "tool": "Edit"
+    }
+   ],
+   "n": "9",
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:114-116",
+   "start": 114,
+   "templates": [
+    "T6"
+   ],
+   "text": "9. Exit 0 → `collect` has written `OUTPUTS.tsv` and `STATUS COMPLETE`. Append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>` with today's date, and reply T6.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  }
+ ],
+ "substage": "01_nfcore-atacseq-wrapper",
+ "templates": {
+  "T1": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [],
+   "commands_for_user": [],
+   "id": "T1",
+   "line": 128,
+   "placeholders": [
+    {
+     "binding": "no_source",
+     "label": "row",
+     "line": 132,
+     "text": "<n>"
+    },
+    {
+     "binding": "no_source",
+     "label": "sample",
+     "line": 132,
+     "text": "<n>"
+    },
+    {
+     "binding": "composed",
+     "line": 133,
+     "text": "<fasta basename>"
+    },
+    {
+     "binding": "composed",
+     "line": 133,
+     "text": "<gtf basename>"
+    },
+    {
+     "binding": "no_source",
+     "label": "aligner",
+     "line": 134,
+     "text": "<aligner>"
+    },
+    {
+     "binding": "choice",
+     "line": 134,
+     "text": "<narrow|broad>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:128",
+   "title": "Start",
+   "unbound": []
+  },
+  "T2": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "executor.submit"
+   ],
+   "commands_for_user": [
+    {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "line": 144
+    }
+   ],
+   "id": "T2",
+   "line": 137,
+   "placeholders": [
+    {
+     "binding": "key",
+     "label": "job_id",
+     "line": 139,
+     "text": "<job_id>"
+    },
+    {
+     "binding": "generic",
+     "line": 144,
+     "text": "<workspace>"
+    },
+    {
+     "artifact": "project",
+     "binding": "artifact",
+     "line": 144,
+     "text": "<project dir>"
+    },
+    {
+     "binding": "key",
+     "label": "job_id",
+     "line": 144,
+     "text": "<job_id>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:137",
+   "title": "Submitted",
+   "unbound": []
+  },
+  "T3": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "executor.status"
+   ],
+   "commands_for_user": [
+    {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "line": 152
+    }
+   ],
+   "id": "T3",
+   "line": 148,
+   "placeholders": [
+    {
+     "binding": "key",
+     "label": "job_id",
+     "line": 150,
+     "text": "<job_id>"
+    },
+    {
+     "binding": "key",
+     "label": "state",
+     "line": 150,
+     "text": "<state>"
+    },
+    {
+     "binding": "generic",
+     "line": 150,
+     "text": "<timestamp>"
+    },
+    {
+     "binding": "generic",
+     "line": 152,
+     "text": "<workspace>"
+    },
+    {
+     "artifact": "project",
+     "binding": "artifact",
+     "line": 152,
+     "text": "<project dir>"
+    },
+    {
+     "binding": "key",
+     "label": "job_id",
+     "line": 152,
+     "text": "<job_id>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:148",
+   "title": "Still running",
+   "unbound": []
+  },
+  "T4": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "nfcore_atacseq_wrapper.collect"
+   ],
+   "commands_for_user": [],
+   "id": "T4",
+   "line": 155,
+   "placeholders": [
+    {
+     "binding": "choice",
+     "line": 157,
+     "text": "<stage: run|exit gate>"
+    },
+    {
+     "binding": "composed",
+     "line": 159,
+     "text": "<verbatim wrapper failures or scheduler error>"
+    },
+    {
+     "binding": "composed",
+     "line": 162,
+     "text": "<log file>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:155",
+   "title": "Failed",
+   "unbound": []
+  },
+  "T5": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "nfcore_atacseq_wrapper.check",
+    "nfcore_atacseq_wrapper.prepare"
+   ],
+   "commands_for_user": [],
+   "id": "T5",
+   "line": 165,
+   "placeholders": [
+    {
+     "binding": "composed",
+     "line": 169,
+     "text": "<the wrapper's failures, verbatim, one line each: check + detail>"
+    },
+    {
+     "binding": "composed",
+     "line": 171,
+     "text": "<what the user must do: complete the config menus / re-run stage 01 / restore the checkout>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:165",
+   "title": "Preconditions not met",
+   "unbound": []
+  },
+  "T6": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "nfcore_atacseq_wrapper.collect"
+   ],
+   "commands_for_user": [],
+   "id": "T6",
+   "line": 174,
+   "placeholders": [
+    {
+     "artifact": "counts_peaks",
+     "binding": "artifact",
+     "line": 180,
+     "text": "<counts_peaks path>"
+    },
+    {
+     "artifact": "peaks_consensus",
+     "binding": "artifact",
+     "line": 181,
+     "text": "<peaks_consensus path>"
+    },
+    {
+     "artifact": "peaks",
+     "binding": "artifact",
+     "line": 182,
+     "text": "<peaks dir>"
+    },
+    {
+     "artifact": "bigwig",
+     "binding": "artifact",
+     "line": 183,
+     "text": "<bigwig dir>"
+    },
+    {
+     "artifact": "qc_multiqc",
+     "binding": "artifact",
+     "line": 184,
+     "text": "<qc_multiqc path>"
+    },
+    {
+     "binding": "label",
+     "label": "samples",
+     "line": 186,
+     "text": "<n>"
+    },
+    {
+     "binding": "choice",
+     "line": 186,
+     "text": "<populated|reused|none>"
+    }
+   ],
+   "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:174",
+   "title": "Complete",
+   "unbound": []
+  }
+ },
+ "wrapper_invocation": "python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py"
+}

@@ -1,0 +1,3948 @@
+{
+ "helpers": {
+  "configure.apply": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/configure.py:470",
+      "code": 0,
+      "condition": "args.dry_run",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:477",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/configure.py:333",
+      "code": 1,
+      "condition": "genome is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:337",
+      "code": 1,
+      "condition": "not os.access(path, os.R_OK)",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:366",
+      "code": 1,
+      "condition": "shape == \"de\" and chosen is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:372",
+      "code": 1,
+      "condition": "shape == \"de\" and not chosen[\"testable\"]",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:379",
+      "code": 1,
+      "condition": "shape == \"de\" and term not in design[0]",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:395",
+      "code": 1,
+      "condition": "shape == \"peaks\" and chosen is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:403",
+      "code": 1,
+      "condition": "shape == \"peaks\" and not genome.get(fact)",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:423",
+      "code": 1,
+      "condition": "shape == \"protocol\" and chosen is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:431",
+      "code": 1,
+      "condition": "shape == \"protocol\" and aligner not in chosen[\"aligners\"]",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:464",
+      "code": 1,
+      "condition": "remaining",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/configure.py:520",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/configure.py:319",
+      "code": 3,
+      "condition": "shape is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:324",
+      "code": 3,
+      "condition": "not cfg.is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:329",
+      "code": 3,
+      "condition": "err",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:350",
+      "code": 3,
+      "condition": "shape == \"de\" and not args.contrast",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:354",
+      "code": 3,
+      "condition": "shape == \"de\" and err",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:388",
+      "code": 3,
+      "condition": "shape == \"peaks\" and not args.peaks_type",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:414",
+      "code": 3,
+      "condition": "shape == \"protocol\" and not args.protocol",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/configure.py",
+   "problem": null,
+   "subcommand": "apply"
+  },
+  "configure.contrasts": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/configure.py:215",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/configure.py:213",
+      "code": 1,
+      "condition": "len(levels) < 2",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/configure.py:520",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/configure.py:205",
+      "code": 3,
+      "condition": "err",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/configure.py",
+   "problem": null,
+   "subcommand": "contrasts"
+  },
+  "configure.genomes": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/configure.py:181",
+      "code": 0,
+      "condition": "args.select is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:189",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/configure.py:186",
+      "code": 1,
+      "condition": "hit is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/configure.py:520",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/configure.py:177",
+      "code": 3,
+      "condition": "err",
+      "how": "emit",
+      "line": "return emit({\"command\": \"genomes\", \"ok\": False, \"error\": err}, EXIT_USAGE)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/configure.py",
+   "problem": null,
+   "subcommand": "genomes"
+  },
+  "configure.peaks": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/configure.py:288",
+      "code": 0,
+      "condition": "args.select is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:294",
+      "code": 0,
+      "condition": "tok in (e[\"n\"], e[\"n\"].lstrip(\"0\"), e[\"value\"])",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/configure.py:297",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/configure.py:520",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/configure.py",
+   "problem": null,
+   "subcommand": "peaks"
+  },
+  "configure.protocols": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/configure.py:269",
+      "code": 0,
+      "condition": "args.select is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     },
+     {
+      "at": "gars/_system/configure.py:275",
+      "code": 0,
+      "condition": "tok.lower() in (e[\"n\"], e[\"n\"].lstrip(\"0\")) or tok.upper() == e[\"value\"].upper()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/configure.py:279",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/configure.py:480"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/configure.py:520",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/configure.py",
+   "problem": null,
+   "subcommand": "protocols"
+  },
+  "executor.cancel": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/executorlib.py:1442",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if ok else EXIT_REFUSED)",
+      "via": []
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/executorlib.py:1375",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = parser.parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/executorlib.py:1395",
+      "code": 2,
+      "condition": "problems",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/executorlib.py:1442",
+      "code": 2,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if ok else EXIT_REFUSED)",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/executorlib.py",
+   "problem": null,
+   "subcommand": "cancel"
+  },
+  "executor.status": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/executorlib.py:1455",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": []
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/executorlib.py:1448",
+      "code": 1,
+      "condition": "state is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": []
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/executorlib.py:1375",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = parser.parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/executorlib.py:1395",
+      "code": 2,
+      "condition": "problems",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/executorlib.py",
+   "problem": null,
+   "subcommand": "status"
+  },
+  "executor.submit": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/executorlib.py:1431",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if detail is None else EXIT_FAILURE)",
+      "via": []
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/executorlib.py:1420",
+      "code": 1,
+      "condition": "job_id is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/executorlib.py:1431",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if detail is None else EXIT_FAILURE)",
+      "via": []
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/executorlib.py:1375",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = parser.parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/executorlib.py:1395",
+      "code": 2,
+      "condition": "problems",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/executorlib.py:1419",
+      "code": 2,
+      "condition": "job_id is None and reason in detail",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/executorlib.py",
+   "problem": null,
+   "subcommand": "submit"
+  },
+  "nfcore_atacseq_wrapper.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:120",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:120",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:341",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:110",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "nfcore_atacseq_wrapper.collect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:328",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrapperlib.py:224",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, code)",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331",
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:288"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:189",
+      "code": 2,
+      "condition": "problem",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331",
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:220"
+      ]
+     },
+     {
+      "at": "gars/_system/wrapperlib.py:202",
+      "code": 2,
+      "condition": "",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331",
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:220"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:232",
+      "code": 2,
+      "condition": "not (substage / \"run\" / \".gars_run_complete\").is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:341",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrapperlib.py:185",
+      "code": 3,
+      "condition": "not Path(project).is_dir()",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331",
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:220"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:225",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
+   "problem": null,
+   "subcommand": "collect"
+  },
+  "nfcore_atacseq_wrapper.prepare": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:216",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:182",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "code": 2,
+      "condition": "manifest['key_formula'] == 'downstream-v2'",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331",
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:206"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:341",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:177",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:331"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
+   "problem": null,
+   "subcommand": "prepare"
+  },
+  "nfcore_chipseq_wrapper.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:125",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:125",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:343",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:115",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "nfcore_chipseq_wrapper.collect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:330",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrapperlib.py:224",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, code)",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333",
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:289"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:189",
+      "code": 2,
+      "condition": "problem",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333",
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:219"
+      ]
+     },
+     {
+      "at": "gars/_system/wrapperlib.py:202",
+      "code": 2,
+      "condition": "",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333",
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:219"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:231",
+      "code": 2,
+      "condition": "not (substage / \"run\" / \".gars_run_complete\").is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:343",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrapperlib.py:185",
+      "code": 3,
+      "condition": "not Path(project).is_dir()",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333",
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:219"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:224",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py",
+   "problem": null,
+   "subcommand": "collect"
+  },
+  "nfcore_chipseq_wrapper.prepare": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:215",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:181",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "code": 2,
+      "condition": "manifest['key_formula'] == 'downstream-v2'",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333",
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:205"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:343",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:176",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py:333"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py",
+   "problem": null,
+   "subcommand": "prepare"
+  },
+  "nfcore_cutandrun_wrapper.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:146",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:146",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:323",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:136",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "nfcore_cutandrun_wrapper.collect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:306",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrapperlib.py:224",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, code)",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309",
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:274"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:189",
+      "code": 2,
+      "condition": "problem",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309",
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:218"
+      ]
+     },
+     {
+      "at": "gars/_system/wrapperlib.py:202",
+      "code": 2,
+      "condition": "",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309",
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:218"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:230",
+      "code": 2,
+      "condition": "not (substage / \"run\" / \".gars_run_complete\").is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:323",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrapperlib.py:185",
+      "code": 3,
+      "condition": "not Path(project).is_dir()",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309",
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:218"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:223",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py",
+   "problem": null,
+   "subcommand": "collect"
+  },
+  "nfcore_cutandrun_wrapper.prepare": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:214",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:183",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "code": 2,
+      "condition": "manifest['key_formula'] == 'downstream-v2'",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309",
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:204"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:323",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:178",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py:309"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py",
+   "problem": null,
+   "subcommand": "prepare"
+  },
+  "nfcore_methylseq_wrapper.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:88",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:88",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:237",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:78",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "nfcore_methylseq_wrapper.collect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:224",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrapperlib.py:224",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, code)",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227",
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:193"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:189",
+      "code": 2,
+      "condition": "problem",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227",
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:146"
+      ]
+     },
+     {
+      "at": "gars/_system/wrapperlib.py:202",
+      "code": 2,
+      "condition": "",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227",
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:146"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:158",
+      "code": 2,
+      "condition": "not (substage / \"run\" / \".gars_run_complete\").is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:237",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrapperlib.py:185",
+      "code": 3,
+      "condition": "not Path(project).is_dir()",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227",
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:146"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:151",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py",
+   "problem": null,
+   "subcommand": "collect"
+  },
+  "nfcore_methylseq_wrapper.prepare": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:142",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:111",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "code": 2,
+      "condition": "manifest['key_formula'] == 'downstream-v2'",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227",
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:132"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:237",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:106",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py:227"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py",
+   "problem": null,
+   "subcommand": "prepare"
+  },
+  "nfcore_rnaseq_wrapper.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:106",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:106",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:295",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:96",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "nfcore_rnaseq_wrapper.collect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:282",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrapperlib.py:224",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, code)",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285",
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:232"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:189",
+      "code": 2,
+      "condition": "problem",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285",
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:183"
+      ]
+     },
+     {
+      "at": "gars/_system/wrapperlib.py:202",
+      "code": 2,
+      "condition": "",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285",
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:183"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:195",
+      "code": 2,
+      "condition": "not (substage / \"run\" / \".gars_run_complete\").is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:295",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrapperlib.py:185",
+      "code": 3,
+      "condition": "not Path(project).is_dir()",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285",
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:183"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:188",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
+   "problem": null,
+   "subcommand": "collect"
+  },
+  "nfcore_rnaseq_wrapper.prepare": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:179",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:145",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "code": 2,
+      "condition": "manifest['key_formula'] == 'downstream-v2'",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285",
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:169"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:295",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:140",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:285"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
+   "problem": null,
+   "subcommand": "prepare"
+  },
+  "nfcore_scrnaseq_wrapper.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:193",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:193",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:409",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:183",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "nfcore_scrnaseq_wrapper.collect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:396",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrapperlib.py:224",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, code)",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399",
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:358"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:189",
+      "code": 2,
+      "condition": "problem",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399",
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:291"
+      ]
+     },
+     {
+      "at": "gars/_system/wrapperlib.py:202",
+      "code": 2,
+      "condition": "",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399",
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:291"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:303",
+      "code": 2,
+      "condition": "not (substage / \"run\" / \".gars_run_complete\").is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:409",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrapperlib.py:185",
+      "code": 3,
+      "condition": "not Path(project).is_dir()",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399",
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:291"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:296",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py",
+   "problem": null,
+   "subcommand": "collect"
+  },
+  "nfcore_scrnaseq_wrapper.prepare": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:287",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:253",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "code": 2,
+      "condition": "manifest['key_formula'] == 'downstream-v2'",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399",
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:277"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:409",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:248",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py:399"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py",
+   "problem": null,
+   "subcommand": "prepare"
+  },
+  "nfcore_spatialvi_wrapper.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:186",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:186",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:362",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:176",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "nfcore_spatialvi_wrapper.collect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:349",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrapperlib.py:224",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, code)",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352",
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:307"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:189",
+      "code": 2,
+      "condition": "problem",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352",
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:256"
+      ]
+     },
+     {
+      "at": "gars/_system/wrapperlib.py:202",
+      "code": 2,
+      "condition": "",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352",
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:256"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:268",
+      "code": 2,
+      "condition": "not (substage / \"run\" / \".gars_run_complete\").is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:362",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrapperlib.py:185",
+      "code": 3,
+      "condition": "not Path(project).is_dir()",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352",
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:256"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:261",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py",
+   "problem": null,
+   "subcommand": "collect"
+  },
+  "nfcore_spatialvi_wrapper.prepare": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:252",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:218",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "code": 2,
+      "condition": "manifest['key_formula'] == 'downstream-v2'",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352",
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:242"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:362",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:213",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py:352"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py",
+   "problem": null,
+   "subcommand": "prepare"
+  },
+  "pilot_log.abort": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/pilot_log.py:361",
+      "code": 0,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_OK",
+      "via": []
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/pilot_log.py:353",
+      "code": 1,
+      "condition": "args.verb == \"check\" and problems",
+      "how": "return",
+      "line": "return EXIT_FAILED",
+      "via": []
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/pilot_log.py:331",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = parser().parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:334",
+      "code": 2,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:337",
+      "code": 2,
+      "condition": "not args.verb",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:360",
+      "code": 2,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/pilot_log.py",
+   "problem": null,
+   "subcommand": "abort"
+  },
+  "pilot_log.begin": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/pilot_log.py:361",
+      "code": 0,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_OK",
+      "via": []
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/pilot_log.py:353",
+      "code": 1,
+      "condition": "args.verb == \"check\" and problems",
+      "how": "return",
+      "line": "return EXIT_FAILED",
+      "via": []
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/pilot_log.py:331",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = parser().parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:334",
+      "code": 2,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:337",
+      "code": 2,
+      "condition": "not args.verb",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:360",
+      "code": 2,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/pilot_log.py",
+   "problem": null,
+   "subcommand": "begin"
+  },
+  "pilot_log.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/pilot_log.py:361",
+      "code": 0,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_OK",
+      "via": []
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/pilot_log.py:353",
+      "code": 1,
+      "condition": "args.verb == \"check\" and problems",
+      "how": "return",
+      "line": "return EXIT_FAILED",
+      "via": []
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/pilot_log.py:331",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = parser().parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:334",
+      "code": 2,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:337",
+      "code": 2,
+      "condition": "not args.verb",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:360",
+      "code": 2,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/pilot_log.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "pilot_log.end": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/pilot_log.py:361",
+      "code": 0,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_OK",
+      "via": []
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/pilot_log.py:353",
+      "code": 1,
+      "condition": "args.verb == \"check\" and problems",
+      "how": "return",
+      "line": "return EXIT_FAILED",
+      "via": []
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/pilot_log.py:331",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = parser().parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:334",
+      "code": 2,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:337",
+      "code": 2,
+      "condition": "not args.verb",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     },
+     {
+      "at": "gars/_system/pilot_log.py:360",
+      "code": 2,
+      "condition": "",
+      "how": "return",
+      "line": "return EXIT_REFUSED",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/pilot_log.py",
+   "problem": null,
+   "subcommand": "end"
+  },
+  "resolve_artifact": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/resolve_artifact.py:149",
+      "code": 0,
+      "condition": "args.list",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_UNRESOLVED)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/resolve_artifact.py:166",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_UNRESOLVED)",
+      "via": []
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/resolve_artifact.py:149",
+      "code": 1,
+      "condition": "args.list",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_UNRESOLVED)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/resolve_artifact.py:166",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_UNRESOLVED)",
+      "via": []
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/resolve_artifact.py:135",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/resolve_artifact.py:138",
+      "code": 3,
+      "condition": "not args.project.is_dir()",
+      "how": "emit",
+      "line": "return emit({\"ok\": False, \"error\": \"no such project: %s\" % args.project}, EXIT_USAGE)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/resolve_artifact.py:140",
+      "code": 3,
+      "condition": "not (args.type or args.consumes is not None or args.list)",
+      "how": "emit",
+      "line": "return emit({\"ok\": False, \"error\": \"give one of --type, --consumes or --list\"}, EXIT_USAGE)",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/resolve_artifact.py",
+   "problem": null,
+   "subcommand": null
+  },
+  "rnaseq_de.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:266",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:266",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:567",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:262",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "rnaseq_de.collect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:479",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrapperlib.py:224",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, code)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547",
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:449"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:189",
+      "code": 2,
+      "condition": "problem",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547",
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:387"
+      ]
+     },
+     {
+      "at": "gars/_system/wrapperlib.py:202",
+      "code": 2,
+      "condition": "",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547",
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:387"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:398",
+      "code": 2,
+      "condition": "not (substage / \"run\" / \".gars_run_complete\").is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:567",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrapperlib.py:185",
+      "code": 3,
+      "condition": "not Path(project).is_dir()",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547",
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:387"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:392",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py",
+   "problem": null,
+   "subcommand": "collect"
+  },
+  "rnaseq_de.prepare": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:331",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:285",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "code": 2,
+      "condition": "manifest['key_formula'] == 'downstream-v2'",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547",
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:318"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:280",
+      "code": 2,
+      "condition": "Path(args.design).resolve() != design_path.resolve()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:567",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:274",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py",
+   "problem": null,
+   "subcommand": "prepare"
+  },
+  "rnaseq_de.summary": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:544",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:510",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:544",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:567",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:489",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/rnaseq-de/rnaseq_de.py:547"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py",
+   "problem": null,
+   "subcommand": "summary"
+  },
+  "scrna_qc_cluster.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:347",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:347",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:565",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:337",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "scrna_qc_cluster.collect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:547",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrapperlib.py:224",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, code)",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550",
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:508"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:189",
+      "code": 2,
+      "condition": "problem",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550",
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:401"
+      ]
+     },
+     {
+      "at": "gars/_system/wrapperlib.py:202",
+      "code": 2,
+      "condition": "",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550",
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:401"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:413",
+      "code": 2,
+      "condition": "not (substage / \"run\" / \".gars_run_complete\").is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:565",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrapperlib.py:185",
+      "code": 3,
+      "condition": "not Path(project).is_dir()",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550",
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:401"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:406",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py",
+   "problem": null,
+   "subcommand": "collect"
+  },
+  "scrna_qc_cluster.prepare": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:397",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:360",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "code": 2,
+      "condition": "manifest['key_formula'] == 'downstream-v2'",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550",
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:383"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:565",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:355",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:550"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py",
+   "problem": null,
+   "subcommand": "prepare"
+  },
+  "spatial_cluster_count.check": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:364",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:364",
+      "code": 1,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK if result[\"ok\"] else EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:623",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:353",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py",
+   "problem": null,
+   "subcommand": "check"
+  },
+  "spatial_cluster_count.collect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:600",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrapperlib.py:224",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, code)",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603",
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:559"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:189",
+      "code": 2,
+      "condition": "problem",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603",
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:429"
+      ]
+     },
+     {
+      "at": "gars/_system/wrapperlib.py:202",
+      "code": 2,
+      "condition": "",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603",
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:429"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:441",
+      "code": 2,
+      "condition": "not (substage / \"run\" / \".gars_run_complete\").is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:623",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrapperlib.py:185",
+      "code": 3,
+      "condition": "not Path(project).is_dir()",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603",
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:429"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:434",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py",
+   "problem": null,
+   "subcommand": "collect"
+  },
+  "spatial_cluster_count.prepare": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:410",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:377",
+      "code": 1,
+      "condition": "fails",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/wrapperlib.py:925",
+      "code": 2,
+      "condition": "manifest['key_formula'] == 'downstream-v2'",
+      "how": "raise",
+      "line": "raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603",
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:400"
+      ]
+     },
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:623",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:372",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py:603"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py",
+   "problem": null,
+   "subcommand": "prepare"
+  },
+  "stage00_register.assays": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/stage00_register.py:298",
+      "code": 0,
+      "condition": "args.select is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:354",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/stage00_register.py:335",
+      "code": 2,
+      "condition": "not comma_tokens",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:351",
+      "code": 2,
+      "condition": "invalid or not selected",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:859",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/stage00_register.py:291",
+      "code": 3,
+      "condition": "err",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/stage00_register.py",
+   "problem": null,
+   "subcommand": "assays"
+  },
+  "stage00_register.create": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/stage00_register.py:433",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/stage00_register.py:373",
+      "code": 2,
+      "condition": "project.exists()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:390",
+      "code": 2,
+      "condition": "not supported",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:859",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/stage00_register.py:366",
+      "code": 3,
+      "condition": "not title",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:378",
+      "code": 3,
+      "condition": "err",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:395",
+      "code": 3,
+      "condition": "not stamp.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/stage00_register.py",
+   "problem": null,
+   "subcommand": "create"
+  },
+  "stage00_register.finalize": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/stage00_register.py:806",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/stage00_register.py:711",
+      "code": 1,
+      "condition": "result[\"failures\"]",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:796",
+      "code": 1,
+      "condition": "gate",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/stage00_register.py:621",
+      "code": 2,
+      "condition": "args.data_class not in (\"public\", \"deidentified_under_agreement\", \"identifiable\")",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:624",
+      "code": 2,
+      "condition": "args.purpose not in (\"fixture\", \"internal\", \"pilot_internal\", \"pilot_external\", \"commercial\")",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:627",
+      "code": 2,
+      "condition": "not args.agreement_ref or args.agreement_ref.strip().lower() in (\"\", \"unknown\", \"todo\", \"null\")",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:638",
+      "code": 2,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:859",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/stage00_register.py:617",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:643",
+      "code": 3,
+      "condition": "err",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:650",
+      "code": 3,
+      "condition": "not assays",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/stage00_register.py",
+   "problem": null,
+   "subcommand": "finalize"
+  },
+  "stage00_register.inspect": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/stage00_register.py:489",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/stage00_register.py:445",
+      "code": 2,
+      "condition": "not source.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:458",
+      "code": 2,
+      "condition": "not raw",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:469",
+      "code": 2,
+      "condition": "problems",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:474",
+      "code": 2,
+      "condition": "layout == \"mixed\"",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:859",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/stage00_register.py",
+   "problem": null,
+   "subcommand": "inspect"
+  },
+  "stage00_register.link": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/stage00_register.py:534",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/stage00_register.py:516",
+      "code": 1,
+      "condition": "existing and not args.force",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:532",
+      "code": 1,
+      "condition": "broken",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/stage00_register.py:510",
+      "code": 2,
+      "condition": "not raw",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     },
+     {
+      "at": "gars/_system/stage00_register.py:859",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/stage00_register.py:500",
+      "code": 3,
+      "condition": "not raw_dir.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage00_register.py:811"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/stage00_register.py",
+   "problem": null,
+   "subcommand": "link"
+  },
+  "stage01_samplesheet": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1003",
+      "code": 0,
+      "condition": "args.list_formats",
+      "how": "emit",
+      "line": "return emit({\"ok\": True,",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1073",
+      "code": 0,
+      "condition": "args.check",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1102",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": []
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1047",
+      "code": 1,
+      "condition": "any(res[\"failures\"] for res in results.values())",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURES)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1067",
+      "code": 1,
+      "condition": "args.verify_integrity == \"full\" and any(r[\"failures\"] for r in results.values())",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURES)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1096",
+      "code": 1,
+      "condition": "gate_failures",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURES)",
+      "via": []
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1000",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1012",
+      "code": 2,
+      "condition": "args.project is None",
+      "how": "argparse",
+      "line": "ap.error(\"--project is required\")",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1085",
+      "code": 2,
+      "condition": "blocked",
+      "how": "emit",
+      "line": "return emit(result, EXIT_NEEDS_CONFIRM)",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1021",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_PRECONDITIONS)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1026",
+      "code": 3,
+      "condition": "not data_root.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_PRECONDITIONS)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1031",
+      "code": 3,
+      "condition": "not assays",
+      "how": "emit",
+      "line": "return emit(result, EXIT_PRECONDITIONS)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage01_samplesheet.py:1040",
+      "code": 3,
+      "condition": "missing",
+      "how": "emit",
+      "line": "return emit(result, EXIT_PRECONDITIONS)",
+      "via": []
+     }
+    ]
+   },
+   "module": "gars/_system/stage01_samplesheet.py",
+   "problem": null,
+   "subcommand": null
+  },
+  "stage03_analysis.approve": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/stage03_analysis.py:325",
+      "code": 0,
+      "condition": "re.search(r\"^Status: APPROVED\", text, re.M) and holds",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:374",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/stage03_analysis.py:330",
+      "code": 2,
+      "condition": "re.search(r\"^Status: APPROVED\", text, re.M)",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:337",
+      "code": 2,
+      "condition": "record_path.exists()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:345",
+      "code": 2,
+      "condition": "result[\"blocked\"]",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:351",
+      "code": 2,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:371",
+      "code": 2,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:483",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:489",
+      "code": 2,
+      "condition": "args.workspace is not None and args.workspace.resolve() != Path(workspace).resolve()",
+      "how": "emit",
+      "line": "return emit({'command': args.cmd, 'ok': False,",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/stage03_analysis.py:312",
+      "code": 3,
+      "condition": "adir is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:316",
+      "code": 3,
+      "condition": "not plan_path.is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/stage03_analysis.py",
+   "problem": null,
+   "subcommand": "approve"
+  },
+  "stage03_analysis.create": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/stage03_analysis.py:189",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/stage03_analysis.py:483",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:489",
+      "code": 2,
+      "condition": "args.workspace is not None and args.workspace.resolve() != Path(workspace).resolve()",
+      "how": "emit",
+      "line": "return emit({'command': args.cmd, 'ok': False,",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/stage03_analysis.py:164",
+      "code": 3,
+      "condition": "not project.is_dir()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:169",
+      "code": 3,
+      "condition": "not slug",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/stage03_analysis.py",
+   "problem": null,
+   "subcommand": "create"
+  },
+  "stage03_analysis.verify": {
+   "exits": {
+    "0": [
+     {
+      "at": "gars/_system/stage03_analysis.py:458",
+      "code": 0,
+      "condition": "",
+      "how": "emit",
+      "line": "return emit(result, EXIT_OK)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     }
+    ],
+    "1": [
+     {
+      "at": "gars/_system/stage03_analysis.py:411",
+      "code": 1,
+      "condition": "not outputs",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:420",
+      "code": 1,
+      "condition": "result[\"missing\"] or result[\"empty\"]",
+      "how": "emit",
+      "line": "return emit(result, EXIT_FAILURE)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "at": "gars/_system/stage03_analysis.py:394",
+      "code": 2,
+      "condition": "not m",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:402",
+      "code": 2,
+      "condition": "not holds",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:407",
+      "code": 2,
+      "condition": "blocked",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:424",
+      "code": 2,
+      "condition": "not (adir / 'run/.gars_run_complete').is_file()",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:430",
+      "code": 2,
+      "condition": "problem",
+      "how": "emit",
+      "line": "return emit(result, EXIT_REFUSED)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:483",
+      "code": 2,
+      "condition": "",
+      "how": "argparse",
+      "line": "args = ap.parse_args(argv)",
+      "via": []
+     },
+     {
+      "at": "gars/_system/stage03_analysis.py:489",
+      "code": 2,
+      "condition": "args.workspace is not None and args.workspace.resolve() != Path(workspace).resolve()",
+      "how": "emit",
+      "line": "return emit({'command': args.cmd, 'ok': False,",
+      "via": []
+     }
+    ],
+    "3": [
+     {
+      "at": "gars/_system/stage03_analysis.py:386",
+      "code": 3,
+      "condition": "adir is None",
+      "how": "emit",
+      "line": "return emit(result, EXIT_USAGE)",
+      "via": [
+       "gars/_system/stage03_analysis.py:463"
+      ]
+     }
+    ]
+   },
+   "module": "gars/_system/stage03_analysis.py",
+   "problem": null,
+   "subcommand": "verify"
+  }
+ },
+ "sha": "a626cdc2337246e972a198b026d53ce836416321"
+}

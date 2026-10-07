@@ -1,0 +1,856 @@
+{
+ "accept_tokens": [
+  "cancel",
+  "skip",
+  "verify"
+ ],
+ "command_accounting": {
+  "mapped": 79,
+  "seen": 92,
+  "uninstantiable": 0,
+  "unregistered": 13
+ },
+ "contracts": 14,
+ "empty_findings": [],
+ "exits": {
+  "call_sites": 73,
+  "emitted": 238,
+  "handled": 86,
+  "unhandled": 108,
+  "unhandled_list": [
+   {
+    "codes": [
+     3
+    ],
+    "contract": "00_initialize_project",
+    "step": "3",
+    "tool": "stage00_register.assays"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "00_initialize_project",
+    "step": "4",
+    "tool": "stage00_register.assays"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "00_initialize_project",
+    "step": "6",
+    "tool": "stage00_register.create"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "00_initialize_project",
+    "step": "12",
+    "tool": "stage00_register.link"
+   },
+   {
+    "codes": [
+     2
+    ],
+    "contract": "00_initialize_project",
+    "step": "15",
+    "tool": "stage00_register.finalize"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "01_prepare_samplesheets",
+    "step": "9",
+    "tool": "stage01_samplesheet"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "02_bioinformatics",
+    "step": "3a",
+    "tool": "configure.genomes"
+   },
+   {
+    "codes": [
+     1,
+     3
+    ],
+    "contract": "02_bioinformatics",
+    "step": "3a",
+    "tool": "configure.contrasts"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "02_bioinformatics",
+    "step": "3a",
+    "tool": "configure.apply"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "02_bioinformatics",
+    "step": "9",
+    "tool": "resolve_artifact"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+    "step": "3",
+    "tool": "nfcore_atacseq_wrapper.check"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+    "step": "4",
+    "tool": "nfcore_atacseq_wrapper.prepare"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+    "step": "5",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+    "step": "7",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+    "step": "8",
+    "tool": "nfcore_atacseq_wrapper.collect"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+    "step": "3",
+    "tool": "nfcore_chipseq_wrapper.check"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+    "step": "4",
+    "tool": "nfcore_chipseq_wrapper.prepare"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+    "step": "5",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+    "step": "7",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+    "step": "8",
+    "tool": "nfcore_chipseq_wrapper.collect"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+    "step": "3",
+    "tool": "nfcore_cutandrun_wrapper.check"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+    "step": "4",
+    "tool": "nfcore_cutandrun_wrapper.prepare"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+    "step": "5",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+    "step": "7",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+    "step": "8",
+    "tool": "nfcore_cutandrun_wrapper.collect"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "methylseq__01_nfcore-methylseq-wrapper",
+    "step": "3",
+    "tool": "nfcore_methylseq_wrapper.check"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "methylseq__01_nfcore-methylseq-wrapper",
+    "step": "4",
+    "tool": "nfcore_methylseq_wrapper.prepare"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "methylseq__01_nfcore-methylseq-wrapper",
+    "step": "5",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "methylseq__01_nfcore-methylseq-wrapper",
+    "step": "7",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "methylseq__01_nfcore-methylseq-wrapper",
+    "step": "8",
+    "tool": "nfcore_methylseq_wrapper.collect"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+    "step": "3",
+    "tool": "nfcore_rnaseq_wrapper.check"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+    "step": "4",
+    "tool": "nfcore_rnaseq_wrapper.prepare"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+    "step": "5",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+    "step": "7",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+    "step": "8",
+    "tool": "nfcore_rnaseq_wrapper.collect"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "rnaseq_bulk__02_rnaseq-de",
+    "step": "4",
+    "tool": "rnaseq_de.check"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "rnaseq_bulk__02_rnaseq-de",
+    "step": "5",
+    "tool": "rnaseq_de.prepare"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "rnaseq_bulk__02_rnaseq-de",
+    "step": "6",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "rnaseq_bulk__02_rnaseq-de",
+    "step": "7",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "rnaseq_bulk__02_rnaseq-de",
+    "step": "8",
+    "tool": "rnaseq_de.collect"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+    "step": "3",
+    "tool": "nfcore_scrnaseq_wrapper.check"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+    "step": "4",
+    "tool": "nfcore_scrnaseq_wrapper.prepare"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+    "step": "5",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+    "step": "6",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+    "step": "7",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+    "step": "8",
+    "tool": "nfcore_scrnaseq_wrapper.collect"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "scrnaseq__02_scrna-qc-cluster",
+    "step": "3",
+    "tool": "scrna_qc_cluster.check"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "scrnaseq__02_scrna-qc-cluster",
+    "step": "4",
+    "tool": "scrna_qc_cluster.prepare"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "scrnaseq__02_scrna-qc-cluster",
+    "step": "5",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "scrnaseq__02_scrna-qc-cluster",
+    "step": "6",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "scrnaseq__02_scrna-qc-cluster",
+    "step": "7",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "scrnaseq__02_scrna-qc-cluster",
+    "step": "8",
+    "tool": "scrna_qc_cluster.collect"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+    "step": "3",
+    "tool": "nfcore_spatialvi_wrapper.check"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+    "step": "4",
+    "tool": "nfcore_spatialvi_wrapper.prepare"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+    "step": "5",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+    "step": "6",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+    "step": "7",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+    "step": "8",
+    "tool": "nfcore_spatialvi_wrapper.collect"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "spatialvi__02_spatial-cluster-count",
+    "step": "3",
+    "tool": "spatial_cluster_count.check"
+   },
+   {
+    "codes": [
+     2,
+     3
+    ],
+    "contract": "spatialvi__02_spatial-cluster-count",
+    "step": "4",
+    "tool": "spatial_cluster_count.prepare"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "spatialvi__02_spatial-cluster-count",
+    "step": "5",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "spatialvi__02_spatial-cluster-count",
+    "step": "6",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "spatialvi__02_spatial-cluster-count",
+    "step": "7",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "spatialvi__02_spatial-cluster-count",
+    "step": "8",
+    "tool": "spatial_cluster_count.collect"
+   },
+   {
+    "codes": [
+     1,
+     3
+    ],
+    "contract": "03_custom_analysis",
+    "step": "1",
+    "tool": "resolve_artifact"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "03_custom_analysis",
+    "step": "2",
+    "tool": "stage03_analysis.create"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "03_custom_analysis",
+    "step": "7",
+    "tool": "executor.submit"
+   },
+   {
+    "codes": [
+     1,
+     2
+    ],
+    "contract": "03_custom_analysis",
+    "step": "8",
+    "tool": "executor.status"
+   },
+   {
+    "codes": [
+     3
+    ],
+    "contract": "03_custom_analysis",
+    "step": "9",
+    "tool": "stage03_analysis.verify"
+   }
+  ]
+ },
+ "file_mentions_unclassified": 16,
+ "guard": {
+  "calls_checked": 92,
+  "file_actions_checked": 33,
+  "refused_where_intended": [
+   {
+    "command": "sbatch",
+    "contract": "01_prepare_samplesheets",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "8",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "01_prepare_samplesheets",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "13",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "9",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "9",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "9",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "methylseq__01_nfcore-methylseq-wrapper",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "9",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "9",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "rnaseq_bulk__02_rnaseq-de",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "9",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "9",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "scrnaseq__02_scrna-qc-cluster",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "9",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "9",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "spatialvi__02_spatial-cluster-count",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "9",
+    "tool": null
+   },
+   {
+    "command": "date",
+    "contract": "03_custom_analysis",
+    "reason": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registere",
+    "scenario": "public",
+    "step": "10",
+    "tool": null
+   }
+  ]
+ },
+ "helpers": 53,
+ "placeholder_accounting": {
+  "by_binding": {
+   "artifact": 50,
+   "choice": 19,
+   "composed": 69,
+   "generic": 112,
+   "key": 79,
+   "label": 15,
+   "no_source": 30,
+   "unbound": 11
+  },
+  "seen": 385
+ },
+ "schema": "stepmap-facts/1",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "steps": 142,
+ "steps_by_contract": {
+  "00_initialize_project": 17,
+  "01_prepare_samplesheets": 14,
+  "02_bioinformatics": 11,
+  "03_custom_analysis": 10,
+  "atacseq_bulk__01_nfcore-atacseq-wrapper": 9,
+  "chipseq_bulk__01_nfcore-chipseq-wrapper": 9,
+  "cutandrun__01_nfcore-cutandrun-wrapper": 9,
+  "methylseq__01_nfcore-methylseq-wrapper": 9,
+  "rnaseq_bulk__01_nfcore-rnaseq-wrapper": 9,
+  "rnaseq_bulk__02_rnaseq-de": 9,
+  "scrnaseq__01_nfcore-scrnaseq-wrapper": 9,
+  "scrnaseq__02_scrna-qc-cluster": 9,
+  "spatialvi__01_nfcore-spatialvi-wrapper": 9,
+  "spatialvi__02_spatial-cluster-count": 9
+ },
+ "templates": 94,
+ "unregistered_calls": [
+  {
+   "contract": "01_prepare_samplesheets",
+   "executable": "sbatch",
+   "kind": "executable",
+   "line": 280,
+   "step": "8"
+  },
+  {
+   "contract": "01_prepare_samplesheets",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 299,
+   "step": "13"
+  },
+  {
+   "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 116,
+   "step": "9"
+  },
+  {
+   "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 109,
+   "step": "9"
+  },
+  {
+   "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 131,
+   "step": "9"
+  },
+  {
+   "contract": "methylseq__01_nfcore-methylseq-wrapper",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 104,
+   "step": "9"
+  },
+  {
+   "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 113,
+   "step": "9"
+  },
+  {
+   "contract": "rnaseq_bulk__02_rnaseq-de",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 131,
+   "step": "9"
+  },
+  {
+   "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 136,
+   "step": "9"
+  },
+  {
+   "contract": "scrnaseq__02_scrna-qc-cluster",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 101,
+   "step": "9"
+  },
+  {
+   "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 117,
+   "step": "9"
+  },
+  {
+   "contract": "spatialvi__02_spatial-cluster-count",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 148,
+   "step": "9"
+  },
+  {
+   "contract": "03_custom_analysis",
+   "executable": "date",
+   "kind": "implicit",
+   "line": 158,
+   "step": "10"
+  }
+ ],
+ "unregistered_in_process": [
+  "date",
+  "sbatch"
+ ]
+}
