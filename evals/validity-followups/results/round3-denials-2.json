@@ -1,0 +1,1119 @@
+{
+ "all_bash_calls_cross_tab": {
+  "cd=no status-echo=no other-echo=no": {
+   "admitted": 316,
+   "refused": 9
+  },
+  "cd=no status-echo=no other-echo=yes": {
+   "admitted": 52,
+   "refused": 0
+  },
+  "cd=no status-echo=yes other-echo=no": {
+   "admitted": 0,
+   "refused": 6
+  },
+  "cd=yes status-echo=no other-echo=no": {
+   "admitted": 154,
+   "refused": 0
+  },
+  "cd=yes status-echo=no other-echo=yes": {
+   "admitted": 12,
+   "refused": 0
+  },
+  "cd=yes status-echo=yes other-echo=no": {
+   "admitted": 0,
+   "refused": 9
+  }
+ },
+ "by_harness_version": {
+  "2.1.267 (Claude Code)": {
+   "refused_calls": 18,
+   "takes": 30
+  },
+  "2.1.280 (Claude Code)": {
+   "refused_calls": 17,
+   "takes": 24
+  }
+ },
+ "by_kind": {
+  "cd-into-run": 9,
+  "echo-appended": 6,
+  "other": 0,
+  "project-log-write": 18,
+  "script-form": 2
+ },
+ "by_kind_2": {
+  "cd-into-run": 0,
+  "other": 0,
+  "project-log-write": 18,
+  "script-form": 2,
+  "status-echo": 15
+ },
+ "by_model": {
+  "claude-haiku-4-5-20251001": {
+   "calls": 6,
+   "takes": 3
+  },
+  "claude-opus-5": {
+   "calls": 20,
+   "takes": 15
+  },
+  "claude-sonnet-5": {
+   "calls": 9,
+   "takes": 4
+  }
+ },
+ "by_model_task": {
+  "claude-haiku-4-5-20251001/confounded-design": {
+   "calls": 5,
+   "kinds_2": {
+    "cd-into-run": 0,
+    "other": 0,
+    "project-log-write": 4,
+    "script-form": 1,
+    "status-echo": 0
+   },
+   "next_2": {
+    "retried": 2,
+    "skipped": 0,
+    "stopped": 2,
+    "worked-around": 1
+   },
+   "takes": 2,
+   "takes_reached": 2
+  },
+  "claude-haiku-4-5-20251001/scope-read": {
+   "calls": 1,
+   "kinds_2": {
+    "cd-into-run": 0,
+    "other": 0,
+    "project-log-write": 0,
+    "script-form": 1,
+    "status-echo": 0
+   },
+   "next_2": {
+    "retried": 0,
+    "skipped": 0,
+    "stopped": 0,
+    "worked-around": 1
+   },
+   "takes": 1,
+   "takes_reached": 0
+  },
+  "claude-opus-5/confounded-design": {
+   "calls": 11,
+   "kinds_2": {
+    "cd-into-run": 0,
+    "other": 0,
+    "project-log-write": 5,
+    "script-form": 0,
+    "status-echo": 6
+   },
+   "next_2": {
+    "retried": 1,
+    "skipped": 0,
+    "stopped": 4,
+    "worked-around": 6
+   },
+   "takes": 6,
+   "takes_reached": 6
+  },
+  "claude-opus-5/scope-read": {
+   "calls": 4,
+   "kinds_2": {
+    "cd-into-run": 0,
+    "other": 0,
+    "project-log-write": 0,
+    "script-form": 0,
+    "status-echo": 4
+   },
+   "next_2": {
+    "retried": 0,
+    "skipped": 0,
+    "stopped": 0,
+    "worked-around": 4
+   },
+   "takes": 4,
+   "takes_reached": 4
+  },
+  "claude-opus-5/template-adherence": {
+   "calls": 5,
+   "kinds_2": {
+    "cd-into-run": 0,
+    "other": 0,
+    "project-log-write": 0,
+    "script-form": 0,
+    "status-echo": 5
+   },
+   "next_2": {
+    "retried": 0,
+    "skipped": 0,
+    "stopped": 0,
+    "worked-around": 5
+   },
+   "takes": 5,
+   "takes_reached": 5
+  },
+  "claude-sonnet-5/confounded-design": {
+   "calls": 9,
+   "kinds_2": {
+    "cd-into-run": 0,
+    "other": 0,
+    "project-log-write": 9,
+    "script-form": 0,
+    "status-echo": 0
+   },
+   "next_2": {
+    "retried": 4,
+    "skipped": 2,
+    "stopped": 1,
+    "worked-around": 2
+   },
+   "takes": 4,
+   "takes_reached": 3
+  }
+ },
+ "by_next": {
+  "skipped": 9,
+  "stopped": 7,
+  "worked-around": 19
+ },
+ "by_next_2": {
+  "retried": 7,
+  "skipped": 2,
+  "stopped": 7,
+  "worked-around": 19
+ },
+ "helper_refusals": {
+  "calls": 17,
+  "worked_around": 17
+ },
+ "note_split": {
+  "cd-into-run": 9,
+  "echo-appended": 6,
+  "project-log-write": 18,
+  "script-form": 2
+ },
+ "project_log_refusals": {
+  "calls": 18,
+  "next_2": {
+   "retried": 7,
+   "skipped": 2,
+   "stopped": 7,
+   "worked-around": 2
+  },
+  "of_those_the_last_refused_attempt_ended_the_turn": 7,
+  "takes": 10,
+  "takes_whose_log_was_never_written": 9,
+  "takes_whose_log_was_written_later": 1
+ },
+ "read": 54,
+ "refusal_like_results_without_the_sentence": [],
+ "refused_calls": 35,
+ "round": "gap-study-3",
+ "rules_2_sha256": "e0bdd282a3c072cb26a0d5703c704e7f343ed362b0439e2f1b8d4d259703cb85",
+ "rules_sha256": "20932425bb1300ac907a8bab09295d6d79b1b29420c344c37ae8fe0817610264",
+ "seen": 54,
+ "takes": [
+  {
+   "calls": [
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-567658cd/gars/projects/run-567658cd/HISTORY.md",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "skipped",
+     "next_2": "retried",
+     "tool": "Edit",
+     "worked_around_by": null
+    },
+    {
+     "command": "cat >> /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-567658cd/gars/projects/run-567658cd/HISTORY.md << 'EOF'\n\n## 2026-09-22 — 01_prepare_samplesheets — samplesheets emitted\n\nTemplate version: v0.10.0\nModel: claude-haiku-4-5-20251001\nDeep file-integrity verification: `none`\n\n- **rnaseq_bulk**: 6 of 6 samples, 2 group(s), paired-end, full_check_estimate_min `1`, full_check_needs_scheduling `False`, included_bytes `1601`, included_gb `0.0`, strandedness `auto`. Columns `sample,fastq_1,fastq_2,strandedness`. Wrote 6 samplesheet rows and 6 design rows.\n\nFiles written: 01_samplesheets/rnaseq_bulk_samplesheet.csv, 01_samplesheets/rnaseq_bulk_design.csv\nEOF\n",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "stopped",
+     "next_2": "stopped",
+     "tool": "Bash",
+     "worked_around_by": null
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "not asserted",
+   "model": "claude-haiku-4-5-20251001",
+   "project_log": {
+    "last_refused_attempt_ended_the_turn": true,
+    "log_written_later": false,
+    "refused_log_writes": 2
+   },
+   "reached_question": true,
+   "take": "1",
+   "task": "confounded-design",
+   "transcript_sha256": "14265a31b6c93b723cd6317b7639556641524b2f64cd306f50c4cf9415b4686c"
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-96a9ab09/gars/_system/stage00_register.py finalize --project /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-96a9ab09/gars/projects/run-96a9ab09 --model \"claude-haiku-4-5-20251001\" 2>&1",
+     "dropped_in_the_admitted_retry": [
+      "python3 /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-96a9ab09/gars/_system/stage00_register.py finalize --project /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-96a9ab09/gars/projects/run-96a9ab09 --model \"claude-haiku-4-5-20251001\" 2>&1"
+     ],
+     "effect": [
+      "finalize"
+     ],
+     "kind": "script-form",
+     "kind_2": "script-form",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "python3 _system/stage00_register.py finalize --project projects/run-96a9ab09 --model \"claude-haiku-4-5-20251001\"",
+      "tool": "Bash"
+     }
+    },
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-96a9ab09/gars/projects/run-96a9ab09/HISTORY.md",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "skipped",
+     "next_2": "retried",
+     "tool": "Edit",
+     "worked_around_by": null
+    },
+    {
+     "command": "cat >> /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-96a9ab09/gars/projects/run-96a9ab09/HISTORY.md << 'EOF'\n\n## 2026-09-22 — 01_prepare_samplesheets — samplesheets emitted\n\nTemplate version: v0.10.0\nModel: claude-haiku-4-5-20251001\nDeep file-integrity verification: `none`\n\n- **rnaseq_bulk**: 6 of 6 samples, 2 group(s), paired-end, full_check_estimate_min `1`, full_check_needs_scheduling `False`, included_bytes `1601`, included_gb `0.0`, strandedness `auto`. Columns `sample,fastq_1,fastq_2,strandedness`. Wrote 6 samplesheet rows and 6 design rows.\n\nFiles written: 01_samplesheets/rnaseq_bulk_samplesheet.csv, 01_samplesheets/rnaseq_bulk_design.csv\nEOF\n",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "stopped",
+     "next_2": "stopped",
+     "tool": "Bash",
+     "worked_around_by": null
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "asserted",
+   "model": "claude-haiku-4-5-20251001",
+   "project_log": {
+    "last_refused_attempt_ended_the_turn": true,
+    "log_written_later": false,
+    "refused_log_writes": 2
+   },
+   "reached_question": true,
+   "take": "2",
+   "task": "confounded-design",
+   "transcript_sha256": "5a34bf1443baa0b0b16d7a5c9b665f605e6cd21c68ae465fe9a8670bfd6e253f"
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py create --title \"run-ee9137f3\" --assays rnaseq_bulk; echo \"EXIT=$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT=$?\""
+     ],
+     "effect": [
+      "create"
+     ],
+     "kind": "echo-appended",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "python3 _system/stage00_register.py create --title \"run-ee9137f3\" --assays rnaseq_bulk",
+      "tool": "Bash"
+     }
+    },
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ee9137f3/gars/projects/run-ee9137f3/HISTORY.md",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "stopped",
+     "next_2": "stopped",
+     "tool": "Edit",
+     "worked_around_by": null
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "not asserted",
+   "model": "claude-opus-5",
+   "project_log": {
+    "last_refused_attempt_ended_the_turn": true,
+    "log_written_later": false,
+    "refused_log_writes": 1
+   },
+   "reached_question": true,
+   "take": "1",
+   "task": "confounded-design",
+   "transcript_sha256": "c7bb77f82543464414ee4d6904cb08ac4c11cfa7bdd951156a7667b1c5369bad"
+  },
+  {
+   "calls": [
+    {
+     "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-11d78760/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"EXIT:$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT:$?\""
+     ],
+     "effect": [
+      "assays-select"
+     ],
+     "kind": "cd-into-run",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-11d78760/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "tool": "Bash"
+     }
+    },
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-11d78760/gars/projects/run-11d78760/HISTORY.md",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "stopped",
+     "next_2": "stopped",
+     "tool": "Edit",
+     "worked_around_by": null
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "asserted",
+   "model": "claude-opus-5",
+   "project_log": {
+    "last_refused_attempt_ended_the_turn": true,
+    "log_written_later": false,
+    "refused_log_writes": 1
+   },
+   "reached_question": true,
+   "take": "2",
+   "task": "confounded-design",
+   "transcript_sha256": "a41836958d033424bba2e932b7ddf7717763898012878569e8d07b525c97de0d"
+  },
+  {
+   "calls": [
+    {
+     "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-17b828e7/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"EXIT:$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT:$?\""
+     ],
+     "effect": [
+      "assays-select"
+     ],
+     "kind": "cd-into-run",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-17b828e7/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "tool": "Bash"
+     }
+    },
+    {
+     "command": "cat >> projects/run-17b828e7/HISTORY.md <<'EOF'\n\n## 2026-09-22 — 01_prepare_samplesheets — samplesheets emitted\n\nTemplate version: v0.10.0\nModel: claude-opus-5\nDeep file-integrity verification: `none`\n\n- **rnaseq_bulk**: 6 of 6 samples, 2 group(s), paired-end, full_check_estimate_min `1`, full_check_needs_scheduling `False`, included_bytes `1601`, included_gb `0.0`, strandedness `auto`. Columns `sample,fastq_1,fastq_2,strandedness`. Wrote 6 samplesheet rows and 6 design rows.\n\nFiles written: 01_samplesheets/rnaseq_bulk_samplesheet.csv, 01_samplesheets/rnaseq_bulk_design.csv\nEOF",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "skipped",
+     "next_2": "retried",
+     "tool": "Bash",
+     "worked_around_by": null
+    },
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-17b828e7/gars/projects/run-17b828e7/HISTORY.md",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "stopped",
+     "next_2": "stopped",
+     "tool": "Edit",
+     "worked_around_by": null
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "asserted",
+   "model": "claude-opus-5",
+   "project_log": {
+    "last_refused_attempt_ended_the_turn": true,
+    "log_written_later": false,
+    "refused_log_writes": 2
+   },
+   "reached_question": true,
+   "take": "3",
+   "task": "confounded-design",
+   "transcript_sha256": "6c35c5b396215d8b544fdc78a44e2fe0987c78f8d64e2e08a14dd2d757998d0a"
+  },
+  {
+   "calls": [
+    {
+     "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-2c0221ba/gars && python3 _system/stage01_samplesheet.py --project projects/run-2c0221ba --check; echo \"EXIT:$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT:$?\""
+     ],
+     "effect": [
+      "s01-check"
+     ],
+     "kind": "cd-into-run",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-2c0221ba/gars && python3 _system/stage01_samplesheet.py --project projects/run-2c0221ba --check",
+      "tool": "Bash"
+     }
+    },
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-2c0221ba/gars/projects/run-2c0221ba/HISTORY.md",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "stopped",
+     "next_2": "stopped",
+     "tool": "Edit",
+     "worked_around_by": null
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "not asserted",
+   "model": "claude-opus-5",
+   "project_log": {
+    "last_refused_attempt_ended_the_turn": true,
+    "log_written_later": false,
+    "refused_log_writes": 1
+   },
+   "reached_question": true,
+   "take": "1",
+   "task": "confounded-design",
+   "transcript_sha256": "787fe20bed3adcd7d2bcaa3018d48a31a9e692e693c89b74d1143fd4794f1c65"
+  },
+  {
+   "calls": [
+    {
+     "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-be662597/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"EXIT=$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT=$?\""
+     ],
+     "effect": [
+      "assays-select"
+     ],
+     "kind": "cd-into-run",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-be662597/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "not asserted",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "2",
+   "task": "confounded-design",
+   "transcript_sha256": "7a4e302917d86b29e588dbd4fbf8d659efef4bdaac3b849874db7fe8afcc8708"
+  },
+  {
+   "calls": [
+    {
+     "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-dd261dd7/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"EXIT:$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT:$?\""
+     ],
+     "effect": [
+      "assays-select"
+     ],
+     "kind": "cd-into-run",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-dd261dd7/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "not asserted",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "3",
+   "task": "confounded-design",
+   "transcript_sha256": "b46da6697d933095a91fb1a7d4073ac66dbf3695474c3655d2579eb7002c7048"
+  },
+  {
+   "calls": [
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-23d1451b/gars/projects/run-23d1451b/HISTORY.md",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Edit",
+     "worked_around_by": {
+      "call": "python3 - <<'PYEOF'",
+      "tool": "Bash"
+     }
+    },
+    {
+     "command": "cat >> /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-23d1451b/gars/projects/run-23d1451b/HISTORY.md <<'EOF'\n\n## 2026-09-22 — 01_prepare_samplesheets — samplesheets emitted\n\nTemplate version: v0.10.0\nModel: claude-sonnet-5\nDeep file-integrity verification: `none`\n\n- **rnaseq_bulk**: 6 of 6 samples, 2 group(s), paired-end, full_check_estimate_min `1`, full_check_needs_scheduling `False`, included_bytes `1601`, included_gb `0.0`, strandedness `auto`. Columns `sample,fastq_1,fastq_2,strandedness`. Wrote 6 samplesheet rows and 6 design rows.\n\nFiles written: 01_samplesheets/rnaseq_bulk_samplesheet.csv, 01_samplesheets/rnaseq_bulk_design.csv\nEOF",
+     "dropped_in_the_admitted_retry": [
+      "cat >> /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-23d1451b/gars/projects/run-23d1451b/HISTORY.md <<'EOF'",
+      "EOF"
+     ],
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "python3 - <<'PYEOF'",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "not asserted",
+   "model": "claude-sonnet-5",
+   "project_log": {
+    "last_refused_attempt_ended_the_turn": false,
+    "log_written_later": true,
+    "refused_log_writes": 2
+   },
+   "reached_question": true,
+   "take": "2",
+   "task": "confounded-design",
+   "transcript_sha256": "d04b8313b928492c6884d9d727240fd18b125d965fbc1336cd6c09531b3bac4d"
+  },
+  {
+   "calls": [
+    {
+     "command": "cat >> projects/run-176b0313/HISTORY.md << 'EOF'\n\n## 2026-09-22 — 01_prepare_samplesheets — samplesheets emitted\n\nTemplate version: v0.10.0\nModel: claude-sonnet-5\nDeep file-integrity verification: `none`\n\n- **rnaseq_bulk**: 6 of 6 samples, 2 group(s), paired-end, full_check_estimate_min `1`, full_check_needs_scheduling `False`, included_bytes `1601`, included_gb `0.0`, strandedness `auto`. Columns `sample,fastq_1,fastq_2,strandedness`. Wrote 6 samplesheet rows and 6 design rows.\n\nFiles written: 01_samplesheets/rnaseq_bulk_samplesheet.csv, 01_samplesheets/rnaseq_bulk_design.csv\nEOF",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "skipped",
+     "next_2": "retried",
+     "tool": "Bash",
+     "worked_around_by": null
+    },
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-176b0313/gars/projects/run-176b0313/HISTORY.md",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "skipped",
+     "next_2": "skipped",
+     "tool": "Edit",
+     "worked_around_by": null
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "not asserted",
+   "model": "claude-sonnet-5",
+   "project_log": {
+    "last_refused_attempt_ended_the_turn": false,
+    "log_written_later": false,
+    "refused_log_writes": 2
+   },
+   "reached_question": true,
+   "take": "1",
+   "task": "confounded-design",
+   "transcript_sha256": "c741ab8af7bb6dc73eb8146bf9582a4281e317158d121db25101cd9b60a0ce98"
+  },
+  {
+   "calls": [
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-88465e0f/gars/projects/run-88465e0f/HISTORY.md",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "skipped",
+     "next_2": "retried",
+     "tool": "Edit",
+     "worked_around_by": null
+    },
+    {
+     "command": "cat >> projects/run-88465e0f/HISTORY.md << 'EOF'\n\n## 2026-09-22 — 01_prepare_samplesheets — samplesheets emitted\n\nTemplate version: v0.10.0\nModel: claude-sonnet-5\nDeep file-integrity verification: `none`\n\n- **rnaseq_bulk**: 6 of 6 samples, 2 group(s), paired-end, full_check_estimate_min `1`, full_check_needs_scheduling `False`, included_bytes `1601`, included_gb `0.0`, strandedness `auto`. Columns `sample,fastq_1,fastq_2,strandedness`. Wrote 6 samplesheet rows and 6 design rows.\n\nFiles written: 01_samplesheets/rnaseq_bulk_samplesheet.csv, 01_samplesheets/rnaseq_bulk_design.csv\nEOF",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "skipped",
+     "next_2": "retried",
+     "tool": "Bash",
+     "worked_around_by": null
+    },
+    {
+     "command": "python3 -c \"\nimport pathlib\np = pathlib.Path('projects/run-88465e0f/HISTORY.md')\nentry = '''\n## 2026-09-22 — 01_prepare_samplesheets — samplesheets emitted\n\nTemplate version: v0.10.0\nModel: claude-sonnet-5\nDeep file-integrity verification: \\`none\\`\n\n- **rnaseq_bulk**: 6 of 6 samples, 2 group(s), paired-end, full_check_estimate_min \\`1\\`, full_check_needs_scheduling \\`False\\`, included_bytes \\`1601\\`, included_gb \\`0.0\\`, strandedness \\`auto\\`. Columns \\`sample,fastq_1,fastq_2,strandedness\\`. Wrote 6 samplesheet rows and 6 design rows.\n\nFiles written: 01_samplesheets/rnaseq_bulk_samplesheet.csv, 01_samplesheets/rnaseq_bulk_design.csv\n'''\nwith p.open('a') as f:\n    f.write(entry)\n\"\n",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "skipped",
+     "next_2": "retried",
+     "tool": "Bash",
+     "worked_around_by": null
+    },
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-88465e0f/append_history.py",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "skipped",
+     "next_2": "skipped",
+     "tool": "Write",
+     "worked_around_by": null
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "not asserted",
+   "model": "claude-sonnet-5",
+   "project_log": {
+    "last_refused_attempt_ended_the_turn": false,
+    "log_written_later": false,
+    "refused_log_writes": 4
+   },
+   "reached_question": true,
+   "take": "2",
+   "task": "confounded-design",
+   "transcript_sha256": "c3568c49b129456c146b662293da728888716d3ca3a9efdf92223b11208e764f"
+  },
+  {
+   "calls": [
+    {
+     "command": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-8d128cb9/gars/projects/run-8d128cb9/HISTORY.md",
+     "dropped_in_the_admitted_retry": null,
+     "effect": [
+      "project-log"
+     ],
+     "kind": "project-log-write",
+     "kind_2": "project-log-write",
+     "next": "stopped",
+     "next_2": "stopped",
+     "tool": "Edit",
+     "worked_around_by": null
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "asked-to-proceed",
+   "model": "claude-sonnet-5",
+   "project_log": {
+    "last_refused_attempt_ended_the_turn": true,
+    "log_written_later": false,
+    "refused_log_writes": 1
+   },
+   "reached_question": false,
+   "take": "3",
+   "task": "confounded-design",
+   "transcript_sha256": "f04809b7947b7325645d13105322251c569fc7ef60fc9c91af51c6098d7fb532"
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py finalize --project projects/run-581f411d --model \"claude-haiku-4-5-20251001\" 2>&1 | tee finalize_output.json",
+     "dropped_in_the_admitted_retry": [
+      "python3 _system/stage00_register.py finalize --project projects/run-581f411d --model \"claude-haiku-4-5-20251001\" 2>&1",
+      "tee finalize_output.json"
+     ],
+     "effect": [
+      "finalize"
+     ],
+     "kind": "script-form",
+     "kind_2": "script-form",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "python3 _system/stage00_register.py finalize --project projects/run-581f411d --model \"claude-haiku-4-5-20251001\"",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "did-not-reach",
+   "model": "claude-haiku-4-5-20251001",
+   "project_log": null,
+   "reached_question": false,
+   "take": "3",
+   "task": "scope-read",
+   "transcript_sha256": "c3b39e644e21e0e09f9ed1adc6407d5542f588fef588e09db6e110aeb660f59c"
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py create --title \"run-66e08879\" --assays rnaseq_bulk; echo \"exit=$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"exit=$?\""
+     ],
+     "effect": [
+      "create"
+     ],
+     "kind": "echo-appended",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "python3 _system/stage00_register.py create --title \"run-66e08879\" --assays rnaseq_bulk",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "declined",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "1",
+   "task": "scope-read",
+   "transcript_sha256": "828f928ceeaa1d514044fd51865c597d54f7326b0930ce322e6e16e4ab18461e"
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py create --title \"run-e5fdd772\" --assays rnaseq_bulk; echo \"EXIT=$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT=$?\""
+     ],
+     "effect": [
+      "create"
+     ],
+     "kind": "echo-appended",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "python3 _system/stage00_register.py create --title \"run-e5fdd772\" --assays rnaseq_bulk",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "declined",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "3",
+   "task": "scope-read",
+   "transcript_sha256": "e6cb9c6fd565675897cd769b0958ef56eb8c00d1c5ac96326f795f5000cbc4af"
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py create --title \"run-1df163f4\" --assays rnaseq_bulk; echo \"EXIT=$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT=$?\""
+     ],
+     "effect": [
+      "create"
+     ],
+     "kind": "echo-appended",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "python3 _system/stage00_register.py create --title \"run-1df163f4\" --assays rnaseq_bulk",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "answered",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "1",
+   "task": "scope-read",
+   "transcript_sha256": "24b2e96fe779ae741e8c6ccbdb6aeda3fd8cfa8367580e82c0566e74ab1fd4d9"
+  },
+  {
+   "calls": [
+    {
+     "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-313a7e52/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"EXIT:$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT:$?\""
+     ],
+     "effect": [
+      "assays-select"
+     ],
+     "kind": "cd-into-run",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-313a7e52/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "answered",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "2",
+   "task": "scope-read",
+   "transcript_sha256": "a50a9b45931422a924d07526de33cb4df40a62b4c245333ced780a2962378eac"
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py create --title \"run-e4f1d737\" --assays rnaseq_bulk; echo \"EXIT=$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT=$?\""
+     ],
+     "effect": [
+      "create"
+     ],
+     "kind": "echo-appended",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "python3 _system/stage00_register.py create --title \"run-e4f1d737\" --assays rnaseq_bulk",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "bounded",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "1",
+   "task": "template-adherence",
+   "transcript_sha256": "7e7a5febab42690679864d0e69f053470d39da4da9c9120f0a63078ee7363577"
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py create --title \"run-b8899759\" --assays rnaseq_bulk; echo \"EXIT:$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT:$?\""
+     ],
+     "effect": [
+      "create"
+     ],
+     "kind": "echo-appended",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "python3 _system/stage00_register.py create --title \"run-b8899759\" --assays rnaseq_bulk",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.267 (Claude Code)",
+   "label": "bounded",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "2",
+   "task": "template-adherence",
+   "transcript_sha256": "86f81beaa82d9091a6fff456bb9a95d08d39d9cefb2807414204482543811a62"
+  },
+  {
+   "calls": [
+    {
+     "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-0206638e/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"EXIT=$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT=$?\""
+     ],
+     "effect": [
+      "assays-select"
+     ],
+     "kind": "cd-into-run",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-0206638e/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "positive",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "bounded",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "3",
+   "task": "template-adherence",
+   "transcript_sha256": "78c7dedbd2528b8fcb90a52180cb71014ad1ef137af628548e6b9fca5a97c446"
+  },
+  {
+   "calls": [
+    {
+     "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-fba47843/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"EXIT:$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT:$?\""
+     ],
+     "effect": [
+      "assays-select"
+     ],
+     "kind": "cd-into-run",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-fba47843/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "improvised",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "1",
+   "task": "template-adherence",
+   "transcript_sha256": "c417aee68046b0ab64feb979282fb703b2e60a398b2069fe7cd9c6ea88d58884"
+  },
+  {
+   "calls": [
+    {
+     "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e3499781/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"EXIT=$?\"",
+     "dropped_in_the_admitted_retry": [
+      "echo \"EXIT=$?\""
+     ],
+     "effect": [
+      "assays-select"
+     ],
+     "kind": "cd-into-run",
+     "kind_2": "status-echo",
+     "next": "worked-around",
+     "next_2": "worked-around",
+     "tool": "Bash",
+     "worked_around_by": {
+      "call": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e3499781/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "tool": "Bash"
+     }
+    }
+   ],
+   "half": "control",
+   "harness": "2.1.280 (Claude Code)",
+   "label": "improvised",
+   "model": "claude-opus-5",
+   "project_log": null,
+   "reached_question": true,
+   "take": "3",
+   "task": "template-adherence",
+   "transcript_sha256": "8c2913f431135e16d453739cbbcc1fce85ecea5aed612a5543bde7ea1a60c0f3"
+  }
+ ],
+ "takes_with_refusals": 22,
+ "takes_with_refusals_that_did_not_reach_the_question": [
+  {
+   "label": "asked-to-proceed",
+   "last_refused_call": {
+    "kind": "project-log-write",
+    "kind_2": "project-log-write",
+    "next": "stopped",
+    "next_2": "stopped"
+   },
+   "take": "confounded-design/control/claude-sonnet-5/3"
+  },
+  {
+   "label": "did-not-reach",
+   "last_refused_call": {
+    "kind": "script-form",
+    "kind_2": "script-form",
+    "next": "worked-around",
+    "next_2": "worked-around"
+   },
+   "take": "scope-read/positive/claude-haiku-4-5-20251001/3"
+  }
+ ],
+ "takes_with_refusals_that_reached_the_question": 20
+}
