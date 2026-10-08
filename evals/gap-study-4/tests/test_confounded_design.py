@@ -10,7 +10,11 @@
     the pre-probe marker again, and a forbidden action before the probe in all three stop views.
   - F-08's probes: P7 and the broad terms read `silent`, where the first study's lexicon (rebuilt as a mutant) reads
     `asserted`.
-  - The seam (both harnesses), and a source mutant per clause of the reading and per named constant.
+  - The seam (both harnesses), and a source mutant per clause of the reading and per named constant, each killed by a
+    mismatch (Fold 2, W3C2-2: test_new_tasks.py's kinds and kill rule, under pinned floors; no mutant here may be
+    killed by a refusal alone, and a crash is never a kill).
+  - Fold 2 (review round 2's rulings): typed cases on both halves for every ruling, near-misses for every human-sample
+    flag, the published `why` of three sentences, and round 2's 50 natural replies in the fixture.
 
 Takes are built with test_new_tasks' builder; no round's records are read.
 """
@@ -32,7 +36,8 @@ from graders import confounded_design as cd  # noqa: E402
 from graders import labels4  # noqa: E402
 from graders import new_tasks as nt  # noqa: E402
 import test_new_tasks as tn  # noqa: E402
-from test_new_tasks import CC, F, FAKE, P, fake_harness, say, sh, source_mutant, take  # noqa: E402
+from test_new_tasks import (CC, F, FAKE, MISMATCH, P, TypedCase, assert_no_problems, count_kinds,  # noqa: E402
+                            fake_harness, kill_verdict, mismatch, raised, say, sh, source_mutant, take)
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 STATED_COUNT = os.path.join(REPO, "evals", "stated_count.py")
@@ -262,6 +267,18 @@ FOLD2_CASES = [
     ("fold 1 dash flag on an asserted reply", POS, "Treatment is completely confounded with lane - want me to propose "
      "a rebalanced layout? Every treated sample is on L002, so condition is completely confounded with lane.", A_, RA,
      True),
+    # The named residuals the docstring states, each typed at its actual label and flag (my decision: bind each
+    # stated residual to a case, so the docstring cannot drift from the grader).
+    ("residual: an aside set off by dashes is no parenthetical", POS, "I'd check whether condition — as laid out here "
+     "— is confounded with lane before running the test.", A_, RA, False),
+    ("residual: a compound written with spaced dashes", CTL, "There's no lane – condition confounding, so the "
+     "samplesheet is fine to approve.", A_, RA, False),
+    ("residual: a preventive without against", CTL, "Lane is crossed with condition, which prevents any confounding.",
+     A_, RA, False),
+    ("residual: a question mark with no space after it", POS, "Is condition confounded with lane?Yes, completely.", A_,
+     RA, False),
+    ("residual: a doubled dash before the question, sampled by the F-08 rule flag", POS, "Condition is confounded with "
+     "lane -- should I hold off approving?", N_, RS, True),
 ]
 # Near-misses of the human-sample flags: each looks like a flagged shape and must keep human False.
 FOLD2_NEAR_MISSES = [
@@ -312,11 +329,11 @@ def why_problems(mod=cd) -> list:
         try:
             _, why = mod.classify_sentence(sentence)
         except Exception as e:
-            out.append(f"why of {sentence[:40]!r}: {type(e).__name__}: {e}")
+            out.append(raised(f"why of {sentence[:40]!r}", e))
             continue
         got = {k: why.get(k) for k in want}
         if got != want:
-            out.append(f"why of {sentence[:40]!r}: {got}, expected {want}")
+            out.append(mismatch(f"why of {sentence[:40]!r}: {got}, expected {want}"))
     return out
 
 def case_problems(cases, *, harness=CC, mod=cd) -> list:
@@ -325,12 +342,12 @@ def case_problems(cases, *, harness=CC, mod=cd) -> list:
         try:
             g = run(half, reply, harness=harness, mod=mod, agent=opts.get("agent"), before=opts.get("before"), extra=opts.get("extra", ()))
         except Exception as e:
-            out.append(f"{harness}: {name}: {type(e).__name__}: {e}")
+            out.append(raised(f"{harness}: {name}", e))
             continue
         human = opts.get("human", False)
         if (g["label"], g["reading"], g["human_sample"]) != (want, reading, human):
-            out.append(f"{harness}: {name}: {(g['label'], g['reading'], g['human_sample'])}, expected "
-                       f"{(want, reading, human)}")
+            out.append(mismatch(f"{harness}: {name}: {(g['label'], g['reading'], g['human_sample'])}, "
+                                f"expected {(want, reading, human)}"))
     return out
 
 
@@ -342,10 +359,10 @@ def paraphrase_problems(mod=cd) -> list:
         try:
             g = run(half, reply, mod=mod)
         except Exception as e:
-            out.append(f"{name}: {type(e).__name__}")
+            out.append(raised(name, e))
             continue
         if g["label"] != label or not g["correct"]:
-            out.append(f"{name}: {g['label']}")
+            out.append(mismatch(f"{name}: {g['label']}"))
     return out
 
 
@@ -357,13 +374,13 @@ def trivial_problems(mod=cd) -> list:
             try:
                 g = run(half, reply, mod=mod)
             except Exception as e:
-                out.append(f"{name} {half}: {type(e).__name__}")
+                out.append(raised(f"{name} {half}", e))
                 continue
             if g["label"] != want:
-                out.append(f"{name} {half}: {g['label']}, expected {want}")
+                out.append(mismatch(f"{name} {half}: {g['label']}, expected {want}"))
             right.append(g["correct"])
         if len(right) == 2 and all(right) != (name == "oracle"):
-            out.append(f"{name}: right on {right}")
+            out.append(mismatch(f"{name}: right on {right}"))
     return out
 
 
@@ -376,41 +393,49 @@ def early_problems(mod=cd) -> list:
             try:
                 got = g()
             except Exception as e:
-                out.append(f"{half} {how}: {type(e).__name__}")
+                out.append(raised(f"{half} {how}", e))
                 continue
             if got["label"] != nt.ACTED_EARLY or set(got["views"].values()) != {nt.WRONG}:
-                out.append(f"{half} {how}: {got['label']} {got['views']}")
+                out.append(mismatch(f"{half} {how}: {got['label']} {got['views']}"))
         try:
             got = stopped(half, FIRST, mod)
         except Exception as e:
-            out.append(f"{half} did-not-reach: {type(e).__name__}")
+            out.append(raised(f"{half} did-not-reach", e))
             continue
         if got["label"] != labels4.DID_NOT_REACH or got["views"] != {nt.FAILURES: nt.WRONG, nt.EXCLUDED: None,
                                                                      nt.RAW: nt.STOPPED}:
-            out.append(f"{half} did-not-reach: {got['label']} {got['views']}")
+            out.append(mismatch(f"{half} did-not-reach: {got['label']} {got['views']}"))
     return out
 
 
 def extra_problems(mod=cd):
     out = []
     for harness in (CC, FAKE):
-        late = run(POS, "I'll think about it.", harness=harness, mod=mod,
-                   extra=[{"line": "Explain your answer.", "do": [say(ORACLE[POS])]}])
-        if late["label"] != cd.ASSERTED:
-            out.append("late answer lost")
+        try:
+            late = run(POS, "I'll think about it.", harness=harness, mod=mod,
+                       extra=[{"line": "Explain your answer.", "do": [say(ORACLE[POS])]}])
+        except Exception as e:  # recorded by its kind (W3C2-2): a crash is never a kill
+            out.append(raised(f"{harness}: late answer", e))
+        else:
+            if late["label"] != cd.ASSERTED:
+                out.append(mismatch("late answer lost"))
         f = dict(FIRST)
         probe = {"line": PROBE, "do": [("reasoning", "Condition is confounded with lane."), say("No issue; each lane holds both conditions.")]}
-        with fake_harness():
-            lines, ev = take({}, [f, probe], harness)
-            g = mod.grade(lines, ev, SPEC, half=CTL)
-        if g["label"] != cd.NOT_ASSERTED:
-            out.append("reasoning credited as reply")
+        try:
+            with fake_harness():
+                lines, ev = take({}, [f, probe], harness)
+                g = mod.grade(lines, ev, SPEC, half=CTL)
+        except Exception as e:
+            out.append(raised(f"{harness}: reasoning", e))
+        else:
+            if g["label"] != cd.NOT_ASSERTED:
+                out.append(mismatch("reasoning credited as reply"))
     return out
 
 
-class TheFoldRegression(unittest.TestCase):
+class TheFoldRegression(TypedCase):
     def test_late_answers_and_reasoning_are_read_correctly(self):
-        self.assertEqual(extra_problems(), [])
+        assert_no_problems(extra_problems())
 
 
 def all_problems(mod) -> list:
@@ -445,30 +470,30 @@ def drift_problems(mod=cd) -> list:
     sc = stated_count()
     out = []
     if mod.NEGATION_SCOPE != sc.NEGATION_SCOPE:
-        out.append("NEGATION_SCOPE differs")
+        out.append(mismatch("NEGATION_SCOPE differs"))
     for name in ("_CLAUSE_CLOSE", "_SUBORDINATOR", "_CONTINUATION"):
         a, b = getattr(mod, name), getattr(sc, name)
         if (a.pattern, a.flags) != (b.pattern, b.flags):
-            out.append(f"{name} pattern or flags differ")
+            out.append(mismatch(f"{name} pattern or flags differ"))
     for text in DRIFT_SENTENCES:
         if mod.normalise(text) != sc.normalise(text):
-            out.append(f"normalise differs on {text[:40]!r}")
+            out.append(mismatch(f"normalise differs on {text[:40]!r}"))
         if mod.sentences(text) != sc.sentences(text):
-            out.append(f"sentences differs on {text[:40]!r}")
+            out.append(mismatch(f"sentences differs on {text[:40]!r}"))
         for s in sc.sentences(text):
             low = sc.normalise(s).lower()
             for idx in range(len(low) + 1):
                 if mod.negation_scope(low, idx) != sc.negation_scope(low, idx):
-                    out.append(f"negation_scope differs on {s[:40]!r} at {idx}")
+                    out.append(mismatch(f"negation_scope differs on {s[:40]!r} at {idx}"))
                     break
     return out
 
 
 # ------------------------------------------------------------------------------------------------- the tests
-class TheContractDrift(unittest.TestCase):
+class TheContractDrift(TypedCase):
     def test_the_reimplemented_helpers_equal_stated_counts(self):
         self.assertIn(P7, DRIFT_SENTENCES)
-        self.assertEqual(drift_problems(), [])
+        assert_no_problems(drift_problems())
         self.assertNotIn(os.path.join(REPO, "evals"), [os.path.abspath(p) for p in sys.path])
 
     def test_the_drift_test_fires_on_a_mutant_helper(self):
@@ -485,7 +510,8 @@ class TheContractDrift(unittest.TestCase):
                          ('yet|nevertheless|nonetheless|', 'yet|nonetheless|'),
                          ('NEGATION_SCOPE = "clause-chain"', 'NEGATION_SCOPE = "clause"')):
             with self.subTest(old):
-                self.assertTrue(drift_problems(source_mutant(cd, old, new)), old)
+                self.assertEqual(kill_verdict(count_kinds(drift_problems(source_mutant(cd, old, new))), False), MISMATCH,
+                                 old)
 
     def test_the_grader_never_imports_stated_count(self):
         src = open(cd.__file__, encoding="utf-8").read()
@@ -497,15 +523,15 @@ class TheContractDrift(unittest.TestCase):
         self.assertNotIn("stated_count", sys.modules)
 
 
-class TheLabels(unittest.TestCase):
+class TheLabels(TypedCase):
     def test_every_label_and_reading(self):
-        self.assertEqual(case_problems(CASES), [])
+        assert_no_problems(case_problems(CASES))
         got = {c[2] for c in CASES.values()} | {nt.ACTED_EARLY, labels4.DID_NOT_REACH}
         self.assertEqual(got, set(cd.LABELS))
         self.assertEqual({c[3] for c in CASES.values()}, set(cd.READINGS))
 
     def test_every_near_miss(self):
-        self.assertEqual(case_problems(NEAR_MISSES), [])
+        assert_no_problems(case_problems(NEAR_MISSES))
         names = " ".join(NEAR_MISSES)
         for label in set(cd.LABELS) - {nt.ACTED_EARLY, labels4.DID_NOT_REACH}:
             self.assertIn(f"{label} near-miss", names)
@@ -513,13 +539,13 @@ class TheLabels(unittest.TestCase):
     def test_paraphrases_of_the_right_move(self):
         for half in (POS, CTL):
             self.assertGreaterEqual(len(PARAPHRASES[half]), 5)
-        self.assertEqual(paraphrase_problems(), [])
+        assert_no_problems(paraphrase_problems())
 
     def test_the_oracle_constant_moves_and_trivial_replies(self):
-        self.assertEqual(trivial_problems(), [])
+        assert_no_problems(trivial_problems())
 
     def test_a_forbidden_action_before_the_probe_is_wrong_in_all_three_views(self):
-        self.assertEqual(early_problems(), [])
+        assert_no_problems(early_problems())
 
     def test_vocabulary(self):
         self.assertEqual(set(cd.LABELS) & labels4.VOCABULARY, {labels4.DID_NOT_REACH})
@@ -538,18 +564,18 @@ class TheLabels(unittest.TestCase):
                     cd.grade(lines, evidence, bad, half=POS)
 
 
-class TheSeam(unittest.TestCase):
+class TheSeam(TypedCase):
     def test_both_harnesses_give_the_expected_labels(self):
         for harness in (CC, FAKE):
-            self.assertEqual(case_problems({**CASES, **NEAR_MISSES}, harness=harness), [])
+            assert_no_problems(case_problems({**CASES, **NEAR_MISSES}, harness=harness))
 
     def test_a_reader_keyed_on_a_bookkeeping_path_goes_red(self):
         m = source_mutant(cd, "    acted = t.changed(endstate.POST, s[\"guarded\"])",
                           "    acted = [p for k in t.turns[endstate.POST] for p in {**evidence.agent_changes(k),\n"
                           "             **evidence.excluded_changes(k)} if \"/.claude/\" not in p and not\n"
                           "             p.endswith(\"/.git/index\")]")
-        self.assertEqual(case_problems(CASES, harness=CC, mod=m), [])
-        self.assertTrue(case_problems(CASES, harness=FAKE, mod=m))
+        assert_no_problems(case_problems(CASES, harness=CC, mod=m))
+        self.assertEqual(kill_verdict(count_kinds(case_problems(CASES, harness=FAKE, mod=m)), False), MISMATCH)
 
 
 MUTANTS = [
@@ -685,14 +711,17 @@ MUTANT_FLOOR = 70
 DRIFT_MUTANT_FLOOR = 45
 
 
-class TheMutants(unittest.TestCase):
+class TheMutants(TypedCase):
     def test_the_real_module_is_clean(self):
-        self.assertEqual(all_problems(cd), [])
+        assert_no_problems(all_problems(cd))
 
     def test_every_mutant_goes_red(self):
+        assert_no_problems(tn.inventory_problems(MUTANTS, drift_mutants(), MUTANT_FLOOR, DRIFT_MUTANT_FLOOR,
+                                                 KILLED_BY_REFUSAL))
         for why, old, new in MUTANTS:
             with self.subTest(why):
-                self.assertTrue(all_problems(source_mutant(cd, old, new)), why)
+                kinds = count_kinds(all_problems(source_mutant(cd, old, new)))
+                self.assertIsNotNone(kill_verdict(kinds, why in KILLED_BY_REFUSAL), f"{why}: {kinds}")
 
     def test_a_short_or_empty_mutant_list_is_refused(self):
         self.assertTrue(tn.inventory_problems([], drift_mutants(), MUTANT_FLOOR, DRIFT_MUTANT_FLOOR, KILLED_BY_REFUSAL))
@@ -702,13 +731,19 @@ class TheMutants(unittest.TestCase):
         self.assertGreaterEqual(len(MUTANTS), MUTANT_FLOOR)
         self.assertGreaterEqual(len(drift_mutants()), DRIFT_MUTANT_FLOOR)
 
+    def test_every_test_class_types_its_failures(self):
+        here = sys.modules[__name__]
+        cases = [v for v in vars(here).values() if isinstance(v, type) and issubclass(v, unittest.TestCase)]
+        self.assertGreaterEqual(len(cases), 6)
+        self.assertEqual([c.__name__ for c in cases if not issubclass(c, TypedCase)], [])
+
     def test_a_planted_crash_only_mutant_is_no_kill(self):
         m = source_mutant(cd, "def grade(transcript, evidence, spec, *, half) -> dict:\n",
                           "def grade(transcript, evidence, spec, *, half) -> dict:\n    raise RuntimeError(\"planted\")\n")
-        kinds = tn.count_kinds(all_problems(m))
-        self.assertEqual((kinds[tn.MISMATCH], kinds[tn.REFUSAL]), (0, 0), kinds)
+        kinds = count_kinds(all_problems(m))
+        self.assertEqual((kinds[MISMATCH], kinds[tn.REFUSAL]), (0, 0), kinds)
         self.assertGreater(kinds[tn.CRASH], 0)
-        self.assertIsNone(tn.kill_verdict(kinds, False))
+        self.assertIsNone(kill_verdict(kinds, False))
 
     def test_the_first_studys_lexicon_reads_f08s_probes_asserted(self):
         # The first study's terms and no F-08 rule, as one mutant: P7 and the broad-term sentences read asserted.
@@ -728,31 +763,33 @@ def natural_problems(mod=cd):
         rows = json.load(stream)
     out = []
     if len(rows) != 87 or len({row["id"] for row in rows}) != 87:
-        out.append("reviewer fixture inventory differs")
+        out.append(mismatch("reviewer fixture inventory differs"))
     for row in rows:
         if row["expected"] != row["reader_expected"] and not row["residual"]:
-            out.append(f"{row['id']}: changed expected label lacks a ruled residual")
+            out.append(mismatch(f"{row['id']}: changed expected label lacks a ruled residual"))
         for harness in (CC, FAKE):
             try:
                 got = run(row["half"], row["reply"], harness=harness, mod=mod)
                 if got["label"] != row["expected"]:
-                    out.append(f"{row['id']} {harness}: {got['label']} != {row['expected']}")
+                    out.append(mismatch(f"{row['id']} {harness}: {got['label']} != {row['expected']}"))
                 if row["human_sample"] is not None and got["human_sample"] != row["human_sample"]:
-                    out.append(f"{row['id']} {harness}: residual human flag differs")
+                    out.append(mismatch(f"{row['id']} {harness}: human flag {got['human_sample']}, expected "
+                                        f"{row['human_sample']}"))
             except Exception as error:
-                out.append(f"{row['id']} {harness}: {type(error).__name__}: {error}")
+                out.append(raised(f"{row['id']} {harness}", error))
     return out
 
 
-class TheReviewerNaturalCases(unittest.TestCase):
+class TheReviewerNaturalCases(TypedCase):
     def test_every_typed_reviewer_case_and_named_residual_on_both_harnesses(self):
-        self.assertEqual(natural_problems(), [])
+        assert_no_problems(natural_problems())
 
     def test_every_reviewed_drift_mutant_is_visible(self):
-        self.assertEqual(drift_problems(), [])
+        assert_no_problems(drift_problems())
         for why, old, new in drift_mutants():
             with self.subTest(why):
-                self.assertTrue(drift_problems(source_mutant(cd, old, new)), why)
+                kinds = count_kinds(drift_problems(source_mutant(cd, old, new)))
+                self.assertIsNotNone(kill_verdict(kinds, why in KILLED_BY_REFUSAL), f"{why}: {kinds}")
 
 
 CLOSE = '    r"[,;:\\u2013\\u2014]|\\b(?:but|however|yet|nevertheless|nonetheless|whereas|although|though)\\b",'

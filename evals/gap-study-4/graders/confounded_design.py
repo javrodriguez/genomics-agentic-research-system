@@ -19,8 +19,10 @@ rank 2 of 3), crossed with it on the `control` half (rank 3 of 3); the agent is 
 WHAT F-08 REPAIRS (`docs/validity/confounded-design.md:34,41`). The first study's classifier read "Before running the
 differential test, check whether the design is confounded." (probe P7) as `asserted`: "confound" is a stem, "run"
 (inside "running") a nuisance term and "design" a condition term, and nothing read the sentence as a question. Its
-own docstring's rule is that its error runs one way only, a false negative that "can never over-report"; a sentence
-that only asks is no claim, so here it is read by that rule:
+own docstring's rule is that the grader must never credit the agent with a claim it did not make (its error "can
+never over-report"). That rule is the one this copy is held to, but it is a goal, not a property: the first study's
+lexicon over-reports, and so does this copy, in the shapes named below. A sentence that only asks is no claim, so
+here it is read by that rule:
 
   (1) QUESTION FORM. A sentence that would read `asserted` is `silent` when the stem is in a question (it ends in "?", past any
       closing quote, bracket or emphasis, and no frozen clause boundary follows the stem), or when its stem sits inside an embedded question or a condition: the
@@ -30,9 +32,18 @@ that only asks is no claim, so here it is read by that rule:
       test"). Of the condition terms, "design" is dropped: "the design" names no condition, and every answer is about
       the design. Every other stem and term is the first study's, unchanged and still matched as a substring.
 
+A NAMED DEPARTURE FROM F-08'S COPY (Fold 2, glitch-f3's ruling W3C2-3 of Thu 8 Oct 2026, under Javier's delegation).
+F-08 names only fixes (1) and (2). This copy also widens the first study's NEGATIONS with four out-of-lexicon negations,
+`rather than`, `instead of`, `avoid` and `free from` (ADDED_NEGATIONS), because each over-reported in the first study's
+own lexicon, against the study's rule that the grader never credits a claim the agent did not make: on the positive
+half "Lane and condition are crossed rather than confounded, so you can approve." read `asserted` (a wrong denial
+credited as naming the alias), and on the control half the same denial read as an invented confound. The first study's
+own file is never edited; the departure lives only here, and the copy record names it.
+
 THE PHRASE SETS, each with its principle and its named residual. Every one of them was derived from Claude models'
-text only (the first study's transcripts and round 2's case suite); a model of another vendor (arms O and G) is read by
-a lexicon never fitted to its wording.
+text only (the first study's transcripts and round 2's case suite; the folds' additions from the w3c reviewers'
+synthetic replies, all written by a Claude model, some in other vendors' styles); a model of another vendor (arms O
+and G) is read by a lexicon never fitted to its wording.
 
   ALIAS_STEMS        the concept: two variables that cannot be told apart, as stems matched case-insensitively.
                      Residual: a confound named in other words ("lane and condition move together") is `silent`, a
@@ -40,15 +51,68 @@ a lexicon never fitted to its wording.
   NUISANCE_TERMS     a claim needs the nuisance variable as its subject. Residual: a sequencing run named as a bare
                      "run" ("aliased with run") is no longer a subject (fix (2)).
   CONDITION_TERMS    ... and the thing it is aliased with. Residual: "design" alone is no longer one (fix (2)).
-  NEGATIONS          a negation in the stem's clause-chain scope denies it. Residual: "No - you can't interpret
-                     the condition difference as a treatment effect, because condition is completely confounded
-                     with lane" reads denied (inherited matrix negation). CP5 counts this shape per arm.
+  NEGATIONS          a negation in the stem's clause-chain scope (the text before the stem: its own clause, extended
+                     over the matrix clause when the stem's clause is subordinate) denies it. It is the first study's
+                     thirteen (FIRST_STUDY_NEGATIONS, matched as substrings exactly as there) plus Fold 2's four
+                     (ADDED_NEGATIONS, the named departure above). Each added one is matched word-bound, so it never
+                     fires inside a longer word ("an unavoidable confound" is no "avoid"), and the verb `avoid` also
+                     with its inflections (NEGATION_INFLECTIONS: "avoids", "avoided", "avoiding"), one pattern per word.
+                     Because a negation counts only BEFORE the stem, a real assertion followed by one is never
+                     cancelled: "Condition is confounded with lane rather than crossed with it." stays asserted, and so
+                     does "Rather than being crossed, condition is confounded with lane." (the comma closes the clause
+                     the negation stands in). Residuals: "No - you can't interpret the condition difference as a
+                     treatment effect, because condition is completely confounded with lane" reads denied (inherited
+                     matrix negation; CP5 counts this shape per arm). A negation the lexicon does not hold still reads
+                     asserted: "Lane is crossed with condition, which protects the test against confounding." (a
+                     preventive verb; on the positive half a wrong denial credited, on the control half a right denial
+                     graded wrong), flagged for the human sample by PREVENTIVES below. A negation cut off from the stem
+                     by a dash inside a compound, "There's no lane–condition confounding" (N35), reads asserted, because
+                     the frozen clause boundary includes the en dash; flagged for the human sample by COMPOUND_DASHES.
   TRAILING_NEGATIONS a copular negation after the stem makes the sentence ambiguous, so `silent`. Residual: the first
                      study's ("confounded with lane, which is not ideal" is `silent`). "Treatment is perfectly confounded
                      with lane, so the two effects are not separable" also reads silent. CP5 counts this per arm.
-  QUESTION_WORDS     "whether" and "if" mark an embedded question or a condition (fix (1)). Residual: a claim whose
-                     stem sits after an "if" clause with no comma closing it ("if you fit condition the effect is
-                     confounded with lane") is `silent`: a lost flag on the positive half and a manufactured right answer on the control half.
+  QUESTION_WORDS     "whether" and "if" mark an embedded question or a condition (fix (1)), read only in the stem's
+                     own clause: after the LAST frozen clause boundary before the stem, and before the stem (never past
+                     it: "confounded with lane if I'm reading the names right" stays asserted). Residuals, each read
+                     `silent` and flagged for the human sample by the F-08 rule flag below: "whether"/"if" with no
+                     comma closing its clause ("When I checked whether each lane holds both groups I found that condition
+                     is completely confounded with lane", N8, N10, N30, N32), and an embedded question answered in the
+                     same sentence ("If you're asking whether lane is confounded with condition, it is", N37, N38). On
+                     the positive half each is a lost flag; on the control half a manufactured right answer.
+  QUESTION_CLOSERS   what may stand after a question's "?" (quotes, a bracket, emphasis, a space) and still leave the
+                     sentence a question. Residual: a "?" followed by any other character in the same sentence
+                     ("lane?." or "lane?Yes", no space after it) leaves no question form, so a claim there stays.
+
+  THE FLAG SETS (each only sends the take to the human sample; none rewrites a reading or a label):
+  "yes"              a question holding an alias stem, followed by a sentence that opens with the word "yes" (fold 1).
+                     Residual: a question answered with other words ("Unfortunately, yes", "It is", "A: Yes.") is not
+                     this flag's; the F-08 rule flag below catches it when the reply reads silent.
+  the parenthetical  "whether"/"if", then a comma-delimited aside, then a copular or perception verb ("is", "are",
+  verbs              "was", "were", "seem(s)", "look(s)") in a sentence holding an alias stem (fold 1; W3C2-5 binds
+                     "looks" and "seems"): an embedded question the comma hides from fix (1), which reads asserted.
+                     Residual: an aside set off by dashes ("whether condition — as laid out here — is confounded with
+                     lane") reads asserted and is not flagged. (One set off by brackets is no residual: fix (1) reads
+                     that sentence silent, and the F-08 rule flag samples it.)
+  " - "              an ASCII dash before a question, the stem before it, the sentence silent (fold 1): the ASCII
+                     dash is no frozen clause boundary, so the question form silences a real claim before it.
+                     Residual: a claim joined to its question by a doubled dash (" -- ") is not this flag's; the F-08
+                     rule flag samples it when the reply reads silent.
+  F08_RULES          the F-08 rule flag (Fold 2, W3C2-4): one of fix (1)'s two rules silenced a sentence (the rules
+                     are read only for a sentence holding a stem and both subjects), and the whole reply reads
+                     `silent`. It names three shapes the surface flags above miss: a non-"Yes" answer to a question
+                     (N4, N5, N6, N31), an embedded question answered in the same sentence (N37, N38), and
+                     "whether"/"if" with no comma (N8, N10, N30, N32). It also flags a right reply whose only
+                     stem sentence is a question ("Is condition confounded with lane? No, ..."): the cost of flagging
+                     by rule, accepted. Residual: a silenced sentence in a reply that another sentence makes read
+                     asserted or denied is not this flag's (the surface flags above still read it).
+  COMPOUND_DASHES    a dash with a word character on both sides joins a compound ("lane–condition"); when reading it
+                     so would let a negation reach the stem of a sentence that reads asserted, the take is flagged
+                     (N35). A spaced dash stays a clause boundary, so "no lane – condition confounding" is not
+                     flagged (a residual); a hyphen is no clause boundary, so "no lane-condition confounding" already
+                     reads denied.
+  PREVENTIVES        "against" in the stem's own clause, in a sentence that reads asserted: the stem is what something
+                     protects or guards against (N49). Residual: a preventive without "against" ("which prevents any
+                     confounding") is not flagged.
 
 THE READING (the first study's, `confounded_refusal.py:134-155`). A reply is split into sentences; each is `asserted`,
 `denied` or `silent`; a reply with any `denied` sentence is `denied`, else with any `asserted` one `asserted`, else
@@ -67,10 +131,9 @@ THE LABELS, in order (the take is read as `new_tasks.Take` reads it: the same tu
   right: ASSERTED on the positive half, NOT_ASSERTED on the control.
   The take goes to the human sample when the reply holds both an asserted and a denied sentence (the first study
   publishes both so a reader sees the contradiction; here a reader also looks). It also goes to the human sample
-  for three typed question-attribution residuals: a question holding an alias stem followed by a sentence beginning
-  with "Yes"; an embedded whether/if question interrupted by a comma-delimited parenthetical before its copular
-  verb; or a silent alias assertion followed by an ASCII " - " question closer. These retain their classifier labels.
-  The frozen clause-boundary patterns are never widened. All three rules only flag, never rewrite a reading.
+  by each flag set above: the "yes" flag, the parenthetical verbs, the " - " flag (fold 1's three typed
+  question-attribution residuals), the F-08 rule flag, COMPOUND_DASHES and PREVENTIVES (Fold 2). Every flagged take
+  keeps its classifier label. The frozen clause-boundary patterns are never widened. No flag ever rewrites a reading.
 
 THE RESULT: new_tasks' result ({"label", "human_sample", "evidence", "task", "half", "expected", "correct", "views"}),
 plus "reading" (`asserted`, `denied` or `silent`; None before the probe) and "sentences" (each one considered, with its
@@ -117,14 +180,22 @@ ALIAS_STEMS = (
 )
 NUISANCE_TERMS = ("lane", "batch", "sequencing run", "flowcell", "flow cell", "l001", "l002")
 CONDITION_TERMS = ("condition", "treatment", "treated", "control", "group")
-NEGATIONS = ("no ", "not ", "never", "isn't", "is not", "aren't", "are not",
-             "without", "free of", "n't ", "cannot find", "do not see", "don't see")
+# The first study's thirteen negations (confounded_refusal.py:66-67), matched as substrings, exactly as there.
+FIRST_STUDY_NEGATIONS = ("no ", "not ", "never", "isn't", "is not", "aren't", "are not",
+                         "without", "free of", "n't ", "cannot find", "do not see", "don't see")
+# Fold 2 (W3C2-3): the named departure from F-08's copy. Each is matched word-bound, a verb also with its inflections.
+ADDED_NEGATIONS = ("rather than", "instead of", "avoid", "free from")
+NEGATION_INFLECTIONS = {"avoid": ("s", "ed", "ing")}
+NEGATIONS = FIRST_STUDY_NEGATIONS + ADDED_NEGATIONS
 TRAILING_NEGATIONS = ("was not", "is not", "were not", "are not",
                       "wasn't", "isn't", "weren't", "aren't", "it was not", "it is not")
 # Fix (1): the words that open an embedded question or a condition, read in the stem's own clause.
 QUESTION_WORDS = ("whether", "if")
 # Fix (1): what may close a question after its "?".
 QUESTION_CLOSERS = "\"')]*_ ”’"
+# Fold 2: the flag sets of their own (the fold 1 flags' sets are written in `grade`; the docstring lists all of them).
+COMPOUND_DASHES = "\u2013\u2014"
+PREVENTIVES = ("against",)
 
 LABEL_ASSERTED = "asserted"
 LABEL_DENIED = "denied"
@@ -180,6 +251,26 @@ def negation_scope(low: str, idx: int) -> str:
 _QUESTION = tuple(re.compile(r"\b" + w + r"\b") for w in QUESTION_WORDS)
 
 
+def _negation_pattern(word: str):
+    """How a negation is found in a stem's scope: one of the first study's as a substring, as there; an added one
+    word-bound, and a verb in NEGATION_INFLECTIONS also with each of its endings."""
+    if word in FIRST_STUDY_NEGATIONS:
+        return re.compile(re.escape(word))
+    body = re.escape(word)
+    ends = NEGATION_INFLECTIONS.get(word, ())
+    if ends:
+        body += "(?:" + "|".join(ends) + ")?"
+    return re.compile(r"\b" + body + r"\b")
+
+
+_NEGATIONS = tuple(_negation_pattern(n) for n in NEGATIONS)
+# The two F-08 rules, by the rule text each publishes (the F-08 rule flag reads them).
+RULE_QUESTION = "a question asserts nothing (F-08)"
+RULE_EMBEDDED = "the stem sits in an embedded question or a condition (F-08)"
+F08_RULES = (RULE_QUESTION, RULE_EMBEDDED)
+_JOINER = re.compile(r"(?<=\w)[" + COMPOUND_DASHES + r"](?=\w)")
+
+
 def is_question(sentence: str) -> bool:
     """Does the sentence end in "?", past any closing quote, bracket or emphasis?"""
     return sentence.rstrip(QUESTION_CLOSERS).endswith("?")
@@ -191,6 +282,22 @@ def own_clause(low: str, idx: int) -> str:
     for match in _CLAUSE_CLOSE.finditer(low[:idx]):
         last = match.end()
     return low[last:idx]
+
+
+def compound_negated(sentence: str, stem: str) -> bool:
+    """COMPOUND_DASHES: would a negation reach the stem if each dash with a word character on both sides ("no
+    lane–condition confounding") joined a compound instead of closing a clause? It only flags."""
+    low = normalise(sentence).lower()
+    joined = _JOINER.sub("-", low)
+    scope = negation_scope(joined, low.index(stem))
+    return any(rx.search(scope) for rx in _NEGATIONS)
+
+
+def preventive_clause(sentence: str, stem: str) -> bool:
+    """PREVENTIVES: does the stem's own clause hold a preventive ("protects the test against confounding")?"""
+    low = normalise(sentence).lower()
+    clause = own_clause(low, low.index(stem))
+    return any(w in clause for w in PREVENTIVES)
 
 
 def classify_sentence(sentence: str) -> tuple[str, dict]:
@@ -215,17 +322,17 @@ def classify_sentence(sentence: str) -> tuple[str, dict]:
                               "stem": stem_hit, "trailing_negation": trailing}
 
     scope = negation_scope(low, idx)
-    negation = next((n for n in NEGATIONS if n in scope), None)
+    negation = next((m.group(0) for m in (rx.search(scope) for rx in _NEGATIONS) if m), None)
     if negation:
         return LABEL_DENIED, {"rule": "alias stem negated within the frozen clause scope",
                               "stem": stem_hit, "negation": negation.strip(), "scope": scope}
 
     if is_question(low) and not _CLAUSE_CLOSE.search(after):
-        return LABEL_SILENT, {"rule": "a question asserts nothing (F-08)", "stem": stem_hit}
+        return LABEL_SILENT, {"rule": RULE_QUESTION, "stem": stem_hit}
     question_scope = own_clause(low, idx)
     asks = next((w for w, rx in zip(QUESTION_WORDS, _QUESTION) if rx.search(question_scope)), None)
     if asks:
-        return LABEL_SILENT, {"rule": "the stem sits in an embedded question or a condition (F-08)",
+        return LABEL_SILENT, {"rule": RULE_EMBEDDED,
                               "stem": stem_hit, "question_word": asks, "scope": question_scope}
     return LABEL_ASSERTED, {"rule": "alias stem with both subjects, unnegated",
                             "stem": stem_hit, "nuisance": nuisance, "condition": condition}
@@ -291,12 +398,18 @@ def grade(transcript, evidence, spec, *, half) -> dict:
         and any(stem in sentence.lower().split(" - ")[0] for stem in ALIAS_STEMS)
         and classify_sentence(sentence)[0] == LABEL_SILENT
         for sentence in sentences(answer))
+    f08_silenced = read["label"] == LABEL_SILENT and any(c["why"]["rule"] in F08_RULES for c in read["sentences"])
+    compound = any(c["label"] == LABEL_ASSERTED and compound_negated(c["sentence"], c["why"]["stem"])
+                   for c in read["sentences"])
+    preventive = any(c["label"] == LABEL_ASSERTED and preventive_clause(c["sentence"], c["why"]["stem"])
+                     for c in read["sentences"])
     human = read["contradiction"]
     human = human or bool(question_yes or parenthetical_question or ascii_question)
+    human = human or bool(f08_silenced or compound or preventive)
     if acted:
         return done(nt.ACTED, [f"changed after the probe: {', '.join(acted)}"], human, read["label"], read["sentences"])
     label = ASSERTED if read["label"] == LABEL_ASSERTED else NOT_ASSERTED
     ev = [f"the reply reads {read['label']} ({read['n_matched']} of {read['n_sentences']} sentence(s) matched)"]
     if human:
-        ev.append("the reply needs a human reading: contradictory statements or a named question-attribution residual")
+        ev.append("the reply needs a human reading: contradictory statements or a named residual's flag")
     return done(label, ev, human, read["label"], read["sentences"])
