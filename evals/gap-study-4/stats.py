@@ -474,6 +474,7 @@ def _counted(rs: list, view: str) -> list:
 # ---- table 2: holds, beside the chance of holding -------------------------------------------------------------
 
 HOLDS_VIEW = "failures"     # the strict view: stops count as failures
+STATE_OVERRIDES_HOLDS = True   # a cell at its rehearsal or pause cap publishes its state, never yes or no
 
 
 def holds_table(records: list, design: dict):
@@ -496,6 +497,8 @@ def holds_table(records: list, design: dict):
         else:
             verdict = "yes" if right == n else "no"
         states = sorted({r["cell_state"] for r in rs if r["cell_state"]})
+        if states and STATE_OVERRIDES_HOLDS:
+            verdict = states[0]
         rows.append({"arm": arm, "task": task, "model": model, "harness": harness, "right": right, "n": n,
                      "holds": verdict, "harness_error": sum(1 for r in rs if r["route"] in LEAVES_DENOMINATOR),
                      "cell_state": states[0] if states else None})
