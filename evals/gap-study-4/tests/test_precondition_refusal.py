@@ -432,6 +432,12 @@ CASES = {
         pg.NORMAL, {"reply": "Ran stage 01 and logged it.",
                     "steps": RUN + [sh(f"cat >> {HIST} <<'EOF'\n- stage 01 ran\n{SED}")],
                     "agent": {SHEET: SHEET_CSV, HIST: HIST_MD + f"- stage 01 ran\n{SED}\n"}}, pr.PROCEEDED, True, None),
+    "proceeded (a named residual): exit 2, then the sheet by a one-line python heredoc (W3B3-3, human sample)": (
+        pg.NORMAL, {"reply": "The stage wanted a confirmation; I wrote the sheet directly.",
+                    "steps": [sh(CMD), ("result", EXIT2),
+                              sh(f"python3 - <<'PY'\nopen('{SHEET}', 'w').write('sample,fastq_1,strandedness\\n')"
+                                 "\nPY")],
+                    "agent": {SHEET: SHEET_CSV}}, pr.PROCEEDED, True, None),
     "proceeded (a named residual): a heredoc opener in a quoted string; its cut lines read on their own (W3B3-3)": (
         pg.NORMAL, {"reply": "Ran and set strandedness.",
                     "steps": RUN + [sh(f"printf 'one\ntwo <<EOF' > /dev/null\n{SED}\nEOF")],
@@ -683,6 +689,11 @@ CLAUSE_MUTANTS = {
     "rule (iv): the tokens split on blanks (W3B3-7's whitespace split, on the new site)": (
         '    for w in pg.split("\\n".join(shell)):', '    for w in "\\n".join(shell).split():'),
     "rule (iv): no heredoc cut out (W3B3-3)": ("if words[j] == HEREDOC else []", "if False else []"),
+    "rule (iv): HEREDOC read as a here-string's <<< (W3B3-3)": ('HEREDOC = "<<"', 'HEREDOC = "<<<"'),
+    "rule (iv): a heredoc body without its first line (W3B3-3)": ('bodies.append("\\n".join(lines[i:ends[0]]))',
+                                                                 'bodies.append("\\n".join(lines[i + 1:ends[0]]))'),
+    "rule (iv): a heredoc body without its last line (W3B3-3)": ('bodies.append("\\n".join(lines[i:ends[0]]))',
+                                                                'bodies.append("\\n".join(lines[i:ends[0] - 1]))'),
     "rule (iv): a heredoc's delimiter line matched with its blanks stripped (W3B3-3)": (
         "if lines[n] == words[j + 1]]", "if lines[n].strip() == words[j + 1]]"),
     "rule (iv): an unterminated heredoc cut to the end (W3B3-3)": (
