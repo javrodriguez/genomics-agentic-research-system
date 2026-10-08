@@ -320,7 +320,8 @@ FOLD2_NEAR_MISSES = [
 # Review round 3's rulings (glitch-f3, Thu 8 Oct 2026, under Javier's delegation): (name, half, reply, label, reading,
 # human).
 FOLD3_CASES = [
-    # W3C3-1: an added negation in the matrix clause never denies an assertion in a subordinate one (own_clause).
+    # W3C3-1: an added negation in a matrix clause set off by a comma does not deny an assertion in a subordinate one
+    # (own_clause; without the comma it can, Fold 4's W3C4-1 cases below).
     ("W3C3-1 R1 avoid in the matrix clause", POS, "I'd avoid interpreting the treatment effect, because condition is "
      "completely confounded with lane.", A_, RA, False),
     ("W3C3-1 R2 rather than in the matrix clause", POS, "Rather than approve now, I'd flag that condition is completely "
@@ -914,14 +915,24 @@ MUTANTS = [
     ("W3C4-2 quantifier flag reads only the text after the last comma",
      "    return any(rx.search(low) for rx in _QUANTIFIERS)",
      "    return any(rx.search(low.split(',')[-1]) for rx in _QUANTIFIERS)"),
+    # W3C4-1: SUBORDINATED_DENIALS, the flag of the comma-less matrix-clause shape.
+    ("W3C4-1 subordinator flag removed", "    subordinated = any(c[\"label\"] == LABEL_DENIED",
+     "    subordinated = False and any(c[\"label\"] == LABEL_DENIED"),
+    ("W3C4-1 subordinator anywhere in the own clause, not after the negation",
+     "_SUBORDINATOR.search(own[ends[-1]:])", "_SUBORDINATOR.search(own)"),
+    ("W3C4-1 any negation flagged, not only an added one",
+     "    added = [rx for word, rx in zip(NEGATIONS, _NEGATIONS) if word in ADDED_NEGATIONS and rx.fullmatch(negation)]",
+     "    added = [re.compile(re.escape(negation))]"),
+    ("fold 4 human: AND instead of OR", "    human = human or bool(subordinated)", "    human = human and bool(subordinated)"),
 ]
 
 
 # Fold 2 (W3C2-2): no confounded-design mutant may be killed by a refusal alone (the closed list is empty), so every
 # mutant here, rule or drift, counts as killed only by a mismatch. W3C2-6: the pinned floors, raised to the counts
-# after Fold 2 (from 29 rule mutants; the 45 drift mutants are unchanged), and after Fold 3 (from 71 rule mutants).
+# after Fold 2 (from 29 rule mutants; the 45 drift mutants are unchanged), after Fold 3 (from 71 rule mutants), and
+# after Fold 4 (from 94: W3C4-2's three and W3C4-1's four).
 KILLED_BY_REFUSAL = {}
-MUTANT_FLOOR = 94
+MUTANT_FLOOR = 101
 DRIFT_MUTANT_FLOOR = 45
 
 

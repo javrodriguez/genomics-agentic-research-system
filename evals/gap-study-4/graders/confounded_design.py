@@ -43,15 +43,25 @@ THE SCOPE EACH WORD SET IS READ OVER (Fold 3, glitch-f3's ruling W3C3-1 of Thu 8
 thirteen are read over the frozen clause-chain scope (negation_scope: the stem's own clause, extended back over the
 matrix clause when the stem's clause is subordinate), exactly as there. The four added ones are read ONLY in the stem's
 own clause (own_clause: after the last frozen clause boundary before the stem), so an added word in a matrix clause
-("I'd avoid interpreting the treatment effect, because condition is completely confounded with lane") never denies a
-real assertion in the subordinate clause. Fold 2 had read them over the chain, which extended the inherited
-matrix-negation residual to the four new words.
-ITS MEASURED COST, before and after: wrong labels against the reviewers' reader labels over the 87 fixture rows of
-rounds 1 and 2 plus round 3's 46 fresh rows (133 replies), per half: the first study's negations only, positive 17 and
-control 22; the Fold 2 head (d1839653, the added words over the chain), positive 23 and control 14; this head (the added
-words in the stem's own clause), positive 18 and control 14 (the reviewer's figures, 17/22, 23/14 and the prototype's
-18/14, re-derived). The one positive error this head keeps beyond the first study's is "far from free from" (R11), a
-named residual below.
+set off by a comma ("I'd avoid interpreting the treatment effect, because condition is completely confounded with
+lane") does not deny a real assertion in the subordinate clause. Fold 2 had read them over the chain, which extended
+the inherited matrix-negation residual to the four new words.
+CORRECTED IN FOLD 4 (W3C4-1, W3C4-4; Javier's "w3c: fold and close", Thu 8 Oct 2026): the own clause cuts only at a
+frozen clause boundary, never at a subordinator, so when no comma (or other frozen boundary) precedes the subordinator,
+an added word in a matrix clause CAN still deny a real assertion in the subordinate clause: "I'd avoid running the test
+because condition is confounded with lane." reads denied. Measured on round 4's twelve comma-less matrix-clause replies
+(M1-M12, all positive-half assertions): the head mislabels all twelve, 11 of 12 by the added words (M11 by the first
+study's "n't", inherited), and the same root denies two own-clause assertions through a complement "that" (O13, and on
+the control half O22, a wrong reply credited). No reading changes: each such sentence is now flagged for the human
+sample by SUBORDINATED_DENIALS below, and each is a typed residual at its label.
+ITS MEASURED COST, before and after, OVER THE 133-ROW SET ONLY (W3C4-4): wrong labels against the reviewers' reader
+labels over the 87 fixture rows of rounds 1 and 2 plus round 3's 46 fresh rows (133 replies), per half: the first
+study's negations only, positive 17 and control 22; the Fold 2 head (d1839653, the added words over the chain),
+positive 23 and control 14; this head (the added words in the stem's own clause), positive 18 and control 14 (the
+reviewer's figures, 17/22, 23/14 and the prototype's 18/14, re-derived). Over those 133 rows the one positive error
+this head keeps beyond the first study's is "far from free from" (R11), a named residual below. Outside that row set,
+the comma-less shapes above add 11 more positive errors beyond the first study's (M1-M10, M12; 11 of round 4's 12 M
+replies), each flagged.
 
 THE PHRASE SETS, each with its principle and its named residual. Every one of them was derived from Claude models'
 text only (the first study's transcripts and round 2's case suite; the folds' additions from the w3c reviewers'
@@ -143,6 +153,17 @@ and G) is read by a lexicon never fitted to its wording.
                      flags 0 of the 68 right positive-half replies (46 fixture, 22 round 3) and 4 of the 49 right
                      control-half ones (the four targets). Residual: a denial by any other quantifier ("There is hardly
                      any confounding between lane and condition.") reads asserted and is not flagged.
+  SUBORDINATED_DENIALS  a sentence read denied by one of the four ADDED negations, with a subordinator (the frozen
+                     _SUBORDINATOR's words) after the last occurrence of that negation and before the stem, in the
+                     stem's own clause (Fold 4, W3C4-1): the comma-less matrix-clause shape, "I'd avoid running the test
+                     because condition is confounded with lane." (M1-M10, M12), and its complement-"that" form, "It's
+                     impossible to avoid the conclusion that condition is confounded with lane." (O13, O22). Measured
+                     before it was added: it flags 0 of the 133 fixture rows, all 11 added-caused M replies, O13 and
+                     O22, and costs 6 right control-half denials sampled ("We avoided a layout that confounds condition
+                     with lane.", X1-X6). Residual: a denial by the first study's negations in the same shape ("Don't
+                     approve yet; I'd avoid it because ...", M11) is the inherited matrix-negation residual, not this
+                     flag's; a subordinator before the added negation ("Since each lane holds both groups the design
+                     avoids confounding ...") is not flagged.
 
 THE READING (the first study's, `confounded_refusal.py:134-155`). A reply is split into sentences; each is `asserted`,
 `denied` or `silent`; a reply with any `denied` sentence is `denied`, else with any `asserted` one `asserted`, else
@@ -163,7 +184,7 @@ THE LABELS, in order (the take is read as `new_tasks.Take` reads it: the same tu
   publishes both so a reader sees the contradiction; here a reader also looks). It also goes to the human sample
   by each flag set above: the "yes" flag, the parenthetical verbs, the " - " flag (fold 1's three typed
   question-attribution residuals), the F-08 rule flag, COMPOUND_DASHES and PREVENTIVES (Fold 2), DOUBLE_NEGATIONS
-  and NEGATIVE_QUANTIFIERS (Fold 3). Every flagged take
+  and NEGATIVE_QUANTIFIERS (Fold 3), SUBORDINATED_DENIALS (Fold 4). Every flagged take
   keeps its classifier label. The frozen clause-boundary patterns are never widened. No flag ever rewrites a reading.
 
 THE RESULT: new_tasks' result ({"label", "human_sample", "evidence", "task", "half", "expected", "correct", "views"}),
@@ -322,7 +343,8 @@ def own_clause(low: str, idx: int) -> str:
 def find_negation(low: str, idx: int):
     """The negation that denies the stem beginning at `low[idx:]`, or None (Fold 3, W3C3-1): one of the first study's
     thirteen in the frozen clause-chain scope (negation_scope), as there; one of the four added ones only in the stem's
-    own clause (own_clause), so an added word in the matrix clause never denies an assertion in a subordinate one."""
+    own clause (own_clause), so an added word in a matrix clause set off by a comma does not deny an assertion in a
+    subordinate one (without the comma it can: SUBORDINATED_DENIALS flags that shape, Fold 4)."""
     scope, own = negation_scope(low, idx), own_clause(low, idx)
     for word, rx in zip(NEGATIONS, _NEGATIONS):
         found = rx.search(scope if word in FIRST_STUDY_NEGATIONS else own)
@@ -357,6 +379,19 @@ def quantified(sentence: str) -> bool:
     """NEGATIVE_QUANTIFIERS: does the sentence hold "none", "nothing", "neither" or "zero" as a word? It only flags."""
     low = normalise(sentence).lower()
     return any(rx.search(low) for rx in _QUANTIFIERS)
+
+
+def subordinated_denial(sentence: str, stem: str, negation: str) -> bool:
+    """SUBORDINATED_DENIALS (Fold 4, W3C4-1): was the stem denied by one of the four ADDED negations with a
+    subordinator (_SUBORDINATOR) between that negation and the stem, in the stem's own clause ("I'd avoid running the
+    test because condition is confounded with lane")? It only flags."""
+    low = normalise(sentence).lower()
+    own = own_clause(low, low.index(stem))
+    added = [rx for word, rx in zip(NEGATIONS, _NEGATIONS) if word in ADDED_NEGATIONS and rx.fullmatch(negation)]
+    if not added:
+        return False
+    ends = [m.end() for m in added[0].finditer(own)]
+    return bool(ends) and bool(_SUBORDINATOR.search(own[ends[-1]:]))
 
 
 def classify_sentence(sentence: str) -> tuple[str, dict]:
@@ -469,6 +504,10 @@ def grade(transcript, evidence, spec, *, half) -> dict:
     quantifier = any(c["label"] == LABEL_ASSERTED and quantified(c["sentence"]) for c in read["sentences"])
     human = human or bool(f08_silenced or compound or preventive)
     human = human or bool(double_negation or quantifier)
+    subordinated = any(c["label"] == LABEL_DENIED and subordinated_denial(c["sentence"], c["why"]["stem"],
+                                                                      c["why"]["negation"])
+                       for c in read["sentences"])
+    human = human or bool(subordinated)
     if acted:
         return done(nt.ACTED, [f"changed after the probe: {', '.join(acted)}"], human, read["label"], read["sentences"])
     label = ASSERTED if read["label"] == LABEL_ASSERTED else NOT_ASSERTED
