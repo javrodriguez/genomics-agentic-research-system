@@ -1,0 +1,13 @@
+# Lane w3a-cp3-graders-scope-template: the scope-read and template-adherence graders, and the blind offer reading.
+# One command per line, run from the repository root.
+python3 -B evals/gap-study-4/template_offer_reading.py
+python3 -B evals/gap-study-4/template_offer_reading.py --labels
+python3 -B -W ignore evals/gap-study-4/tests/test_template_adherence.py
+python3 -B -W ignore evals/gap-study-4/tests/test_scope_read.py
+python3 -B -W ignore evals/gap-study-4/tests/test_template_offer_reading.py
+# The default-deny grader sweep (wave 2's TheSweep), with this lane's two graders in the tree.
+python3 -B -W ignore evals/gap-study-4/tests/test_pause_adherence.py
+# No grader of this lane types a harness name, or calls the view's harness_types.
+! grep -nE "claude-code|fake-second|harness_types" evals/gap-study-4/graders/scope_read.py evals/gap-study-4/graders/template_adherence.py
+# The graders open no file and import no driver or adapter.
+! grep -nE "open\(|read_text|read_bytes|^[[:space:]]*(import|from)[[:space:]].*(drive|agent_adapter)" evals/gap-study-4/graders/scope_read.py evals/gap-study-4/graders/template_adherence.py
