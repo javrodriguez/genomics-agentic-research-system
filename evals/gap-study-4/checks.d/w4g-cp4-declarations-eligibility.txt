@@ -1,0 +1,2 @@
+# Lane w4g-cp4-declarations-eligibility: a research lane with no module and no test; the copy manifest binds its draft and fragment.
+python3 -B -W ignore evals/gap-study-4/copy_manifest.py --check
