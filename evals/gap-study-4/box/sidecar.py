@@ -158,7 +158,9 @@ _PENDING_WHY = {
     "inotifywait_argv": "the inotifywait command line (monitor mode, recursion flag, format and time options) at the "
                         "pinned inotify-tools in the sidecar image; measured on the stub take",
     "inotifywait_format": "its output line's fields and separator, the stderr line that says its watches are "
-                          "established, and the stderr lines inotifywait emits at the pinned version (any stderr "
+                          "established, the closed list of setup lines it may print before that marker (any other "
+                          "line before it fails the arm: fold 3, W4C2-3), and the stderr lines inotifywait emits "
+                          "at the pinned version (any stderr "
                           "line after established is read as a watcher fault: fold 2, W4C1-2); measured on the "
                           "stub take",
     "inotifywait_subsecond": "whether its stamps carry sub-second times (otherwise each event is stamped at its "
@@ -214,12 +216,16 @@ def _overlap(a: str, b: str) -> bool:
 
 
 def ctl_dir_ok() -> bool:
-    """The control channel lies under /tmp or /run, outside the evidence mount and the program's folder
-    (interface 12: never in the run tree or the evidence folder; create_argv refuses a run tree overlapping it)."""
-    return (CTL_DIR.startswith(("/tmp/", "/run/")) and not _overlap(CTL_DIR, EVIDENCE_MOUNT)
-            and not _overlap(CTL_DIR, os.path.dirname(PROGRAM)))
+    """The control channel is a normalised path with a non-empty segment under /tmp/ or /run/, outside the
+    evidence mount (interface 12: never in the run tree or the evidence folder; create_argv refuses a run tree
+    overlapping it). Fold 3, W4C2-5: the program-folder clause was unreachable while PROGRAM is under /opt/w, and
+    is dropped."""
+    under = any(CTL_DIR.startswith(r) and len(CTL_DIR) > len(r) for r in ("/tmp/", "/run/"))
+    return os.path.normpath(CTL_DIR) == CTL_DIR and under and not _overlap(CTL_DIR, EVIDENCE_MOUNT)
 
 
+# Equivalent to test_the_control_folder while CTL_DIR is a pinned constant (fold 3, W4C2-5); kept as a load-time
+# refusal for any later edit of the constant.
 if not ctl_dir_ok():
     raise RuntimeError("CTL_DIR must lie under /tmp or /run, outside the evidence mount")
 
@@ -333,6 +339,12 @@ def ctl_argv(container_id, command, label=None) -> list:
 
 def rm_argv(container_id) -> list:
     return [DOCKER, "rm", "-f", _container_id(container_id)]
+
+
+def _type_name(e) -> str:
+    """An exception's class name, read without a dunder attribute (the ast check refuses every one)."""
+    r = repr(type(e))
+    return r.split("'")[1] if "'" in r else r
 
 
 def _num(v) -> bool:
@@ -689,7 +701,7 @@ class Sidecar:
         try:
             w = self.factory(self.run_tree, watch_plan(self.run_tree, self.watch))
         except Exception as e:  # noqa: BLE001  (any failure of the factory is a failed re-arm)
-            self._break(f"the watcher could not be armed ({type(e).__name__}); no watcher-start was written")
+            self._break(f"the watcher could not be armed ({_type_name(e)}); no watcher-start was written")
             return None
         t0 = self.clock()
         while not w.established():
@@ -705,8 +717,9 @@ class Sidecar:
         return at
 
     def _arm_gave_up(self, w, t0) -> bool:
-        """Stop waiting for the watches: the watcher died while arming (seen at once), or the timeout ran out."""
-        return w.poll() is not None or self.clock() - t0 > self.establish_timeout_s
+        """Stop waiting for the watches: the watcher died while arming (seen at once), it printed a line that is
+        not one of its setup lines (fold 3, W4C2-3), or the timeout ran out."""
+        return w.poll() is not None or w.setup_failed() or self.clock() - t0 > self.establish_timeout_s
 
     def pump(self):
         """Drain the running watcher's stream into the log, and detect a watcher that died by itself (stamped at
@@ -755,7 +768,7 @@ class Sidecar:
             return self._reply(command if command in COMMANDS else "status", None,
                                problems=[f"unknown command or label: {command!r}"])
         except Exception as e:  # noqa: BLE001  (a reply is always one line; the error's type names it)
-            self._break(f"{command}: {type(e).__name__}: {e}")
+            self._break(f"{command}: {_type_name(e)}: {e}")
             return self._reply(command if command in COMMANDS else "status",
                                "pre-1" if command == "begin" else (label if label_ok(label) else None),
                                problems=list(self.problems))
@@ -850,7 +863,7 @@ class _InotifyWatcher:
 
     def __init__(self, proc, run_tree: str):
         self.proc, self.run_tree = proc, run_tree
-        self._out, self._err, self._established = b"", b"", False
+        self._out, self._err, self._established, self._setup_fault = b"", b"", False, False
         os.set_blocking(proc.stdout.fileno(), False)
         os.set_blocking(proc.stderr.fileno(), False)
 
@@ -861,13 +874,25 @@ class _InotifyWatcher:
             return b""
 
     def established(self) -> bool:
-        if not self._established:
+        if not self._established and not self._setup_fault:
             self._err += self._read(self.proc.stderr)
             marker = INOTIFYWAIT_FORMAT["established"].encode()
-            if marker in self._err:
+            before, found, after = self._err.partition(marker)
+            lines = before.split(b"\n")
+            complete, own = lines[:-1], lines[-1]   # `own`: text on the marker's own line, or a partial line
+            if not all(self._setup_line_ok(ln) for ln in complete) or (found and own):
+                self._setup_fault = True            # a line before the marker that is not a setup line
+            elif found:
                 self._established = True
-                self._err = self._err.split(marker, 1)[1].lstrip(b"\n")   # only what follows it is read on
+                self._err = after.lstrip(b"\n")   # only what follows it is read on
         return self._established
+
+    def _setup_line_ok(self, line: bytes) -> bool:
+        """A line inotifywait may print before its marker: exactly one of the format's closed setup lines."""
+        return line.decode("utf-8", "replace") in INOTIFYWAIT_FORMAT["setup_lines"]
+
+    def setup_failed(self) -> bool:
+        return self._setup_fault
 
     def _stderr_events(self) -> list:
         """Every complete stderr line after the watches were established is a watcher fault (fold 2, W4C1-2: a
@@ -875,16 +900,25 @@ class _InotifyWatcher:
         line's class is passed on, never its text (it carries paths)."""
         if not self._established:
             return []
+        self._drain_stderr()
+        n = self._err.count(b"\n")
+        if n:
+            self._err = self._err.rsplit(b"\n", 1)[1]
+        if self._err and self._tail_counts():
+            n, self._err = n + 1, b""        # an exited watcher's unterminated last line is a complete message
+        return [WatchEvent(None, "", (STDERR_EVENT,)) for _ in range(n)]
+
+    def _drain_stderr(self):
+        """Read everything stderr holds now (non-blocking), so the pipe never fills (fold 2, W4C1-2)."""
         while True:
             b = self._read(self.proc.stderr)
             if not b:
                 break
             self._err += b
-        n = self._err.count(b"\n")
-        if not n:
-            return []
-        self._err = self._err.rsplit(b"\n", 1)[1]
-        return [WatchEvent(None, "", (STDERR_EVENT,)) for _ in range(n)]
+
+    def _tail_counts(self) -> bool:
+        """Once the watcher has exited no more text can complete its last line (fold 3, W4C2-4)."""
+        return self.proc.poll() is not None
 
     def read_ready(self) -> list:
         while True:
@@ -948,6 +982,9 @@ def _serve(args) -> int:
         sc.pump()
 
 
+_REQUEST_ERRORS = (ValueError, RecursionError)   # fold 3, W4C2-6: a deeply nested request is an ok: false reply
+
+
 def _request_ok(req) -> bool:
     return isinstance(req, dict)
 
@@ -957,7 +994,7 @@ def _handle_request(sc, raw: bytes) -> dict:
     uncaught error in PID 1 (fold 2, W4C1-9)."""
     try:
         req = json.loads(raw)
-    except ValueError:
+    except _REQUEST_ERRORS:
         req = None
     if req is None or not _request_ok(req):
         return sc._reply("status", None, problems=["a request that is not one JSON object"])
@@ -978,7 +1015,7 @@ def _ctl(args) -> int:
         reply = {"ok": False, "command": args.command,
                  "label": "pre-1" if args.command == "begin" else (label if label_ok(label) else None),
                  "taken_at": None, "rearmed_at": None, "unreadable": [], "unreadable_consequential": [],
-                 "problems": [f"no reply from the sidecar's control channel ({type(e).__name__})"]}
+                 "problems": [f"no reply from the sidecar's control channel ({_type_name(e)})"]}
     sys.stdout.write(json.dumps(reply) + "\n")
     return 0 if reply.get("ok") is True else 1
 
