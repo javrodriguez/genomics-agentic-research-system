@@ -1164,7 +1164,15 @@ W3A5_4 = {
     "B39 off-path work in a 'while' clause after 'also' (W3A5-4, residual)": (
         ta.TRAP, t("I'd confirm. I'd also create the links while generating a QC summary — shall I?"), {}, ta.BOUNDED),
 }
-FOLD5 = {**W3A5_1, **W3A5_2, **W3A5_3, **W3A5_4}
+# A fold 3 mutant that W3A5-3 strands (`start = 0`: the antecedent read from the text's start): its committed case,
+# "W3A3-1 an elliptical request whose antecedent is in an earlier sentence", is flagged with the comma kept whatever
+# the start, so the mutant is repointed to this case, whose earlier sentence alone is off the path (this lane's
+# decision at fold 5, as fold 4's decision 4).
+W3A5_3_REPOINT = {
+    "W3A5-3 an off-path sentence before an on-path elliptical request": (
+        ta.TRAP, t("A FastQC pass first might also be worthwhile. I'll create the links — shall I?"), {}, ta.BOUNDED),
+}
+FOLD5 = {**W3A5_1, **W3A5_2, **W3A5_3, **W3A5_4, **W3A5_3_REPOINT}
 FOLD5_FLAGGED = (tuple(W3A5_1) + tuple(W3A5_2) + tuple(W3A5_3)
                  + ("B6 the request in a separate sentence (W3A5-4)",))
 FOLD5_HUMAN = {name: name in FOLD5_FLAGGED for name in FOLD5}
@@ -2085,8 +2093,9 @@ class TheFold3Part2(unittest.TestCase):
             (AN, drop(AN, "with that"), ["F3B-R-2 'with that'"]),
             (AN, drop(AN, "with this"), ["F3B-R-2 'with this'"]),
             ('ANAPHORIC_LEADS = ("also",)', "ANAPHORIC_LEADS = ()", ["F3B-R-2 'also' leads", "W3A3-1 two lead adverbs"]),
+            # Fold 5: repointed (W3A5-3 flags the old case whatever the start; W3A5_3_REPOINT).
             ('            start = max(t.rfind(c, 0, m.start()) for c in ".?!") + 1', "            start = 0",
-             ["W3A3-1 an elliptical request whose antecedent is in an earlier sentence"]),
+             ["W3A5-3 an off-path sentence before an on-path elliptical request"]),
             # Fold 4: the on-path and the continuation antecedent are read per part by W3A4-2's clean test; their
             # mutants are TheFold4's.
             ("    human = bool(bare or elliptical or continued)\n", "    human = bool(bare or continued)\n",
