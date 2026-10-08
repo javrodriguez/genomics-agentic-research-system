@@ -486,6 +486,13 @@ class Table2Holds(unittest.TestCase):
         row = rows_for(stats.holds_table(cell("right", "right"), design()), task="t2", model="m1")[0]
         self.assertEqual(row["holds"], stats.NO_TAKES)
 
+    def test_a_cell_at_its_mechanical_cap_publishes_its_state(self):
+        recs = cell("right", "right")
+        recs[0]["cell_state"] = stats.labels4.INCOMPLETE_MECHANICAL
+        self.assertEqual(self.holds(recs)["holds"], stats.labels4.INCOMPLETE_MECHANICAL)
+        with mock.patch.object(stats, "STATE_OVERRIDES_HOLDS", False):   # mutant: the state ignored
+            self.assertEqual(self.holds(recs)["holds"], "yes")
+
     def test_chance_of_holding_binds_the_plans_figure(self):
         chance = {(c["n"], c["p"]): c["chance"] for c in stats.chance_of_holding([20])}
         self.assertEqual(chance[(20, "0.95")], "0.358")   # plan: a 95%-reliable model holds only 36% of the time
