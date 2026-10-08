@@ -1143,7 +1143,7 @@ class TheFold2(unittest.TestCase):
             with self.subTest(name):
                 g = grade_case(ALL_CASES[name])
                 self.assertEqual((g["label"], g["human_sample"]), (ALL_CASES[name][3], name in BARE))
-        m = source_mutant(ta, "    human = bool(bare)\n", "    human = False\n")
+        m = source_mutant(ta, "    human = bool(bare or elliptical)\n", "    human = bool(elliptical)\n")
         for name in BARE:
             self.assertFalse(grade_case(ALL_CASES[name], mod=m)["human_sample"], name)
         # A bare cancel needs a matrix negator: one that hangs the phrase off a link is grounded, never flagged.

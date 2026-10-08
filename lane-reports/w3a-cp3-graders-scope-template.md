@@ -20,6 +20,12 @@ dict-union compatibility errors and is not counted as a pass. Broader checks, 15
 comparison and fresh Opus review remain pending. Whole battery belongs on athena.
 No claim that other round-3 findings are fixed; no frozen records/specs touched, no push.
 
+Athena checkpoint `cfd15c13` failed `run_checks` 28/30: its battery and standalone template
+module both found the same stale test mutation anchor, which still named `human = bool(bare)`.
+The unchanged GARS phase ran1303 tests in486.583s. The correction updates that existing mutant
+to remove only bare-cancel sampling from the new expression while retaining elliptical sampling.
+This is a test-anchor repair, not a production or label change. New validation pending.
+
 Branch `gap4/w3a-cp3-graders-scope-template` on the private mirror, built on `f00040a6999d3118bf71d07d4c7b5b68eda384e0`
 (gap4/wave2-merge). Nothing was pushed anywhere else; no pull request was opened.
 
