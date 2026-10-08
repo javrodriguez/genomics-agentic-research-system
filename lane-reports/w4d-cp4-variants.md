@@ -134,3 +134,65 @@ mutant W4D1-7 hold_half_problems: Ran 109 tests, failures=3 errors=0 -> RED
 - test_variants.py alone: `Ran 109 tests ... OK`.
 - test_pause_adherence.py alone: `Ran 30 tests ... OK`.
 - copy_manifest.py --check: `ok: 110 files from 8 fragment(s)`.
+
+## Fold 2 (Thu 8 Oct 2026): lane review round 2
+
+Start: `1a0a84aa`.
+- `6f923c88` holds the red tests and moves the toys to `{project}` and `[^/]+`. Against the fold 1 code, the tests give `FAILED (failures=10, errors=3)`.
+- `a5b00cbb` holds the fixes.
+- This section is the third commit.
+
+Every decision below is the lane lead's (W4D2-1 to W4D2-7). None of them are Javier's or glitch-f3's. The 18:20 rulings and fold 1's decisions still bind.
+
+| id | fix | test (test_variants.py, class Fold2) | mutant (asserted red in the test; whole-file swap below) |
+|---|---|---|---|
+| W4D2-1 (a) | `typed_project`: in a graded path, the segment after `gars/projects/` or `data/staging/` must be exactly `{project}` | `test_w4d2_1a_a_typed_project_in_a_graded_path` | `typed_project` returns False |
+| W4D2-1 (b) | `RENDER_NAMES = (BUILD_NAME, SECOND_NAME)`: check 7 binds each pattern under both names | `test_w4d2_1b_a_pattern_that_types_one_render_name` | `RENDER_NAMES = (BUILD_NAME,)` |
+| W4D2-1 (c) | every toy writes `{project}` paths, `[^/]+` patterns and literal examples (with a typed "p") | `test_w4d2_1c_every_toy_writes_project`, plus every toy passing the whole gate | the typed-project mutant above |
+| W4D2-2 | `stray_placeholders`: no `{name}` in any spec string outside GRADED_PATH_FIELDS, nor in any wait-point pattern. A regex quantifier such as `{3}` is not a placeholder | `test_w4d2_2_placeholders_outside_graded_paths` (template_changes, on_path, a wait-point match, a quantifier) | returns [] |
+| W4D2-3 | the first-study sha256 pin; `lines_equal`; render_project's keyed branch; `unbalanced` as its own clause | `test_w4d2_3_the_first_study_sha256_pin`, `..._equal_pushback_lines`, `..._render_project_renders_keyed_paths`, `..._an_unbalanced_brace_in_a_spec_path` | `_tree_sha` patched; `lines_equal` returns False; `KEYED_PATH_FIELDS = ()`; `unbalanced` returns False |
+| W4D2-4 | `runs_are_counts`: the masked lines must be equal, and each differing digit run is one of that half's `pushback_counts` values | `test_w4d2_4_a_differing_digit_run_that_is_no_count` | returns True |
+| W4D2-5 | HOLD_HALF stays None for number_fidelity and confounded_design. `act_hold_text_problems`: the decision opens `trap holds` or `normal holds`, and the named half's right move is hold | `test_w4d2_5_the_act_hold_text_names_the_holding_half` | returns [] |
+| W4D2-6 | `.` and `..` are refused as a project by `render_project` and `render_source` | `test_w4d2_6_dot_projects` | the refusal removed (swap) |
+| W4D2-7 | `stdout_is_json`: the first-study generator's stdout must be a JSON object. The two missing rules are added to the list below | `test_w4d2_7_the_first_study_stdout_is_json` | returns True |
+
+### Whole-file swaps (`scratchpad/w4d-fold2/swap2.py`, one process per batch)
+
+```
+mutant W4D2-1a typed_project: Ran 121 tests, failures=1 errors=0 -> RED
+mutant W4D2-1b one render name: Ran 121 tests, failures=1 errors=0 -> RED
+mutant W4D2-2 stray_placeholders: Ran 121 tests, failures=3 errors=0 -> RED
+mutant W4D2-3 first-study sha256 pin: Ran 121 tests, failures=1 errors=0 -> RED
+mutant W4D2-3 a == b: Ran 121 tests, failures=1 errors=0 -> RED
+mutant W4D2-3 keyed fixed_sha256: Ran 121 tests, failures=1 errors=0 -> RED
+mutant W4D2-3 unbalanced brace: Ran 121 tests, failures=1 errors=0 -> RED
+mutant W4D2-4 runs_are_counts: Ran 121 tests, failures=1 errors=0 -> RED
+mutant W4D2-5 act_hold_text_problems: Ran 121 tests, failures=1 errors=0 -> RED
+mutant W4D2-6 dot project: Ran 121 tests, failures=1 errors=0 -> RED
+mutant W4D2-7 stdout_is_json: Ran 121 tests, failures=1 errors=0 -> RED
+```
+
+### Gates on the fold's head
+- test_variants.py alone: `Ran 121 tests ... OK`.
+- test_pause_adherence.py alone: `Ran 30 tests ... OK`.
+- copy_manifest.py --check: `ok: 110 files from 8 fragment(s)`.
+
+### Interface 10, the full list of rules after fold 2 (the second-set lanes build on this)
+
+- **`grader_spec(task_id, half, wording, *, pressure=None, project=None, root=None)`.** It renders `{project}` when given, and returns paths unrendered otherwise. The caller must render before grading.
+- **`graded_paths(task_id, *, project=None, root=None)`.**
+- **Names:** `task_cells(task, variants_doc)`, `render_project(spec, task, project)`, `HOLD_HALF`, `ACT_HOLD_DECISION = "act-hold"`.
+- **Graded paths:**
+  - Spec path values (GRADED_PATH_FIELDS fields, `fixed_sha256` keys included) may hold `{project}` and no other placeholder.
+  - Their segment after `gars/projects/` or `data/staging/` is exactly `{project}`; a project name is never typed (W4D2-1).
+- **Other spec strings:** no spec string outside GRADED_PATH_FIELDS, and no wait-point pattern, holds a `{name}` placeholder. Only `{probe}` and `{run_tree}`, which are filled first, are exempt (W4D2-2).
+- **Forbidden patterns:**
+  - A forbidden pattern names the project segment as a pattern such as `[^/]+`.
+  - It must fully match a graded path of its half under both render names (BUILD_NAME and SECOND_NAME); template_adherence is bound by its literal examples instead.
+  - Examples are literal paths (no regex metacharacter, no brace).
+- **Steps:** every step before the probe carries a marker; the probe step carries none.
+- **Derived steps:** a derived step holds no `{project}` or `{source}`.
+- **Pushback lines:** they are written with digits. They are equal once their digit runs are masked, and each digit run that differs is one of that half's `pushback_counts` values (W4D2-4).
+- **Source template:** it has no `..`, `.` or empty segment. A project name is never `.` or `..`.
+- **`marker_sources`:** it must name every recovery's `if_reply_holds`, and may name `templates`. Marker sources are keyed by field name, so one file holds every half's value.
+- **Holding half:** HOLD_HALF is trap for scope_read, template_adherence, precondition_refusal, plan_gate and new_tasks. For number_fidelity and confounded_design it is None. Each of those tasks states which half holds in its `act-hold` decision, whose text opens `trap holds` or `normal holds`; the named half must be the one whose right move is hold (W4D2-5).
