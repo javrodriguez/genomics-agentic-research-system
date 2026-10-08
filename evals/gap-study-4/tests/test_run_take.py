@@ -61,6 +61,7 @@ for _mod, _name in GUARDED:
     setattr(_mod, _name, _tripwire(f"{_mod.__name__}.{_name}"))
 
 from box import run_take as rt  # noqa: E402
+from box import preflight as pf_mod  # noqa: E402
 import harness_bookkeeping  # noqa: E402
 import agent_adapter  # noqa: E402
 
@@ -411,7 +412,7 @@ class TestCreateArgv(MutantCase):
 # --------------------------------------------------------------------------------- the environment per harness
 def plant_login(folder, name, value=FAKE_VALUE, mode=0o600, text=None):
     path = os.path.join(folder, f"{name.lower()}.line")
-    with open(path, "w", encoding="ascii") as fh:
+    with open(path, "w", encoding="utf-8") as fh:
         fh.write(text if text is not None else f"{name}={value}\n")
     os.chmod(path, mode)
     return path
@@ -510,6 +511,833 @@ class TestArmVariables(MutantCase):
             with self.assertRaises(rt.Refused):
                 rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=h, run_tree="/a/t",
                              login_file=self.logins[rt.CODEX], caller_env=CALLER)
+
+
+# ----------------------------------------------------------------------------------- exec argv and the login
+class TestExecArgv(MutantCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="w-")
+        self.login = plant_login(self.tmp, "CLAUDE_CODE_OAUTH_TOKEN")
+
+    def check(self):
+        out = []
+        with filled():
+            argv, env = rt.exec_argv(ID["take"], ["agent-cli", "-p", "x"], user=rt.AGENT_USER,
+                                     workdir="/srv/w/t1/tree", harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
+                                     login_file=self.login, caller_env=CALLER)
+        t = "/srv/w/t1/tree/.tmp"
+        want = ["docker", "exec", "--user", "10001:10001", "--workdir", "/srv/w/t1/tree",
+                "-e", "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1", "-e", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
+                "-e", "CLAUDE_CONFIG_DIR=/opt/cfg", "-e", "DISABLE_AUTOUPDATER=1",
+                "-e", "ENABLE_CLAUDEAI_MCP_SERVERS=false", "-e", "FAKE_FALLBACK_A=1",
+                "-e", "HTTPS_PROXY=http://proxy:3128", "-e", f"TEMP={t}", "-e", f"TMP={t}", "-e", f"TMPDIR={t}",
+                "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], "agent-cli", "-p", "x"]
+        if argv != want:
+            out.append(f"exec argv differs: {argv}")
+        if any(FAKE_VALUE in a for a in argv):
+            out.append("the login value is in argv")
+        if env.get("CLAUDE_CODE_OAUTH_TOKEN") != FAKE_VALUE:
+            out.append("the login value is not in the client env")
+        extra = set(env) - set(rt.RUNTIME_ENV_NAMES) - set(rt.HARNESS_ENV[rt.CLAUDE_CODE]) - {
+            "TMPDIR", "TMP", "TEMP", "FAKE_FALLBACK_A", "CLAUDE_CODE_OAUTH_TOKEN"}
+        if extra:
+            out.append(f"the client env carries {sorted(extra)}")
+        if env.get("DOCKER_HOST") != CALLER["DOCKER_HOST"]:
+            out.append("the runtime's DOCKER_HOST did not ride")
+        for bad_user in ("0:0", rt.KEEPALIVE_USER, "10002:10002"):
+            try:
+                with filled():
+                    rt.exec_argv(ID["take"], ["x"], user=bad_user, workdir="/", harness=rt.CLAUDE_CODE,
+                                 run_tree="/srv/w/t1/tree", login_file=self.login, caller_env=CALLER)
+                out.append(f"an exec as {bad_user} was built")
+            except rt.Refused:
+                pass
+        try:
+            rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                         run_tree="/srv/w/t1/tree", login_file=self.login, caller_env=CALLER)
+            out.append("an exec was built while FALLBACK_ENV is PENDING")
+        except rt.NotReady:
+            pass
+        for h in ("codex", "gemini"):
+            lf = plant_login(self.tmp, rt.LOGIN_VARIABLE[h])
+            try:
+                rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=h,
+                             run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
+                out.append(f"a {h} exec was built while its billing-route list is PENDING")
+            except rt.NotReady:
+                pass
+            with filled():
+                a, e = rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=h,
+                                    run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
+            home = {"codex": "CODEX_HOME=/opt/cfg", "gemini": "GEMINI_CLI_HOME=/opt/cfg"}[h]
+            if home not in a or "-e" not in a or rt.LOGIN_VARIABLE[h] not in a or FAKE_VALUE in " ".join(a):
+                out.append(f"{h} exec argv off: {a}")
+            if any(x.startswith("CLAUDE") for x in a):
+                out.append(f"{h} exec carries a Claude variable")
+        return out
+
+    def test_exec_argv(self):
+        orig = rt.exec_argv
+
+        def value_in_argv(*a, **k):
+            argv, env = orig(*a, **k)
+            return [x if x != "CLAUDE_CODE_OAUTH_TOKEN" else f"{x}={env[x]}" for x in argv], env
+
+        self.assert_green_then_red(self.check, [
+            ("value-in-argv", patched(rt, "exec_argv", value_in_argv)),
+            ("environ-copied", patched(rt, "runtime_env", lambda c=None: dict(c or os.environ))),
+            ("no-user-check", patched(rt, "AGENT_USER", "0:0")),
+            ("fallback-ignored", patched(rt, "exec_values", lambda h, r: dict(rt.HARNESS_ENV[h]))),
+            ("tmp-variables-dropped", patched(rt, "RUN_TREE_TMPDIR_VARIABLES", ())),
+        ])
+
+    def test_agent_exec_argv(self):
+        self.assertEqual(rt.agent_exec_argv(ID["take"], ["python3", "-c", "x"]),
+                         ["docker", "exec", "--user", "10001:10001", "--workdir", "/", ID["take"], "python3", "-c",
+                          "x"])
+        for bad in ("name", "d" * 12):
+            with self.assertRaises(rt.Refused):
+                rt.agent_exec_argv(bad, ["x"])
+
+
+LOGIN_REFUSALS = {
+    "mode-644": dict(mode=0o644),
+    "mode-400": dict(mode=0o400),
+    "two-lines": dict(text=f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}\nX=1\n"),
+    "no-newline": dict(text=f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}"),
+    "short": dict(text="CLAUDE_CODE_OAUTH_TOKEN=FAKEVALUE-short\n"),
+    "quote": dict(text=f'CLAUDE_CODE_OAUTH_TOKEN="{FAKE_VALUE}"\n'),
+    "space": dict(text=f"CLAUDE_CODE_OAUTH_TOKEN= {FAKE_VALUE}\n"),
+    "cr": dict(text=f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}\r\n"),
+    "other-name": dict(text=f"CODEX_API_KEY={FAKE_VALUE}\n"),
+    "export": dict(text=f"export CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}\n"),
+    "non-ascii": dict(text=f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}é\n"),
+    "empty": dict(text=""),
+}
+
+
+class TestReadLogin(MutantCase):
+    def check(self):
+        out = []
+        tmp = tempfile.mkdtemp(prefix="w-")
+        good = plant_login(tmp, "CLAUDE_CODE_OAUTH_TOKEN")
+        if rt.read_login(good, "CLAUDE_CODE_OAUTH_TOKEN") != FAKE_VALUE:
+            out.append("a good login was not read")
+        for name, kw in LOGIN_REFUSALS.items():
+            d = tempfile.mkdtemp(prefix="w-")
+            path = plant_login(d, "CLAUDE_CODE_OAUTH_TOKEN", **kw)
+            try:
+                rt.read_login(path, "CLAUDE_CODE_OAUTH_TOKEN")
+                out.append(f"{name} accepted")
+            except rt.LoginRefused as e:
+                if FAKE_VALUE in str(e) or "FAKEVALUE" in str(e) or e.__cause__ is not None:
+                    out.append(f"{name}: the refusal carries the value")
+                if path not in str(e):
+                    out.append(f"{name}: the refusal does not name the file")
+        repo = tempfile.mkdtemp(prefix="w-")
+        os.makedirs(os.path.join(repo, ".git"))
+        os.makedirs(os.path.join(repo, "sub"))
+        inside = plant_login(os.path.join(repo, "sub"), "CLAUDE_CODE_OAUTH_TOKEN")
+        link = os.path.join(tmp, "link.line")
+        os.symlink(good, link)
+        for name, path in (("inside-repo", inside), ("symlink", link), ("relative", "x.line"),
+                           ("missing", os.path.join(tmp, "nope"))):
+            try:
+                rt.read_login(path, "CLAUDE_CODE_OAUTH_TOKEN")
+                out.append(f"{name} accepted")
+            except rt.LoginRefused:
+                pass
+        with mock.patch.object(rt.os, "getuid", lambda: os.stat(good).st_uid + 1):
+            try:
+                rt.read_login(good, "CLAUDE_CODE_OAUTH_TOKEN")
+                out.append("another owner's file accepted")
+            except rt.LoginRefused:
+                pass
+        try:
+            rt.read_login(good, "SOME_OTHER_NAME")
+            out.append("an unknown variable name accepted")
+        except rt.LoginRefused:
+            pass
+        return out
+
+    def test_read_login(self):
+        def naive(path, name):
+            with open(path) as fh:
+                return fh.read().split("=", 1)[1].strip()
+
+        self.assert_green_then_red(self.check, [
+            ("naive-reader", patched(rt, "read_login", naive)),
+            ("no-repo-check", patched(rt, "outside_every_repository", lambda p: True)),
+            ("max-bytes-0", patched(rt, "LOGIN_MAX_BYTES", 0)),
+        ])
+
+    def test_no_real_login_path(self):
+        src = open(rt.__file__, encoding="utf-8").read()
+        self.assertNotIn("box-auth", src)
+        self.assertNotRegex(src, r"[\w/-]\.env[\"'\s]")
+        for p in pyinspect_params(rt.read_login):
+            self.assertIsNone(p.default if p.default is not p.empty else None)
+
+
+def pyinspect_params(fn):
+    import inspect
+    return list(inspect.signature(fn).parameters.values())
+
+
+# ------------------------------------------------------------------------------------------ launch and teardown
+def sidecar_launch(expect=None, tree="/srv/w/t1/tree", ev="/srv/w/t1/rec/ev"):
+    exp = expect or {"user": "10002:10002", "network_mode": "none", "cap_drop": ["ALL"],
+                     "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
+                     "pid_mode": "", "mounts": [{"source": tree, "destination": tree, "rw": False},
+                                                {"source": ev, "destination": "/srv/ev", "rw": True}]}
+    return rt.SidecarLaunch(
+        create_argv=("docker", "create", "--network", "none", "side-image"),
+        start_argv_for=lambda i: ["docker", "start", i],
+        ctl_argv_for=lambda i, c, l=None: ["docker", "exec", i, "python3", "-I", "-B", "/opt/w/sidecar.py", "ctl", c]
+        + ([l] if l else []),
+        rm_argv_for=lambda i: ["docker", "rm", "--force", i],
+        expect=exp)
+
+
+def proxy_launch(user="13:13"):
+    return rt.ProxyLaunch(image="sha256:" + "9" * 64, conf_source="/srv/w/t1/rec/proxy.conf",
+                          conf_target="/etc/squid/squid.conf", command=("squid", "-N", "-f", "/etc/squid/squid.conf"),
+                          user=user, alias="proxy")
+
+
+def side_inspect(tree, ev):
+    return [{"Config": {"User": "10002:10002"},
+             "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"], "CapAdd": ["CAP_DAC_READ_SEARCH"],
+                            "SecurityOpt": ["no-new-privileges"], "Privileged": False, "PidMode": ""},
+             "Mounts": [{"Type": "bind", "Source": tree, "Destination": tree, "RW": False},
+                        {"Type": "bind", "Source": ev, "Destination": "/srv/ev", "RW": True}]}]
+
+
+def take_inspect(s):
+    return [{"Image": s.image,
+             "Config": {"User": "10003:10003", "Cmd": ["sleep", "infinity"], "Env": [], "WorkingDir": s.run_tree},
+             "HostConfig": {"NetworkMode": s.network, "CapDrop": ["ALL"], "CapAdd": None,
+                            "SecurityOpt": ["no-new-privileges"], "Privileged": False, "Devices": None,
+                            "PidMode": "", "PidsLimit": s.pids_limit, "Memory": s.memory,
+                            "MemoryReservation": s.memory_reservation, "NanoCpus": s.nano_cpus()},
+             "Mounts": [{"Type": "bind", "Source": s.run_tree, "Destination": s.run_tree, "RW": True},
+                        {"Type": "bind", "Source": s.config_dir, "Destination": "/opt/cfg", "RW": True}]}]
+
+
+class Launch:
+    """A tmp take: spec, record folder, sidecar and proxy records, and the ten-step launch script."""
+
+    def __init__(self):
+        self.tmp = tempfile.mkdtemp(prefix="w-")
+        self.tree = os.path.join(self.tmp, "tree")
+        self.cfg = os.path.join(self.tmp, "cfg")
+        self.rec = os.path.join(self.tmp, "rec")
+        self.ev = os.path.join(self.rec, "ev")
+        for d in (self.tree, self.cfg, self.ev):
+            os.makedirs(d)
+        self.spec = spec(run_tree=self.tree, config_dir=self.cfg)
+        self.sidecar = sidecar_launch(tree=self.tree, ev=self.ev)
+        self.proxy = proxy_launch()
+
+    def script(self):
+        return [
+            (["docker", "network", "create", "--internal"], ok(ID["net"] + "\n")),
+            (["docker", "create", "--pull=never", "--network", ID["net"], "--network-alias", "proxy"], ok(ID["proxy"])),
+            (["docker", "network", "connect", "bridge", ID["proxy"]], ok()),
+            (["docker", "start", ID["proxy"]], ok()),
+            (["docker", "create", "--network", "none"], ok(ID["side"])),
+            (["docker", "container", "inspect", ID["side"]], ok(json.dumps(side_inspect(self.tree, self.ev)))),
+            (["docker", "start", ID["side"]], ok()),
+            (["docker", "create", "--pull=never", "--network", ID["net"], "--user", "10003:10003"], ok(ID["take"])),
+            (["docker", "container", "inspect", ID["take"]], ok(json.dumps(take_inspect(self.spec)))),
+            (["docker", "start", ID["take"]], ok()),
+        ]
+
+    def launch(self, fake):
+        return rt.launch(fake, self.spec, sidecar=self.sidecar, proxy=self.proxy, record_dir=self.rec,
+                         caller_env=CALLER)
+
+
+@contextlib.contextmanager
+def inspect_ok():
+    with mock.patch.object(rt, "INSPECT_STATUS", "confirmed-in-test"):
+        yield
+
+
+TEARDOWN_PREFIXES = [["docker", "rm", "--force", ID["take"]],
+                     ["docker", "exec", ID["side"], "python3", "-I", "-B", "/opt/w/sidecar.py", "ctl", "finish"],
+                     ["docker", "logs", ID["proxy"]], ["docker", "rm", "--force", ID["side"]],
+                     ["docker", "rm", "--force", ID["proxy"]], ["docker", "network", "rm", ID["net"]]]
+
+
+class TestLaunch(MutantCase):
+    def check_launch(self):
+        out = []
+        L = Launch()
+        fake = FakeRuntime(L.script())
+        with inspect_ok():
+            launched = L.launch(fake)
+        if fake.unexpected or fake.script:
+            out.append(f"launch calls off script: {fake.unexpected or fake.script}")
+        if (launched.network_id, launched.proxy_id, launched.sidecar_id, launched.take_id) != (
+                ID["net"], ID["proxy"], ID["side"], ID["take"]):
+            out.append("an id was not recorded")
+        path = os.path.join(L.rec, "launch.json")
+        if not os.path.exists(path):
+            out.append("no launch record")
+        else:
+            rec = json.load(open(path))
+            if not rec.get("ok") or [s["step"] for s in rec["steps"]] != [
+                    "network-create", "proxy-create", "proxy-connect", "proxy-start", "sidecar-create",
+                    "sidecar-inspect", "sidecar-start", "take-create", "take-inspect", "take-start"]:
+                out.append("the launch record's steps are off")
+            if not all("inspect" in s for s in rec["steps"] if s["step"].endswith("inspect")):
+                out.append("an inspect is missing from the launch record")
+            if rec.get("take_id") != ID["take"] or rec.get("config_dir") != L.cfg:
+                out.append("the launch record lacks the take id or the config folder")
+        proxy_argv = fake.calls[1][0]
+        if "type=bind,source=/srv/w/t1/rec/proxy.conf,target=/etc/squid/squid.conf,readonly" not in proxy_argv \
+                or proxy_argv[-4:] != ["squid", "-N", "-f", "/etc/squid/squid.conf"] or "13:13" not in proxy_argv:
+            out.append(f"the proxy create argv is off: {proxy_argv}")
+        if any(env != {k: CALLER[k] for k in rt.RUNTIME_ENV_NAMES} for _, env in fake.calls):
+            out.append("a launch call's env is not the runtime's needs alone")
+        if any(a[:2] == ["docker", "exec"] for a, _ in fake.calls):
+            out.append("launch ran an exec")
+        return out
+
+    def test_launch(self):
+        def no_record(path, doc):
+            return None
+        self.assert_green_then_red(self.check_launch, [
+            ("no-launch-record", patched(rt, "_write_json", no_record)),
+            ("proxy-not-readonly", patched(rt, "proxy_create_argv", lambda n, p: [
+                a.replace(",readonly", "") for a in ORIG_PROXY_CREATE(n, p)])),
+            ("default-network", patched(rt, "DEFAULT_NETWORK", "host")),
+        ])
+
+    def check_failures(self):
+        """A failure at every step (exit 1, a timeout, a bad id, an inspect mismatch) tears down exactly what was
+        made, by recorded id, runs no harness exec, writes the launch record, and raises LaunchError."""
+        out = []
+        n = len(Launch().script())
+        made_after = {0: [], 1: ["net"], 2: ["net", "proxy"], 3: ["net", "proxy"], 4: ["net", "proxy"],
+                      5: ["net", "proxy", "side"], 6: ["net", "proxy", "side"], 7: ["net", "proxy", "side"],
+                      8: ["net", "proxy", "side", "take"], 9: ["net", "proxy", "side", "take"]}
+        cases = [(i, how) for i in range(n) for how in ("exit", "timeout")]
+        cases += [(0, "bad-id"), (4, "bad-id"), (7, "bad-id"), (5, "mismatch"), (8, "mismatch")]
+        for i, how in cases:
+            L = Launch()
+            script = L.script()[:i + 1]
+            prefix, answer = script[i]
+            if how == "exit":
+                script[i] = (prefix, rt.Completed(1, "", "boom"))
+            elif how == "timeout":
+                script[i] = (prefix, TimeoutError("slow"))
+            elif how == "bad-id":
+                script[i] = (prefix, ok("not-an-id"))
+            else:
+                bad = json.loads(answer.stdout)
+                bad[0]["HostConfig"]["NetworkMode"] = "bridge"
+                script[i] = (prefix, ok(json.dumps(bad)))
+            made = made_after[i] if how in ("exit", "timeout") or i not in (0, 4, 7) else made_after[i]
+            if how == "mismatch":
+                made = made_after[i]
+            rm = []
+            if "take" in made:
+                rm.append((["docker", "rm", "--force", ID["take"]], ok()))
+            if "proxy" in made:
+                rm.append((["docker", "logs", ID["proxy"]], ok("log\n")))
+            if "side" in made:
+                rm.append((["docker", "rm", "--force", ID["side"]], ok()))
+            if "proxy" in made:
+                rm.append((["docker", "rm", "--force", ID["proxy"]], ok()))
+            if "net" in made:
+                rm.append((["docker", "network", "rm", ID["net"]], ok()))
+            fake = FakeRuntime(script + rm)
+            try:
+                with inspect_ok():
+                    L.launch(fake)
+                out.append(f"step {i} {how}: launch did not fail")
+                continue
+            except rt.LaunchError as e:
+                launched = e.launched
+            if fake.unexpected or fake.script:
+                out.append(f"step {i} {how}: teardown off script {fake.unexpected or [s[0] for s in fake.script]}")
+            if any(a[:2] == ["docker", "exec"] for a, _ in fake.calls):
+                out.append(f"step {i} {how}: an exec ran")
+            removed = {a[-1] for a, _ in fake.calls if a[:2] == ["docker", "rm"] or a[:3] == ["docker", "network", "rm"]}
+            if removed != {ID[k] for k in made}:
+                out.append(f"step {i} {how}: removed {sorted(removed)} for made {made}")
+            rec = os.path.join(L.rec, "launch.json")
+            if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+                out.append(f"step {i} {how}: no failed launch record")
+            if launched.ok:
+                out.append(f"step {i} {how}: the carried record says ok")
+        return out
+
+    def test_failures(self):
+        self.assert_green_then_red(self.check_failures, [
+            ("no-teardown", patched(rt, "_teardown_partial", lambda *a: None)),
+            ("ids-not-recorded", patched(rt, "_new_id", lambda c, what: c.stdout.strip() or "x")),
+            ("no-inspect-check", patched(pf_mod, "inspect_mismatches", lambda *a, **k: [])),
+        ])
+
+    def test_refused_before_anything(self):
+        def check():
+            out = []
+            for name, kw in (("pending-user", dict(proxy=proxy_launch(rt.PENDING))),
+                             ("root-proxy", dict(proxy=proxy_launch("0:0"))),
+                             ("pending-spec", dict(spec=rt.TakeSpec(image=IMAGE, run_tree="/a/t", config_dir="/a/c",
+                                                                   network=ID["net"]))),
+                             ("sidecar-not-create", dict(sidecar=rt.SidecarLaunch(("docker", "run"), None, None,
+                                                                                  None, {})))):
+                L = Launch()
+                fake = FakeRuntime()
+                args = dict(spec=L.spec, sidecar=L.sidecar, proxy=L.proxy, record_dir=L.rec, caller_env=CALLER)
+                args.update(kw)
+                try:
+                    with inspect_ok():
+                        rt.launch(fake, args.pop("spec"), **args)
+                    out.append(f"{name}: launched")
+                except (rt.NotReady, rt.Refused) as e:
+                    if name == "pending-user" and not isinstance(e, rt.NotReady):
+                        out.append("a PENDING proxy user raised Refused, not NotReady")
+                if fake.calls:
+                    out.append(f"{name}: the runtime was called")
+            return out
+        self.assert_green_then_red(check, [
+            ("no-proxy-check", patched(rt, "_check_proxy", lambda p: None)),
+            ("no-sidecar-check", patched(rt, "_check_sidecar", lambda s: None)),
+        ])
+
+    def test_pending_inspect_refuses_launch(self):
+        L = Launch()
+        script = L.script()[:6] + [(["docker", "logs", ID["proxy"]], ok()),
+                                   (["docker", "rm", "--force", ID["side"]], ok()),
+                                   (["docker", "rm", "--force", ID["proxy"]], ok()),
+                                   (["docker", "network", "rm", ID["net"]], ok())]
+        fake = FakeRuntime(script)
+        with self.assertRaises(rt.LaunchError) as cm:
+            L.launch(fake)
+        self.assertIn("PENDING", str(cm.exception))
+        self.assertEqual(fake.unexpected, [])
+
+
+ORIG_PROXY_CREATE = rt.proxy_create_argv
+
+
+class TestTeardown(MutantCase):
+    def launched(self):
+        L = Launch()
+        fake = FakeRuntime(L.script())
+        with inspect_ok():
+            return L, L.launch(fake)
+
+    def check_order(self):
+        out = []
+        L, launched = self.launched()
+        fake = FakeRuntime([(TEARDOWN_PREFIXES[0], ok()), (TEARDOWN_PREFIXES[1], ok('{"ok": true}')),
+                            (TEARDOWN_PREFIXES[2], ok("proxy line 1\n", "squid started\n"))]
+                           + [(p, ok()) for p in TEARDOWN_PREFIXES[3:]])
+        rec = rt.teardown(fake, launched, sidecar=L.sidecar, record_dir=L.rec, caller_env=CALLER)
+        if fake.unexpected or fake.script:
+            out.append(f"teardown off its order: {fake.unexpected or [s[0] for s in fake.script]}")
+        if not rec.get("ok"):
+            out.append("teardown reported a problem")
+        log = os.path.join(L.rec, "proxy.log")
+        if not os.path.exists(log) or open(log).read() != "proxy line 1\nsquid started\n":
+            out.append("the proxy log was not captured into the record folder")
+        ids = [a[-1] for a, _ in fake.calls if a[:2] == ["docker", "rm"] or a[:3] == ["docker", "network", "rm"]]
+        if ids != [ID["take"], ID["side"], ID["proxy"], ID["net"]]:
+            out.append(f"removed {ids}")
+        # take removal fails: finish is skipped, the rest still runs, TeardownError carries the record
+        L, launched = self.launched()
+        fake = FakeRuntime([(TEARDOWN_PREFIXES[0], rt.Completed(1, "", "busy")), (TEARDOWN_PREFIXES[2], ok("l\n"))]
+                           + [(p, ok()) for p in TEARDOWN_PREFIXES[3:]])
+        try:
+            rt.teardown(fake, launched, sidecar=L.sidecar, record_dir=L.rec, caller_env=CALLER)
+            out.append("a failed take removal did not raise")
+        except rt.TeardownError as e:
+            if "sidecar-finish" not in e.record["problems"] or "take-rm" not in e.record["problems"]:
+                out.append("the failed teardown's record is off")
+        if fake.unexpected or fake.script or any("finish" in a for a, _ in fake.calls):
+            out.append("finish ran after a failed take removal, or a step was skipped")
+        return out
+
+    def test_order(self):
+        def logs_after_removal(runtime, launched, *, sidecar, record_dir, caller_env=None):
+            env = rt.runtime_env(caller_env)
+            for argv in (TEARDOWN_PREFIXES[0], TEARDOWN_PREFIXES[1], TEARDOWN_PREFIXES[3], TEARDOWN_PREFIXES[4]):
+                runtime.run(list(argv), env=env)
+            rt._capture_proxy_log(runtime, launched.proxy_id, record_dir, env)
+            runtime.run(list(TEARDOWN_PREFIXES[5]), env=env)
+            return {"ok": True}
+
+        def no_logs(runtime, launched, *, sidecar, record_dir, caller_env=None):
+            env = rt.runtime_env(caller_env)
+            for argv in TEARDOWN_PREFIXES[:2] + TEARDOWN_PREFIXES[3:]:
+                runtime.run(list(argv), env=env)
+            return {"ok": True}
+
+        def finish_first(runtime, launched, *, sidecar, record_dir, caller_env=None):
+            env = rt.runtime_env(caller_env)
+            for argv in [TEARDOWN_PREFIXES[1], TEARDOWN_PREFIXES[0]] + TEARDOWN_PREFIXES[2:]:
+                c = runtime.run(list(argv), env=env)
+            return {"ok": True}
+
+        self.assert_green_then_red(self.check_order, [
+            ("logs-after-removal", patched(rt, "teardown", logs_after_removal)),
+            ("no-logs", patched(rt, "teardown", no_logs)),
+            ("finish-before-take-rm", patched(rt, "teardown", finish_first)),
+        ])
+
+
+# ----------------------------------------------------------------------------------------- leaked containers
+class TestLeaked(MutantCase):
+    def check(self):
+        out = []
+        listing = ok("\n".join([ID["other"], ID["take"]]) + "\n")
+        fake = FakeRuntime([(["docker", "ps", "--all", "--no-trunc", "--quiet"], listing)])
+        try:
+            rt.refuse_restart_if_leaked(fake, [ID["take"], ID["side"]], caller_env=CALLER)
+            out.append("a leaked container still present did not refuse the restart")
+        except rt.LeakedContainer as e:
+            if ID["take"] not in str(e) or ID["side"] in str(e):
+                out.append("the refusal does not name exactly the leaked container")
+        if any("--filter" in a or "-f" in a for a, _ in fake.calls):
+            out.append("the listing filters")
+        fake = FakeRuntime([(["docker", "ps", "--all", "--no-trunc", "--quiet"], ok(ID["other"] + "\n"))])
+        try:
+            rt.refuse_restart_if_leaked(fake, [ID["take"]], caller_env=CALLER)
+        except rt.LeakedContainer:
+            out.append("a gone container refused the restart")
+        fake = FakeRuntime([(["docker", "ps"], rt.Completed(1, "", "daemon down"))])
+        try:
+            rt.refuse_restart_if_leaked(fake, [ID["take"]], caller_env=CALLER)
+            out.append("a failed listing let the restart through")
+        except rt.Refused:
+            pass
+        fake = FakeRuntime([(["docker", "ps"], ok("eager_turing\n"))])
+        try:
+            rt.leaked(fake, [ID["take"]], caller_env=CALLER)
+            out.append("a listing of names was read")
+        except rt.Refused:
+            pass
+        try:
+            rt.leaked(FakeRuntime(), ["take-name"], caller_env=CALLER)
+            out.append("a recorded name was accepted")
+        except rt.Refused:
+            pass
+        return out
+
+    def test_leaked(self):
+        self.assert_green_then_red(self.check, [
+            ("check-skipped", patched(rt, "refuse_restart_if_leaked", lambda *a, **k: None)),
+            ("leaked-empty", patched(rt, "leaked", lambda *a, **k: [])),
+        ])
+
+
+# ---------------------------------------------------------------------------- the agent's leftover processes
+UID_MAP = ((0, 1000, 1), (1, 100000, 65536))
+TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID"}
+
+
+class TestProcesses(MutantCase):
+    def check(self):
+        out = []
+        if rt.host_uid(10001, UID_MAP) != 110000 or rt.host_uid(0, UID_MAP) != 1000:
+            out.append("host_uid maps wrongly")
+        for bad_map in (((0, 1000, 1),), ((0, 1000, 1), (1, 100000, 65536), (10000, 5, 10))):
+            try:
+                rt.host_uid(10001, bad_map)
+                out.append(f"uid map {bad_map} accepted")
+            except rt.Refused:
+                pass
+        table = "PID UID COMMAND\n4100 103002 sleep\n4200 110000 node\n4300 110000 bash\n4400 10001 x\n"
+        with mock.patch.object(rt, "TOP_FORMAT", TOP):
+            fake = FakeRuntime([(["docker", "top", ID["take"], "-eo", "pid,uid,comm"], ok(table))])
+            pids = rt.agent_processes(fake, ID["take"], agent_uid=10001, uid_map=UID_MAP, caller_env=CALLER)
+            if pids != [4200, 4300]:
+                out.append(f"agent processes {pids}")
+            fake = FakeRuntime([(["docker", "top"], rt.Completed(1, "", "x"))])
+            try:
+                rt.agent_processes(fake, ID["take"], agent_uid=10001, uid_map=UID_MAP, caller_env=CALLER)
+                out.append("a failed top read as no processes")
+            except rt.Refused:
+                pass
+        try:
+            rt.agent_processes(FakeRuntime(), ID["take"], agent_uid=10001, uid_map=UID_MAP)
+            out.append("top read while its form is PENDING")
+        except rt.NotReady:
+            pass
+        fake = FakeRuntime([(["docker", "exec"], ok())])
+        rt.kill_agent(fake, ID["take"], agent_user=rt.AGENT_USER, caller_env=CALLER)
+        if fake.calls[0][0] != ["docker", "exec", "--user", "10001:10001", ID["take"], "kill", "-s", "KILL", "--",
+                                "-1"]:
+            out.append(f"kill argv {fake.calls[0][0]}")
+        for u in ("0:0", rt.KEEPALIVE_USER):
+            try:
+                rt.kill_agent(FakeRuntime(), ID["take"], agent_user=u)
+                out.append(f"a kill as {u} was sent")
+            except rt.Refused:
+                pass
+        # wait_gone: an injected clock and sleep; no real wait
+        now = [0.0]
+        slept = []
+        clock = lambda: now[0]  # noqa: E731
+
+        def sleep(s):
+            slept.append(s)
+            now[0] += s
+        rows = [table, table, "PID UID COMMAND\n4100 103002 sleep\n"]
+        with mock.patch.object(rt, "TOP_FORMAT", TOP):
+            fake = FakeRuntime([(["docker", "top"], ok(r)) for r in rows])
+            if rt.wait_gone(fake, ID["take"], agent_uid=10001, uid_map=UID_MAP, cap_s=30, interval_s=5, clock=clock,
+                            sleep=sleep) != []:
+                out.append("wait_gone did not see the processes leave")
+            if slept != [5, 5]:
+                out.append(f"wait_gone slept {slept}")
+            now[0], slept[:] = 0.0, []
+            fake = FakeRuntime([(["docker", "top"], ok(table)) for _ in range(7)])
+            surv = rt.wait_gone(fake, ID["take"], agent_uid=10001, uid_map=UID_MAP, cap_s=30, interval_s=5,
+                                clock=clock, sleep=sleep)
+            if surv != [4200, 4300] or now[0] != 30:
+                out.append(f"at the cap wait_gone returned {surv} at {now[0]}")
+        return out
+
+    def test_processes(self):
+        self.assert_green_then_red(self.check, [
+            ("unmapped-uid", patched(rt, "host_uid", lambda u, m: u)),
+            ("kill-as-root", patched(rt, "AGENT_USER", "0:0")),
+            ("no-wait", patched(rt, "wait_gone", lambda *a, **k: [])),
+            ("top-pending-ignored", patched(rt, "_is_pending", lambda v: False)),
+        ])
+
+
+# --------------------------------------------------------------------------------- counters and the exit record
+class TestCountersAndState(MutantCase):
+    def cg(self, mem="low 0\nhigh 0\nmax 0\noom 1\noom_kill 2\n", pids="max 5\n"):
+        d = tempfile.mkdtemp(prefix="w-")
+        if mem is not None:
+            open(os.path.join(d, "memory.events"), "w").write(mem)
+        if pids is not None:
+            open(os.path.join(d, "pids.events"), "w").write(pids)
+        return d
+
+    def check(self):
+        out = []
+        before = rt.counters(self.cg())
+        after = rt.counters(self.cg(mem="oom_kill 3\nmax 9\n", pids="max 7\n"))
+        if before != {"oom_kill": 2, "pids_max": 5}:
+            out.append(f"counters read {before}")
+        d = rt.counter_delta(before, after)
+        if d != {"oom_kill_delta": 1, "pids_max_delta": 2} or tuple(d) != agent_adapter.COUNTER_FIELDS:
+            out.append(f"delta {d}")
+        for name, kw in (("no-memory", dict(mem=None)), ("no-line", dict(mem="oom 1\n")),
+                         ("no-pids", dict(pids=None)), ("twice", dict(pids="max 1\nmax 2\n"))):
+            try:
+                rt.counters(self.cg(**kw))
+                out.append(f"{name} read as a counter")
+            except rt.Refused:
+                pass
+        try:
+            rt.counter_delta(after, before)
+            out.append("a counter that fell was accepted")
+        except rt.Refused:
+            pass
+        state = [{"State": {"Running": False, "ExitCode": 137, "OOMKilled": True}}]
+        with mock.patch.object(rt, "INSPECT_STATUS", "confirmed-in-test"):
+            fake = FakeRuntime([(["docker", "container", "inspect", ID["take"]], ok(json.dumps(state)))])
+            if rt.container_state(fake, ID["take"], caller_env=CALLER) != {"running": False, "exit_code": 137,
+                                                                           "oom_killed": True}:
+                out.append("the exit record is off")
+            fake = FakeRuntime([(["docker", "container", "inspect"], ok(json.dumps([{"State": {}}])))])
+            try:
+                rt.container_state(fake, ID["take"], caller_env=CALLER)
+                out.append("a State without its fields was read")
+            except rt.Refused:
+                pass
+        try:
+            rt.container_state(FakeRuntime(), ID["take"])
+            out.append("the state was read while the spellings are PENDING")
+        except rt.NotReady:
+            pass
+        return out
+
+    def test_counters_and_state(self):
+        self.assert_green_then_red(self.check, [
+            ("swapped-lines", patched(rt, "COUNTER_SOURCES", {"oom_kill": ("memory.events", "oom"),
+                                                               "pids_max": ("pids.events", "max")})),
+            ("negative-delta", patched(rt, "counter_delta", lambda b, a: {
+                f: a[f[:-6]] - b[f[:-6]] for f in agent_adapter.COUNTER_FIELDS})),
+            ("state-running-from-status", patched(rt, "INSPECT_PATHS", dict(rt.INSPECT_PATHS,
+                                                                              running="State.Status"))),
+        ])
+
+
+# --------------------------------------------------------------------------------------------------- one turn
+class TestRunTurn(MutantCase):
+    def check(self):
+        out = []
+        tmp = tempfile.mkdtemp(prefix="w-")
+        login = plant_login(tmp, "CLAUDE_CODE_OAUTH_TOKEN")
+        ticks = iter([100.0, 107.5, 200.0, 1100.0])
+        clock = lambda: next(ticks)  # noqa: E731
+        stream = os.path.join(tmp, "turn-1.jsonl")
+        fake = FakeRuntime([(["docker", "exec", "--user", "10001:10001"], ok('{"type":"x"}\n', "warn\n"))])
+        with filled():
+            r = rt.run_turn(fake, ID["take"], ["agent-cli"], harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
+                            login_file=login, stream_path=stream, budget_s=900, clock=clock, caller_env=CALLER)
+        if (r["exit_code"], r["timed_out"], r["started_at"], r["ended_at"]) != (0, False, 100.0, 107.5):
+            out.append(f"turn record {r}")
+        if open(stream).read() != '{"type":"x"}\n':
+            out.append("the stream was not written host-side")
+        if FAKE_VALUE in json.dumps(r) or any(FAKE_VALUE in a for a, _ in fake.calls):
+            out.append("the login value reached the record or argv")
+        if fake.calls[0][1].get("CLAUDE_CODE_OAUTH_TOKEN") != FAKE_VALUE:
+            out.append("the login did not ride in the client env")
+        stream2 = os.path.join(tmp, "turn-2.jsonl")
+        err = TimeoutError("slow")
+        err.stdout = "partial\n"
+        fake = FakeRuntime([(["docker", "exec"], err)])
+        with filled():
+            r = rt.run_turn(fake, ID["take"], ["agent-cli"], harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
+                            login_file=login, stream_path=stream2, budget_s=900, clock=clock, caller_env=CALLER)
+        if not r["timed_out"] or r["exit_code"] is not None or open(stream2).read() != "partial\n":
+            out.append(f"a timeout was not recorded as a timed-out exec: {r}")
+        for bad in (stream, "/srv/w/t1/tree/s.jsonl", "rel.jsonl"):
+            try:
+                with filled():
+                    rt.run_turn(FakeRuntime(), ID["take"], ["x"], harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
+                                login_file=login, stream_path=bad, budget_s=900, clock=clock, caller_env=CALLER)
+                out.append(f"stream path {bad} accepted")
+            except rt.Refused:
+                pass
+        return out
+
+    def test_run_turn(self):
+        def overwriting(runtime, take_id, inner, *, stream_path, **k):
+            if os.path.exists(stream_path):
+                os.remove(stream_path)
+            return ORIG_RUN_TURN(runtime, take_id, inner, stream_path=stream_path, **k)
+
+        self.assert_green_then_red(self.check, [
+            ("timeout-raises", patched(rt, "run_turn", lambda *a, **k: (_ for _ in ()).throw(TimeoutError()))),
+            ("overwrites-stream", patched(rt, "run_turn", overwriting)),
+            ("stream-in-tree-allowed", patched(rt, "_inside", lambda c, p: False)),
+        ])
+
+
+ORIG_RUN_TURN = rt.run_turn
+
+
+# ---------------------------------------------------------------------------------------- the config folder
+class TestConfigDir(MutantCase):
+    def check(self):
+        out = []
+        parent = tempfile.mkdtemp(prefix="w-")
+        path = rt.make_config_dir(parent)
+        if not os.path.isdir(path) or os.path.dirname(path) != parent:
+            out.append("the config folder was not made under its parent")
+        repo = tempfile.mkdtemp(prefix="w-")
+        os.makedirs(os.path.join(repo, ".git"))
+        try:
+            rt.make_config_dir(repo)
+            out.append("a config folder inside a repository was made")
+        except rt.Refused:
+            pass
+        launched = rt.Launched(config_dir=path)
+        try:
+            rt.remove_config_dir(launched, published=False)
+            out.append("the config folder was removed before publication")
+        except rt.Refused:
+            pass
+        if not os.path.isdir(path):
+            out.append("an unpublished take's config folder is gone")
+        sibling = os.path.join(parent, "keep")
+        os.makedirs(sibling)
+        rt.remove_config_dir(launched, published=True)
+        if os.path.exists(path) or not os.path.isdir(sibling):
+            out.append("removal did not take exactly the recorded folder")
+        try:
+            rt.remove_config_dir(rt.Launched(config_dir=None), published=True)
+            out.append("a removal with no recorded folder ran")
+        except rt.Refused:
+            pass
+        return out
+
+    def test_config_dir(self):
+        self.assert_green_then_red(self.check, [
+            ("no-publish-gate", patched(rt, "remove_config_dir", lambda l, *, published: ORIG_REMOVE(
+                l, published=True))),
+            ("no-repo-check", patched(rt, "outside_every_repository", lambda p: True)),
+        ])
+
+
+ORIG_REMOVE = rt.remove_config_dir
+
+
+# ------------------------------------------------------------------------------- PENDING and neutral names
+class TestPendingAndNames(MutantCase):
+    EXPECT = {"FALLBACK_ENV", "VENDOR_BILLING_ROUTE_VARIABLES", "TOP_FORMAT", "INSPECT_STATUS", "TakeSpec.resources"}
+    CALLER_EXPECT = {"cgroup_dir", "uid_map", "XDG_RUNTIME_DIR in the take", "tree ownership"}
+
+    def check_pending(self):
+        out = []
+        if set(rt.pending()) != self.EXPECT:
+            out.append(f"pending() = {sorted(rt.pending())}")
+        if set(rt.CALLER_PENDING) != self.CALLER_EXPECT:
+            out.append(f"CALLER_PENDING = {sorted(rt.CALLER_PENDING)}")
+        if not all(rt.PENDING_WHY.get(k) for k in self.EXPECT):
+            out.append("a pending value has no reason")
+        return out
+
+    def test_pending(self):
+        self.assert_green_then_red(self.check_pending, [
+            ("fallback-filled", patched(rt, "FALLBACK_ENV", {})),
+            ("top-filled", patched(rt, "TOP_FORMAT", TOP)),
+            ("inspect-filled", patched(rt, "INSPECT_STATUS", "ok")),
+            ("billing-filled", patched(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {"codex": (), "gemini": ()})),
+        ])
+
+    def test_no_parameter_overrides_a_pending_constant(self):
+        import inspect
+        names = {"fallback_env", "fallback", "billing_route", "vendor_billing_route_variables", "top_format",
+                 "inspect_status", "inspect_paths"}
+        found = []
+        for name, fn in vars(rt).items():
+            if callable(fn) and not name.startswith("_") and getattr(fn, "__module__", "") == rt.__name__:
+                try:
+                    params = inspect.signature(fn).parameters
+                except (TypeError, ValueError):
+                    continue
+                found += [f"{name}({p})" for p in params if p.lower() in names]
+        self.assertEqual(found, [])
+
+    def visible(self):
+        """Every string of this module the agent can read: users, mounts, env names and values, the keep-alive."""
+        out = [rt.AGENT_USER, rt.KEEPALIVE_USER, rt.CONFIG_MOUNT, rt.PROXY_URL, rt.PROXY_ALIAS, rt.RUN_TREE_TMPDIR,
+               *rt.KEEPALIVE_COMMAND, *rt.RUN_TREE_TMPDIR_VARIABLES, *rt.LOGIN_VARIABLE.values(), rt.network_name()]
+        for env in rt.HARNESS_ENV.values():
+            out += list(env) + list(env.values())
+        return out
+
+    def check_names(self):
+        hits = []
+        for s in self.visible():
+            hits += [(s, w) for w in LEAK_WORDS if re.search(r"(?<![A-Za-z0-9])" + re.escape(w) + r"(?![A-Za-z0-9])",
+                                                             s, re.IGNORECASE)]
+        if not re.fullmatch(r"n[0-9a-f]{24}", rt.network_name()):
+            hits.append(("network name", "shape"))
+        return [f"{s!r} carries {w}" for s, w in hits]
+
+    def test_neutral_names(self):
+        self.assert_green_then_red(self.check_names, [
+            ("study-mount", patched(rt, "CONFIG_MOUNT", "/opt/sidecar-cfg")),
+            ("study-env", patched(rt, "HARNESS_ENV", dict(rt.HARNESS_ENV, codex=dict(rt.HARNESS_ENV["codex"],
+                                                                                      X_GRADING="1")))),
+            ("study-network", patched(rt, "network_name", lambda: "gap4-net")),
+        ])
 
 
 # ------------------------------------------------------------- interface 10's default-deny audit (ast, not grep)
