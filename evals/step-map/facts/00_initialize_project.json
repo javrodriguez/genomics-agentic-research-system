@@ -1,0 +1,2254 @@
+{
+ "assay": "rnaseq_bulk",
+ "blob": "049b06e789722a11e3fb3790de4cd79a3c2a904e",
+ "call_sites": [
+  {
+   "branch_calls": [],
+   "by_table": {
+    "3": "T9"
+   },
+   "command": "python3 _system/stage00_register.py assays",
+   "emitted": [
+    0,
+    3
+   ],
+   "handled": [],
+   "line": 201,
+   "prose_handling": [],
+   "ruled_out": {},
+   "step": "3",
+   "tool": "stage00_register.assays",
+   "unhandled": [],
+   "unhandled_sites": {}
+  },
+  {
+   "branch_calls": [],
+   "by_table": {
+    "3": "T9"
+   },
+   "command": "python3 _system/stage00_register.py assays --select \"<exactly what the user replied>\"",
+   "emitted": [
+    0,
+    2,
+    3
+   ],
+   "handled": [
+    0,
+    2
+   ],
+   "line": 211,
+   "prose_handling": [],
+   "ruled_out": {},
+   "step": "4",
+   "tool": "stage00_register.assays",
+   "unhandled": [],
+   "unhandled_sites": {}
+  },
+  {
+   "branch_calls": [],
+   "by_table": {
+    "3": "T9"
+   },
+   "command": "python3 _system/stage00_register.py create --title \"<title>\" --assays <assay_id> [<assay_id> ...]",
+   "emitted": [
+    0,
+    2,
+    3
+   ],
+   "handled": [
+    0,
+    2
+   ],
+   "line": 222,
+   "prose_handling": [],
+   "ruled_out": {},
+   "step": "6",
+   "tool": "stage00_register.create",
+   "unhandled": [],
+   "unhandled_sites": {}
+  },
+  {
+   "branch_calls": [
+    {
+     "command": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path> --sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'",
+     "emitted": [
+      0,
+      2
+     ],
+     "graded": false,
+     "kind": "prose-rerun",
+     "line": 241,
+     "tool": "stage00_register.inspect"
+    }
+   ],
+   "by_table": {},
+   "command": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path>",
+   "emitted": [
+    0,
+    2
+   ],
+   "handled": [
+    0,
+    2
+   ],
+   "line": 237,
+   "prose_handling": [
+    "If the error names unmatched filenames, show them, ask the user how sample IDs should be read, and re-run `inspect` with `--sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'`."
+   ],
+   "ruled_out": {},
+   "step": "9",
+   "tool": "stage00_register.inspect",
+   "unhandled": [],
+   "unhandled_sites": {}
+  },
+  {
+   "branch_calls": [],
+   "by_table": {
+    "2": "template field",
+    "3": "T9"
+   },
+   "command": "python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>",
+   "emitted": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "handled": [
+    0,
+    1
+   ],
+   "line": 249,
+   "prose_handling": [],
+   "ruled_out": {},
+   "step": "12",
+   "tool": "stage00_register.link",
+   "unhandled": [],
+   "unhandled_sites": {}
+  },
+  {
+   "branch_calls": [],
+   "by_table": {},
+   "command": "python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model \"<model id>\"",
+   "emitted": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "handled": [
+    0,
+    1,
+    3
+   ],
+   "line": 264,
+   "prose_handling": [],
+   "ruled_out": {},
+   "step": "15",
+   "tool": "stage00_register.finalize",
+   "unhandled": [
+    2
+   ],
+   "unhandled_sites": {
+    "2": [
+     "gars/_system/stage00_register.py:621",
+     "gars/_system/stage00_register.py:624",
+     "gars/_system/stage00_register.py:627",
+     "gars/_system/stage00_register.py:638"
+    ]
+   }
+  }
+ ],
+ "exit_rules_without_reply": [],
+ "exit_table": {
+  "codes": {
+   "0": {
+    "line": 177,
+    "meaning": "ok",
+    "needs_template_field": false,
+    "reply": "continue"
+   },
+   "1": {
+    "line": 178,
+    "meaning": "failure; report and stop",
+    "needs_template_field": false,
+    "reply": "T9"
+   },
+   "2": {
+    "line": 179,
+    "meaning": "refused; its `template` field names the reply",
+    "needs_template_field": true,
+    "reply": "T5 / T7 / T8"
+   },
+   "3": {
+    "line": 180,
+    "meaning": "usage or precondition error",
+    "needs_template_field": false,
+    "reply": "T9"
+   }
+  },
+  "script": "_system/stage00_register.py",
+  "source": "gars/00_initialize_project/CONTEXT.md:175"
+ },
+ "fenced_non_commands": [],
+ "file_mentions_unclassified": [
+  {
+   "line": 204,
+   "sentence": "Do this even when the request already names an assay unambiguously — the menu is what makes the set of choices visible, and this is the last moment before any directory exists when a correction is free.",
+   "step": "3"
+  },
+  {
+   "line": 228,
+   "sentence": "Exit 2 with `template: T7` → the project exists.",
+   "step": "7"
+  },
+  {
+   "line": 230,
+   "sentence": "Exit 0 → the stamp is copied and `00_data/<Assay ID>/raw/` exists for each assay.",
+   "step": "8"
+  },
+  {
+   "line": 240,
+   "sentence": "If the error names unmatched filenames, show them, ask the user how sample IDs should be read, and re-run `inspect` with `--sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'`.",
+   "step": "10"
+  },
+  {
+   "line": 256,
+   "sentence": "Run it as an ordinary foreground call, with the longest command timeout your harness allows, never in the background: a background task's output file lies outside the workspace, where this workspace's guard does not let a session read (R-073), so you would never see the result.",
+   "step": "15"
+  }
+ ],
+ "findings": [],
+ "id": "00_initialize_project",
+ "path": "gars/00_initialize_project/CONTEXT.md",
+ "prose_flags": [
+  {
+   "descriptive": false,
+   "flag": "--sample-id-pattern",
+   "in_command": true,
+   "line": 242,
+   "prohibited": false,
+   "removal": false,
+   "step": "10",
+   "target_step": "10",
+   "target_tool": "stage00_register.inspect",
+   "value": "'<their answer as a regex with named groups sample, read and optionally lane>'",
+   "variant": null
+  },
+  {
+   "descriptive": false,
+   "flag": "--force",
+   "guard": {
+    "allowed_where_intended": false,
+    "dispatcher": {
+     "decisions": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (this call is not a declared registration); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+      },
+      "mixed": {
+       "allow": false,
+       "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+      },
+      "public": {
+       "allow": false,
+       "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+      }
+     }
+    },
+    "forms": {
+     "minimal": {
+      "command": "python3 _system/stage00_register.py link --project projects/demo --assay rnaseq_bulk --source <scenario-root>/public/source --force",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (this call is not a declared registration); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+       },
+       "mixed": {
+        "allow": false,
+        "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+       },
+       "public": {
+        "allow": false,
+        "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+       }
+      }
+     }
+    },
+    "intended": "fresh_declared",
+    "missing_placeholders": [],
+    "status": "checked"
+   },
+   "in_command": false,
+   "line": 252,
+   "prohibited": true,
+   "removal": false,
+   "step": "12",
+   "target_step": "12",
+   "target_tool": "stage00_register.link",
+   "value": null,
+   "variant": "python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path> --force"
+  },
+  {
+   "descriptive": true,
+   "flag": "--integrity",
+   "guard": {
+    "allowed_where_intended": true,
+    "dispatcher": {
+     "decisions": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+      },
+      "fresh_declared": {
+       "allow": true,
+       "reason": ""
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     }
+    },
+    "forms": {
+     "class=deidentified_under_agreement": {
+      "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class deidentified_under_agreement --purpose fixture --agreement-ref none --model \"claude-opus-5-5\" --integrity quick",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "mixed": {
+        "allow": true,
+        "reason": ""
+       },
+       "public": {
+        "allow": true,
+        "reason": ""
+       }
+      }
+     },
+     "class=identifiable": {
+      "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class identifiable --purpose fixture --agreement-ref none --model \"claude-opus-5-5\" --integrity quick",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "mixed": {
+        "allow": true,
+        "reason": ""
+       },
+       "public": {
+        "allow": true,
+        "reason": ""
+       }
+      }
+     },
+     "minimal": {
+      "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class public --purpose fixture --agreement-ref none --model \"claude-opus-5-5\" --integrity quick",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+       },
+       "fresh_declared": {
+        "allow": true,
+        "reason": ""
+       },
+       "mixed": {
+        "allow": true,
+        "reason": ""
+       },
+       "public": {
+        "allow": true,
+        "reason": ""
+       }
+      }
+     }
+    },
+    "intended": "fresh_declared",
+    "missing_placeholders": [],
+    "status": "checked"
+   },
+   "in_command": false,
+   "line": 259,
+   "prohibited": false,
+   "removal": false,
+   "step": "15",
+   "target_step": "15",
+   "target_tool": "stage00_register.finalize",
+   "value": "quick",
+   "variant": "python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model \"<model id>\" --integrity quick"
+  },
+  {
+   "descriptive": false,
+   "flag": "--model",
+   "in_command": true,
+   "line": 267,
+   "prohibited": false,
+   "removal": false,
+   "step": "15",
+   "target_step": "15",
+   "target_tool": "stage00_register.finalize",
+   "value": null,
+   "variant": null
+  },
+  {
+   "descriptive": false,
+   "flag": "--sample-id-pattern",
+   "guard": {
+    "allowed_where_intended": false,
+    "dispatcher": {
+     "decisions": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+      },
+      "fresh_declared": {
+       "allow": false,
+       "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+      },
+      "mixed": {
+       "allow": false,
+       "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+      },
+      "public": {
+       "allow": false,
+       "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+      }
+     }
+    },
+    "forms": {
+     "class=deidentified_under_agreement": {
+      "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class deidentified_under_agreement --purpose fixture --agreement-ref none --model \"claude-opus-5-5\" --sample-id-pattern '(?P<sample>[A-Za-z0-9]+)_R(?P<read>[12]).fastq.gz'",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "mixed": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "public": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       }
+      }
+     },
+     "class=identifiable": {
+      "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class identifiable --purpose fixture --agreement-ref none --model \"claude-opus-5-5\" --sample-id-pattern '(?P<sample>[A-Za-z0-9]+)_R(?P<read>[12]).fastq.gz'",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "mixed": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "public": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       }
+      }
+     },
+     "minimal": {
+      "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class public --purpose fixture --agreement-ref none --model \"claude-opus-5-5\" --sample-id-pattern '(?P<sample>[A-Za-z0-9]+)_R(?P<read>[12]).fastq.gz'",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "mixed": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       },
+       "public": {
+        "allow": false,
+        "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+       }
+      }
+     }
+    },
+    "intended": "fresh_declared",
+    "missing_placeholders": [],
+    "status": "checked"
+   },
+   "in_command": false,
+   "line": 270,
+   "prohibited": false,
+   "removal": false,
+   "step": "15",
+   "target_step": "15",
+   "target_tool": "stage00_register.finalize",
+   "value": null,
+   "variant": "python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model \"<model id>\" --sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'"
+  },
+  {
+   "descriptive": true,
+   "flag": "--integrity",
+   "guard": {
+    "allowed_where_intended": true,
+    "dispatcher": {
+     "decisions": {
+      "closed": {
+       "allow": false,
+       "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+      },
+      "fresh": {
+       "allow": false,
+       "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+      },
+      "fresh_declared": {
+       "allow": true,
+       "reason": ""
+      },
+      "mixed": {
+       "allow": true,
+       "reason": ""
+      },
+      "public": {
+       "allow": true,
+       "reason": ""
+      }
+     }
+    },
+    "forms": {
+     "class=deidentified_under_agreement": {
+      "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class deidentified_under_agreement --purpose fixture --agreement-ref none --model \"claude-opus-5-5\" --integrity quick",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "mixed": {
+        "allow": true,
+        "reason": ""
+       },
+       "public": {
+        "allow": true,
+        "reason": ""
+       }
+      }
+     },
+     "class=identifiable": {
+      "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class identifiable --purpose fixture --agreement-ref none --model \"claude-opus-5-5\" --integrity quick",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "fresh_declared": {
+        "allow": false,
+        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+       },
+       "mixed": {
+        "allow": true,
+        "reason": ""
+       },
+       "public": {
+        "allow": true,
+        "reason": ""
+       }
+      }
+     },
+     "minimal": {
+      "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class public --purpose fixture --agreement-ref none --model \"claude-opus-5-5\" --integrity quick",
+      "decisions": {
+       "closed": {
+        "allow": false,
+        "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+       },
+       "fresh": {
+        "allow": false,
+        "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+       },
+       "fresh_declared": {
+        "allow": true,
+        "reason": ""
+       },
+       "mixed": {
+        "allow": true,
+        "reason": ""
+       },
+       "public": {
+        "allow": true,
+        "reason": ""
+       }
+      }
+     }
+    },
+    "intended": "fresh_declared",
+    "missing_placeholders": [],
+    "status": "checked"
+   },
+   "in_command": false,
+   "line": 275,
+   "prohibited": false,
+   "removal": false,
+   "step": "15",
+   "target_step": "15",
+   "target_tool": "stage00_register.finalize",
+   "value": "quick",
+   "variant": "python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model \"<model id>\" --integrity quick"
+  }
+ ],
+ "schema": "stepmap-facts/1",
+ "sections": [
+  {
+   "end": 14,
+   "name": "Purpose",
+   "start": 3
+  },
+  {
+   "end": 25,
+   "name": "Inputs",
+   "start": 15
+  },
+  {
+   "end": 55,
+   "name": "Scope Boundaries",
+   "start": 26
+  },
+  {
+   "end": 193,
+   "name": "Definitions",
+   "start": 56
+  },
+  {
+   "end": 281,
+   "name": "Process",
+   "start": 194
+  },
+  {
+   "end": 416,
+   "name": "Response Format",
+   "start": 282
+  },
+  {
+   "end": 431,
+   "name": "OUTPUT",
+   "start": 417
+  },
+  {
+   "end": 441,
+   "name": "Human check",
+   "start": 432
+  }
+ ],
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "steps": [
+  {
+   "calls": [],
+   "end": 195,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "1",
+   "source": "gars/00_initialize_project/CONTEXT.md:195-195",
+   "spans": {
+    "by_class": {},
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
+   "start": 195,
+   "templates": [
+    "T1"
+   ],
+   "text": "1. Activated when the user says they want to start a new project. Reply T1.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "question",
+    "templates": [
+     "T1"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 197,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "2",
+   "source": "gars/00_initialize_project/CONTEXT.md:196-197",
+   "spans": {
+    "by_class": {},
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
+   "start": 196,
+   "templates": [],
+   "text": "2. Receive the project title. **Send nothing yet** — the sanitized title is confirmed in the same message as the menu, so the user is asked exactly one question at a time.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py assays",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/stage00_register.py assays",
+        "decisions": {
+         "closed": {
+          "allow": true,
+          "reason": ""
+         },
+         "fresh": {
+          "allow": true,
+          "reason": ""
+         },
+         "fresh_declared": {
+          "allow": true,
+          "reason": ""
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "fresh_declared",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 201,
+     "literal": "python3 _system/stage00_register.py assays",
+     "tool": "stage00_register.assays"
+    }
+   ],
+   "end": 207,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "3",
+   "source": "gars/00_initialize_project/CONTEXT.md:198-207",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "consistent": true,
+    "helper_calls": 1,
+    "helper_mentions": 1,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
+   "start": 198,
+   "templates": [
+    "T3"
+   ],
+   "text": "3. **Always offer the menu, whether or not the user named an assay.** Run: Reply T3, rendering every entry of its `assays` array. Do this even when the request already names an assay unambiguously — the menu is what makes the set of choices visible, and this is the last moment before any directory exists when a correction is free. If the user did name one, say which menu entry it matches so confirming costs one word.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "gate",
+    "templates": [
+     "T3"
+    ]
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py assays --select \"<exactly what the user replied>\"",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/stage00_register.py assays --select \"01\"",
+        "decisions": {
+         "closed": {
+          "allow": true,
+          "reason": ""
+         },
+         "fresh": {
+          "allow": true,
+          "reason": ""
+         },
+         "fresh_declared": {
+          "allow": true,
+          "reason": ""
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "fresh_declared",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 211,
+     "literal": "python3 _system/stage00_register.py assays --select \"<exactly what the user replied>\"",
+     "tool": "stage00_register.assays"
+    }
+   ],
+   "end": 216,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "4",
+   "source": "gars/00_initialize_project/CONTEXT.md:208-216",
+   "spans": {
+    "by_class": {},
+    "consistent": true,
+    "helper_calls": 1,
+    "helper_mentions": 1,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
+   "start": 208,
+   "templates": [],
+   "text": "4. Receive the selection and resolve it: Pass their reply through **unchanged**. It accepts menu numbers, Assay IDs and assay names, in any mixture; resolving is the script's job, and doing it yourself is how the wrong assay gets created.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 218,
+   "exit_mentions": [
+    {
+     "actor": "agent",
+     "codes": [
+      2
+     ],
+     "line": 217
+    }
+   ],
+   "file_actions": [],
+   "n": "5",
+   "source": "gars/00_initialize_project/CONTEXT.md:217-218",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
+   "start": 217,
+   "templates": [
+    "T3"
+   ],
+   "text": "5. Exit 2 → reply T3 again, naming its `invalid` entries, and wait. Never proceed on a partial selection, and never substitute the entry you think was meant.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "gate",
+    "templates": [
+     "T3"
+    ]
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py create --title \"<title>\" --assays <assay_id> [<assay_id> ...]",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh": {
+         "allow": true,
+         "reason": ""
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/stage00_register.py create --title \"demo\" --assays rnaseq_bulk",
+        "decisions": {
+         "closed": {
+          "allow": true,
+          "reason": ""
+         },
+         "fresh": {
+          "allow": true,
+          "reason": ""
+         },
+         "fresh_declared": {
+          "allow": true,
+          "reason": ""
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "fresh_declared",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 222,
+     "literal": "python3 _system/stage00_register.py create --title \"<title>\" --assays <assay_id> [<assay_id> ...]",
+     "tool": "stage00_register.create"
+    }
+   ],
+   "end": 227,
+   "exit_mentions": [
+    {
+     "actor": "agent",
+     "codes": [
+      0
+     ],
+     "line": 219
+    }
+   ],
+   "file_actions": [],
+   "n": "6",
+   "source": "gars/00_initialize_project/CONTEXT.md:219-227",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "consistent": true,
+    "helper_calls": 1,
+    "helper_mentions": 1,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
+   "start": 219,
+   "templates": [],
+   "text": "6. Exit 0 → take its **`assay_ids`**. Create the project: Pass Assay IDs, **never menu numbers**. The numbers are a display convenience regenerated on every call; an assay added to the map renumbers them, so a number that reaches disk or a later turn means something else.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 229,
+   "exit_mentions": [
+    {
+     "actor": "agent",
+     "codes": [
+      2
+     ],
+     "line": 228
+    },
+    {
+     "actor": "agent",
+     "codes": [
+      2
+     ],
+     "line": 229
+    }
+   ],
+   "file_actions": [],
+   "n": "7",
+   "source": "gars/00_initialize_project/CONTEXT.md:228-229",
+   "spans": {
+    "by_class": {
+     "value": 2
+    },
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
+   "start": 228,
+   "templates": [
+    "T7",
+    "T8"
+   ],
+   "text": "7. Exit 2 with `template: T7` → the project exists. Reply T7 and wait for a different title. Nothing was created. Exit 2 with `template: T8` → reply T8; nothing was created; stop.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "gate",
+    "templates": [
+     "T7"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 233,
+   "exit_mentions": [
+    {
+     "actor": "agent",
+     "codes": [
+      0
+     ],
+     "line": 230
+    }
+   ],
+   "file_actions": [],
+   "n": "8",
+   "source": "gars/00_initialize_project/CONTEXT.md:230-233",
+   "spans": {
+    "by_class": {
+     "path": 1
+    },
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
+   "start": 230,
+   "templates": [
+    "T3b"
+   ],
+   "text": "8. Exit 0 → the stamp is copied and `00_data/<Assay ID>/raw/` exists for each assay. Reply T3b confirming what was created **by Assay ID and name**, then ask for the raw data path of the **first** assay. Handle assays strictly one at a time, never asking for the next until the current is resolved.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "question",
+    "templates": [
+     "T3b"
+    ]
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: stage 00 inspect prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: stage 00 inspect prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": false,
+         "reason": "Blocked: stage 00 inspect prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+        },
+        "public": {
+         "allow": false,
+         "reason": "Blocked: stage 00 inspect prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source <scenario-root>/public/source",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: stage 00 inspect prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: stage 00 inspect prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+         },
+         "fresh_declared": {
+          "allow": true,
+          "reason": ""
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: stage 00 inspect prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+         },
+         "public": {
+          "allow": false,
+          "reason": "Blocked: stage 00 inspect prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+         }
+        }
+       }
+      },
+      "intended": "fresh_declared",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 237,
+     "literal": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path>",
+     "tool": "stage00_register.inspect"
+    }
+   ],
+   "end": 238,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "9",
+   "source": "gars/00_initialize_project/CONTEXT.md:234-238",
+   "spans": {
+    "by_class": {},
+    "consistent": true,
+    "helper_calls": 1,
+    "helper_mentions": 1,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
+   "start": 234,
+   "templates": [],
+   "text": "9. Receive a path. Inspect it, writing nothing:",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path> --sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": false,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+        },
+        "mixed": {
+         "allow": false,
+         "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+        },
+        "public": {
+         "allow": false,
+         "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source <scenario-root>/public/source --sample-id-pattern '(?P<sample>[A-Za-z0-9]+)_R(?P<read>[12]).fastq.gz'",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         },
+         "public": {
+          "allow": false,
+          "reason": "Blocked: {\"alternative\": \"Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n \\\"a|b\\\" FILE.\", \"field\": \"command\", \"message\": \"a quoted operator is allowed only in a file tool argument (R-092; decision 0165).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058\", \"type\": \"tool_refusal\"}"
+         }
+        }
+       }
+      },
+      "intended": "fresh_declared",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "prose-rerun",
+     "line": 241,
+     "literal": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path> --sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'",
+     "tool": "stage00_register.inspect"
+    }
+   ],
+   "end": 243,
+   "exit_mentions": [
+    {
+     "actor": "agent",
+     "codes": [
+      2
+     ],
+     "line": 240
+    }
+   ],
+   "file_actions": [],
+   "n": "10",
+   "source": "gars/00_initialize_project/CONTEXT.md:240-243",
+   "spans": {
+    "by_class": {
+     "flag": 1,
+     "subcommand": 1,
+     "value": 2
+    },
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 4,
+    "seen": 4
+   },
+   "start": 240,
+   "templates": [
+    "T5"
+   ],
+   "text": "10. Exit 2 → reply T5 with its `error`. Accept either a replacement path or `skip`. If the error names unmatched filenames, show them, ask the user how sample IDs should be read, and re-run `inspect` with `--sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'`. Never compose that pattern from your own reading of the filenames.",
+   "wait": {
+    "accept_tokens": [
+     "skip"
+    ],
+    "kind": "gate",
+    "templates": [
+     "T5"
+    ]
+   }
+  },
+  {
+   "calls": [],
+   "end": 245,
+   "exit_mentions": [
+    {
+     "actor": "agent",
+     "codes": [
+      0
+     ],
+     "line": 244
+    }
+   ],
+   "file_actions": [],
+   "n": "11",
+   "source": "gars/00_initialize_project/CONTEXT.md:244-245",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
+   "start": 244,
+   "templates": [
+    "T4a"
+   ],
+   "text": "11. Exit 0 → reply T4a with its counts and `sample_ids`, and **ask the user to confirm before anything is written**. Do not link yet.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "gate",
+    "templates": [
+     "T4a"
+    ]
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": false,
+         "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+        },
+        "public": {
+         "allow": false,
+         "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+        }
+       }
+      },
+      "forms": {
+       "minimal": {
+        "command": "python3 _system/stage00_register.py link --project projects/demo --assay rnaseq_bulk --source <scenario-root>/public/source",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+         },
+         "fresh_declared": {
+          "allow": true,
+          "reason": ""
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+         },
+         "public": {
+          "allow": false,
+          "reason": "Blocked: stage 00 link prints file and sample names into the prompt, so a guarded agent runs it only on a project fresh from create and a --source inside a folder a human declared public in data_sources.tsv (no data_sources.tsv); Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: ask the human to run it in their own terminal, or to declare the source."
+         }
+        }
+       }
+      },
+      "intended": "fresh_declared",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 249,
+     "literal": "python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>",
+     "tool": "stage00_register.link"
+    }
+   ],
+   "end": 253,
+   "exit_mentions": [
+    {
+     "actor": "agent",
+     "codes": [
+      1
+     ],
+     "line": 252
+    }
+   ],
+   "file_actions": [],
+   "n": "12",
+   "source": "gars/00_initialize_project/CONTEXT.md:246-253",
+   "spans": {
+    "by_class": {
+     "flag": 1,
+     "value": 1
+    },
+    "consistent": true,
+    "helper_calls": 1,
+    "helper_mentions": 1,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
+   "start": 246,
+   "templates": [],
+   "text": "12. On confirmation, link: Never add `--force`. Exit 1 → report its `error` and stop; the raw directory is already populated and narrowing an existing project is not this stage's to do.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 254,
+   "exit_mentions": [
+    {
+     "actor": "agent",
+     "codes": [
+      0
+     ],
+     "line": 254
+    }
+   ],
+   "file_actions": [],
+   "n": "13",
+   "source": "gars/00_initialize_project/CONTEXT.md:254-254",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
+   "start": 254,
+   "templates": [
+    "T4b"
+   ],
+   "text": "13. Exit 0 → reply T4b with its `linked` count.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 255,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "14",
+   "source": "gars/00_initialize_project/CONTEXT.md:255-255",
+   "spans": {
+    "by_class": {},
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 0,
+    "seen": 0
+   },
+   "start": 255,
+   "templates": [],
+   "text": "14. Repeat steps 9-13 for each remaining assay.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [
+    {
+     "command": "python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model \"<model id>\"",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+        },
+        "fresh_declared": {
+         "allow": true,
+         "reason": ""
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "class=deidentified_under_agreement": {
+        "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class deidentified_under_agreement --purpose fixture --agreement-ref none --model \"claude-opus-5-5\"",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       },
+       "class=identifiable": {
+        "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class identifiable --purpose fixture --agreement-ref none --model \"claude-opus-5-5\"",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py stage00_register.finalize '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       },
+       "minimal": {
+        "command": "python3 _system/stage00_register.py finalize --project projects/demo --data-class public --purpose fixture --agreement-ref none --model \"claude-opus-5-5\"",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: classifying data is the owner's (spec §21 Q4): a guarded agent never supplies data_class public (R-074; decision 0107). Next: ask the human to run `python3 _system/stage00_register.py finalize --project <project> --data-class public ...` in their own terminal, or declares the source folder in gars/data_sources.tsv."
+         },
+         "fresh_declared": {
+          "allow": true,
+          "reason": ""
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "fresh_declared",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "fenced",
+     "line": 264,
+     "literal": "python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model \"<model id>\"",
+     "tool": "stage00_register.finalize"
+    }
+   ],
+   "end": 276,
+   "exit_mentions": [],
+   "file_actions": [],
+   "n": "15",
+   "source": "gars/00_initialize_project/CONTEXT.md:256-276",
+   "spans": {
+    "by_class": {
+     "flag": 4,
+     "path": 3,
+     "value": 1
+    },
+    "consistent": true,
+    "helper_calls": 1,
+    "helper_mentions": 1,
+    "raw_backtick_pairs": 8,
+    "seen": 8
+   },
+   "start": 256,
+   "templates": [],
+   "text": "15. When every assay is linked, finalize. Run it as an ordinary foreground call, with the longest command timeout your harness allows, never in the background: a background task's output file lies outside the workspace, where this workspace's guard does not let a session read (R-073), so you would never see the result. At the default `--integrity quick` it takes seconds even on a large cohort. If a timeout ever kills it, it is deterministic and re-runnable: re-run it once in the foreground. `--model` is the exact model id you are running as, exactly as your harness reports it — the model is part of the toolchain, so `HISTORY.md` records it beside the template version. If you cannot name it, omit the flag: the script records `unknown`, which is honest; a guessed id is not. Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate. It is deterministic and re-runnable: on unchanged inputs it reproduces the four files byte for byte, so a killed run costs only time. It runs `--integrity quick` by default — metadata only, fast. Pass a different depth **only if the user asked for one**, and never downgrade on your own initiative.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 279,
+   "exit_mentions": [
+    {
+     "actor": "agent",
+     "codes": [
+      1,
+      3
+     ],
+     "line": 277
+    }
+   ],
+   "file_actions": [],
+   "n": "16",
+   "source": "gars/00_initialize_project/CONTEXT.md:277-279",
+   "spans": {
+    "by_class": {
+     "value": 1
+    },
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 1,
+    "seen": 1
+   },
+   "start": 277,
+   "templates": [
+    "T9"
+   ],
+   "text": "16. Exit 1 or 3 → reply T9 listing every entry of its `failures` array. Do not claim completion, do not repair anything, and do not delete what was created — the user decides whether to fix or discard.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": null,
+    "templates": []
+   }
+  },
+  {
+   "calls": [],
+   "end": 280,
+   "exit_mentions": [
+    {
+     "actor": "agent",
+     "codes": [
+      0
+     ],
+     "line": 280
+    }
+   ],
+   "file_actions": [],
+   "n": "17",
+   "source": "gars/00_initialize_project/CONTEXT.md:280-280",
+   "spans": {
+    "by_class": {
+     "value": 2
+    },
+    "consistent": true,
+    "helper_calls": 0,
+    "helper_mentions": 0,
+    "raw_backtick_pairs": 2,
+    "seen": 2
+   },
+   "start": 280,
+   "templates": [
+    "T6"
+   ],
+   "text": "17. Exit 0 → reply T6 using its `assays` map and `template_version`.",
+   "wait": {
+    "accept_tokens": [],
+    "kind": "handoff",
+    "templates": [
+     "T6"
+    ]
+   }
+  }
+ ],
+ "substage": "01_nfcore-rnaseq-wrapper",
+ "templates": {
+  "T1": {
+   "accept_tokens": [],
+   "ask": "question",
+   "backing_tools": [],
+   "commands_for_user": [],
+   "dynamic_key_sites": [],
+   "graded": 0,
+   "id": "T1",
+   "line": 289,
+   "placeholders": [],
+   "source": "gars/00_initialize_project/CONTEXT.md:289",
+   "title": "Start",
+   "unbound": []
+  },
+  "T3": {
+   "accept_tokens": [],
+   "ask": "gate",
+   "backing_tools": [
+    "stage00_register.assays"
+   ],
+   "commands_for_user": [],
+   "dynamic_key_sites": [],
+   "graded": 2,
+   "id": "T3",
+   "line": 297,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 305,
+     "text": "<raw>"
+    },
+    {
+     "binding": "unbound",
+     "label": "sanitized",
+     "line": 305,
+     "text": "<sanitized>"
+    },
+    {
+     "binding": "composed",
+     "line": 313,
+     "text": "<repeat per entry>"
+    },
+    {
+     "binding": "composed",
+     "line": 315,
+     "text": "<if the request already named one: \"Your request matches 01.\">"
+    },
+    {
+     "binding": "key",
+     "label": "invalid",
+     "line": 316,
+     "text": "<invalid>"
+    }
+   ],
+   "source": "gars/00_initialize_project/CONTEXT.md:297",
+   "title": "Assay menu",
+   "unbound": [
+    {
+     "binding": "unbound",
+     "label": "sanitized",
+     "line": 305,
+     "text": "<sanitized>"
+    }
+   ]
+  },
+  "T3b": {
+   "accept_tokens": [],
+   "ask": "question",
+   "backing_tools": [
+    "stage00_register.create"
+   ],
+   "commands_for_user": [],
+   "dynamic_key_sites": [],
+   "graded": 0,
+   "id": "T3b",
+   "line": 324,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 326,
+     "text": "<title>"
+    },
+    {
+     "binding": "generic",
+     "line": 330,
+     "text": "<assay>"
+    },
+    {
+     "binding": "generic",
+     "line": 330,
+     "text": "<assay_id>"
+    },
+    {
+     "binding": "generic",
+     "line": 330,
+     "text": "<assay_id>"
+    },
+    {
+     "binding": "generic",
+     "line": 332,
+     "text": "<assay_id>"
+    }
+   ],
+   "source": "gars/00_initialize_project/CONTEXT.md:324",
+   "title": "Project created",
+   "unbound": []
+  },
+  "T4a": {
+   "accept_tokens": [],
+   "ask": "gate",
+   "backing_tools": [
+    "stage00_register.inspect"
+   ],
+   "commands_for_user": [],
+   "dynamic_key_sites": [],
+   "graded": 5,
+   "id": "T4a",
+   "line": 335,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 337,
+     "text": "<path>"
+    },
+    {
+     "binding": "label",
+     "key": "raw_file_count",
+     "label": "raw ngs files",
+     "line": 338,
+     "text": "<n>"
+    },
+    {
+     "binding": "unbound",
+     "label": "r1",
+     "line": 338,
+     "text": "<n>"
+    },
+    {
+     "binding": "unbound",
+     "label": "r2",
+     "line": 338,
+     "text": "<n>"
+    },
+    {
+     "binding": "key",
+     "label": "layout",
+     "line": 338,
+     "text": "<layout>"
+    },
+    {
+     "binding": "composed",
+     "line": 339,
+     "text": "<list or \"none\">"
+    },
+    {
+     "binding": "label",
+     "key": "sample_count",
+     "label": "samples",
+     "line": 340,
+     "text": "<n>"
+    },
+    {
+     "binding": "composed",
+     "line": 341,
+     "text": "<sample id list>"
+    },
+    {
+     "binding": "generic",
+     "line": 343,
+     "text": "<Assay ID>"
+    }
+   ],
+   "source": "gars/00_initialize_project/CONTEXT.md:335",
+   "title": "Path inspected, awaiting confirmation",
+   "unbound": [
+    {
+     "binding": "unbound",
+     "label": "r1",
+     "line": 338,
+     "text": "<n>"
+    },
+    {
+     "binding": "unbound",
+     "label": "r2",
+     "line": 338,
+     "text": "<n>"
+    }
+   ]
+  },
+  "T4b": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "stage00_register.link"
+   ],
+   "commands_for_user": [],
+   "dynamic_key_sites": [],
+   "graded": 2,
+   "id": "T4b",
+   "line": 346,
+   "placeholders": [
+    {
+     "binding": "label",
+     "key": "linked",
+     "label": "linked",
+     "line": 348,
+     "text": "<n>"
+    },
+    {
+     "binding": "generic",
+     "line": 348,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "label",
+     "key": "broken",
+     "label": "broken links",
+     "line": 348,
+     "text": "<n>"
+    },
+    {
+     "binding": "composed",
+     "line": 349,
+     "text": "<next prompt, or proceed to T6 if this was the last assay>"
+    }
+   ],
+   "source": "gars/00_initialize_project/CONTEXT.md:346",
+   "title": "Symlinks created",
+   "unbound": []
+  },
+  "T5": {
+   "accept_tokens": [
+    "skip"
+   ],
+   "ask": "gate",
+   "backing_tools": [
+    "stage00_register.inspect"
+   ],
+   "commands_for_user": [],
+   "dynamic_key_sites": [],
+   "graded": 1,
+   "id": "T5",
+   "line": 352,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 354,
+     "text": "<path>"
+    },
+    {
+     "binding": "key",
+     "label": "error",
+     "line": 355,
+     "text": "<error>"
+    },
+    {
+     "binding": "composed",
+     "line": 358,
+     "text": "<if the error names unmatched filenames, list them and ask how sample IDs should be read>"
+    },
+    {
+     "binding": "generic",
+     "line": 360,
+     "text": "<Assay ID>"
+    }
+   ],
+   "source": "gars/00_initialize_project/CONTEXT.md:352",
+   "title": "Path rejected",
+   "unbound": []
+  },
+  "T6": {
+   "accept_tokens": [],
+   "ask": "handoff",
+   "backing_tools": [
+    "stage00_register.finalize"
+   ],
+   "commands_for_user": [],
+   "dynamic_key_sites": [],
+   "graded": 4,
+   "id": "T6",
+   "line": 363,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 365,
+     "text": "<title>"
+    },
+    {
+     "binding": "generic",
+     "line": 365,
+     "text": "<title>"
+    },
+    {
+     "binding": "generic",
+     "line": 369,
+     "text": "<Assay ID>"
+    },
+    {
+     "binding": "label",
+     "key": "files",
+     "label": "files linked",
+     "line": 369,
+     "text": "<n>"
+    },
+    {
+     "binding": "label",
+     "key": "samples",
+     "label": "samples",
+     "line": 369,
+     "text": "<n>"
+    },
+    {
+     "binding": "generic",
+     "line": 369,
+     "text": "<path>"
+    },
+    {
+     "binding": "key",
+     "label": "integrity.files_checked",
+     "line": 371,
+     "text": "<integrity.files_checked>"
+    },
+    {
+     "binding": "key",
+     "label": "integrity.mode",
+     "line": 371,
+     "text": "<integrity.mode>"
+    },
+    {
+     "binding": "generic",
+     "line": 375,
+     "text": "<Assay ID>"
+    }
+   ],
+   "source": "gars/00_initialize_project/CONTEXT.md:363",
+   "title": "Stage complete",
+   "unbound": []
+  },
+  "T7": {
+   "accept_tokens": [],
+   "ask": "gate",
+   "backing_tools": [
+    "stage00_register.create"
+   ],
+   "commands_for_user": [],
+   "dynamic_key_sites": [],
+   "graded": 1,
+   "id": "T7",
+   "line": 393,
+   "placeholders": [
+    {
+     "binding": "key",
+     "key": "sanitized_title",
+     "label": "sanitized",
+     "line": 395,
+     "text": "<sanitized>"
+    }
+   ],
+   "source": "gars/00_initialize_project/CONTEXT.md:393",
+   "title": "Project already exists",
+   "unbound": []
+  },
+  "T8": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "stage00_register.create"
+   ],
+   "commands_for_user": [],
+   "dynamic_key_sites": [],
+   "graded": 0,
+   "id": "T8",
+   "line": 400,
+   "placeholders": [
+    {
+     "binding": "generic",
+     "line": 404,
+     "text": "<name>"
+    },
+    {
+     "binding": "generic",
+     "line": 404,
+     "text": "<ids>"
+    },
+    {
+     "binding": "generic",
+     "line": 412,
+     "text": "<assay>"
+    },
+    {
+     "binding": "generic",
+     "line": 412,
+     "text": "<assay_id>"
+    }
+   ],
+   "source": "gars/00_initialize_project/CONTEXT.md:400",
+   "title": "No supported assay",
+   "unbound": []
+  },
+  "T9": {
+   "accept_tokens": [],
+   "ask": null,
+   "backing_tools": [
+    "stage00_register.finalize"
+   ],
+   "commands_for_user": [],
+   "dynamic_key_sites": [],
+   "graded": 1,
+   "id": "T9",
+   "line": 382,
+   "placeholders": [
+    {
+     "binding": "unbound",
+     "label": "check",
+     "line": 388,
+     "text": "<check>"
+    },
+    {
+     "binding": "composed",
+     "line": 388,
+     "text": "<files or assays responsible>"
+    },
+    {
+     "binding": "generic",
+     "line": 390,
+     "text": "<title>"
+    }
+   ],
+   "source": "gars/00_initialize_project/CONTEXT.md:382",
+   "title": "Exit gate failed",
+   "unbound": [
+    {
+     "binding": "unbound",
+     "label": "check",
+     "line": 388,
+     "text": "<check>"
+    }
+   ]
+  }
+ },
+ "wrapper_invocation": null
+}

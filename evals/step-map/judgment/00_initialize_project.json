@@ -1,0 +1,509 @@
+{
+ "kind": "judgment",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "by": "step-map lane lead (claude-opus-5-5)",
+ "date": "2026-10-07",
+ "steps": {
+  "1": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "the user's request to start a project"
+   ],
+   "evidence": "the T1 message in the conversation only",
+   "controls": [
+    "fixed response templates",
+    "wait points",
+    "one action per step"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "Fixed text with no choice in it; nothing for code to compute.",
+   "silent": []
+  },
+  "2": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "the user's reply"
+   ],
+   "evidence": "none until T3 shows the title and its directory form",
+   "controls": [
+    "written rules only",
+    "one action per step"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "The model decides which part of a reply is the title, and T3 then needs the sanitized form before any helper has computed it (D3).",
+   "silent": [
+    {
+     "id": "S00-title",
+     "decision": "Which part of the user's reply is the project title, and what its directory name is",
+     "goes_wrong": "A first reply may carry the title with an assay or a path; the model decides what the title is, and T3 shows a sanitized directory name that only create (step 6) computes, so the model sanitizes it itself, which Definitions forbid",
+     "severity": 3,
+     "detection": 5,
+     "occurrence": null,
+     "why_rank": "A misleading message at worst: T3b shows the real directory before any data is linked",
+     "fix": "assays takes the title and returns create's sanitized form, so T3 renders code's answer",
+     "fix_rung": "R0",
+     "defects": [
+      "D3"
+     ],
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "3": {
+   "actor": [
+    "helper",
+    "model"
+   ],
+   "inputs": [
+    "the assay map, through `assays`",
+    "the user's earlier phrase naming an assay"
+   ],
+   "evidence": "the T3 message; `assays` JSON in the transcript",
+   "controls": [
+    "closed menus built by code",
+    "fixed response templates",
+    "wait points",
+    "helper exit codes"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "The menu is code's, but the 'Your request matches NN' line asks the model to resolve a phrase with no rule (Definitions forbid exactly that); normalisation in code already does it.",
+   "note": "Exit 3 (assay map missing) is routed to T9 by the stage's exit table (00:180), whose text says a project was created; none exists yet at this step (D1).",
+   "silent": [
+    {
+     "id": "S00-match",
+     "decision": "Which menu entry the user's earlier phrase matches ('Your request matches 01')",
+     "goes_wrong": "Definitions forbid resolving a phrase yourself, yet step 3 asks the model to say which entry the request matches; 'RNA-seq' could be bulk or single-cell, the user tends to confirm a suggestion with one word, and a wrong suggestion creates the wrong assay's directories and config",
+     "severity": 8,
+     "detection": 4,
+     "occurrence": null,
+     "why_rank": "A wrong assay runs the wrong pipeline on the data; the suggestion sits inside the menu the user answers before anything is created",
+     "fix": "`assays --select` on the original phrase returns the match or the ambiguity; the model only renders it",
+     "fix_rung": "R0",
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "4": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the user's reply, passed through unchanged"
+   ],
+   "evidence": "`assays --select` JSON in the transcript",
+   "controls": [
+    "closed vocabularies",
+    "typed tool calls",
+    "helper exit codes",
+    "written rules only"
+   ],
+   "rung_now": "R0",
+   "rung_target": "R0",
+   "question": 2,
+   "rung_why": "Resolution of the reply is code's; the model only quotes it.",
+   "silent": []
+  },
+  "5": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "`assays --select`'s `invalid` list"
+   ],
+   "evidence": "the repeated T3",
+   "controls": [
+    "helper exit codes",
+    "fixed response templates",
+    "wait points"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "A written branch on an exit code; nothing to decide.",
+   "silent": []
+  },
+  "6": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "`assay_ids` from step 4",
+    "the title"
+   ],
+   "evidence": "the project stamp, `_config/` and `raw/` directories on disk",
+   "controls": [
+    "typed tool calls",
+    "helper exit codes",
+    "closed vocabularies"
+   ],
+   "rung_now": "R0",
+   "rung_target": "R0",
+   "question": 2,
+   "rung_why": "Pure code once the IDs are passed.",
+   "note": "Exit 3 (title sanitizes to nothing, map or stamp missing) is routed to T9 by the stage's exit table (00:180), whose text says a project was created; none was (D1). The pilot listed this as unbranched.",
+   "silent": []
+  },
+  "7": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "create's `template` field"
+   ],
+   "evidence": "T7 or T8",
+   "controls": [
+    "helper exit codes",
+    "fixed response templates",
+    "wait points"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "The helper names the template; the model sends it.",
+   "silent": []
+  },
+  "8": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "create's JSON"
+   ],
+   "evidence": "T3b",
+   "controls": [
+    "fixed response templates",
+    "wait points",
+    "one action per step"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "A fixed template; the order of assays is create's list.",
+   "silent": []
+  },
+  "9": {
+   "actor": [
+    "model",
+    "helper",
+    "guard"
+   ],
+   "inputs": [
+    "the path the user typed"
+   ],
+   "evidence": "`inspect` JSON in the transcript; nothing on disk",
+   "controls": [
+    "typed tool calls",
+    "guard deny rules",
+    "negative scope rules",
+    "helper exit codes"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R4",
+   "question": 1,
+   "rung_why": "The scan is code's, but the guard runs it for an agent only on a source a human declared public, and no contract says what to do when it refuses.",
+   "silent": [
+    {
+     "id": "S00-guard",
+     "decision": "What to do when the guard refuses inspect or link because no human declared the source public",
+     "goes_wrong": "An agent may run inspect, link and finalize only on a folder listed in data_sources.tsv; no contract mentions that file, so the reply to the refusal is the model's own: ask the user to run the step, ask them to declare the folder, or stop",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one",
+     "fix": "Definitions name data_sources.tsv; a branch sends a template asking the human to declare the folder or run the step",
+     "fix_rung": "R4",
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "10": {
+   "actor": [
+    "model",
+    "helper",
+    "human"
+   ],
+   "inputs": [
+    "`inspect`'s error and unmatched names",
+    "the user's description of their file names"
+   ],
+   "evidence": "T5; a second `inspect` JSON",
+   "controls": [
+    "helper exit codes",
+    "negative scope rules",
+    "fixed response templates",
+    "wait points",
+    "guard deny rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R1",
+   "question": 1,
+   "rung_why": "Scope says to pass back only a pattern the user gave (00:32-34) while the step asks for 'their answer as a regex' (00:242), and users answer in words: a tension the model resolves; the guard refuses every named-group pattern (D4).",
+   "note": "The re-run is a branch action of step 9's inspect. A malformed pattern crashes inspect with a traceback and exit 1; the stage's exit table sends exit 1 to T9, whose text ('failed its exit checks') is wrong here and whose table needs a failures list a traceback never gives (D22).",
+   "silent": [
+    {
+     "id": "S00-pattern",
+     "decision": "Turning the user's description of their file names into a sample-ID regex",
+     "goes_wrong": "Users answer in words ('the sample is the part before _R1'), so the model writes the regex; a wrong one merges or splits samples. In a guarded session the command is refused anyway (a quoted < or >), and a malformed pattern crashes inspect, so the model then improvises a road around it",
+     "severity": 8,
+     "detection": 4,
+     "occurrence": null,
+     "why_rank": "Sample identity feeds every later step, but T4a asks the user to confirm the derived IDs",
+     "fix": "The helper proposes candidate patterns from the unmatched names as a closed menu, the user picks one, T4a confirms the IDs, and the guard admits the chosen pattern by its menu number",
+     "fix_rung": "R1",
+     "defects": [
+      "D4",
+      "D22"
+     ],
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "11": {
+   "actor": [
+    "model",
+    "human"
+   ],
+   "inputs": [
+    "`inspect`'s counts and sample IDs"
+   ],
+   "evidence": "T4a in the conversation",
+   "controls": [
+    "fixed response templates",
+    "wait points",
+    "negative scope rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R3",
+   "question": 1,
+   "rung_why": "The human confirms the derived IDs before anything is written.",
+   "note": "T4a's read-1 and read-2 counts are not in inspect's JSON (pilot defect); the model would have to count files itself, which Scope forbids.",
+   "silent": [
+    {
+     "id": "S00-counts",
+     "kind": "unsaid",
+     "decision": "The read-1 and read-2 counts T4a asks for",
+     "goes_wrong": "T4a shows '<n> R1 / <n> R2', which inspect does not return; the model counts the files itself, which Scope forbids, or leaves them out",
+     "severity": 3,
+     "detection": 4,
+     "occurrence": null,
+     "why_rank": "A wrong count in a message the user is asked to confirm",
+     "fix": "inspect returns the per-read counts, or T4a drops them",
+     "fix_rung": "R0"
+    }
+   ]
+  },
+  "12": {
+   "actor": [
+    "model",
+    "helper",
+    "guard"
+   ],
+   "inputs": [
+    "the user's reply to T4a",
+    "the inspected path"
+   ],
+   "evidence": "symlinks under `00_data/<Assay ID>/raw/`",
+   "controls": [
+    "typed tool calls",
+    "helper exit codes",
+    "negative scope rules",
+    "guard deny rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R1",
+   "question": 1,
+   "rung_why": "Link is code, but whether the reply is a yes has no rule and the link cannot be undone inside the stage.",
+   "note": "Exit 2 is routed by link's template field (T5) and exit 3 to T9 by the stage's exit table (00:179-180); T9's wording is wrong for link's precondition (D1). The pilot listed exit 2 as unbranched.",
+   "silent": [
+    {
+     "id": "S00-yes",
+     "kind": "unsaid",
+     "decision": "Whether the user's reply to T4a is a yes before link runs",
+     "goes_wrong": "T4a asks to 'Confirm ... or provide a different path' with no fixed answer; 'looks fine, but what about the undetermined files?' is the model's to read. Files linked on a misread yes enter the cohort, and link cannot be undone inside the stage (re-linking needs --force, which is forbidden)",
+     "severity": 8,
+     "detection": 5,
+     "occurrence": null,
+     "why_rank": "The wrong files can enter the analysis; T4b and the stage's human check show what was linked, unasked",
+     "fix": "A fixed answer (`link`), re-asked on anything else",
+     "fix_rung": "R1"
+    }
+   ]
+  },
+  "13": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "link's `linked` count"
+   ],
+   "evidence": "T4b",
+   "controls": [
+    "fixed response templates"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "A fixed template on code's count.",
+   "silent": []
+  },
+  "14": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "create's list of assays",
+    "which assays are linked or skipped"
+   ],
+   "evidence": "none of its own",
+   "controls": [
+    "written rules only",
+    "one action per step"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "The loop is written, but what a `skip` leaves behind is not.",
+   "silent": [
+    {
+     "id": "S00-skip",
+     "decision": "What happens to an assay after the user replies `skip`",
+     "goes_wrong": "T5 offers skip, but nothing removes the skipped assay: its raw/ stays empty and finalize fails on it ('raw/ is empty'), leaving a half-made project the contract tells the agent not to delete",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end the user did not choose, but a loud one at finalize",
+     "fix": "A helper drops the skipped assay's empty directory, or finalize ignores an assay marked skipped",
+     "fix_rung": "R0",
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "15": {
+   "actor": [
+    "model",
+    "helper",
+    "guard"
+   ],
+   "inputs": [
+    "the project",
+    "a data class, a purpose and an agreement reference no step collects",
+    "the model's own id"
+   ],
+   "evidence": "`files.csv`, `samples.csv`, `CONTEXT.md`, `HISTORY.md`, `00_data/dataset.tsv` (locked)",
+   "controls": [
+    "typed tool calls",
+    "exit gates that check content",
+    "history entries written by helpers",
+    "read-only file modes",
+    "guard deny rules",
+    "closed vocabularies"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R3",
+   "question": 1,
+   "rung_why": "Finalize is code, but its --data-class and --purpose arguments come from nowhere in the dialogue; the model picks them and they lock. Its --model id is under a rule nothing checks (G-model).",
+   "note": "Exit 2 (class, purpose, agreement or lock refusals) sets no template field, so the stage's exit table names no reply for it (pilot, confirmed). The --sample-id-pattern this step repeats is refused by the guard (D4).",
+   "silent": [
+    {
+     "id": "S00-class",
+     "decision": "The dataset's data class and purpose, passed to finalize",
+     "goes_wrong": "Step 15's command carries --data-class and --purpose, but T1 promises to collect only the title, the assays and the paths, and no step asks. The model picks both, finalize locks them in dataset.tsv, and T6 never shows them. The guard refuses any class but 'public' from an agent, and 'public' only for a source a human declared public, so the class is fenced; the purpose (fixture, internal, pilot, commercial) is not, and it decides where the project's jobs may run: each class permits a list of venue and purpose pairs (data_policy.tsv, permitted_backends) and the local machine accepts only 'fixture' (venue_policy.py:56-87); retention follows the class, not the purpose",
+     "severity": 8,
+     "detection": 8,
+     "occurrence": null,
+     "why_rank": "A permanent, machine-enforced record of how the data may be used, chosen without asking and never shown back",
+     "fix": "A step asks class and purpose from a closed menu built from the data policy table; a non-public answer goes to the person's own terminal, since the guard refuses it from an agent; T6 shows both; finalize's refusals get a branch",
+     "fix_rung": "R3",
+     "kind": "unsaid"
+    },
+    {
+     "id": "S00-onepattern",
+     "kind": "unsaid",
+     "decision": "Which sample-ID pattern finalize gets when assays used different ones",
+     "goes_wrong": "Step 15 says to add 'the same --sample-id-pattern if one was used at step 9', but finalize takes one pattern and applies it to every assay (stage00_register.py:656-664); in a project with several assays, each read its own way, the model picks one, and the others then fail finalize or get mis-derived sample IDs",
+     "severity": 8,
+     "detection": 5,
+     "occurrence": null,
+     "why_rank": "Mis-derived IDs feed the analysis; T6's sample counts and the stage's human check show them, unasked (in a guarded session the pattern road is refused anyway)",
+     "fix": "finalize takes a pattern per assay, recorded at inspect",
+     "fix_rung": "R0"
+    },
+    {
+     "id": "S00-fullcheck",
+     "kind": "unsaid",
+     "decision": "How to run a full integrity check the user asks for on a large cohort",
+     "goes_wrong": "Definitions say to submit a full check with sbatch above about 10 GB (00:127-130); step 15 says to run finalize only in the foreground, and sbatch is not registered, so the model runs it on the login node, drops it, or improvises",
+     "severity": 5,
+     "detection": 6,
+     "occurrence": null,
+     "why_rank": "A killed or skipped check; HISTORY records the mode that actually ran",
+     "fix": "The full check runs through the executor with a generated script",
+     "fix_rung": "R0"
+    },
+    {
+     "id": "G-model",
+     "kind": "unchecked",
+     "decision": "Which model id to pass as --model",
+     "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+     "severity": 6,
+     "detection": 8,
+     "occurrence": null,
+     "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it",
+     "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+     "fix_rung": "R0"
+    }
+   ]
+  },
+  "16": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "finalize's `failures`"
+   ],
+   "evidence": "T9",
+   "controls": [
+    "helper exit codes",
+    "fixed response templates",
+    "negative scope rules"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "A written branch; T9's columns need the model to split failure strings (D19).",
+   "silent": []
+  },
+  "17": {
+   "actor": [
+    "model",
+    "human"
+   ],
+   "inputs": [
+    "finalize's `assays` map and `template_version`"
+   ],
+   "evidence": "T6; the stage's human check follows",
+   "controls": [
+    "fixed response templates",
+    "one human check per stage",
+    "wait points"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "A fixed hand-off on code's numbers.",
+   "silent": []
+  }
+ }
+}

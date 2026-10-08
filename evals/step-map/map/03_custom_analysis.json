@@ -1,0 +1,1333 @@
+{
+ "id": "03_custom_analysis",
+ "inherits": null,
+ "judgment_by": "step-map lane lead (claude-opus-5-5)",
+ "judgment_date": "2026-10-07",
+ "path": "gars/03_custom_analysis/CONTEXT.md",
+ "schema": "stepmap-map/1",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "silent_ranked": [
+  {
+   "decision": "How the approved method becomes code",
+   "detection": 8,
+   "elsewhere": [],
+   "fix": "Show the scripts for approval and bind their hashes into the approval record, as the plan's already is",
+   "fix_adopted": "Show the scripts for approval too, and lock their fingerprints into the approval record the way the plan's already is.",
+   "fix_rung": "R3",
+   "fix_status": "adopted (agreed)",
+   "goes_wrong": "The model writes the analysis scripts after approval; approval binds PLAN.md, not the scripts, and verify checks only that declared outputs exist, are non-empty and came from executor runs of unchanged scripts. A script that departs from the approved method, reads inputs the plan does not list, or computes the statistic differently passes every gate",
+   "group": 4,
+   "id": "S03-scripts",
+   "kind": "unchecked",
+   "occurrence": null,
+   "owner": {
+    "answer": "I agree with the proposed fix.",
+    "kind": "owner",
+    "proposed_on_his_page": "Show the scripts for approval too, and lock their fingerprints into the approval record the way the plan's already is.",
+    "ruling": "agree",
+    "source": "evals/step-map/REVIEW.md"
+   },
+   "rank_in_stage": 1,
+   "severity": 10,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan (the contract itself records the gap, 03:89-94)"
+  },
+  {
+   "decision": "In what order, and with what dependencies, several analysis scripts run",
+   "detection": 8,
+   "elsewhere": [],
+   "fix": "The plan's Execution section lists the scripts in order and the executor runs them as one job, or with declared dependencies",
+   "fix_adopted": "The plan lists its scripts in order, and GARS runs them as one job, or with declared dependencies.",
+   "fix_rung": "R2",
+   "fix_status": "adopted (agreed)",
+   "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists (it crashes), or read a stale copy left by an earlier attempt, which passes verify",
+   "group": 4,
+   "id": "S03-order",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": {
+    "answer": "I agree with the proposed fix.",
+    "kind": "owner",
+    "proposed_on_his_page": "The plan lists its scripts in order, and GARS runs them as one job, or with declared dependencies.",
+    "ruling": "agree",
+    "source": "evals/step-map/REVIEW.md"
+   },
+   "rank_in_stage": 2,
+   "severity": 10,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A stale input gives a wrong result that verify accepts; only reading the run records reveals the order"
+  },
+  {
+   "decision": "Which project, and which assay's artifacts, the analysis draws on",
+   "detection": 4,
+   "elsewhere": [],
+   "fix": "List every assay's artifacts and let the plan name each input's assay",
+   "fix_adopted": "List every assay's results and let the plan name the assay of each input.",
+   "fix_rung": "R0",
+   "fix_status": "adopted (agreed)",
+   "goes_wrong": "Step 1 lists artifacts for 'the relevant assay'; in a project with several assays the model picks one, and the plan's Inputs inherit that choice",
+   "group": 4,
+   "id": "S03-assay",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": {
+    "answer": "I agree with the proposed fix.",
+    "kind": "owner",
+    "proposed_on_his_page": "List every assay's results and let the plan name the assay of each input.",
+    "ruling": "agree",
+    "source": "evals/step-map/REVIEW.md"
+   },
+   "rank_in_stage": 3,
+   "severity": 8,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
+     "step": "1"
+    }
+   ],
+   "why_rank": "The analysis runs on the wrong inputs, but the plan the user approves lists them"
+  },
+  {
+   "decision": "Which model id to pass as --model",
+   "detection": 8,
+   "elsewhere": [
+    "Stage 00: register the project and its raw data",
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+   "fix_adopted": "The script takes the model name from the software running the agent where it can, and otherwise records \"unknown\"; never from the agent's own words.",
+   "fix_rung": "R0",
+   "fix_status": "adopted (agreed)",
+   "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+   "group": 4,
+   "id": "G-model",
+   "kind": "unchecked",
+   "occurrence": null,
+   "owner": {
+    "answer": "I agree with the proposed fix.",
+    "kind": "owner",
+    "proposed_on_his_page": "The script takes the model name from the software running the agent where it can, and otherwise records \"unknown\"; never from the agent's own words.",
+    "ruling": "agree",
+    "source": "evals/step-map/REVIEW.md"
+   },
+   "rank_in_stage": 4,
+   "severity": 6,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:151-156",
+     "step": "9"
+    }
+   ],
+   "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it"
+  },
+  {
+   "decision": "How to proceed when the guard refuses a step on a non-public project",
+   "defects": [
+    "D16"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 router: settings menus and routing",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+   "fix_adopted": null,
+   "fix_rung": "R4",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+   "group": 4,
+   "id": "G-closed",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 5,
+   "severity": 5,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:119-120",
+     "step": "2"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:121-126",
+     "step": "3"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:128-130",
+     "step": "5"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
+     "step": "10"
+    }
+   ],
+   "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+  },
+  {
+   "decision": "What to do when the plan's approval has expired before verify",
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Step 9 branches the expiry to a template naming the new-analysis road",
+   "fix_adopted": null,
+   "fix_rung": "R4",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "An approval lasts 24 hours; verify then refuses (stage03_analysis.py:199, 245-246, 395-402) and approve refuses to re-approve a stamped plan (326-330), so the only road is a new analysis and a full re-run. No step names it, and T3's 'I will fix the plan' is wrong for an expiry",
+   "group": 4,
+   "id": "S03-expiry",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 6,
+   "severity": 5,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:151-156",
+     "step": "9"
+    }
+   ],
+   "why_rank": "A dead end with no compliant road named, but a loud one"
+  },
+  {
+   "decision": "How to spell a call the guard accepts only through the dispatcher",
+   "defects": [
+    "D15"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 02 router: settings menus and routing",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+   "fix_adopted": null,
+   "fix_rung": "R0",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+   "group": 4,
+   "id": "G-door",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 7,
+   "severity": 4,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
+     "step": "1"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    },
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:148-150",
+     "step": "8"
+    }
+   ],
+   "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+  },
+  {
+   "decision": "How to 'monitor the job' after T4",
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Return after T4; the next invocation calls status once",
+   "fix_adopted": null,
+   "fix_rung": "R4",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "Step 7 says to monitor the job; every other contract forbids polling in a loop and no step says when to check, so the model polls, sleeps, or waits for the user",
+   "group": 4,
+   "id": "S03-monitor",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 8,
+   "severity": 3,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A wasted session or a stalled one, visibly"
+  },
+  {
+   "decision": "Which reply reports a refused submission in stage 03",
+   "defects": [
+    "D12"
+   ],
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "Step 7 branches submit's exit 1 and 2 to T5 with the refusal verbatim",
+   "fix_adopted": null,
+   "fix_rung": "R4",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "Stage 03's Definitions say to report every refusal and stop (03:111), but step 7 names only T3 for an approval refusal and T4 for a submission; a venue or duplicate refusal has no template, so the model picks one",
+   "group": 4,
+   "id": "S03-submit",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 9,
+   "severity": 3,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A wrong or misleading message about a refusal that the user still sees"
+  },
+  {
+   "decision": "What today's date is, for the HISTORY.md entry",
+   "defects": [
+    "D17"
+   ],
+   "detection": 9,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 sub-stages: run the pipelines"
+   ],
+   "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
+   "fix_adopted": null,
+   "fix_rung": "R0",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+   "group": 4,
+   "id": "G-date",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 10,
+   "severity": 2,
+   "stage": "Stage 03: custom analysis",
+   "where": [
+    {
+     "contract": "03_custom_analysis",
+     "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
+     "step": "10"
+    }
+   ],
+   "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
+  }
+ ],
+ "steps": [
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --list",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/03_custom_analysis/CONTEXT.md:116",
+      "tool": "resolve_artifact"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       3
+      ],
+      "handled": [],
+      "prose_handling": [
+       "If nothing is resolvable — no completed sub-stage declares any artifact and stage 01 has emitted nothing — reply T1 and stop."
+      ],
+      "source": "gars/03_custom_analysis/CONTEXT.md:116",
+      "tool": "resolve_artifact",
+      "unhandled": [
+       1,
+       3
+      ],
+      "unhandled_emit_sites": {
+       "1": [
+        "gars/_system/resolve_artifact.py:149"
+       ],
+       "3": [
+        "gars/_system/resolve_artifact.py:138"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/03_custom_analysis/CONTEXT.md:114-118",
+    "templates": [
+     "T1"
+    ],
+    "text": "1. Activated when the user asks for a custom or downstream analysis of an existing project. Identify the project; run `python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> --list` for the relevant assay. If nothing is resolvable — no completed sub-stage declares any artifact and stage 01 has emitted nothing — reply T1 and stop.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "closed vocabularies",
+     "fixed response templates",
+     "guard deny rules"
+    ],
+    "evidence": "the resolver's JSON; T1 if nothing resolves",
+    "inputs": [
+     "the user's goal",
+     "the project",
+     "the resolver's --list for 'the relevant assay'"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "Listing is code; which project and assay to list is the model's choice, and the resolver's direct spelling is a door (G-door).",
+    "silent": [
+     {
+      "decision": "Which project, and which assay's artifacts, the analysis draws on",
+      "detection": 4,
+      "fix": "List every assay's artifacts and let the plan name each input's assay",
+      "fix_rung": "R0",
+      "goes_wrong": "Step 1 lists artifacts for 'the relevant assay'; in a project with several assays the model picks one, and the plan's Inputs inherit that choice",
+      "id": "S03-assay",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 8,
+      "why_rank": "The analysis runs on the wrong inputs, but the plan the user approves lists them"
+     },
+     {
+      "decision": "How to spell a call the guard accepts only through the dispatcher",
+      "defects": [
+       "D15"
+      ],
+      "detection": 2,
+      "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+      "fix_rung": "R0",
+      "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+      "id": "G-door",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     }
+    ]
+   },
+   "n": "1"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/stage03_analysis.py create --project projects/<title> --slug <slug>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/03_custom_analysis/CONTEXT.md:119",
+      "tool": "stage03_analysis.create"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       3
+      ],
+      "handled": [],
+      "prose_handling": [],
+      "source": "gars/03_custom_analysis/CONTEXT.md:119",
+      "tool": "stage03_analysis.create",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/stage03_analysis.py:164",
+        "gars/_system/stage03_analysis.py:169"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/03_custom_analysis/CONTEXT.md:119-120",
+    "templates": [],
+    "text": "2. Run `python3 _system/stage03_analysis.py create --project projects/<title> --slug <slug>`, with a short kebab-case slug named after the goal.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "written rules only"
+    ],
+    "evidence": "`03_custom_analysis/<NN_slug>/` with a PLAN.md skeleton",
+    "inputs": [
+     "the user's goal (for the slug)"
+    ],
+    "kind": "judgment",
+    "note": "Exit 3 has no branch.",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R4",
+    "rung_why": "Allocation is code; the slug is a cosmetic name under a written rule.",
+    "silent": [
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
+   },
+   "n": "2"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": false,
+       "fresh": false,
+       "fresh_declared": false,
+       "mixed": true,
+       "public": true
+      },
+      "path": "projects/{project}/03_custom_analysis/01_qc-look/PLAN.md",
+      "source": "gars/03_custom_analysis/CONTEXT.md:121",
+      "tool": "Edit"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/03_custom_analysis/CONTEXT.md:121-126",
+    "templates": [],
+    "text": "3. Draft the plan: replace every `<FILL: ...>` marker in the created `PLAN.md`. Inputs come from step 1's resolution; Outputs use the closed vocabulary, preferring a specific type (`counts_gene`, `de_results`, …) over a generic one (`table`, `figure`, `report`) wherever one fits; Execution keeps its `Runs: batch` line unless the user explicitly asked for the login node. This is the step where your judgment belongs — spend it here, not at the keyboard later.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "the plan gate",
+     "closed vocabularies",
+     "written rules only"
+    ],
+    "evidence": "PLAN.md (DRAFT)",
+    "inputs": [
+     "the user's goal",
+     "the resolvable artifacts",
+     "the closed artifact vocabulary"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R3",
+    "rung_why": "The judgment the stage exists for, gated by the human's approval of the plan; approve checks the form (markers, output types, relative paths).",
+    "silent": [
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
+   },
+   "n": "3"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/03_custom_analysis/CONTEXT.md:127-127",
+    "templates": [
+     "T2"
+    ],
+    "text": "4. Reply T2 and stop. The user reads the plan, edits it if they wish, and answers.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "handoff",
+     "templates": [
+      "T2"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "fixed response templates",
+     "wait points",
+     "the plan gate"
+    ],
+    "evidence": "T2 with the approval command",
+    "inputs": [
+     "PLAN.md"
+    ],
+    "kind": "judgment",
+    "question": 5,
+    "rung_now": "R4",
+    "rung_target": "R4",
+    "rung_why": "A fixed hand-off to the human gate.",
+    "silent": []
+   },
+   "n": "4"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": false,
+       "fresh": false,
+       "fresh_declared": false,
+       "mixed": true,
+       "public": true
+      },
+      "path": "projects/{project}/03_custom_analysis/01_qc-look/PLAN.md",
+      "source": "gars/03_custom_analysis/CONTEXT.md:128",
+      "tool": "Edit"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/03_custom_analysis/CONTEXT.md:128-130",
+    "templates": [
+     "T2"
+    ],
+    "text": "5. If the user asks for changes, apply them to `PLAN.md` (it is still DRAFT), then reply T2 again with what changed. If they decline the analysis, stop; the DRAFT directory remains as the record that it was considered.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "handoff",
+     "templates": [
+      "T2"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "human"
+    ],
+    "controls": [
+     "the plan gate",
+     "fixed response templates",
+     "wait points"
+    ],
+    "evidence": "PLAN.md edited; T2 again",
+    "inputs": [
+     "the user's requested changes"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R3",
+    "rung_why": "The model edits, the human re-reads before approving.",
+    "silent": [
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
+   },
+   "n": "5"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/03_custom_analysis/CONTEXT.md:131-134",
+    "templates": [
+     "T2",
+     "T3"
+    ],
+    "text": "6. The user approves by running the command T2 gave them, in their own terminal. If they report that it refused (exit 2), ask for its `blocked` reasons, reply T3 with them verbatim, fix the plan (that is a draft edit, allowed), and return to step 4. Never argue past the gate, and never run `approve` yourself.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": "handoff",
+     "templates": [
+      "T2"
+     ]
+    }
+   },
+   "judgment": {
+    "actor": [
+     "human",
+     "helper",
+     "model"
+    ],
+    "controls": [
+     "the plan gate",
+     "guard deny rules",
+     "fixed response templates"
+    ],
+    "evidence": "the approval record in the store outside the workspace; T3 on refusal",
+    "inputs": [
+     "the user's own approve run",
+     "its blocked reasons, relayed by the user"
+    ],
+    "kind": "judgment",
+    "question": 4,
+    "rung_now": "R3",
+    "rung_target": "R3",
+    "rung_why": "The human approves in their own terminal; the guard refuses approve to the agent.",
+    "silent": []
+   },
+   "n": "6"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/03_custom_analysis/CONTEXT.md:137",
+      "tool": "executor.submit"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2
+      ],
+      "handled": [],
+      "prose_handling": [
+       "If approval is absent, changed or expired, reply T3 with the refusal and stop; a new approval is the user's."
+      ],
+      "source": "gars/03_custom_analysis/CONTEXT.md:137",
+      "tool": "executor.submit",
+      "unhandled": [
+       1,
+       2
+      ],
+      "unhandled_emit_sites": {
+       "1": [
+        "gars/_system/executorlib.py:1420",
+        "gars/_system/executorlib.py:1431"
+       ],
+       "2": [
+        "gars/_system/executorlib.py:1395",
+        "gars/_system/executorlib.py:1419"
+       ]
+      }
+     }
+    ],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": false,
+       "fresh": false,
+       "fresh_declared": false,
+       "mixed": true,
+       "public": true
+      },
+      "path": "projects/{project}/03_custom_analysis/01_qc-look/scripts/run.sh",
+      "source": "gars/03_custom_analysis/CONTEXT.md:135",
+      "tool": "Write"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/03_custom_analysis/CONTEXT.md:135-147",
+    "templates": [
+     "T3",
+     "T4"
+    ],
+    "text": "7. Execute the approved plan literally: write its scripts under `scripts/`. Each script must exit non-zero when any command fails; use `set -euo pipefail`. Submit **every script** through `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>` in the environment the plan names. Submit checks `PLAN.md` in the analysis directory even for scripts in subfolders, generates a launcher under `run/`, and records script and launcher hashes with the job id. The executor launcher clears the old marker, runs the script, and writes `run/.gars_run_complete` only on exit 0; it removes the marker on failure. Never write `run/` yourself or from a script. `Runs: login-node (user-requested)` uses the local backend through the same submit call; the executor still owns the marker. A run through no executor is refused by verify. If approval is absent, changed or expired, reply T3 with the refusal and stop; a new approval is the user's. On submission reply T4 and monitor the job. Steps outside the approved plan do not happen.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper",
+     "scheduler",
+     "guard"
+    ],
+    "controls": [
+     "the plan gate",
+     "run markers bound to script hashes",
+     "typed tool calls",
+     "negative scope rules",
+     "guard deny rules"
+    ],
+    "evidence": "`scripts/`, the submission records, run markers",
+    "inputs": [
+     "the approved PLAN.md",
+     "the resolved input artifacts"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R3",
+    "rung_why": "The model writes the computation; approval binds the plan, not the scripts, and nothing reads the code against the plan.",
+    "silent": [
+     {
+      "decision": "How the approved method becomes code",
+      "detection": 8,
+      "fix": "Show the scripts for approval and bind their hashes into the approval record, as the plan's already is",
+      "fix_rung": "R3",
+      "goes_wrong": "The model writes the analysis scripts after approval; approval binds PLAN.md, not the scripts, and verify checks only that declared outputs exist, are non-empty and came from executor runs of unchanged scripts. A script that departs from the approved method, reads inputs the plan does not list, or computes the statistic differently passes every gate",
+      "id": "S03-scripts",
+      "kind": "unchecked",
+      "occurrence": null,
+      "severity": 10,
+      "why_rank": "The one stage where the model writes the computation; its output is a scientific result, and no later check reads the code against the plan (the contract itself records the gap, 03:89-94)"
+     },
+     {
+      "decision": "How to 'monitor the job' after T4",
+      "detection": 2,
+      "fix": "Return after T4; the next invocation calls status once",
+      "fix_rung": "R4",
+      "goes_wrong": "Step 7 says to monitor the job; every other contract forbids polling in a loop and no step says when to check, so the model polls, sleeps, or waits for the user",
+      "id": "S03-monitor",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 3,
+      "why_rank": "A wasted session or a stalled one, visibly"
+     },
+     {
+      "decision": "Which reply reports a refused submission in stage 03",
+      "defects": [
+       "D12"
+      ],
+      "detection": 2,
+      "fix": "Step 7 branches submit's exit 1 and 2 to T5 with the refusal verbatim",
+      "fix_rung": "R4",
+      "goes_wrong": "Stage 03's Definitions say to report every refusal and stop (03:111), but step 7 names only T3 for an approval refusal and T4 for a submission; a venue or duplicate refusal has no template, so the model picks one",
+      "id": "S03-submit",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 3,
+      "why_rank": "A wrong or misleading message about a refusal that the user still sees"
+     },
+     {
+      "decision": "How to spell a call the guard accepts only through the dispatcher",
+      "defects": [
+       "D15"
+      ],
+      "detection": 2,
+      "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+      "fix_rung": "R0",
+      "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+      "id": "G-door",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     },
+     {
+      "decision": "In what order, and with what dependencies, several analysis scripts run",
+      "detection": 8,
+      "fix": "The plan's Execution section lists the scripts in order and the executor runs them as one job, or with declared dependencies",
+      "fix_rung": "R2",
+      "goes_wrong": "Step 7 says to submit every script; there is no dependency mechanism and all scripts share one completion marker, and verify checks each script's job and hash, not their order. A script that reads another's output can run before it exists (it crashes), or read a stale copy left by an earlier attempt, which passes verify",
+      "id": "S03-order",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 10,
+      "why_rank": "A stale input gives a wrong result that verify accepts; only reading the run records reveals the order"
+     },
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
+   },
+   "n": "7"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/03_custom_analysis/CONTEXT.md:148",
+      "tool": "executor.status"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2
+      ],
+      "handled": [],
+      "prose_handling": [
+       "If execution fails, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T5 with the actual error, and stop."
+      ],
+      "source": "gars/03_custom_analysis/CONTEXT.md:148",
+      "tool": "executor.status",
+      "unhandled": [
+       1,
+       2
+      ],
+      "unhandled_emit_sites": {
+       "1": [
+        "gars/_system/executorlib.py:1448"
+       ],
+       "2": [
+        "gars/_system/executorlib.py:1395"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/03_custom_analysis/CONTEXT.md:148-150",
+    "templates": [
+     "T5"
+    ],
+    "text": "8. If execution fails, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T5 with the actual error, and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a changed method is a new plan.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "fixed response templates",
+     "negative scope rules"
+    ],
+    "evidence": "T5",
+    "inputs": [
+     "the job id",
+     "the scheduler"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R4",
+    "rung_why": "A written failure branch, but the status call's direct spelling is a door (G-door) and its own exits have no branch (D13).",
+    "silent": [
+     {
+      "decision": "How to spell a call the guard accepts only through the dispatcher",
+      "defects": [
+       "D15"
+      ],
+      "detection": 2,
+      "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+      "fix_rung": "R0",
+      "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+      "id": "G-door",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     }
+    ]
+   },
+   "n": "8"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model \"<model id>\"",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/03_custom_analysis/CONTEXT.md:152",
+      "tool": "stage03_analysis.verify"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "handled": [
+       0,
+       1,
+       2
+      ],
+      "prose_handling": [],
+      "source": "gars/03_custom_analysis/CONTEXT.md:152",
+      "tool": "stage03_analysis.verify",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/stage03_analysis.py:386"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [
+     {
+      "allowed_where_intended": null,
+      "flag": "--model",
+      "in_command": true,
+      "prohibited": false,
+      "source": "gars/03_custom_analysis/CONTEXT.md:153",
+      "target_tool": "stage03_analysis.verify",
+      "value": null
+     }
+    ],
+    "source": "gars/03_custom_analysis/CONTEXT.md:151-156",
+    "templates": [
+     "T5"
+    ],
+    "text": "9. On execution success, run `python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model \"<model id>\"`. `--model` is the exact model id you are running as (decision 0024); omit only if you cannot name it. Exit 1 → declared outputs are missing or empty: reply T5, stop. Exit 2 → approval or execution evidence is missing or invalid; report the refusal verbatim and stop as in step 8.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "exit gates that check content",
+     "run markers bound to script hashes",
+     "helper exit codes",
+     "history entries written by helpers"
+    ],
+    "evidence": "`OUTPUTS.tsv`, STATUS COMPLETE",
+    "inputs": [
+     "the analysis",
+     "the model's own id"
+    ],
+    "kind": "judgment",
+    "note": "Exit 3 has no branch.",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "verify checks approval, execution evidence and that declared outputs exist and are non-empty; its --model id is under a rule nothing checks (G-model).",
+    "silent": [
+     {
+      "decision": "What to do when the plan's approval has expired before verify",
+      "detection": 2,
+      "fix": "Step 9 branches the expiry to a template naming the new-analysis road",
+      "fix_rung": "R4",
+      "goes_wrong": "An approval lasts 24 hours; verify then refuses (stage03_analysis.py:199, 245-246, 395-402) and approve refuses to re-approve a stamped plan (326-330), so the only road is a new analysis and a full re-run. No step names it, and T3's 'I will fix the plan' is wrong for an expiry",
+      "id": "S03-expiry",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road named, but a loud one"
+     },
+     {
+      "decision": "Which model id to pass as --model",
+      "detection": 8,
+      "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+      "fix_rung": "R0",
+      "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+      "id": "G-model",
+      "kind": "unchecked",
+      "occurrence": null,
+      "severity": 6,
+      "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it"
+     }
+    ]
+   },
+   "n": "9"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "date",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": false
+       },
+       "allowed_where_intended": false,
+       "dispatcher_allowed_by_workspace": {},
+       "intended_workspace": "public",
+       "refusal": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058"
+      },
+      "kind": "implicit",
+      "source": "gars/03_custom_analysis/CONTEXT.md:158",
+      "tool": null
+     }
+    ],
+    "exit_branches": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": false,
+       "fresh": false,
+       "fresh_declared": false,
+       "mixed": true,
+       "public": true
+      },
+      "path": "projects/{project}/HISTORY.md",
+      "source": "gars/03_custom_analysis/CONTEXT.md:157",
+      "tool": "Edit"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/03_custom_analysis/CONTEXT.md:157-158",
+    "templates": [
+     "T6"
+    ],
+    "text": "10. Exit 0 → append the returned `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>` with today's date, and reply T6.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "history entries written by helpers",
+     "fixed response templates",
+     "written rules only"
+    ],
+    "evidence": "an appended HISTORY.md entry; T6",
+    "inputs": [
+     "verify's history_entry"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "Copying is written, but the date has no source the agent can reach.",
+    "silent": [
+     {
+      "decision": "What today's date is, for the HISTORY.md entry",
+      "defects": [
+       "D17"
+      ],
+      "detection": 9,
+      "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
+      "fix_rung": "R0",
+      "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+      "id": "G-date",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 2,
+      "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
+     },
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
+   },
+   "n": "10"
+  }
+ ]
+}

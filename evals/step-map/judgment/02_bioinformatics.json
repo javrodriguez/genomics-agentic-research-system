@@ -1,0 +1,397 @@
+{
+ "kind": "judgment",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "by": "step-map lane lead (claude-opus-5-5)",
+ "date": "2026-10-07",
+ "steps": {
+  "1": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "the user's request"
+   ],
+   "evidence": "T1",
+   "controls": [
+    "fixed response templates"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "Fixed text.",
+   "silent": []
+  },
+  "2": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "the user's words for the project and assay",
+    "projects/",
+    "the assay map"
+   ],
+   "evidence": "T1 shows the result; T5 if none",
+   "controls": [
+    "fixed response templates",
+    "written rules only"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R1",
+   "question": 1,
+   "rung_why": "Matching words to a project directory and an Assay ID has no rule; stage 00's normalising resolver exists for assays but is not used here.",
+   "silent": [
+    {
+     "id": "G-project",
+     "decision": "Which project (and assay) the user's words mean",
+     "goes_wrong": "The model matches 'my liver project' or 'the RNA one' to a project directory and an Assay ID by reading projects/ and the assay map; a wrong match runs the right step on the wrong project",
+     "severity": 6,
+     "detection": 5,
+     "occurrence": null,
+     "why_rank": "The right analysis on the wrong project; the stage's opening message names the project, unasked, before anything runs",
+     "fix": "A resolver lists the matching projects and assays; the model renders them, the user picks",
+     "fix_rung": "R1",
+     "kind": "unsaid"
+    },
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ],
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "3": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "`01_samplesheets/` files"
+   ],
+   "evidence": "T5 if missing",
+   "controls": [
+    "written rules only",
+    "fixed response templates",
+    "guard deny rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "An existence check the model makes by hand; code could (the wrappers' check already does). On a closed project the guard refuses the read itself (G-closed).",
+   "silent": [
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ],
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "3a": {
+   "actor": [
+    "model",
+    "helper",
+    "human"
+   ],
+   "inputs": [
+    "`_config/<Assay ID>.yaml`",
+    "the genome registry",
+    "the design table",
+    "the user's menu numbers and any formula"
+   ],
+   "evidence": "the dry-run JSON; the written config after confirmation",
+   "controls": [
+    "closed menus built by code",
+    "closed vocabularies",
+    "fixed response templates",
+    "wait points",
+    "typed tool calls",
+    "helper exit codes",
+    "guard deny rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R1",
+   "question": 1,
+   "rung_why": "The menus are code and T9 is a human confirmation (R1 plus R3), but whether any decisions remain (R-required), how a scrnaseq chemistry is chosen (R-protocol), which factor the contrast compares (R-factor) and what counts as the confirmation (R-confirm) have no rule, how words become a formula has a written rule nothing checks (R-formula), and on a closed project the guard refuses contrasts and apply (G-closed).",
+   "silent": [
+    {
+     "id": "R-protocol",
+     "kind": "unsaid",
+     "decision": "How a scrnaseq user's library chemistry gets into the config",
+     "goes_wrong": "configure.py makes chemistry scrnaseq's decision and has a protocols menu, but step 3a and T8 name only the genome, contrast and peak menus, and 3a's apply line carries no --protocol, so for scrnaseq it exits 3 (configure.py:411-414). The model either adds --protocol itself, translating the user's words into one of the listed chemistries, or stalls; a wrong but listed chemistry runs to completion and parses barcodes with the wrong layout",
+     "severity": 9,
+     "detection": 5,
+     "occurrence": null,
+     "why_rank": "A plausible wrong matrix and no error; the scrnaseq sub-stage's human check tells every user to compare cell counts with the number loaded and names wrong chemistry as a cause",
+     "fix": "Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it",
+     "fix_rung": "R1",
+     "defects": [
+      "D7"
+     ]
+    },
+    {
+     "id": "R-formula",
+     "decision": "Turning the user's words about the model ('account for batch') into a DE formula",
+     "goes_wrong": "Scope allows a formula 'the user gave you', and users give words, not formula syntax; the model writes the formula and apply checks only that each term names a column of the design table, so a wrong covariate or interaction becomes the tested model",
+     "severity": 9,
+     "detection": 4,
+     "occurrence": null,
+     "why_rank": "A wrong model changes every p-value; T9 asks the user to confirm the formula, a real check only for a user who reads formula syntax",
+     "fix": "Formula choices built from the design table's own columns, as the contrasts are, confirmed in T9",
+     "fix_rung": "R1",
+     "kind": "unchecked"
+    },
+    {
+     "id": "R-required",
+     "decision": "Whether the config still has decisions to make",
+     "goes_wrong": "3a is skipped when 'no <REQUIRED> markers are left', judged by the model reading YAML; every seeded config carries the word in its header comment and spatialvi has no decisions registered, so a literal reading re-asks a finished config or runs apply for spatialvi, which exits 3 with no branch",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A stall or a needless question, not a wrong result",
+     "fix": "Code reports the pending decisions (the wrappers' config_unfilled check already computes them)",
+     "fix_rung": "R0",
+     "defects": [
+      "D8",
+      "D9"
+     ],
+     "kind": "unsaid"
+    },
+    {
+     "id": "R-factor",
+     "kind": "unsaid",
+     "decision": "Which design factor the contrast compares",
+     "goes_wrong": "contrasts and apply default to --factor condition (configure.py:501, 517), which no contract mentions; when the design carries another factor the user cares about, the model decides which one the menu is built from. A typed factor,numerator,denominator is accepted only when it equals a menu pair of the same factor (configure.py:355-372), so the factor, not a typed contrast, is the open choice",
+     "severity": 9,
+     "detection": 4,
+     "occurrence": null,
+     "why_rank": "A wrong contrast gives a complete, confident, wrong result (the router's own human check says nothing downstream can detect it); T9 asks the user to confirm the contrast",
+     "fix": "The contract names --factor and the contrast menu shows the factor beside each pair; a design with more than one candidate factor is asked about",
+     "fix_rung": "R1"
+    },
+    {
+     "id": "R-confirm",
+     "kind": "unsaid",
+     "decision": "Whether a free-text reply confirms the dry run (T9) before apply writes the config",
+     "goes_wrong": "T9 ends 'Confirm to write it, or say what to change' (02:262) and step 3a re-runs without --dry-run 'On confirmation' (02:148); no answer is fixed, so 'ok, but the other contrast' is the model's to read, and the write carries whatever the re-run command holds",
+     "severity": 9,
+     "detection": 5,
+     "occurrence": null,
+     "why_rank": "A misread yes writes a contrast, formula or genome the user did not choose; a wrong contrast gives a complete, confident, wrong result nothing downstream detects (02:316-317). The sub-stage's T1 shows the settings unasked, and the router's human check asks the user to confirm them before dispatch (02:313-317)",
+     "fix": "A fixed answer (`write`), and the write refuses unless it matches the dry run the user saw",
+     "fix_rung": "R2"
+    },
+    {
+     "id": "G-closed",
+     "decision": "How to proceed when the guard refuses a step on a non-public project",
+     "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+     "severity": 5,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak",
+     "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+     "fix_rung": "R4",
+     "defects": [
+      "D16"
+     ],
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "4": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "the assay map"
+   ],
+   "evidence": "none of its own",
+   "controls": [
+    "written rules only",
+    "negative scope rules"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R0",
+   "question": 2,
+   "rung_why": "Reading a table code already parses (stage 00's assays returns the sub-stages).",
+   "silent": []
+  },
+  "5": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "each sub-stage's STATUS file"
+   ],
+   "evidence": "T2",
+   "controls": [
+    "definitions shared with helper code",
+    "fixed response templates",
+    "a session-start state render"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R0",
+   "question": 2,
+   "rung_why": "The model reads files and builds a table that project_state.py already renders.",
+   "silent": []
+  },
+  "6": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "the STATUS values"
+   ],
+   "evidence": "T4 when all complete",
+   "controls": [
+    "written rules only",
+    "definitions shared with helper code"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R0",
+   "question": 2,
+   "rung_why": "A written ordering rule over a closed enum; code could pick the next sub-stage.",
+   "silent": []
+  },
+  "7": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "a SUBMITTED or RUNNING STATUS"
+   ],
+   "evidence": "T3",
+   "controls": [
+    "fixed response templates",
+    "negative scope rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "The router stops on a submitted job without refreshing it, and no step anywhere says who refreshes STATUS.",
+   "silent": [
+    {
+     "id": "W-poll",
+     "decision": "When to refresh a submitted job's STATUS, and who does it",
+     "goes_wrong": "STATUS moves from SUBMITTED to VALIDATING when executorlib.py status (or collect's own gate) asks the scheduler, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's own status step is behind both, so it runs only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "A stall the user has to sort out, and a visible one; but every assay passes through it",
+     "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
+     "fix_rung": "R0",
+     "defects": [
+      "D10",
+      "D13"
+     ],
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "8": {
+   "actor": [
+    "model",
+    "human"
+   ],
+   "inputs": [
+    "a FAILED or CANCELLED STATUS",
+    "the sub-stage's log"
+   ],
+   "evidence": "T6",
+   "controls": [
+    "fixed response templates",
+    "negative scope rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R4",
+   "question": 1,
+   "rung_why": "Stopping is written; what follows the user's decision is not.",
+   "silent": [
+    {
+     "id": "R-failed",
+     "decision": "What to do once the user decides how to resolve a failed or cancelled sub-stage",
+     "goes_wrong": "T6 says corrected inputs need prepare again; nothing says how a retry is approved (the executor requires a human's approve-action) or when cutandrun's prepare --resume-refresh applies, so the model improvises the re-run",
+     "severity": 4,
+     "detection": 3,
+     "occurrence": null,
+     "why_rank": "A muddled recovery the user has to sort out; the executor's retry policy refuses an unapproved retry",
+     "fix": "A written recovery branch per failure class, naming the human's approval command",
+     "fix_rung": "R4",
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "9": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "the sub-stage's Consumes types"
+   ],
+   "evidence": "the resolver's JSON in the transcript",
+   "controls": [
+    "typed tool calls",
+    "helper exit codes",
+    "closed vocabularies",
+    "guard deny rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R0",
+   "question": 1,
+   "rung_why": "Resolution is code, but its direct spelling is refused wherever a non-public project exists and the contract names no other (G-door); the resolved paths then travel to the sub-stage in the conversation (D-input and D-supplier, judged there).",
+   "note": "Exit 3 (no such project) has no branch. The extractor also lists resolve_artifact.py:140 ('nothing to resolve'), which --consumes makes unreachable (a declared limit).",
+   "silent": [
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ],
+     "kind": "unsaid"
+    }
+   ]
+  },
+  "10": {
+   "actor": [
+    "model"
+   ],
+   "inputs": [
+    "the sub-stage contract"
+   ],
+   "evidence": "the sub-stage's own templates",
+   "controls": [
+    "written rules only"
+   ],
+   "rung_now": "R4",
+   "rung_target": "R4",
+   "question": 5,
+   "rung_why": "A hand-off by path; where the sub-stage resumes is judged in its step 2 (W-reentry).",
+   "silent": []
+  }
+ }
+}

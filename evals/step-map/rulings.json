@@ -1,0 +1,23 @@
+{
+ "schema": "stepmap-rulings/1",
+ "kind": "owner",
+ "source": "evals/step-map/REVIEW.md: Javier's answers, typed 7 Oct 2026 in the file and committed at 193b2b049a71e32cdbafd94f785749c41828f711",
+ "note": "How each of his answers reads, and nothing else. His words are read from REVIEW.md at every build and never copied here; build_map.py refuses a ruling his words do not support.",
+ "items": {
+  "S00-class": {"ruling": "different fix"},
+  "S00-yes": {"ruling": "agree"},
+  "S00-onepattern": {"ruling": "agree"},
+  "S01-declare": {"ruling": "agree"},
+  "S01-table": {"ruling": "agree"},
+  "S01-yes": {"ruling": "agree"},
+  "R-protocol": {"ruling": "agree"},
+  "R-confirm": {"ruling": "agree"},
+  "R-formula": {"ruling": "agree"},
+  "D-input": {"ruling": "agree"},
+  "G-model": {"ruling": "agree"},
+  "D-supplier": {"ruling": "agree"},
+  "S03-scripts": {"ruling": "agree"},
+  "S03-order": {"ruling": "agree"},
+  "S03-assay": {"ruling": "agree"}
+ }
+}

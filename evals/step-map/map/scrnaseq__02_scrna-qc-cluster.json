@@ -1,0 +1,2059 @@
+{
+ "id": "scrnaseq__02_scrna-qc-cluster",
+ "inherits": "_shape_downstream",
+ "judgment_by": "step-map lane lead (claude-opus-5-5)",
+ "judgment_date": "2026-10-07",
+ "path": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md",
+ "schema": "stepmap-map/1",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "silent_ranked": [
+  {
+   "decision": "Which input path to pass to the analysis",
+   "detection": 5,
+   "elsewhere": [],
+   "fix": "The sub-stage resolves its own input, as rnaseq-de already does",
+   "fix_adopted": "Each analysis finds its own input with GARS's resolver, as the differential-expression step already does.",
+   "fix_rung": "R0",
+   "fix_status": "adopted (agreed)",
+   "goes_wrong": "For single-cell clustering and spatial counts the router resolves the input and the sub-stage contract starts afresh; the path travels only in the conversation, so the model carries or re-derives it, sometimes in a later session",
+   "group": 3,
+   "id": "D-input",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": {
+    "answer": "I agree with the proposed fix.",
+    "kind": "owner",
+    "proposed_on_his_page": "Each analysis finds its own input with GARS's resolver, as the differential-expression step already does.",
+    "ruling": "agree",
+    "source": "evals/step-map/REVIEW.md"
+   },
+   "rank_in_stage": 1,
+   "severity": 8,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:87-89",
+     "step": "3"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:130-132",
+     "step": "3"
+    }
+   ],
+   "why_rank": "A wrong path analyses the wrong object; collect's gate checks only the sample set and that each sample has cells, which another object from the same pipeline run passes (wrappers/scrna-qc-cluster/scrna_qc_cluster.py:25-27), but T1 shows the path unasked (02.02 scrna-qc-cluster:115, spatial-cluster-count:163)"
+  },
+  {
+   "decision": "Which model id to pass as --model",
+   "detection": 8,
+   "elsewhere": [
+    "Stage 00: register the project and its raw data",
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 03: custom analysis"
+   ],
+   "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+   "fix_adopted": "The script takes the model name from the software running the agent where it can, and otherwise records \"unknown\"; never from the agent's own words.",
+   "fix_rung": "R0",
+   "fix_status": "adopted (agreed)",
+   "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+   "group": 3,
+   "id": "G-model",
+   "kind": "unchecked",
+   "occurrence": null,
+   "owner": {
+    "answer": "I agree with the proposed fix.",
+    "kind": "owner",
+    "proposed_on_his_page": "The script takes the model name from the software running the agent where it can, and otherwise records \"unknown\"; never from the agent's own words.",
+    "ruling": "agree",
+    "source": "evals/step-map/REVIEW.md"
+   },
+   "rank_in_stage": 2,
+   "severity": 6,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:107-113",
+     "step": "8"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:100-106",
+     "step": "8"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:122-128",
+     "step": "8"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:95-101",
+     "step": "8"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:104-110",
+     "step": "8"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:122-126",
+     "step": "8"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:127-133",
+     "step": "8"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:96-99",
+     "step": "8"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:108-114",
+     "step": "8"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:139-146",
+     "step": "8"
+    }
+   ],
+   "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it"
+  },
+  {
+   "decision": "Which sub-stage to name as the input's supplier at collect",
+   "detection": 8,
+   "elsewhere": [],
+   "fix": "collect derives the supplier from the resolver",
+   "fix_adopted": "The collecting step takes the producer's name from the resolver, not from the agent.",
+   "fix_rung": "R0",
+   "fix_status": "adopted (agreed)",
+   "goes_wrong": "collect records the supplier the model passes (--h5ad-from, --counts-from) without checking it; on the later visit that collects, the model carries or re-derives it from the conversation",
+   "group": 3,
+   "id": "D-supplier",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": {
+    "answer": "I agree with the proposed fix.",
+    "kind": "owner",
+    "proposed_on_his_page": "The collecting step takes the producer's name from the resolver, not from the agent.",
+    "ruling": "agree",
+    "source": "evals/step-map/REVIEW.md"
+   },
+   "rank_in_stage": 3,
+   "severity": 6,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:122-126",
+     "step": "8"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:96-99",
+     "step": "8"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:139-146",
+     "step": "8"
+    }
+   ],
+   "why_rank": "False provenance in the permanent record; nothing checks the line"
+  },
+  {
+   "decision": "What to do when GARS's pre-submission check refuses the job",
+   "defects": [
+    "D12"
+   ],
+   "detection": 5,
+   "elsewhere": [],
+   "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; settings change only on the user's word",
+   "fix_adopted": null,
+   "fix_rung": "R4",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "Before a job is queued, the executor checks the dataset's class, purpose and route (the venue rules) and refuses a duplicate. The router's Definitions say to report every refusal and stop (02:118), but the sub-stage's submit step says only to capture job_id and the next step announces 'Submitted as job <job_id>' with no branch for exit 1 or 2, and nothing checks that the rule was followed; the model either announces a submission that did not happen, or changes the executor or memory settings itself to get past the refusal",
+   "group": 3,
+   "id": "W-submit",
+   "kind": "unchecked",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 4,
+   "severity": 5,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100-101",
+     "step": "5"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:93-94",
+     "step": "5"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:115-116",
+     "step": "5"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:88-89",
+     "step": "5"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:97-98",
+     "step": "5"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:117-118",
+     "step": "6"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:123-123",
+     "step": "5"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:92-92",
+     "step": "5"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:104-104",
+     "step": "5"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:135-135",
+     "step": "5"
+    }
+   ],
+   "why_rank": "A setting changed without the user, or a false 'submitted'; the next status display shows nothing was queued"
+  },
+  {
+   "decision": "Where to resume a sub-stage whose STATUS is VALIDATING, ARTIFACT_MISSING, STALE or FAILED",
+   "defects": [
+    "D11"
+   ],
+   "detection": 3,
+   "elsewhere": [],
+   "fix": "Step 2 branches every STATUS value to its step, as the router's steps 6-9 do; better, the wrapper reports the next action from STATUS",
+   "fix_adopted": null,
+   "fix_rung": "R0",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "Step 2 stops only on SUBMITTED, RUNNING or COMPLETE, so read literally the other states fall through to check, prepare and submit; only step 7's 'On a later invocation' implies jumping to the status call and collect. A literal reading re-prepares a finished run, rewriting its generated files and reproducibility manifest, and tries to submit it again",
+   "group": 3,
+   "id": "W-reentry",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 5,
+   "severity": 5,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:93-94",
+     "step": "2"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:85-86",
+     "step": "2"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:107-108",
+     "step": "2"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:80-81",
+     "step": "2"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:89-90",
+     "step": "2"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:101-102",
+     "step": "2"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:116-117",
+     "step": "2"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:85-86",
+     "step": "2"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:98-99",
+     "step": "2"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:128-129",
+     "step": "2"
+    }
+   ],
+   "why_rank": "Wasted work and a rewritten provenance file rather than a wrong result; the executor's duplicate-submission refusal stops the resubmission"
+  },
+  {
+   "decision": "How to proceed when the guard refuses a step on a non-public project",
+   "defects": [
+    "D16"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 02 router: settings menus and routing",
+    "Stage 03: custom analysis"
+   ],
+   "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+   "fix_adopted": null,
+   "fix_rung": "R4",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+   "group": 3,
+   "id": "G-closed",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 6,
+   "severity": 5,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:95-97",
+     "step": "3"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:98-99",
+     "step": "4"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:107-113",
+     "step": "8"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:114-116",
+     "step": "9"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:87-90",
+     "step": "3"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:91-92",
+     "step": "4"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:100-106",
+     "step": "8"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:107-109",
+     "step": "9"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:109-112",
+     "step": "3"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:113-114",
+     "step": "4"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:122-128",
+     "step": "8"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:129-131",
+     "step": "9"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:82-85",
+     "step": "3"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:86-87",
+     "step": "4"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:95-101",
+     "step": "8"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:102-104",
+     "step": "9"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:91-94",
+     "step": "3"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:95-96",
+     "step": "4"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:104-110",
+     "step": "8"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:111-113",
+     "step": "9"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:127-131",
+     "step": "9"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:118-120",
+     "step": "3"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:121-122",
+     "step": "4"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:127-133",
+     "step": "8"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:134-136",
+     "step": "9"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:87-89",
+     "step": "3"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:90-91",
+     "step": "4"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:96-99",
+     "step": "8"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:100-101",
+     "step": "9"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:100-102",
+     "step": "3"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:103-103",
+     "step": "4"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:108-114",
+     "step": "8"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:115-117",
+     "step": "9"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:130-132",
+     "step": "3"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:133-134",
+     "step": "4"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:139-146",
+     "step": "8"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:147-148",
+     "step": "9"
+    }
+   ],
+   "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+  },
+  {
+   "decision": "How to spell a call the guard accepts only through the dispatcher",
+   "defects": [
+    "D15"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 02 router: settings menus and routing",
+    "Stage 03: custom analysis"
+   ],
+   "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+   "fix_adopted": null,
+   "fix_rung": "R0",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+   "group": 3,
+   "id": "G-door",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 8,
+   "severity": 4,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:100-101",
+     "step": "5"
+    },
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104-106",
+     "step": "7"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:93-94",
+     "step": "5"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:97-99",
+     "step": "7"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:115-116",
+     "step": "5"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:88-89",
+     "step": "5"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:92-94",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:97-98",
+     "step": "5"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:101-103",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:103-111",
+     "step": "3"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:112-114",
+     "step": "4"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:115-116",
+     "step": "5"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:117-118",
+     "step": "6"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:122-126",
+     "step": "8"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:123-123",
+     "step": "5"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:124-125",
+     "step": "6"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:126-126",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:92-92",
+     "step": "5"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:93-93",
+     "step": "6"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94-95",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:96-99",
+     "step": "8"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:104-104",
+     "step": "5"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:105-105",
+     "step": "6"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:106-107",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:135-135",
+     "step": "5"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:136-136",
+     "step": "6"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:137-138",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:139-146",
+     "step": "8"
+    }
+   ],
+   "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+  },
+  {
+   "decision": "When to refresh a submitted job's STATUS, and who does it",
+   "defects": [
+    "D10",
+    "D13"
+   ],
+   "detection": 2,
+   "elsewhere": [
+    "Stage 02 router: settings menus and routing"
+   ],
+   "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
+   "fix_adopted": null,
+   "fix_rung": "R0",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "STATUS moves from SUBMITTED to VALIDATING when executorlib.py status (or collect's own gate) asks the scheduler, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's own status step is behind both, so it runs only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+   "group": 3,
+   "id": "W-poll",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 9,
+   "severity": 4,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104-106",
+     "step": "7"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:97-99",
+     "step": "7"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:92-94",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:101-103",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:126-126",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94-95",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:106-107",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:137-138",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A stall the user has to sort out, and a visible one; but every assay passes through it"
+  },
+  {
+   "decision": "Which job id to ask the scheduler about on a later visit",
+   "detection": 2,
+   "elsewhere": [],
+   "fix": "The status call takes the sub-stage, and code looks up its recorded job",
+   "fix_adopted": null,
+   "fix_rung": "R0",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "Step 7 calls status with <job_id>, but a STATUS line carries a job id only while SUBMITTED or RUNNING; a VALIDATING or STALE line carries none, so the model takes the id from its memory of an earlier session or from somewhere else",
+   "group": 3,
+   "id": "W-jobid",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 10,
+   "severity": 4,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:104-106",
+     "step": "7"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:97-99",
+     "step": "7"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:92-94",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:101-103",
+     "step": "7"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:119-121",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:126-126",
+     "step": "7"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94-95",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:106-107",
+     "step": "7"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:137-138",
+     "step": "7"
+    }
+   ],
+   "why_rank": "A wrong id fails loudly (status exits 1 for an unknown job) and status updates only the job submit recorded"
+  },
+  {
+   "decision": "The values the start message shows before any helper runs",
+   "defects": [
+    "D20"
+   ],
+   "detection": 5,
+   "elsewhere": [],
+   "fix": "check returns the start summary and T1 renders it",
+   "fix_adopted": null,
+   "fix_rung": "R0",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "T1 is sent at step 1, so its counts, settings and paths come from the model reading files itself (samplesheet rows, reference, aligner and thresholds in the nf-core wrappers; formula, contrast, counts and design paths in rnaseq-de, 02.02 rnaseq-de:145-149; the input path, with thresholds or a sample count, in the two other analyses)",
+   "group": 3,
+   "id": "W-startvalues",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 12,
+   "severity": 3,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:92-92",
+     "step": "1"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:84-84",
+     "step": "1"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:106-106",
+     "step": "1"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:79-79",
+     "step": "1"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:88-88",
+     "step": "1"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:100-100",
+     "step": "1"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:115-115",
+     "step": "1"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:84-84",
+     "step": "1"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:97-97",
+     "step": "1"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:127-127",
+     "step": "1"
+    }
+   ],
+   "why_rank": "A wrong number or setting in a message, shown unasked"
+  },
+  {
+   "decision": "What today's date is, for the HISTORY.md entry",
+   "defects": [
+    "D17"
+   ],
+   "detection": 9,
+   "elsewhere": [
+    "Stage 01: validate the design and write samplesheets",
+    "Stage 03: custom analysis"
+   ],
+   "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
+   "fix_adopted": null,
+   "fix_rung": "R0",
+   "fix_status": "proposed (not asked)",
+   "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+   "group": 3,
+   "id": "G-date",
+   "kind": "unsaid",
+   "occurrence": null,
+   "owner": null,
+   "rank_in_stage": 13,
+   "severity": 2,
+   "stage": "Stage 02 sub-stages: run the pipelines",
+   "where": [
+    {
+     "contract": "atacseq_bulk__01_nfcore-atacseq-wrapper",
+     "source": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md:114-116",
+     "step": "9"
+    },
+    {
+     "contract": "chipseq_bulk__01_nfcore-chipseq-wrapper",
+     "source": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md:107-109",
+     "step": "9"
+    },
+    {
+     "contract": "cutandrun__01_nfcore-cutandrun-wrapper",
+     "source": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md:129-131",
+     "step": "9"
+    },
+    {
+     "contract": "methylseq__01_nfcore-methylseq-wrapper",
+     "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:102-104",
+     "step": "9"
+    },
+    {
+     "contract": "rnaseq_bulk__01_nfcore-rnaseq-wrapper",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md:111-113",
+     "step": "9"
+    },
+    {
+     "contract": "rnaseq_bulk__02_rnaseq-de",
+     "source": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:127-131",
+     "step": "9"
+    },
+    {
+     "contract": "scrnaseq__01_nfcore-scrnaseq-wrapper",
+     "source": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md:134-136",
+     "step": "9"
+    },
+    {
+     "contract": "scrnaseq__02_scrna-qc-cluster",
+     "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:100-101",
+     "step": "9"
+    },
+    {
+     "contract": "spatialvi__01_nfcore-spatialvi-wrapper",
+     "source": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md:115-117",
+     "step": "9"
+    },
+    {
+     "contract": "spatialvi__02_spatial-cluster-count",
+     "source": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md:147-148",
+     "step": "9"
+    }
+   ],
+   "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
+  }
+ ],
+ "steps": [
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:84-84",
+    "templates": [
+     "T1"
+    ],
+    "text": "1. Reply T1.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "fixed response templates"
+    ],
+    "evidence": "T1",
+    "inherited_from": "_shape_downstream",
+    "inputs": [
+     "the config and the input the router resolved, carried in the conversation"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "T1 is sent before any helper runs, so its values come from the model reading files and remembering the router's resolution (D20).",
+    "silent": [
+     {
+      "decision": "The values the start message shows before any helper runs",
+      "defects": [
+       "D20"
+      ],
+      "detection": 5,
+      "fix": "check returns the start summary and T1 renders it",
+      "fix_rung": "R0",
+      "goes_wrong": "T1 is sent at step 1, so its counts, settings and paths come from the model reading files itself (samplesheet rows, reference, aligner and thresholds in the nf-core wrappers; formula, contrast, counts and design paths in rnaseq-de, 02.02 rnaseq-de:145-149; the input path, with thresholds or a sample count, in the two other analyses)",
+      "id": "W-startvalues",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 3,
+      "why_rank": "A wrong number or setting in a message, shown unasked"
+     }
+    ]
+   },
+   "n": "1"
+  },
+  {
+   "extracted": {
+    "calls": [],
+    "exit_branches": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": true,
+       "fresh": true,
+       "fresh_declared": true,
+       "mixed": true,
+       "public": true
+      },
+      "path": "{substage_dir}/STATUS",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:85",
+      "tool": "Read"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:85-86",
+    "templates": [],
+    "text": "2. Read the STATUS file. If it is `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — stage 02's router already handles those states and should not have routed here.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "definitions shared with helper code",
+     "written rules only"
+    ],
+    "evidence": "none",
+    "inherited_from": "_shape_downstream",
+    "inputs": [
+     "the sub-stage's STATUS file"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "As in the wrapper shape: five STATUS values have no stated entry point.",
+    "silent": [
+     {
+      "decision": "Where to resume a sub-stage whose STATUS is VALIDATING, ARTIFACT_MISSING, STALE or FAILED",
+      "defects": [
+       "D11"
+      ],
+      "detection": 3,
+      "fix": "Step 2 branches every STATUS value to its step, as the router's steps 6-9 do; better, the wrapper reports the next action from STATUS",
+      "fix_rung": "R0",
+      "goes_wrong": "Step 2 stops only on SUBMITTED, RUNNING or COMPLETE, so read literally the other states fall through to check, prepare and submit; only step 7's 'On a later invocation' implies jumping to the status call and collect. A literal reading re-prepares a finished run, rewriting its generated files and reproducibility manifest, and tries to submit it again",
+      "id": "W-reentry",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "Wasted work and a rewritten provenance file rather than a wrong result; the executor's duplicate-submission refusal stops the resubmission"
+     }
+    ]
+   },
+   "n": "2"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py check --project projects/<title> --h5ad projects/{project}/02_bioinformatics/{assay}/01_input/run/input.h5ad",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "prose",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:87",
+      "tool": "scrna_qc_cluster.check"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       3
+      ],
+      "handled": [
+       1
+      ],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:87",
+      "tool": "scrna_qc_cluster.check",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:337"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [
+     {
+      "allowed_where_intended": null,
+      "flag": "--h5ad",
+      "in_command": true,
+      "prohibited": false,
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:87",
+      "target_tool": "scrna_qc_cluster.check",
+      "value": null
+     }
+    ],
+    "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:87-89",
+    "templates": [
+     "T5"
+    ],
+    "text": "3. Run the wrapper's `check` with the resolved `--h5ad`. Exit 1 → reply T5 with its `failures` verbatim and stop. Do not fix causes yourself: a missing package is an environment change, a missing h5ad means 02.01 has not completed.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "helper exit codes",
+     "negative scope rules"
+    ],
+    "evidence": "`preflight/check_result.json`",
+    "inherited_from": "_shape_downstream",
+    "inputs": [
+     "the h5ad path the router resolved, carried in the conversation",
+     "the config"
+    ],
+    "kind": "judgment",
+    "note": "Exit 3 (no such project) has no branch.",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "The check is code, but its input path is whatever the model carried over from the router's resolution; no step here resolves it.",
+    "silent": [
+     {
+      "decision": "Which input path to pass to the analysis",
+      "detection": 5,
+      "fix": "The sub-stage resolves its own input, as rnaseq-de already does",
+      "fix_rung": "R0",
+      "goes_wrong": "For single-cell clustering and spatial counts the router resolves the input and the sub-stage contract starts afresh; the path travels only in the conversation, so the model carries or re-derives it, sometimes in a later session",
+      "id": "D-input",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 8,
+      "why_rank": "A wrong path analyses the wrong object; collect's gate checks only the sample set and that each sample has cells, which another object from the same pipeline run passes (wrappers/scrna-qc-cluster/scrna_qc_cluster.py:25-27), but T1 shows the path unasked (02.02 scrna-qc-cluster:115, spatial-cluster-count:163)"
+     },
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
+   },
+   "n": "3"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py prepare --project projects/<title>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "prose",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:90",
+      "tool": "scrna_qc_cluster.prepare"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "handled": [
+       0,
+       1
+      ],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:90",
+      "tool": "scrna_qc_cluster.prepare",
+      "unhandled": [
+       2,
+       3
+      ],
+      "unhandled_emit_sites": {
+       "2": [
+        "gars/_system/wrapperlib.py:925"
+       ],
+       "3": [
+        "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:355"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:90-91",
+    "templates": [
+     "T5"
+    ],
+    "text": "4. Run `prepare`. Exit 1 → reply T5 (same rule). Exit 0 → it wrote the script, `submit.sh` and the reproducibility bundle; report nothing yet.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "helper exit codes",
+     "negative scope rules"
+    ],
+    "evidence": "the generated script, `submit.sh`, `reproducibility/`",
+    "inherited_from": "_shape_downstream",
+    "inputs": [
+     "the resolved input and the config"
+    ],
+    "kind": "judgment",
+    "note": "The extractor's static exit 2 (wrapperlib.py:925, scripts tree not generated-only) is reachable here (downstream-v2 key) and has no branch; exit 3 has none either.",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "Generation is code.",
+    "silent": [
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
+   },
+   "n": "4"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:92",
+      "tool": "executor.submit"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2
+      ],
+      "handled": [],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:92",
+      "tool": "executor.submit",
+      "unhandled": [
+       1,
+       2
+      ],
+      "unhandled_emit_sites": {
+       "1": [
+        "gars/_system/executorlib.py:1420",
+        "gars/_system/executorlib.py:1431"
+       ],
+       "2": [
+        "gars/_system/executorlib.py:1395",
+        "gars/_system/executorlib.py:1419"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:92-92",
+    "templates": [],
+    "text": "5. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <sub-stage dir>/submit.sh`. Capture its `job_id`.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper",
+     "scheduler",
+     "guard"
+    ],
+    "controls": [
+     "typed tool calls",
+     "run markers bound to script hashes",
+     "guard deny rules"
+    ],
+    "evidence": "the submission record and STATUS SUBMITTED, when it succeeds",
+    "inherited_from": "_shape_downstream",
+    "inputs": [
+     "the generated submit.sh",
+     "the dataset row and executor descriptor (venue preflight)"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R4",
+    "rung_why": "As in the wrapper shape: no branch for a refused submission.",
+    "silent": [
+     {
+      "decision": "What to do when GARS's pre-submission check refuses the job",
+      "defects": [
+       "D12"
+      ],
+      "detection": 5,
+      "fix": "Branch on submit's exit: 1 or 2 sends the failure template with the refusal verbatim and stops; settings change only on the user's word",
+      "fix_rung": "R4",
+      "goes_wrong": "Before a job is queued, the executor checks the dataset's class, purpose and route (the venue rules) and refuses a duplicate. The router's Definitions say to report every refusal and stop (02:118), but the sub-stage's submit step says only to capture job_id and the next step announces 'Submitted as job <job_id>' with no branch for exit 1 or 2, and nothing checks that the rule was followed; the model either announces a submission that did not happen, or changes the executor or memory settings itself to get past the refusal",
+      "id": "W-submit",
+      "kind": "unchecked",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A setting changed without the user, or a false 'submitted'; the next status display shows nothing was queued"
+     },
+     {
+      "decision": "How to spell a call the guard accepts only through the dispatcher",
+      "defects": [
+       "D15"
+      ],
+      "detection": 2,
+      "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+      "fix_rung": "R0",
+      "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+      "id": "G-door",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     }
+    ]
+   },
+   "n": "5"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:93",
+      "tool": "executor.status"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2
+      ],
+      "handled": [],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:93",
+      "tool": "executor.status",
+      "unhandled": [
+       1,
+       2
+      ],
+      "unhandled_emit_sites": {
+       "1": [
+        "gars/_system/executorlib.py:1448"
+       ],
+       "2": [
+        "gars/_system/executorlib.py:1395"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:93-93",
+    "templates": [
+     "T2"
+    ],
+    "text": "6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait or poll.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "fixed response templates",
+     "negative scope rules"
+    ],
+    "evidence": "STATUS refreshed; T2",
+    "inherited_from": "_shape_downstream",
+    "inputs": [
+     "submit's job_id"
+    ],
+    "kind": "judgment",
+    "note": "The status call's exits 1 and 2 have no branch (D13).",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R4",
+    "rung_why": "One status call and a fixed hand-off; the call's direct spelling is refused wherever a non-public project exists (G-door), and T2's 'Submitted to Slurm' and squeue line are template defects (D18).",
+    "silent": [
+     {
+      "decision": "How to spell a call the guard accepts only through the dispatcher",
+      "defects": [
+       "D15"
+      ],
+      "detection": 2,
+      "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+      "fix_rung": "R0",
+      "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+      "id": "G-door",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     }
+    ]
+   },
+   "n": "6"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94",
+      "tool": "executor.status"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2
+      ],
+      "handled": [],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94",
+      "tool": "executor.status",
+      "unhandled": [
+       1,
+       2
+      ],
+      "unhandled_emit_sites": {
+       "1": [
+        "gars/_system/executorlib.py:1448"
+       ],
+       "2": [
+        "gars/_system/executorlib.py:1395"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:94-95",
+    "templates": [
+     "T3"
+    ],
+    "text": "7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`. If still active, reply T3, stop; the status call has already refreshed STATUS.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "definitions shared with helper code",
+     "negative scope rules"
+    ],
+    "evidence": "STATUS refreshed by the status call",
+    "inherited_from": "_shape_downstream",
+    "inputs": [
+     "the job id from STATUS",
+     "the scheduler"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "As in the wrapper shape (W-poll); here 'not yet terminal' is the only branch, so a FAILED status falls to collect, whose gate refuses it (D21).",
+    "silent": [
+     {
+      "decision": "When to refresh a submitted job's STATUS, and who does it",
+      "defects": [
+       "D10",
+       "D13"
+      ],
+      "detection": 2,
+      "fix": "The router calls status once before routing a SUBMITTED or RUNNING sub-stage",
+      "fix_rung": "R0",
+      "goes_wrong": "STATUS moves from SUBMITTED to VALIDATING when executorlib.py status (or collect's own gate) asks the scheduler, but the router stops on SUBMITTED or RUNNING and sends the user to squeue, and every sub-stage's step 2 stops too; the sub-stage's own status step is behind both, so it runs only if the model decides to poll on its own or the user runs a status command a template showed them. A finished job can look 'still running' indefinitely, or the model polls in a loop the scope forbids",
+      "id": "W-poll",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "A stall the user has to sort out, and a visible one; but every assay passes through it"
+     },
+     {
+      "decision": "How to spell a call the guard accepts only through the dispatcher",
+      "defects": [
+       "D15"
+      ],
+      "detection": 2,
+      "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+      "fix_rung": "R0",
+      "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+      "id": "G-door",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     },
+     {
+      "decision": "Which job id to ask the scheduler about on a later visit",
+      "detection": 2,
+      "fix": "The status call takes the sub-stage, and code looks up its recorded job",
+      "fix_rung": "R0",
+      "goes_wrong": "Step 7 calls status with <job_id>, but a STATUS line carries a job id only while SUBMITTED or RUNNING; a VALIDATING or STALE line carries none, so the model takes the id from its memory of an earlier session or from somewhere else",
+      "id": "W-jobid",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "A wrong id fails loudly (status exits 1 for an unknown job) and status updates only the job submit recorded"
+     }
+    ]
+   },
+   "n": "7"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py collect --project projects/<title> --model \"<the exact model id you are running as>\" --h5ad-from <the sub-stage that supplied the matrix>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "prose",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:96",
+      "tool": "scrna_qc_cluster.collect"
+     },
+     {
+      "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:98",
+      "tool": "executor.status"
+     },
+     {
+      "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": true,
+        "fresh": true,
+        "fresh_declared": true,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "inline",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:99",
+      "tool": "executor.status"
+     }
+    ],
+    "exit_branches": [
+     {
+      "emitted": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "handled": [
+       0,
+       1,
+       2
+      ],
+      "prose_handling": [],
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:96",
+      "tool": "scrna_qc_cluster.collect",
+      "unhandled": [
+       3
+      ],
+      "unhandled_emit_sites": {
+       "3": [
+        "gars/_system/wrapperlib.py:185",
+        "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py:406"
+       ]
+      }
+     }
+    ],
+    "file_actions": [],
+    "prose_flags": [
+     {
+      "allowed_where_intended": null,
+      "flag": "--model",
+      "in_command": true,
+      "prohibited": false,
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:96",
+      "target_tool": "scrna_qc_cluster.collect",
+      "value": "\"<the exact model id you are running as>\""
+     },
+     {
+      "allowed_where_intended": null,
+      "flag": "--h5ad-from",
+      "in_command": true,
+      "prohibited": false,
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:97",
+      "target_tool": "scrna_qc_cluster.collect",
+      "value": "<the sub-stage that supplied the matrix>"
+     }
+    ],
+    "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:96-99",
+    "templates": [
+     "T4"
+    ],
+    "text": "8. If the job has finished, run `collect` with `--model \"<the exact model id you are running as>\"` and `--h5ad-from <the sub-stage that supplied the matrix>` (decision 0024). Exit 2 → the run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4, stop. Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model",
+     "helper"
+    ],
+    "controls": [
+     "typed tool calls",
+     "exit gates that check content",
+     "run markers bound to script hashes",
+     "helper exit codes",
+     "history entries written by helpers"
+    ],
+    "evidence": "`OUTPUTS.tsv`, STATUS COMPLETE or FAILED",
+    "inherited_from": "_shape_downstream",
+    "inputs": [
+     "the finished run",
+     "the supplying sub-stage's name, carried in the conversation",
+     "the model's own id"
+    ],
+    "kind": "judgment",
+    "note": "Exit 3 (no such project) has no branch.",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "The gate is code, but the supplier the model names (--h5ad-from, --counts-from) comes from the conversation (D-supplier), and the model id under a rule nothing checks (G-model).",
+    "silent": [
+     {
+      "decision": "Which sub-stage to name as the input's supplier at collect",
+      "detection": 8,
+      "fix": "collect derives the supplier from the resolver",
+      "fix_rung": "R0",
+      "goes_wrong": "collect records the supplier the model passes (--h5ad-from, --counts-from) without checking it; on the later visit that collects, the model carries or re-derives it from the conversation",
+      "id": "D-supplier",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 6,
+      "why_rank": "False provenance in the permanent record; nothing checks the line"
+     },
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     },
+     {
+      "decision": "How to spell a call the guard accepts only through the dispatcher",
+      "defects": [
+       "D15"
+      ],
+      "detection": 2,
+      "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+      "fix_rung": "R0",
+      "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+      "id": "G-door",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 4,
+      "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's"
+     },
+     {
+      "decision": "Which model id to pass as --model",
+      "detection": 8,
+      "fix": "The helper takes the id from the harness, or records `unknown`; never from the model's own words",
+      "fix_rung": "R0",
+      "goes_wrong": "The contracts ask for the exact id the harness reports and say to omit the flag rather than guess (00:267-270; e.g. 02.02 rnaseq-de:122-123); decision 0024 makes the model part of a stage's provenance. The helpers write the value verbatim into the HISTORY.md entry and the run's manifest (stage00_register.py:728, stage01_samplesheet.py:1101, stage03_analysis.py:441, each wrapper's collect, e.g. wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py:263-267), and nothing checks it against the model actually running",
+      "id": "G-model",
+      "kind": "unchecked",
+      "occurrence": null,
+      "severity": 6,
+      "why_rank": "False provenance in the permanent record; no template shows the id back, so only reading HISTORY.md reveals it"
+     }
+    ]
+   },
+   "n": "8"
+  },
+  {
+   "extracted": {
+    "calls": [
+     {
+      "command": "date",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": false,
+        "public": false
+       },
+       "allowed_where_intended": false,
+       "dispatcher_allowed_by_workspace": {},
+       "intended_workspace": "public",
+       "refusal": "Blocked: {\"alternative\": \"Next: use a file command (ls cat head tail stat shasum wc grep rg find), or a typed call, python3 _system/tool_call.py <tool> '<json>', for a tool named in _system/tools/registry.json.\", \"field\": \"command\", \"message\": \"this helper, interpreter or executable is not registered (R-092; decision 0058).\", \"rule\": \"R-092\", \"source\": \"spec \\u00a79.1\\u2013\\u00a79.6; decision 0058"
+      },
+      "kind": "implicit",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:101",
+      "tool": null
+     }
+    ],
+    "exit_branches": [],
+    "file_actions": [
+     {
+      "allowed_by_workspace": {
+       "closed": false,
+       "fresh": false,
+       "fresh_declared": false,
+       "mixed": true,
+       "public": true
+      },
+      "path": "projects/{project}/HISTORY.md",
+      "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:100",
+      "tool": "Edit"
+     }
+    ],
+    "prose_flags": [],
+    "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:100-101",
+    "templates": [
+     "T6"
+    ],
+    "text": "9. Exit 0 → append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>` with today's date, and reply T6.",
+    "wait": {
+     "accept_tokens": [],
+     "kind": null,
+     "templates": []
+    }
+   },
+   "judgment": {
+    "actor": [
+     "model"
+    ],
+    "controls": [
+     "history entries written by helpers",
+     "fixed response templates",
+     "written rules only",
+     "guard deny rules"
+    ],
+    "evidence": "an appended `HISTORY.md` entry; T6",
+    "inherited_from": "_shape_downstream",
+    "inputs": [
+     "collect's `history_entry`"
+    ],
+    "kind": "judgment",
+    "question": 1,
+    "rung_now": "R5",
+    "rung_target": "R0",
+    "rung_why": "Copying is written, but the date has no source the agent can reach.",
+    "silent": [
+     {
+      "decision": "What today's date is, for the HISTORY.md entry",
+      "defects": [
+       "D17"
+      ],
+      "detection": 9,
+      "fix": "The helper stamps the date itself, as stage 00's finalize already does, and appends the entry",
+      "fix_rung": "R0",
+      "goes_wrong": "The helper leaves `<ISO-8601 date>` for the agent to replace (and stage 01's declaration lines are dated by the agent too), and no registered command reads the clock, so the permanent record carries the model's belief about the date",
+      "id": "G-date",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 2,
+      "why_rank": "A wrong but harmless detail in a record; nothing ever checks it"
+     },
+     {
+      "decision": "How to proceed when the guard refuses a step on a non-public project",
+      "defects": [
+       "D16"
+      ],
+      "detection": 2,
+      "fix": "Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops",
+      "fix_rung": "R4",
+      "goes_wrong": "On a project whose data class is not public, the guard refuses stage 01's checker, every nf-core and downstream wrapper subcommand except the DE wrapper's, the router's contrasts and apply, reads of _config/ and 01_samplesheets/, every agent-written script and every HISTORY.md append; no contract mentions it, so the model chooses between stopping, asking the human to run steps, or trying other spellings",
+      "id": "G-closed",
+      "kind": "unsaid",
+      "occurrence": null,
+      "severity": 5,
+      "why_rank": "A dead end with no compliant road, but a loud one: the guard holds the line, so the risk is a stalled user and improvised workarounds, not a leak"
+     }
+    ]
+   },
+   "n": "9"
+  }
+ ]
+}

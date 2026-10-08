@@ -1,0 +1,45 @@
+{
+ "kind": "judgment",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "by": "step-map lane lead (claude-opus-5-5)",
+ "date": "2026-10-07",
+ "inherits": "_shape_wrapper",
+ "steps": {
+  "6": {
+   "actor": [
+    "model",
+    "helper"
+   ],
+   "inputs": [
+    "submit's job_id"
+   ],
+   "evidence": "STATUS refreshed; T2",
+   "controls": [
+    "typed tool calls",
+    "fixed response templates",
+    "negative scope rules"
+   ],
+   "rung_now": "R5",
+   "rung_target": "R4",
+   "question": 1,
+   "rung_why": "Here step 6 calls status once before T2; the call's direct spelling is refused wherever a non-public project exists (G-door), and T2's 'Submitted to Slurm' and squeue line are template defects (D18).",
+   "silent": [
+    {
+     "id": "G-door",
+     "decision": "How to spell a call the guard accepts only through the dispatcher",
+     "goes_wrong": "In a workspace holding any non-public project, the guard refuses the direct spelling of submit, status, the resolver and the DE wrapper, which is how every contract writes them, and accepts only tool_call.py with JSON arguments; the model translates each call itself",
+     "severity": 4,
+     "detection": 2,
+     "occurrence": null,
+     "why_rank": "The refusal names the dispatcher, so the road is recoverable, but the argument translation is the model's",
+     "fix": "Contracts spell door calls through the dispatcher, or the guard maps the direct spelling for a public project",
+     "fix_rung": "R0",
+     "defects": [
+      "D15"
+     ],
+     "kind": "unsaid"
+    }
+   ]
+  }
+ }
+}

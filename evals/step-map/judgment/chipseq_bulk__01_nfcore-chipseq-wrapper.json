@@ -1,0 +1,8 @@
+{
+ "kind": "judgment",
+ "sha": "a626cdc2337246e972a198b026d53ce836416321",
+ "by": "step-map lane lead (claude-opus-5-5)",
+ "date": "2026-10-07",
+ "inherits": "_shape_wrapper",
+ "steps": {}
+}
