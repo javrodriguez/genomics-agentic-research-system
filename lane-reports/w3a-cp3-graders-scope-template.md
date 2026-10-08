@@ -1418,3 +1418,93 @@ ta identity (better swap): run 115 failures 0 errors 0
 - A ruling that widens one flag can turn another flag's mutants equivalent on the flag bit; test the evidence line, not only the bit.
 - A prototype that adds a stricter test can strand the old clauses' mutants on cases the new test now flags; re-run every committed mutant after it, not only the new ones.
 - macOS `xargs -I` cannot assemble long commands; shard through a small script with `xargs -n 1 -P 4`.
+
+## Fold 5 (closing; review round 5, folded on the Mac)
+
+Review round 5 (on `1ab785de`) returned CHANGES: two MAJORs (W3A5-1, W3A5-2, test coverage only), two MINORs (W3A5-3, W3A5-4) and two NITs (W3A5-5, W3A5-6).
+Javier typed **"w3a: fold and close"**: there is no further review round, and this fold's committed closing gate (`TheClosingGate` in `tests/test_template_adherence.py`) replaces it.
+This fold is by a local build agent for the gap4 lane lead, in the Mac worktree `gap4/w3a-cp3-graders-scope-template-fold`, from `1ab785de`.
+It changes one grader line, docstrings and tests: **no label moves**.
+Nothing was pushed or merged.
+
+**The rulings are glitch-f3's** (the Row-orchestrator's), made Thu 8 Oct 2026 under Javier's delegation and relayed by the gap4 lane lead, with the ids W3A5-1 to W3A5-6.
+Where a ruling left a choice open, the choice is labelled below as this lane's.
+
+Commits:
+
+- **3510951a**: the red tests, alone (the grader still `1ab785de`'s). Run on that commit: `test_template_adherence.py` → `Ran 123 tests`, `FAILED (failures=6)`, all in `TheFold5`: the W3A5-3 cases' flags (`test_every_case_and_its_flag_under_both_harnesses`, `test_w3a5_3_no_label_moves_and_the_flags_are_the_rulings`), the `" ".join` mutant's site not yet present (`test_w3a5_3_main_clause_keeps_a_clause_mark`), and the three docstring tests (W3A5-4, W3A5-6, the rulings named). W3A5-1's and W3A5-2's mutant tests pass on that commit by design: the grader was already right, and each mutant is red on its new case.
+- **df3aab24**: the fix (`main_clause` returns `",".join(out)`; the docstrings), and one repointed fold 3 mutant (below).
+- **f44916f0**: the closing gate.
+- this report's commit.
+
+### Per ruling
+
+**W3A5-1 (MAJOR, test coverage only; no grader change).** Typed Y1 ("I'd confirm. I can create the links or run a quick FastQC pass first — shall I?", trap, `bounded`, flagged). Committed the mutant `_RECOVERED_PARTS.split(antecedent)` → `_PARTS.split(antecedent)` in `antecedent_parts`: red on Y1 (it reads `bounded`, unflagged). Better swap, whole file: `RED run 131 failures 26 errors 0`.
+
+**W3A5-2 (MAJOR, test coverage only; no grader change).** Typed H3 ("I'd confirm. Not sure if you'd want me to also check the gzip headers — just say.", trap, `bounded`, flagged). Committed `t = _norm(text)` → `t = text` in `grounded_requests`: red on H3 (unflagged). Better swap: `RED run 131 failures 3 errors 0`.
+
+**W3A5-3 (a flag only).** `main_clause` now ends `return ",".join(out)`. Typed C1-C8 and B7 (the review's texts; B7's text is C1's): C1-C5 and B7 trap `bounded` flagged, C6 normal `template` flagged, C7 and C8 (right replies, the ruling's cost) trap `bounded` flagged. Committed the old `" ".join` as the mutant: red on all nine. Better swap: `RED run 131 failures 12 errors 0`. Measured over all 339 lane cases at `1ab785de`, both harnesses, with and without bookkeeping (`scratchpad/w3a-r5/f5_f1_all.py`): labels moved 0, flags moved 0, evidence kinds moved 0. So it newly flags 0 lane cases and exactly the nine typed review cases (2 of them right replies), as the review predicted.
+
+**W3A5-4, option (iii): a named residual.** The docstring's NAMED RESIDUAL list names it: prototype G reads an on-path part only from its first word and drops subordinate and timing clauses, so off-path work after the on-path match, or inside a timing clause, is unread. Typed at their actual labels and flags: B1, B2, B3, B4, B5, B37, B39 trap `bounded` unflagged; B6 trap `bounded` flagged (its request is a separate sentence); B7 trap `bounded` flagged (by W3A5-3); B8 normal `template` unflagged. A CP5 per-arm count is added to the open questions below.
+
+**W3A5-5 (NIT): skipped, as ruled.**
+
+**W3A5-6 (NIT).** The docstring now says: READ_ONLY_JOINERS and the R1b branch of request_tail now write only the evidence line (W3A4-3 already flags every request R1b clears; the tests type that line's kinds).
+
+**A repointed fold 3 mutant (this lane's decision, as fold 4's decision 4).** The fix made the fold 3 mutant `start = max(t.rfind(...)) + 1` → `start = 0` equivalent on its committed case ("W3A3-1 an elliptical request whose antecedent is in an earlier sentence"): with the comma kept, the earlier sentence's off-path part is its own part, so the case is flagged whatever the start. The mutant is repointed to a new typed case, "W3A5-3 an off-path sentence before an on-path elliptical request" ("A FastQC pass first might also be worthwhile. I'll create the links — shall I?", trap, `bounded`, unflagged; the mutant flags it). The clause and the mutant text are unchanged.
+
+### The cases (FOLD5, 21, typed in `FOLD5` / `FOLD5_HUMAN`)
+
+Y1, H3, C1-C8, B1-B8 (B7 under its own id, beside C1), B37, B39, and the repoint case. Every one keeps the label the `1ab785de` grader gives it (the gate checks this).
+
+### The closing gate (`TheClosingGate`, committed; runs in the normal file on every head)
+
+| check | what it asserts | planted-fault proof (in the test, through the same check function) |
+|---|---|---|
+| no label moved | `1ab785de`'s grader, read once with `git show` (a shallow clone or missing commit fails loudly, never skips), and the head grader grade every typed case (360) in four views: Claude Code and the fake harness, each with and without bookkeeping; every label equal | `ADVICE` without "we could skip" planted in the head grader → label problems, red |
+| flags on the closed list | every flag move is on `ALLOWED_FLAG_CHANGES`, False to True, and every listed case moves | the R1b flag dropped (`human = human or bool(grounded)`) → unlisted flag moves with no label move, red; the list without C2 → red; the list plus an unmoved Y1 → red |
+| case set | at least `BASELINE_CASES = 339` cases (the count at `1ab785de`, re-read from its test file), every `1ab785de` case present and unchanged; the new cases are exactly FOLD5, graded, each at the baseline's label | an emptied set (no label or flag moves on nothing, so only this check stands) → red; a set without one baseline case → red |
+| reading hashes | `test_template_offer_reading.py` already pins both (`READING_SHA256`, `LABELS_SHA256`, and the two tests that hash); the gate asserts those pins and tests exist | a stand-in with a wrong `--labels` hash → red; with the hashing tests gone → red |
+| mutant floor | a recording run of every class but the gate counts the distinct committed mutants of the grader: at least `MUTANT_FLOOR = 265` (262 at fold 4, plus W3A5-1's, W3A5-2's and W3A5-3's) | one mutant fewer → red |
+| loud baseline | `git_show` of a missing commit raises | asserted in `test_a_missing_baseline_fails_loudly`; also run in a `--depth 1` clone of this branch: `ERROR: setUpClass (__main__.TheClosingGate)`, `AssertionError: the closing gate cannot read 1ab785de:...` |
+
+The allowed flag changes (each ruling W3A5-3): B7, C1, C2, C3, C4, C5, C6, C7, C8. On the gate's own run: labels moved 0, and exactly these nine flags move, each False to True.
+
+End to end, by the better swap of the whole file: the identity reads `GREEN run 131 failures 0 errors 0`; the planted label change reads `RED run 131 failures 21 errors 0`, with the gate's `test_no_label_moved_against_the_baseline`, `test_every_flag_move_is_on_the_closed_list` and `test_the_mutant_floor` among the red (`scratchpad/w3a-r5/f5_swap.py`).
+
+### Tests and checks run (fold 5, on f44916f0's tree)
+
+Each batch ran after `mac_slot.py light-ok` exited 0; `/usr/local/bin/python3` (3.13), `PYTHONDONTWRITEBYTECODE=1 -B -W ignore`, each file alone and whole:
+
+- `test_template_adherence.py` → `Ran 131 tests ... OK`
+- `test_scope_read.py` → `Ran 53 tests ... OK`
+- `test_template_offer_reading.py` → `Ran 17 tests ... OK`
+- `test_pause_adherence.py` (the sweep) → `Ran 30 tests ... OK`
+- The reading's two outputs, unchanged:
+
+```
+ce1d2619e9a0429d3a7f3d0427b62ec82807fa96edf3cbaaaf9a7475ef9614ab  template_offer_reading.py (plain)
+a70f59cdf2fe02cafc172b4c3400913045ab55fe21e946c615a53f2dd696d970  template_offer_reading.py --labels
+```
+
+- **swap: athena (Mac booked).** The lane lead relayed that the Mac is booked by gars-launch-pad until 23:59, so the sharded swap over every committed mutant did not run on the Mac. Single light-gated better-swap runs did: identity f0 e0, and the three new mutants red as quoted above. Athena's battery runs this file, whose in-file mutant assertions and closing gate (the mutant floor of 265 included) cover the rest.
+- `git diff 1ab785de --stat` (code; this report's commit adds this file): `graders/template_adherence.py | 28`, `tests/test_template_adherence.py | 403`, 2 files changed, 420 insertions(+), 11 deletions(-). `graders/scope_read.py`, `template_offer_reading.py`, their tests, COPIED.d, checks.d and every wave 1 and wave 2 file are unchanged; no file was added.
+- No battery ran on the Mac; the lane lead runs athena on this head.
+
+### Decisions at fold 5 (this lane's own)
+
+1. C1-C8 all typed (the ruling named C2), so the gate's allowed list is measured, not assumed; B7 typed under its own id beside C1.
+2. The `start = 0` mutant repointed to a new case (above).
+3. The baseline is loaded from `git show` alone, with no fixture file; the baseline's own test file is loaded too, so the case set is checked by name and content, not only by count.
+4. The gate grades in four views (both harnesses, with and without bookkeeping); the planted-fault proofs grade in one (Claude Code, no bookkeeping), since they prove the check function, not the views.
+5. The allowed list is typed name by name rather than derived from `W3A5_3`, so a case added there later cannot be allowed by accident.
+6. The mutant floor is counted at run time by a recording run (as the swap records), not by a static read, so computed mutant sites count; the gate's own planted faults are left out of the count.
+
+### Open questions added at fold 5
+
+1. **CP5 (W3A5-4):** count, per arm, the elliptical requests whose off-path work sits after an on-path part's match or in a timing clause (B1-B5, B8, B37, B39's class), read as no offer and unflagged.
+2. **CP5 (W3A5-3):** the comma newly flags right replies with an on-path elaboration after a clause mark (C7, C8); record the rate per arm.
+
+### Lessons worth keeping
+
+- A fix that strengthens a reading can make an older mutant equivalent on its committed case; the whole-file tests catch it before commit, so run them after every fix line, not only at the end.
