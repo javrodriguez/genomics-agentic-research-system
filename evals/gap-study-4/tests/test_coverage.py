@@ -125,6 +125,17 @@ def git(*args: str) -> str:
     return proc.stdout.decode("utf-8")
 
 
+_CACHE: dict[tuple[str, ...], str] = {}
+
+
+def git_at(*args: str) -> str:
+    """git() for reads of fixed objects (a sha's tree, blobs, log, diff), cached per run. require_history()
+    and every check that must see the live repository call git() itself, uncached."""
+    if args not in _CACHE:
+        _CACHE[args] = git(*args)
+    return _CACHE[args]
+
+
 def require_history() -> None:
     """Outside a work tree, or in a shallow clone, the pins cannot be read: fail loudly."""
     if git("rev-parse", "--is-inside-work-tree").strip() != "true":
@@ -145,7 +156,7 @@ class Tree:
     def entry(self, path: str) -> tuple[str, str] | None:
         """(mode, type) of path at the commit, or None when absent."""
         if path not in self._entry:
-            out = git("ls-tree", self.commit, "--", path)
+            out = git_at("ls-tree", self.commit, "--", path)
             found = None
             for line in out.splitlines():
                 meta, _, name = line.partition("\t")
@@ -158,7 +169,7 @@ class Tree:
     def text(self, path: str) -> str | None:
         if path not in self._text:
             entry = self.entry(path)
-            self._text[path] = git("show", f"{self.commit}:{path}") if entry and entry[1] == "blob" else None
+            self._text[path] = git_at("show", f"{self.commit}:{path}") if entry and entry[1] == "blob" else None
         return self._text[path]
 
 
@@ -260,12 +271,12 @@ def pin_problems(commit: str) -> list[str]:
     out = []
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         out.append(f"the commit {commit!r} is not a full sha")
-    full = git("rev-parse", "--verify", f"{commit}^{{commit}}").strip()
+    full = git_at("rev-parse", "--verify", f"{commit}^{{commit}}").strip()
     if full != COMMIT:
         out.append(f"the commit {commit} is not the pinned 6 Oct commit {COMMIT}")
-    if not git("log", "-1", "--format=%cI", full).startswith(COMMIT_DATE):
+    if not git_at("log", "-1", "--format=%cI", full).startswith(COMMIT_DATE):
         out.append(f"the commit {commit} is not dated {COMMIT_DATE}")
-    if git("diff", "--name-only", SAME_GARS_AS, full, "--", "gars").strip():
+    if git_at("diff", "--name-only", SAME_GARS_AS, full, "--", "gars").strip():
         out.append(f"the gars/ tree at {commit} differs from {SAME_GARS_AS}'s")
     return out
 
@@ -475,7 +486,10 @@ class TheRows(Base):
     def test_mutant_header_and_second_table(self):
         self.assertRed(self.text.replace("| reach excerpt |", "| reach note |", 1), "the header is not exactly")
         self.assertRed(self.text + "\nnote\n\n| a | b |\n", "more than one table")
-        self.assertRed(with_cell(self.text, 0, "reach excerpt", "x | y"), "not a row of")
+        lines = self.text.splitlines()
+        at = row_lines(self.text)[0]
+        lines[at] = lines[at] + " an extra cell |"
+        self.assertRed("\n".join(lines) + "\n", "not a row of")
 
 
 class TheValues(Base):
