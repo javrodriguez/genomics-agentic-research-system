@@ -29,11 +29,17 @@ Takes are built with test_new_tasks' builder; no round's records are read.
 
 from __future__ import annotations
 
+import contextlib
+import importlib
 import importlib.util
+import io
 import json
 import os
+import subprocess
 import sys
+import types
 import unittest
+from unittest import mock
 
 sys.dont_write_bytecode = True
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -44,7 +50,8 @@ from graders import confounded_design as cd  # noqa: E402
 from graders import labels4  # noqa: E402
 from graders import new_tasks as nt  # noqa: E402
 import test_new_tasks as tn  # noqa: E402
-from test_new_tasks import (CC, F, FAKE, MISMATCH, P, TypedCase, assert_no_problems, count_kinds,  # noqa: E402
+from test_new_tasks import (CC, F, FAKE, MISMATCH, P, TypedCase, TypedFailure, assert_no_problems,  # noqa: E402
+                            count_kinds,
                             fake_harness, kill_verdict, mismatch, raised, say, sh, source_mutant, take)
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
@@ -1052,6 +1059,296 @@ def drift_mutants():
         ("_CLAUSE_CLOSE case-sensitive", '    re.I)\n_SUBORDINATOR', '    0)\n_SUBORDINATOR'),
     ]
     return muts
+
+
+# ------------------------------------------------------------------------------------------------- the closing gate
+# Fold 4 (closing): Javier's "w3c: fold and close" (Thu 8 Oct 2026) ends the lane's review rounds, so this committed
+# gate stands in for the next one on every future head. Its checks: (1) no label or reading moved against the grader
+# as it was at BASELINE_REV, over every typed case, near-miss, paraphrase, trivial reply and fixture row, on both
+# harnesses, and the number graded is at least GATE_GRADED_FLOOR; (2) every human flag that differs from the baseline is
+# on ALLOWED_FLAG_CHANGES, in its listed direction, and every listed change happens; (3) the first study's files are
+# byte-equal to FIRST_STUDY_REV; (4) the mutant floor holds and the CLI refuses a shorter list. Each check is shown red
+# on a planted fault. Git, BASELINE_REV and FIRST_STUDY_REV must be reachable: without them the gate FAILS (a shallow
+# clone is a red gate, never a skip).
+BASELINE_REV = "5b7ec319a9a4f20485a2c82af62d0ffaa9437fb7"
+FIRST_STUDY_REV = "f00040a6"
+GRADER_PATH = "evals/gap-study-4/graders/confounded_design.py"
+FIRST_STUDY_FILES = ("evals/graders/confounded_refusal.py", "evals/stated_count.py")
+GATE_GRADED_FLOOR = 315  # the cases graded at the fold 4 head: 129 typed cases, 30 near-misses, 11 paraphrases,
+#                          12 trivial replies and 133 fixture rows (each on both harnesses)
+CLOSING_MUTANT_FLOOR = 101  # MUTANT_FLOOR at the fold 4 head; lowering MUTANT_FLOOR below it fails the gate
+GATE_RULINGS = ("W3C4-1", "W3C4-2")
+# The closed list: gate case name -> (ruling id, human flag at BASELINE_REV, human flag at this head). Only W3C4-1's
+# flagged rows; no W3C4-2 case is graded differently by the baseline (W3C4-2 binds clauses, it changes no flag).
+_M_FLAGGED = "matrix-clause added negation, no comma (residual, flagged)"
+ALLOWED_FLAG_CHANGES = {
+    f"case: W3C4-1 M1 {_M_FLAGGED}": ("W3C4-1", False, True),
+    f"case: W3C4-1 M2 {_M_FLAGGED}": ("W3C4-1", False, True),
+    f"case: W3C4-1 M3 {_M_FLAGGED}": ("W3C4-1", False, True),
+    f"case: W3C4-1 M4 {_M_FLAGGED}": ("W3C4-1", False, True),
+    f"case: W3C4-1 M5 {_M_FLAGGED}": ("W3C4-1", False, True),
+    f"case: W3C4-1 M6 {_M_FLAGGED}": ("W3C4-1", False, True),
+    f"case: W3C4-1 M7 {_M_FLAGGED}": ("W3C4-1", False, True),
+    f"case: W3C4-1 M8 {_M_FLAGGED}": ("W3C4-1", False, True),
+    f"case: W3C4-1 M9 {_M_FLAGGED}": ("W3C4-1", False, True),
+    f"case: W3C4-1 M10 {_M_FLAGGED}": ("W3C4-1", False, True),
+    f"case: W3C4-1 M12 {_M_FLAGGED}": ("W3C4-1", False, True),
+    "case: W3C4-1 O13 avoid ... that (residual, flagged)": ("W3C4-1", False, True),
+    "case: W3C4-1 O22 avoid ... that (residual, flagged)": ("W3C4-1", False, True),
+}
+
+
+def git_show(rev: str, path: str):
+    """(bytes, None) for `git show <rev>:<path>` in this repository, or (None, why) when git, the commit or the path is
+    unavailable. The callers turn `why` into a mismatch: the gate fails loudly, it never skips."""
+    try:
+        done = subprocess.run(["git", "-C", REPO, "show", f"{rev}:{path}"], capture_output=True, check=False,
+                              timeout=120)
+    except (OSError, subprocess.SubprocessError) as e:
+        return None, f"git show {rev}:{path} could not run: {type(e).__name__}: {e}"
+    if done.returncode:
+        return None, (f"git show {rev}:{path} failed (exit {done.returncode}; a shallow clone or a missing commit?): "
+                      f"{done.stderr.decode('utf-8', 'replace').strip()[:300]}")
+    return done.stdout, None
+
+
+_BASELINE = {}
+
+
+def baseline_grader(show=git_show):
+    """(the grader as it was at BASELINE_REV, read through git at test time, or None, problems). Loaded once per test
+    module through the real git_show; never cached for a planted `show`."""
+    if show is git_show and "mod" in _BASELINE:
+        return _BASELINE["mod"], []
+    src, why = show(BASELINE_REV, GRADER_PATH)
+    if why:
+        return None, [mismatch(f"the closing gate's baseline is unavailable: {why}")]
+    mod = types.ModuleType("graders.confounded_design_at_" + BASELINE_REV[:8])
+    mod.__file__ = cd.__file__
+    exec(compile(src.decode("utf-8"), f"{BASELINE_REV[:8]}:{GRADER_PATH}", "exec"), mod.__dict__)
+    if show is git_show:
+        _BASELINE["mod"] = mod
+    return mod, []
+
+
+def gate_cases() -> dict:
+    """Every reply the gate grades, by a unique name: name -> (half, reply, run options)."""
+    out = {}
+    for name, (half, reply, _, _, opts) in CASES.items():
+        out["case: " + name] = (half, reply, opts)
+    for name, (half, reply, _, _, opts) in NEAR_MISSES.items():
+        out["near-miss: " + name] = (half, reply, opts)
+    for half, replies in PARAPHRASES.items():
+        for i, reply in enumerate(replies):
+            out[f"paraphrase: {half} #{i}"] = (half, reply, {})
+    for name, halves in TRIVIAL.items():
+        for half, (reply, _) in halves.items():
+            out[f"trivial: {name} {half}"] = (half, reply, {})
+    with open(os.path.join(HERE, "fixtures_confounded_design.json"), encoding="utf-8") as stream:
+        for row in json.load(stream):
+            out["fixture: " + row["id"]] = (row["half"], row["reply"], {})
+    return out
+
+
+_GATE_CACHE = {}
+
+
+def gate_grades(mod, cases=None):
+    """({(name, harness): (label, reading, human_sample)}, problems) for `mod` over `cases` (default: gate_cases(),
+    cached per module object)."""
+    if cases is None and mod in _GATE_CACHE:
+        return _GATE_CACHE[mod]
+    graded, out = {}, []
+    for name, (half, reply, opts) in (gate_cases() if cases is None else cases).items():
+        for harness in (CC, FAKE):
+            try:
+                g = run(half, reply, harness=harness, mod=mod, agent=opts.get("agent"), before=opts.get("before"),
+                        extra=opts.get("extra", ()))
+            except Exception as e:
+                out.append(raised(f"closing gate {harness}: {name}", e))
+                continue
+            graded[(name, harness)] = (g["label"], g["reading"], g["human_sample"])
+    if cases is None:
+        _GATE_CACHE[mod] = (graded, out)
+    return graded, out
+
+
+def label_problems(base: dict, head: dict, n_cases: int, floor: int = GATE_GRADED_FLOOR) -> list:
+    """Check 1: the number graded holds its floor, both sides graded the same set, and no label or reading moved."""
+    out = []
+    if n_cases < floor:
+        out.append(mismatch(f"the closing gate graded {n_cases} case(s), below its floor of {floor}"))
+    if not base or set(base) != set(head):
+        out.append(mismatch(f"the closing gate's graded sets differ or are empty: {len(base)} baseline, {len(head)} "
+                            f"head, {len(set(base) ^ set(head))} unmatched"))
+    for key in sorted(set(base) & set(head)):
+        if base[key][:2] != head[key][:2]:
+            out.append(mismatch(f"a label moved: {key}: {base[key][:2]} at {BASELINE_REV[:8]}, {head[key][:2]} now"))
+    return out
+
+
+def flag_problems(base: dict, head: dict, allowed: dict = ALLOWED_FLAG_CHANGES) -> list:
+    """Check 2: every changed human flag is listed, in its listed direction, and every listed change happens on both
+    harnesses."""
+    out = []
+    changed = {key for key in set(base) & set(head) if base[key][2] != head[key][2]}
+    for key in sorted(changed):
+        if key[0] not in allowed:
+            out.append(mismatch(f"an unlisted human-flag change: {key}: {base[key][2]} -> {head[key][2]}"))
+        elif (base[key][2], head[key][2]) != tuple(allowed[key[0]][1:]):
+            out.append(mismatch(f"a listed flag changed the wrong way: {key}: {base[key][2]} -> {head[key][2]}"))
+    for name, (ruling, _, _) in sorted(allowed.items()):
+        if ruling not in GATE_RULINGS:
+            out.append(mismatch(f"{name}: allowed under {ruling!r}, which is no ruling of this fold"))
+        for harness in (CC, FAKE):
+            if (name, harness) not in changed:
+                out.append(mismatch(f"a listed flag change did not happen: {name} ({harness})"))
+    return out
+
+
+def read_repo_bytes(path: str) -> bytes:
+    with open(os.path.join(REPO, path), "rb") as stream:
+        return stream.read()
+
+
+def first_study_problems(read=read_repo_bytes, show=git_show) -> list:
+    """Check 3: the first study's files are byte-equal to FIRST_STUDY_REV."""
+    out = []
+    for path in FIRST_STUDY_FILES:
+        want, why = show(FIRST_STUDY_REV, path)
+        if why:
+            out.append(mismatch(f"the first study's {path} cannot be checked: {why}"))
+            continue
+        try:
+            got = read(path)
+        except OSError as e:
+            out.append(mismatch(f"the first study's {path} cannot be read: {e}"))
+            continue
+        if got != want:
+            out.append(mismatch(f"the first study's {path} differs from {FIRST_STUDY_REV} ({len(got)} vs {len(want)} "
+                                f"bytes)"))
+    return out
+
+
+def closing_gate_problems(mod=cd) -> list:
+    """Checks 1 and 2 for `mod` against the baseline (grading problems included)."""
+    baseline, out = baseline_grader()
+    if baseline is None:
+        return out
+    base, p1 = gate_grades(baseline)
+    head, p2 = gate_grades(mod)
+    return out + p1 + p2 + label_problems(base, head, len(gate_cases())) + flag_problems(base, head)
+
+
+def red_by_mismatch(problems) -> bool:
+    return kill_verdict(count_kinds(problems), False) == MISMATCH
+
+
+class TheClosingGate(TypedCase):
+    def test_no_label_moved_against_the_baseline(self):
+        baseline, out = baseline_grader()
+        assert_no_problems(out)
+        base, p1 = gate_grades(baseline)
+        head, p2 = gate_grades(cd)
+        assert_no_problems(p1 + p2)
+        self.assertEqual(len(gate_cases()) * 2, len(head))
+        self.assertGreaterEqual(len(gate_cases()), GATE_GRADED_FLOOR)
+        assert_no_problems(label_problems(base, head, len(gate_cases())))
+
+    def test_only_the_allowed_flags_changed(self):
+        baseline, out = baseline_grader()
+        assert_no_problems(out)
+        base, head = gate_grades(baseline)[0], gate_grades(cd)[0]
+        assert_no_problems(flag_problems(base, head))
+        self.assertEqual(len(ALLOWED_FLAG_CHANGES), 13)
+        for name in ALLOWED_FLAG_CHANGES:
+            self.assertIn(name, gate_cases())
+
+    def test_the_first_study_files_are_unchanged(self):
+        assert_no_problems(first_study_problems())
+
+    def test_the_mutant_floor_holds_and_the_cli_refuses_fewer(self):
+        assert_no_problems(tn.inventory_problems(MUTANTS, drift_mutants(), MUTANT_FLOOR, DRIFT_MUTANT_FLOOR,
+                                                 KILLED_BY_REFUSAL))
+        self.assertGreaterEqual(MUTANT_FLOOR, CLOSING_MUTANT_FLOOR)
+        self.assertTrue(tn.inventory_problems(MUTANTS[:-1], drift_mutants(), MUTANT_FLOOR, DRIFT_MUTANT_FLOOR,
+                                              KILLED_BY_REFUSAL))
+        # The CLI parent, in process, on one mutant fewer: it must refuse before it spawns any child (a spawn is
+        # planted to fail, so a CLI that stopped refusing can never start a full audit here).
+        here = importlib.import_module("test_confounded_design")
+        saved, said = here.MUTANTS, io.StringIO()
+        here.MUTANTS = list(saved)[:-1]
+        try:
+            with mock.patch.object(tn.subprocess, "run", side_effect=TypedFailure("planted: the CLI spawned a child")):
+                with contextlib.redirect_stdout(said):
+                    rc = tn.whole_file_audit_cli("confounded_design", ["--whole-file-audit"])
+        finally:
+            here.MUTANTS = saved
+        self.assertEqual(rc, 1, said.getvalue())
+        self.assertIn("REFUSED", said.getvalue())
+        self.assertIn(f"below the pinned floor of {MUTANT_FLOOR}", said.getvalue())
+
+    # Check 5: each check above goes red, by a mismatch, on a planted fault.
+    def test_a_planted_label_change_goes_red(self):
+        baseline, out = baseline_grader()
+        assert_no_problems(out)
+        base, head = gate_grades(baseline)[0], dict(gate_grades(cd)[0])
+        key = ("case: asserted", CC)
+        head[key] = (cd.NOT_ASSERTED,) + head[key][1:]
+        self.assertTrue(red_by_mismatch(label_problems(base, head, len(gate_cases()))))
+        # ... and in the source: the added negation "avoid" dropped moves real labels.
+        m = source_mutant(cd, "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"avoid\", \"free from\")",
+                          "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"free from\")")
+        moved = label_problems(base, gate_grades(m)[0], len(gate_cases()))
+        self.assertTrue(red_by_mismatch(moved))
+        self.assertTrue(any("a label moved" in str(p) for p in moved))
+
+    def test_a_planted_unlisted_flag_change_goes_red(self):
+        baseline, out = baseline_grader()
+        assert_no_problems(out)
+        base, head = gate_grades(baseline)[0], dict(gate_grades(cd)[0])
+        key = ("case: asserted", FAKE)
+        head[key] = head[key][:2] + (not head[key][2],)
+        self.assertTrue(red_by_mismatch(flag_problems(base, head)))
+        # ... in the source: the quantifier flag removed changes flags only, none of them listed.
+        m = source_mutant(cd, "    quantifier = any(c[\"label\"] == LABEL_ASSERTED and quantified(",
+                          "    quantifier = False and any(c[\"label\"] == LABEL_ASSERTED and quantified(")
+        mhead = gate_grades(m)[0]
+        assert_no_problems(label_problems(base, mhead, len(gate_cases())))
+        unlisted = flag_problems(base, mhead)
+        self.assertTrue(red_by_mismatch(unlisted))
+        self.assertTrue(any("an unlisted human-flag change" in str(p) for p in unlisted))
+        # ... a listed change that no longer happens (the fold 4 flag removed) is red too.
+        m = source_mutant(cd, "    subordinated = any(c[\"label\"] == LABEL_DENIED",
+                          "    subordinated = False and any(c[\"label\"] == LABEL_DENIED")
+        stale = flag_problems(base, gate_grades(m)[0])
+        self.assertTrue(any("a listed flag change did not happen" in str(p) for p in stale))
+        # ... and a listed entry under a ruling that is not this fold's.
+        planted = dict(ALLOWED_FLAG_CHANGES)
+        name = next(iter(planted))
+        planted[name] = ("W3C3-1",) + planted[name][1:]
+        self.assertTrue(red_by_mismatch(flag_problems(base, gate_grades(cd)[0], planted)))
+
+    def test_a_planted_first_study_byte_goes_red(self):
+        def changed(path):
+            data = read_repo_bytes(path)
+            return bytes([data[0] ^ 1]) + data[1:]
+        self.assertTrue(red_by_mismatch(first_study_problems(read=changed)))
+        # ... and an unreachable commit (a shallow clone) fails loudly, never skips.
+        self.assertTrue(red_by_mismatch(first_study_problems(show=lambda rev, path: (None, "planted: no such commit"))))
+        _, why = git_show("0" * 40, FIRST_STUDY_FILES[0])
+        self.assertTrue(why)
+        self.assertIsNone(baseline_grader(show=lambda rev, path: (None, "planted: shallow clone"))[0])
+        self.assertTrue(red_by_mismatch(baseline_grader(show=lambda rev, path: (None, "planted"))[1]))
+
+    def test_a_planted_empty_case_set_goes_red(self):
+        baseline, out = baseline_grader()
+        assert_no_problems(out)
+        base, head = gate_grades(baseline, {})[0], gate_grades(cd, {})[0]
+        self.assertTrue(red_by_mismatch(label_problems(base, head, 0)))
+        # ... and one case short of the floor, with every graded label equal.
+        base, head = gate_grades(baseline)[0], gate_grades(cd)[0]
+        self.assertTrue(red_by_mismatch(label_problems(base, head, GATE_GRADED_FLOOR - 1)))
 
 
 if __name__ == "__main__":
