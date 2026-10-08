@@ -130,6 +130,35 @@ Carried to the drive and commit step (Q3): re-staging and re-checking each stage
 1. **Queue overflow.** glitch-f3's Q2 ruling lists "its queue overflows" among the faults. This lane keeps an overflow as its own health record without stopping the watcher (the record already routes the take as a gap). Stopping the watcher as well is a one-line change.
 2. **Merge bindings this lane feeds:** `sidecar.create_argv`'s default `user` (binding 1), `expect_from_argv` against preflight's `sidecar_expect` (binding 4, `cap_add` PENDING), `scan_record.read_login` on the union of both lanes' login fixtures (binding 5), `sidecar.PROGRAM` against the sidecar Dockerfile's copy target (binding 6), and the reply field `unreadable_consequential` with the two C3 constants (binding 7).
 
+## Fold 2 (lane review round 1)
+
+The source is the lane review, round 1 (`w4c_r1_findings.md`, verdict CHANGES, on `4bb964f8`).
+Every decision below is the lane lead's (the gap4 lane lead, Thu 8 Oct 2026); glitch-f3's Q1 and Q2 rulings from fold 1 still bind.
+Red tests `0a3b7f45` (sidecar 116 tests: 8 failures, 14 errors; scan_record 49: 3 failures, 9 errors), fixes `66ed845e`.
+On `66ed845e`: `test_sidecar.py` "Ran 116 tests ... OK", 67 mutants red; `test_scan_record.py` "Ran 49 tests ... OK", 20 mutants red; `--process-check` 27 planted forms refused, both modules ok; `copy_manifest.py --check` ok.
+Each new mutant was also proved red by a single whole-file swap in a `git archive` copy of the head, one process each; the copy diffed equal to the head afterwards.
+
+| Finding | Fix | Test | Mutant (whole-file swap, closing line) |
+|---|---|---|---|
+| W4C1-1 (MAJOR) the ast check was a deny-list | Default-deny by construction: per-module import allowlists of attribute chains (a module name is only ever the root of an allowed chain, so `x = os`, `socket.os`, `os.__dict__`, `os.popen`, `argparse._os`, `os.path.os` and `sys.modules` are refused); closed `from` imports; the builtins getattr, setattr, delattr, vars, globals, locals, `__import__`, exec, eval, compile, `__builtins__` and breakpoint refused anywhere; any `**` keyword refused; subprocess used only inside `inotifywait_factory`, with Popen only as a call. The modules lost their own `getattr` and `globals()` uses (`os.O_CLOEXEC`; `pending()` reads an explicit map). | `TestProcessCheck`: all 27 planted forms (every form in the finding, and the earlier ones) refused when applied to the real `box/sidecar.py`; both modules pass. | refused builtins emptied: "process check: 6 problem(s)", exit 1; os allowlist widened: "process check: 3 problem(s)"; `**` allowed: "process check: 1 problem(s)" |
+| W4C1-2 (MAJOR) stderr never drained after established | `_InotifyWatcher` drains stderr on every `read_ready`; each complete stderr line after "established" becomes a `STDERR_EVENT` (the line's class only, never its text), which is outside every table, so the watcher is stopped with a non-zero code. The `inotifywait_format` reason names the stderr lines. The inotify-tools behaviour is the reviewer's recollection, unverified; the fix fails closed either way. | FakeProc pipes, format filled in memory: a line after established faults; a line before it does not. | stderr ignored: "FAILED (failures=1)" |
+| W4C1-3 (MAJOR) an empty input passed | `scan` raises ScanError on an empty `files`, and on `secrets` with no `token` or `key` entry. | both refusals; a token alone and a key alone accepted | empty files: "FAILED (failures=1)"; no token or key: "FAILED (failures=2)" |
+| W4C1-4 (MAJOR) three clauses with no mutant | (a) `ctl_dir_ok()`: CTL_DIR under /tmp or /run, outside the evidence mount and the program folder, asserted at module load; (b) `_rearm_order_ok`; (c) `_owned`. | (a) `/srv/ev/ctl`, `/srv/ctl`, `/srv` refused; (b) a re-arm before its snapshot refused; (c) a login file owned by another uid (geteuid patched) refused | (a) "FAILED (failures=1)"; (b) "FAILED (failures=2)"; (c) "FAILED (failures=1)" |
+| W4C1-5 (MINOR) a moved consequential folder skipped the paths beneath | The guard dropped (`_move_targets` returns every consequential path beneath). | watch `out` and `out/plan.json`; `out` moved away logs both deletes | "FAILED (failures=1)" |
+| W4C1-6 (MINOR) kernel-forced names (IGNORED, UNMOUNT) | Named, no code change: the `inotifywait_events` PENDING reason, the module docstring and this report. | the reason text asserted | none (text only) |
+| W4C1-7 (MINOR) a new folder's race under -r | Named, no code change: the `watch_establish_s` PENDING reason, the docstring and this report. | the reason text asserted | none (text only) |
+| W4C1-8 (NIT) a watch path starting with "-" | `watch_path_ok`: no segment may start with "-" (create_argv and Sidecar). | `-x`, `a/-b`, `--run-tree` refused | "FAILED (failures=3)" |
+| W4C1-9 (NIT) a non-object request killed PID 1 | `_handle_request` with `_request_ok` (isinstance dict); serve uses it. | a list, a number, a string, non-JSON: each an ok false reply | "FAILED (errors=3)" |
+| W4C1-10 (NIT) five green mutants | One test each: nothing logged after a fault; a death while arming seen at once (`_arm_gave_up`); MIN_LENGTH email 6; `_survived`; `_finding_ok`. | as named | after a fault "FAILED (failures=1)"; death while arming "FAILED (failures=1)"; email 1 "FAILED (failures=1)"; survival "FAILED (failures=1)"; finding shape "FAILED (errors=1)" |
+| W4C1-11 (NIT) a non-callable rules scanner | `_require_scanner`: NotReady unless callable. | `RULES_SCANNER`, a string, a number | "FAILED (errors=3)" |
+
+Interface changes, stated exactly:
+- `box/sidecar.py`: `Sidecar`, `create_argv` and the rest keep their signatures; a watch path with a segment starting with "-" is now refused (ValueError). New names: `ctl_dir_ok()`, `watch_path_ok(p)`, `STDERR_EVENT`, `_handle_request(sc, raw)`. Importing the module raises RuntimeError if CTL_DIR breaks `ctl_dir_ok()`.
+- `box/scan_record.py`: `scan` keeps its signature; it now raises ScanError on an empty `files` or on `secrets` with no `token` or `key`, and NotReady (not TypeError) on a non-callable `rules_scanner`.
+- No PENDING field was added or removed; three reasons gained text (W4C1-2, -6, -7).
+
+Named residuals added (stub-take measurements): the names the kernel delivers whatever the subscription (IGNORED, UNMOUNT), which are watcher faults until measured; and the `-r` race, a file made and read inside a just-made folder before inotifywait watches it, which logs nothing.
+
 ## Lessons
 
 - A rename between a container's `/tmp` and a bind mount crosses mounts and fails; tests on one host filesystem hide it. A fake rename that fails between folders made it visible on the Mac.
