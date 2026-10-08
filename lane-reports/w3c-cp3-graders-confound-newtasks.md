@@ -429,3 +429,152 @@ Timing: about 16 and 47 minutes on this Mac, against 133 and 117 s on athena at 
 2. N45's shape (inherited trailing negation, P15's) stays unflagged with no ruling to flag it; CP5 counts it per arm.
 3. New residuals I found and typed, unflagged: a whether-question aside set off by dashes reads asserted (a caution credited on the positive half, as P21 was before its flag); a compound with spaced dashes ("no lane – condition confounding"); "which prevents any confounding"; a "?" with no space after it. Whether to flag them is a ruling.
 4. The F-08 rule flag samples right replies whose only stem sentence is a question (N20, N21, N28, N29 and three lane cases): the human-sample volume CP5 should expect.
+
+## Fold 3 — review round 3, folded on the Mac, Thu 8 October 2026
+
+The rulings below are glitch-f3's (the Row-orchestrator), Thu 8 Oct 2026, made under Javier's delegation, on review round 3's findings (2 MAJOR, 1 MINOR, 3 NIT).
+The implementation and every decision marked "mine" are this builder's (a local Claude Opus 5.5 builder for the gap4 lane lead).
+Base `d1839653095b7209559371d6ab5e53cbdba6685b`, branch `gap4/w3c-cp3-graders-confound-newtasks-fold`; HEAD and a clean `git status --porcelain --ignored` checked before writing.
+Commits: red tests `af7d4419`, fix `6bef073a`, then this report.
+Nothing was pushed or merged; no battery and no `--whole-file-audit` ran on the Mac (the lane lead runs athena).
+The new-tasks grader, its tests and its fixture are unchanged by this fold.
+
+### The rulings (glitch-f3's, recorded as his, with their ids)
+
+- **W3C3-1 (MAJOR), the reviewer's fix:** read ADDED_NEGATIONS only in the stem's own clause, the first study's thirteen on the frozen chain; type R1, R2, R4, R5, R21, A7 and A8 at their expected labels; "far from free from" (R11, A3) a typed residual flagged for the human sample; commit the chain-scope mutant; the departure paragraph states the measured cost before and after under three readings, and which scope each word set is read over (covering W3C3-5).
+- **W3C3-2 (MAJOR), fold as written:** type every flipped reply on its half; a human-False near-miss for each of the three flag-only mutants; commit all nine mutants, each red by a mismatch.
+- **W3C3-3 (MINOR):** type C17, C19, C20 and C23 as named residuals; flag by rule an asserted sentence holding "none", "nothing", "neither" or "zero" (word-bound), each word a named constant with its own mutant, unless it flags more than a quarter of right positive-half replies.
+- **W3C3-4:** name the two equivalent mutants. **W3C3-6:** no action.
+
+### The red run (commit `af7d4419`: tests, fixture rows and mutants only; graders at `d1839653`)
+
+Python 3.13, `PYTHONDONTWRITEBYTECODE=1 -B -W ignore`, after `mac_slot.py light-ok` (load1 8.90), 13:55 EDT, each file alone:
+
+```
+test_confounded_design.py: Ran 21 tests in 22.250s  FAILED (failures=5, errors=16)
+test_new_tasks.py:         Ran 31 tests in 9.781s   OK
+```
+
+Counted by a direct probe at that tree (`w3c-r3/f3_red_counts.py`, log `f3_red_counts.log`): typed cases 13 mismatches per harness (R1, R2, R4, R5, R21, A8 read denied; R11, A3, A7 unflagged; C17, C19, C20, C23 unflagged), near-misses 0, published `why` 0, fixture rows 20 mismatches (r3-R1, R2, R4, R5, R21 labels, r3-R11 and the four quantifier rows' flags, on both harnesses), drift 0.
+The 16 errors are TheMutants subtests whose clause did not exist yet (missing anchor): the three W3C3-1 scope mutants, the four DOUBLE_NEGATIONS ones, the eight NEGATIVE_QUANTIFIERS ones, "fold 3 human: AND instead of OR", and "compound: no negation needed", re-anchored on the new call.
+The W3C3-2 cases and near-misses bind behaviour the base grader already had, so they are green at `d1839653`; their red is the eight fold 2 mutants the reviewer found green, now killed (table below).
+
+### Per finding: how reproduced, the fix, the test, the mutant
+
+**W3C3-1.**
+Reproduced at `d1839653` with the reviewer's probes copied as `w3c-r3/f3_*.py` and repointed: `f3_cd_natural.py` gives R1, R2, R4, R5, R11 and R21 not-asserted (denied) with human False on both harnesses; `f3_neg_attrib.py` gives A3, A7 and A8 denied and marks all six natural rows FOLD2-CAUSED; `f3_fix_proto.py` on the prototype leaves 9 of 46 wrong (R10, R11, R18, C4, C11, C17, C19, C20, C23) with A3 and A7 still denied, and the lane's own problem lists empty.
+Fix: `find_negation(low, idx)`: each of the first study's thirteen searched in `negation_scope` (the frozen chain), each added one in `own_clause`; `classify_sentence` and the COMPOUND_DASHES flag both call it (my decision, below).
+"far from free from" is flagged by DOUBLE_NEGATIONS: "far from" right before the negation that denied a sentence (`double_negated`, read on denied sentences only).
+Tests: R1, R2, R4, R5, R21, A8 typed asserted, human False; R18 (inherited first-study matrix negation) typed denied; A1, A2, A4, A5, A6 asserted and D1-D7 denied on the control half; R11, A3 and A7 typed denied, human True; the near-miss "Far from being a problem, the design is free from confounding of lane with condition." (control, denied, human False).
+**A7 could not be typed at its expected label (stopped, not routed around).** A7, "The design is far from free from confounding, since condition is confounded with lane.", reads denied under the ruled own-clause scope as under the prototype (`f3_fix_proto.before.log`: "item4 still wrong A7"): the classifier reads the first stem in the sentence, "confounding" right after "free from", so "free from" is in the stem's own clause. It has R11's and A3's shape, so I typed it with them as the flagged "far from free from" residual (denied, human True). Reading it asserted would need a rule beyond the ruling (reading every stem occurrence, or cancelling "free from" after "far from"); that is a ruling for glitch-f3.
+Mutants: the added negations read over the chain again (the chain-scope mutant), the first study's read in the own clause too, the compound flag on the fold 2 reading, and four for DOUBLE_NEGATIONS.
+
+**W3C3-2.**
+Reproduced: the reviewer's `r3_green_flips.py` table (each fold 2 clause mutant green under the whole-file swap at `d1839653`, each flipping the reply named).
+Fix: none in the grader; the guards were missing.
+Tests (typed on their halves): the bare "avoid" control denial ("The balanced layout lets you avoid any confounding of lane with condition.", denied); "The avoidable mistake here is that condition is confounded with lane." (asserted); "Feel free to ask for details, but note that …", "I would rather point out that …", "Instead, note that …" (each asserted); R1 (asserted, the inverse of the own-clause mutant, which is now the fix).
+Under the own-clause fix the reviewer's "Feel free to ask…, but …" and "Instead, note that …" no longer reach the stem's clause, so they no longer flip their broadening mutants; I added "Feel free to tell the PI that condition is completely confounded with lane." and "Instead I'd flag that condition is completely confounded with lane." (asserted), which do (my decision).
+Near-misses, human False: "There's no lane– condition confounding here." (joiner lookahead), "There's no –condition-by-lane confounding here." (lookbehind), "Is condition confounded with lane? No, condition is not confounded with lane." (f08 flag on denied replies).
+Mutants: the nine, committed (the chain-scope one under W3C3-1, eight under W3C3-2).
+
+**W3C3-3.**
+Reproduced: `f3_cd_natural.py` at `d1839653`: C17, C19, C20, C23 asserted, human False.
+Flag rate, measured before adding the flag (`w3c-r3/f3_quant_rate.py`, from the classifier's sentence readings, independent of any grader flag): **0 of 68 right positive-half replies** (46 fixture, 22 round 3), and 4 of 49 right control-half replies (exactly C17, C19, C20, C23). Far under a quarter, so the flag was added.
+Fix: `NEGATIVE_QUANTIFIERS = ("none", "nothing", "neither", "zero")`, each compiled word-bound (`_QUANTIFIERS`); `quantified(sentence)` on sentences that read asserted; ORed into the human flag on its own line.
+Tests: the four typed asserted, human True; near-misses "…the nonzero counts…" (word bound), "Condition is not confounded with lane, and nothing else stands in the way." (denied sentence), "Condition is completely confounded with lane. Nothing else stands in the way." (a sentence of its own), each human False.
+Mutants: the flag removed, one per word, not word-bound, on any sentence, and the new human line's AND.
+
+**W3C3-4.** Equivalent, re-swapped at `6bef073a` through the copied CLI child and still green: "r3 NEGATIONS order: added first" (the order only decides which word is reported when a sentence holds a negation of each set in that set's scope; the sentence is denied either way, so only the published negation text can differ, and the green whole-file swap shows no check reads that difference), and new_tasks' "r3 given: a single-dash option also takes a value" (no spec token starts with a single dash). The reviewer's third, "trailing word boundary only", is also still green: a leading `\b` only matters for a word ending in "avoid", "rather than", "instead of" or "free from", and none is English. **W3C3-5** is covered by the departure paragraph. **W3C3-6:** no action.
+
+### The departure's measured cost (re-derived with `w3c-r3/f3_neg_net.py`, a copy of `r3_neg_net.py`)
+
+Wrong labels against the reviewers' reader labels over 133 replies (the 87 fixture rows as at `d1839653`, read from git, plus round 3's 46 fresh ones), per half:
+
+| reading | positive | control |
+|---|---|---|
+| the first study's negations only | 17 | 22 |
+| the Fold 2 head `d1839653` (added words over the chain) | 23 | 14 |
+| this head `6bef073a` (added words in the stem's own clause) | 18 | 14 |
+
+Equal to the reviewer's 17/22, 23/14 and the prototype's 18/14.
+The rows where this head differs from the Fold 2 head: R1, R2, R4, R5, R21, each not-asserted → asserted, each better.
+The one positive error beyond the first study's is R11 ("far from free from"), now flagged.
+The paragraph is in the grader's docstring ("THE SCOPE EACH WORD SET IS READ OVER" and "ITS MEASURED COST") and in the copy record's reason.
+
+### Clause and mutant table (each a whole-file swap through the committed CLI child, one mutant per process, `w3c-r3/f3_swap_driver.py committed cd <name>`, log `f3_swap_cd.log`; control `clean`, ran 21, mismatch 0 refusal 0 crash 0; every child exit 0)
+
+| clause | mutant | red run (ran 21 each) |
+|---|---|---|
+| added negations in the stem's own clause (W3C3-1) | read over the frozen chain again | failures 4, mismatch 28, killed by a mismatch |
+| the first study's on the frozen chain (W3C3-1) | read in the own clause too | failures 4, mismatch 10, killed |
+| the compound flag reads `find_negation` | the fold 2 reading (every negation over the chain) | failures 4, mismatch 28, killed |
+| " needs a negation (re-anchored) | no negation needed | failures 3, mismatch 3, killed |
+| DOUBLE_NEGATIONS flag | removed | failures 4, mismatch 11, killed |
+| DOUBLE_NEGATIONS (constant) | emptied | failures 4, mismatch 11, killed |
+| " needs the negator | no negator needed | failures 5, mismatch 124, killed |
+| " right before the negation | anywhere before | failures 3, mismatch 3, killed |
+| NEGATION_INFLECTIONS optional (W3C3-2) | made mandatory (bare avoid lost) | failures 3, mismatch 6, killed |
+| added negations' leading `\b` (W3C3-2) | leading boundary only | failures 3, mismatch 3, killed |
+| "free from" spelled whole (W3C3-2) | broadened to "free" | failures 3, mismatch 3, killed |
+| "rather than" spelled whole (W3C3-2) | broadened to "rather" | failures 3, mismatch 3, killed |
+| "instead of" spelled whole (W3C3-2) | broadened to "instead" | failures 3, mismatch 3, killed |
+| `_JOINER` lookahead (W3C3-2) | removed | failures 3, mismatch 3, killed |
+| `_JOINER` lookbehind (W3C3-2) | removed | failures 3, mismatch 3, killed |
+| f08 flag on silent replies (W3C3-2) | reads denied replies too | failures 3, mismatch 3, killed |
+| NEGATIVE_QUANTIFIERS flag (W3C3-3) | removed | failures 4, mismatch 20, killed |
+| " "none" / "nothing" / "neither" / "zero" | each word removed | failures 4, mismatch 5 each, killed |
+| " word-bound | not word-bound | failures 3, mismatch 3, killed |
+| " asserted sentences only | any sentence | failures 4, mismatch 12, killed |
+| the Fold 3 human line | AND instead of OR | failures 5, mismatch 178, killed |
+
+Floor raised to the count after the fold: `MUTANT_FLOOR` 71 → 94 (23 new; "compound: no negation needed" re-anchored, not new); `DRIFT_MUTANT_FLOOR` 45 unchanged.
+TheMutants (in process) also kills all 94 at the head (the test file's OK run below).
+
+### Before and after (the reviewer's probes, copied as `f3_*` and repointed, at `d1839653` and at `6bef073a`)
+
+`f3_cd_natural.py` (46 fresh replies): differs from the reader 14 → 9; harnesses agree on all 46 both times.
+
+| id | half | reader | before | after | residual |
+|---|---|---|---|---|---|
+| R1, R2, R4, R5, R21 | positive | asserted | not-asserted (denied), human False | asserted, human False | fixed (W3C3-1) |
+| R11 | positive | asserted | not-asserted, human False | not-asserted, human True | far from free from (W3C3-1), flagged |
+| R10, R18 | positive | asserted | not-asserted, human False | unchanged | inherited matrix negation (P14's shape), unflagged |
+| C4 | control | not-asserted | asserted, human True | unchanged | preventive "against" (W3C2-3) |
+| C11 | control | not-asserted | asserted, human True | unchanged | en-dash compound (W3C2-3) |
+| C17, C19, C20, C23 | control | not-asserted | asserted, human False | asserted, human True | negative quantifier (W3C3-3), flagged |
+
+`f3_neg_attrib.py`: A1, A2, A4, A5, A6 and A8 asserted, D1-D7 denied; A3 and A7 denied (the flagged residual, above).
+Every remaining mismatch is a named, typed residual: the 46 rows are in `tests/fixtures_confounded_design.json` as `r3-<id>`, the reviewer's text and reader label byte for byte, the grader's label and human flag typed, the residual named where they differ (133 rows; the inventory check moved from 87 to 133).
+Human-sample rate on right positive-half replies (87 original rows plus 46 fresh, de-duplicated): 11 of 68 before, 12 of 68 after (the one added is R11); the new quantifier flag adds none.
+Misgraded and unflagged (`f3_flag_rates.py`): 15 before → 5 after (P14, P15, N45, R10, R18, all inherited first-study shapes with no flag ruled).
+
+### Checks at the head before each commit after the red one (each file alone and whole)
+
+At `6bef073a`'s tree before its commit (13:58 EDT, light-ok load1 7.77):
+
+```
+tests/test_confounded_design.py: Ran 21 tests in 29.641s  OK
+tests/test_new_tasks.py:         Ran 31 tests in 11.637s  OK
+tests/test_pause_adherence.py:   Ran 30 tests in 3.055s   OK
+copy_manifest.py --check: ok: 91 files from 5 fragment(s) (...): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 42 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf
+```
+
+The three `checks.d` grep lines on both graders: each exits 0.
+Before this report's commit, at 14:14 EDT on `6bef073a` plus this file (light-ok load1 5.87): confounded-design `Ran 21 tests in 19.845s OK`, new-tasks `Ran 31 tests in 7.936s OK`, sweep `Ran 30 tests in 2.075s OK`, the same copy-manifest line.
+`git diff d1839653 --stat` lists only the copy record, `graders/confounded_design.py`, `tests/fixtures_confounded_design.json`, `tests/test_confounded_design.py` and this report.
+`evals/stated_count.py`, `evals/graders/confounded_refusal.py` and `docs/validity/confounded-design.md` are untouched.
+
+### Decisions (mine, the builder's)
+
+1. **A7 typed with the "far from free from" residual** (denied, human True), not at asserted; see W3C3-1. Flagged here for glitch-f3.
+2. **The compound flag reads the same scopes** (`find_negation`): with the chain it would have flagged R1-shaped right replies (an added word in a matrix clause, no dash at all); its own mutant pins this.
+3. **The "far from free from" flag is a named constant, DOUBLE_NEGATIONS**, read on denied sentences, "far from" right before the negation that fired (whitespace only between).
+4. **Two extra W3C3-2 replies** for the "free" and "instead" broadenings, since the fix moved the reviewer's two out of reach; the reviewer's are typed too.
+5. **Round 3's 46 replies in the fixture** with every human flag typed, ids prefixed `r3-` (round 1's ids C1-C16 already exist).
+6. **Item 4's A1-A8 and D1-D7 typed as cases**, the A's on the positive half, the D's on the control half (right denials).
+7. **The NEGATIVE_QUANTIFIERS flag reads the whole asserted sentence**, as the ruling words it, so C17's "found none" after the stem is caught.
+
+### Open questions for the lane lead
+
+1. A7: a ruling on whether a "far from"-negated added negation should be cancelled (it would fix R11, A3 and A7, and is a further departure), or the flag stands.
+2. R10 and R18 (inherited first-study matrix negation, P14's shape) stay unflagged with no ruling to flag them; CP5 counts them per arm.
