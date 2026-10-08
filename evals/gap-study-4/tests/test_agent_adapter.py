@@ -515,6 +515,14 @@ class TestNextTouchClock(unittest.TestCase):
         for ok in (dict(started_at=0, ended_at=0), dict(started_at=1.0, ended_at=1.5), dict(started_at=1, ended_at=2)):
             self.assertEqual(aa.TurnResult(**full_turn_kw(**ok)).ended_at, ok["ended_at"])
 
+    def test_clock_finite_check_can_fail(self):
+        """The mutant: `_clock` without `math.isfinite` (the base's clause) lets every non-finite clock through."""
+        def no_isfinite(v):
+            return isinstance(v, (int, float)) and not isinstance(v, bool)
+        with mock.patch.object(aa, "_clock", no_isfinite):
+            found = clock_problems()
+        self.assertEqual(found, [f"{name}: accepted" for name in NON_FINITE])
+
 
 if __name__ == "__main__":
     unittest.main()

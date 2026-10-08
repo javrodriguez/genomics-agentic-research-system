@@ -53,7 +53,8 @@ THE RECORD. `TurnResult` carries, for one turn:
                     an adapter that forgot them would turn an out-of-memory kill (aborted, never
                     re-run) into a harness-error re-run (review round 2, W1B2-4)
     started_at, ended_at   REQUIRED keywords: the host clock (seconds since the epoch, an int or a float) at the
-                    turn's start and end; never defaulted (review round 3, W1B3-6: they defaulted to 0.0)
+                    turn's start and end; never defaulted (review round 3, W1B3-6: they defaulted to 0.0), and
+                    finite (W1B4-4: NaN and the infinities are refused)
     agent_output    REQUIRED bool: True when the host-captured stream holds at least one completed
                     agent message (text or tool call) for this turn. It is read from the stream's
                     event types, never from their content. A turn that produced no completed agent
@@ -70,6 +71,7 @@ No model is called anywhere in this module. Standard library only.
 
 from __future__ import annotations
 
+import math
 import os
 import sys
 from dataclasses import dataclass, asdict
@@ -124,7 +126,9 @@ REQUIRED_KEYWORDS = ("init", "api_errors", "counters", "started_at", "ended_at")
 
 
 def _clock(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool)
+    # W1B4-4 (w1b's next touch, item 2): finite too. A NaN compares False with every number, so a NaN start used to
+    # pass the start-before-end check; an infinity is no host clock either.
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
 
 
 @dataclass(frozen=True)
@@ -158,7 +162,7 @@ class TurnResult:
         if not isinstance(self.agent_output, bool):
             raise ValueError("agent_output must be a bool: did the turn's stream hold a completed agent message?")
         if not (_clock(self.started_at) and _clock(self.ended_at)):
-            raise ValueError("started_at and ended_at must be the host clock in seconds (an int or a float)")
+            raise ValueError("started_at and ended_at must be the host clock in seconds (a finite int or float)")
         if self.ended_at < self.started_at:
             raise ValueError("a turn cannot end before it starts")
 
