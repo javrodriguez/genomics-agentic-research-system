@@ -71,6 +71,7 @@ FAKE_VALUE = "FAKEVALUE-0123456789abcdef-PLANTED"
 CALLER = {"PATH": "/usr/bin:/bin", "HOME": "/home/op", "DOCKER_HOST": "unix:///run/user/1000/docker.sock",
           "XDG_RUNTIME_DIR": "/run/user/1000", "UNRELATED": "x"}
 ARMS = (harness_bookkeeping.CLAUDE_CODE, "codex", "gemini")
+LOGINS = dict(zip(ARMS, ("CLAUDE_CODE_OAUTH_TOKEN", "CODEX_API_KEY", "GEMINI_API_KEY")))
 
 
 class FakeRuntime:
@@ -490,8 +491,8 @@ class TestArmVariables(MutantCase):
                   | {"CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"})
         for arm in ARMS:
             got = rt.refused_variables(arm)
-            if got != closed - {rt.LOGIN_VARIABLE[arm]}:
-                out.append(f"{arm}: refused set {sorted(got ^ (closed - {rt.LOGIN_VARIABLE[arm]}))} off")
+            if got != closed - {LOGINS[arm]}:
+                out.append(f"{arm}: refused set {sorted(got ^ (closed - {LOGINS[arm]}))} off")
         if "CLAUDE_CODE_OAUTH_TOKEN" not in rt.refused_variables(rt.CODEX):
             out.append("arm O admits Anthropic's token")
         return out
