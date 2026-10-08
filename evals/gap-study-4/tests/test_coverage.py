@@ -39,6 +39,13 @@ WHAT A CITE MUST HOLD (cite_problems):
     excerpt is NOT a substring of the range without its first line, nor of the range without its last line;
   - a mode cite's mode is the one `git ls-tree` prints for that path at the commit, and its excerpt is the mode.
 
+THE NOTES (this lane's decision: the reading under the table is published too, so it is bound). Under
+NOTES_HEADING there is one bullet per pair, opening with the pair's name in bold; its last verdict word (a
+backticked CAUGHT_VALUES word) is that row's `caught`; and every line reference in it (a backticked
+`<file>:<n>` or `<file>:<lo>-<hi>`, a bare `<n>` or `<lo>-<hi>` meaning the file named before it in the same
+bullet, a short path read under NOTE_DEFAULT_ROOT unless it starts with a NOTE_ROOTS key) lies inside its
+file at the commit. NOTE_REFS pins how many references are read, so a parser that reads none is red.
+
 THE FORWARD BINDING (for the per-task lanes, CP4). Every `tasks/*.json` present in the study folder needs a
 row named by its stem. With none present today the clause reads zero, and TheForwardBinding shows it fires on
 a planted task in a temporary folder first.
@@ -112,6 +119,14 @@ CITED_ROOT = "gars/"
 
 CITE = re.compile(r"(?P<path>[^\s:@]+)(?::(?P<lo>[1-9][0-9]*)(?:-(?P<hi>[1-9][0-9]*))?|@(?P<mode>[0-7]{6}))\Z")
 SEPARATOR_CELL = re.compile(r":?-{3,}:?\Z")
+# The notes under the table (each row's reading in two lines), bound too.
+NOTES_HEADING = "## Why each row reads as it does"
+NOTE_NAME = re.compile(r"- \*\*(?P<name>[a-z-]+(?: \(candidate\))?)\.\*\*")
+NOTE_CITE = re.compile(r"(?P<path>[A-Za-z0-9_./-]+\.(?:py|json|toml|md)):(?P<lo>[1-9][0-9]*)(?:-(?P<hi>[1-9][0-9]*))?")
+NOTE_MORE = re.compile(r"(?P<lo>[1-9][0-9]*)(?:-(?P<hi>[1-9][0-9]*))?")
+NOTE_ROOTS = {".claude/": "gars/", ".codex/": "gars/"}
+NOTE_DEFAULT_ROOT = "gars/_system/"
+NOTE_REFS = 38  # the notes' line references, counted by note_refs; a change to the notes re-counts them
 
 
 class GitError(RuntimeError):
@@ -281,6 +296,74 @@ def pin_problems(commit: str) -> list[str]:
     return out
 
 
+def note_bullets(text: str) -> list[str]:
+    """The bullets of the NOTES_HEADING section, each joined into one string."""
+    lines = text.splitlines()
+    if NOTES_HEADING not in lines:
+        return []
+    bullets: list[str] = []
+    for line in lines[lines.index(NOTES_HEADING) + 1:]:
+        if line.startswith("## "):
+            break
+        if line.startswith("- "):
+            bullets.append(line)
+        elif line.startswith("  ") and bullets:
+            bullets[-1] += " " + line.strip()
+    return bullets
+
+
+def note_refs(bullet: str) -> list[tuple[str, int, int]]:
+    """(repo path, lo, hi) for every line reference in one note bullet."""
+    found, path = [], None
+    for span in re.findall(r"`([^`]+)`", bullet):
+        full, more = NOTE_CITE.fullmatch(span), NOTE_MORE.fullmatch(span)
+        if full:
+            short = full["path"]
+            root = next((r for k, r in NOTE_ROOTS.items() if short.startswith(k)), NOTE_DEFAULT_ROOT)
+            path, lo, hi = root + short, full["lo"], full["hi"]
+        elif more and path:
+            lo, hi = more["lo"], more["hi"]
+        else:
+            continue
+        found.append((path, int(lo), int(hi or lo)))
+    return found
+
+
+def note_problems(text: str, caught: dict[str, str], tree: Tree) -> list[str]:
+    """The notes under the table: one bullet per pair, named in bold first, whose last verdict word is the row's
+    caught value; and every line reference in them inside its file at the commit (a bare `n` or `lo-hi` refers
+    to the file named before it in the same bullet; a short path is under NOTE_DEFAULT_ROOT unless it starts with
+    a key of NOTE_ROOTS)."""
+    out: list[str] = []
+    seen: list[str] = []
+    for bullet in note_bullets(text):
+        m = NOTE_NAME.match(bullet)
+        if not m:
+            out.append(f"note {bullet[:40]!r}: does not start with a bold pair name")
+            continue
+        name = m["name"].removesuffix(CANDIDATE_MARK)
+        label = f"note ({name})"
+        if name not in PAIRS or name in seen:
+            out.append(f"{label}: outside the pair list or doubled")
+        seen.append(name)
+        spans = re.findall(r"`([^`]+)`", bullet)
+        verdicts = [v for v in spans if v in CAUGHT_VALUES]
+        if name in caught and (not verdicts or verdicts[-1] != caught[name]):
+            out.append(f"{label}: its verdict {verdicts[-1:]} is not the row's caught value {caught[name]!r}")
+        for path, lo, hi in note_refs(bullet):
+            entry = tree.entry(path)
+            if entry is None or entry[1] != "blob":
+                out.append(f"{label}: {path} is not a file at {tree.commit}")
+                continue
+            n = len(file_lines(tree.text(path) or ""))
+            if hi < lo or hi > n:
+                out.append(f"{label}: {path}:{lo}-{hi} is outside the file ({n} lines) or runs backwards")
+    for name in PAIRS:
+        if name not in seen:
+            out.append(f"{name} has no note")
+    return out
+
+
 def problems(text: str, commit: str = COMMIT, tasks_dir: Path = TASKS_DIR) -> list[str]:
     """Every problem with the table, read against the commit. Empty means the table is bound."""
     rows, out = parse(text)
@@ -321,6 +404,8 @@ def problems(text: str, commit: str = COMMIT, tasks_dir: Path = TASKS_DIR) -> li
         if name not in seen:
             out.append(f"{name} has no row")
     out += task_problems(set(seen), tasks_dir)[0]
+    caught = {r["pair"].removesuffix(CANDIDATE_MARK): r["caught"] for r in rows}
+    out += note_problems(text, caught, tree)
     return out
 
 
@@ -633,6 +718,34 @@ class TheCites(Base):
                          ["t: the cite gars/.claude/settings.json:3-5 is not tight (the excerpt fits without its first or last line)"])
         self.assertEqual(cite_problems(tree, f"{path}:3-4", '"PreToolUse":\n[ {', "t"), [])
         self.assertTrue(cite_problems(tree, f"{path}:3-4", '"PreToolUse":[{', "t"))
+
+
+class TheNotes(Base):
+    def test_one_note_per_pair_bound_to_its_row(self):
+        bullets = note_bullets(self.text)
+        self.assertEqual(len(bullets), len(PAIRS))
+        refs = [note_refs(b) for b in bullets]
+        self.assertTrue(all(refs), "every note cites at least one line")
+        self.assertEqual(sum(len(r) for r in refs), NOTE_REFS, "the notes' line references are all read (non-vacuity)")
+        self.assertIn(("gars/_system/tools/registry.json", 555, 555), refs[[i for i, b in enumerate(bullets) if "explain-not-act" in b][0]])
+
+    def test_mutant_note_reference_outside_its_file(self):
+        self.assertIn("`guard_hook.py:957-962`", self.text)
+        self.assertRed(self.text.replace("`guard_hook.py:957-962`", "`guard_hook.py:957-99999`", 1), "is outside the file")
+        self.assertIn("`555`", self.text)
+        self.assertRed(self.text.replace("`555`", "`55555`", 1), "tools/registry.json:55555-55555 is outside")
+        self.assertRed(self.text.replace("`guard_hook.py:957-962`", "`guard_hooks.py:957-962`", 1), "is not a file at")
+        self.assertRed(self.text.replace("`.claude/settings.json:83`", "`.claude/settings.json:9999`", 1), "gars/.claude/settings.json:9999")
+
+    def test_mutant_note_verdict_or_bullet(self):
+        at = self.text.index("- **number-fidelity.**")
+        end = self.text.index("\n- **", at + 1)
+        bullet = self.text[at:end]
+        self.assertTrue(bullet.rstrip().endswith("`no`."))
+        self.assertRed(self.text.replace(bullet, bullet.replace("`no`.", "`partly`."), 1), "is not the row's caught value")
+        self.assertRed(self.text.replace(bullet + "\n", "", 1), "number-fidelity has no note")
+        self.assertRed(self.text.replace("- **number-fidelity.**", "- **number fidelity.**", 1), "does not start with a bold pair name")
+        self.assertRed(self.text.replace(NOTES_HEADING, "## Notes", 1), "has no note")
 
 
 class TheForwardBinding(Base):
