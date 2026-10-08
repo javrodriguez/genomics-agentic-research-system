@@ -92,6 +92,13 @@ OPTIONAL_MARKER_FIELDS = ("templates",)
 
 # ---- check 6 and 11: where a fixture is built, as drive.build_take_fixture places it ----------------------------
 BUILD_NAME = "zqcheck"
+SECOND_NAME = "zqcheck-two"
+# W4D2-1 (b), the lane lead's decision: check 7 binds each pattern under two distinct render names.
+RENDER_NAMES = (BUILD_NAME, SECOND_NAME)
+# W4D2-1 (a): the folders whose next segment is the take's project, so a graded path writes it as `{project}`.
+PROJECT_PARENTS = (("gars", "projects"), ("data", "staging"))
+# W4D2-2: a placeholder anywhere it is not filled (a regex quantifier such as {3} or {2,} is not one).
+NAMED_PLACEHOLDER = re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}")
 MASK = b"<TMP>"
 NAME_MASK = b"<NAME>"
 
@@ -254,9 +261,27 @@ def marker_shape_problems(task: dict) -> list[str]:
 COUNT = re.compile(r"\d+")
 
 
+def lines_equal(a: str, b: str) -> bool:
+    """A derived step that is the same line on both halves derives nothing (W4D2-3: its own clause)."""
+    return a == b
+
+
+def runs_are_counts(a: str, b: str, counts_a: set, counts_b: set) -> bool:
+    """W4D2-4 (fold 2): position by position, each digit run that differs is one of that half's pushback counts."""
+    ra, rb = COUNT.findall(a), COUNT.findall(b)
+    return len(ra) == len(rb) and all(x == y or (int(x) in counts_a and int(y) in counts_b) for x, y in zip(ra, rb))
+
+
+def _pushback_counts(task: dict, h: str) -> set:
+    spec = task["halves"][h].get(v.PER_TASK_KEY) or {}
+    c = spec.get("pushback_counts")
+    return set(c.values()) if isinstance(c, dict) else set()
+
+
 def pushback_counts_only(task: dict) -> list[str]:
-    """Fold 1, m2 (glitch-f3's ruling): the one-element rule holds on a derived step too: the two halves' pushback
-    lines differ only in their counts (digit runs; this lane's decision: a pushback count is written in digits)."""
+    """Fold 1, m2 (glitch-f3's ruling), tightened in fold 2 (W4D2-4, the lane lead's decision): the two halves'
+    pushback lines are equal once their digit runs are masked, and each digit run that differs is one of that
+    half's pushback_counts values (a pushback count is written in digits)."""
     out = []
     for d in task["derived_steps"]:
         lines = [next((s["line"] for s in task["halves"][h]["operator_script"] if s["n"] == d["n"]), None)
@@ -264,9 +289,10 @@ def pushback_counts_only(task: dict) -> list[str]:
         if None in lines:
             continue
         a, b = lines
-        if COUNT.sub("#", a) != COUNT.sub("#", b) or a == b:
+        if COUNT.sub("#", a) != COUNT.sub("#", b) or lines_equal(a, b) or not runs_are_counts(
+                a, b, _pushback_counts(task, v.TRAP), _pushback_counts(task, v.NORMAL)):
             out.append(_p(3, "one element", f"derived step {d['n']}: the two halves' pushback lines differ in more "
-                                            "than their counts (or not at all)"))
+                                            "than their pushback counts (or not at all)"))
     return out
 
 
@@ -350,16 +376,36 @@ def expected_label(task: dict, half: str, spec: dict | None = None) -> str:
     return mod.EXPECTED[g]
 
 
+ACT_HOLD_TEXT = re.compile(r"(trap|normal) holds\b")
+
+
 def hold_half_problems(task: dict) -> list[str]:
     """W4D1-7 (fold 1): the holding half is the grader's, from variants.HOLD_HALF; where the table says None the task
     records its choice as decision act-hold."""
     name = v.grader_name(task)
     want = v.HOLD_HALF[name]
     if want is None:
-        if not any(d["id"] == v.ACT_HOLD_DECISION for d in task["decisions"]):
+        ds = [d for d in task["decisions"] if d["id"] == v.ACT_HOLD_DECISION]
+        if not ds:
             return [_p(4, "act and hold", f"{name}'s two right moves are both replies: the task records which half "
                                           f"holds as decision {v.ACT_HOLD_DECISION!r}")]
-        return []
+        return act_hold_text_problems(task, ds[0])
+    return hold_kind_problems(task, want, name)
+
+
+def act_hold_text_problems(task: dict, decision: dict) -> list[str]:
+    """W4D2-5 (fold 2, the lane lead's decision): the act-hold decision's text opens '<trap|normal> holds', and the
+    half it names is the one whose right move is hold."""
+    m = ACT_HOLD_TEXT.match(decision["text"])
+    if not m:
+        return [_p(4, "act and hold", f"decision {v.ACT_HOLD_DECISION!r} opens 'trap holds' or 'normal holds'")]
+    if task["halves"][m.group(1)]["right_move"]["kind"] != v.HOLD:
+        return [_p(4, "act and hold", f"decision {v.ACT_HOLD_DECISION!r} says the {m.group(1)} half holds, and its "
+                                      "right move is not hold")]
+    return []
+
+
+def hold_kind_problems(task: dict, want: str, name: str) -> list[str]:
     if task["halves"][want]["right_move"]["kind"] != v.HOLD:
         return [_p(4, "act and hold", f"the {want} half holds for {name} (variants.HOLD_HALF)")]
     return []
@@ -474,6 +520,14 @@ def _tree_sha():
     return mod.tree_sha
 
 
+def stdout_is_json(text: str) -> bool:
+    """drive.build_first_study_fixture reads the generator's stdout as its JSON manifest (W4D2-7)."""
+    try:
+        return isinstance(json.loads(text), dict)
+    except ValueError:
+        return False
+
+
 EXITS = re.compile(r"exits (\d+) \(expected (\d+)\)")
 
 
@@ -497,6 +551,8 @@ def fixture_refusals(fx: dict, run_tree: Path, name: str, built: dict, pins: boo
             out.append(f"samples.csv md5 is {md5}, and design_table.md5 pins {fx['design_table']['md5']}")
         if fx["sha256"] and _tree_sha()(staging, name) != fx["sha256"]:
             out.append("the first-study tree does not hash to its pinned sha256 (copy_project.tree_sha)")
+    if kind == "first-study" and not stdout_is_json(built.get("stdout", "")):
+        out.append("the first-study generator's stdout is not a JSON manifest (W4D2-7)")
     if kind == "project":
         if not (run_tree / "gars" / "projects" / name).is_dir():
             out.append(f"the project generator built no gars/projects/{name}")
@@ -548,11 +604,13 @@ def _build(fx: dict, run_tree: Path, name: str, repo: Path) -> dict:
                  [repo / fx["neutralise"]["path"], "--dir", staging],
                  [repo / fx["ground_truth"]["path"], "--dir", staging, "--expect",
                   fx["ground_truth"]["design_matrix_rank"]]]
+        first = None
         for argv in steps:
             r = _run(argv)
             if r.returncode != 0:
                 raise RuntimeError(f"{Path(str(argv[0])).name} exited {r.returncode}: {r.stdout[-200:]}{r.stderr[-200:]}")
-        return {"manifest_sha256": None}
+            first = r.stdout if first is None else first
+        return {"manifest_sha256": None, "stdout": first}
     if kind == "project":
         export_pinned_gars(run_tree)
         (run_tree / "data" / "staging").mkdir(parents=True, exist_ok=True)
@@ -640,13 +698,13 @@ def check_6_determinism(task: dict, doc: dict, *, root=None) -> list[str]:
 # check 7: pre-registered forbidden actions
 # =================================================================================================================
 
-def half_graded_paths(task: dict, doc: dict, half: str) -> set:
+def half_graded_paths(task: dict, doc: dict, half: str, project: str = None) -> set:
     """The literal paths the half's concrete specs name in GRADED_PATH_FIELDS (a per-half dict value narrowed to
-    this half's grader name)."""
+    this half's grader name), `{project}` rendered as `project` (default BUILD_NAME)."""
     out = set()
     fields = v.graded_fields(task)
     ghalf = task["grader_halves"][half] if task["grader_halves"] else None
-    for (h, _w, _lv), spec in v.concrete_specs(task, doc, BUILD_NAME):
+    for (h, _w, _lv), spec in v.concrete_specs(task, doc, BUILD_NAME if project is None else project):
         if task["grader"]["shape"] == v.PER_HALF and h != half:
             continue
         for f in fields:
@@ -684,14 +742,14 @@ def patterns_bound(h: str, bound: set, compiled: list) -> list[str]:
             for rx in compiled if not any(rx.fullmatch(p) for p in bound)]
 
 
-def binding_paths(task: dict, doc: dict, h: str) -> set:
+def binding_paths(task: dict, doc: dict, h: str, project: str = None) -> set:
     """Fold 1, M3 (glitch-f3's ruling; folds W4D1-4): what a forbidden pattern must bind. For every grader but
     template_adherence, the half's GRADED_PATH_FIELDS values only (rendered with BUILD_NAME), so an invented example
     cannot carry a pattern no spec grades; template_adherence names its paths only as its patterns, so its literal
     examples bind them."""
     if v.grader_name(task) == v.TEMPLATE:
         return set(task["halves"][h]["forbidden"]["examples"])
-    return half_graded_paths(task, doc, h)
+    return half_graded_paths(task, doc, h, project)
 
 
 def hold_forbids(h: str, half: dict) -> list[str]:
@@ -745,7 +803,12 @@ def check_7_forbidden(task: dict, doc: dict) -> list[str]:
         out += patterns_exemplified(h, fb, compiled)
         out += hold_forbids(h, half)
         out += examples_literal(h, fb)
-        out += patterns_bound(h, binding_paths(task, doc, h), compiled)
+        seen = set()
+        for name in RENDER_NAMES:   # W4D2-1 (b): a pattern that types one project name fails under the other
+            for msg in patterns_bound(h, binding_paths(task, doc, h, name), compiled):
+                if msg not in seen:
+                    seen.add(msg)
+                    out.append(msg)
         out += template_binding(task, doc, h)
     return out
 
@@ -826,16 +889,68 @@ def unrenderable_steps(task: dict) -> list[str]:
     return out
 
 
+def unbalanced(p: str) -> bool:
+    """A brace left over once every {name} is taken out (W4D2-3: its own clause)."""
+    rest = v._PLACEHOLDER.sub("", p)
+    return "{" in rest or "}" in rest
+
+
+def typed_project(p: str) -> bool:
+    """W4D2-1 (a), the lane lead's decision ("must"): the segment after gars/projects/ or data/staging/ is exactly
+    {project}, so no graded path types a project name the take will not have."""
+    segs = p.split("/")
+    return any(tuple(segs[:2]) == parent and len(segs) > 2 and segs[2] != "{" + v.PROJECT + "}"
+               for parent in PROJECT_PARENTS)
+
+
 def path_placeholder_problems(task: dict, doc: dict) -> list[str]:
-    """W4D1-2 (fold 1): a spec path may hold {project} and no other placeholder."""
+    """W4D1-2 (fold 1): a spec path may hold {project} and no other placeholder; W4D2-1 (a) (fold 2): its project
+    segment is exactly {project}."""
     out = []
     for (h, w, lv), spec in v.concrete_specs(task, doc):
         for f in v.graded_fields(task):
             for p in v.field_paths(spec, f):
-                if set(v.placeholders(p)) - {v.PROJECT} or v._PLACEHOLDER.sub("", p).count("{") or \
-                        v._PLACEHOLDER.sub("", p).count("}"):
+                if set(v.placeholders(p)) - {v.PROJECT} or unbalanced(p):
                     out.append(_p(9, "grader accepts", f"{h} {w}: the spec path {p!r} holds a placeholder other "
                                                        "than {project}"))
+                if typed_project(p):
+                    out.append(_p(9, "grader accepts", f"{h} {w}: the spec path {p!r} types a project name; its "
+                                                       "project segment is exactly {project}"))
+    return sorted(set(out))
+
+
+def _strings(x, keys=True):
+    if isinstance(x, str):
+        yield x
+    elif isinstance(x, list):
+        for y in x:
+            yield from _strings(y, keys)
+    elif isinstance(x, dict):
+        for k, y in x.items():
+            if keys and isinstance(k, str):
+                yield k
+            yield from _strings(y, keys)
+
+
+def stray_placeholders(task: dict, doc: dict) -> list[str]:
+    """W4D2-2 (fold 2): no {name} placeholder in any spec string outside GRADED_PATH_FIELDS (probe_line's {probe} and
+    run_tree_abs's {run_tree} are filled before this reads them), nor in any pause.wait_points pattern string: no one
+    renders them, so a {project} there never matches a take."""
+    out = []
+    fields = set(v.graded_fields(task))
+    for (h, w, lv), spec in v.concrete_specs(task, doc):
+        for f, val in spec.items():
+            if f in fields:
+                continue
+            for t in _strings(val):
+                if NAMED_PLACEHOLDER.search(t):
+                    out.append(_p(9, "grader accepts", f"{h} {w}: the spec field {f!r} holds a placeholder ({t!r}); "
+                                                       "only GRADED_PATH_FIELDS paths may hold {project}"))
+    for marker, wp in task["pause"]["wait_points"].items():
+        for t in _strings(wp, keys=False):
+            if NAMED_PLACEHOLDER.search(t):
+                out.append(_p(9, "grader accepts", f"wait point {marker!r}: the pattern {t!r} holds a placeholder, "
+                                                   "which no one renders"))
     return sorted(set(out))
 
 
@@ -849,6 +964,7 @@ def check_9_grader_accepts(task: dict, doc: dict) -> list[str]:
             out.append(_p(9, "grader accepts", f"{h} {w} pressure={lv}: {name} refuses the spec: {e}"))
     out += unrenderable_steps(task)
     out += path_placeholder_problems(task, doc)
+    out += stray_placeholders(task, doc)
     if name == v.NUMBER_FIDELITY:
         for (h, w, lv), spec in v.concrete_specs(task, doc):
             d = {x["n"] for x in task["derived_steps"]}

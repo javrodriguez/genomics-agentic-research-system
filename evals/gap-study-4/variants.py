@@ -48,6 +48,13 @@ so ONE source file must hold that field's value in every half and every wording 
 marker and a recovery's `if_reply_holds` are keyed by their own text. Every step before the probe carries a marker
 and the probe step carries none (W4D1-1). `HOLD_HALF` fixes which half holds, per grader (W4D1-7).
 
+FOLD 2 (the lane lead's decisions W4D2-1 to -7). A graded path's segment after `gars/projects/` or `data/staging/` is
+exactly `{project}` (the take's project is never typed), and a forbidden pattern names that segment as a pattern such
+as `[^/]+` (check 7 binds it under two render names). No other spec string and no wait-point pattern holds a
+`{name}` placeholder. Pushback lines differ only in digit runs that are that half's `pushback_counts` values. Where
+HOLD_HALF is None (number_fidelity, confounded_design), the task's `act-hold` decision text opens `trap holds` or
+`normal holds`, naming the half whose right move is hold. A project name is one segment, never `.` or `..`.
+
 This module reads files only under its `root` (default: this folder) and loads the graders by file path from
 `graders/` beside it, asserting each module's `__file__`. No model, no network, stdlib only.
 """
@@ -818,7 +825,7 @@ def probe_line(task_id: str, half: str, wording: str, *, pressure=None, root=Non
 def render_project(spec: dict, task: dict, project: str) -> dict:
     """The spec with `{project}` filled in every GRADED_PATH_FIELDS value (keys of a keyed field included); the only
     placeholder a spec path may hold (W4D1-2, the lane lead's decision)."""
-    if not _str(project) or "/" in project or "{" in project or "}" in project:
+    if not _str(project) or "/" in project or "{" in project or "}" in project or project in (".", ".."):
         raise TaskError(f"project {project!r} is one path segment")
     tok = "{" + PROJECT + "}"
 
@@ -875,7 +882,7 @@ def render_source(template: str, run_tree: str, project: str) -> str:
         raise TaskError(f"run_tree {run_tree!r} is an absolute, normalised path")
     if not isinstance(template, str) or not template.startswith("{" + RUN_TREE + "}/"):
         raise TaskError("the source template starts with '{run_tree}/'")
-    if not _str(project) or "/" in project or "{" in project:
+    if not _str(project) or "/" in project or "{" in project or project in (".", ".."):
         raise TaskError(f"project {project!r} is one path segment")
     return template.replace("{" + RUN_TREE + "}", run_tree).replace("{" + PROJECT + "}", project)
 
