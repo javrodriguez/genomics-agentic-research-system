@@ -47,10 +47,12 @@ from graders import labels4  # noqa: E402
 
 # Test-only pin profiles, injected in memory (CP5 pre-registers the real ones; until then routing.json's
 # pin_profiles is empty and PENDING).
-PROFILES = {"test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
-            "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"}}
-PIN = dict(PROFILES["test-model-a"], model="test-model-a")
-OTHER_PIN = dict(PROFILES["test-model-b"], model="test-model-b")
+# Keyed by harness, then model (interface 8; the harness is the seam's own name, never typed here).
+HARNESS = hb.CLAUDE_CODE
+PROFILES = {HARNESS: {"test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
+                      "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"}}}
+PIN = dict(PROFILES[HARNESS]["test-model-a"], model="test-model-a", harness=HARNESS)
+OTHER_PIN = dict(PROFILES[HARNESS]["test-model-b"], model="test-model-b", harness=HARNESS)
 # The real pause cap: round 3's pause_cap (3 per half-cell), filled under Javier's ruling "gap4 routing: A"
 # and re-derived from round 3's prereg.json by test_routing.py's TestRound3Sources.
 PAUSE_CAP = routing.load_table()["caps"][labels4.PAUSE]["events_per_half_cell"]
@@ -262,7 +264,8 @@ class FakeDriver:
             results = [adapter.turn(f"line {i}", first=(i == 0), budget_s=1) for i in range(len(turns))]
             adapter.end_take()
             self.world.texts[(row["slot"], attempt)] = "\n".join(r.text for r in results)
-            pin = self.pins.get(row["slot"], dict(PROFILES[row["model"]], model=row["model"]))
+            harness = row["agent"]["harness"]
+            pin = self.pins.get(row["slot"], dict(PROFILES[harness][row["model"]], model=row["model"], harness=harness))
             records = aa.harness_records(results, pin=pin, box=box)
             edit = self.records_edit.get(row["slot"])
             if edit:
@@ -340,12 +343,19 @@ class FakeWindow:
         self.world.log("reset")
 
 
+def agent_of(model) -> dict:
+    """A registered row's agent (interface 8): its harness, and its model's profile version (a made-up one for a model
+    with no profile, which the row check refuses on its model)."""
+    return {"harness": HARNESS, "version": PROFILES[HARNESS].get(model, {}).get("version", "0.0.0-no-profile")}
+
+
 def rows(n, half_cell="hc-a", model=PIN["model"]):
-    return [{"slot": i, "half_cell": half_cell, "row_id": i, "model": model} for i in range(1, n + 1)]
+    return [{"slot": i, "half_cell": half_cell, "row_id": i, "model": model, "agent": agent_of(model)}
+            for i in range(1, n + 1)]
 
 
 def row(slot, half_cell, model=PIN["model"]):
-    return {"slot": slot, "half_cell": half_cell, "row_id": slot, "model": model}
+    return {"slot": slot, "half_cell": half_cell, "row_id": slot, "model": model, "agent": agent_of(model)}
 
 
 def rows_in(cells: list[str]) -> list[dict]:
@@ -2831,6 +2841,31 @@ class TestNextTouchAgentRow(unittest.TestCase):
 
     def test_the_row_carries_its_agent(self):
         self.assertEqual(agent_row_problems(), [])
+
+    def test_a_run_under_the_agent(self):
+        """Rows carrying agent run graded under their harness-keyed profiles; a driver pin naming another harness is
+        blocked (the pin is the registered row's, never the driver's)."""
+        b, out, *_ = run(3)
+        self.assertEqual([o["state"] for o in out], [labels4.GRADED] * 3)
+        b, out, w, d, r, _ = run(3, pins={2: dict(PIN, harness=NT_FAKE)})
+        self.assertEqual(sibling_problems(out, w, r, b, labels4.BLOCKED), [])
+        self.assertIn(NT_FAKE, next(o for o in out if o["slot"] == 2)["reason"])
+
+    def test_agent_row_check_can_fail(self):
+        def model_only(row, table):   # the base's expected_pin: keyed by model alone, no harness on the pin
+            return dict(table["pin_profiles"][row["agent"]["harness"]][row["model"]], model=row["model"])
+        with mock.patch.object(batch, "expected_pin", model_only):
+            self.assertTrue(any(x.startswith("expected_pin:") for x in agent_row_problems()))
+            b, out, *_ = run(2)
+        self.assertEqual({o["state"] for o in out}, {labels4.BLOCKED})
+        with mock.patch.object(batch, "agent_problems", lambda row: []):   # agent no longer required
+            found = agent_row_problems()
+        for name in ("a row without agent", "agent None", "agent without its version"):
+            self.assertTrue(any(x.startswith(f"{name}: crashed") or x.startswith(f"{name}: want") for x in found),
+                            (name, found))
+        with mock.patch.object(batch, "version_problems", lambda row, table: []):   # the version check dropped
+            found = agent_row_problems()
+        self.assertEqual(found, ["agent.version differs from its pin's version: want refused naming 'version', got []"])
 
 
 if __name__ == "__main__":

@@ -179,7 +179,7 @@ EXPECTED = {
 
 
 # ---------------------------------------------------------------------------------------------- routing seam
-TEST_PIN = {"model": "test-model-a", "permission_mode": "bypassPermissions", "version": "0.0.1-test"}
+TEST_PIN = {"model": "test-model-a", "permission_mode": "bypassPermissions", "version": "0.0.1-test", "harness": CC}
 
 
 def route_with(e: es.Evidence, **kw) -> str:
@@ -192,8 +192,8 @@ def route_result(e: es.Evidence, *, first_turn_started=True, box_extra: dict | N
     """routing.route's whole answer for that take (its route and winning row ids). `box_extra` sets other box
     records, for example a container that never started."""
     table = copy.deepcopy(routing.load_table())
-    table["pin_profiles"] = {TEST_PIN["model"]: {"permission_mode": TEST_PIN["permission_mode"],
-                                                 "version": TEST_PIN["version"]}}
+    table["pin_profiles"] = {CC: {TEST_PIN["model"]: {"permission_mode": TEST_PIN["permission_mode"],
+                                                      "version": TEST_PIN["version"]}}}
     table["pin_profiles_status"] = "TEST-ONLY"
     turns = [aa.TurnResult(exit_code=0, text="", stream_path=None, end_reason=labels4.END_TURN, init=dict(TEST_PIN),
                            api_errors=[], counters={"oom_kill_delta": 0, "pids_max_delta": 0},

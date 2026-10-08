@@ -18,9 +18,11 @@ records are:
                      exec_codes (int or None per turn)
     cgroup           the take's out-of-memory and pids-limit counter rises (oom_kill_delta,
                      pids_max_delta: counts), read host-side
-    init, pin        the init event of every turn (None when a turn had none), and the pinned
-                     model, mode and version; the pin must be the pre-registered profile of its
-                     model in routing.json's pin_profiles, never whatever the driver supplied
+    init, pin        the init event of every turn (None when a turn had none), and the pin: the
+                     take's harness (`AgentAdapter.name`, interface 8) and its pinned model, mode
+                     and version; the pin must be the pre-registered profile of its model under its
+                     harness in routing.json's pin_profiles (keyed by harness, then model), never
+                     whatever the driver supplied. An init event names no harness
     api_errors       every API-error record of the take, in turn order and, within a turn, in the
                      order met (a turn can meet several, W1B2-7): {status: int or None,
                      type: str or None, text: str or None}. `text` is the harness-side error text
@@ -125,6 +127,9 @@ TEXT_MARKER_FIELDS = ("text",)
 
 # The plan's pin: "an init event whose model, mode or version differs from the pin".
 PLAN_PIN_FIELDS = ("model", "permission_mode", "version")
+# The routing pin's keys (interface 8, w1b's next-touch item 5): the take's harness beside the plan's fields. An init
+# event carries the plan's fields only; the harness is the pin's, read from the registered row's agent.
+PIN_KEYS = ("harness",) + PLAN_PIN_FIELDS
 
 # Records only annotations may read: text-derived counts never route a take.
 ANNOTATION_ONLY = ("events",)
@@ -286,12 +291,19 @@ def check_table(table: dict) -> list[str]:
         p.append(f"pin_fields must be the plan's {list(PLAN_PIN_FIELDS)}")
     profiles = table["pin_profiles"]
     if not isinstance(profiles, dict):
-        p.append("pin_profiles must map a model id to its profile")
+        p.append("pin_profiles must map a harness (AgentAdapter.name) to its models' profiles")
     else:
-        for model, prof in profiles.items():
-            if (not isinstance(prof, dict) or set(prof) != set(PLAN_PIN_FIELDS[1:])
-                    or not all(_is_str(v) and v for v in prof.values())):
-                p.append(f"pin profile {model!r} must give exactly {list(PLAN_PIN_FIELDS[1:])} as strings")
+        # Interface 8 (item 5): keyed by harness, then model.
+        for harness, models in profiles.items():
+            if not _is_str(harness) or not harness or not isinstance(models, dict) or not models:
+                p.append(f"pin_profiles {harness!r} must map a harness to a non-empty map of model ids to profiles "
+                         f"(keyed by harness, then model)")
+                continue
+            for model, prof in models.items():
+                if (not _is_str(model) or not model or not isinstance(prof, dict)
+                        or set(prof) != set(PLAN_PIN_FIELDS[1:]) or not all(_is_str(v) and v for v in prof.values())):
+                    p.append(f"pin profile {harness!r} {model!r} must give exactly {list(PLAN_PIN_FIELDS[1:])} "
+                             f"as strings")
     # Graded ends are labels4's, and the graded rows name exactly them.
     if not isinstance(table["graded_ends"], list) or sorted(table["graded_ends"]) != sorted(labels4.GRADED_ENDS):
         p.append(f"graded_ends must be labels4.GRADED_ENDS {list(labels4.GRADED_ENDS)}")
@@ -444,7 +456,7 @@ def shape_problems(records: dict, table: dict) -> list[str]:
         for i, entry in enumerate(records["init"]):
             if entry is not None:
                 p += _pin_problems(entry, table["pin_fields"], f"init[{i}]")
-    p += _pin_problems(records["pin"], table["pin_fields"], "pin")
+    p += _pin_problems(records["pin"], PIN_KEYS, "pin")
     if not isinstance(records["api_errors"], list):
         p.append("api_errors must be a list")
     else:
@@ -487,9 +499,13 @@ def check_records(records: dict, table: dict) -> list[str]:
     if unknown:
         p.append(f"checker reason ids not in routing.json: {unknown}")
     pin = records["pin"]
-    profile = table["pin_profiles"].get(pin["model"])
-    if profile is None:
-        p.append(f"pin model {pin['model']!r} has no pre-registered profile in routing.json's pin_profiles")
+    models = table["pin_profiles"].get(pin["harness"])        # interface 8: keyed by harness, then model
+    profile = None if models is None else models.get(pin["model"])
+    if models is None:
+        p.append(f"pin harness {pin['harness']!r} has no pre-registered profile in routing.json's pin_profiles")
+    elif profile is None:
+        p.append(f"pin model {pin['model']!r} has no pre-registered profile under harness {pin['harness']!r} in "
+                 f"routing.json's pin_profiles")
     elif any(pin[f] != profile[f] for f in profile):
         p.append(f"the pin is not {pin['model']!r}'s pre-registered profile: the driver is never trusted for it")
     if records["ledger"]["committed"]:

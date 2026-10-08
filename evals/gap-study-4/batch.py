@@ -150,7 +150,9 @@ THE START GATE. The loop refuses to start (`BatchConfigError`, and `batch.py --c
 while routing.json still lacks what only the owner or a later checkpoint can supply: round 3's
 pause cap, round 3's operator-side reasons (an empty list, or a status starting PENDING), the
 rate-limit markers' ruling (a status starting PENDING, W1B2-6), or the pre-registered pin
-profiles (CP5). Every row must name a model that has a profile.
+profiles (CP5). Every row must name its agent ({harness, version}: interface 8, never defaulted)
+and a model that has a profile under that harness, and its agent's version must be that profile's
+(a row that fails any of these is refused before it is registered).
 
 A REPO OR WINDOW FAILURE STOPS, never sinks (review round 2, W1B2-5). If `register` raises, every
 row of the block already registered is committed `failed` (masked fail-closed, nothing launched),
@@ -165,9 +167,9 @@ object with three methods,
                                      If it raises after creating a container, the exception's
                                      `container_id` attribute (when set) is recorded and removed
     drive(row, container_id) -> dict the take's harness-side records, in routing.py's schema; its
-                                     `pin` must be the registered row's model's pre-registered
-                                     profile, or the take is blocked (the driver is never trusted
-                                     for the pin)
+                                     `pin` must be the registered row's harness, model and that
+                                     model's pre-registered profile under that harness, or the take
+                                     is blocked (the driver is never trusted for the pin)
     remove(container_id) -> None     remove exactly that container (never called with None)
 
 and a repo object with `register(row, attempt)` and `commit_records(row, attempt, outcome)`, each
@@ -215,6 +217,10 @@ OUTCOME_KEYS = ("slot", "half_cell", "attempt", "container_id", "state", "reason
 # Every key of a committed ruling (THE RULINGS, W1B3-1): a closed record, told from an outcome by its kind.
 RULING_KEYS = ("kind", "slot", "attempt", "ruling", "route", "by")
 
+
+# Interface 8 (w1b's next-touch item 5): a registered row's agent, {"harness": AgentAdapter.name, "version":
+# AgentAdapter.version()}, required beside its model and never defaulted.
+AGENT_KEYS = ("harness", "version")
 
 # Routes that re-run a slot, whose spent re-runs a restart must count again.
 RERUN_ROUTES = (labels4.REHEARSAL, labels4.HARNESS_ERROR, labels4.PAUSE)
@@ -322,8 +328,29 @@ def start_problems(table: dict) -> list[str]:
 
 
 def expected_pin(row: dict, table: dict) -> dict:
-    """The pin a take of this registered row must run under: its model and that model's profile."""
-    return dict(table["pin_profiles"][row["model"]], model=row["model"])
+    """The pin a take of this registered row must run under: its harness (the row's agent), its model, and that
+    model's profile under that harness (interface 8: pin_profiles is keyed by harness, then model)."""
+    harness = row["agent"]["harness"]
+    return dict(table["pin_profiles"][harness][row["model"]], model=row["model"], harness=harness)
+
+
+def agent_problems(row: dict) -> list[str]:
+    """Interface 8: the row's agent is exactly {harness, version}, non-empty strings, never defaulted."""
+    agent = row.get("agent")
+    if (not isinstance(agent, dict) or set(agent) != set(AGENT_KEYS)
+            or not all(isinstance(agent[k], str) and agent[k] for k in AGENT_KEYS)):
+        return [f"row {row.get('slot')}: agent must be exactly {list(AGENT_KEYS)} as non-empty strings (interface 8; "
+                f"never defaulted), got {agent!r}"]
+    return []
+
+
+def version_problems(row: dict, table: dict) -> list[str]:
+    """Interface 8 (item 5): a row whose agent.version is not its pin's version cannot run under its pin. Lane w4h's
+    decision: it is refused before it is registered (nothing is driven), never driven and then blocked."""
+    want = expected_pin(row, table)["version"]
+    if row["agent"]["version"] != want:
+        return [f"row {row['slot']}: agent version {row['agent']['version']!r} is not its pin's version {want!r}"]
+    return []
 
 
 class Batch:
@@ -601,8 +628,13 @@ class Batch:
         for r in rows:
             if not isinstance(r, dict) or not all(k in r for k in ("slot", "half_cell", "model")):
                 p.append(f"row {r!r} must name slot, half_cell and model")
-            elif r["model"] not in self.table["pin_profiles"]:
-                p.append(f"row {r['slot']}: model {r['model']!r} has no pre-registered pin profile")
+            elif agent_problems(r):
+                p += agent_problems(r)
+            elif r["model"] not in self.table["pin_profiles"].get(r["agent"]["harness"], {}):
+                p.append(f"row {r['slot']}: model {r['model']!r} has no pre-registered pin profile under harness "
+                         f"{r['agent']['harness']!r}")
+            elif version_problems(r, self.table):
+                p += version_problems(r, self.table)
             elif self.slot_cell.get(r["slot"], r["half_cell"]) != r["half_cell"]:
                 p.append(f"row {r['slot']}: committed under half-cell {self.slot_cell[r['slot']]!r}, "
                          f"not {r['half_cell']!r}")

@@ -70,12 +70,23 @@ REAL = routing.load_table()
 # Round 3's reason ids the scenarios name, typed once (TestRound3Sources binds the list they come from).
 READERS = "readers-disagree"          # an operator-side reason of either phase
 NFAT = "no-first-agent-turn"          # round 3's "before the agent's first turn" reason
-# Test-only pin profiles, injected in memory (CP5 pre-registers the real ones).
-TEST_PROFILES = {
+# Test-only pin profiles, injected in memory (CP5 pre-registers the real ones), keyed by harness, then model
+# (interface 8; the harness is the seam's own name, never typed here).
+TEST_HARNESS = hb.CLAUDE_CODE
+TEST_PROFILES = {TEST_HARNESS: {
     "test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
     "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"},
-}
-PIN = dict(TEST_PROFILES["test-model-a"], model="test-model-a")
+}}
+PIN = dict(TEST_PROFILES[TEST_HARNESS]["test-model-a"], model="test-model-a", harness=TEST_HARNESS)
+INIT_FIELDS = ("model", "permission_mode", "version")   # an init event's fields: the pin less its harness
+
+
+def init_of(pin: dict) -> dict:
+    """An init event under `pin` (an init event names no harness)."""
+    return {f: pin[f] for f in INIT_FIELDS}
+
+
+INIT = init_of(PIN)
 
 
 def test_table() -> dict:
@@ -96,7 +107,7 @@ def baseline(phase: str, pin: dict | None = None) -> dict:
                    "finalize_abort": False},
         "exit": {"container_started": True, "container_exited": False, "exec_codes": [0] * n},
         "cgroup": {"oom_kill_delta": 0, "pids_max_delta": 0},
-        "init": [dict(pin) for _ in range(n)],
+        "init": [init_of(pin) for _ in range(n)],
         "pin": dict(pin),
         "api_errors": [],
         "sidecar": {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": False},
@@ -123,7 +134,7 @@ def silent_turn(rec: dict, end: str = labels4.END_ERROR, code: int = 1):
     led["turn_outputs"].append(False)
     led["end"] = end
     rec["exit"]["exec_codes"].append(code)
-    rec["init"].append(dict(rec["pin"]))
+    rec["init"].append(init_of(rec["pin"]))
 
 
 def silent_timeout(rec: dict):
@@ -193,7 +204,7 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
         err[key] = table["rate_limit_markers"][key][0]
         set_api(rec, [err])
     elif op in ("differs_from_pin", "present_differs_from_pin"):
-        rec["init"][0] = dict(rec["pin"], model="not-the-pin")
+        rec["init"][0] = dict(init_of(rec["pin"]), model="not-the-pin")
     elif op == "nonzero_outside_timeout":
         rec["exit"]["exec_codes"][0] = 1
     elif op in ("not_null", "is_null"):
@@ -257,7 +268,7 @@ def _cgroup(r):
 
 
 def _mismatch(r):
-    r["init"][-1] = dict(r["pin"], version="not-the-pin")
+    r["init"][-1] = dict(init_of(r["pin"]), version="not-the-pin")
 
 
 def _rate(r):
@@ -604,7 +615,7 @@ def pin_refusal_grid_problems(table: dict) -> list[str]:
                     continue
                 if rec["ledger"]["turns"] == 0:
                     silent_turn(rec)
-                rec["init"][-1] = dict(OTHER_VERSION) if init == "differs" else None
+                rec["init"][-1] = init_of(OTHER_VERSION) if init == "differs" else None
                 got = try_route(rec, table)
                 if init == "differs" and row["route"] not in outranks:
                     if not isinstance(got, routing.RoutingRefused) or PIN_REFUSAL not in str(got):
@@ -808,7 +819,7 @@ def _multi_turn(n):
     def f(r):
         r["ledger"].update(turns=n, turn_ends=[labels4.END_TURN] * n, turn_outputs=[True] * n)
         r["exit"]["exec_codes"] = [0] * n
-        r["init"] = [dict(r["pin"]) for _ in range(n)]
+        r["init"] = [init_of(r["pin"]) for _ in range(n)]
     return f
 
 
@@ -818,7 +829,7 @@ def _reach(n=1):
 
 def _differs(value="9.9.9", field="version"):
     """The last turn's init event: present and differing from the pin in `field`, or None (no init event)."""
-    return lambda r: r["init"].__setitem__(-1, None if value is None else dict(r["pin"], **{field: value}))
+    return lambda r: r["init"].__setitem__(-1, None if value is None else dict(init_of(r["pin"]), **{field: value}))
 
 
 _end_error = (lambda code: (lambda r: set_end(r, labels4.END_ERROR, code)))
@@ -883,7 +894,7 @@ SCENARIOS = {
                                                    ["container-start-failed", "silent-timeout-before-first-turn"]),
     "silent timeout + a rate limit -> pause": Sc(_sc(B, [silent_timeout, _rate]), "pause", ["rate-limit"],
                                                  ["api-error-before-first-turn", "silent-timeout-before-first-turn", "rate-limit"]),
-    "silent timeout with an init mismatch -> refused (W1B2-1)": Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(PIN, model="x"))]),
+    "silent timeout with an init mismatch -> refused (W1B2-1)": Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(INIT, model="x"))]),
                                                                    REFUSED, None),
     # glitch-f3's ruling (6 Oct 2026; glitch-f3's, not the owner's): a CLI that never printed its init event is
     # harness-side, so a silent first-turn timeout with no init event rehearses; one whose init differs is refused
@@ -891,12 +902,12 @@ SCENARIOS = {
         Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, None)]), "rehearsal",
            ["silent-timeout-before-first-turn"], ["silent-timeout-before-first-turn"]),
     "silent timeout with an init mode mismatch -> refused (glitch-f3, fold 3)":
-        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(PIN, permission_mode="default"))]), REFUSED, None),
+        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(INIT, permission_mode="default"))]), REFUSED, None),
     "silent timeout with an init version mismatch -> refused (glitch-f3, fold 3)":
-        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(PIN, version="9.9.9"))]), REFUSED, None),
+        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(INIT, version="9.9.9"))]), REFUSED, None),
     "a silent turn with no init, then a silent timeout under another model -> refused (glitch-f3, fold 3)":
         Sc(_sc(B, [silent_turn, silent_timeout, lambda r: r["init"].__setitem__(0, None),
-                   lambda r: r["init"].__setitem__(1, dict(PIN, model="x"))]), REFUSED, None),
+                   lambda r: r["init"].__setitem__(1, dict(INIT, model="x"))]), REFUSED, None),
     # W1B3-2 (the gap4 lane lead's ruling; glitch-f3 accepted the stricter reading, 6 Oct 2026): before the first turn a
     # present init that differs from the pin is refused whatever else matches; only a rate-limit pause outranks it
     "W1B3-2: a differing init, bare -> refused": Sc(_sc(B, [silent_timeout, _differs()]), REFUSED, None),
@@ -936,9 +947,9 @@ SCENARIOS = {
     "watcher stop missing": Sc(_sc(A, [_set("sidecar.stop_record", False)]), "harness-error", ["watcher-gap"]),
     "watcher non-zero exit": Sc(_sc(A, [_set("sidecar.exit_code", 1)]), "harness-error", ["watcher-gap"]),
     "watcher queue overflow": Sc(_sc(A, [_set("sidecar.queue_overflow", True)]), "harness-error", ["watcher-gap"]),
-    "init model differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, dict(PIN, model="x"))]), "harness-error", ["init-mismatch"]),
-    "init mode differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, dict(PIN, permission_mode="default"))]), "harness-error", ["init-mismatch"]),
-    "init version differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(1, dict(PIN, version="9.9.9"))]), "harness-error", ["init-mismatch"]),
+    "init model differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, dict(INIT, model="x"))]), "harness-error", ["init-mismatch"]),
+    "init mode differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, dict(INIT, permission_mode="default"))]), "harness-error", ["init-mismatch"]),
+    "init version differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(1, dict(INIT, version="9.9.9"))]), "harness-error", ["init-mismatch"]),
     "init event missing": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, None)]), "harness-error", ["init-mismatch"]),
     "mismatch on the last turn of an otherwise graded take": Sc(_sc(A, [_multi_turn(4), _mismatch]), "harness-error", ["init-mismatch"]),
     "non-zero exec exit, nothing else": Sc(_sc(A, [lambda r: r["exit"]["exec_codes"].__setitem__(0, 1)]), "harness-error", ["nonzero-exec-exit"]),
@@ -2078,14 +2089,14 @@ class TestProfiles(unittest.TestCase):
 
 def profile_problems(model: str, table: dict) -> list[str]:
     p = []
-    pin = dict(table["pin_profiles"][model], model=model)
+    pin = dict(table["pin_profiles"][TEST_HARNESS][model], model=model, harness=TEST_HARNESS)
     clean = try_route(baseline(A, pin), table)
     if isinstance(clean, Exception) or clean["route"] != labels4.GRADED:
         p.append(f"{model}: a clean take under its own profile did not grade ({clean})")
     for field in table["pin_fields"]:
         for turn in (0, -1):
             rec = baseline(A, pin)
-            rec["init"][turn] = dict(pin, **{field: f"{pin[field]}-other"})
+            rec["init"][turn] = dict(init_of(pin), **{field: f"{pin[field]}-other"})
             got = try_route(rec, table)
             if isinstance(got, Exception) or (got["route"], got["rows"]) != (labels4.HARNESS_ERROR, ["init-mismatch"]):
                 p.append(f"{model}: init {field} differs on turn {turn}: {got}")
@@ -2101,7 +2112,7 @@ def _profile_test(model):
     return test
 
 
-for _model in TEST_PROFILES:
+for _model in TEST_PROFILES[TEST_HARNESS]:
     setattr(TestProfiles, "test_profile_" + _model.replace("-", "_"), _profile_test(_model))
 
 
@@ -2311,6 +2322,27 @@ class TestNextTouchAgentPin(unittest.TestCase):
         for cite in ("keyed by harness", "then model", "interface 8"):
             self.assertIn(cite, status)
         self.assertEqual(tuple(routing.PIN_KEYS), ("harness",) + NT_INIT_FIELDS)
+
+    def test_agent_pin_check_can_fail(self):
+        real = routing.check_records
+
+        def harness_blind(records, table):   # the mutant: the profile lookup no longer refuses an unknown harness
+            return [x for x in real(records, table) if "pin harness" not in x]
+        with mock.patch.object(routing, "check_records", harness_blind):
+            found = agent_pin_problems(nt_table())
+        self.assertTrue(any(x.startswith("a harness with no profiles: want refused") for x in found), found)
+        with mock.patch.object(routing, "PIN_KEYS", routing.PLAN_PIN_FIELDS):   # the base's pin: no harness
+            found = _guarded("agent pin", agent_pin_problems, nt_table())         # a crash is a finding, never a pass
+        self.assertTrue(any(x.startswith("a clean after-first-turn take") or "crashed" in x for x in found), found)
+
+        def open_init(value, fields, what):   # the mutant: an init event may carry keys beyond the plan's fields
+            if what.startswith("init") and isinstance(value, dict) and set(fields) <= set(value):
+                return []
+            return real_pin(value, fields, what)
+        real_pin = routing._pin_problems
+        with mock.patch.object(routing, "_pin_problems", open_init):
+            found = agent_pin_problems(nt_table())
+        self.assertTrue(any(x.startswith("an init event carrying the harness: want refused") for x in found), found)
 
 
 if __name__ == "__main__":
