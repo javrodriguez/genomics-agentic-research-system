@@ -122,7 +122,12 @@ CREATED_AT_BEGIN = (ACCESS, HEALTH)   # empty until something is logged; a missi
 # The watcher's event names, mapped to the three ops (one closed table).
 EVENT_OPS = {"OPEN": OPEN, "MODIFY": MODIFY, "CLOSE_WRITE": MODIFY, "MOVED_TO": MODIFY, "CREATE": MODIFY,
              "DELETE": DELETE, "MOVED_FROM": DELETE, "DELETE_SELF": DELETE}
-EVENT_FLAGS = ("ISDIR",)          # a modifier inotify adds to an event on a folder; never an op of its own
+# Modifiers inotifywait prints beside an event name (ISDIR on a folder; CLOSE beside CLOSE_WRITE, inferred, not
+# measured: named for the stub take's format measurement); never an op of their own.
+EVENT_FLAGS = ("ISDIR", "CLOSE")
+# Events that remove or replace a folder the armed watch sits on: the watch would go stale (it follows the old
+# inode), so each is a watcher fault, never read through.
+STALE_EVENTS = ("MOVED_FROM", "MOVED_TO", "DELETE", "DELETE_SELF")
 OVERFLOW_EVENT = "Q_OVERFLOW"
 
 OPEN_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
@@ -452,27 +457,30 @@ def _parent(rel: str) -> str:
 def watch_plan(run_tree: str, watch) -> tuple:
     """((folder, recursive), ...): for each consequential path, its parent folder when it exists (a folder watch
     sees a create, a rename onto it and a rename away, which a watch on the file's own inode would miss), else its
-    nearest existing ancestor folder, recursively (so a path whose folders appear mid-turn is still caught)."""
+    nearest existing ancestor folder, recursively (so a path whose folders appear mid-turn is still caught); and
+    every folder above that one, non-recursively, so a move or delete of any folder on the chain is seen."""
     out = set()
     for p in watch:
         parent = _parent(p)
-        if _real_dir(run_tree, parent):
-            out.add((parent, False))
-            continue
         anc = parent
         while anc and not _real_dir(run_tree, anc):
             anc = _parent(anc)
-        out.add((anc, True))
+        out.add((anc, anc != parent or not _real_dir(run_tree, parent)))
+        while anc:   # every folder above it too, so a folder on the chain moved or deleted is seen (a fault)
+            anc = _parent(anc)
+            out.add((anc, False))
     # a folder watched recursively covers the same folder watched alone
     rec = {d for d, r in out if r}
     return tuple(sorted((d, r) for d, r in out if r or d not in rec))
 
 
 def stop_exit_code(returncode: int, *, requested: bool, fault: bool) -> int:
-    """The code a `watcher-stop` records (interface 12)."""
+    """The code a `watcher-stop` records (interface 12). A watcher that exits on its own records its code, and an
+    exit 0 nobody asked for records 1 (after post-N a self-exit 0 would otherwise read clean while a late writer
+    goes unlogged)."""
     code = 128 - returncode if returncode < 0 else returncode
-    if fault:
-        return code if code != 0 else 1
+    if fault or not requested:
+        return code if code != 0 else 1   # a fault, or an exit nobody asked for, never reads clean
     if requested and returncode == -signal.SIGTERM:
         return 0
     return code
@@ -522,6 +530,7 @@ class Sidecar:
         self.opener = os.open if opener is None else opener
         self.establish_timeout_s, self.stop_timeout_s = establish_timeout_s, stop_timeout_s
         self.watcher = None
+        self._floor, self._armed_dirs = 0.0, set()
         self.state = "new"          # new -> running -> finished, or broken
         self.problems = []          # why the sidecar is broken (sticky)
         self.next_label = None
@@ -531,6 +540,7 @@ class Sidecar:
         return os.path.join(self.evidence, *parts)
 
     def _health(self, kind: str, at: float, **extra):
+        self._floor = max(self._floor, at)
         _append_line(self._ev(HEALTH), {"kind": kind, "at": at, **extra})
 
     def _access(self, at: float, path: str, op: str):
@@ -547,7 +557,11 @@ class Sidecar:
         unknown = [n for n in names if n not in EVENT_OPS and n not in EVENT_FLAGS and n != OVERFLOW_EVENT]
         if unknown or not names:
             return False
+        if ev.path in self._armed_dirs and set(names) & set(STALE_EVENTS):
+            return False   # a folder the watch sits on was moved, replaced or deleted: the watch is stale
         at = self.clock() if ev.at is None else ev.at
+        at = max(at, self._floor)   # never before the record it follows (the start, or the last record)
+        self._floor = at
         if OVERFLOW_EVENT in names:
             self._health(QUEUE_OVERFLOW, at)
         if ev.path in self.watch:
@@ -555,13 +569,13 @@ class Sidecar:
                 self._access(at, ev.path, op)
         return True
 
-    def _drain(self) -> bool:
-        ok = True
+    def _drain(self, *, log: bool = True) -> bool:
+        ok = log
         for ev in self.watcher.read_ready():
             if ok:
                 ok = self._event(ev)
             # after a fault, the rest of the stream is not read as accesses
-        return ok
+        return ok or not log
 
     def _wait_exit(self):
         t0 = self.clock()
@@ -580,7 +594,7 @@ class Sidecar:
         Returns the stamp."""
         self.watcher.request_stop()
         rc, forced = self._wait_exit()
-        clean = self._drain()
+        clean = self._drain(log=not fault)
         fault = fault or forced or not clean
         at = self.clock()
         self._health(WATCHER_STOP, at, exit_code=stop_exit_code(rc, requested=True, fault=fault))
@@ -608,8 +622,20 @@ class Sidecar:
             self.sleep(POLL_S)
         at = self.clock()
         self._health(WATCHER_START, at)
-        self.watcher = w
+        self.watcher, self._floor = w, at
+        self._armed_dirs = self._chain_dirs()
         return at
+
+    def _chain_dirs(self) -> set:
+        """Every folder on a consequential path's chain that exists now (the folders the armed watch sits on)."""
+        out = set()
+        for p in self.watch:
+            anc = _parent(p)
+            while anc:
+                if _real_dir(self.run_tree, anc):
+                    out.add(anc)
+                anc = _parent(anc)
+        return out
 
     def pump(self):
         """Drain the running watcher's stream into the log, and detect a watcher that died by itself (stamped at
@@ -779,9 +805,11 @@ def inotifywait_factory(run_tree: str, plan) -> _InotifyWatcher:
     """The one process start of the sidecar: inotifywait over the plan's folders. Refused while any of its values
     is PENDING."""
     require_ready()
-    argv = list(INOTIFYWAIT_ARGV) + ["-e", ",".join(INOTIFYWAIT_EVENTS)]
-    for d, rec in plan:
-        argv += (["-r"] if rec else []) + ["--", os.path.join(run_tree, d) if d else run_tree]
+    # inotifywait's options are global and `--` ends them: one process cannot watch some folders recursively and
+    # others not, so a plan with any recursive entry is watched recursively throughout (only consequential paths
+    # are logged either way).
+    argv = list(INOTIFYWAIT_ARGV) + ["-e", ",".join(INOTIFYWAIT_EVENTS)] + (["-r"] if any(r for _, r in plan) else [])
+    argv += ["--"] + [os.path.join(run_tree, d) if d else run_tree for d, _ in plan]
     proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, close_fds=True)
     return _InotifyWatcher(proc, run_tree)
 
@@ -824,7 +852,8 @@ def _ctl(args) -> int:
                 line = fh.readline().decode()
         reply = json.loads(line)
     except (OSError, ValueError) as e:
-        reply = {"ok": False, "command": args.command, "label": label if label_ok(label) else None,
+        reply = {"ok": False, "command": args.command,
+                 "label": "pre-1" if args.command == "begin" else (label if label_ok(label) else None),
                  "taken_at": None, "rearmed_at": None, "unreadable": [], "unreadable_consequential": [],
                  "problems": [f"no reply from the sidecar's control channel ({type(e).__name__})"]}
     sys.stdout.write(json.dumps(reply) + "\n")

@@ -52,6 +52,10 @@ def no_findings(paths):
     return []
 
 
+def holdout_record_ok(result, matcher_given: bool) -> bool:
+    return result["holdout"] == ("checked" if matcher_given else "not-checked")
+
+
 # ------------------------------------------------------------------------------------------------- the process guard
 _GUARD = [("subprocess", "run"), ("subprocess", "Popen"), ("os", "system"), ("os", "kill"), ("os", "killpg"),
           ("os", "posix_spawn"), ("os", "posix_spawnp"), ("os", "fork")]
@@ -60,7 +64,7 @@ _PATCHES: list = []
 MUTANTS: list = []
 
 
-class ProcessStartRefused(AssertionError):
+class ProcessStartRefused(BaseException):
     pass
 
 
@@ -133,6 +137,9 @@ class Case(unittest.TestCase):
 
 class TestGuard(unittest.TestCase):
     def test_the_process_guard_is_armed(self):
+        self.assertIs(subprocess.run, _refuse)
+        self.assertIs(subprocess.Popen, _refuse)
+        self.assertIs(os.kill, _refuse)
         for call in (lambda: subprocess.run(["true"]), lambda: subprocess.Popen(["true"]), lambda: os.kill(-1, 0)):
             with self.assertRaises(ProcessStartRefused):
                 call()
@@ -282,16 +289,16 @@ class TestHoldout(Case):
 
     def test_mutant_dropping_not_checked_goes_red(self):
         c = self.commit()
-        real = sr.scan
-
-        def mutant(*a, **k):
-            out = real(*a, **k)
-            out["holdout"] = "checked"
-            return out
-        with mock.patch.object(sr, "scan", mutant):
+        with mock.patch.object(sr, "NOT_CHECKED", sr.CHECKED):   # mutant: no matcher still reads "checked"
             r = sr.scan(c.files(), SECRETS, rules_scanner=no_findings)
-        self.assertNotEqual(r["holdout"], "not-checked")
+        self.assertFalse(holdout_record_ok(r, matcher_given=False))
         red("the not-checked record dropped with no matcher")
+
+    def test_the_holdout_record_check(self):
+        c = self.commit()
+        self.assertTrue(holdout_record_ok(sr.scan(c.files(), SECRETS, rules_scanner=no_findings), False))
+        self.assertTrue(holdout_record_ok(sr.scan(c.files(), SECRETS, rules_scanner=no_findings,
+                                                  holdout_matcher=synthetic_matcher), True))
 
     def test_mutant_matched_text_in_the_result_goes_red(self):
         c = self.commit({"stream": SYNTHETIC})
@@ -365,9 +372,11 @@ class TestMutants(Case):
         red("the rules scanner's findings dropped")
 
     def test_mutant_letting_refused_pass_goes_red(self):
+        # mutant: the commit decision reads only the masked list; the refusal check goes red on a refused scan
         c = self.commit({"ledger": TOKEN})
         r = sr.scan(c.files(), SECRETS, rules_scanner=no_findings)
-        with mock.patch.object(sr, "passed", lambda result: True):
+        self.assertFalse(sr.passed(r))
+        with mock.patch.object(sr, "passed", lambda result: not result["masked"]):
             self.assertTrue(sr.passed(r))
         red("a refused scan passed")
 
@@ -470,6 +479,11 @@ class TestReadLogin(unittest.TestCase):
         os.makedirs(os.path.join(repo, "deep"))
         with self.assertRaises(sr.LoginError):
             sr.read_login(self.write(LOGIN_FIXTURES["good"][0], 0o600, folder=os.path.join(repo, "deep")), GOOD)
+
+    def test_a_long_file_is_refused(self):
+        p = self.write(LOGIN_FIXTURES["good"][0] + "#" * 70000 + "\n", 0o600)
+        with self.assertRaises(sr.LoginError):
+            sr.read_login(p, GOOD)
 
     def test_mutant_without_the_mode_check_goes_red(self):
         p = self.write(LOGIN_FIXTURES["mode 644"][0], 0o644)

@@ -33,9 +33,14 @@ preflight record, the proxy log, the launch record) cannot be masked and is refu
 finding and every holdout hit. A non-empty `refused` means the caller commits nothing and stops the run for a
 ruling (`passed`).
 
-NAMED RESIDUALS (typed cases in the tests). A value split across a line break, and a value present only in an
-escaped form (a JSON \\uXXXX or \\/ escape), are not found by the exact-value search; the rules scanner may still
-see them.
+NAMED RESIDUALS (typed cases in the tests). A value split across a line break, a value present only in an escaped
+form (a JSON \\uXXXX or \\/ escape), and an email in another letter case, are not found by the exact-value search;
+the rules scanner may still see them.
+
+THE INDEX. The scan masks the files on disk. The caller built the list from the staged index, so after a scan that
+masked anything it must stage the files again and check that each staged blob's sha256 equals the result's
+`sha256_after` before it commits; a commit of the earlier staging would carry the unmasked value (the drive and
+commit step's binding; named for the lane lead).
 
 Result: {"masked": [{"path", "line", "kind", "offset"}], "events": int, "refused": [{"path", "line", "kind",
 "why"}], "files": [{"path", "sha256_before", "sha256_after"}], "holdout": "checked" | "not-checked"}.
@@ -151,10 +156,10 @@ def read_login(path: str, name: str) -> str:
     except OSError:
         raise LoginError("the login file cannot be opened") from None
     try:
-        data = os.read(fd, 1 << 16)
+        data = os.read(fd, (1 << 16) + 1)
     finally:
         os.close(fd)
-    m = _LOGIN_LINE.fullmatch(data)
+    m = _LOGIN_LINE.fullmatch(data) if len(data) <= 1 << 16 else None
     if not m or m.group(1).decode() != name:
         raise LoginError("the login file is not exactly one line NAME=<at least 20 characters, no whitespace, no "
                          "double quote>")

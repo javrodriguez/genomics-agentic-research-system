@@ -49,7 +49,8 @@ _GUARD_NAMES += [("os", n) for n in dir(os) if n.startswith(("exec", "spawn"))]
 _PATCHES: list = []
 
 
-class ProcessStartRefused(AssertionError):
+class ProcessStartRefused(BaseException):
+    """BaseException, so no `except Exception` in the code under test can swallow a guarded start."""
     pass
 
 
@@ -299,6 +300,11 @@ class TakeCase(unittest.TestCase):
 # ------------------------------------------------------------------------------------------------- the guard itself
 class TestGuard(unittest.TestCase):
     def test_the_process_guard_is_armed(self):
+        # identity first, so the calls below can never reach a real process start
+        self.assertIs(subprocess.run, _refuse)
+        self.assertIs(subprocess.Popen, _refuse)
+        self.assertIs(os.kill, _refuse)
+        self.assertIs(os.system, _refuse)
         for call in (lambda: subprocess.run(["true"]), lambda: subprocess.Popen(["true"]), lambda: os.kill(-1, 0),
                      lambda: os.system("true"), lambda: os.killpg(0, 0)):
             with self.assertRaises(ProcessStartRefused):
@@ -524,11 +530,36 @@ class TestSpecialFilesAndOpens(TakeCase):
             entries, _, _ = sidecar.snapshot_tree(t.run_tree, t.watch, opener=self.race_open(t))
         self.assertEqual(entries[PLAN], {"type": "file", "sha256": sha(b"a\tb\n")})   # it followed the link
         red("no O_NOFOLLOW")
-        _, _, _, seen, _ = self.snap_with_fifo()
+
+    def fifo_race(self, t):
+        """An opener that swaps the planted file for a FIFO between the lstat and the open. Opening a FIFO for
+        reading without O_NONBLOCK blocks: simulated here by running the injected clock out."""
+        p = os.path.join(t.run_tree, PLAN)
+
+        def opener(path, flags):
+            if path == p:
+                os.unlink(p)
+                os.mkfifo(p)
+                if not flags & os.O_NONBLOCK:
+                    t.clock.tick(3600.0)
+                    raise OSError("the open blocked (simulated)")
+            return os.open(path, flags)
+        return opener
+
+    def test_a_race_onto_a_fifo_never_blocks(self):
+        t = self.take()
+        t0 = t.clock.time()
+        entries, _, _ = sidecar.snapshot_tree(t.run_tree, t.watch, opener=self.fifo_race(t))
+        self.assertEqual(entries[PLAN], {"type": "unreadable"})       # fstat: not a regular file
+        self.assertLess(t.clock.time() - t0, self.BUDGET_S)
+
+    def test_mutant_no_nonblock_goes_red(self):
+        t = self.take()
+        t0 = t.clock.time()
         with mock.patch.object(sidecar, "OPEN_FLAGS", sidecar.OPEN_FLAGS & ~os.O_NONBLOCK):
-            _, _, _, seen, _ = self.snap_with_fifo()
-        self.assertFalse(all(f & os.O_NONBLOCK for _, f in seen))
-        red("no O_NONBLOCK")
+            sidecar.snapshot_tree(t.run_tree, t.watch, opener=self.fifo_race(t))
+        self.assertGreater(t.clock.time() - t0, self.BUDGET_S)
+        red("no O_NONBLOCK (a race onto a FIFO blocks)")
 
     def test_the_host_clock_never_the_monotonic_one(self):
         t = self.take()
@@ -624,6 +655,61 @@ class TestGaps(TakeCase):
         self.assertEqual(t.load().sidecar_record(),
                          {"start_record": False, "stop_record": False, "exit_code": 1, "queue_overflow": False})
 
+    def test_a_self_exit_0_after_post_n_never_reads_clean(self):
+        t = self.take()
+        t.sc.handle("begin")
+        t.turn()
+        t.sc.handle("snapshot", "post-1")
+        t.clock.tick(1.0)
+        t.w.die(0)            # it exits 0 on its own after post-N; a late writer would go unlogged
+        t.sc.pump()
+        self.assertFalse(t.sc.handle("finish")["ok"])
+        self.assertEqual(t.health()[-1]["exit_code"], 1)
+        self.assertEqual(t.load().sidecar_record()["exit_code"], 1)
+
+    def test_mutant_self_exit_0_read_clean_goes_red(self):
+        real = sidecar.stop_exit_code
+        with mock.patch.object(sidecar, "stop_exit_code",
+                               lambda rc, requested, fault: 0 if rc == 0 else real(rc, requested=requested,
+                                                                                    fault=fault)):
+            t = self.take()
+            t.sc.handle("begin")
+            t.turn()
+            t.sc.handle("snapshot", "post-1")
+            t.w.die(0)
+            t.sc.pump()
+            t.sc.handle("finish")
+        self.assertEqual(t.load().sidecar_record(), CLEAN)   # the test above goes red: the gap reads clean
+        red("a self-exit 0 after post-N recorded clean")
+
+    def test_a_folder_on_the_chain_moved_is_a_fault(self):
+        t = self.take()
+        t.sc.handle("begin")
+        t.w.fs("plan", ("MOVED_FROM", "ISDIR"))      # mv plan plan.old: the watch on plan/ is now stale
+        t.sc.pump()
+        self.assertNotEqual(t.health()[-1].get("exit_code"), 0)
+        self.assertEqual(t.health()[-1]["kind"], "watcher-stop")
+        self.assertFalse(t.sc.handle("status")["ok"])
+
+    def test_mutant_a_stale_watch_read_through_goes_red(self):
+        with mock.patch.object(sidecar, "STALE_EVENTS", ()):
+            t = self.take()
+            t.sc.handle("begin")
+            t.w.fs("plan", ("MOVED_FROM", "ISDIR"))
+            t.sc.pump()
+        self.assertEqual(t.health()[-1]["kind"], "watcher-start")
+        red("a moved folder on the chain read through (stale watch)")
+
+    def test_a_stream_stamp_before_the_start_is_floored(self):
+        t = self.take(factory_kw={"establish_after": 3})
+        t.sc.handle("begin")
+        start = t.health()[0]["at"]
+        t.w.queue.append(sidecar.WatchEvent(start - 0.5, PLAN, ("OPEN",)))
+        t.w.overflow(at=start - 0.4)
+        t.sc.pump()
+        self.assertEqual([a["at"] for a in t.access()], [start])
+        self.assertEqual(t.health()[-1], {"kind": "queue-overflow", "at": start})
+
     def test_mutant_a_death_recorded_clean_goes_red(self):
         with mock.patch.object(sidecar, "stop_exit_code", lambda rc, **k: 0):
             t = self.take()
@@ -664,12 +750,20 @@ class TestGaps(TakeCase):
                          {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": True})
 
     def test_mutant_overflow_dropped_goes_red(self):
-        t = self.take()
-        t.sc.handle("begin")
-        with mock.patch.object(sidecar, "OVERFLOW_EVENT", "SOMETHING-ELSE"):
-            t.w.queue.append(sidecar.WatchEvent(t.clock.time(), "", ("Q_OVERFLOW",)))
+        real = sidecar.Sidecar._health
+
+        def dropping(self, kind, at, **extra):   # mutant: the overflow record silently never written
+            if kind != sidecar.QUEUE_OVERFLOW:
+                real(self, kind, at, **extra)
+        with mock.patch.object(sidecar.Sidecar, "_health", dropping):
+            t = self.take()
+            t.sc.handle("begin")
+            t.w.overflow()
             t.sc.pump()
-        self.assertNotIn("queue-overflow", [x["kind"] for x in t.health()])
+            t.turn()
+            t.sc.handle("snapshot", "post-1")
+            t.sc.handle("finish")
+        self.assertEqual(t.load().sidecar_record()["queue_overflow"], False)   # the overflow test goes red
         red("the overflow event not written as queue-overflow")
 
     def test_a_missing_start_from_a_failed_rearm(self):
@@ -847,7 +941,7 @@ class TestWatchPlan(TakeCase):
     def test_a_path_created_mid_turn(self):
         t = self.take(watch=("out/new.txt",), files={"out/keep.txt": b"k\n"})
         t.sc.handle("begin")
-        self.assertEqual(t.factory.plans[-1], (("out", False),))
+        self.assertEqual(t.factory.plans[-1], (("", False), ("out", False)))
         t.turn([("out/new.txt", ("CREATE",)), ("out/new.txt", ("MODIFY",)), ("out/new.txt", ("OPEN",))])
         t.sc.handle("snapshot", "post-1")
         t.sc.handle("finish")
@@ -870,9 +964,9 @@ class TestWatchPlan(TakeCase):
 
     def test_a_two_level_missing_chain(self):
         t = self.chain()
-        self.assertEqual(t.factory.plans[0], (("a", True),))
+        self.assertEqual(t.factory.plans[0], (("", False), ("a", True)))
         self.assertEqual([a["op"] for a in t.load().accesses(path="a/b/c", turn=1)], ["modify", "open"])
-        self.assertEqual(t.factory.plans[1], (("a/b", False),))        # re-chosen at the re-arm
+        self.assertEqual(t.factory.plans[1], (("", False), ("a", False), ("a/b", False)))   # re-chosen at the re-arm
 
     def test_mutant_non_recursive_watch_goes_red(self):
         real = sidecar.watch_plan
