@@ -125,3 +125,39 @@ With bootstrap_reps 200 the power run took about 17 s, so 100 was chosen to keep
 - A grep watcher on a sub-agent's transcript matched the brief's own text (the word SubagentHandback in the prompt) and fired at once. Wait for the completion notification instead.
 - Working out the expected figures for a typed Holm case at the wrong family size (four, not five) gave a red test that was wrong, not one that showed the code was missing. Derive the expected numbers from the stated m.
 - A mutant that only swaps the stop view can still agree with the strict view (raw and failures both read a stop as not right). Choose the mutant whose output differs.
+
+## Fold 1 (the round 1 lane review, folded under the lane lead's fold brief, Thu 8 Oct 2026)
+
+Start: c724881e, clean tree.
+Commits:
+- c86ba42e: red tests (91 run: 9 failures, 1 error);
+- a0318fa7: the fixes;
+- this section.
+
+No reviewer of my own was spawned in this fold.
+
+| Finding | Severity | Fold |
+|---|---|---|
+| W4E1-1 `--check` blind to records outside top-level `*.json` | MAJOR | `_strays`, called from `results_files`: the results folder holds only top-level `*.json` files. `--check` exits 1 with `FAIL results folder` for a subfolder, `.jsonl` or `.txt`. Mutant: `_strays` returns [], and the check falls back to the no-takes line. |
+| W4E1-2 bootstrap outward rounding unbound | MAJOR | A test stubs the order statistics at 2/3 and 5/6 and asserts lower 0.666 (floor3) and upper 0.834 (ceil3); all three rounding mutants are red. |
+| W4E1-3 contrast Holm size unbound | MAJOR | The test asserts the contrast's exact Holm value, 3 x p over the three contrasts. |
+| W4E1-4 power clustering unbound | MAJOR | Seeded counts are bound on three grid points: (0.7, 0.5) with no spread, with task spread 0.4, and with wording spread 0.4. Zeroing either offset changes them. |
+| W4E1-5 markers once and in order unbound | MAJOR | The two-blocks page and the reversed-markers page are added to `test_each_named_problem`. |
+| W4E1-6 `0 of n` slots beside no takes | MINOR | Table 6 prints no takes when no slot matched. The zero test now also catches any cell starting `0 of` and runs on a fixture with an unmatched pair. |
+| W4E1-7 free-text agent.version | MINOR | `VERSION_ID` (id-like: no spaces, pipes or slashes), with a mutant. CP2 should confirm the shape. |
+| W4E1-8 multi-model harness without a contrast | MINOR | `validate_design` refuses it. |
+| W4E1-9 PASS on files with no records | MINOR | The check prints `stats --check: no takes (k results files, 0 records); nothing was compared`, exit 0, never PASS. |
+| W4E1-10 mixed levels | MINOR | `check_records` refuses a task that carries both kinds of level (read through `level()`, so the untagged-level mutant goes red). |
+| W4E1-11 descriptive-with-test clause unbound | MINOR | A mutant adds a p to the descriptive rows, and `derive` refuses. |
+| W4E1-12 `<=` against `<` at alpha | NIT | A Holm case lands exactly on 1/20 and reads at alpha. |
+| W4E1-13 NITs | NIT | All five are folded: a negative repeat is refused; alpha must use its shortest spelling ("0.05"); the comparisons heading names both Holm families; an all-stop half's excluded view reads "k stops excluded, none counted"; the agent check is its own function `_check_agent`, called unconditionally. |
+| The review's equivalent and error-only mutants | n/a | New tests make each one red: `family_of` is read alone; harness-error with label `wrong-move` and views None is refused; a harness name with a space is refused; `_complete` on a missing half is asserted directly. |
+
+Checks on a0318fa7 (each behind light-ok, foreground, single-threaded BLAS):
+- `tests/test_stats.py` alone: `Ran 91 tests` / `OK`.
+- `stats.py --check`: `stats --check: no takes (0 results files); nothing was compared`, exit 0.
+- `copy_manifest.py --check` after `git add`: `ok: 110 files from 8 fragment(s) ...`.
+
+Mutant re-run: copies of the review's `swap.py` and `mutants.json`, run one at a time, each behind light-ok. `mutants.json` holds 49 entries; the review's prose says 50. All 49 are RED with 91 tests in the whole file (`grep -c ' -> RED'` gives 49; none GREEN or ERROR-ONLY). The first background pass died at 18:55 with the previous lead's session, after 35 mutants, all red. The full pass then ran again in the foreground, 19:07 to 19:15 EDT.
+
+`git diff c724881e --stat` touches only `evals/gap-study-4/stats.py`, `evals/gap-study-4/tests/test_stats.py` and this report.
