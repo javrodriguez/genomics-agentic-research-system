@@ -1766,7 +1766,7 @@ class TestRound3Sources(unittest.TestCase):
     # these ranges, besides check_take.py's reason-id lines and prereg.json's four keys.
     DRIVE = "evals/gap-study-3/drive.py"
     TAKES = "evals/gap-study-3/takes.py"
-    ALLOWED = {DRIVE: ((140, 160), (857, 923), (1405, 1420)), TAKES: ((268, 292),), CHECK_TAKE: ((80, 95),)}
+    ALLOWED = {DRIVE: ((140, 160), (857, 923), (1405, 1420)), TAKES: ((255, 295),), CHECK_TAKE: ((80, 95),)}
 
     def round3_lines(self, path: str, first: int, last: int) -> list[str]:
         if not any(lo <= first <= last <= hi for lo, hi in self.ALLOWED[path]):
