@@ -693,6 +693,8 @@ class Sidecar:
     def _snap_command(self, label) -> dict:
         if not label_ok(label):
             return self._reply("snapshot", None, problems=["the label is not pre-<k> (k >= 2) or post-<k> (k >= 1)"])
+        if self.state in ("new", "finished"):
+            return self._reply("snapshot", label, problems=[f"no snapshot: the sidecar is {self.state}"])
         if label != self.next_label:
             return self._reply("snapshot", label, problems=[f"{label} out of order: the next snapshot is "
                                                             f"{self.next_label}"])

@@ -933,6 +933,17 @@ class TestWatchPlan(TakeCase):
         self.assertEqual(t.access(), [])
         red("the watcher stopped at post-N (a late writer never logged)")
 
+    def test_no_snapshot_before_begin_or_after_finish(self):
+        t = self.take()
+        self.assertFalse(t.sc.handle("snapshot", "post-1")["ok"])
+        self.assertFalse(os.path.exists(os.path.join(t.evidence, "snapshots")))
+        self.one_turn(t)
+        r = t.sc.handle("snapshot", "pre-2")
+        self.assertFalse(r["ok"])
+        self.assertFalse(os.path.exists(os.path.join(t.evidence, "snapshots", "pre-2.json")))
+        self.assertFalse(t.sc.handle("finish")["ok"])
+        self.assertFalse(t.sc.handle("begin")["ok"])
+
     def test_snapshot_labels_follow_the_take(self):
         t = self.take()
         t.sc.handle("begin")
