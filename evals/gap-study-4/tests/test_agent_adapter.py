@@ -524,5 +524,27 @@ class TestNextTouchClock(unittest.TestCase):
         self.assertEqual(found, [f"{name}: accepted" for name in NON_FINITE])
 
 
+
+# CP2 ruling C3 (glitch-f3, 17:35; names fixed at 17:42): two more box keys, copied as given (never coerced).
+C3_BOX = {"unreadable_consequential": ["data/staging/samples.csv"], "quiescence_cap_survivors": 2}
+
+
+class TestNextTouchC3Box(unittest.TestCase):
+    def test_the_c3_keys_are_box_keys_copied_as_given(self):
+        self.assertEqual(aa.BOX_KEYS[-2:], ("unreadable_consequential", "quiescence_cap_survivors"))
+        box = dict(BOX, **C3_BOX)
+        r = aa.harness_records([turn()], pin=PIN, box=box)
+        self.assertEqual(r["unreadable_consequential"], C3_BOX["unreadable_consequential"])
+        self.assertIsNot(r["unreadable_consequential"], box["unreadable_consequential"])   # a copy of the list
+        self.assertEqual(r["quiescence_cap_survivors"], 2)
+        for key in C3_BOX:
+            for bad in (None, "x", True):
+                self.assertEqual(aa.harness_records([turn()], pin=PIN, box=dict(box, **{key: bad}))[key], bad)
+            b = dict(box)
+            del b[key]
+            with self.assertRaises(aa.BoxRecordError):
+                aa.harness_records([turn()], pin=PIN, box=b)
+
+
 if __name__ == "__main__":
     unittest.main()

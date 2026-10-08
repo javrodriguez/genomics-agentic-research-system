@@ -2601,5 +2601,147 @@ class TestNextTouchSpendCap(unittest.TestCase):
         self.assertTrue(any("outranked by nothing" in x for x in routing.check_table(t)))
 
 
+
+# CP2 ruling C3 (glitch-f3, 17:35; names fixed at 17:42): two box keys and their rows, both after-first-turn, both
+# harness-error. `unreadable_consequential` (row unreadable-consequential-path): the run-tree paths the sidecar could
+# not read among the task's consequential ones; before the first turn a non-empty list is refused (a preflight
+# failure is CP2's to fold into preflight_ok). `quiescence_cap_survivors` (row quiescence-cap-reached): the processes
+# still alive at the quiescence cap (W2A2-6), so the published harness-error column names the cap, never an operator
+# diff: the operator-diff row does not also match, and the take's rows read exactly ["quiescence-cap-reached"].
+UNREADABLE, SURVIVORS = "unreadable_consequential", "quiescence_cap_survivors"
+UNREADABLE_ROW, CAP_ROW = "unreadable-consequential-path", "quiescence-cap-reached"
+OP_DIFF_ROW = "operator-diff-unexplained-after-first-turn"
+SOME_PATHS = ["data/staging/samples.csv", "results/table.tsv"]   # made-up run-tree paths
+
+
+def c3_record(phase: str, unreadable=(), survivors=0, edits=()) -> dict:
+    rec = baseline(phase)
+    rec[UNREADABLE] = list(unreadable)
+    rec[SURVIVORS] = survivors
+    for e in edits:
+        e(rec)
+    return rec
+
+
+def _diffs(n):
+    return lambda r: r["operator"].__setitem__("unexplained_diffs", n)
+
+
+def _oom(r):
+    r["cgroup"]["oom_kill_delta"] = 1
+
+
+def _qk(r):
+    r["quiescence_kill"] = True
+
+
+C3_CASES = {   # name -> (records builder, route or REFUSED, winning rows, matched rows or None, events)
+    "an unreadable consequential path after the first turn": (
+        lambda: c3_record(A, SOME_PATHS[:1]), labels4.HARNESS_ERROR, [UNREADABLE_ROW], [UNREADABLE_ROW], []),
+    "two unreadable consequential paths after the first turn": (
+        lambda: c3_record(A, SOME_PATHS), labels4.HARNESS_ERROR, [UNREADABLE_ROW], None, []),
+    "an unreadable consequential path before the first turn is refused": (
+        lambda: c3_record(B, SOME_PATHS[:1]), REFUSED, None, None, []),
+    "an unreadable path after a silent turn, before the first turn, is refused": (
+        lambda: c3_record(B, SOME_PATHS[:1], edits=[silent_turn]), REFUSED, None, None, []),
+    "processes alive at the quiescence cap": (
+        lambda: c3_record(A, survivors=1), labels4.HARNESS_ERROR, [CAP_ROW], [CAP_ROW], []),
+    "the cap's survivors and the operator diff they caused: the cap's row alone (W2A2-6)": (
+        lambda: c3_record(A, survivors=2, edits=[_diffs(1)]), labels4.HARNESS_ERROR, [CAP_ROW], [CAP_ROW], []),
+    "an operator diff with no survivors stays the operator-diff row": (
+        lambda: c3_record(A, edits=[_diffs(1)]), labels4.HARNESS_ERROR, [OP_DIFF_ROW], [OP_DIFF_ROW], []),
+    "survivors before the first turn are refused (lane w4h decision)": (
+        lambda: c3_record(B, survivors=1, edits=[silent_timeout]), REFUSED, None, None, []),
+    "survivors beside an out-of-memory kill: aborted": (
+        lambda: c3_record(A, survivors=1, edits=[_oom]), labels4.ABORTED, ["cgroup-kill"], ["cgroup-kill", CAP_ROW], []),
+    "an unreadable path beside a rate limit: pause": (
+        lambda: c3_record(A, SOME_PATHS[:1], edits=[_rate, _end_error(1)]), labels4.PAUSE, ["rate-limit"], None, []),
+    "survivors beside a quiescence kill: the cap's row, and the kill's event": (
+        lambda: c3_record(A, survivors=1, edits=[_qk]), labels4.HARNESS_ERROR, [CAP_ROW], None, [QK]),
+    "an unreadable path and survivors: both rows": (
+        lambda: c3_record(A, SOME_PATHS[:1], survivors=1), labels4.HARNESS_ERROR, [UNREADABLE_ROW, CAP_ROW], None, []),
+}
+
+
+def c3_problems(table: dict) -> list[str]:
+    p = []
+    for name, (build, route, rows, matched, events) in C3_CASES.items():
+        rec = build()
+        got = try_route(rec, table)
+        if route == REFUSED:
+            if not isinstance(got, routing.RoutingRefused):
+                p.append(f"{name}: want refused, got {got['route']} via {got['rows']}")
+            continue
+        if isinstance(got, Exception):
+            p.append(f"{name}: refused ({got})")
+        elif (got["route"], got["rows"]) != (route, rows) or (matched is not None and got["matched"] != matched):
+            p.append(f"{name}: want {route} via {rows} (matched {matched}), got {got['route']} via {got['rows']} "
+                     f"(matched {got['matched']})")
+        elif got["events"] != events:
+            p.append(f"{name}: want events {events}, got {got['events']}")
+    return p
+
+
+C3_BAD_TYPES = {UNREADABLE: (None, "data/x.csv", [1], [""], [None], {"data/x.csv": 1}, 0, True),
+                SURVIVORS: (None, True, False, -1, "1", 1.5, [1])}
+
+
+def c3_type_problems(table: dict) -> list[str]:
+    """Each C3 key dropped, None, or of a wrong type is refused by route and annotate, never coerced; the box key
+    dropped is refused by harness_records."""
+    p = []
+    for key, bads in C3_BAD_TYPES.items():
+        rec = c3_record(A)
+        del rec[key]
+        for fn in (routing.route, routing.annotate):
+            if not refuses(fn, rec, table):
+                p.append(f"{key} dropped: {fn.__name__} did not refuse it")
+        for bad in bads:
+            rec = c3_record(A)
+            rec[key] = bad
+            for fn in (routing.route, routing.annotate):
+                if not refuses(fn, rec, table):
+                    p.append(f"{key}={bad!r}: {fn.__name__} did not refuse it")
+    return p
+
+
+class TestNextTouchC3(unittest.TestCase):
+    """CP2 ruling C3: `unreadable_consequential` (row unreadable-consequential-path) and `quiescence_cap_survivors`
+    (row quiescence-cap-reached), both after-first-turn and harness-error."""
+
+    def test_the_names_are_fixed(self):
+        self.assertIn(UNREADABLE, routing.RECORD_SCHEMA)
+        self.assertIn(SURVIVORS, routing.RECORD_SCHEMA)
+        self.assertIn(UNREADABLE, aa.BOX_KEYS)
+        self.assertIn(SURVIVORS, aa.BOX_KEYS)
+        for rid, path in ((UNREADABLE_ROW, UNREADABLE), (CAP_ROW, SURVIVORS)):
+            row = next(r for r in REAL["rows"] if r["id"] == rid)
+            self.assertEqual((row["when"], row["route"]), (labels4.AFTER_FIRST_TURN, labels4.HARNESS_ERROR), rid)
+            self.assertEqual([c["path"] for c in row["any_of"]], [path], rid)
+        op_diff = next(r for r in REAL["rows"] if r["id"] == OP_DIFF_ROW)
+        self.assertIn({"path": SURVIVORS, "op": "gt", "value": 0}, op_diff["none_of"])
+        self.assertIn("W2A2-6", next(r for r in REAL["rows"] if r["id"] == CAP_ROW)["source"])
+
+    def test_the_c3_rows_route(self):
+        self.assertEqual(c3_problems(test_table()), [])
+
+    def test_the_c3_keys_are_typed_never_coerced(self):
+        self.assertEqual(c3_type_problems(test_table()), [])
+
+    def test_through_harness_records(self):
+        t = test_table()
+        box = dict(full_box(), **{UNREADABLE: list(SOME_PATHS[:1]), SURVIVORS: 0})
+        got = routing.route(aa.harness_records([a_turn(), a_turn()], pin=PIN, box=box), t)
+        self.assertEqual((got["route"], got["rows"]), (labels4.HARNESS_ERROR, [UNREADABLE_ROW]))
+        box = dict(full_box(), **{UNREADABLE: [], SURVIVORS: 3, "unexplained_operator_diffs": 1})
+        got = routing.route(aa.harness_records([a_turn(), a_turn()], pin=PIN, box=box), t)
+        self.assertEqual((got["route"], got["rows"]), (labels4.HARNESS_ERROR, [CAP_ROW]))
+        for key in (UNREADABLE, SURVIVORS):
+            box = dict(full_box(), **{UNREADABLE: [], SURVIVORS: 0})
+            del box[key]
+            with self.assertRaises(aa.BoxRecordError):
+                aa.harness_records([a_turn()], pin=PIN, box=box)
+
+
 if __name__ == "__main__":
     unittest.main()
