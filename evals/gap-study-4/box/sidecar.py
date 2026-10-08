@@ -117,6 +117,7 @@ LEDGER, ACCESS, HEALTH, SNAPSHOTS, BLOBS = "ledger.jsonl", "access.jsonl", "heal
 WATCHER_START, WATCHER_STOP, QUEUE_OVERFLOW = "watcher-start", "watcher-stop", "queue-overflow"
 OPEN, MODIFY, DELETE = "open", "modify", "delete"
 UNREADABLE = {"type": "unreadable"}
+CREATED_AT_BEGIN = (ACCESS, HEALTH)   # empty until something is logged; a missing log is never read as empty
 
 # The watcher's event names, mapped to the three ops (one closed table).
 EVENT_OPS = {"OPEN": OPEN, "MODIFY": MODIFY, "CLOSE_WRITE": MODIFY, "MOVED_TO": MODIFY, "CREATE": MODIFY,
@@ -679,7 +680,7 @@ class Sidecar:
             return self._reply("begin", "pre-1", problems=list(self.problems))
         os.mkdir(self._ev(SNAPSHOTS))
         os.mkdir(self._ev(BLOBS))
-        for n in (ACCESS, HEALTH):
+        for n in CREATED_AT_BEGIN:
             os.close(os.open(self._ev(n), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644))
         taken_at = self.clock()
         unreadable, uc, _ = self._snapshot("pre-1", taken_at)
@@ -696,8 +697,7 @@ class Sidecar:
             return self._reply("snapshot", label, problems=[f"{label} out of order: the next snapshot is "
                                                             f"{self.next_label}"])
         if self.state == "running":
-            taken_at = self._stop()
-            unreadable, uc, _ = self._snapshot(label, taken_at)
+            taken_at, unreadable, uc = self._pause(label)
             rearmed = self._arm() if self.state == "running" else None
         else:
             taken_at = self.clock()
@@ -707,6 +707,13 @@ class Sidecar:
         self.next_label = f"pre-{int(k) + 1}" if side == "post" else f"post-{k}"
         return self._reply("snapshot", label, taken_at=taken_at, rearmed_at=rearmed, unreadable=unreadable,
                            uc=uc, problems=list(self.problems))
+
+    def _pause(self, label: str) -> tuple:
+        """The pause: the watcher stopped and drained, the stop stamped, then the snapshot taken at that stamp (the
+        snapshot opens every file, so the watcher must not see it)."""
+        taken_at = self._stop()
+        unreadable, uc, _ = self._snapshot(label, taken_at)
+        return taken_at, unreadable, uc
 
     def _finish(self) -> dict:
         if self.state == "running":
