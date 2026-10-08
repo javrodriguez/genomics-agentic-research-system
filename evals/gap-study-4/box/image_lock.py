@@ -83,7 +83,7 @@ EXTRA_KEYS = {EGRESS_IMAGE: ("squid",)}
 PENDABLE = ("base", "harness.version", "python", "image_id", "squid")
 
 # A repository name (an optional registry host with port, then path parts), never a tag, then the digest.
-BASE_RE = re.compile(r"(?P<name>([a-z0-9.-]+(:[0-9]+)?/)?[a-z0-9._-]+(/[a-z0-9._-]+)*)@(?P<digest>sha256:[0-9a-f]{64})")
+BASE_RE = re.compile(r"(?P<name>([a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]+)?/)?[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*)@(?P<digest>sha256:[0-9a-f]{64})")
 VERSION_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 # The in-container floor is Python 3.11 (interface 17).
 PYTHON_RE = re.compile(r"3\.(1[1-9]|[2-9][0-9])\.[0-9]+")

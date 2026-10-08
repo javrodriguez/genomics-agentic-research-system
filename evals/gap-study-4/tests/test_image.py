@@ -133,6 +133,8 @@ MUTANT_LOCKS = {
     "the wrong dockerfile": _set(("dockerfile",), "codex/Dockerfile"),
     "a base by tag": _set(("base",), "registry.example/fake-base:latest"),
     "a base with a tag and a digest": _set(("base",), "registry.example/fake-base:9@sha256:" + "a" * 64),
+    "a base with a parent-folder name": _set(("base",), "../fake-base@sha256:" + "a" * 64),
+    "a base with a leading dash": _set(("base",), "-/fake-base@sha256:" + "a" * 64),
     "another image's harness package": _set(("harness", "package"), "@openai/" + pc.CODEX),
     "a short base digest": _set(("base",), "registry.example/fake-base@sha256:" + "a" * 63),
     "a harness version with a range": _set(("harness", "version"), "^9.8.7"),
@@ -759,6 +761,12 @@ class NeutralityTest(unittest.TestCase):
         text = dockerfile("take-a").replace("/home/dana", "/home/sealed")
         with mock.patch.object(sys.modules[__name__], "dockerfile", lambda image: text):
             self.assertTrue(leak_hits(agent_visible("take-a")["paths"]))
+        # The instruction scan: a study word anywhere in an instruction's text, not only in a path, goes red.
+        text = dockerfile("take-a").replace("--shell /bin/bash dana", "--shell /bin/bash dana --comment trap")
+        with mock.patch.object(sys.modules[__name__], "dockerfile", lambda image: text):
+            seen = agent_visible("take-a")
+            self.assertTrue(leak_hits(seen["instructions"]))
+            self.assertFalse(leak_hits(seen["paths"] + seen["label keys"] + seen["env"]))
 
 
 def print_mutants() -> None:
