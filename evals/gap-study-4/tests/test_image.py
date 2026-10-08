@@ -638,8 +638,14 @@ class DockerfileTest(unittest.TestCase):
         text = "# c\nARG BASE\nFROM ${BASE}\nRUN a \\\n# inside\n  && b\n\nUSER 1:1\n"
         ins = il.parse_dockerfile(text)
         self.assertEqual([(i.line, i.keyword, i.args) for i in ins],
-                         [(2, "ARG", "BASE"), (3, "FROM", "${BASE}"), (4, "RUN", "a && b"), (8, "USER", "1:1")])
-        for bad in ("FROB x\n", "RUN a \\\n", "# syntax=docker/dockerfile:1\nARG BASE\n", "RUN <<X\nX\n"):
+                         [(2, "ARG", "BASE"), (3, "FROM", "${BASE}"), (4, "RUN", "a   && b"), (8, "USER", "1:1")])
+        # BuildKit's join (fold 3, W4A1-1): no separator, the continuation's leading whitespace kept, the escape and
+        # the spaces or tabs after it dropped, the character before it kept.
+        joined = il.parse_dockerfile("RUN te\\\nst \"a\"\\ \t\n=\\\n \"b\"\n")[0].args
+        self.assertEqual(joined, 'test "a"= "b"')
+        self.assertEqual(il.normalized(" a \t b  "), "a b")
+        for bad in ("FROB x\n", "RUN a \\\n", "# syntax=docker/dockerfile:1\nARG BASE\n", "RUN <<X\nX\n",
+                    "RUN a\r\n", "RUN a\u00a0b\n", "# \x0b\nRUN a\n"):
             with self.subTest(bad), self.assertRaises(il.DockerfileError):
                 il.parse_dockerfile(bad)
 

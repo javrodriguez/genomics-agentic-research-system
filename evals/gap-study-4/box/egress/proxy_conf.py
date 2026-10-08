@@ -55,7 +55,9 @@ TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "proxy.
 DIRECTIVES = ("http_port", "acl", "http_access", "cache", "access_log", "pid_filename")
 ACL_TYPES = ("port", "method", "dstdomain")
 HOST_RE = re.compile(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+")
-ACL_NAME_RE = re.compile(r"[a-z][a-z0-9_]*")
+# The longest line this module reads (the template's longest is under 120), far below squid's buffer.
+MAX_LINE = 512
+_LINE_RE = re.compile(r"[\x20-\x7e\t]*")
 ACCESS_LOG = "stdio:/dev/stdout"
 # squid's acl reference: "For dstdomain and dstdom_regex a reverse lookup is tried if a IP based URL is used and no
 # match is found"; `-n` disables lookups. Without it a CONNECT to an IP whose reverse name is the allowed host would
@@ -110,22 +112,26 @@ def render(harness: str) -> str:
 
 
 def parse(text: str) -> list:
-    """The directives of `text` as (line, directive, [tokens]); an unknown directive or acl type is refused."""
+    """The directives of `text` as (line, directive, [tokens]); an unknown directive or acl type is refused.
+
+    squid reads its configuration a physical line at a time with fgets(BUFSIZ) (src/cache_cf.cc), so a line longer
+    than its buffer is read as two lines, the tail possibly a directive. Every line, comments included, is therefore
+    at most MAX_LINE characters of printable ASCII, space and tab (no carriage return), and tokens split on space
+    and tab only, as squid splits them (fold 3, W4A1-2)."""
     out = []
     for n, raw in enumerate(text.split("\n"), 1):
-        line = raw.strip()
+        if len(raw) > MAX_LINE:
+            raise ProxyConfError(f"line {n}: longer than {MAX_LINE} characters")
+        if not _LINE_RE.fullmatch(raw):
+            raise ProxyConfError(f"line {n}: a character outside printable ASCII, space and tab")
+        line = raw.strip(" \t")
         if not line or line.startswith("#"):
             continue
-        if "\\" in line:
-            raise ProxyConfError(f"line {n}: a continuation is not read here")
-        toks = line.split()
+        toks = re.split(r"[ \t]+", line)
         if toks[0] not in DIRECTIVES:
             raise ProxyConfError(f"line {n}: unknown directive {toks[0]!r}")
-        if toks[0] == "acl":
-            if len(toks) < 4 or toks[2] not in ACL_TYPES:
-                raise ProxyConfError(f"line {n}: an acl must be `acl <name> <{'|'.join(ACL_TYPES)}> <value>...`")
-            if not ACL_NAME_RE.fullmatch(toks[1]):
-                raise ProxyConfError(f"line {n}: acl name {toks[1]!r}")
+        if toks[0] == "acl" and (len(toks) < 4 or toks[2] not in ACL_TYPES):
+            raise ProxyConfError(f"line {n}: an acl must be `acl <name> <{'|'.join(ACL_TYPES)}> <value>...`")
         out.append((n, toks[0], toks[1:]))
     return out
 

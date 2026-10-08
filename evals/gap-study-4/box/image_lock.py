@@ -345,7 +345,10 @@ def check_labels(lock, inspect) -> list:
 
 
 def build_argv(lock, *, context: str) -> list:
-    """The `docker build` argv for `lock`'s image (constructed, never run); refuses while a build input is PENDING."""
+    """The `docker build` argv for `lock`'s image (constructed, never run); refuses while a build input is PENDING.
+
+    It builds from any `lock` that validates, a hand-filled dict included: no committed lock file need stand behind
+    it. The drive step passes only `load()` output, so the argv is always the committed lock's (fold 3, W4A1-8)."""
     args = build_args(lock)
     if not isinstance(context, str) or not os.path.isabs(context):
         raise ValueError("context must be an absolute path")
@@ -380,44 +383,65 @@ class Instruction:
     args: str        # the arguments, continuation lines joined by one space
 
 
+# BuildKit's continuation (frontend/dockerfile/parser/parser.go): a line ending in the escape character, optionally
+# followed by spaces or tabs, continues; the escape and that whitespace are dropped, the character before it kept.
+_CONTINUATION_RE = re.compile(r"([^\\])\\[ \t]*$")
+# What a Dockerfile line may hold: printable ASCII, space and tab (no carriage return, no other control or
+# non-ASCII character), so this parser and BuildKit read the same bytes.
+_DOCKERFILE_CHAR_RE = re.compile(r"[\x20-\x7e\t]*")
+
+
+def normalized(args: str) -> str:
+    """An instruction's arguments with every run of whitespace made one space (what the closed RUN lines compare)."""
+    return " ".join(args.split())
+
+
 def parse_dockerfile(text: str) -> list:
-    """The instructions of `text`: comments dropped (also inside a continuation), continuations joined."""
+    """The instructions of `text`, joined the way BuildKit joins them.
+
+    The first line of an instruction loses its leading whitespace; each continuation line is appended with no
+    separator and its leading whitespace kept; a comment line or an empty line inside a continuation is skipped.
+    So `"$(..)"\\` / `=\\` / `"${V}"` reads as `"$(..)"="${V}"`, exactly the word Docker runs."""
     lines = text.split("\n")
+    for n, line in enumerate(lines, 1):
+        if not _DOCKERFILE_CHAR_RE.fullmatch(line):
+            raise DockerfileError(f"line {n}: a character outside printable ASCII, space and tab")
     out, i = [], 0
     while i < len(lines):
-        raw = lines[i]
-        stripped = raw.strip()
+        stripped = lines[i].strip(" \t")
         if not stripped or stripped.startswith("#"):
             if re.fullmatch(r"#\s*(syntax|escape|check)\s*=.*", stripped, re.IGNORECASE) and not out:
                 raise DockerfileError(f"line {i + 1}: a parser directive is not read here")
             i += 1
             continue
-        start, parts = i + 1, []
-        while True:
-            body = lines[i].strip()
-            if parts and (body.startswith("#") or not body):
-                i += 1
-                if i >= len(lines):
-                    raise DockerfileError(f"line {start}: a continuation runs off the end of the file")
-                continue
-            if body.endswith("\\"):
-                parts.append(body[:-1].strip())
-                i += 1
-                if i >= len(lines):
-                    raise DockerfileError(f"line {start}: a continuation runs off the end of the file")
-                continue
-            parts.append(body)
+        start = i + 1
+        joined, done = _continued(stripped)
+        i += 1
+        while not done:
+            if i >= len(lines):
+                raise DockerfileError(f"line {start}: a continuation runs off the end of the file")
+            raw = lines[i]
             i += 1
-            break
-        joined = " ".join(p for p in parts if p)
-        keyword, _, args = joined.partition(" ")
+            if raw.strip(" \t").startswith("#") or not raw.strip(" \t"):
+                continue
+            part, done = _continued(raw)
+            joined += part
+        keyword, _, args = joined.lstrip(" \t").partition(" ")
         keyword = keyword.upper()
         if keyword not in KNOWN_INSTRUCTIONS:
             raise DockerfileError(f"line {start}: unknown instruction {keyword!r}")
         if "<<" in args:
             raise DockerfileError(f"line {start}: a heredoc is not read here")
-        out.append(Instruction(start, keyword, args.strip()))
+        out.append(Instruction(start, keyword, args.strip(" \t")))
     return out
+
+
+def _continued(line: str) -> tuple:
+    """(the line with its continuation escape dropped, whether the instruction ends here)."""
+    m = _CONTINUATION_RE.search(line)
+    if not m:
+        return line, True
+    return line[:m.start()] + m.group(1), False
 
 
 COMMON_BEGIN = "# common:begin"
@@ -442,8 +466,6 @@ FORBIDDEN_PACKAGES = ("docker*", "podman", "containerd", "runc", "buildah", "cur
                       "socat", "openssh-client", "telnet", "dnsutils", "bind9-dnsutils", "iputils-ping", "net-tools",
                       "ftp", "lynx", "aria2")
 # Words no RUN may hold, whatever it installs: privilege helpers and fetchers.
-FORBIDDEN_RUN_WORDS = ("sudo", "su", "doas", "setcap", "pip", "pip3", "curl", "wget", "dpkg", "apk", "yum", "dnf")
-SETUID_RE = re.compile(r"(chmod|install)\s+(-\S+\s+)*(-m\s+)?([ugoa]*[+=][rwx]*s|0*[2-7][0-7]{3})\b")
 
 PYTHON_CHECK = ("test \"$(python3 -c 'import platform; print(platform.python_version())')\" = \"${PYTHON_VERSION}\"")
 GIT_SAFE = "git config --system --add safe.directory '*'"
@@ -460,7 +482,9 @@ USERS_LINE = ("groupadd --gid {a[gid]} {a[name]}"
               " && groupadd --gid {w[gid]} {w[name]}"
               " && useradd --uid {w[uid]} --gid {w[gid]} --no-create-home --home-dir /nonexistent"
               " --shell /usr/sbin/nologin {w[name]}")
-SIDECAR_COPY = "sidecar.py /opt/w/sidecar.py"
+# The sidecar program's path inside the sidecar image (interface 11; merge binding 6 reads it).
+SIDECAR_PROGRAM = "/opt/w/sidecar.py"
+SIDECAR_COPY = "sidecar.py " + SIDECAR_PROGRAM
 SQUID_PACKAGE = "squid=${SQUID_VERSION}"
 # The ENV lines each image carries, exactly.
 ENVS = {
@@ -608,20 +632,11 @@ def check_dockerfile(text: str, lock) -> list:
             out.append(f"the sidecar image copies exactly {SIDECAR_COPY!r}")
     elif copies:
         out.append("no COPY in this image")
-    runs = [i.args for i in ins if i.keyword == "RUN"]
+    # The RUN lines are a closed sequence (expected_runs): nothing else can run at build, so no deny list of words,
+    # setuid modes or install spellings is kept beside it (fold 3, W4A1-7: each was dead under the sequence).
+    runs = [normalized(i.args) for i in ins if i.keyword == "RUN"]
     if runs != expected_runs(lock):
         out.append("the RUN lines are not exactly the closed sequence for this image (image_lock.expected_runs)")
-    for r in runs:
-        words = set(re.findall(r"[A-Za-z0-9_.+-]+", r))
-        for w in FORBIDDEN_RUN_WORDS:
-            if w in words:
-                out.append(f"RUN uses {w!r}")
-        for p in forbidden(sorted(words)):
-            out.append(f"RUN names the forbidden package or tool {p!r}")
-        if SETUID_RE.search(r):
-            out.append("RUN sets a setuid or setgid bit")
-        if re.search(r"\bapt\s+install\b", r):
-            out.append("RUN uses apt install (only one apt-get install line)")
     installs = [r for r in runs if "apt-get install" in r]
     if len(installs) != 1:
         out.append("exactly one apt-get install line")
@@ -667,8 +682,6 @@ def check_dockerfile(text: str, lock) -> list:
         for u in users:
             if u[4]:
                 out.append(f"useradd {u[0]} uses options outside the closed set: {list(u[4])}")
-        if re.search(r"\b10003\b", " ".join(runs)):
-            out.append("the keep-alive uid 10003 has no user entry")
         users_at = [i for i in ins if i.keyword == "USER"]
         if not users_at or ins[-1].keyword != "USER" or ins[-1].args != LAST_USER[image] or len(users_at) != 1:
             out.append(f"exactly one USER, last, and it is {LAST_USER[image]}")
