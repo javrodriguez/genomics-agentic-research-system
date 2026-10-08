@@ -67,7 +67,10 @@ glitch-f3's ruling), re-chosen at every arm, so a path created mid-turn under mi
 a deleted or moved folder on a consequential path's chain is never a fault: an rm -rf logs the deletes beneath it,
 and a folder renamed away (or onto the chain) logs a delete (or a modify) for each consequential path beneath it.
 A fault is only the watcher's own error: an event name outside the table, or an event that maps to no run-tree
-path. (A queue overflow writes its own health record, which routes the take as a gap.) Only events on a consequential path itself are logged, as {"at", "path",
+path, or a stderr line from the real watcher after its watches are established. (A queue overflow writes its
+own health record, which routes the take as a gap.) Named residuals for the stub take: -r watches a new folder
+only after reading its CREATE, so a file made and read inside a just-made folder before then logs nothing; and the
+names the kernel forces whatever the subscription (IGNORED, UNMOUNT) are faults until measured. Only events on a consequential path itself are logged, as {"at", "path",
 "op"} to access.jsonl, through the closed table EVENT_OPS; an event name outside it (and outside EVENT_FLAGS and
 OVERFLOW_EVENT) is a watcher fault: the watcher is stopped and its stop carries a non-zero code. The overflow event
 writes `queue-overflow`. Every stamp is the host clock (time.time, injected), never time.monotonic: a stream
@@ -100,7 +103,7 @@ PROGRAM = "/opt/w/sidecar.py"
 INTERPRETER = ("python3", "-I", "-B")
 WATCHER_USER = "10002:10002"
 ADDED_CAPABILITY = "DAC_READ_SEARCH"
-CTL_DIR = "/tmp/w-ctl"
+CTL_DIR = "/tmp/w-ctl"         # under the sidecar container's own /tmp: never the evidence folder or a run tree
 CTL_SOCKET = CTL_DIR + "/sock"
 TEMP_PREFIX = ".tmp-"
 
@@ -134,8 +137,9 @@ EVENT_FLAGS = ("ISDIR", "CLOSE")
 # it (each is modified). An rm -rf needs no rule: the deletes beneath the folder come first, one per path.
 FOLDER_MOVES = {"MOVED_FROM": DELETE, "MOVED_TO": MODIFY}
 OVERFLOW_EVENT = "Q_OVERFLOW"
+STDERR_EVENT = "STDERR-AFTER-ESTABLISHED"   # the real watcher's stderr line after its watches: outside every table
 
-OPEN_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+OPEN_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
 CLOCK = time.time                 # the host clock (endstate: the same clock as the driver's ledger)
 ESTABLISH_TIMEOUT_S = 30.0
 STOP_TIMEOUT_S = 10.0
@@ -153,16 +157,23 @@ WATCH_ESTABLISH_S = PENDING
 _PENDING_WHY = {
     "inotifywait_argv": "the inotifywait command line (monitor mode, recursion flag, format and time options) at the "
                         "pinned inotify-tools in the sidecar image; measured on the stub take",
-    "inotifywait_format": "its output line's fields and separator, and the stderr line that says its watches are "
-                          "established, at the pinned version; measured on the stub take",
+    "inotifywait_format": "its output line's fields and separator, the stderr line that says its watches are "
+                          "established, and the stderr lines inotifywait emits at the pinned version (any stderr "
+                          "line after established is read as a watcher fault: fold 2, W4C1-2); measured on the "
+                          "stub take",
     "inotifywait_subsecond": "whether its stamps carry sub-second times (otherwise each event is stamped at its "
                              "arrival, drained before every stop); measured on the stub take",
     "inotifywait_events": "the event subscription (-e) at the pinned version, which must be exactly EVENT_OPS' "
-                          "names; measured on the stub take",
+                          "names, and the names the kernel delivers whatever the subscription (IGNORED when a "
+                          "watched folder is removed, UNMOUNT): today each is a watcher fault, which would turn an "
+                          "rm -rf of a chain folder into harness-error, so the stub take decides them (a flag, or a "
+                          "fault with grounds; fold 2, W4C1-6); measured on the stub take",
     "inotify_watch_count": "how many inotify watches a recursive watch of a real run tree takes (.git included), "
                            "against the box's max_user_watches; measured on the stub take (fold 1, Q2)",
     "watch_establish_s": "how long a recursive watch of a real run tree takes to establish, which ESTABLISH_TIMEOUT_S "
-                         "must exceed; measured on the stub take (fold 1, Q2)",
+                         "must exceed, and how long -r takes to watch a new folder after its CREATE (a file made "
+                         "and read inside a just-made folder before then logs nothing: the brief's two-level chain "
+                         "run on the real watcher; fold 2, W4C1-7); measured on the stub take (fold 1, Q2)",
 }
 
 
@@ -176,7 +187,10 @@ class ReplyError(ValueError):
 
 def pending() -> dict:
     """field -> why, for every value still PENDING (interface 15)."""
-    return {f: why for f, why in _PENDING_WHY.items() if globals()[f.upper()] == PENDING}
+    values = {"inotifywait_argv": INOTIFYWAIT_ARGV, "inotifywait_format": INOTIFYWAIT_FORMAT,
+              "inotifywait_subsecond": INOTIFYWAIT_SUBSECOND, "inotifywait_events": INOTIFYWAIT_EVENTS,
+              "inotify_watch_count": INOTIFY_WATCH_COUNT, "watch_establish_s": WATCH_ESTABLISH_S}
+    return {f: why for f, why in _PENDING_WHY.items() if values[f] == PENDING}
 
 
 def require_ready():
@@ -197,6 +211,23 @@ def _abs_ok(p, what: str) -> str:
 
 def _overlap(a: str, b: str) -> bool:
     return a == b or a.startswith(b.rstrip("/") + "/") or b.startswith(a.rstrip("/") + "/")
+
+
+def ctl_dir_ok() -> bool:
+    """The control channel lies under /tmp or /run, outside the evidence mount and the program's folder
+    (interface 12: never in the run tree or the evidence folder; create_argv refuses a run tree overlapping it)."""
+    return (CTL_DIR.startswith(("/tmp/", "/run/")) and not _overlap(CTL_DIR, EVIDENCE_MOUNT)
+            and not _overlap(CTL_DIR, os.path.dirname(PROGRAM)))
+
+
+if not ctl_dir_ok():
+    raise RuntimeError("CTL_DIR must lie under /tmp or /run, outside the evidence mount")
+
+
+def watch_path_ok(p) -> bool:
+    """A consequential path for --watch: a run-tree path none of whose segments starts with "-" (serve's
+    argparse would read one as an option)."""
+    return rel_path_ok(p) and not any(seg.startswith("-") for seg in p.split("/"))
 
 
 def rel_path_ok(p) -> bool:
@@ -225,7 +256,7 @@ def create_argv(*, image, run_tree, evidence, watch, user=WATCHER_USER) -> list:
     if not m or int(m.group(1)) == 0 or int(m.group(2)) == 0:
         raise ValueError("user is uid:gid, never root")
     watch = list(watch) if isinstance(watch, (list, tuple)) else None
-    if not watch or not all(rel_path_ok(p) for p in watch) or len(set(watch)) != len(watch):
+    if not watch or not all(watch_path_ok(p) for p in watch) or len(set(watch)) != len(watch):
         raise ValueError("watch is a non-empty list of distinct run-tree-relative paths")
     argv = [DOCKER, "create", "--pull=never", "--network", "none", "--user", user,
             "--cap-drop", "ALL", "--cap-add", ADDED_CAPABILITY, "--security-opt", "no-new-privileges",
@@ -339,10 +370,14 @@ def parse_reply(stdout) -> dict:
         raise ReplyError("unreadable lists run-tree paths, and unreadable_consequential is among them")
     if r["ok"] != (not r["problems"]):
         raise ReplyError("ok is True exactly when problems is empty")
-    if r["ok"] and r["command"] in ("begin", "snapshot") and not (_num(r["taken_at"]) and _num(r["rearmed_at"])
-                                                                  and r["rearmed_at"] >= r["taken_at"]):
+    if r["ok"] and r["command"] in ("begin", "snapshot") and not _rearm_order_ok(r):
         raise ReplyError("an ok snapshot reply carries taken_at and a later rearmed_at")
     return r
+
+
+def _rearm_order_ok(r: dict) -> bool:
+    """An ok snapshot reply's re-arm is a number no earlier than its snapshot (a false re-arm stamp is refused)."""
+    return _num(r["taken_at"]) and _num(r["rearmed_at"]) and r["rearmed_at"] >= r["taken_at"]
 
 
 def parse_completed(completed) -> dict:
@@ -543,7 +578,7 @@ class Sidecar:
         self.run_tree, self.evidence = run_tree, evidence
         self._temps = set()
         self.watch = tuple(watch)
-        if not self.watch or not all(rel_path_ok(p) for p in self.watch):
+        if not self.watch or not all(watch_path_ok(p) for p in self.watch):
             raise ValueError("watch is a non-empty list of run-tree-relative paths")
         self.factory = factory
         self.clock = CLOCK if clock is None else clock
@@ -581,6 +616,11 @@ class Sidecar:
         self._floor = max(self._floor, at)
         return at
 
+    def _move_targets(self, path: str) -> list:
+        """The consequential paths a folder move at `path` reaches: every one beneath it, whether or not `path`
+        itself is consequential (fold 2, W4C1-5)."""
+        return self._beneath(path)
+
     def _beneath(self, folder: str) -> list:
         """The consequential paths strictly beneath a run-tree folder ("" is the root)."""
         return [p for p in self.watch if folder == "" or p.startswith(folder + "/")]
@@ -600,7 +640,7 @@ class Sidecar:
                 self._access(at, ev.path, op)
         for name, op in FOLDER_MOVES.items():
             if name in names and isinstance(ev.path, str):
-                for p in self._beneath(ev.path) if ev.path not in self.watch else []:
+                for p in self._move_targets(ev.path):
                     self._access(at, p, op)
         return True
 
@@ -653,7 +693,7 @@ class Sidecar:
             return None
         t0 = self.clock()
         while not w.established():
-            if w.poll() is not None or self.clock() - t0 > self.establish_timeout_s:
+            if self._arm_gave_up(w, t0):
                 if w.poll() is None:
                     w.force_stop()
                 self._break("the watcher never reported its watches established; no watcher-start was written")
@@ -663,6 +703,10 @@ class Sidecar:
         self._health(WATCHER_START, at)
         self.watcher, self._floor = w, at
         return at
+
+    def _arm_gave_up(self, w, t0) -> bool:
+        """Stop waiting for the watches: the watcher died while arming (seen at once), or the timeout ran out."""
+        return w.poll() is not None or self.clock() - t0 > self.establish_timeout_s
 
     def pump(self):
         """Drain the running watcher's stream into the log, and detect a watcher that died by itself (stamped at
@@ -817,10 +861,30 @@ class _InotifyWatcher:
             return b""
 
     def established(self) -> bool:
-        self._err += self._read(self.proc.stderr)
-        if INOTIFYWAIT_FORMAT["established"].encode() in self._err:
-            self._established = True
+        if not self._established:
+            self._err += self._read(self.proc.stderr)
+            marker = INOTIFYWAIT_FORMAT["established"].encode()
+            if marker in self._err:
+                self._established = True
+                self._err = self._err.split(marker, 1)[1].lstrip(b"\n")   # only what follows it is read on
         return self._established
+
+    def _stderr_events(self) -> list:
+        """Every complete stderr line after the watches were established is a watcher fault (fold 2, W4C1-2: a
+        watch it could not add, the watch limit, ...). Drained on every read, so the pipe never fills. Only the
+        line's class is passed on, never its text (it carries paths)."""
+        if not self._established:
+            return []
+        while True:
+            b = self._read(self.proc.stderr)
+            if not b:
+                break
+            self._err += b
+        n = self._err.count(b"\n")
+        if not n:
+            return []
+        self._err = self._err.rsplit(b"\n", 1)[1]
+        return [WatchEvent(None, "", (STDERR_EVENT,)) for _ in range(n)]
 
     def read_ready(self) -> list:
         while True:
@@ -829,7 +893,7 @@ class _InotifyWatcher:
                 break
             self._out += b
         lines, _, self._out = self._out.rpartition(b"\n")
-        out = []
+        out = self._stderr_events()
         fmt = INOTIFYWAIT_FORMAT
         for raw in (lines.split(b"\n") if lines else []):
             fields = dict(zip(fmt["fields"], raw.decode("utf-8", "surrogateescape").split(fmt["separator"])))
@@ -878,14 +942,26 @@ def _serve(args) -> int:
         for _key, _ in sel.select(timeout=POLL_S):
             conn, _ = srv.accept()
             with conn, conn.makefile("rwb") as fh:
-                try:
-                    req = json.loads(fh.readline())
-                    reply = sc.handle(req.get("command"), req.get("label"))
-                except ValueError:
-                    reply = sc._reply("status", None, problems=["a request that is not one JSON line"])
+                reply = _handle_request(sc, fh.readline())
                 fh.write((json.dumps(reply) + "\n").encode())
                 fh.flush()
         sc.pump()
+
+
+def _request_ok(req) -> bool:
+    return isinstance(req, dict)
+
+
+def _handle_request(sc, raw: bytes) -> dict:
+    """One control request, one reply: a request that is not one JSON object gets an ok: false reply, never an
+    uncaught error in PID 1 (fold 2, W4C1-9)."""
+    try:
+        req = json.loads(raw)
+    except ValueError:
+        req = None
+    if req is None or not _request_ok(req):
+        return sc._reply("status", None, problems=["a request that is not one JSON object"])
+    return sc.handle(req.get("command"), req.get("label"))
 
 
 def _ctl(args) -> int:

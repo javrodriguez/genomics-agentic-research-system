@@ -105,7 +105,8 @@ class LoginError(ValueError):
 
 
 def pending() -> dict:
-    return {f: why for f, why in _PENDING_WHY.items() if globals()[f.upper()] == PENDING}
+    values = {"rules_scanner": RULES_SCANNER, "furniture": FURNITURE}
+    return {f: why for f, why in _PENDING_WHY.items() if values[f] == PENDING}
 
 
 def real_rules_scanner():
@@ -134,6 +135,10 @@ def _in_git_repository(path: str) -> bool:
         d = up
 
 
+def _owned(st) -> bool:
+    return st.st_uid == os.geteuid()
+
+
 def read_login(path: str, name: str) -> str:
     """The value of a login file `NAME=<value>`, read at run time and never written down. Refused (LoginError, whose
     message names the rule broken and never the content) unless the file keeps the rule."""
@@ -147,7 +152,7 @@ def read_login(path: str, name: str) -> str:
         raise LoginError("the login file is not a plain file (a link or a special file is refused)")
     if stat.S_IMODE(st.st_mode) != 0o600:
         raise LoginError("the login file's mode is not 600")
-    if st.st_uid != os.geteuid():
+    if not _owned(st):
         raise LoginError("the login file is not owned by its reader")
     if _in_git_repository(path):
         raise LoginError("the login file sits inside a git repository")
@@ -272,11 +277,34 @@ def _scan_file(path, kind, data, needles):
     return (b"".join(out) if changed else None), masked, refused
 
 
+def _finding_ok(f) -> bool:
+    return isinstance(f, dict) and set(f) == {"path", "line", "rule"}
+
+
+def _survived(after: bytes, needles) -> bool:
+    return any(n in after for n, _ in needles)
+
+
+def _require_scanner(scanner):
+    if scanner is None or not callable(scanner):
+        raise NotReady("a real scan needs a callable rules scanner (gitleaks on athena: PENDING)")
+
+
+def _require_files(files):
+    if not files:
+        raise ScanError("no file to scan: an empty commit list never passes (fold 2, W4C1-3)")
+
+
+def _require_search(secrets):
+    if not any(item[0] in ("token", "key") for item in secrets if isinstance(item, tuple) and item):
+        raise ScanError("no token or key to search for: a scan that searches for none never passes (fold 2, W4C1-3)")
+
+
 def _rules(scanner, paths) -> list:
     """Every rules-scanner finding, refused."""
     out = []
     for f in scanner(list(paths)):
-        if not (isinstance(f, dict) and set(f) == {"path", "line", "rule"}):
+        if not _finding_ok(f):
             raise ScanError("a rules-scanner finding is {path, line, rule}")
         out.append({"path": f["path"], "line": f["line"], "kind": RULE_KIND,
                     "why": f"the rules scanner's rule {f['rule']!r}"})
@@ -306,9 +334,10 @@ def _write(path: str, data: bytes):
 
 def scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict:
     """Scan every file of a take's commit (see the module docstring)."""
-    if rules_scanner is None:
-        raise NotReady("a real scan needs its rules scanner (gitleaks on athena: PENDING); none was given")
+    _require_scanner(rules_scanner)   # the injected callable (interface 14); never RULES_SCANNER
     files, secrets = list(files), list(secrets)
+    _require_files(files)
+    _require_search(secrets)
     _check_inputs(files, secrets)
     needles = _needles(secrets)
     masked, refused, records = [], [], []
@@ -318,7 +347,7 @@ def scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict:
         new, m, r = _scan_file(path, kind, before, needles)
         after = before if new is None else new
         if new is not None:
-            if any(n in after for n, _ in needles):
+            if _survived(after, needles):
                 raise ScanError(f"{path}: a value survived its masking; nothing written")
             if [ln for ln in _lines(before) if not _spans(ln, needles)] != \
                     [ln for ln, old in zip(_lines(after), _lines(before)) if not _spans(old, needles)]:
