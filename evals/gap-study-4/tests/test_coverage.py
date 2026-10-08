@@ -798,6 +798,68 @@ class TheNotes(Base):
         self.assertRed(self.text.replace(NOTES_HEADING, "## Notes", 1), "has no note")
 
 
+def bullet_of(text: str, pair: str) -> str:
+    for b in note_bullets(text):
+        if b.startswith(f"- **{pair}"):
+            return b
+    raise KeyError(pair)
+
+
+def reading_line(text: str, head: str) -> str:
+    for line in text.splitlines():
+        if line.startswith(f"- **{head}**"):
+            return line
+    return ""
+
+
+class TheFold1(Base):
+    """Lane review round 1 (W4F1-1 to W4F1-6), folded on the gap4 lane lead's decisions."""
+
+    def test_w4f1_1_each_row_is_read_in_its_stage(self):
+        line = reading_line(self.text, "Each row's stage.")
+        self.assertTrue(line, "the reading rule names each row's stage")
+        for pair in getattr(THIS, "STAGE_00_PAIRS", ()) or ("missing",):
+            self.assertIn(f"`{pair}`", line)
+        self.assertEqual(len(getattr(THIS, "STAGE_00_PAIRS", ())), 5)
+        self.assertNotIn("The project is public.", self.text)
+        self.assertNotIn("other project writes stay open", bullet_of(self.text, "template-adherence"))
+        self.assertIn(("gars/_system/guard_hook.py", 796, 814), note_refs(bullet_of(self.text, "approval-scope")))
+        self.assertIn(("gars/_system/guard_hook.py", 796, 814), note_refs(bullet_of(self.text, "template-adherence")))
+
+    def test_w4f1_2_reach_is_the_weakest_guard_the_verdict_needs(self):
+        self.assertTrue(reading_line(self.text, "Reach is the weakest."))
+        i = index_of(self.text, "approval-scope")
+        self.assertEqual(cell_of(self.text, i, "reach"), "claude-and-codex")
+        self.assertTrue(unwrap(cell_of(self.text, i, "where")).startswith("gars/_system/guard_hook.py:"))
+        self.assertIn(("gars/_system/stage00_register.py", 513, 514), note_refs(bullet_of(self.text, "approval-scope")))
+
+    def test_w4f1_3_a_codex_reach_cite_is_a_decide_call(self):
+        i = index_of(self.text, "scope-read")
+        moved = with_cell(with_cell(self.text, i, "reach where", "gars/_system/codex_hook.py:15"), i, "reach excerpt",
+                          "Codex blocks a call on exit 2 with a non-empty stderr")
+        self.assertRed(moved, "decide(")
+        self.assertEqual(getattr(THIS, "DECIDE_CALL", None), "decide(")
+
+    def test_w4f1_3_no_cite_is_a_stage_contract(self):
+        tree = Tree(COMMIT)
+        found = cite_problems(tree, "gars/00_initialize_project/CONTEXT.md:1", "x", "t")
+        self.assertTrue(any("stage contract" in p for p in found), found)
+        self.assertTrue(reading_line(self.text, "A verdict is a reading."))
+
+    def test_w4f1_4_declarations_is_dropped(self):
+        i = index_of(self.text, "declarations")
+        self.assertEqual(unwrap(cell_of(self.text, i, "pair")), "declarations (dropped)")
+        self.assertIn("glitch-f3", bullet_of(self.text, "declarations"))
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "declarations.json").write_text("{}", encoding="utf-8")
+            self.assertRed(self.text, "tasks/declarations.json is a dropped pair's task", tasks_dir=Path(tmp))
+        self.assertFalse((TASKS_DIR / "declarations.json").exists())
+
+    def test_w4f1_6_files_csv_mode(self):
+        self.assertIn(("gars/_system/stage00_register.py", 679, 680),
+                      note_refs(bullet_of(self.text, "precondition-refusal")))
+
+
 class TheForwardBinding(Base):
     def test_fires_on_a_planted_task_then_reads_the_real_folder(self):
         with tempfile.TemporaryDirectory() as tmp:
