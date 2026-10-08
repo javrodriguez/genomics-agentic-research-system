@@ -38,7 +38,8 @@ def _round3_leak_words() -> tuple:
     return tuple(json.loads(shown.stdout)["leak_words"])
 
 
-LEAK_WORDS = _round3_leak_words() + LANE_LEAD_WORDS
+ROUND3_WORDS = _round3_leak_words()
+LEAK_WORDS = ROUND3_WORDS + LANE_LEAD_WORDS
 
 
 # ------------------------------------------------------------------ the process guard (interface 10), armed here
@@ -64,6 +65,12 @@ from box import run_take as rt  # noqa: E402
 from box import preflight as pf_mod  # noqa: E402
 import harness_bookkeeping  # noqa: E402
 import agent_adapter  # noqa: E402
+
+# W4B1-9: run_take always checks os.environ too, so this process drops every refused name from its own copy.
+for _n in list(os.environ):
+    if _n in set(rt.API_KEY_VARIABLES) | set(rt.BILLING_ROUTE_VARIABLES) | set(rt.SUBSCRIPTION_TOKEN_VARIABLES) \
+            | set(rt.VENDOR_KEY_VARIABLES):
+        del os.environ[_n]
 
 # ------------------------------------------------------------------------------------------------- helpers
 ID = {k: (c * 64) for k, c in (("net", "a"), ("proxy", "b"), ("side", "c"), ("take", "d"), ("other", "e"))}
@@ -159,8 +166,11 @@ class TestProcessGuard(unittest.TestCase):
         self.assertTrue(os.path.abspath(rt.__file__).startswith(os.path.join(HERE, "box") + os.sep))
 
     def test_leak_words_read(self):
-        self.assertIn("evaluation", LEAK_WORDS)
-        self.assertIn("sidecar", LEAK_WORDS)
+        """The read is checked by count and shape only: no round 3 word is ever named in a committed file."""
+        self.assertGreaterEqual(len(ROUND3_WORDS), 10)
+        self.assertTrue(all(isinstance(w, str) and w for w in ROUND3_WORDS))
+        self.assertTrue(set(LEAK_WORDS) >= set(LANE_LEAD_WORDS))
+        self.assertEqual(len(LEAK_WORDS), len(ROUND3_WORDS) + len(LANE_LEAD_WORDS))
 
 
 # -------------------------------------------------------------------------------------------- DockerRuntime
@@ -317,7 +327,7 @@ EXPECTED_CREATE = [
     "--memory", str(3 * 512 * 2 ** 20), "--cpus", "2",
     "--mount", "type=bind,source=/srv/w/t1/tree,target=/srv/w/t1/tree",
     "--mount", "type=bind,source=/srv/w/t1/cfg,target=/opt/cfg",
-    "--workdir", "/srv/w/t1/tree", IMAGE, "sleep", "infinity"]
+    "--workdir", "/srv/w/t1/tree", "--entrypoint", "sleep", IMAGE, "infinity"]
 FORBIDDEN_CREATE = ("-e", "--env", "--env-file", "--privileged", "--cap-add", "--device", "-p", "--publish",
                     "--pid", "--ipc", "--volumes-from", "-v", "--volume", "--network-alias", "--userns")
 
@@ -360,6 +370,8 @@ class TestCreateArgv(MutantCase):
             ("keepalive-user", patched(rt, "KEEPALIVE_USER", "10001:10001")),
             ("config-mount", patched(rt, "CONFIG_MOUNT", "/root/cfg")),
             ("keepalive-command", patched(rt, "KEEPALIVE_COMMAND", ("sh",))),
+            ("no-entrypoint", patched(rt, "create_argv", lambda s: (lambda a: a[:a.index("--entrypoint")]
+                                      + a[a.index("--entrypoint") + 2:-1] + ["sleep", "infinity"])(orig(s)))),
         ])
 
     REFUSED = {
@@ -504,6 +516,28 @@ class TestArmVariables(MutantCase):
             ("vendor-list-short", patched(rt, "VENDOR_KEY_VARIABLES", ("CODEX_API_KEY", "GEMINI_API_KEY"))),
         ])
 
+    def check_own_environ(self):
+        out = []
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": FAKE_VALUE}):
+            try:
+                rt.check_environment(rt.CODEX, {})
+                out.append("an empty caller_env switched off the refusal of os.environ")
+            except rt.Refused:
+                pass
+        with mock.patch.dict(os.environ, {"CODEX_API_KEY": FAKE_VALUE}):
+            try:
+                with filled():
+                    self.exec_for(rt.CLAUDE_CODE)
+                out.append("a refused name in os.environ passed beside a clean caller_env")
+            except rt.Refused:
+                pass
+        return out
+
+    def test_own_environ_always_checked(self):
+        self.assert_green_then_red(self.check_own_environ, [
+            ("caller-env-replaces", patched(rt, "_own_environment", lambda: {})),
+        ])
+
     def test_unknown_harness_refused(self):
         for h in ("fake-second", "", None, "Codex"):
             with self.assertRaises(rt.Refused):
@@ -613,7 +647,9 @@ LOGIN_REFUSALS = {
     "export": dict(text=f"export CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}\n"),
     "non-ascii": dict(text=f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}é\n"),
     "empty": dict(text=""),
+    "19-characters": dict(text="CLAUDE_CODE_OAUTH_TOKEN=FAKEVALUE-PLANTED-1\n"),
 }
+LOGIN_ACCEPTED = {"20-characters": "FAKEVALUE-PLANTED-12", "planted": FAKE_VALUE}
 
 
 class TestReadLogin(MutantCase):
@@ -623,6 +659,13 @@ class TestReadLogin(MutantCase):
         good = plant_login(tmp, "CLAUDE_CODE_OAUTH_TOKEN")
         if rt.read_login(good, "CLAUDE_CODE_OAUTH_TOKEN") != FAKE_VALUE:
             out.append("a good login was not read")
+        for name, value in LOGIN_ACCEPTED.items():
+            d = tempfile.mkdtemp(prefix="w-")
+            try:
+                if rt.read_login(plant_login(d, "CLAUDE_CODE_OAUTH_TOKEN", value), "CLAUDE_CODE_OAUTH_TOKEN") != value:
+                    out.append(f"{name}: read back wrong")
+            except rt.LoginRefused:
+                out.append(f"{name} refused")
         for name, kw in LOGIN_REFUSALS.items():
             d = tempfile.mkdtemp(prefix="w-")
             path = plant_login(d, "CLAUDE_CODE_OAUTH_TOKEN", **kw)
@@ -715,7 +758,8 @@ def side_inspect(tree, ev):
 
 def take_inspect(s):
     return [{"Image": s.image,
-             "Config": {"User": "10003:10003", "Cmd": ["sleep", "infinity"], "Env": [], "WorkingDir": s.run_tree},
+             "Config": {"User": "10003:10003", "Entrypoint": ["sleep"], "Cmd": ["infinity"], "Env": [],
+                        "WorkingDir": s.run_tree},
              "HostConfig": {"NetworkMode": s.network, "CapDrop": ["ALL"], "CapAdd": None,
                             "SecurityOpt": ["no-new-privileges"], "Privileged": False, "Devices": None,
                             "PidMode": "", "PidsLimit": s.pids_limit, "Memory": s.memory,
@@ -796,6 +840,9 @@ class TestLaunch(MutantCase):
             if rec.get("take_id") != ID["take"] or rec.get("config_dir") != L.cfg:
                 out.append("the launch record lacks the take id or the config folder")
         proxy_argv = fake.calls[1][0]
+        for pair in (["--cap-drop", "ALL"], ["--security-opt", "no-new-privileges"]):
+            if not any(proxy_argv[i:i + 2] == pair for i in range(len(proxy_argv))):
+                out.append(f"the proxy create argv lacks {' '.join(pair)}")
         if "type=bind,source=/srv/w/t1/rec/proxy.conf,target=/etc/squid/squid.conf,readonly" not in proxy_argv \
                 or proxy_argv[-4:] != ["squid", "-N", "-f", "/etc/squid/squid.conf"] or "13:13" not in proxy_argv:
             out.append(f"the proxy create argv is off: {proxy_argv}")
@@ -813,6 +860,10 @@ class TestLaunch(MutantCase):
             ("proxy-not-readonly", patched(rt, "proxy_create_argv", lambda n, p: [
                 a.replace(",readonly", "") for a in ORIG_PROXY_CREATE(n, p)])),
             ("default-network", patched(rt, "DEFAULT_NETWORK", "host")),
+            ("proxy-keeps-caps", patched(rt, "proxy_create_argv", lambda n, p: drop_pair(ORIG_PROXY_CREATE(n, p),
+                                                                                         "--cap-drop"))),
+            ("proxy-new-privileges", patched(rt, "proxy_create_argv", lambda n, p: drop_pair(
+                ORIG_PROXY_CREATE(n, p), "--security-opt"))),
         ])
 
     def check_failures(self):
@@ -910,20 +961,99 @@ class TestLaunch(MutantCase):
             ("no-sidecar-check", patched(rt, "_check_sidecar", lambda s: None)),
         ])
 
-    def test_pending_inspect_refuses_launch(self):
+    def check_pending_refused_first(self):
+        """W4B1-2: a PENDING inspect spelling, or a PENDING value in the sidecar's expectation, is NotReady before
+        any runtime call."""
+        out = []
         L = Launch()
-        script = L.script()[:6] + [(["docker", "logs", ID["proxy"]], ok()),
-                                   (["docker", "rm", "--force", ID["side"]], ok()),
-                                   (["docker", "rm", "--force", ID["proxy"]], ok()),
-                                   (["docker", "network", "rm", ID["net"]], ok())]
-        fake = FakeRuntime(script)
-        with self.assertRaises(rt.LaunchError) as cm:
+        fake = FakeRuntime()
+        try:
             L.launch(fake)
-        self.assertIn("PENDING", str(cm.exception))
-        self.assertEqual(fake.unexpected, [])
+            out.append("launched with the inspect spellings PENDING")
+        except rt.NotReady:
+            pass
+        except Exception as e:
+            out.append(f"PENDING inspect spellings raised {type(e).__name__}, not NotReady")
+        if fake.calls:
+            out.append(f"{len(fake.calls)} runtime calls before the PENDING refusal")
+        L = Launch()
+        L.sidecar = rt.SidecarLaunch(L.sidecar.create_argv, L.sidecar.start_argv_for, L.sidecar.ctl_argv_for,
+                                     L.sidecar.rm_argv_for, dict(L.sidecar.expect, cap_add=rt.PENDING))
+        fake = FakeRuntime()
+        try:
+            with inspect_ok():
+                L.launch(fake)
+            out.append("launched with a PENDING sidecar expectation")
+        except rt.NotReady:
+            pass
+        except Exception as e:
+            out.append(f"a PENDING sidecar expectation raised {type(e).__name__}, not NotReady")
+        if fake.calls:
+            out.append(f"{len(fake.calls)} runtime calls before the PENDING sidecar refusal")
+        return out
+
+    def test_pending_refused_before_any_call(self):
+        self.assert_green_then_red(self.check_pending_refused_first, [
+            ("no-ready-gate", patched(rt, "_check_launch_ready", lambda sidecar: None)),
+        ])
+
+    def check_network_is_launchs(self):
+        """W4B1-1: the take is created on, and inspected against, the network launch made, never the spec's."""
+        out = []
+        L = Launch()
+        L.spec = spec(run_tree=L.tree, config_dir=L.cfg, network=ID["other"])
+        on_net = spec(run_tree=L.tree, config_dir=L.cfg, network=ID["net"])
+        script = L.script()
+        script[7] = (["docker", "create", "--pull=never", "--network", ID["net"], "--user", "10003:10003"],
+                     ok(ID["take"]))
+        script[8] = (["docker", "container", "inspect", ID["take"]], ok(json.dumps(take_inspect(on_net))))
+        fake = FakeRuntime(script)
+        try:
+            with inspect_ok():
+                launched = L.launch(fake)
+        except rt.LaunchError as e:
+            return [f"launch failed: {e}"] + [f"off script: {a}" for a in fake.unexpected]
+        if fake.unexpected:
+            out.append(f"off script: {fake.unexpected}")
+        take_create = [a for a, _ in fake.calls if a[:2] == ["docker", "create"] and "10003:10003" in a]
+        if len(take_create) != 1 or take_create[0][take_create[0].index("--network") + 1] != ID["net"]:
+            out.append("the take was not created on launch's network")
+        if getattr(launched, "spec", None) is None or launched.spec.network != ID["net"]:
+            out.append("the launched record does not carry the spec on launch's network")
+        return out
+
+    def test_network_is_launchs(self):
+        self.assert_green_then_red(self.check_network_is_launchs, [
+            ("stale-spec-network", patched(rt, "_on_network", lambda s, n: s)),
+        ])
+
+    def check_proxy_uid(self):
+        out = []
+        for user in ("0", "0:0", "0:5", "00:00", "000", "root", "root:5"):
+            try:
+                rt._check_proxy(proxy_launch(user))
+                out.append(f"proxy user {user!r} accepted")
+            except rt.Refused:
+                pass
+        for user in ("1", "5:0", "01:00", "100:100", "13:13", "proxy", "squid"):
+            try:
+                rt._check_proxy(proxy_launch(user))
+            except rt.Refused:
+                out.append(f"near-miss proxy user {user!r} refused")
+        return out
+
+    def test_proxy_uid(self):
+        self.assert_green_then_red(self.check_proxy_uid, [
+            ("uid-string-compare", patched(rt, "_proxy_uid", lambda u: 1)),
+        ])
 
 
 ORIG_PROXY_CREATE = rt.proxy_create_argv
+
+
+def drop_pair(argv, flag):
+    i = argv.index(flag)
+    return argv[:i] + argv[i + 2:]
 
 
 class TestTeardown(MutantCase):
@@ -1300,7 +1430,7 @@ class TestPendingAndNames(MutantCase):
             ("billing-filled", patched(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {"codex": (), "gemini": ()})),
         ])
 
-    def test_no_parameter_overrides_a_pending_constant(self):
+    def check_no_override(self):
         import inspect
         names = {"fallback_env", "fallback", "billing_route", "vendor_billing_route_variables", "top_format",
                  "inspect_status", "inspect_paths"}
@@ -1312,7 +1442,15 @@ class TestPendingAndNames(MutantCase):
                 except (TypeError, ValueError):
                     continue
                 found += [f"{name}({p})" for p in params if p.lower() in names]
-        self.assertEqual(found, [])
+        return found
+
+    def test_no_parameter_overrides_a_pending_constant(self):
+        def overriding(container_id, *, inspect_status=None):
+            return None
+        overriding.__module__ = rt.__name__
+        self.assert_green_then_red(self.check_no_override, [
+            ("override-parameter", lambda: mock.patch.object(rt, "state_with_override", overriding, create=True)),
+        ])
 
     def visible(self):
         """Every string of this module the agent can read: users, mounts, env names and values, the keep-alive."""
@@ -1335,7 +1473,7 @@ class TestPendingAndNames(MutantCase):
         self.assert_green_then_red(self.check_names, [
             ("study-mount", patched(rt, "CONFIG_MOUNT", "/opt/sidecar-cfg")),
             ("study-env", patched(rt, "HARNESS_ENV", dict(rt.HARNESS_ENV, codex=dict(rt.HARNESS_ENV["codex"],
-                                                                                      X_GRADING="1")))),
+                                                                                      X_SIDECAR="1")))),
             ("study-network", patched(rt, "network_name", lambda: "gap4-net")),
         ])
 
@@ -1429,6 +1567,15 @@ PLANTED = {
     "getattr-kill": ("box/preflight.py", "import os\ngetattr(os, 'kill')(1, 9)\n"),
     "dunder-import": ("box/preflight.py", "__import__('subprocess')\n"),
     "aliased-os": ("box/preflight.py", "import os as o\n"),
+    "alias-load": ("box/preflight.py", "import os\nx = os\nx.kill(1, 9)\n"),
+    "getattr-name": ("box/preflight.py", "import os\nn = 'ki' + 'll'\ngetattr(os, n)(1, 9)\n"),
+    "vars-os": ("box/preflight.py", "import os\nvars(os)['system']('x')\n"),
+    "dunder-dict": ("box/preflight.py", "import os\nos.__dict__['system']('x')\n"),
+    "module-subprocess": ("box/preflight.py", "from box import run_take\nrun_take.subprocess.Popen(['x'])\n"),
+    "module-os": ("box/preflight.py", "from box import run_take\nrun_take.os.system('x')\n"),
+    "globals": ("box/preflight.py", "g = globals()\n"),
+    "sys-modules": ("box/preflight.py", "import sys\nsys.modules['os'].system('x')\n"),
+    "os-as-argument": ("box/take_config.py", "import os\ndef f(m):\n    return m\nf(os).system('x')\n"),
 }
 
 

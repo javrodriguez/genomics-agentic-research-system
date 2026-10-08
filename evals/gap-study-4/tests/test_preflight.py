@@ -38,7 +38,8 @@ def _round3_leak_words() -> tuple:
     return tuple(json.loads(shown.stdout)["leak_words"])
 
 
-LEAK_WORDS = _round3_leak_words() + LANE_LEAD_WORDS
+ROUND3_WORDS = _round3_leak_words()
+LEAK_WORDS = ROUND3_WORDS + LANE_LEAD_WORDS
 
 
 class ProcessGuardTripped(AssertionError):
@@ -71,6 +72,12 @@ VERSION_OUT = {rt.CLAUDE_CODE: ("2.9.1 (Claude Code)\n", r"([0-9.]+) \(Claude Co
                rt.CODEX: ("codex-cli 0.160.1\n", r"codex-cli ([0-9.]+)", "0.160.1"),
                rt.GEMINI: ("0.63.0\n", r"([0-9.]+)", "0.63.0")}
 STUDY = ("notes-a", "notes-b/inner")
+REFUSED_NAMES = {
+    rt.CLAUDE_CODE: ["github.com", "huggingface.co", "api.openai.com", "generativelanguage.googleapis.com"],
+    rt.CODEX: ["github.com", "huggingface.co", "api.anthropic.com", "generativelanguage.googleapis.com"],
+    rt.GEMINI: ["github.com", "huggingface.co", "api.anthropic.com", "api.openai.com"],
+}
+CONFIG_HOME = {rt.CLAUDE_CODE: "CLAUDE_CONFIG_DIR", rt.CODEX: "CODEX_HOME", rt.GEMINI: "GEMINI_CLI_HOME"}
 CAP_ADD = ["CAP_DAC_READ_SEARCH"]
 
 
@@ -139,7 +146,8 @@ class World:
                 "CapPrm": ["0000000000000000"], "CapBnd": ["0000000000000000"], "NoNewPrivs": ["1"]}},
             "take-inspect": [{
                 "Image": IMAGE,
-                "Config": {"User": "10003:10003", "Cmd": ["sleep", "infinity"], "Env": ["PATH=/usr/bin:/bin"],
+                "Config": {"User": "10003:10003", "Entrypoint": ["sleep"], "Cmd": ["infinity"],
+                           "Env": ["PATH=/usr/bin:/bin"],
                            "WorkingDir": s.run_tree},
                 "HostConfig": {"NetworkMode": ID["net"], "CapDrop": ["ALL"], "CapAdd": None,
                                "SecurityOpt": ["no-new-privileges"], "Privileged": False, "Devices": [],
@@ -163,7 +171,7 @@ class World:
             "sockets": {"present": [], "docker_host": False},
             "egress": {"via_proxy": {HOSTS[harness]: {"status": 200}, "github.com": {"status": 403}},
                        "direct": {"connected": False, "error": "gaierror"},
-                       "resolves": {n: False for n in pf.refused_names(harness, HOSTS)}},
+                       "resolves": {n: False for n in REFUSED_NAMES[harness]}},
         }
 
     def probes(self):
@@ -262,6 +270,8 @@ BREAKS = {
         ("host-pid", edit_json("take-inspect", lambda d: d[0]["HostConfig"].update(PidMode="host"))),
         ("keepalive-user", edit_json("take-inspect", lambda d: d[0]["Config"].update(User="10001:10001"))),
         ("cmd", edit_json("take-inspect", lambda d: d[0]["Config"].update(Cmd=["sh"]))),
+        ("entrypoint", edit_json("take-inspect", lambda d: d[0]["Config"].update(Entrypoint=["/bin/sh", "-c"]))),
+        ("no-entrypoint", edit_json("take-inspect", lambda d: d[0]["Config"].pop("Entrypoint"))),
         ("workdir", edit_json("take-inspect", lambda d: d[0]["Config"].update(WorkingDir="/"))),
         ("no-hostconfig", edit_json("take-inspect", lambda d: d[0].pop("HostConfig"))),
     ],
@@ -278,6 +288,7 @@ BREAKS = {
         ("one-path", edit_json("listing", lambda d: d.pop("/srv/ev"))),
     ],
     "watcher-invisible": [
+        ("unreadable-row", edit_json("processes", lambda d: d.append({"pid": 7, "unreadable": "PermissionError"}))),
         ("watcher-visible", edit_json("processes", lambda d: d.append({"pid": 9, "uid": 10002, "name": "x",
                                                                         "cap_eff": 0}))),
         ("agent-process", edit_json("processes", lambda d: d.append({"pid": 8, "uid": 10001, "name": "x",
@@ -296,12 +307,25 @@ BREAKS = {
         ("expect-user", edit_world(lambda w: w.sidecar_expect.update(user="0:0"))),
         ("expect-tree-rw", edit_world(lambda w: w.sidecar_expect["mounts"][0].update(rw=True))),
         ("expect-key-missing", edit_world(lambda w: w.sidecar_expect.pop("security_opt"))),
+        ("both-bridge", lambda raw, w: (w.sidecar_expect.update(network_mode="bridge"), edit_json(
+            "sidecar-inspect", lambda d: d[0]["HostConfig"].update(NetworkMode="bridge"))(raw, w))),
+        ("both-root", lambda raw, w: (w.sidecar_expect.update(user="0:0"), edit_json(
+            "sidecar-inspect", lambda d: d[0]["Config"].update(User="0:0"))(raw, w))),
+        ("both-privileged", lambda raw, w: (w.sidecar_expect.update(privileged=True), edit_json(
+            "sidecar-inspect", lambda d: d[0]["HostConfig"].update(Privileged=True))(raw, w))),
+        ("both-host-pid", lambda raw, w: (w.sidecar_expect.update(pid_mode="host"), edit_json(
+            "sidecar-inspect", lambda d: d[0]["HostConfig"].update(PidMode="host"))(raw, w))),
+        ("both-no-secopt", lambda raw, w: (w.sidecar_expect.update(security_opt=[]), edit_json(
+            "sidecar-inspect", lambda d: d[0]["HostConfig"].update(SecurityOpt=[]))(raw, w))),
+        ("both-ev-elsewhere", lambda raw, w: (w.sidecar_expect["mounts"][1].update(destination="/srv/x"), edit_json(
+            "sidecar-inspect", lambda d: d[0]["Mounts"][1].update(Destination="/srv/x"))(raw, w))),
     ],
     "watcher-started": [
         ("no-health", edit_value("health", lambda v: v.clear())),
         ("stopped", edit_value("health", lambda v: v.append({"kind": "watcher-stop", "at": 2.0, "exit_code": 0}))),
     ],
     "watcher-capability": [
+        ("unreadable-row", edit_json("watcher-caps", lambda d: d.append({"pid": 12, "unreadable": "PermissionError"}))),
         ("no-watcher", edit_json("watcher-caps", lambda d: d.pop())),
         ("cap-missing", edit_json("watcher-caps", lambda d: d[1].update(cap_eff=0))),
         ("cap-extra", edit_json("watcher-caps", lambda d: d[1].update(cap_eff=4 | 32))),
@@ -337,7 +361,9 @@ BREAKS = {
         ("github", edit_json("egress", lambda d: d["resolves"].update({"github.com": True}))),
         ("hf", edit_json("egress", lambda d: d["resolves"].update({"huggingface.co": True}))),
         ("other-vendor", lambda raw, w: edit_json("egress", lambda d: d["resolves"].update(
-            {pf.refused_names(w.harness, HOSTS)[-1]: True}))(raw, w)),
+            {REFUSED_NAMES[w.harness][-1]: True}))(raw, w)),
+        ("third-vendor", lambda raw, w: edit_json("egress", lambda d: d["resolves"].update(
+            {REFUSED_NAMES[w.harness][-2]: True}))(raw, w)),
         ("name-untried", edit_json("egress", lambda d: d["resolves"].pop("huggingface.co"))),
     ],
     "study-folders-absent": [
@@ -513,7 +539,7 @@ class TestEvaluate(MutantCase):
     def test_run_tree_path_neutral(self):
         def check():
             out = []
-            for word in ("evaluation", "Gap-Study", "SIDECAR", "probe"):
+            for word in (ROUND3_WORDS[0], ROUND3_WORDS[-1].upper(), "SIDECAR", "probe"):
                 w = World()
                 tree = os.path.join(w.tmp, f"x-{word}-y")
                 os.makedirs(tree)
@@ -524,8 +550,8 @@ class TestEvaluate(MutantCase):
                 if "run-tree-path-neutral" not in failing(rec):
                     out.append(f"a run tree path carrying {word} passed")
             w = World()
-            tree = os.path.join(w.tmp, "evaluations-x")   # word-bounded: a longer word is not a hit
-            if pf.leak_hits(tree, ["evaluation"]):
+            tree = os.path.join(w.tmp, "sidecarzz-x")   # word-bounded: a longer word is not a hit
+            if pf.leak_hits(tree, ["sidecar"]):
                 out.append("leak_hits is not word-bounded")
             return out
         self.assert_green_then_red(check, [
@@ -571,6 +597,14 @@ class TestPending(MutantCase):
         ])
 
     def test_no_parameter_overrides_a_pending_constant(self):
+        def overriding(raw, *, study_paths=None):
+            return None
+        overriding.__module__ = pf.__name__
+        self.assert_green_then_red(self.check_no_override, [
+            ("override-parameter", lambda: mock.patch.object(pf, "evaluate_with", overriding, create=True)),
+        ])
+
+    def check_no_override(self):
         names = {n.lower() for n in self.EXPECT | (self.EXPECT_RT - {"TakeSpec.resources"})}
         names |= {"pattern", "patterns", "version_pattern", "study_paths", "leak_words", "inspect_status",
                   "fallback_env", "top_format", "billing_route"}
@@ -583,7 +617,7 @@ class TestPending(MutantCase):
                     except (TypeError, ValueError):
                         continue
                     found += [f"{mod.__name__}.{name}({p})" for p in params if p.lower() in names]
-        self.assertEqual(found, [])
+        return found
 
 
 class TestExpectedInspect(MutantCase):
@@ -637,8 +671,16 @@ class TestExpectedInspect(MutantCase):
 
 class TestPrograms(MutantCase):
     def check(self):
+        """Every program is read from the argv each probe actually builds, never from a table beside it."""
         out = []
-        for name, src in pf.PROGRAMS.items():
+        built = {}
+        for h in ARMS:
+            for p in World(h).probes():
+                if p.argv is not None and "-c" in p.argv:
+                    built[p.id] = p.argv[list(p.argv).index("-c") + 1]
+        if len(built) != 7:
+            out.append(f"{len(built)} probes run a program, not 7")
+        for name, src in built.items():
             try:
                 ast.parse(src, feature_version=(3, 11))
             except SyntaxError as e:
@@ -662,6 +704,15 @@ class TestPrograms(MutantCase):
                     out.append(f"probe {p.id} does not run with workdir /")
             if "-c" in p.argv and list(p.argv[p.argv.index("python3"):p.argv.index("-c")]) != ["python3", "-I", "-B"]:
                 out.append(f"probe {p.id} is not python3 -I -B -c")
+            if p.id == "harness-version":
+                pairs = [p.argv[i + 1] for i, a in enumerate(p.argv) if a == "-e"]
+                if pairs != [f"{CONFIG_HOME[w.harness]}=/opt/cfg"]:
+                    out.append(f"the version probe carries {pairs}, not its config home alone")
+            if p.id == "egress":
+                with mock.patch.object(rt, "PROXY_URL", "http://proxy:3129"):
+                    eg = [q for q in w.probes() if q.id == "egress"][0].argv
+                if "3129" not in eg:
+                    out.append("the egress probe's port is not derived from PROXY_URL")
             agent_visible = [a for a in p.argv if a != w.ev]
             for a in agent_visible:
                 if [x for x in LEAK_WORDS if re.search(r"(?<![A-Za-z0-9])" + re.escape(x) + r"(?![A-Za-z0-9])", a,
@@ -671,13 +722,57 @@ class TestPrograms(MutantCase):
 
     def test_programs(self):
         self.assert_green_then_red(self.check, [
-            ("py312-feature", patched(pf, "PROGRAMS", dict(pf.PROGRAMS, identity="type X = int\n"))),
-            ("study-word", patched(pf, "PROGRAMS", dict(pf.PROGRAMS, identity=pf.IDENTITY_PROGRAM + "# probe\n"))),
-            ("reads-tree", patched(pf, "PROGRAMS", dict(pf.PROGRAMS, cgroup='open("tree/x")\n'))),
+            ("py312-feature", patched(pf, "IDENTITY_PROGRAM", "type X = int\n")),
+            ("study-word", patched(pf, "IDENTITY_PROGRAM", pf.IDENTITY_PROGRAM + "# probe\n")),
+            ("reads-tree", patched(pf, "CGROUP_PROGRAM", 'open("tree/x")\n')),
+            ("version-without-config-home", patched(pf, "_config_home_values", lambda h: {})),
+            ("port-typed", patched(pf, "_proxy_port", lambda: "3128")),
             ("tree-in-argv", patched(pf, "probes", lambda spec, **k: tuple(
                 pf.Probe(p.id, p.argv + (spec.run_tree,) if p.argv else None, p.read) for p in ORIG_PROBES(spec, **k)))),
             ("no-isolation", patched(pf, "_py", lambda prog, *a: ["python3", "-c", prog, *a])),
             ("agent-root", patched(rt, "AGENT_USER", "0:0")),
+        ])
+
+
+class TestProcessesProgram(MutantCase):
+    def check(self):
+        import builtins
+        import contextlib as cl
+        import io
+        src = [q for q in World().probes() if q.id == "processes"][0].argv
+        src = src[list(src).index("-c") + 1]
+        status = {"/proc/1/status": "Name:\tsleep\nUid:\t10003\t10003\t10003\t10003\nCapEff:\t0\n"}
+        real_open = builtins.open
+
+        def fake_open(path, *a, **k):
+            if path in status:
+                return io.StringIO(status[path])
+            if str(path).startswith("/proc/"):
+                raise PermissionError(path)
+            return real_open(path, *a, **k)
+        buf = io.StringIO()
+        with mock.patch.object(os, "listdir", lambda p: ["1", "7", "self", "99"]), \
+                mock.patch.object(os, "getpid", lambda: 99), mock.patch.object(builtins, "open", fake_open), \
+                cl.redirect_stdout(buf):
+            exec(compile(src, "<program>", "exec"), {"__name__": "__main__"})
+        rows = json.loads(buf.getvalue())
+        out = []
+        if [r.get("pid") for r in rows] != [1, 7]:
+            out.append(f"rows {rows}")
+        elif rows[1].get("unreadable") != "PermissionError" or rows[0].get("uid") != 10003:
+            out.append(f"the unreadable row is not recorded: {rows}")
+        return out
+
+    def test_processes_program(self):
+        skipping = pf.PROCESSES_PROGRAM.replace('rows.append({"pid": int(name), "unreadable": type(e).__name__})',
+                                                "continue")
+        self.assert_green_then_red(self.check, [
+            ("skips-unreadable", patched(pf, "PROCESSES_PROGRAM", skipping)),
+        ])
+
+    def test_literal_refused_names(self):
+        self.assert_green_then_red(lambda: [h for h in ARMS if pf.refused_names(h, HOSTS) != REFUSED_NAMES[h]], [
+            ("other-vendors-dropped", patched(pf, "BLOCKED_NAMES", ("github.com", "huggingface.co", "x.example"))),
         ])
 
 
@@ -729,6 +824,15 @@ class TestRecordAndPostflight(MutantCase):
         for h in rt.LOGIN_VARIABLE:
             if not all(src for _, src in pf.CREDENTIAL_FILES[h]):
                 out.append(f"{h}: a credential name without its source")
+        if {h: [n for n, _ in v] for h, v in pf.CREDENTIAL_FILES.items()} != {
+                rt.CLAUDE_CODE: [], rt.CODEX: ["auth.json"], rt.GEMINI: []}:
+            out.append("an unsourced credential name is used as a real value")
+        recalled = pf.RECORDED_PENDING.get("credential_file_names", "")
+        for n in (".credentials.json", "oauth_creds.json", "google_accounts.json"):
+            if n not in recalled:
+                out.append(f"{n} is not recorded pending its walk")
+            if not pf.CREDENTIAL_LIKE.search(n):
+                out.append(f"the backstop does not catch {n}")
         return out
 
     def test_postflight(self):

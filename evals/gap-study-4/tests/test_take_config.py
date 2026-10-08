@@ -226,6 +226,14 @@ class TestPending(MutantCase):
         ])
 
     def test_no_parameter_overrides_a_pending_constant(self):
+        def overriding(config_dir, *, bypass_key=None):
+            return None
+        overriding.__module__ = tc.__name__
+        self.assert_green_then_red(self.check_no_override, [
+            ("override-parameter", lambda: mock.patch.object(tc, "write_with", overriding, create=True)),
+        ])
+
+    def check_no_override(self):
         names = {k.lower() for k in self.EXPECT} | {"bypass_key", "reasoning_effort", "effort", "thinking", "auth",
                                                     "auth_type", "settings_path", "key", "api_key", "token", "login"}
         found = []
@@ -235,7 +243,7 @@ class TestPending(MutantCase):
                     found += [f"{name}({p})" for p in inspect.signature(fn).parameters if p.lower() in names]
                 except (TypeError, ValueError):
                     pass
-        self.assertEqual(found, [])
+        return found
 
 
 class TestHashAndNames(MutantCase):
@@ -252,6 +260,10 @@ class TestHashAndNames(MutantCase):
             fh.write("x")
         if tc.config_sha256(a) == ra["sha256"]:
             out.append("the hash does not see an added file")
+        renamed, _ = written(tc.CODEX, "gpt-6.1-sol")
+        os.rename(os.path.join(renamed, "config.toml"), os.path.join(renamed, "config2.toml"))
+        if tc.config_sha256(renamed) == ra["sha256"]:
+            out.append("the hash does not see a renamed file")
         os.symlink("/etc/hosts", os.path.join(b, "link"))
         try:
             tc.config_sha256(b)
@@ -262,6 +274,9 @@ class TestHashAndNames(MutantCase):
 
     def test_hash(self):
         self.assert_green_then_red(self.check_hash, [
+            ("digests-only", patched(tc, "config_sha256", lambda f: __import__("hashlib").sha256("".join(sorted(
+                __import__("hashlib").sha256(open(os.path.join(r, n), "rb").read()).hexdigest()
+                for r, _, ns in os.walk(f) for n in ns)).encode()).hexdigest())),
             ("names-only", patched(tc, "config_sha256", lambda f: __import__("hashlib").sha256(
                 "\n".join(sorted(os.listdir(f))).encode()).hexdigest())),
         ])
@@ -285,7 +300,7 @@ class TestHashAndNames(MutantCase):
 
     def test_names(self):
         self.assert_green_then_red(self.check_names, [
-            ("study-word", patched(tc, "CODEX_FEATURES", (("hooks", False), ("grading", False)))),
+            ("study-word", patched(tc, "CODEX_FEATURES", (("hooks", False), ("sidecar", False)))),
             ("key-in-file", patched(tc, "CODEX_TOP", tc.CODEX_TOP + (("api_key", FAKE_VALUE),))),
             ("writer-missing", patched(tc, "WRITERS", {tc.CODEX: tc._codex, tc.GEMINI: tc._gemini})),
         ])
