@@ -83,8 +83,13 @@ no stage run at all). Its NAMED RESIDUALS of comments: a `#` inside a word (`--m
 start); and a comment line ending in a backslash joins the next line into the comment (bash runs that next line).
 Both are typed at their actual labels in the tests. Every token naming the script is read, not the first: the
 script's file name as the token or its last path segment, or the module after `-m`. Its own argument tokens run to
-the next command separator (; & | ( ) or a newline); a command substitution `$( )` among them is skipped and never
-ends them (Fold 3's own pre-review: `--project $(pwd)/gars/projects/p --force` keeps its `--force`). For
+the next command separator (; & | ( ) or a newline); a command substitution `$( )` among them is the
+substitution's command, skipped, and the call's tokens go on after its closing `)`, including what shlex glues to
+that `)` (`);` and `)|` end the call, `)>` is a redirection of it). Fold 3's own pre-review: `--project
+$(pwd)/gars/projects/p --force` keeps its `--force`, and `--date $(date +%F); du -h ...` ends at the `;`. A named
+residual: shlex gives a word glued after the `)` (`$(pwd)/gars`) as a token of its own, so a global option whose value
+is spelled that way takes only the `$`, and `--workspace $(pwd)/gars approve` reads `/gars` as the subcommand: no
+approve (typed at that reading; the end state still reads the approval). For
 `approve_command`, the script's global options (`--opt X`, `--opt=X`) are skipped and the next token must equal
 the subcommand whole. An approve call whose own argument tokens hold one of the closed help options HELP_OPTIONS
 (`-h`, `--help`) prints its help and approves nothing, so it is not an invocation (review round 2, W3B2-4: P5, the
@@ -228,8 +233,15 @@ def invocations(command: str, script: str, module: str, depth: int = 0) -> list[
         args, inner = [], 0
         for tok in words[i + 1:]:
             if inner:  # inside a `$( )` among the call's own tokens: the substitution's command, never the call's end
-                inner += tok.count("(") - tok.count(")") if _separator(tok) else 0
-                continue
+                if tok.strip(_PUNCT):  # a word of the substitution
+                    continue
+                k = 0
+                while k < len(tok) and inner:  # its punctuation, up to the `)` that closes the substitution
+                    inner += {"(": 1, ")": -1}.get(tok[k], 0)
+                    k += 1
+                tok = tok[k:]  # what the token holds after that `)` (`);`, `)|`, `)>`) is the call's again
+                if inner or not tok:
+                    continue
             if tok == "(" and args and args[-1].endswith("$"):
                 inner = 1
                 continue
