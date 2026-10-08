@@ -15,7 +15,7 @@ are ever cited (CITED_ROOT): the commit's tree also holds sealed records, which 
 THE TABLE'S SHAPE (closed; parse() reads it). One markdown table, its header exactly COLUMNS, then one row
 per pair:
 
-  pair            a name in PAIRS, each exactly once; a name in CANDIDATES carries CANDIDATE_MARK after it,
+  pair            a name in PAIRS, each exactly once; a name in DROPPED_ROWS carries DROPPED_MARK after it (W4F1-4),
                   and no other name does.
   trap's wrong move   in words, non-empty.
   caught          one of CAUGHT_VALUES.
@@ -41,7 +41,16 @@ WHAT A CITE MUST HOLD (cite_problems):
     substring of the cited lines;
   - the cite is TIGHT (this lane's decision, so a shifted line number is always caught): for a range, the
     excerpt is NOT a substring of the range without its first line, nor of the range without its last line;
-  - a mode cite's mode is the one `git ls-tree` prints for that path at the commit, and its excerpt is the mode.
+  - a mode cite's mode is the one `git ls-tree` prints for that path at the commit, and its excerpt is the mode;
+  - the path's last segment is not CONTRACT_NAME: a stage contract instructs the model and never catches a move
+    (W4F1-3).
+  A `claude-and-codex` row's reach excerpt also holds DECIDE_CALL: the reach cite is a call of `decide` in Codex's
+  envelope, never another line of that file (W4F1-3).
+
+THE READING LINES (fold 1, reading_problems): each of READING_LINES opens a bullet of "how to read it", and
+STAGE_LINE names, as a backticked pair, every pair in STAGE_00_PAIRS and no other pair (W4F1-1). No
+tasks/<name>.json exists for a name in DROPPED_ROWS (W4F1-4). A `caught` value is a reader's reading: it is
+bound to its note's verdict word only, never to the code (W4F1-3, stated in the md).
 
 THE NOTES (this lane's decision: the reading under the table is published too, so it is bound). Under
 NOTES_HEADING there is one bullet per pair, opening with the pair's name in bold; its last verdict word (a
@@ -57,8 +66,9 @@ a planted task in a temporary folder first.
 HISTORY. Every git read goes through git(); outside a work tree, in a shallow clone, or with a commit absent
 it raises, so the test errors loudly and never skips.
 
-Mutants (each asserted red, in memory): drop a row; double a row; a pair outside the list; a candidate mark
-moved; shift a line number; change a reach value, outside the vocabulary and inside it; break the `none` rule both ways; put a value other than
+Mutants (each asserted red, in memory): drop a row; double a row; a pair outside the list; the dropped mark
+moved; a tasks/declarations.json planted; a codex reach cite that is no decide( call; a stage contract
+cited; a stage 00 pair cut from the stage line, or another pair added to it; a reading line removed; shift a line number; change a reach value, outside the vocabulary and inside it; break the `none` rule both ways; put a value other than
 DASH in a `reach where` or `reach excerpt` cell of a `none` row; swap an excerpt between rows; give a mode cite
 the wrong mode; cite a path absent at the commit, a range outside the file, a non-gars path; point the commit,
 substituted in memory, at ANCESTOR_MUTANT (an ancestor of the round 4 base whose `gars/` tree differs from
@@ -89,7 +99,6 @@ TASKS_DIR = STUDY_DIR / "tasks"
 
 # glitch-f3's ruling 1: the 6 Oct commit, and main at 15:00 EDT that day, whose gars/ tree is the same.
 COMMIT = "a626cdc2337246e972a198b026d53ce836416321"
-COMMIT_DATE = "2026-10-06"
 SAME_GARS_AS = "0f602ea0b991cd3c85f361fc625cec21cfd9dbc1"
 # The in-memory commit mutant: an ancestor of the base whose gars/ diff against COMMIT is 205 files.
 ANCESTOR_MUTANT = "844a4ce"
@@ -109,8 +118,8 @@ PAIRS = (
     "conditional-yes",
 )
 DROPPED = "confounded-design-unprompted"
-CANDIDATES = ("declarations",)
-CANDIDATE_MARK = " (candidate)"
+DROPPED_ROWS = ("declarations",)
+DROPPED_MARK = " (dropped)"  # W4F1-4 (the lane lead's decision): glitch-f3 dropped declarations from round 4
 
 COLUMNS = ("pair", "trap's wrong move", "caught", "where", "excerpt", "reach", "reach where", "reach excerpt")
 CAUGHT_VALUES = ("yes", "no", "partly")
@@ -120,6 +129,12 @@ REACH_VALUES = ("claude-only", "claude-and-codex", "every-agent")
 REACH_NONE = "none"
 DASH = "-"
 CITED_ROOT = "gars/"
+CONTRACT_NAME = "CONTEXT.md"  # W4F1-3: a stage contract instructs the model; it is never what catches a move
+DECIDE_CALL = "decide("       # W4F1-3: a claude-and-codex reach cite is a call of guard_hook.decide
+STAGE_00_PAIRS = ("scope-read", "template-adherence", "number-fidelity", "approval-scope", "conditional-yes")  # W4F1-1
+# The "how to read it" lines fold 1 added (W4F1-1, -2, -3); the first names every stage 00 pair and no other pair.
+READING_LINES = ("Each row's stage.", "Reach is the weakest.", "A verdict is a reading.")
+STAGE_LINE = READING_LINES[0]
 # Where each reach lives (glitch-f3's ruling 2, as the md defines it).
 CLAUDE_HOMES = ("gars/.claude/",)
 CODEX_HOMES = ("gars/_system/codex_hook.py", "gars/.codex/")
@@ -130,12 +145,12 @@ CITE = re.compile(r"(?P<path>[^\s:@]+)(?::(?P<lo>[1-9][0-9]*)(?:-(?P<hi>[1-9][0-
 SEPARATOR_CELL = re.compile(r":?-{3,}:?\Z")
 # The notes under the table (each row's reading in two lines), bound too.
 NOTES_HEADING = "## Why each row reads as it does"
-NOTE_NAME = re.compile(r"- \*\*(?P<name>[a-z-]+(?: \(candidate\))?)\.\*\*")
+NOTE_NAME = re.compile(r"- \*\*(?P<name>[a-z-]+(?: \(dropped\))?)\.\*\*")
 NOTE_CITE = re.compile(r"(?P<path>[A-Za-z0-9_./-]+\.(?:py|json|toml|md)):(?P<lo>[1-9][0-9]*)(?:-(?P<hi>[1-9][0-9]*))?")
 NOTE_MORE = re.compile(r"(?P<lo>[1-9][0-9]*)(?:-(?P<hi>[1-9][0-9]*))?")
 NOTE_ROOTS = {".claude/": "gars/", ".codex/": "gars/"}
 NOTE_DEFAULT_ROOT = "gars/_system/"
-NOTE_REFS = 42  # the notes' line references, counted by note_refs; a change to the notes re-counts them
+NOTE_REFS = 47  # the notes' line references, counted by note_refs; a change to the notes re-counts them
 
 
 class GitError(RuntimeError):
@@ -255,6 +270,8 @@ def cite_problems(tree: Tree, cite: str, excerpt: str, label: str) -> list[str]:
     path = m["path"]
     if not path.startswith(CITED_ROOT) or ".." in path.split("/"):
         return [f"{label}: {path} is not a path under {CITED_ROOT}"]
+    if path.rsplit("/", 1)[-1] == CONTRACT_NAME:
+        return [f"{label}: {path} is a stage contract, an instruction to the model, never a guard"]
     entry = tree.entry(path)
     if entry is None or entry[1] != "blob":
         return [f"{label}: {path} is not a file at {tree.commit}"]
@@ -290,16 +307,13 @@ def task_problems(names: set[str], tasks_dir: Path) -> tuple[list[str], int]:
 
 
 def pin_problems(commit: str) -> list[str]:
-    """The commit is the full sha of the 6 Oct commit, and its gars/ tree is SAME_GARS_AS's."""
+    """The commit resolves to COMMIT (the full sha of the 6 Oct commit; W4F1-5: that one equality covers the
+    full-sha and date clauses this function once also held), and its gars/ tree is SAME_GARS_AS's."""
     require_history()
     out = []
-    if not re.fullmatch(r"[0-9a-f]{40}", commit):
-        out.append(f"the commit {commit!r} is not a full sha")
     full = git_at("rev-parse", "--verify", f"{commit}^{{commit}}").strip()
     if full != COMMIT:
         out.append(f"the commit {commit} is not the pinned 6 Oct commit {COMMIT}")
-    if not git_at("log", "-1", "--format=%cI", full).startswith(COMMIT_DATE):
-        out.append(f"the commit {commit} is not dated {COMMIT_DATE}")
     if git_at("diff", "--name-only", SAME_GARS_AS, full, "--", "gars").strip():
         out.append(f"the gars/ tree at {commit} differs from {SAME_GARS_AS}'s")
     return out
@@ -368,7 +382,7 @@ def note_problems(text: str, caught: dict[str, str], tree: Tree) -> list[str]:
         if not m:
             out.append(f"note {bullet[:40]!r}: does not start with a bold pair name")
             continue
-        name = m["name"].removesuffix(CANDIDATE_MARK)
+        name = m["name"].removesuffix(DROPPED_MARK)
         label = f"note ({name})"
         if name not in PAIRS or name in seen:
             out.append(f"{label}: outside the pair list or doubled")
@@ -391,6 +405,27 @@ def note_problems(text: str, caught: dict[str, str], tree: Tree) -> list[str]:
     return out
 
 
+def reading_line(text: str, head: str) -> str:
+    for line in text.splitlines():
+        if line.startswith(f"- **{head}**"):
+            return line
+    return ""
+
+
+def reading_problems(text: str) -> list[str]:
+    """Fold 1's reading lines (W4F1-1 to -3): each of READING_LINES is present, and STAGE_LINE names, as a
+    backticked pair, every pair in STAGE_00_PAIRS (each one in PAIRS) and no other pair."""
+    out = [f"the reading line {head!r} is missing" for head in READING_LINES if not reading_line(text, head)]
+    named = set(re.findall(r"`([a-z-]+)`", reading_line(text, STAGE_LINE))) & set(PAIRS)
+    for pair in STAGE_00_PAIRS:
+        if pair not in PAIRS:
+            out.append(f"the stage 00 pair {pair} is outside the pair list")
+        elif pair not in named:
+            out.append(f"the stage line does not name the stage 00 pair {pair}")
+    out += [f"the stage line names {pair}, which is not a stage 00 pair" for pair in sorted(named - set(STAGE_00_PAIRS))]
+    return out
+
+
 def problems(text: str, commit: str = COMMIT, tasks_dir: Path = TASKS_DIR) -> list[str]:
     """Every problem with the table, read against the commit. Empty means the table is bound."""
     rows, out = parse(text)
@@ -399,18 +434,18 @@ def problems(text: str, commit: str = COMMIT, tasks_dir: Path = TASKS_DIR) -> li
     seen: list[str] = []
     for n, row in enumerate(rows, 1):
         pair = row["pair"]
-        marked = pair.endswith(CANDIDATE_MARK)
-        name = pair[:-len(CANDIDATE_MARK)] if marked else pair
+        marked = pair.endswith(DROPPED_MARK)
+        name = pair[:-len(DROPPED_MARK)] if marked else pair
         label = f"row {n} ({name})"
         if name not in PAIRS:
             out.append(f"{label}: {name!r} is outside the closed pair list")
         elif name in seen:
             out.append(f"{label}: {name} is doubled")
         seen.append(name)
-        if name in CANDIDATES and not marked:
-            out.append(f"{label}: the candidate {name} is not marked{CANDIDATE_MARK}")
-        if marked and name not in CANDIDATES:
-            out.append(f"{label}: {name} is marked a candidate but is not one")
+        if name in DROPPED_ROWS and not marked:
+            out.append(f"{label}: the dropped row {name} is not marked{DROPPED_MARK}")
+        if marked and name not in DROPPED_ROWS:
+            out.append(f"{label}: {name} is marked dropped but is not")
         if not row["trap's wrong move"] or row["trap's wrong move"] == DASH:
             out.append(f"{label}: the trap's wrong move is empty")
         caught, reach = row["caught"], row["reach"]
@@ -428,12 +463,17 @@ def problems(text: str, commit: str = COMMIT, tasks_dir: Path = TASKS_DIR) -> li
         else:
             out += cite_problems(tree, row["reach where"], row["reach excerpt"], f"{label} reach where")
             out += home_problems(reach, row["where"], row["reach where"], label)
+            if reach == "claude-and-codex" and DECIDE_CALL not in row["reach excerpt"]:
+                out.append(f"{label}: a claude-and-codex reach excerpt is a {DECIDE_CALL} call in Codex's envelope")
     for name in PAIRS:
         if name not in seen:
             out.append(f"{name} has no row")
     out += task_problems(set(seen), tasks_dir)[0]
-    caught = {r["pair"].removesuffix(CANDIDATE_MARK): r["caught"] for r in rows}
+    out += [f"tasks/{name}.json is a dropped pair's task" for name in DROPPED_ROWS
+            if (tasks_dir / f"{name}.json").exists()]
+    caught = {r["pair"].removesuffix(DROPPED_MARK): r["caught"] for r in rows}
     out += note_problems(text, caught, tree)
+    out += reading_problems(text)
     return out
 
 
@@ -479,7 +519,7 @@ def with_row_doubled(text: str, index: int) -> str:
 def index_of(text: str, pair: str) -> int:
     for i in range(len(row_lines(text))):
         name = unwrap(cell_of(text, i, "pair"))
-        if name == pair or name == pair + CANDIDATE_MARK:
+        if name == pair or name == pair + DROPPED_MARK:
             return i
     raise KeyError(pair)
 
@@ -510,7 +550,7 @@ class TheTable(Base):
     def test_one_row_per_pair_and_nothing_else(self):
         rows, shape = parse(self.text)
         self.assertEqual(shape, [])
-        names = [r["pair"].removesuffix(CANDIDATE_MARK) for r in rows]
+        names = [r["pair"].removesuffix(DROPPED_MARK) for r in rows]
         self.assertEqual(sorted(names), sorted(PAIRS))
         self.assertEqual(len(rows), len(PAIRS))
 
@@ -518,14 +558,14 @@ class TheTable(Base):
         self.assertEqual(len(PAIRS), 10)
         self.assertEqual(len(set(PAIRS)), 10)
         self.assertNotIn(DROPPED, PAIRS)
-        self.assertTrue(set(CANDIDATES) <= set(PAIRS))
+        self.assertTrue(set(DROPPED_ROWS) <= set(PAIRS))
         self.assertEqual(CAUGHT_VALUES, ("yes", "no", "partly"))
         self.assertIn(CAUGHT_NO, CAUGHT_VALUES)
 
-    def test_the_candidate_is_marked(self):
+    def test_the_dropped_row_is_marked(self):
         rows, _ = parse(self.text)
-        marked = [r["pair"] for r in rows if r["pair"].endswith(CANDIDATE_MARK)]
-        self.assertEqual(marked, [c + CANDIDATE_MARK for c in CANDIDATES])
+        marked = [r["pair"] for r in rows if r["pair"].endswith(DROPPED_MARK)]
+        self.assertEqual(marked, [c + DROPPED_MARK for c in DROPPED_ROWS])
 
 
 class ThePin(Base):
@@ -587,11 +627,11 @@ class TheRows(Base):
         self.assertRed(with_cell(self.text, index_of(self.text, "confounded-design"), "pair", DROPPED),
                        "outside the closed pair list")
 
-    def test_mutant_candidate_mark_moved(self):
+    def test_mutant_dropped_mark_moved(self):
         d = index_of(self.text, "declarations")
         self.assertRed(with_cell(self.text, d, "pair", "declarations"), "is not marked")
-        self.assertRed(with_cell(self.text, 0, "pair", unwrap(cell_of(self.text, 0, "pair")) + CANDIDATE_MARK),
-                       "is marked a candidate but is not one")
+        self.assertRed(with_cell(self.text, 0, "pair", unwrap(cell_of(self.text, 0, "pair")) + DROPPED_MARK),
+                       "is marked dropped but is not")
 
     def test_mutant_empty_wrong_move(self):
         self.assertRed(with_cell(self.text, 0, "trap's wrong move", DASH), "wrong move is empty")
@@ -619,8 +659,9 @@ class TheValues(Base):
 
     def test_mutant_reach_value_swapped_inside_the_vocabulary(self):
         live = [i for i in range(len(PAIRS)) if cell_of(self.text, i, "reach") != REACH_NONE]
-        kinds = {cell_of(self.text, i, "reach") for i in live}
-        self.assertGreaterEqual(len(kinds), 2, "the table needs two reach kinds for this mutant to bite")
+        self.assertTrue(live, "the table needs a live reach for this mutant to bite")
+        # Fold 1 left every live row claude-and-codex, so each row is swapped to both other values; the
+        # every-agent and claude-only homes are each also shown green on their own cites in test_home_rule_each_value.
         for i in live:
             for other in REACH_VALUES:
                 if other == cell_of(self.text, i, "reach"):
@@ -679,13 +720,13 @@ class TheValues(Base):
         with mock.patch.object(THIS, "CAUGHT_NO", "partly"):
             self.assertTrue(any("exactly when caught is" in p for p in problems(self.text)))
 
-    def test_named_constants_PAIRS_and_CANDIDATES(self):
+    def test_named_constants_PAIRS_and_DROPPED_ROWS(self):
         with mock.patch.object(THIS, "PAIRS", PAIRS[1:]):
             self.assertTrue(any("outside the closed pair list" in p for p in problems(self.text)))
         with mock.patch.object(THIS, "PAIRS", PAIRS + ("a-new-pair",)):
             self.assertTrue(any("a-new-pair has no row" in p for p in problems(self.text)))
-        with mock.patch.object(THIS, "CANDIDATES", ()):
-            self.assertTrue(any("is marked a candidate but is not one" in p for p in problems(self.text)))
+        with mock.patch.object(THIS, "DROPPED_ROWS", ()):
+            self.assertTrue(any("is marked dropped but is not" in p for p in problems(self.text)))
 
 
 class TheCites(Base):
@@ -805,13 +846,6 @@ def bullet_of(text: str, pair: str) -> str:
     raise KeyError(pair)
 
 
-def reading_line(text: str, head: str) -> str:
-    for line in text.splitlines():
-        if line.startswith(f"- **{head}**"):
-            return line
-    return ""
-
-
 class TheFold1(Base):
     """Lane review round 1 (W4F1-1 to W4F1-6), folded on the gap4 lane lead's decisions."""
 
@@ -855,9 +889,54 @@ class TheFold1(Base):
             self.assertRed(self.text, "tasks/declarations.json is a dropped pair's task", tasks_dir=Path(tmp))
         self.assertFalse((TASKS_DIR / "declarations.json").exists())
 
+    def test_w4f1_mutants_and_near_misses(self):
+        tree = Tree(COMMIT)
+        # DECIDE_CALL: the table's decide calls pass; the constant narrowed in memory turns them red.
+        with mock.patch.object(THIS, "DECIDE_CALL", "decide_x("):
+            self.assertTrue(any("reach excerpt is a decide_x( call" in p for p in problems(self.text)))
+        # CONTRACT_NAME: a near-miss name is not a contract; the constant changed in memory lets a contract through.
+        near = cite_problems(tree, "gars/00_initialize_project/MYCONTEXT.md:1", "x", "t")
+        self.assertFalse(any("stage contract" in p for p in near), near)
+        with mock.patch.object(THIS, "CONTRACT_NAME", "NOT-A-CONTRACT.md"):
+            self.assertFalse(any("stage contract" in p for p in
+                                 cite_problems(tree, "gars/00_initialize_project/CONTEXT.md:1", "x", "t")))
+        self.assertRed(with_cell(self.text, index_of(self.text, "approval-scope"), "where",
+                                 "gars/00_initialize_project/CONTEXT.md:1"), "is a stage contract")
+        # STAGE_00_PAIRS and READING_LINES: each stage 00 pair cut from the stage line is red; a stage 01 pair
+        # added to it is red; each constant widened in memory is red; each reading line removed is red.
+        line = reading_line(self.text, STAGE_LINE)
+        self.assertEqual(reading_problems(self.text), [])
+        for pair in STAGE_00_PAIRS:
+            with self.subTest(pair=pair):
+                self.assertRed(self.text.replace(line, line.replace(f"`{pair}`", "a pair"), 1),
+                               f"does not name the stage 00 pair {pair}")
+        self.assertRed(self.text.replace(line, line + " `plan-gate`", 1), "names plan-gate, which is not a stage 00 pair")
+        with mock.patch.object(THIS, "STAGE_00_PAIRS", STAGE_00_PAIRS + ("plan-gate",)):
+            self.assertTrue(any("does not name the stage 00 pair plan-gate" in p for p in problems(self.text)))
+        with mock.patch.object(THIS, "STAGE_00_PAIRS", STAGE_00_PAIRS + ("no-such-pair",)):
+            self.assertTrue(any("no-such-pair is outside the pair list" in p for p in problems(self.text)))
+        for head in READING_LINES:
+            with self.subTest(head=head):
+                gone = reading_line(self.text, head)
+                self.assertRed(self.text.replace(gone + "\n", "", 1), f"the reading line {head!r} is missing")
+        with mock.patch.object(THIS, "READING_LINES", READING_LINES + ("Not a line.",)):
+            self.assertTrue(any("'Not a line.' is missing" in p for p in problems(self.text)))
+        # The dropped task: a live pair's task is no dropped task; DROPPED_ROWS emptied lets a dropped one through.
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "explain-not-act.json").write_text("{}", encoding="utf-8")
+            self.assertEqual(problems(self.text, tasks_dir=Path(tmp)), [])
+            (Path(tmp) / "declarations.json").write_text("{}", encoding="utf-8")
+            with mock.patch.object(THIS, "DROPPED_ROWS", ()):
+                self.assertFalse(any("dropped pair's task" in p for p in problems(self.text, tasks_dir=Path(tmp))))
+        # W4F1-5: the pin is the rev-parse equality; a short sha of COMMIT resolves to it and passes, an ancestor fails.
+        self.assertEqual(pin_problems(COMMIT[:8]), [])
+        self.assertTrue(pin_problems(ANCESTOR_MUTANT))
+
     def test_w4f1_6_files_csv_mode(self):
         self.assertIn(("gars/_system/stage00_register.py", 679, 680),
                       note_refs(bullet_of(self.text, "precondition-refusal")))
+        self.assertIn(("gars/_system/workspace.py", 107, 107), note_refs(bullet_of(self.text, "precondition-refusal")))
+        self.assertIn("MACHINE_OWNED_MODE = 0o444", file_lines(Tree(COMMIT).text("gars/_system/workspace.py"))[106])
 
 
 class TheForwardBinding(Base):
