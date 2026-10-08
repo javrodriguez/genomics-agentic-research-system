@@ -202,8 +202,9 @@ class TheRecordIsClosed(unittest.TestCase):
         bad = rec()
         del bad["agent"]
         self.assertTrue(refuses(stats.validate_record, bad))
-        # mutant: a field list without agent lets the record through
-        with mock.patch.object(stats, "TAKE_FIELDS", tuple(f for f in stats.TAKE_FIELDS if f != "agent")):
+        # mutant: a field list without agent and no agent check lets the record through
+        with mock.patch.object(stats, "TAKE_FIELDS", tuple(f for f in stats.TAKE_FIELDS if f != "agent")), \
+                mock.patch.object(stats, "_check_agent", lambda a: None):
             self.assertFalse(refuses(stats.validate_record, bad))
 
     def test_agent_never_defaulted(self):
@@ -810,6 +811,9 @@ class TheCheck(unittest.TestCase):
             pg.write_text("# Round 4\n\n" + text + "\n\nmore of the page\n")
         return res, pre, pg
 
+    def good_block(self):
+        return stats.render_block(stats.derive(rich_records(), design()))
+
     def run_check(self, **kw):
         with tempfile.TemporaryDirectory() as tmp:
             return stats.check(*self.fixture(tmp, **kw))
@@ -827,7 +831,10 @@ class TheCheck(unittest.TestCase):
     def test_each_named_problem(self):
         for kw, word in (({"prereg": False}, "no design"), ({"key": False}, "no design"),
                          ({"page": False}, "no RESULT.md"), ({"markers": False}, "no stats block"),
-                         ({"block": stats.STATS_START + "\nedited\n" + stats.STATS_END}, "differs")):
+                         ({"block": stats.STATS_START + "\nedited\n" + stats.STATS_END}, "differs"),
+                         ({"block": self.good_block() + "\n\n" + self.good_block()}, "no stats block"),   # W4E1-5
+                         ({"block": stats.STATS_END + "\n" + stats.render_md(stats.derive(rich_records(), design()))
+                           + stats.STATS_START}, "no stats block")):
             code, lines = self.run_check(**kw)
             self.assertEqual(code, 1, kw)
             self.assertTrue(any(word in line for line in lines), (kw, lines))
@@ -867,12 +874,14 @@ class ReviewRound1(unittest.TestCase):
     """The lane's own fresh-context review (opus-medium), findings 1-9."""
 
     def test_no_zero_beside_no_takes(self):
-        text = stats.render_md(stats.derive(cell("right", "right"), design()))
+        # m1 has units in t1; m2 has records whose units are all incomplete, so the pair has no matched slot
+        recs = cell("right", "right") + cell("right", [None] * 10, model="m2")
+        text = stats.render_md(stats.derive(recs, design()))
         bad = []
         for line in text.splitlines():
             if line.startswith("|") and "no takes" in line:
                 cells = [c.strip() for c in line.strip("|").split("|")]
-                if any(c in ("0", "0 and 0") for c in cells):
+                if any(c in ("0", "0 and 0") or c.startswith("0 of") for c in cells):
                     bad.append(line)
         self.assertEqual(bad, [])
 
@@ -951,6 +960,138 @@ class ReviewRound1(unittest.TestCase):
         text = stats.render_md(stats.derive(recs, d))
         self.assertIn("claude-haiku-4-5-20251001", text)
         self.assertEqual(Table8NoTakesAndRender.lint(None, text), (0, 0))
+
+
+class ReviewRound1Lane(unittest.TestCase):
+    """The lane lead's round 1 review, W4E1-1 to W4E1-13 (fold 1)."""
+
+    def test_w4e1_1_results_folder_holds_only_top_level_json(self):
+        for stray in ("sub/x.json", "takes.jsonl", "notes.txt"):
+            with tempfile.TemporaryDirectory() as tmp:
+                res, pre, pg = TheCheck.fixture(TheCheck(), tmp, results=False)
+                path = res / stray
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(rich_records()))
+                code, lines = stats.check(res, pre, pg)
+                self.assertEqual(code, 1, (stray, lines))
+                self.assertTrue(any("results folder" in line for line in lines), lines)
+                with mock.patch.object(stats, "_strays", lambda folder: []):   # mutant: strays unseen
+                    self.assertEqual(stats.check(res, pre, pg), (0, [stats.NO_TAKES_LINE]))
+
+    def test_w4e1_2_bootstrap_bounds_round_outward(self):
+        recs = unit_cell(10, model="m1") + unit_cell(0, 10, model="m2")
+        with mock.patch.object(stats, "bootstrap_interval", lambda rng, tree, reps, alpha: (Fraction(2, 3), Fraction(5, 6))):
+            row = rows_for(stats.across_tasks(recs, design()), model_a="m1", model_b="m2")[0]
+        self.assertEqual((row["lower"], row["upper"]), ("0.666", "0.834"))   # floor3 and ceil3, never round3
+
+    def test_w4e1_3_contrast_holm_over_the_contrasts(self):
+        recs = unit_cell(9, 1, model="m1") + unit_cell(2, 8, model="m3")
+        rows = stats.comparisons(recs, design(tasks=("t1",)))
+        c = rows_for(rows, family=stats.FAMILIES[1], harness_a=HX)[0]
+        p = stats.intervals.fisher_two_sided(9, 10, 2, 10)
+        self.assertEqual((c["p"], c["adjusted"]), (stats.intervals.fmt_p(p), stats.intervals.fmt_p(3 * p)))
+
+    POWER_POINTS = [{"stronger": "0.500", "weaker": "0.500", "task_spread": "0.000", "wording_spread": "0.000"},
+                    {"stronger": "0.500", "weaker": "0.500", "task_spread": "0.400", "wording_spread": "0.000"},
+                    {"stronger": "0.500", "weaker": "0.500", "task_spread": "0.000", "wording_spread": "0.400"}]
+    # Bound on the seed (W4E1-4): measured on this code, f755ac32's power_table plus fold 1; a change to the
+    # clustering, the seed or the tests applied changes them.
+    POWER_BOUND = None   # bound in the fix commit, from the fixed code
+
+    def test_w4e1_4_power_clustering_is_bound(self):
+        d = design(tasks=NINE, power=dict(design()["power"], sims=40, bootstrap_reps=20, grid=self.POWER_POINTS))
+        got = [(r["per_task_any"], r["contrast"], r["bootstrap"]) for r in stats.power_table(d)]
+        self.assertEqual(got, self.POWER_BOUND)
+        self.assertNotEqual(got[1], got[0])
+        self.assertNotEqual(got[2], got[0])
+
+    def test_w4e1_6_no_matched_slot_prints_no_takes(self):
+        recs = cell("right", "right") + cell("right", [None] * 10, model="m2")
+        row = rows_for(stats.across_tasks(recs, design()), model_a="m1", model_b="m2")[0]
+        self.assertEqual(row["difference"], stats.NO_TAKES)
+        line = [l for l in stats.render_across(stats.across_tasks(recs, design())).splitlines()
+                if "`m1`" in l and "`m2`" in l][0]
+        self.assertNotIn("0 of", line)
+
+    def test_w4e1_7_agent_version_is_id_like(self):
+        for v in ("run 3 of 10 / pooled | x", "2.1 (cli)", "a/b"):
+            self.assertTrue(refuses(stats.validate_record, rec(agent={"harness": HX, "version": v})), v)
+        self.assertFalse(refuses(stats.validate_record, rec(agent={"harness": HX, "version": "0.144.0+build-2"})))
+        with mock.patch.object(stats, "VERSION_ID", stats.re.compile(r".+")):
+            self.assertFalse(refuses(stats.validate_record, rec(agent={"harness": HX, "version": "a/b"})))
+
+    def test_w4e1_8_every_multi_model_harness_has_its_contrast(self):
+        sw = dict(design()["stronger_weaker"])
+        del sw[HY]
+        self.assertTrue(refuses(stats.validate_design, design(stronger_weaker=sw, cross_vendor=["m1", "z1"])))
+        one = design(harness_models={HX: ["m1", "m3"], HY: ["y1"]}, stronger_weaker={HX: ["m1", "m3"]},
+                     cross_vendor=["m1"])
+        self.assertFalse(refuses(stats.validate_design, one))
+
+    def test_w4e1_9_files_with_no_records_are_no_takes_never_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            res, pre, pg = TheCheck.fixture(TheCheck(), tmp, results=False)
+            (res / "a.json").write_text("[]")
+            code, lines = stats.check(res, pre, pg)
+            self.assertEqual(code, 0)
+            self.assertTrue(lines[-1].startswith("stats --check: no takes"), lines)
+            self.assertFalse(any("PASS" in line for line in lines))
+
+    def test_w4e1_10_one_kind_of_level_per_task(self):
+        mixed = cell("right", "right")[:4] + [outcome("right", half=h, wording="w5", repeat=None, pressure=True)
+                                               for h in stats.HALVES]
+        self.assertTrue(refuses(stats.check_records, mixed))
+        self.assertTrue(refuses(stats.derive, mixed, design()))
+        self.assertFalse(refuses(stats.check_records, cell("right", "right")))
+
+    def test_w4e1_11_a_descriptive_row_with_a_test_is_refused(self):
+        real = stats.comparisons
+
+        def with_p(records, d):
+            rows = real(records, d)
+            for r in rows:
+                if r["family"] == stats.FAMILIES[3]:
+                    r["p"] = "0.500"
+            return rows
+
+        self.assertFalse(refuses(stats.derive, rich_records(), design()))
+        with mock.patch.object(stats, "comparisons", with_p):
+            self.assertTrue(refuses(stats.derive, rich_records(), design()))
+
+    def test_w4e1_12_adjusted_exactly_at_alpha(self):
+        adj = stats.holm({"a": Fraction(1, 100)}, 5)["a"]
+        self.assertEqual(adj, Fraction(1, 20))
+        self.assertTrue(stats._tested(Fraction(1, 100), adj, 5, Fraction(1, 20))["at_alpha"])
+
+    def test_w4e1_13_nits(self):
+        self.assertTrue(refuses(stats.validate_record, rec(repeat=-3)))
+        self.assertTrue(refuses(stats.validate_design, design(alpha="0.050000")))
+        self.assertFalse(refuses(stats.validate_design, design(alpha="0.05")))
+        text = stats.render_comparisons(stats.comparisons(rich_records(), design()), design())
+        self.assertIn("over the 3 stronger-against-weaker contrasts", text)
+        trap = [r for r in stats.bounds_table(cell("stop", "right"), design())
+                if r["task"] == "t1" and r["model"] == "m1" and r["half"] == "trap"][0]
+        self.assertEqual(trap["excluded"], "10 stops excluded, none counted")
+        self.assertNotIn('if "agent" in TAKE_FIELDS', Path(stats.__file__).read_text())
+
+
+class ReviewRound1Equivalents(unittest.TestCase):
+    """Three mutants the round 1 review read as equivalent or error-only, each given a test that goes red."""
+
+    def test_family_of_reads_cross_vendor(self):
+        d = design()
+        d["cross_vendor"] = ["m1"]          # not validated on purpose: family_of is read alone
+        self.assertEqual(stats.family_of(HX, "m1", HY, "y1", d), stats.FAMILIES[3])
+
+    def test_harness_error_needs_its_label(self):
+        self.assertTrue(refuses(stats.validate_record, rec(route="harness-error", label="wrong-move", views=None)))
+
+    def test_agent_harness_is_an_id(self):
+        self.assertTrue(refuses(stats.validate_record, rec(agent={"harness": "harness x", "version": "1"})))
+
+    def test_a_missing_half_is_never_complete(self):
+        self.assertFalse(stats._complete({"trap": rec()}))
+        self.assertTrue(stats._complete({"trap": rec(), "normal": rec(half="normal")}))
 
 
 if __name__ == "__main__":
