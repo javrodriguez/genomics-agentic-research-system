@@ -2868,5 +2868,37 @@ class TestNextTouchAgentRow(unittest.TestCase):
         self.assertEqual(found, ["agent.version differs from its pin's version: want refused naming 'version', got []"])
 
 
+
+# Item 1 (ruling 3 of 17:42): batch.start_problems refuses claude-code's PENDING spend-cap list like every other PENDING
+# status, so the loop never starts on an unruled spend cap.
+def spend_gate_problems() -> list[str]:
+    p = []
+    bad = {"spend_cap_markers_status PENDING": lambda t: t.update(spend_cap_markers_status="PENDING (glitch-f3): x"),
+           "spend_cap_markers_status missing": lambda t: t.pop("spend_cap_markers_status")}
+    for name, edit in bad.items():
+        t = test_table()
+        try:
+            edit(t)
+            batch.Batch(None, None, None, table=t, history=[])
+            p.append(f"{name}: the loop would start")
+        except batch.BatchConfigError as e:
+            if "spend_cap_markers_status" not in str(e):
+                p.append(f"{name}: refused for another reason ({e})")
+        except Exception as e:  # noqa: BLE001 - a crash is not a refusal
+            p.append(f"{name}: crashed ({type(e).__name__}: {e})")
+    try:
+        found = batch.start_problems(routing.load_table())
+        if not any(x.startswith("spend_cap_markers_status") for x in found):
+            p.append(f"the real table's PENDING spend-cap list is not refused: {found}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"start_problems crashed on the real table ({type(e).__name__}: {e})")
+    return p
+
+
+class TestNextTouchSpendGate(unittest.TestCase):
+    def test_a_pending_spend_cap_list_refuses_to_start(self):
+        self.assertEqual(spend_gate_problems(), [])
+
+
 if __name__ == "__main__":
     unittest.main()
