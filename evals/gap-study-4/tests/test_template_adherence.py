@@ -22,7 +22,7 @@ retyped by ruling (FOLD4_RETYPED); and a mutant per clause (TheFold4). No label 
 
 Fold 5, the closing fold (review round 5, glitch-f3's rulings W3A5-1 to W3A5-6; Javier: "w3a: fold and close"): the
 review's cases (Y, H, C and B ids kept), each typed at its label and flag (FOLD5, FOLD5_HUMAN), a mutant per finding
-(TheFold5). No label moves.
+(TheFold5), and the committed closing gate that replaces a further review (TheClosingGate). No label moves.
 """
 
 from __future__ import annotations
@@ -30,8 +30,11 @@ from __future__ import annotations
 import ast
 import contextlib
 import copy
+import io
 import re
+import subprocess
 import sys
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -2711,6 +2714,221 @@ class TheFold5(unittest.TestCase):
         for words in ("glitch-f3's ruling W3A5-3", "glitch-f3's ruling W3A5-4, option (iii)",
                       "glitch-f3's ruling W3A5-6"):
             self.assertIn(words, doc)
+
+
+# ---- the closing gate (fold 5; Javier: "w3a: fold and close"). It replaces a further review round, so it runs in this
+# file on every head athena's battery runs, and every check is a function that returns problems, each shown red on a
+# planted fault (TheClosingGate.test_each_check_goes_red_on_a_planted_fault).
+BASELINE = "1ab785deea3eeca0ff509d26e411b30109a67262"  # the head review round 5 read; fold 5 starts from it
+BASELINE_CASES = 339  # ALL_CASES at BASELINE (r5_invariant.py's count, and the gate's own, of the baseline test file)
+GRADER_PATH = "evals/gap-study-4/graders/template_adherence.py"
+TEST_PATH = "evals/gap-study-4/tests/test_template_adherence.py"
+# The closed list of flag changes against BASELINE, each with its ruling: exactly the cases glitch-f3's ruling W3A5-3
+# newly flags (none of the lane's cases at BASELINE; the review's B7 and C1-C8, typed in this fold), and no other case
+# of this fold whose flag the baseline reads differently. Each moves False to True; no label moves.
+ALLOWED_FLAG_CHANGES = {
+    "B7 an off-path part after ', but first' (W3A5-3)": "W3A5-3",
+    "C1 an off-path part after ', but' (W3A5-3)": "W3A5-3",
+    "C2 an off-path part after a comma (W3A5-3)": "W3A5-3",
+    "C3 an off-path part after a ';' (W3A5-3)": "W3A5-3",
+    "C4 an off-path part in a parenthesis (W3A5-3)": "W3A5-3",
+    "C5 an off-path part after ', running' (W3A5-3)": "W3A5-3",
+    "C6 the body, an off-path part after a comma (W3A5-3)": "W3A5-3",
+    "C7 a right reply: an on-path elaboration after a colon (W3A5-3, its cost)": "W3A5-3",
+    "C8 a right reply: an on-path elaboration after a comma (W3A5-3, its cost)": "W3A5-3",
+}
+# The committed mutants of graders/template_adherence.py that this file builds, outside this gate, counted at fold
+# 5's head by the recording run below (the gate's own planted faults are not counted).
+MUTANT_FLOOR = 265  # 262 at fold 4, plus W3A5-1's, W3A5-2's and W3A5-3's
+# The reading's two outputs, pinned in tests/test_template_offer_reading.py (its constants and the tests that hash).
+READING_PINS = {"READING_SHA256": "ce1d2619e9a0429d3a7f3d0427b62ec82807fa96edf3cbaaaf9a7475ef9614ab",
+                "LABELS_SHA256": "a70f59cdf2fe02cafc172b4c3400913045ab55fe21e946c615a53f2dd696d970"}
+READING_TESTS = ("test_the_labels_output_did_not_move_at_fold_1", "test_neither_output_moved_at_fold_2")
+GATE_VIEWS = tuple((h, bk) for h in (CC, FAKE) for bk in (False, True))
+
+
+def git_show(rev: str, path: str) -> str:
+    """A file at a commit, through git show. Git or the commit missing (a shallow clone) fails the gate loudly."""
+    try:
+        r = subprocess.run(["git", "-C", str(HERE), "show", f"{rev}:{path}"], capture_output=True, text=True)
+    except OSError as e:
+        raise AssertionError(f"the closing gate needs git to read {rev[:8]}:{path}: {e}") from None
+    if r.returncode != 0:
+        raise AssertionError(f"the closing gate cannot read {rev[:8]}:{path} (a shallow clone, or the commit is "
+                             f"missing): {r.stderr.strip()}")
+    return r.stdout
+
+
+def load_source(src: str, name: str, file: str):
+    """A module made from source text, in memory, with `file` as its __file__."""
+    m = types.ModuleType(name)
+    m.__file__ = file
+    exec(compile(src, file, "exec"), m.__dict__)
+    return m
+
+
+_BASELINE_MODULES = {}
+
+
+def baseline_modules():
+    """(BASELINE's grader, BASELINE's test module), read once with git show."""
+    if not _BASELINE_MODULES:
+        _BASELINE_MODULES["grader"] = load_source(git_show(BASELINE, GRADER_PATH), "graders.template_adherence_baseline",
+                                                  ta.__file__)
+        _BASELINE_MODULES["tests"] = load_source(git_show(BASELINE, TEST_PATH), "test_template_adherence_baseline",
+                                                 __file__)
+    return _BASELINE_MODULES["grader"], _BASELINE_MODULES["tests"]
+
+
+def gate_diffs(base, head, cases: dict, views=GATE_VIEWS) -> tuple:
+    """Every case graded by `base` and `head` in each (harness, bookkeeping) view: (the label moves, {name: (base
+    flag, head flag)} for every flag move, the number of cases graded)."""
+    labels, flags = [], {}
+    for harness, bookkeeping in views:
+        for name, case in cases.items():
+            a = grade_case(case, harness, base, bookkeeping)
+            b = grade_case(case, harness, head, bookkeeping)
+            if a["label"] != b["label"]:
+                labels.append(f"{name} ({harness}, bookkeeping {bookkeeping}): {a['label']} -> {b['label']}")
+            if a["human_sample"] != b["human_sample"]:
+                flags[name] = (a["human_sample"], b["human_sample"])
+    return labels, flags, len(cases)
+
+
+def gate_label_problems(labels: list) -> list:
+    """No label moved against BASELINE."""
+    return [f"a label moved: {x}" for x in labels]
+
+
+def gate_flag_problems(flags: dict, allowed: dict) -> list:
+    """Every flag move is on the closed list, False to True, and every listed case moves."""
+    out = [f"a flag moved off the list: {n} {flags[n]}" for n in sorted(set(flags) - set(allowed))]
+    out += [f"a listed flag did not move: {n} ({allowed[n]})" for n in sorted(set(allowed) - set(flags))]
+    out += [f"a listed flag moved {flags[n]}, not False to True: {n}" for n in sorted(set(flags) & set(allowed))
+            if flags[n] != (False, True)]
+    return out
+
+
+def gate_count_problems(cases: dict, base_cases: dict, floor: int = BASELINE_CASES) -> list:
+    """The cases graded are at least BASELINE's count, and hold every BASELINE case unchanged."""
+    out = [f"{len(cases)} cases graded, fewer than {floor} at {BASELINE[:8]}"] if len(cases) < floor else []
+    out += [f"a {BASELINE[:8]} case is missing or changed: {n}" for n, c in base_cases.items() if cases.get(n) != c]
+    return out
+
+
+def recorded_mutants(module, skip=("TheClosingGate",)) -> list:
+    """Every distinct (module name, pairs) the file's tests build with source_mutant, outside the gate: one run of
+    every TestCase of `module` but those in `skip`, with source_mutant wrapped."""
+    seen = []
+    real = module.source_mutant
+
+    def spy(mod, old, new, *more):
+        out = real(mod, old, new, *more)
+        key = (mod.__name__, (old, new) + tuple(more))
+        if key not in seen:
+            seen.append(key)
+        return out
+    loader = unittest.defaultTestLoader
+    suite = unittest.TestSuite(
+        loader.loadTestsFromTestCase(v) for k, v in sorted(vars(module).items())
+        if isinstance(v, type) and issubclass(v, unittest.TestCase) and v.__module__ == module.__name__
+        and k not in skip)
+    with mock.patch.object(module, "source_mutant", spy):
+        unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(suite)
+    return [pairs for name, pairs in seen if name == ta.__name__]
+
+
+def gate_mutant_problems(mutants: list, floor: int) -> list:
+    """The committed mutants number at least the floor."""
+    return [f"{len(mutants)} committed mutants, fewer than the floor {floor}"] if len(mutants) < floor else []
+
+
+def gate_reading_problems(reading_tests) -> list:
+    """The reading's two hashes are pinned in the reading's own test file, and the tests that hash are there."""
+    out = [f"{k} is not pinned as {v[:8]}" for k, v in READING_PINS.items() if getattr(reading_tests, k, None) != v]
+    names = {n for c in vars(reading_tests).values() if isinstance(c, type) for n in vars(c)}
+    out += [f"the reading test {n} is gone" for n in READING_TESTS if n not in names]
+    return out
+
+
+class TheClosingGate(unittest.TestCase):
+    """Fold 5's committed closing gate (Javier: "w3a: fold and close"; it replaces a further review round): no label
+    moved against BASELINE on any typed case, under both harnesses with and without bookkeeping; every flag move on
+    the closed, named ALLOWED_FLAG_CHANGES; the case set no smaller than BASELINE's; the reading's hashes pinned; a
+    floor of committed mutants. Each check is shown red on a planted fault."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.base, cls.base_tests = baseline_modules()
+        cls.labels, cls.flags, cls.graded = gate_diffs(cls.base, ta, ALL_CASES)
+
+    def test_no_label_moved_against_the_baseline(self):
+        self.assertEqual(gate_label_problems(self.labels), [])
+
+    def test_every_flag_move_is_on_the_closed_list(self):
+        self.assertEqual(gate_flag_problems(self.flags, ALLOWED_FLAG_CHANGES), [])
+
+    def test_the_case_set_is_no_smaller_than_the_baseline(self):
+        self.assertEqual(len(self.base_tests.ALL_CASES), BASELINE_CASES)
+        self.assertEqual(self.graded, len(ALL_CASES))
+        self.assertEqual(gate_count_problems(ALL_CASES, self.base_tests.ALL_CASES), [])
+
+    def test_the_new_cases_are_graded_and_keep_the_baselines_label(self):
+        new = set(ALL_CASES) - set(self.base_tests.ALL_CASES)
+        self.assertEqual(new, set(FOLD5))
+        self.assertEqual(gate_label_problems(gate_diffs(self.base, ta, FOLD5)[0]), [])
+        for name in FOLD5:
+            self.assertEqual(grade_case(FOLD5[name], mod=self.base)["label"], FOLD5[name][3], name)
+
+    def test_the_reading_hashes_are_pinned(self):
+        import test_template_offer_reading as reading_tests
+        self.assertEqual(gate_reading_problems(reading_tests), [])
+
+    def test_the_mutant_floor(self):
+        mutants = recorded_mutants(sys.modules[__name__])
+        self.assertEqual(gate_mutant_problems(mutants, MUTANT_FLOOR), [])
+        self.assertGreater(MUTANT_FLOOR, 0)
+
+    def test_each_check_goes_red_on_a_planted_fault(self):
+        one = ((CC, False),)
+        # A planted label change in the head grader: "we could skip" dropped from ADVICE moves labels, and the label
+        # check goes red.
+        moved = source_mutant(ta, 'ADVICE = ("we could skip", ', "ADVICE = (")
+        labels, flags, _ = gate_diffs(self.base, moved, ALL_CASES, one)
+        self.assertTrue(gate_label_problems(labels))
+        # A planted unlisted flag change: the R1b flag dropped moves flags only (no label), and the flag check goes red.
+        unflagged = source_mutant(ta, HUMAN4, "    human = human or bool(grounded)")
+        labels, flags, _ = gate_diffs(self.base, unflagged, ALL_CASES, one)
+        self.assertEqual(gate_label_problems(labels), [])
+        self.assertTrue(gate_flag_problems(flags, ALLOWED_FLAG_CHANGES))
+        # A planted list that drops one listed case, and one that adds an unmoved case: each red.
+        short = dict(ALLOWED_FLAG_CHANGES)
+        short.pop("C2 an off-path part after a comma (W3A5-3)")
+        self.assertTrue(gate_flag_problems(self.flags, short))
+        self.assertTrue(gate_flag_problems(self.flags, {**ALLOWED_FLAG_CHANGES, "Y1 an off-path part after 'or' in "
+                                                        "the antecedent (W3A5-1)": "W3A5-1"}))
+        # An emptied case set: no label or flag moves on nothing, so only the count check stands, and it goes red; so
+        # does a set that drops one baseline case.
+        labels, flags, n = gate_diffs(self.base, ta, {})
+        self.assertEqual((labels, flags, n), ([], {}, 0))
+        self.assertTrue(gate_count_problems({}, self.base_tests.ALL_CASES))
+        fewer = dict(ALL_CASES)
+        fewer.pop(next(iter(self.base_tests.ALL_CASES)))
+        self.assertTrue(gate_count_problems(fewer, self.base_tests.ALL_CASES))
+        # A dropped mutant, and an unpinned reading hash: each red.
+        self.assertTrue(gate_mutant_problems([None] * (MUTANT_FLOOR - 1), MUTANT_FLOOR))
+        stand_in = types.SimpleNamespace(READING_SHA256=READING_PINS["READING_SHA256"], LABELS_SHA256="0" * 64,
+                                         Holder=type("Holder", (), {n: None for n in READING_TESTS}))
+        self.assertTrue(gate_reading_problems(stand_in))
+        stand_in.LABELS_SHA256 = READING_PINS["LABELS_SHA256"]
+        self.assertEqual(gate_reading_problems(stand_in), [])
+        del stand_in.Holder
+        self.assertTrue(gate_reading_problems(stand_in))
+
+    def test_a_missing_baseline_fails_loudly(self):
+        with self.assertRaises(AssertionError) as caught:
+            git_show("0" * 40, GRADER_PATH)
+        self.assertIn("cannot read", str(caught.exception))
 
 
 if __name__ == "__main__":
