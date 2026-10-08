@@ -31,6 +31,7 @@ No model, no network, standard library only (plus the seam's `agent_adapter` and
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import re
@@ -116,7 +117,7 @@ TOP_FORMAT = PENDING
 # every state read refuses (NotReady).
 INSPECT_PATHS = {
     "image": "Image", "user": "Config.User", "cmd": "Config.Cmd", "env": "Config.Env",
-    "working_dir": "Config.WorkingDir", "network_mode": "HostConfig.NetworkMode",
+    "working_dir": "Config.WorkingDir", "entrypoint": "Config.Entrypoint", "network_mode": "HostConfig.NetworkMode",
     "cap_drop": "HostConfig.CapDrop", "cap_add": "HostConfig.CapAdd", "security_opt": "HostConfig.SecurityOpt",
     "privileged": "HostConfig.Privileged", "devices": "HostConfig.Devices", "pid_mode": "HostConfig.PidMode",
     "pids_limit": "HostConfig.PidsLimit", "memory": "HostConfig.Memory",
@@ -196,9 +197,14 @@ def _is_pending(v) -> bool:
     return False
 
 
+def _pending_values() -> dict:
+    return {"FALLBACK_ENV": FALLBACK_ENV, "VENDOR_BILLING_ROUTE_VARIABLES": VENDOR_BILLING_ROUTE_VARIABLES,
+            "TOP_FORMAT": TOP_FORMAT, "INSPECT_STATUS": INSPECT_STATUS}
+
+
 def pending() -> dict:
     """Every value this module holds that is still PENDING, with its reason (resources: always, by design)."""
-    out = {k: PENDING_WHY[k] for k in PENDING_WHY if k != "TakeSpec.resources" and _is_pending(globals()[k])}
+    out = {k: PENDING_WHY[k] for k, v in _pending_values().items() if _is_pending(v)}
     out["TakeSpec.resources"] = PENDING_WHY["TakeSpec.resources"]
     return out
 
@@ -334,7 +340,8 @@ def create_argv(spec: TakeSpec) -> list:
             "--mount", f"type=bind,source={spec.run_tree},target={spec.run_tree}",
             "--mount", f"type=bind,source={spec.config_dir},target={CONFIG_MOUNT}",
             "--workdir", spec.run_tree,
-            spec.image, *KEEPALIVE_COMMAND]
+            "--entrypoint", KEEPALIVE_COMMAND[0],
+            spec.image, *KEEPALIVE_COMMAND[1:]]
 
 
 # ---------------------------------------------------------------------------------- the environment per harness
@@ -375,11 +382,17 @@ def exec_values(harness: str, run_tree: str) -> dict:
     return values
 
 
+def _own_environment():
+    """This process's own environment: always checked, whatever caller_env a caller passes (W4B1-9)."""
+    return os.environ
+
+
 def check_environment(harness: str, caller_env=None, requested=()) -> None:
-    """Refuse the take when any refused name is set in the caller's environment or requested for the exec."""
+    """Refuse the take when any refused name is set in this process's own environment, in the caller_env given (the
+    client env's seam, never a switch for this refusal) or requested for the exec. Names only; values never read."""
     refused = refused_variables(harness)
-    src = os.environ if caller_env is None else caller_env
-    in_caller = sorted(n for n in src if n in refused)
+    names = set(_own_environment()) | (set(caller_env) if caller_env is not None else set())
+    in_caller = sorted(n for n in names if n in refused)
     if in_caller:
         raise Refused(f"refused variable(s) set in the caller's environment for a {harness} take: {', '.join(in_caller)}")
     asked = sorted(n for n in requested if n in refused)
@@ -416,12 +429,22 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     return argv, env
 
 
-def agent_exec_argv(container_id: str, inner, *, workdir: str = "/") -> list:
-    """A plain exec as the agent with no variable at all (preflight's reads, the kill)."""
+def config_home_names() -> frozenset:
+    """Each harness's config-home variable: the HARNESS_ENV names whose value is the config mount."""
+    return frozenset(k for env in HARNESS_ENV.values() for k, v in env.items() if v == CONFIG_MOUNT)
+
+
+def agent_exec_argv(container_id: str, inner, *, workdir: str = "/", config_home=None) -> list:
+    """A plain exec as the agent (preflight's reads): no variable but, when given, one harness's config home."""
     _check_id(container_id, "container id")
     inner = _check_argv(inner)
     workdir = _abs_path(workdir, "workdir") if workdir != "/" else "/"
-    return [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, "--workdir", workdir, container_id, *inner]
+    extra = []
+    for name, value in sorted((config_home or {}).items()):
+        if name not in config_home_names() or value != CONFIG_MOUNT:
+            raise Refused("a plain exec carries only a harness's config home, at the config mount")
+        extra += ["-e", f"{name}={value}"]
+    return [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, "--workdir", workdir, *extra, container_id, *inner]
 
 
 # ------------------------------------------------------------------------------------------------ the login read
@@ -463,7 +486,7 @@ def read_login(path: str, name: str) -> str:
     if st.st_size > LOGIN_MAX_BYTES:
         raise LoginRefused(f"{path}: the login file holds more than one short line")
     try:
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
         with os.fdopen(fd, "rb") as fh:
             raw = fh.read(LOGIN_MAX_BYTES + 1)
     except OSError:
@@ -538,8 +561,10 @@ class ProxyLaunch:
 
 @dataclass
 class Launched:
-    """Every id the moment the runtime returned it, every argv and every inspect: the launch record."""
+    """Every id the moment the runtime returned it, every argv and every inspect: the launch record. `spec` is the
+    take's spec on the network launch made (W4B1-1): the drive step hands that one to preflight."""
     config_dir: str | None = None
+    spec: TakeSpec | None = None
     network_id: str | None = None
     proxy_id: str | None = None
     sidecar_id: str | None = None
@@ -599,14 +624,24 @@ def _inspect(runtime, launched: Launched, name: str, cid: str, env: dict) -> dic
     return doc[0]
 
 
+def _proxy_uid(user: str):
+    """The uid of a `uid[:gid]` or `name[:gid]` spelling, numerically (None for a name); refuses any other form."""
+    m = re.fullmatch(r"([0-9]+|[a-z_][a-z0-9_-]*)(:[0-9]+)?", user) if isinstance(user, str) else None
+    if m is None:
+        raise Refused("the proxy user is uid[:gid] or name[:gid]")
+    head = m.group(1)
+    if head.isdigit():
+        return int(head)
+    return 0 if head == "root" else None
+
+
 def _check_proxy(proxy: ProxyLaunch) -> None:
     if not isinstance(proxy, ProxyLaunch):
         raise Refused("proxy must be a ProxyLaunch")
     if _is_pending(proxy.user) or _is_pending(proxy.command) or _is_pending(proxy.image):
         raise NotReady("the proxy's user (squid's package user) is PENDING until a built image tells it")
-    if not isinstance(proxy.user, str) or not re.fullmatch(r"[0-9]+:[0-9]+|[a-z_][a-z0-9_-]*", proxy.user) \
-            or proxy.user in ("0", "0:0", "root"):
-        raise Refused("the proxy runs as squid's own non-root user")
+    if _proxy_uid(proxy.user) == 0:
+        raise Refused("the proxy runs as squid's own non-root user, never uid 0 in any spelling")
     if proxy.alias != PROXY_ALIAS:
         raise Refused(f"the proxy's alias is {PROXY_ALIAS}")
     if not isinstance(proxy.image, str) or not _IMAGE_ID.fullmatch(proxy.image):
@@ -630,6 +665,7 @@ def proxy_create_argv(network_id: str, proxy: ProxyLaunch) -> list:
     _check_proxy(proxy)
     return [RUNTIME_CLIENT, "create", "--pull=never", "--network", _check_id(network_id, "network id"),
             "--network-alias", PROXY_ALIAS, "--user", proxy.user,
+            "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
             "--mount", f"type=bind,source={proxy.conf_source},target={proxy.conf_target},readonly",
             proxy.image, *proxy.command]
 
@@ -637,6 +673,19 @@ def proxy_create_argv(network_id: str, proxy: ProxyLaunch) -> list:
 def network_name() -> str:
     """A fresh, neutral name for the take's internal network (the runtime needs one; removal is by id)."""
     return "n" + secrets.token_hex(12)
+
+
+def _check_launch_ready(sidecar: SidecarLaunch) -> None:
+    """W4B1-2: NotReady before any runtime call while an inspect spelling or the sidecar's expectation is PENDING."""
+    if _is_pending(INSPECT_STATUS):
+        raise NotReady(f"INSPECT_STATUS is PENDING: {PENDING_WHY['INSPECT_STATUS']}")
+    if isinstance(sidecar, SidecarLaunch) and _is_pending(sidecar.expect):
+        raise NotReady("the sidecar's expectation holds a PENDING value (its added capability's spelling)")
+
+
+def _on_network(spec: TakeSpec, network_id: str) -> TakeSpec:
+    """W4B1-1: the take's spec on the network launch just made, never the caller's."""
+    return dataclasses.replace(spec, network=network_id)
 
 
 def launch(runtime, spec: TakeSpec, *, sidecar: SidecarLaunch, proxy: ProxyLaunch, record_dir: str,
@@ -649,12 +698,12 @@ def launch(runtime, spec: TakeSpec, *, sidecar: SidecarLaunch, proxy: ProxyLaunc
     check_spec(spec)
     _check_proxy(proxy)
     _check_sidecar(sidecar)
+    _check_launch_ready(sidecar)
     record_dir = _abs_path(record_dir, "record_dir")
     if not os.path.isdir(record_dir) or os.path.lexists(os.path.join(record_dir, LAUNCH_RECORD)):
         raise Refused("the record folder must exist and hold no launch record yet")
     if not os.path.isdir(spec.config_dir) or not outside_every_repository(spec.config_dir):
         raise Refused("the per-take config folder must exist outside every repository")
-    take_expect = preflight.expected_take_inspect(spec)
     env = runtime_env(caller_env)
     launched = Launched(config_dir=spec.config_dir)
     try:
@@ -673,6 +722,8 @@ def launch(runtime, spec: TakeSpec, *, sidecar: SidecarLaunch, proxy: ProxyLaunc
         if bad:
             raise _StepFailed("sidecar-inspect: " + "; ".join(bad))
         _step(runtime, launched, "sidecar-start", list(sidecar.start_argv_for(launched.sidecar_id)), env)
+        launched.spec = spec = _on_network(spec, launched.network_id)
+        take_expect = preflight.expected_take_inspect(spec)
         c = _step(runtime, launched, "take-create", create_argv(spec), env)
         launched.take_id = _new_id(c, "take-create")
         got = _inspect(runtime, launched, "take-inspect", launched.take_id, env)

@@ -1488,6 +1488,7 @@ LOCAL_IMPORTS = frozenset({"agent_adapter", "harness_bookkeeping", "box", "box.r
 SUBPROCESS_MODULE = "box/run_take.py"
 SUBPROCESS_SITE = ("DockerRuntime", "run")
 SUBPROCESS_NAMES = frozenset({"run", "TimeoutExpired"})
+GUARDED_MODULES = ("os", "subprocess")
 FORBIDDEN_OS = re.compile(r"(kill|killpg|system|popen|fork|forkpty|posix_spawnp?|exec[lvpe]*|spawn[lvpe]*)")
 
 
@@ -1504,6 +1505,24 @@ def audit_source(rel: str, source: str) -> list:
             walk(child, stack + ((child.name,) if isinstance(child, (ast.ClassDef, ast.FunctionDef,
                                                                      ast.AsyncFunctionDef)) else ()))
     walk(tree, ())
+    # W4B1-3: every load of the names os and subprocess must be the base of an attribute (never bound, passed or
+    # subscripted), so the module object never reaches a name the audit cannot follow.
+    attr_bases = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id in GUARDED_MODULES and isinstance(node.ctx, ast.Load) \
+                and id(node) not in attr_bases:
+            out.append(f"{rel}: the module {node.id} is used as a value")
+        if isinstance(node, ast.Attribute) and node.attr in GUARDED_MODULES + ("pty", "asyncio") \
+                and not (isinstance(node.value, ast.Name) and node.value.id in ("os",) and node.attr == "path"):
+            out.append(f"{rel}: .{node.attr} reached through another module")
+        if isinstance(node, ast.Attribute) and node.attr in ("__dict__", "modules", "__builtins__"):
+            out.append(f"{rel}: .{node.attr} reaches names dynamically")
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in (
+                "vars", "globals", "locals", "setattr", "delattr"):
+            out.append(f"{rel}: {node.func.id}(...) reaches names dynamically")
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "getattr" \
+                and not (len(node.args) > 1 and isinstance(node.args[1], ast.Constant)):
+            out.append(f"{rel}: getattr with a non-constant name")
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for a in node.names:

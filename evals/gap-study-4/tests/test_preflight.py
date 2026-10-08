@@ -628,11 +628,11 @@ class TestExpectedInspect(MutantCase):
         argv = rt.create_argv(s)
         exp = pf.expected_take_inspect(s)
         val = lambda flag: argv[argv.index(flag) + 1]  # noqa: E731
-        derived = {"image": argv[-3], "user": val("--user"), "network_mode": val("--network"),
+        derived = {"image": argv[-2], "entrypoint": [val("--entrypoint")], "user": val("--user"), "network_mode": val("--network"),
                    "pids_limit": int(val("--pids-limit")), "memory": int(val("--memory")),
                    "memory_reservation": int(val("--memory-reservation")),
                    "nano_cpus": int(float(val("--cpus")) * 1e9), "cap_drop": [val("--cap-drop")],
-                   "security_opt": [val("--security-opt")], "working_dir": val("--workdir"), "cmd": argv[-2:]}
+                   "security_opt": [val("--security-opt")], "working_dir": val("--workdir"), "cmd": argv[-1:]}
         out = [f"{k}: {exp[k]!r} != {v!r}" for k, v in derived.items() if exp[k] != v]
         mounts = sorted(({"type": "bind", "source": dict(p.split("=") for p in m.split(","))["source"],
                           "destination": dict(p.split("=") for p in m.split(","))["target"], "rw": True}

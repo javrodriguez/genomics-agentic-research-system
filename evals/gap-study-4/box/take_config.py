@@ -73,12 +73,20 @@ _MODEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")
 _KEY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
 
+def _pending_values() -> dict:
+    return {"CLAUDE_BYPASS_KEY": CLAUDE_BYPASS_KEY, "CODEX_REASONING_EFFORT": CODEX_REASONING_EFFORT,
+            "GEMINI_THINKING": GEMINI_THINKING, "GEMINI_AUTH_SETTING": GEMINI_AUTH_SETTING,
+            "GEMINI_SETTINGS_PATH": GEMINI_SETTINGS_PATH}
+
+
 def pending() -> dict:
-    return {k: why for k, why in PENDING_WHY.items() if run_take._is_pending(globals()[k])}
+    values = _pending_values()
+    return {k: why for k, why in PENDING_WHY.items() if run_take._is_pending(values[k])}
 
 
 def _ready(harness: str) -> None:
-    still = [k for k in NEEDS[harness] if run_take._is_pending(globals()[k])]
+    values = _pending_values()
+    still = [k for k in NEEDS[harness] if run_take._is_pending(values[k])]
     if still:
         raise NotReady(f"{harness} config needs {', '.join(still)}: " + " ".join(PENDING_WHY[k] for k in still))
 

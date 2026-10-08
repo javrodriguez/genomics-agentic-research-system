@@ -85,16 +85,15 @@ LEAK_WORDS = PENDING
 
 # Credential files a harness could leave in its config folder, each with the source that names it. A file whose
 # name merely looks like a credential (CREDENTIAL_LIKE) fails the check too: this lane's stricter reading.
+# Only a name a source gives is used as a real value; names recalled without a source wait in RECORDED_PENDING for
+# the walk (Review A, glitch-f3's ruling "fold all of it"), and CREDENTIAL_LIKE stays the backstop that catches them.
 CREDENTIAL_FILES = {
-    run_take.CLAUDE_CODE: ((".credentials.json", "Claude Code's Linux credential store under its config folder; "
-                                                 "named from recall of its docs, confirmed at the pinned version"),),
+    run_take.CLAUDE_CODE: (),
     run_take.CODEX: (("auth.json", "D8 section 3: 'so no auth.json is written' (forced_login_method api, "
                                    "cli_auth_credentials_store ephemeral)"),),
-    run_take.GEMINI: (("oauth_creds.json", "Gemini CLI's sign-in cache; named from recall of its docs, confirmed "
-                                           "at the pinned version (D8 section 3: 'no sign-in cache is written')"),
-                      ("google_accounts.json", "Gemini CLI's signed-in account record; same source and caveat")),
+    run_take.GEMINI: (),
 }
-CREDENTIAL_LIKE = re.compile(r"(cred|oauth|token|secret|auth|\.pem$|\.key$)", re.IGNORECASE)
+CREDENTIAL_LIKE = re.compile(r"(cred|oauth|token|secret|auth|account|\.pem$|\.key$)", re.IGNORECASE)
 
 PENDING_WHY = {
     "VERSION_PATTERNS": "every `--version` output form: a walk-only value; no parse pattern is invented.",
@@ -109,6 +108,9 @@ RECORDED_PENDING = {
                                 "watcher-capability check passes only when it does.",
     "internal_resolver": "whether an --internal network's resolver refuses outside names: the names check measures "
                          "it.",
+    "credential_file_names": "the credential files each harness could leave, recalled without a source and confirmed "
+                             "by a walk: Claude Code .credentials.json; Gemini CLI oauth_creds.json and "
+                             "google_accounts.json. Until then CREDENTIAL_LIKE catches them.",
     "cap_add spelling": "the runtime's spelling of the sidecar's one added capability: sidecar_expect carries "
                         "PENDING until the stub take.",
 }
@@ -120,11 +122,12 @@ def _is_pending(v) -> bool:
 
 def pending() -> dict:
     """Every constant of this module still PENDING, with its reason."""
-    return {k: why for k, why in PENDING_WHY.items() if _is_pending(globals()[k])}
+    values = {"VERSION_PATTERNS": VERSION_PATTERNS, "STUDY_PATHS": STUDY_PATHS, "LEAK_WORDS": LEAK_WORDS}
+    return {k: why for k, why in PENDING_WHY.items() if _is_pending(values[k])}
 
 
 # -------------------------------------------------------------------------------------- the take's expected facts
-TAKE_FACT_KEYS = ("image", "user", "cmd", "working_dir", "network_mode", "cap_drop", "cap_add", "security_opt",
+TAKE_FACT_KEYS = ("image", "user", "entrypoint", "cmd", "working_dir", "network_mode", "cap_drop", "cap_add", "security_opt",
                   "privileged", "devices", "pid_mode", "pids_limit", "memory", "memory_reservation", "nano_cpus",
                   "mounts")
 
@@ -133,7 +136,8 @@ def expected_take_inspect(spec) -> dict:
     """Every fact `docker container inspect` must show for the take container, derived from the same spec."""
     run_take.check_spec(spec)
     return {
-        "image": spec.image, "user": run_take.KEEPALIVE_USER, "cmd": list(run_take.KEEPALIVE_COMMAND),
+        "image": spec.image, "user": run_take.KEEPALIVE_USER, "entrypoint": list(run_take.KEEPALIVE_COMMAND[:1]),
+        "cmd": list(run_take.KEEPALIVE_COMMAND[1:]),
         "working_dir": spec.run_tree, "network_mode": spec.network, "cap_drop": ["ALL"], "cap_add": [],
         "security_opt": ["no-new-privileges"], "privileged": False, "devices": [], "pid_mode": "",
         "pids_limit": spec.pids_limit, "memory": spec.memory, "memory_reservation": spec.memory_reservation,
@@ -145,7 +149,7 @@ def expected_take_inspect(spec) -> dict:
     }
 
 
-_LIST_FACTS = ("cap_drop", "cap_add", "security_opt", "devices", "cmd")
+_LIST_FACTS = ("cap_drop", "cap_add", "security_opt", "devices", "cmd", "entrypoint")
 _MOUNT_FIELDS = {"type": "Type", "source": "Source", "destination": "Destination", "rw": "RW"}
 
 
@@ -249,7 +253,8 @@ for name in os.listdir("/proc"):
     try:
         with open("/proc/" + name + "/status") as fh:
             fields = dict(line.split(":", 1) for line in fh if ":" in line)
-    except OSError:
+    except OSError as e:
+        rows.append({"pid": int(name), "unreadable": type(e).__name__})
         continue
     rows.append({"pid": int(name), "uid": int(fields["Uid"].split()[0]), "name": fields.get("Name", "").strip(),
                  "cap_eff": int(fields.get("CapEff", "0").strip(), 16)})
@@ -309,6 +314,19 @@ PROGRAMS = {"identity": IDENTITY_PROGRAM, "cgroup": CGROUP_PROGRAM, "listing": L
             "watcher-caps": PROCESSES_PROGRAM}
 
 
+def _proxy_port() -> str:
+    """The proxy's port, derived from run_take.PROXY_URL (never typed apart from it)."""
+    m = re.fullmatch(r"http://([a-z0-9-]+):([0-9]+)", run_take.PROXY_URL)
+    if m is None or m.group(1) != run_take.PROXY_ALIAS:
+        raise run_take.Refused("PROXY_URL is http://<alias>:<port>")
+    return m.group(2)
+
+
+def _config_home_values(harness: str) -> dict:
+    """The harness's non-secret config-home variable, so `--version` reads and writes only the config folder."""
+    return {k: v for k, v in run_take.HARNESS_ENV[harness].items() if k in run_take.config_home_names()}
+
+
 def _py(program: str, *args: str) -> list:
     return ["python3", "-I", "-B", "-c", program, *args]
 
@@ -363,13 +381,14 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
     run_take._check_id(take_id, "take id")
     run_take._check_id(sidecar_id, "sidecar id")
     evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
-    agent = lambda inner: tuple(run_take.agent_exec_argv(take_id, inner, workdir="/"))  # noqa: E731
+    agent = lambda inner, home=None: tuple(run_take.agent_exec_argv(take_id, inner, workdir="/",  # noqa: E731
+                                                                     config_home=home))
     inspect = lambda cid: (run_take.RUNTIME_CLIENT, "container", "inspect", cid)  # noqa: E731
     run_tree = spec.run_tree
     return (
         Probe("identity", agent(_py(IDENTITY_PROGRAM))),
         Probe("take-inspect", inspect(take_id)),
-        Probe("harness-version", agent(list(VERSION_COMMANDS[harness]))),
+        Probe("harness-version", agent(list(VERSION_COMMANDS[harness]), _config_home_values(harness))),
         Probe("cgroup", agent(_py(CGROUP_PROGRAM, CGROUP_ROOT, "cpu.max", "memory.max", "memory.low", "pids.max"))),
         Probe("listing", agent(_py(LISTING_PROGRAM, SIDECAR_EVIDENCE_MOUNT, evidence_dir))),
         Probe("processes", agent(_py(PROCESSES_PROGRAM))),
@@ -377,7 +396,7 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
         Probe("health", read=lambda: _read_health(os.path.join(evidence_dir, HEALTH))),
         Probe("watcher-caps", (run_take.RUNTIME_CLIENT, "exec", sidecar_id, *_py(PROCESSES_PROGRAM))),
         Probe("sockets", agent(_py(SOCKETS_PROGRAM))),
-        Probe("egress", agent(_py(EGRESS_PROGRAM, run_take.PROXY_ALIAS, "3128", hosts[harness],
+        Probe("egress", agent(_py(EGRESS_PROGRAM, run_take.PROXY_ALIAS, _proxy_port(), hosts[harness],
                                   OTHER_HOST_VIA_PROXY, *refused_names(harness, hosts)))),
         Probe("study-folders", read=lambda: _study_folders(run_tree)),
     )
@@ -401,7 +420,7 @@ def run(runtime, probe_list, *, begin_reply=None, caller_env=None) -> dict:
     return raw
 
 
-# ------------------------------------------------------------------------------------------------- evaluation
+# --------------------------------------------------------------------------------------------------- judging
 class _Fail(Exception):
     pass
 
@@ -525,6 +544,8 @@ def _check_watcher_invisible(raw, spec, lock, *_):
     _need(_lock(lock, "users.keepalive.uid") == KEEPALIVE_UID, "the lock's keep-alive uid is not the keep-alive's")
     rows = _json_out(raw, "processes")
     _need(isinstance(rows, list), "the process table is not a list")
+    _need(not [r for r in rows if isinstance(r, dict) and "unreadable" in r],
+          "a process the agent could not read: a finding, never a skip")
     _need(all(isinstance(r, dict) and _int(r.get("pid")) and _int(r.get("uid")) for r in rows),
           "a process row is off its shape")
     _need(not [r for r in rows if r["uid"] == WATCHER_UID], "a process of the watcher's uid is visible")
@@ -541,6 +562,9 @@ def _check_sidecar(raw, spec, lock, harness, hosts, sidecar_expect):
     _need(not still, f"sidecar_expect PENDING: {', '.join(still)}")
     _need(exp["user"] == f"{WATCHER_UID}:{WATCHER_UID}", "the sidecar does not run as the watcher")
     _need(exp["network_mode"] == "none", "the sidecar's expected network is not none")
+    _need(exp["security_opt"] == ["no-new-privileges"], "the sidecar's expected security option is not no-new-privileges")
+    _need([m.get("destination") for m in exp["mounts"] if isinstance(m, dict) and m.get("rw") is True]
+          == [SIDECAR_EVIDENCE_MOUNT], f"the sidecar's one read-write mount is not {SIDECAR_EVIDENCE_MOUNT}")
     _need(exp["cap_drop"] == ["ALL"] and isinstance(exp["cap_add"], list) and len(exp["cap_add"]) == 1,
           "the sidecar drops ALL and adds exactly one capability")
     _need(exp["privileged"] is False and exp["pid_mode"] == "", "the sidecar is privileged or shares a pid space")
@@ -564,6 +588,8 @@ def _check_watcher_started(raw, *_):
 
 def _check_watcher_cap(raw, *_):
     rows = _json_out(raw, "watcher-caps")
+    _need(isinstance(rows, list) and not [r for r in rows if isinstance(r, dict) and "unreadable" in r],
+          "a process in the sidecar could not be read: a finding, never a skip")
     _need(isinstance(rows, list) and all(isinstance(r, dict) and _int(r.get("pid")) and _int(r.get("cap_eff"))
                                          and _int(r.get("uid")) for r in rows), "the sidecar's table is off its shape")
     others = [r for r in rows if r["pid"] != 1]
