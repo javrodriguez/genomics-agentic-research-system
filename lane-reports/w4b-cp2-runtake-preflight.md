@@ -29,7 +29,10 @@ All files are new, under `evals/gap-study-4/`, and claimed in `COPIED.d/w4b-cp2-
 | de939b5f | the process audit reads the lane's test files too |
 | 9edb0e47 | fold 1, red tests first (the leak-word fix first) |
 | f959711f | fold 1, the fixes |
-| (this commit) | the lane report |
+| fb88e7f3 | the lane report |
+| 137ad327 | fold 2, red tests first |
+| c46b61fe | fold 2, the fixes |
+| (this commit) | the lane report's Fold 2 section |
 
 ## The lane's own decisions
 
@@ -86,6 +89,30 @@ Two reviews:
 | A PENDING-parameter tests without a mutant | - | each of the three tests is now a check with an `override-parameter` mutant | red in all three files |
 
 Review B's 39 whole-file mutants, re-run from a copy (`scratchpad/w4b/fold1/r1/`): 39 of 39 red, each by assertion failures.
+
+## Fold 2
+
+The lane review's round 2 found 1 MAJOR, 1 MINOR and 3 NITs at `fb88e7f3`.
+The decisions below are the lane lead's.
+The standing rule is glitch-f3's, made under Javier's delegation (Thu 8 Oct): no reviewer or builder writes guard-evasion probes, guards are built and judged by construction, and a missing guard is reported in words.
+This fold planted no new evasion form.
+
+| finding | severity | the lane lead's decision | fix | test | mutant (whole-file swap, closing line) |
+|---|---|---|---|---|---|
+| W4B2-1 config_home guard untested | MAJOR | fold | the rule is its own helper, `_config_home_allowed` | `test_config_home_refusals`: a login name, a name that is not a config home, and a wrong value are each Refused; no refusal carries the value | the guard dropped (`if False:`): `FAILED (failures=1)` |
+| W4B2-2 audit not default-deny | MINOR | fold by construction | the audit admits `os` only through `OS_ATTRS`, a dunder only through `DUNDERS_ALLOWED`, and `subprocess` only as a `(name, how)` of `SUBPROCESS_USES` (run as a call, TimeoutExpired in an except); all derived once from the box modules' source and committed | `TestAuditAllowlists`: each list is exactly what the modules use | OS_ATTRS widened `FAILED (failures=1)`, emptied `FAILED (failures=2)`; DUNDERS_ALLOWED widened `FAILED (failures=1)`, emptied `FAILED (failures=2)`; SUBPROCESS_USES widened `FAILED (failures=1)`, emptied `FAILED (failures=2)`; the unchanged control run `OK` |
+| W4B2-3 placeholder network | NIT | document it | `check_spec` and `launch` docstrings: the drive step passes a placeholder 64-hex network id, which launch replaces with the network it creates (`Launched.spec` carries the result) | - | - |
+| W4B2-4 evidence mount source unbound | NIT | no signature change here | none in this lane | - | - |
+| W4B2-5 `/srv/ev` owner and mount `type` | NIT | no change | none in this lane | - | - |
+
+The residual, in words: the process audit is judged by construction, not by adversarial probing.
+Its allowlists say what the box modules may use, and the planted list holds only the forms round 1 named.
+
+Open items for the CP2 drive step and the merge (carried by the lane lead):
+- W4B2-4: the sidecar's evidence mount source must equal the `evidence_dir` preflight reads. Today evaluate does not bind the two; the drive step passes the same folder to both.
+- W4B2-5: merge binding 4 binds preflight's `SIDECAR_EVIDENCE_MOUNT = "/srv/ev"` to `sidecar.EVIDENCE_MOUNT`, and the parsed `sidecar_expect` must leave out the mount `type` key (preflight refuses it, fail-closed).
+
+No interface changed in fold 2.
 
 ## PENDING values, with reasons
 
