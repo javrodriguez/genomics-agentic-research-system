@@ -12,6 +12,16 @@
       "reason": "Tests for box/sidecar.py (interface 3), on fakes only: a fake runtime, fake watcher streams and an injected clock, with the endstate round trip and a mutant asserted red for every guard."
     },
     {
+      "path": "box/scan_record.py",
+      "status": "new",
+      "reason": "CP2's commit scan: before a take's commit, every file of it is scanned for each secret's exact value (login values read at run time by its own read_login, the account email handed in), for holdout wordings only through an injected matcher (ruling C4; without one the result records not-checked), and through an injected rules scanner; agent-text hits are masked in place (never deleted) and counted as events, any other hit refuses the commit. Round 3 had none (its scrub.py removes one field)."
+    },
+    {
+      "path": "tests/test_scan_record.py",
+      "status": "new",
+      "reason": "Tests for box/scan_record.py (interface 3) on planted fake values, a fake rules scanner and a fake holdout matcher over synthetic strings, with a mutant asserted red for every guard."
+    },
+    {
       "path": "COPIED.d/w4c-cp2-sidecar-scan.json",
       "status": "new",
       "reason": "This lane's copy-record fragment (interface 1)."

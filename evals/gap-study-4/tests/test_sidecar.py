@@ -1346,6 +1346,16 @@ class TestProcessCheck(unittest.TestCase):
                                              SUBPROCESS_SITES["box/sidecar.py"]), [])
         red("a second subprocess call site")
 
+    def test_scan_record_passes_and_may_not_import_subprocess(self):
+        path = os.path.join(STUDY, "box", "scan_record.py")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        allowed = BOX_MODULES["box/scan_record.py"]
+        self.assertEqual(process_problems(src, "box/scan_record.py", allowed, []), [])
+        self.assertNotEqual(process_problems("import subprocess\n" + src, "box/scan_record.py",
+                                             allowed | {"subprocess"}, []), [])
+        red("scan_record importing subprocess")
+
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--process-check"]:
