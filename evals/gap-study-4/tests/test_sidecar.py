@@ -17,6 +17,7 @@ any task.
 from __future__ import annotations
 
 import ast
+import errno
 import hashlib
 import json
 import os
@@ -205,8 +206,7 @@ class Take:
         base = self._tmp.name
         self.run_tree = os.path.join(base, "run")
         self.evidence = os.path.join(base, "ev")
-        self.private = os.path.join(base, "private")
-        for d in (self.run_tree, self.evidence, self.private):
+        for d in (self.run_tree, self.evidence):
             os.mkdir(d)
         for rel, data in (files if files is not None else {"plan/approved.json": b'{"approved": false}\n',
                                                            "design.tsv": b"a\tb\n"}).items():
@@ -215,7 +215,7 @@ class Take:
         self.factory = Factory(self.clock, **(factory_kw or {}))
         self.watch = tuple(watch)
         self.sc = (sidecar_cls or sidecar.Sidecar)(run_tree=self.run_tree, evidence=self.evidence, watch=self.watch,
-                                  factory=self.factory, tmp_dir=self.private, clock=self.clock.time,
+                                  factory=self.factory, clock=self.clock.time,
                                   sleep=self.clock.sleep, **(sidecar_kw or {}))
         self.ledger = [{"kind": "take", "model": "a-test-model", "agent": {"harness": hb.CLAUDE_CODE,
                                                                           "version": "0.0.0-test"},
@@ -328,7 +328,7 @@ class TestEndstateRoundTrip(TakeCase):
         self.assertEqual(sorted(os.listdir(t.evidence)), ["access.jsonl", "blobs", "health.jsonl", "ledger.jsonl",
                                                           "snapshots"])
         self.assertEqual(sorted(os.listdir(os.path.join(t.evidence, "snapshots"))), ["post-1.json", "pre-1.json"])
-        self.assertEqual(os.listdir(t.private), [])   # no temp file left behind
+        self.assertEqual(temps_in(t.evidence), [])   # no temp file left behind
 
     def test_snapshot_entries_and_blobs(self):
         t = self.one_turn(self.take())
@@ -564,7 +564,7 @@ class TestSpecialFilesAndOpens(TakeCase):
     def test_the_host_clock_never_the_monotonic_one(self):
         t = self.take()
         sc = sidecar.Sidecar(run_tree=t.run_tree, evidence=t.evidence, watch=t.watch, factory=t.factory,
-                             tmp_dir=t.private, sleep=t.clock.sleep)
+                             sleep=t.clock.sleep)
         r = sc.handle("begin")
         self.assertLess(abs(r["taken_at"] - __import__("time").time()), 60.0)
 
@@ -573,17 +573,115 @@ class TestSpecialFilesAndOpens(TakeCase):
         t = self.take()
         with mock.patch.object(sidecar, "CLOCK", _t.monotonic):
             sc = sidecar.Sidecar(run_tree=t.run_tree, evidence=t.evidence, watch=t.watch, factory=t.factory,
-                                 tmp_dir=t.private, sleep=t.clock.sleep)
+                                 sleep=t.clock.sleep)
             r = sc.handle("begin")
         self.assertGreater(abs(r["taken_at"] - _t.time()), 60.0)
         red("the monotonic clock")
 
     def test_no_temp_file_is_left_and_snapshots_never_overwrite(self):
         t = self.one_turn(self.take())
-        self.assertEqual(os.listdir(t.private), [])
+        self.assertEqual(temps_in(t.evidence), [])
         with self.assertRaises(FileExistsError):
-            sidecar._write_atomic(os.path.join(t.evidence, "snapshots", "pre-1.json"), b"{}", t.private)
-        self.assertEqual(os.listdir(t.private), [])
+            sidecar._write_atomic(os.path.join(t.evidence, "snapshots", "pre-1.json"), b"{}")
+        self.assertEqual(temps_in(t.evidence), [])
+
+
+def temps_in(folder: str) -> list:
+    out = []
+    for root, _dirs, files in os.walk(folder):
+        out += [os.path.relpath(os.path.join(root, f), folder) for f in files if f.startswith(".tmp-")]
+    return sorted(out)
+
+
+# ------------------------------------------------------------------------------------------------- fold 1, Q1 (EXDEV)
+REAL_RENAME = os.rename
+
+
+def mount_rename(src, dst):
+    """A rename that fails across "mounts", as Linux's rename(2) does across a bind mount (EXDEV): here every
+    folder is its own mount, so a temp outside its destination's folder fails on the Mac too."""
+    if os.path.dirname(os.path.abspath(src)) != os.path.dirname(os.path.abspath(dst)):
+        raise OSError(errno.EXDEV, "Invalid cross-device link (simulated)")
+    return REAL_RENAME(src, dst)
+
+
+class TestCrossMount(TakeCase):
+    """Fold 1, Q1 (glitch-f3's ruling): every temp sits in its destination's own folder, under a dot-name."""
+
+    def test_the_temp_sits_beside_its_destination(self):
+        ev = "/srv/ev"
+        self.assertEqual(sidecar._temp_path(f"{ev}/snapshots/post-1.json", 0), f"{ev}/snapshots/.tmp-post-1-0")
+        self.assertEqual(sidecar._temp_path(f"{ev}/blobs/{'a' * 64}", 2), f"{ev}/blobs/.tmp-{'a' * 64}-2")
+        self.assertEqual(sidecar._temp_path(f"{ev}/x.json", 1), f"{ev}/.tmp-x-1")
+
+    def test_a_take_under_the_cross_mount_rename_is_green(self):
+        with mock.patch.object(sidecar.os, "rename", mount_rename):
+            t = self.one_turn(self.take(), events=[(PLAN, ("OPEN",))])
+        self.assertEqual(t.load().sidecar_record(), CLEAN)
+        self.assertEqual(temps_in(t.evidence), [])
+
+    def test_mutant_the_old_private_folder_layout_goes_red(self):
+        priv = tempfile.mkdtemp()
+        self.addCleanup(lambda: [os.unlink(os.path.join(priv, n)) for n in os.listdir(priv)] and os.rmdir(priv))
+        with mock.patch.object(sidecar.os, "rename", mount_rename), \
+                mock.patch.object(sidecar, "_temp_path", lambda dest, n: os.path.join(priv, f".tmp-{n}")):
+            t = self.take()
+            r = t.sc.handle("begin")
+        self.assertFalse(r["ok"])                       # EXDEV: every begin would fail on a real box
+        self.assertTrue(any("OSError" in x for x in r["problems"]), r)
+        red("the temp in a private folder (the cross-mount rename fails)")
+
+    def test_mutant_temp_in_tmp_goes_red(self):
+        name = f".tmp-w4c-{os.getpid()}"
+        target = os.path.join(tempfile.gettempdir(), name)
+        self.addCleanup(lambda: os.path.lexists(target + "-0") and os.unlink(target + "-0"))
+        with mock.patch.object(sidecar.os, "rename", mount_rename), \
+                mock.patch.object(sidecar, "_temp_path", lambda dest, n: f"{target}-{n}"):
+            t = self.take()
+            r = t.sc.handle("begin")
+        self.assertFalse(r["ok"])
+        red("the temp written to /tmp")
+
+    def test_a_planted_leftover_temp_makes_the_load_refuse(self):
+        for where in (("snapshots", ".tmp-post-1-0"), (".tmp-ledger-0",), ("blobs", ".tmp-" + "a" * 64 + "-0")):
+            with self.subTest(where):
+                t = self.one_turn(self.take())
+                with open(os.path.join(t.evidence, *where), "wb") as fh:
+                    fh.write(b"{")
+                with self.assertRaises(es.EvidenceError):
+                    t.load()
+
+    def leftover_take(self):
+        """A snapshot write whose rename fails and whose own cleanup fails too: the temp stays on disk."""
+        t = self.take()
+        t.sc.handle("begin")
+        t.turn()
+        real_unlink = os.unlink
+
+        def failing_rename(src, dst):
+            raise OSError(errno.EIO, "injected")
+
+        def failing_unlink(path):
+            if os.path.basename(path).startswith(".tmp-"):
+                raise OSError(errno.EIO, "injected")
+            return real_unlink(path)
+        with mock.patch.object(sidecar.os, "rename", failing_rename), \
+                mock.patch.object(sidecar.os, "unlink", failing_unlink):
+            self.assertFalse(t.sc.handle("snapshot", "post-1")["ok"])
+        self.assertNotEqual(temps_in(t.evidence), [])
+        return t
+
+    def test_finish_removes_any_temp_it_made(self):
+        t = self.leftover_take()
+        t.sc.handle("finish")
+        self.assertEqual(temps_in(t.evidence), [])
+
+    def test_mutant_finish_without_the_sweep_goes_red(self):
+        with mock.patch.object(sidecar.Sidecar, "_sweep_temps", lambda self: None):
+            t = self.leftover_take()
+            t.sc.handle("finish")
+        self.assertNotEqual(temps_in(t.evidence), [])
+        red("finish leaving the sidecar's own temp behind")
 
 
 # ------------------------------------------------------------------------------------------------- the plan's stubs
@@ -682,23 +780,146 @@ class TestGaps(TakeCase):
         self.assertEqual(t.load().sidecar_record(), CLEAN)   # the test above goes red: the gap reads clean
         red("a self-exit 0 after post-N recorded clean")
 
-    def test_a_folder_on_the_chain_moved_is_a_fault(self):
+    def moved_chain(self):
+        # mv plan plan.old; mkdir plan; echo x > plan/approved.json; cat it (fold 1, Q2: glitch-f3's ruling)
         t = self.take()
         t.sc.handle("begin")
-        t.w.fs("plan", ("MOVED_FROM", "ISDIR"))      # mv plan plan.old: the watch on plan/ is now stale
-        t.sc.pump()
-        self.assertNotEqual(t.health()[-1].get("exit_code"), 0)
-        self.assertEqual(t.health()[-1]["kind"], "watcher-stop")
-        self.assertFalse(t.sc.handle("status")["ok"])
+        t.turn([("plan", ("MOVED_FROM", "ISDIR")), ("plan.old", ("MOVED_TO", "ISDIR")),
+                ("plan", ("CREATE", "ISDIR")), (PLAN, ("CREATE",)), (PLAN, ("OPEN",))])
+        os.rename(os.path.join(t.run_tree, "plan"), os.path.join(t.run_tree, "plan.old"))
+        t.write(PLAN, b"x\n")
+        r1 = t.sc.handle("snapshot", "post-1")
+        r2 = t.sc.handle("finish")
+        return t, r1, r2
 
-    def test_mutant_a_stale_watch_read_through_goes_red(self):
-        with mock.patch.object(sidecar, "STALE_EVENTS", ()):
+    def test_a_chain_folder_moved_logs_per_path_events_and_no_fault(self):
+        t, r1, r2 = self.moved_chain()
+        self.assertTrue(r1["ok"] and r2["ok"], (r1, r2))
+        ev = t.load()
+        self.assertEqual(ev.sidecar_record(), CLEAN)
+        self.assertEqual([a["op"] for a in ev.accesses(path=PLAN, turn=1)], ["delete", "modify", "open"])
+
+    def test_mutant_a_moved_chain_folder_as_a_fault_goes_red(self):
+        real = sidecar.Sidecar._event
+
+        def faulting(self, ev):   # mutant: a rename of a chain folder stops the watcher
+            if ev.path == "plan" and "MOVED_FROM" in ev.names:
+                return False
+            return real(self, ev)
+        with mock.patch.object(sidecar.Sidecar, "_event", faulting):
+            t, r1, _ = self.moved_chain()
+        self.assertFalse(r1["ok"])
+        red("a moved chain folder read as a watcher fault")
+
+    def test_mutant_a_moved_chain_folder_unlogged_goes_red(self):
+        with mock.patch.object(sidecar.Sidecar, "_beneath", lambda self, folder: []):
+            t, _, _ = self.moved_chain()
+        self.assertNotIn("delete", [a["op"] for a in t.access()])
+        red("a moved chain folder logs no per-path delete")
+
+    def test_a_folder_moved_onto_the_chain_logs_a_modify(self):
+        t = self.take()
+        t.sc.handle("begin")
+        t.turn([("plan", ("MOVED_FROM", "ISDIR")), ("staged", ("MOVED_FROM", "ISDIR")),
+                ("plan", ("MOVED_TO", "ISDIR"))])     # mv plan old; mv staged plan
+        t.sc.handle("snapshot", "post-1")
+        t.sc.handle("finish")
+        self.assertEqual([a["op"] for a in t.load().accesses(path=PLAN, turn=1)], ["delete", "modify"])
+
+    def test_an_rm_rf_of_a_chain_folder_logs_per_path_events_and_no_fault(self):
+        t = self.take()
+        t.sc.handle("begin")
+        t.turn([(PLAN, ("DELETE",)), ("plan", ("DELETE_SELF",)), ("plan", ("DELETE", "ISDIR"))])
+        r = t.sc.handle("snapshot", "post-1")
+        self.assertTrue(r["ok"], r)
+        t.sc.handle("finish")
+        ev = t.load()
+        self.assertEqual(ev.sidecar_record(), CLEAN)
+        self.assertEqual([a["op"] for a in ev.accesses(path=PLAN, turn=1)], ["delete"])
+
+    def test_mutant_an_rm_rf_as_a_fault_goes_red(self):
+        real = sidecar.Sidecar._event
+
+        def faulting(self, ev):   # mutant: a delete of a chain folder stops the watcher
+            if ev.path == "plan" and {"DELETE", "DELETE_SELF"} & set(ev.names):
+                return False
+            return real(self, ev)
+        with mock.patch.object(sidecar.Sidecar, "_event", faulting):
             t = self.take()
             t.sc.handle("begin")
-            t.w.fs("plan", ("MOVED_FROM", "ISDIR"))
+            t.turn([(PLAN, ("DELETE",)), ("plan", ("DELETE", "ISDIR"))])
+            self.assertFalse(t.sc.handle("snapshot", "post-1")["ok"])
+        red("an rm -rf of a chain folder read as a watcher fault")
+
+    def test_an_event_that_maps_to_no_path_is_a_fault(self):
+        t = self.take()
+        t.sc.handle("begin")
+        t.w.queue.append(sidecar.WatchEvent(t.clock.time(), None, ("OPEN",)))
+        t.sc.pump()
+        self.assertEqual(t.health()[-1]["kind"], "watcher-stop")
+        self.assertNotEqual(t.health()[-1]["exit_code"], 0)
+
+    def test_mutant_an_unmapped_event_ignored_goes_red(self):
+        with mock.patch.object(sidecar, "_mapped", lambda path: True):
+            t = self.take()
+            t.sc.handle("begin")
+            t.w.queue.append(sidecar.WatchEvent(t.clock.time(), None, ("OPEN",)))
             t.sc.pump()
         self.assertEqual(t.health()[-1]["kind"], "watcher-start")
-        red("a moved folder on the chain read through (stale watch)")
+        red("an event mapped to no path read through")
+
+    def test_the_plan_is_the_whole_tree_recursively(self):
+        t = self.take()
+        self.assertEqual(sidecar.watch_plan(t.run_tree, t.watch), (("", True),))
+
+    def test_a_self_exit_0_just_before_the_stop_request_never_reads_clean(self):
+        t = self.take()
+        t.sc.handle("begin")
+        t.turn()
+        t.w.die(0)                 # between the last pump and the stop request
+        t.sc._pause("post-1")
+        self.assertEqual(t.health()[1]["exit_code"], 1)
+
+    def test_mutant_an_exit_before_the_request_read_as_requested_goes_red(self):
+        real = sidecar.stop_exit_code
+        with mock.patch.object(sidecar, "stop_exit_code",
+                               lambda rc, requested, fault: real(rc, requested=True, fault=fault)):
+            t = self.take()
+            t.sc.handle("begin")
+            t.turn()
+            t.w.die(0)
+            t.sc._pause("post-1")
+        self.assertEqual(t.health()[1]["exit_code"], 0)
+        red("a self-exit before the stop request read as a clean stop")
+
+    def future_stamp_take(self):
+        t = self.take()
+        t.sc.handle("begin")
+        t.clock.tick(1.0)
+        start = t.clock.time()
+        t.w.queue.append(sidecar.WatchEvent(t.clock.time() + 100.0, PLAN, ("OPEN",)))
+        t.sc.pump()
+        t.clock.tick(1.0)
+        t.ledger.append({"kind": "turn", "n": 1, "started_at": start, "ended_at": t.clock.time()})
+        t.clock.tick(1.0)
+        t.sc.handle("snapshot", "post-1")
+        t.sc.handle("finish")
+        return t, start
+
+    def test_a_stream_stamp_later_than_the_clock_is_capped(self):
+        t, start = self.future_stamp_take()
+        self.assertEqual(t.access()[0]["at"], start)
+        self.assertEqual(t.load().sidecar_record(), CLEAN)
+
+    def test_mutant_an_uncapped_future_stamp_goes_red(self):
+        with mock.patch.object(sidecar.Sidecar, "_stamp", lambda self, at: max(at, self._floor)):
+            t, _ = self.future_stamp_take()
+        try:
+            rec = t.load().sidecar_record()
+        except es.EvidenceError:
+            rec = "refused"
+        self.assertNotEqual(rec, CLEAN)
+        red("a stream stamp later than the clock kept")
 
     def test_a_stream_stamp_before_the_start_is_floored(self):
         t = self.take(factory_kw={"establish_after": 3})
@@ -941,7 +1162,7 @@ class TestWatchPlan(TakeCase):
     def test_a_path_created_mid_turn(self):
         t = self.take(watch=("out/new.txt",), files={"out/keep.txt": b"k\n"})
         t.sc.handle("begin")
-        self.assertEqual(t.factory.plans[-1], (("", False), ("out", False)))
+        self.assertEqual(t.factory.plans[-1], (("", True),))
         t.turn([("out/new.txt", ("CREATE",)), ("out/new.txt", ("MODIFY",)), ("out/new.txt", ("OPEN",))])
         t.sc.handle("snapshot", "post-1")
         t.sc.handle("finish")
@@ -964,9 +1185,9 @@ class TestWatchPlan(TakeCase):
 
     def test_a_two_level_missing_chain(self):
         t = self.chain()
-        self.assertEqual(t.factory.plans[0], (("", False), ("a", True)))
+        self.assertEqual(t.factory.plans[0], (("", True),))
         self.assertEqual([a["op"] for a in t.load().accesses(path="a/b/c", turn=1)], ["modify", "open"])
-        self.assertEqual(t.factory.plans[1], (("", False), ("a", False), ("a/b", False)))   # re-chosen at the re-arm
+        self.assertEqual(len(t.factory.plans), 2)                     # re-chosen at the re-arm
 
     def test_mutant_non_recursive_watch_goes_red(self):
         real = sidecar.watch_plan
@@ -1234,7 +1455,8 @@ class TestHostHalf(unittest.TestCase):
 
 
 # ------------------------------------------------------------------------------------------------- PENDING values
-EXPECTED_PENDING = {"inotifywait_argv", "inotifywait_format", "inotifywait_subsecond", "inotifywait_events"}
+EXPECTED_PENDING = {"inotifywait_argv", "inotifywait_format", "inotifywait_subsecond", "inotifywait_events",
+                    "inotify_watch_count", "watch_establish_s"}
 
 
 class TestPending(unittest.TestCase):
@@ -1284,6 +1506,52 @@ def pending_parameters(mod) -> list:
                 if p in names or p.lower() in names:
                     out.append(f"{fn.__name__}({p})")
     return out
+
+
+# ------------------------------------------------------------------------------------------------- the real parser
+class FakeProc:
+    """Pipes standing in for the real watcher's stdout and stderr (no process)."""
+
+    def __init__(self, out: bytes, err: bytes):
+        self.fds = []
+        self.stdout, self.stderr = self._pipe(out), self._pipe(err)
+
+    def _pipe(self, data):
+        r, w = os.pipe()
+        os.write(w, data)
+        os.close(w)
+        self.fds.append(r)
+        return type("F", (), {"fileno": lambda self_, fd=r: fd})()
+
+    def close(self):
+        for fd in self.fds:
+            os.close(fd)
+
+
+FORMAT = {"fields": ["at", "path", "events"], "separator": "\t", "established": "Watches established."}
+
+
+class TestRealParser(unittest.TestCase):
+    def parse(self, lines, err=b"Watches established.\n"):
+        proc = FakeProc("".join(lines).encode(), err)
+        self.addCleanup(proc.close)
+        with mock.patch.multiple(sidecar, INOTIFYWAIT_FORMAT=FORMAT, INOTIFYWAIT_SUBSECOND=True):
+            w = sidecar._InotifyWatcher(proc, "/srv/rt")
+            return w.established(), w.read_ready()
+
+    def test_paths_map_to_the_run_tree_or_to_none(self):
+        ok, evs = self.parse(["1.5\t/srv/rt/plan/approved.json\tOPEN\n", "1.6\t/srv/rt/plan/\tDELETE_SELF\n",
+                              "1.7\t/elsewhere/x\tOPEN\n", "1.8\t/srv/rt/\tDELETE_SELF\n"])
+        self.assertTrue(ok)
+        self.assertEqual([(e.at, e.path, e.names) for e in evs],
+                         [(1.5, "plan/approved.json", ("OPEN",)), (1.6, "plan", ("DELETE_SELF",)),
+                          (1.7, None, ("OPEN",)), (1.8, "", ("DELETE_SELF",))])
+
+    def test_mutant_a_trailing_slash_kept_goes_red(self):
+        with mock.patch.object(sidecar, "_strip_slash", lambda p: p):
+            _, evs = self.parse(["1.6\t/srv/rt/plan/\tDELETE_SELF\n"])
+        self.assertNotEqual(evs[0].path, "plan")
+        red("a folder event's trailing slash kept")
 
 
 # ------------------------------------------------------------------------------------------------- the source
