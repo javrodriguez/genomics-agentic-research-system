@@ -56,12 +56,24 @@ _GUARDED += [(os, n) for n in sorted(dir(os)) if n.startswith(("exec", "spawn"))
 for _mod, _name in _GUARDED:
     mock.patch.object(_mod, _name, _blocked).start()
 
+import harness_bookkeeping as hb  # noqa: E402
 from box import image_lock as il  # noqa: E402
+from box.egress import proxy_conf as pc  # noqa: E402
 
 LOCK_PATHS = {image: os.path.join(il.BOX_DIR, os.path.dirname(df), "image.lock")
               for image, df in il.DOCKERFILES.items()}
 COMMITTED_PENDING = {
     "take-a": ("base", "harness.version", "python", "image_id"),
+    "take-o": ("base", "harness.version", "python", "image_id"),
+    "take-g": ("base", "harness.version", "python", "image_id"),
+    "sidecar": ("base", "python", "image_id"),
+    "egress": ("base", "image_id", "squid"),
+}
+# Each take image's npm package, built from the seam's harness names (imported, never typed here).
+PACKAGES = {
+    "take-a": "@anthropic-ai/" + hb.CLAUDE_CODE,
+    "take-o": "@openai/" + pc.CODEX,
+    "take-g": "@google/" + pc.GEMINI + "-cli",
 }
 
 BASE = "registry.example/fake-base@sha256:" + "a" * 64
@@ -321,6 +333,395 @@ class LabelsTest(unittest.TestCase):
         self.assertEqual(sigs["load"], ["path"])
 
 
+def dockerfile(image: str) -> str:
+    with open(os.path.join(il.BOX_DIR, il.DOCKERFILES[image]), encoding="utf-8") as fh:
+        return fh.read()
+
+
+# Each Dockerfile rule, mutated in the text of one committed Dockerfile: every one must make check_dockerfile red.
+# (image, old text, new text); `old` must occur in that file.
+NPM_A = 'npm install -g "' + PACKAGES["take-a"] + '@${HARNESS_VERSION}"'
+CHECK_A = il.VERSION_CHECK.format(package=PACKAGES["take-a"])
+MUTANT_DOCKERFILES = {
+    # 1. the base, by digest from the lock
+    "FROM a tag": ("take-a", "FROM ${BASE}", "FROM node:22"),
+    "ARG BASE with a default": ("take-a", "ARG BASE\n", "ARG BASE=node:22\n"),
+    "a second stage": ("take-a", "ENTRYPOINT []", "FROM ${BASE}\nENTRYPOINT []"),
+    "an instruction before FROM": ("take-a", "ARG BASE\nFROM", "ARG BASE\nARG BASE_NAME\nFROM"),
+    "an extra build argument": ("take-a", "ARG PYTHON_VERSION\n", "ARG PYTHON_VERSION\nARG EXTRA\n"),
+    "a build argument missing": ("take-a", "ARG BASE_DIGEST\n", ""),
+    # 2. the harness at the exact version, and the installed-version check
+    "the harness unpinned": ("take-a", NPM_A, NPM_A.replace("${HARNESS_VERSION}", "latest")),
+    "the harness at a range": ("take-a", NPM_A, NPM_A.replace("@${HARNESS_VERSION}", "@^${HARNESS_VERSION}")),
+    "another vendor's harness": ("take-a", NPM_A, NPM_A.replace(PACKAGES["take-a"], PACKAGES["take-o"])),
+    "a second npm install": ("take-a", "ENV DISABLE", "RUN npm install -g left-pad\nENV DISABLE"),
+    "no installed-version check": ("take-a", "RUN " + CHECK_A + "\n", ""),
+    "the version check before the install": ("take-a", "RUN " + NPM_A + "\nRUN " + CHECK_A,
+                                              "RUN " + CHECK_A + "\nRUN " + NPM_A),
+    "the version check against a literal": ("take-a", "RUN " + CHECK_A, "RUN " + CHECK_A.replace(
+        '= "${HARNESS_VERSION}"', '= "9.8.7"')),
+    # 3. the recorded Python
+    "no Python check": ("take-a", "RUN " + il.PYTHON_CHECK + "\n", ""),
+    "a Python check on a prefix": ("take-a", il.PYTHON_CHECK, il.PYTHON_CHECK.replace(" = ", " =~ ")),
+    "bytecode writing on": ("take-a", "PYTHONDONTWRITEBYTECODE=1", "PYTHONDONTWRITEBYTECODE=0"),
+    "no bytecode switch": ("take-a", "ENV PYTHONDONTWRITEBYTECODE=1\n", ""),
+    "no autoupdater switch": ("take-a", "ENV DISABLE_AUTOUPDATER=1\n", ""),
+    "the autoupdater switch off": ("take-a", "DISABLE_AUTOUPDATER=1", "DISABLE_AUTOUPDATER=0"),
+    "an extra ENV": ("take-o", "LABEL org.opencontainers.image.base.name", "ENV MODE=x\nLABEL "
+                     "org.opencontainers.image.base.name"),
+    "ENV with two names": ("take-a", "ENV DISABLE_AUTOUPDATER=1", "ENV DISABLE_AUTOUPDATER=1 X=1"),
+    # 4. the closed package line
+    "curl added": ("take-a", "procps ca-certificates", "procps ca-certificates curl"),
+    "a container client added": ("take-g", "procps ca-certificates", "procps ca-certificates docker.io"),
+    "a network tool added": ("take-o", "procps ca-certificates", "procps ca-certificates netcat-openbsd"),
+    "inotify-tools dropped": ("take-a", " inotify-tools", ""),
+    "procps dropped": ("take-a", " procps", ""),
+    "recommends allowed": ("take-a", "-y --no-install-recommends", "-y"),
+    "a second apt-get install": ("take-a", "ENV DISABLE", "RUN apt-get install -y --no-install-recommends nano\n"
+                                 "ENV DISABLE"),
+    "apt install": ("take-a", "ENV DISABLE", "RUN apt install -y nano\nENV DISABLE"),
+    "a fetch in a RUN": ("take-a", "ENV DISABLE", "RUN wget -q -O /tmp/x http://example.invalid/\nENV DISABLE"),
+    "pip in a RUN": ("take-a", "ENV DISABLE", "RUN pip install x\nENV DISABLE"),
+    # 5. the two users, no privilege helper
+    "sudo": ("take-a", "ENV DISABLE", "RUN apt-get -y remove x && sudo true\nENV DISABLE"),
+    "a setuid bit": ("take-a", "ENV DISABLE", "RUN chmod u+s /usr/bin/find\nENV DISABLE"),
+    "a setuid mode": ("take-a", "ENV DISABLE", "RUN chmod 4755 /usr/bin/find\nENV DISABLE"),
+    "the agent's uid moved": ("take-a", "--uid 10001", "--uid 10004"),
+    "the agent's gid moved": ("take-a", "useradd --uid 10001 --gid 10001", "useradd --uid 10001 --gid 10002"),
+    "the agent's group moved": ("take-a", "groupadd --gid 10001", "groupadd --gid 10005"),
+    "the agent renamed": ("take-a", "/home/dana --shell /bin/bash dana", "/home/dana --shell /bin/bash dan"),
+    "the agent's home elsewhere": ("take-a", "--home-dir /home/dana", "--home-dir /root"),
+    "the watcher's uid moved": ("take-a", "--uid 10002", "--uid 10003"),
+    "no watcher": ("take-a", " \\\n && groupadd --gid 10002 eli \\\n && useradd --uid 10002 --gid 10002 "
+                   "--no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin eli", ""),
+    "a keep-alive user": ("take-a", "RUN git config", "RUN useradd --uid 10003 --gid 10003 kim\nRUN git config"),
+    "a non-unique uid": ("take-a", "useradd --uid 10001", "useradd --non-unique --uid 10001"),
+    "a user in an extra group": ("take-a", "useradd --uid 10001", "useradd --groups staff --uid 10001"),
+    "the last USER root": ("take-a", "USER 10001:10001", "USER root"),
+    "a USER after the agent": ("take-a", "USER 10001:10001", "USER 10001:10001\nUSER 0"),
+    "no USER": ("take-a", "USER 10001:10001\n", ""),
+    "the last USER the watcher": ("take-o", "USER 10001:10001", "USER 10002:10002"),
+    # 6. git's ownership
+    "no safe.directory": ("take-a", "RUN " + il.GIT_SAFE + "\n", ""),
+    "a narrower safe.directory": ("take-a", "safe.directory '*'", "safe.directory /srv"),
+    # 7. nothing of the study in a take image
+    "a COPY": ("take-a", "ENTRYPOINT []", "COPY x /x\nENTRYPOINT []"),
+    "an ADD": ("take-g", "ENTRYPOINT []", "ADD x /x\nENTRYPOINT []"),
+    "no ENTRYPOINT reset": ("take-a", "ENTRYPOINT []\n", ""),
+    "an ENTRYPOINT": ("take-a", "ENTRYPOINT []", 'ENTRYPOINT ["sh"]'),
+    "a CMD": ("take-a", "ENTRYPOINT []", "ENTRYPOINT []\nCMD [\"sh\"]"),
+    "a WORKDIR": ("take-a", "ENTRYPOINT []", "WORKDIR /srv\nENTRYPOINT []"),
+    # 9. the labels, from the build arguments
+    "a label from a literal": ("take-a", 'app.cli.version="${HARNESS_VERSION}"', 'app.cli.version="9.8.7"'),
+    "a label from the wrong argument": ("take-a", 'app.cli.version="${HARNESS_VERSION}"',
+                                        'app.cli.version="${PYTHON_VERSION}"'),
+    "a label missing": ("take-a", 'LABEL app.python.version="${PYTHON_VERSION}"\n', ""),
+    "an extra label": ("take-a", "ENTRYPOINT []", 'LABEL app.extra="${BASE}"\nENTRYPOINT []'),
+    "a label key renamed": ("take-g", "org.opencontainers.image.base.digest", "org.example.base.digest"),
+    "two keys in one LABEL": ("take-a", 'LABEL app.python.version="${PYTHON_VERSION}"',
+                              'LABEL app.python.version="${PYTHON_VERSION}" app.x="${BASE}"'),
+    # the parser refuses what it does not read
+    "an unknown instruction": ("take-a", "ENTRYPOINT []", "FROB x\nENTRYPOINT []"),
+    "a heredoc": ("take-a", "ENTRYPOINT []", "RUN <<EOT\ntrue\nEOT\nENTRYPOINT []"),
+    "a parser directive": ("take-a", "# The arm A", "# escape=`\n# The arm A"),
+    "a continuation off the end": ("take-a", "USER 10001:10001\n", "USER 10001:10001 \\\n"),
+    # the sidecar image
+    "the sidecar copies nothing": ("sidecar", "COPY sidecar.py /opt/w/sidecar.py\n", ""),
+    "the sidecar program elsewhere": ("sidecar", "COPY sidecar.py /opt/w/sidecar.py", "COPY sidecar.py /opt/w/other.py"),
+    "the sidecar copies twice": ("sidecar", "COPY sidecar.py /opt/w/sidecar.py",
+                                 "COPY sidecar.py /opt/w/sidecar.py\nCOPY . /opt/w/"),
+    "a harness in the sidecar": ("sidecar", "ENTRYPOINT []", "RUN npm install -g x\nENTRYPOINT []"),
+    "the sidecar's last USER the agent": ("sidecar", "USER 10002:10002", "USER 10001:10001"),
+    "the sidecar's last USER root": ("sidecar", "USER 10002:10002", "USER 0:0"),
+    "no inotify-tools in the sidecar": ("sidecar", " inotify-tools", ""),
+    # the egress image
+    "squid unpinned": ("egress", '"squid=${SQUID_VERSION}"', "squid"),
+    "egress FROM a tag": ("egress", "FROM ${BASE}", "FROM debian:13"),
+    "egress copies a file": ("egress", "ENTRYPOINT []", "COPY proxy.conf /etc/squid/squid.conf\nENTRYPOINT []"),
+    "egress with curl": ("egress", '"squid=${SQUID_VERSION}"', '"squid=${SQUID_VERSION}" curl'),
+    "egress sets a USER": ("egress", "ENTRYPOINT []", "ENTRYPOINT []\nUSER proxy"),
+    "egress without its squid label": ("egress", 'LABEL app.squid.version="${SQUID_VERSION}"\n', ""),
+    "egress with a CMD": ("egress", "ENTRYPOINT []", "ENTRYPOINT []\nCMD [\"squid\"]"),
+}
+
+
+def dockerfile_mutated(name: str) -> tuple:
+    image, old, new = MUTANT_DOCKERFILES[name]
+    text = dockerfile(image)
+    at = text.find(old)
+    if at < 0:
+        raise AssertionError(f"mutant {name!r}: {old!r} is not in {image}'s Dockerfile")
+    line = text[text.rfind("\n", 0, at) + 1:].split("\n", 1)[0]
+    if line.lstrip().startswith("#") and name not in COMMENT_MUTANTS:
+        raise AssertionError(f"mutant {name!r} edits a comment, not an instruction")
+    return image, text[:at] + new + text[at + len(old):]
+
+
+# The one mutant that is meant to edit a comment line (a parser directive is written as a comment).
+COMMENT_MUTANTS = {"a parser directive"}
+
+
+# Each nullability row of NULLABLE, broken on a filled lock of that image (interface 15 schema, per image).
+MUTANT_NULLABLE = {
+    "sidecar with a harness": ("sidecar", _set(("harness",), {"package": "@x/y", "version": "1.2.3"})),
+    "sidecar with python null": ("sidecar", _set(("python",), None)),
+    "sidecar with users null": ("sidecar", _set(("users",), None)),
+    "egress with a harness": ("egress", _set(("harness",), {"package": "@x/y", "version": "1.2.3"})),
+    "egress with users": ("egress", lambda lock: lock.update(users=copy.deepcopy(committed("take-a")["users"]))),
+    "egress without squid": ("egress", _drop(("squid",))),
+    "egress with a squid range": ("egress", _set(("squid",), ">=6")),
+    "take-o with harness null": ("take-o", _set(("harness",), None)),
+    "take-g with users null": ("take-g", _set(("users",), None)),
+    "take-o with python null": ("take-o", _set(("python",), None)),
+}
+
+
+def nullable_mutated(name: str) -> dict:
+    image, f = MUTANT_NULLABLE[name]
+    lock = filled(image)
+    f(lock)
+    return lock
+
+
+PATH_RE = re.compile(r"(?<![\w$}])/[A-Za-z0-9_.@*/-]+")
+
+
+def agent_visible(image: str) -> dict:
+    """The strings of a take image the agent can read: every path, label key and ENV line, and its user names."""
+    ins = il.parse_dockerfile(dockerfile(image))
+    out = {"paths": [], "label keys": [], "env": [], "users": []}
+    for i in ins:
+        if i.keyword in ("RUN", "COPY", "USER"):
+            out["paths"] += PATH_RE.findall(i.args)
+        if i.keyword == "LABEL":
+            out["label keys"].append(i.args.split("=", 1)[0])
+        if i.keyword == "ENV":
+            out["env"] += i.args.split("=", 1)
+    out["users"] = user_names(image)
+    return out
+
+
+def user_names(image: str) -> list:
+    lock = committed(image)
+    names = [] if lock["users"] is None else [lock["users"][r]["name"] for r in ("agent", "watcher")]
+    users, _ = il._users([i.args for i in il.parse_dockerfile(dockerfile(image)) if i.keyword == "RUN"])
+    return names + [u[0] for u in users]
+
+
+# The sidecar and egress images' own paths and labels are exempt (never in a take image, never mounted in the take
+# container), for example the pinned /opt/w/sidecar.py; their user names are not exempt (interface 16).
+NEUTRALITY_EXEMPT = {"sidecar": "paths and labels (never in a take image)", "egress": "paths and labels (never in a "
+                     "take image)"}
+
+
+def leak_hits(strings) -> list:
+    hits = []
+    for s in strings:
+        for w in LEAK_WORDS:
+            if re.search(r"(?<![A-Za-z0-9])" + re.escape(w) + r"(?![A-Za-z0-9])", s, re.IGNORECASE):
+                hits.append(s)
+                break
+    return hits
+
+
+class DockerfileTest(unittest.TestCase):
+    def test_every_committed_dockerfile_keeps_its_rules(self):
+        for image in il.IMAGES:
+            with self.subTest(image):
+                self.assertEqual(il.check_dockerfile(dockerfile(image), committed(image)), [])
+
+    def test_each_take_image_installs_its_own_harness(self):
+        for image, package in PACKAGES.items():
+            with self.subTest(image):
+                self.assertEqual(committed(image)["harness"]["package"], package)
+                runs = [i.args for i in il.parse_dockerfile(dockerfile(image)) if i.keyword == "RUN"]
+                self.assertIn(il.NPM_INSTALL.format(package=package), runs)
+                self.assertIn(il.VERSION_CHECK.format(package=package), runs)
+
+    def test_every_dockerfile_mutant_goes_red(self):
+        for name in MUTANT_DOCKERFILES:
+            with self.subTest(name):
+                image, text = dockerfile_mutated(name)
+                self.assertTrue(il.check_dockerfile(text, committed(image)), name)
+
+    def test_the_common_block_is_byte_identical(self):
+        blocks = {image: il.common_block(dockerfile(image)) for image in il.TAKE_IMAGES + (il.SIDECAR_IMAGE,)}
+        self.assertEqual(len(set(blocks.values())), 1, blocks.keys())
+        block = blocks["take-a"]
+        for want in ("apt-get install", il.PYTHON_CHECK, "ENV PYTHONDONTWRITEBYTECODE=1", "useradd", il.GIT_SAFE):
+            self.assertIn(want, block)
+        # A one-byte change in one file's block goes red.
+        changed = dockerfile("take-o").replace("procps ca-certificates", "procps  ca-certificates")
+        self.assertNotEqual(il.common_block(changed), block)
+        with self.assertRaises(il.DockerfileError):
+            il.common_block(dockerfile("take-a").replace(il.COMMON_END + "\n", ""))
+        with self.assertRaises(il.DockerfileError):
+            il.common_block(dockerfile("take-a") + il.COMMON_BEGIN + "\n")
+
+    def test_the_parser(self):
+        text = "# c\nARG BASE\nFROM ${BASE}\nRUN a \\\n# inside\n  && b\n\nUSER 1:1\n"
+        ins = il.parse_dockerfile(text)
+        self.assertEqual([(i.line, i.keyword, i.args) for i in ins],
+                         [(2, "ARG", "BASE"), (3, "FROM", "${BASE}"), (4, "RUN", "a && b"), (8, "USER", "1:1")])
+        for bad in ("FROB x\n", "RUN a \\\n", "# syntax=docker/dockerfile:1\nARG BASE\n", "RUN <<X\nX\n"):
+            with self.subTest(bad), self.assertRaises(il.DockerfileError):
+                il.parse_dockerfile(bad)
+
+    def test_the_package_lists(self):
+        self.assertEqual(il.PACKAGES, ("python3", "git", "inotify-tools", "procps", "ca-certificates"))
+        self.assertEqual(il.forbidden(il.PACKAGES), [])
+        for p in ("docker.io", "docker-ce-cli", "podman", "containerd", "runc", "buildah", "curl", "wget",
+                  "netcat-openbsd", "ncat", "nmap", "socat", "openssh-client", "telnet", "dnsutils", "bind9-dnsutils",
+                  "iputils-ping", "net-tools", "ftp", "lynx", "aria2"):
+            with self.subTest(p):
+                self.assertEqual(il.forbidden([p]), [p])
+                with mock.patch.object(il, "FORBIDDEN_PACKAGES", tuple(x for x in il.FORBIDDEN_PACKAGES
+                                                                       if not __import__("fnmatch").fnmatchcase(p, x))):
+                    self.assertEqual(il.forbidden([p]), [])   # the mutant that drops its pattern lets it through
+
+    def test_the_users_and_ids_in_every_dockerfile(self):
+        for image in il.TAKE_IMAGES + (il.SIDECAR_IMAGE,):
+            users, groups = il._users([i.args for i in il.parse_dockerfile(dockerfile(image)) if i.keyword == "RUN"])
+            self.assertEqual([u[:3] for u in users], [("dana", "10001", "10001"), ("eli", "10002", "10002")])
+            self.assertEqual(groups, [("dana", "10001"), ("eli", "10002")])
+            self.assertEqual(il.parse_dockerfile(dockerfile(image))[-1].args, il.LAST_USER[image])
+        self.assertEqual(il.LAST_USER, {"take-a": "10001:10001", "take-o": "10001:10001", "take-g": "10001:10001",
+                                        "sidecar": "10002:10002"})
+
+    def test_the_in_container_python_runs_on_the_floor(self):
+        snippet = re.search(r"python3 -c '([^']*)'", il.PYTHON_CHECK).group(1)
+        ast_parse = __import__("ast").parse
+        ast_parse(snippet, feature_version=(3, 11))
+        self.assertEqual(snippet, "import platform; print(platform.python_version())")
+
+    def test_the_sidecar_program_path(self):
+        self.assertEqual(il.SIDECAR_COPY, "sidecar.py /opt/w/sidecar.py")
+
+
+class LockSetTest(unittest.TestCase):
+    def test_the_nullable_table(self):
+        R, N, O = il.REQUIRED, il.NULL, il.OPTIONAL
+        self.assertEqual(il.NULLABLE, {
+            "take-a": {"harness": R, "python": R, "users": R}, "take-o": {"harness": R, "python": R, "users": R},
+            "take-g": {"harness": R, "python": R, "users": R}, "sidecar": {"harness": N, "python": R, "users": R},
+            "egress": {"harness": N, "python": O, "users": N}})
+        self.assertEqual(il.EXTRA_KEYS, {"egress": ("squid",)})
+
+    def test_every_nullable_row_mutant_is_refused(self):
+        for name in MUTANT_NULLABLE:
+            with self.subTest(name):
+                self.assertTrue(il.problems(nullable_mutated(name)), name)
+
+    def test_egress_python_may_be_null_or_a_value(self):
+        for v in (None, il.PENDING, "3.12.1"):
+            lock = filled("egress")
+            lock["python"] = v
+            if v == il.PENDING:
+                lock["pending"]["python"] = "measured at the build"
+            self.assertEqual(il.problems(lock), [], v)
+
+    def test_the_take_and_sidecar_locks_share_one_base(self):
+        locks = [committed(i) for i in il.IMAGES]
+        self.assertEqual(il.shared_base_problems(locks), [])
+        filled_locks = [filled(i) for i in il.IMAGES]
+        self.assertEqual(il.shared_base_problems(filled_locks), [])
+        filled_locks[1]["base"] = "registry.example/other@sha256:" + "d" * 64
+        self.assertTrue(il.shared_base_problems(filled_locks))
+        self.assertTrue(il.shared_base_problems(filled_locks[:2]))
+
+    def test_each_lock_sits_beside_its_dockerfile(self):
+        for image in il.IMAGES:
+            self.assertEqual(committed(image)["dockerfile"], il.DOCKERFILES[image])
+            self.assertTrue(os.path.isfile(os.path.join(il.BOX_DIR, il.DOCKERFILES[image])))
+
+
+class BuildArgvTest(unittest.TestCase):
+    def test_the_committed_locks_build_nothing(self):
+        for image in il.IMAGES:
+            with self.subTest(image), self.assertRaises(il.NotReady):
+                il.build_argv(committed(image), context="/srv/ctx")
+
+    def test_each_pending_build_input_alone_refuses(self):
+        for image in il.IMAGES:
+            for field in COMMITTED_PENDING[image]:
+                if field == "image_id":
+                    continue
+                with self.subTest(image=image, field=field):
+                    lock = filled(image)
+                    if "." in field:
+                        lock["harness"]["version"] = il.PENDING
+                    else:
+                        lock[field] = il.PENDING
+                    lock["pending"] = {field: "measured at the build"}
+                    with self.assertRaises(il.NotReady) as cm:
+                        il.build_argv(lock, context="/srv/ctx")
+                    self.assertIn(field, str(cm.exception))
+
+    def test_a_pending_image_id_alone_does_not_block_the_build(self):
+        lock = filled("take-a")
+        lock["image_id"] = il.PENDING
+        lock["pending"] = {"image_id": "the build makes it"}
+        self.assertEqual(il.build_argv(lock, context="/srv/ctx")[:3], ["docker", "build", "--pull=false"])
+        self.assertTrue(il.check_labels(lock, matching_inspect(filled("take-a"))))   # still never passes the labels
+
+    def test_the_argv(self):
+        for image in il.IMAGES:
+            with self.subTest(image):
+                lock = filled(image)
+                argv = il.build_argv(lock, context="/srv/ctx")
+                self.assertEqual(argv[:5], ["docker", "build", "--pull=false", "--file",
+                                            os.path.join(il.BOX_DIR, il.DOCKERFILES[image])])
+                self.assertEqual(argv[-1], "/srv/ctx")
+                pairs = list(zip(argv[5:-1:2], argv[6:-1:2]))
+                args = dict(v.split("=", 1) for k, v in pairs if k == "--build-arg")
+                labels = dict(v.split("=", 1) for k, v in pairs if k == "--label")
+                self.assertEqual(len(pairs) * 2, len(argv) - 6)
+                self.assertEqual(args, il.build_args(lock))
+                self.assertEqual(labels, il.expected_labels(lock))
+                self.assertEqual(args["BASE"], BASE)
+                dockerfile_args = [i.args for i in il.parse_dockerfile(dockerfile(image)) if i.keyword == "ARG"]
+                self.assertEqual(sorted(args), sorted(dockerfile_args))
+                self.assertEqual(argv.count("--pull=false"), 1)
+        with self.assertRaises(ValueError):
+            il.build_argv(filled("take-a"), context="relative/ctx")
+
+    def test_a_dropped_pull_refusal_goes_red(self):
+        argv = il.build_argv(filled("take-a"), context="/srv/ctx")
+        with mock.patch.object(il, "CLIENT", "podman"):
+            self.assertNotEqual(il.build_argv(filled("take-a"), context="/srv/ctx")[0], argv[0])
+
+
+class NeutralityTest(unittest.TestCase):
+    def test_the_take_images_strings_carry_no_study_word(self):
+        for image in il.TAKE_IMAGES:
+            with self.subTest(image):
+                seen = agent_visible(image)
+                self.assertTrue(seen["paths"] and seen["label keys"] and seen["env"] and seen["users"])
+                for kind, strings in seen.items():
+                    self.assertEqual(leak_hits(strings), [], kind)
+
+    def test_every_images_user_names_carry_no_study_word(self):
+        for image in il.IMAGES:
+            with self.subTest(image):
+                self.assertEqual(leak_hits(user_names(image)), [])
+        self.assertEqual(set(NEUTRALITY_EXEMPT), {il.SIDECAR_IMAGE, il.EGRESS_IMAGE})
+        self.assertIn("/opt/w/sidecar.py", dockerfile("sidecar"))   # exempt: never in a take image
+
+    def test_the_user_names_are_not_vendor_or_harness_names(self):
+        for name in user_names("take-a"):
+            for word in (hb.CLAUDE_CODE, pc.CODEX, pc.GEMINI, "claude", "anthropic", "openai", "google", "agent"):
+                self.assertNotIn(word, name)
+
+    def test_a_planted_study_word_goes_red(self):
+        for planted in ("/home/probe", "/srv/" + LEAK_WORDS[0].replace(" ", "-"), "app.grader.version",
+                        "GAP4_MODE", "Round 4"):
+            with self.subTest(n=len(planted)):
+                self.assertEqual(leak_hits([planted]), [planted])
+        text = dockerfile("take-a").replace("/home/dana", "/home/sealed")
+        with mock.patch.object(sys.modules[__name__], "dockerfile", lambda image: text):
+            self.assertTrue(leak_hits(agent_visible("take-a")["paths"]))
+
+
 def print_mutants() -> None:
     for name in MUTANT_LOCKS:
         lock = mutated(name)
@@ -329,6 +730,12 @@ def print_mutants() -> None:
     lock = filled("take-a")
     for name in MUTANT_INSPECTS:
         print(f"mutant inspect {name!r}: red ({il.check_labels(lock, inspect_mutated(name))[0]})")
+    for name in MUTANT_NULLABLE:
+        print(f"mutant nullable {name!r}: red ({il.problems(nullable_mutated(name))[0]})")
+    for name in MUTANT_DOCKERFILES:
+        image, text = dockerfile_mutated(name)
+        found = il.check_dockerfile(text, committed(image))
+        print(f"mutant dockerfile {name!r} ({image}): {'red' if found else 'GREEN'} ({found[0] if found else '-'})")
 
 
 if __name__ == "__main__":

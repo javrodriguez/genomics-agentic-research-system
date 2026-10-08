@@ -18,15 +18,24 @@ built image's labels say, so a lock that was never filled can never pass.
 The schema is closed: any other key, a missing key or a wrong shape is refused (LockError). Which fields may be null
 is bound by the lock's `image`, through the closed table NULLABLE.
 
+The Dockerfiles are read by this module's own small parser (`parse_dockerfile`: instructions, line continuations,
+comments; a parser directive, a heredoc or an unknown instruction is refused) and checked against their lock by
+`check_dockerfile`, which returns every way a Dockerfile departs from the image rules of CP2 (base by digest from the
+lock, the harness at the lock's exact version and a check that the installed version is that version, the recorded
+Python, the closed package line, the two fixed non-root users, git's ownership setting, nothing of the study copied
+into a take image, and the labels from the build arguments).
+
 This module constructs argv lists only; it never runs one, and it imports no process module.
 Standard library only.
 """
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import re
+from dataclasses import dataclass
 
 PENDING = "PENDING"
 SCHEMA = 1
@@ -330,3 +339,308 @@ def build_argv(lock, *, context: str) -> list:
         argv += ["--label", f"{k}={v}"]
     argv.append(context)
     return argv
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# The Dockerfiles.
+
+class DockerfileError(ValueError):
+    """A Dockerfile this parser does not read (it never guesses)."""
+
+
+# The instructions a box Dockerfile may use at all (a closed set; anything else is refused by the check).
+ALLOWED_INSTRUCTIONS = ("ARG", "FROM", "RUN", "ENV", "LABEL", "COPY", "ENTRYPOINT", "USER")
+KNOWN_INSTRUCTIONS = ALLOWED_INSTRUCTIONS + ("ADD", "CMD", "EXPOSE", "HEALTHCHECK", "MAINTAINER", "ONBUILD", "SHELL",
+                                             "STOPSIGNAL", "VOLUME", "WORKDIR")
+
+
+@dataclass(frozen=True)
+class Instruction:
+    line: int        # the line the instruction starts on (1-based)
+    keyword: str     # upper case
+    args: str        # the arguments, continuation lines joined by one space
+
+
+def parse_dockerfile(text: str) -> list:
+    """The instructions of `text`: comments dropped (also inside a continuation), continuations joined."""
+    lines = text.split("\n")
+    out, i = [], 0
+    while i < len(lines):
+        raw = lines[i]
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            if re.fullmatch(r"#\s*(syntax|escape|check)\s*=.*", stripped, re.IGNORECASE) and not out:
+                raise DockerfileError(f"line {i + 1}: a parser directive is not read here")
+            i += 1
+            continue
+        start, parts = i + 1, []
+        while True:
+            body = lines[i].strip()
+            if parts and (body.startswith("#") or not body):
+                i += 1
+                if i >= len(lines):
+                    raise DockerfileError(f"line {start}: a continuation runs off the end of the file")
+                continue
+            if body.endswith("\\"):
+                parts.append(body[:-1].strip())
+                i += 1
+                if i >= len(lines):
+                    raise DockerfileError(f"line {start}: a continuation runs off the end of the file")
+                continue
+            parts.append(body)
+            i += 1
+            break
+        joined = " ".join(p for p in parts if p)
+        keyword, _, args = joined.partition(" ")
+        keyword = keyword.upper()
+        if keyword not in KNOWN_INSTRUCTIONS:
+            raise DockerfileError(f"line {start}: unknown instruction {keyword!r}")
+        if "<<" in args:
+            raise DockerfileError(f"line {start}: a heredoc is not read here")
+        out.append(Instruction(start, keyword, args.strip()))
+    return out
+
+
+COMMON_BEGIN = "# common:begin"
+COMMON_END = "# common:end"
+
+
+def common_block(text: str) -> str:
+    """The lines from `# common:begin` to `# common:end`, both included, exactly as written."""
+    lines = text.split("\n")
+    if lines.count(COMMON_BEGIN) != 1 or lines.count(COMMON_END) != 1:
+        raise DockerfileError("the common block's markers must each appear exactly once")
+    a, b = lines.index(COMMON_BEGIN), lines.index(COMMON_END)
+    if b < a:
+        raise DockerfileError("the common block ends before it begins")
+    return "\n".join(lines[a:b + 1])
+
+
+# The closed package list of the take and sidecar images (one apt-get line, identical in all four).
+PACKAGES = ("python3", "git", "inotify-tools", "procps", "ca-certificates")
+# Packages no box image may install: container clients and runtimes, and network tools (fnmatch patterns).
+FORBIDDEN_PACKAGES = ("docker*", "podman", "containerd", "runc", "buildah", "curl", "wget", "netcat*", "ncat", "nmap",
+                      "socat", "openssh-client", "telnet", "dnsutils", "bind9-dnsutils", "iputils-ping", "net-tools",
+                      "ftp", "lynx", "aria2")
+# Words no RUN may hold, whatever it installs: privilege helpers and fetchers.
+FORBIDDEN_RUN_WORDS = ("sudo", "su", "doas", "setcap", "pip", "pip3", "curl", "wget", "dpkg", "apk", "yum", "dnf")
+SETUID_RE = re.compile(r"chmod\s+(-\S+\s+)*([ugoa]*\+[rwx]*s|[2-7][0-7]{3})\b")
+
+PYTHON_CHECK = ("test \"$(python3 -c 'import platform; print(platform.python_version())')\" = \"${PYTHON_VERSION}\"")
+GIT_SAFE = "git config --system --add safe.directory '*'"
+NPM_INSTALL = 'npm install -g "{package}@${{HARNESS_VERSION}}"'
+VERSION_CHECK = ('test "$(node -p \'require(process.argv[1]).version\' "$(npm root -g)/{package}/package.json")"'
+                 ' = "${{HARNESS_VERSION}}"')
+SIDECAR_COPY = "sidecar.py /opt/w/sidecar.py"
+SQUID_PACKAGE = "squid=${SQUID_VERSION}"
+# The ENV lines each image carries, exactly.
+ENVS = {
+    "take-a": {"PYTHONDONTWRITEBYTECODE": "1", "DISABLE_AUTOUPDATER": "1"},
+    "take-o": {"PYTHONDONTWRITEBYTECODE": "1"},
+    "take-g": {"PYTHONDONTWRITEBYTECODE": "1"},
+    SIDECAR_IMAGE: {"PYTHONDONTWRITEBYTECODE": "1"},
+    EGRESS_IMAGE: {},
+}
+# The last USER of each image that has one: the agent in a take image, the watcher in the sidecar.
+LAST_USER = {
+    "take-a": f"{AGENT_UID}:{AGENT_UID}",
+    "take-o": f"{AGENT_UID}:{AGENT_UID}",
+    "take-g": f"{AGENT_UID}:{AGENT_UID}",
+    SIDECAR_IMAGE: f"{WATCHER_UID}:{WATCHER_UID}",
+}
+
+
+def arg_names(lock) -> tuple:
+    """The build argument names `lock`'s image takes, by the lock's shape (never its values)."""
+    validate(lock)
+    names = ["BASE", "BASE_NAME", "BASE_DIGEST"]
+    if lock["harness"] is not None:
+        names.append("HARNESS_VERSION")
+    if lock["python"] is not None:
+        names.append("PYTHON_VERSION")
+    if "squid" in lock:
+        names.append("SQUID_VERSION")
+    return tuple(n for n in BUILD_ARGS if n in names)
+
+
+def label_keys(lock) -> tuple:
+    """The label keys `lock`'s image carries, by the lock's shape."""
+    names = arg_names(lock)
+    return tuple(k for k in LABELS if LABEL_ARGS[k] in names)
+
+
+def _apt_packages(args: str) -> list:
+    m = re.search(r"apt-get install((?:\s+\S+)*?)\s*(&&|$)", args)
+    if not m:
+        return []
+    return [t.strip('"') for t in m.group(1).split() if not t.startswith("-")]
+
+
+def forbidden(packages) -> list:
+    """The packages of `packages` on the forbidden list."""
+    return [p for p in packages if any(fnmatch.fnmatchcase(p, pat) for pat in FORBIDDEN_PACKAGES)]
+
+
+_VALUE_OPTS = ("--uid", "--gid", "--home-dir", "--shell")
+# The useradd options a box user may be made with (no --non-unique, no --groups, no --system).
+_USERADD_OPTS = _VALUE_OPTS + ("--create-home", "--no-create-home")
+
+
+def _users(runs) -> tuple:
+    """(useradd entries as (name, uid, gid, home), groupadd entries as (name, gid)) across every RUN."""
+    users, groups = [], []
+    for args in runs:
+        for cmd in re.split(r"\s*&&\s*", args):
+            toks = cmd.split()
+            if not toks:
+                continue
+            if toks[0] in ("useradd", "groupadd"):
+                opts, j = {}, 1
+                while j < len(toks) - 1:
+                    if toks[j] in _VALUE_OPTS:
+                        opts[toks[j]] = toks[j + 1] if j + 1 < len(toks) - 1 else None
+                        j += 2
+                    else:
+                        opts[toks[j]] = True
+                        j += 1
+                if toks[0] == "useradd":
+                    users.append((toks[-1], opts.get("--uid"), opts.get("--gid"), opts.get("--home-dir"),
+                                  tuple(sorted(o for o in opts if o not in _USERADD_OPTS))))
+                else:
+                    groups.append((toks[-1], opts.get("--gid")))
+    return users, groups
+
+
+def check_dockerfile(text: str, lock) -> list:
+    """Every way `text` departs from the rules for `lock`'s image ([] when it keeps all of them)."""
+    validate(lock)
+    image = lock["image"]
+    try:
+        ins = parse_dockerfile(text)
+    except DockerfileError as e:
+        return [str(e)]
+    out = []
+    kw = [i.keyword for i in ins]
+    for i in ins:
+        if i.keyword not in ALLOWED_INSTRUCTIONS:
+            out.append(f"line {i.line}: {i.keyword} is not allowed in a box image")
+    # 1. The base, by digest, from the lock's build argument only.
+    if len(ins) < 2 or (ins[0].keyword, ins[0].args) != ("ARG", "BASE") or (ins[1].keyword, ins[1].args) != (
+            "FROM", "${BASE}"):
+        out.append("the file must open with ARG BASE then FROM ${BASE}")
+    if kw.count("FROM") != 1:
+        out.append("exactly one FROM")
+    args = [i.args for i in ins if i.keyword == "ARG"]
+    if sorted(args) != sorted(arg_names(lock)) or len(set(args)) != len(args):
+        out.append(f"ARG names {args} are not exactly the lock's build arguments {list(arg_names(lock))}")
+    # Labels: one key per LABEL, each the value of its own build argument.
+    labels = {}
+    for i in ins:
+        if i.keyword == "LABEL":
+            m = re.fullmatch(r'([a-z0-9.]+)="\$\{([A-Z_]+)\}"', i.args)
+            if not m or m.group(1) in labels:
+                out.append(f"line {i.line}: LABEL must be one key=\"${{ARG}}\", each key once")
+                continue
+            labels[m.group(1)] = m.group(2)
+    if labels != {k: LABEL_ARGS[k] for k in label_keys(lock)}:
+        out.append(f"labels {labels} are not exactly {list(label_keys(lock))} from their build arguments")
+    # ENV: exactly the image's own lines.
+    envs = {}
+    for i in ins:
+        if i.keyword == "ENV":
+            m = re.fullmatch(r"([A-Z_][A-Z0-9_]*)=(\S+)", i.args)
+            if not m or m.group(1) in envs:
+                out.append(f"line {i.line}: ENV must be one NAME=value, each name once")
+                continue
+            envs[m.group(1)] = m.group(2)
+    if envs != ENVS[image]:
+        out.append(f"ENV {envs} is not exactly {ENVS[image]}")
+    # The entrypoint is reset; nothing is added from outside, and nothing of the study is copied into a take image.
+    entry = [i.args for i in ins if i.keyword == "ENTRYPOINT"]
+    if entry != ["[]"]:
+        out.append("exactly one ENTRYPOINT [] (the base's entrypoint reset)")
+    copies = [i.args for i in ins if i.keyword == "COPY"]
+    if image == SIDECAR_IMAGE:
+        if copies != [SIDECAR_COPY]:
+            out.append(f"the sidecar image copies exactly {SIDECAR_COPY!r}")
+    elif copies:
+        out.append("no COPY in this image")
+    runs = [i.args for i in ins if i.keyword == "RUN"]
+    for r in runs:
+        words = set(re.findall(r"[A-Za-z0-9_.+-]+", r))
+        for w in FORBIDDEN_RUN_WORDS:
+            if w in words:
+                out.append(f"RUN uses {w!r}")
+        for p in forbidden(sorted(words)):
+            out.append(f"RUN names the forbidden package or tool {p!r}")
+        if SETUID_RE.search(r):
+            out.append("RUN sets a setuid or setgid bit")
+        if re.search(r"\bapt\s+install\b", r):
+            out.append("RUN uses apt install (only one apt-get install line)")
+    installs = [r for r in runs if "apt-get install" in r]
+    if len(installs) != 1:
+        out.append("exactly one apt-get install line")
+    else:
+        if "--no-install-recommends" not in installs[0].split():
+            out.append("apt-get install without --no-install-recommends")
+        pkgs = _apt_packages(installs[0])
+        for p in forbidden(pkgs):
+            out.append(f"forbidden package {p!r}")
+        want = [SQUID_PACKAGE] if image == EGRESS_IMAGE else list(PACKAGES)
+        if pkgs != want:
+            out.append(f"packages {pkgs} are not exactly {want}")
+    npm = [r for r in runs if re.search(r"\bnpm\b", r) and "install" in r.split()]
+    if image in TAKE_IMAGES:
+        package = lock["harness"]["package"]
+        want_install = NPM_INSTALL.format(package=package)
+        want_check = VERSION_CHECK.format(package=package)
+        if npm != [want_install]:
+            out.append(f"the harness install must be exactly one RUN {want_install}")
+        at = runs.index(want_install) if want_install in runs else None
+        if at is None or want_check not in runs[at + 1:]:
+            out.append("a RUN after the install must check the installed version equals HARNESS_VERSION")
+    elif npm:
+        out.append("no harness is installed in this image")
+    if image in TAKE_IMAGES or image == SIDECAR_IMAGE:
+        try:
+            common_block(text)
+        except DockerfileError as e:
+            out.append(str(e))
+        if PYTHON_CHECK not in runs:
+            out.append("a RUN must check python3 reports exactly PYTHON_VERSION")
+        if GIT_SAFE not in runs:
+            out.append("git must accept the run tree's ownership (safe.directory '*')")
+        users, groups = _users(runs)
+        want_users = [(lock["users"][r]["name"], str(lock["users"][r]["uid"]), str(lock["users"][r]["gid"]))
+                      for r in ("agent", "watcher")]
+        if [u[:3] for u in users] != want_users:
+            out.append(f"useradd entries {[u[:3] for u in users]} are not exactly the lock's {want_users}")
+        if [g for g in groups] != [(n, gid) for n, _, gid in want_users]:
+            out.append(f"groupadd entries {groups} are not exactly the lock's users' groups")
+        if users and users[0][3] != f"/home/{lock['users']['agent']['name']}":
+            out.append("the agent's home must be /home/<its name>")
+        for u in users:
+            if u[4]:
+                out.append(f"useradd {u[0]} uses options outside the closed set: {list(u[4])}")
+        if re.search(r"\b10003\b", " ".join(runs)):
+            out.append("the keep-alive uid 10003 has no user entry")
+        users_at = [i for i in ins if i.keyword == "USER"]
+        if not users_at or ins[-1].keyword != "USER" or ins[-1].args != LAST_USER[image] or len(users_at) != 1:
+            out.append(f"exactly one USER, last, and it is {LAST_USER[image]}")
+    else:
+        if lock["python"] is None and any("PYTHON_VERSION" in r for r in runs):
+            out.append("a Python check in an image whose lock has no python")
+        if [i for i in ins if i.keyword == "USER"]:
+            out.append("the egress image sets no USER (run_take names squid's user)")
+    return out
+
+
+def shared_base_problems(locks) -> list:
+    """The take locks and the sidecar lock must name one shared base (PENDING alike, or one digest)."""
+    bases = {lock["image"]: lock["base"] for lock in locks
+             if lock["image"] in TAKE_IMAGES + (SIDECAR_IMAGE,)}
+    if set(bases) != set(TAKE_IMAGES + (SIDECAR_IMAGE,)):
+        return [f"the shared-base check needs every take lock and the sidecar lock, got {sorted(bases)}"]
+    if len(set(bases.values())) != 1:
+        return [f"the take and sidecar images do not share one base: {bases}"]
+    return []
