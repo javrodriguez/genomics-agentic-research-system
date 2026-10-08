@@ -159,6 +159,33 @@ Interface changes, stated exactly:
 
 Named residuals added (stub-take measurements): the names the kernel delivers whatever the subscription (IGNORED, UNMOUNT), which are watcher faults until measured; and the `-r` race, a file made and read inside a just-made folder before inotifywait watches it, which logs nothing.
 
+## Fold 3 (lane review round 2)
+
+The source is the lane review, round 2 (`w4c_r2_findings.md`, verdict CHANGES, on `d06b3586`).
+Every decision below is the lane lead's (the gap4 lane lead, Thu 8 Oct 2026).
+The standing rule is glitch-f3's, under Javier's delegation (Thu 8 Oct): no reviewer or builder writes guard-evasion probes; isolation and guard work is built and judged by construction, and a missing guard is reported in words. This fold adds no evasion form to PLANTED; its mutants only widen or empty this lane's own allowlists.
+Red tests `0451c9bc` (sidecar 135 tests against the `d06b3586` source: 15 failures, 5 errors), fixes `215768f7`.
+On `215768f7`: `test_sidecar.py` "Ran 135 tests ... OK", 76 mutants red; `test_scan_record.py` "Ran 49 tests ... OK", 20 mutants red; `--process-check` "process check: ok"; `copy_manifest.py --check` ok.
+Each new mutant was proved red by a whole-file swap in a `git archive` copy of the head, one process each; the copy diffed equal to the head afterwards.
+
+| Finding | Fix | Test | Mutant (whole-file swap, closing line) |
+|---|---|---|---|
+| W4C2-1 (MAJOR) attribute chains not rooted at a module were never examined | Attribute names are default-deny: each box module's closed vocabulary of every `Attribute.attr` it uses, derived once from its source and committed in BOX_MODULES (`attrs`); any other attribute name is refused whatever its root, and so is any attribute whose name starts with `__`, even when listed. The modules' three `type(e).__name__` uses became `_type_name(e)`. | each vocabulary equals the module's own attributes, with no dunder; a dunder listed in the vocabulary is still refused | vocabulary and os chain widened by `popen`: "planted os.popen: NOT REFUSED", "process check: 1 problem(s)" (and the whole test file "FAILED (failures=2)"); vocabulary emptied: "process check: 1 problem(s)"; dunder rule dropped: "FAILED (failures=1)". A swap widening the os chain alone stays green: the vocabulary still refuses `popen`, so that layer is equivalent there by design |
+| W4C2-2 (MAJOR) the stderr drain loop had no red mutant | The loop is factored (`_drain_stderr`). | a stderr pipe kept open and written after `established()` and after a first `read_ready` faults | drain loop removed: "FAILED (failures=2)" |
+| W4C2-3 (MAJOR) any text before the marker was discarded | `INOTIFYWAIT_FORMAT` gains a closed `setup_lines` list (still PENDING, named in its reason). Any other complete line before the marker, or text before the marker on its own line, sets `setup_failed()`, and `_arm_gave_up` fails the arm at once: no watcher-start, sidecar broken. | an unknown pre-marker line fails, a setup line passes; a sidecar whose watcher reports a setup failure fails `begin` at once with no health record | any setup line accepted: "FAILED (failures=1)"; setup failure unseen by the arm: "FAILED (failures=2)" |
+| W4C2-4 (MINOR) an unterminated stderr tail was never counted | Once the watcher has exited (`_tail_counts`), a non-empty remainder is one more STDERR_EVENT. | an exited watcher's tail faults; a running one's does not yet | tail never counted: "FAILED (failures=1)" |
+| W4C2-5 (NIT) CTL_DIR not normalised | `ctl_dir_ok` requires `normpath(CTL_DIR) == CTL_DIR` and a non-empty segment under `/tmp/` or `/run/`; the unreachable program-folder clause is dropped; the module-load raise is named as equivalent to the test while the constant is pinned. | `/tmp/../srv/ev/ctl`, `/tmp/`, `/run/`, `/tmp`, `/tmp//w` refused; `/tmp/w-ctl`, `/run/w` accepted | normpath clause dropped: "FAILED (failures=2)" |
+| W4C2-6 (NIT) a deeply nested request killed PID 1 | `_REQUEST_ERRORS = (ValueError, RecursionError)`. | 100,000 nested `[` is an ok: false reply, the sidecar still `new` | RecursionError uncaught: "FAILED (errors=1)" |
+| W4C2-7 (NIT) the factory's Popen call shape was open | The ast check pins it: one positional argument, the name `argv`, and keywords exactly `stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, close_fds=True`. | the real factory passes; a factory with an added `cwd=` keyword is refused | Popen shape check dropped: "FAILED (failures=1)" |
+
+Interface changes, stated exactly:
+- The watcher protocol the `Sidecar` reads gains `setup_failed() -> bool`. Every injected watcher must provide it (the test fake returns False).
+- `INOTIFYWAIT_FORMAT`, once filled, is a dict that also holds `setup_lines`: the closed list of stderr lines allowed before the marker. It is still PENDING.
+- `ctl_dir_ok()` is stricter, as above. `_type_name(e)` and `_REQUEST_ERRORS` are new module names.
+- No signature changed; no PENDING field was added or removed; `scan_record.py` is unchanged in this fold.
+
+Named residual: the ast check is judged by construction, not by adversarial probing.
+
 ## Lessons
 
 - A rename between a container's `/tmp` and a bind mount crosses mounts and fails; tests on one host filesystem hide it. A fake rename that fails between folders made it visible on the Mac.
