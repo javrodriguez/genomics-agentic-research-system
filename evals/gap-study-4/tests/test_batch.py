@@ -808,7 +808,8 @@ class TestStartGate(unittest.TestCase):
             self.assertIn(what, buf.getvalue())
         for filled in ("pause", "operator_reasons", "rate_limit"):   # filled, or ruled (W1B2-6)
             self.assertNotIn(filled, buf.getvalue())
-        self.assertTrue(all("pin_profiles" in x for x in buf.getvalue().splitlines()), buf.getvalue())
+        self.assertTrue(all("pin_profiles" in x or "spend_cap_markers_status" in x   # + item 1, w4h (see its report)
+                            for x in buf.getvalue().splitlines()), buf.getvalue())
         ready = test_table()
         with mock.patch.object(routing, "load_table", lambda *a: copy.deepcopy(ready)), \
                 redirect_stdout(io.StringIO()) as out:
