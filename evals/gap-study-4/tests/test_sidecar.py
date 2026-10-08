@@ -1600,96 +1600,348 @@ def file_ok(path: str) -> bool:
     return os.path.abspath(path) == os.path.join(STUDY, "box", "sidecar.py")
 
 
+# ------------------------------------------------------------------------------------------------- fold 2 (lane review 1)
+class TestFold2(TakeCase):
+    """Lane review round 1's findings, folded on the lane lead's decisions (W4C1-2, -4, -5, -8, -9, -10)."""
+
+    # W4C1-2: a stderr line after the watches are established is a watcher fault
+    def stderr_events(self, err: bytes):
+        proc = FakeProc(b"", err)
+        self.addCleanup(proc.close)
+        with mock.patch.multiple(sidecar, INOTIFYWAIT_FORMAT=FORMAT, INOTIFYWAIT_SUBSECOND=True):
+            w = sidecar._InotifyWatcher(proc, "/srv/rt")
+            self.assertTrue(w.established())
+            return w.read_ready()
+
+    LATE = b"Setting up watches.\nWatches established.\nCouldn't watch new directory /srv/rt/a/b: No space left\n"
+
+    def test_a_stderr_line_after_established_is_a_fault(self):
+        evs = self.stderr_events(self.LATE)
+        self.assertEqual([(e.path, e.names) for e in evs], [("", (sidecar.STDERR_EVENT,))])
+        self.assertNotIn("a/b", repr(evs))                       # the line's class only, never its path text
+        t = self.take()
+        t.sc.handle("begin")
+        t.w.queue.extend(evs)
+        t.sc.pump()
+        self.assertEqual(t.health()[-1]["kind"], "watcher-stop")
+        self.assertNotEqual(t.health()[-1]["exit_code"], 0)
+
+    def test_a_stderr_line_before_established_is_not_a_fault(self):
+        self.assertEqual(self.stderr_events(b"Setting up watches.\nWatches established.\n"), [])
+
+    def test_mutant_stderr_ignored_goes_red(self):
+        with mock.patch.object(sidecar._InotifyWatcher, "_stderr_events", lambda self: []):
+            evs = self.stderr_events(self.LATE)
+        self.assertEqual(evs, [])
+        red("stderr ignored after the watches are established")
+
+    def test_the_format_reason_names_stderr_and_the_forced_events(self):
+        why = sidecar.pending()
+        self.assertIn("stderr lines", why["inotifywait_format"])
+        self.assertIn("IGNORED", why["inotifywait_events"])
+        self.assertIn("UNMOUNT", why["inotifywait_events"])
+        self.assertIn("new folder", why["watch_establish_s"])
+
+    # W4C1-4 (a): the control channel lies outside the evidence folder and every run tree
+    def test_the_control_folder(self):
+        self.assertTrue(sidecar.ctl_dir_ok())
+        self.assertTrue(sidecar.CTL_DIR.startswith(("/tmp/", "/run/")))
+
+    def test_mutant_control_folder_in_the_evidence_goes_red(self):
+        for bad in ("/srv/ev/ctl", "/srv/ctl", "/srv"):
+            with mock.patch.object(sidecar, "CTL_DIR", bad):
+                self.assertFalse(sidecar.ctl_dir_ok())
+        red("the control channel inside the evidence folder")
+
+    # W4C1-4 (b): an ok reply's re-arm is never before its snapshot
+    GOOD = {"ok": True, "command": "snapshot", "label": "post-1", "taken_at": 2.0, "rearmed_at": 3.0,
+            "unreadable": [], "unreadable_consequential": [], "problems": []}
+
+    def test_a_rearm_before_its_snapshot_is_refused(self):
+        with self.assertRaises(sidecar.ReplyError):
+            sidecar.parse_reply(json.dumps(dict(self.GOOD, rearmed_at=1.5)) + "\n")
+
+    def test_mutant_rearm_order_unchecked_goes_red(self):
+        with mock.patch.object(sidecar, "_rearm_order_ok", lambda r: True):
+            self.assertEqual(sidecar.parse_reply(json.dumps(dict(self.GOOD, rearmed_at=1.5)) + "\n")["rearmed_at"],
+                             1.5)
+        red("a re-arm stamped before its snapshot accepted")
+
+    # W4C1-5: a consequential folder moved away also deletes the consequential paths beneath it
+    def nested(self):
+        t = self.take(watch=("out", "out/plan.json"), files={"out/plan.json": b"{}\n"})
+        t.sc.handle("begin")
+        t.turn([("out", ("MOVED_FROM", "ISDIR"))])
+        t.sc.handle("snapshot", "post-1")
+        t.sc.handle("finish")
+        return sorted((a["path"], a["op"]) for a in t.access())
+
+    def test_a_consequential_folder_moved_deletes_what_is_beneath(self):
+        self.assertEqual(self.nested(), [("out", "delete"), ("out/plan.json", "delete")])
+
+    def test_mutant_nested_paths_skipped_goes_red(self):
+        real = sidecar.Sidecar._move_targets
+        with mock.patch.object(sidecar.Sidecar, "_move_targets",
+                               lambda self, path: [] if path in self.watch else real(self, path)):
+            self.assertEqual(self.nested(), [("out", "delete")])
+        red("a moved consequential folder skips the paths beneath it")
+
+    # W4C1-8: a watch path segment starting with "-" is refused (serve's argparse would read it as an option)
+    def test_a_dash_segment_is_refused(self):
+        for bad in (["-x"], ["a/-b"], ["--run-tree"]):
+            with self.subTest(bad):
+                with self.assertRaises(ValueError):
+                    create(watch=bad)
+                with self.assertRaises(ValueError):
+                    sidecar.Sidecar(run_tree="/x", evidence="/y", watch=bad, factory=None)
+
+    def test_mutant_dash_segment_accepted_goes_red(self):
+        with mock.patch.object(sidecar, "watch_path_ok", sidecar.rel_path_ok):
+            self.assertIn("-x", create(watch=["-x"]))
+        red("a watch path starting with - accepted")
+
+    # W4C1-9: a request that is JSON but not an object gets an ok: false reply, never an uncaught error
+    def test_a_non_object_request(self):
+        t = self.take()
+        for raw in (b"[1]\n", b"3\n", b"\"begin\"\n", b"not json\n"):
+            with self.subTest(raw):
+                r = sidecar._handle_request(t.sc, raw)
+                self.assertFalse(r["ok"])
+                self.assertEqual(r["command"], "status")
+        self.assertTrue(sidecar._handle_request(t.sc, b'{"command": "begin", "label": null}\n')["ok"])
+
+    def test_mutant_request_shape_unchecked_goes_red(self):
+        t = self.take()
+        with mock.patch.object(sidecar, "_request_ok", lambda req: True):
+            with self.assertRaises(AttributeError):
+                sidecar._handle_request(t.sc, b"[1]\n")
+        red("a non-object request reaching the handler (PID 1 dies)")
+
+    # W4C1-10: the stream is not logged after a fault
+    def test_nothing_is_logged_after_a_fault(self):
+        t = self.take()
+        t.sc.handle("begin")
+        t.w.queue.extend([sidecar.WatchEvent(t.clock.time(), PLAN, ("ACCESS",)),
+                          sidecar.WatchEvent(t.clock.time(), PLAN, ("OPEN",))])
+        t.sc.pump()
+        self.assertEqual(t.access(), [])
+
+    def test_mutant_logging_on_after_a_fault_goes_red(self):
+        def logs_on(self, *, log=True):
+            results = [self._event(ev) for ev in self.watcher.read_ready()] if log else []
+            return all(results)
+        with mock.patch.object(sidecar.Sidecar, "_drain", logs_on):
+            t = self.take()
+            t.sc.handle("begin")
+            t.w.queue.extend([sidecar.WatchEvent(t.clock.time(), PLAN, ("ACCESS",)),
+                              sidecar.WatchEvent(t.clock.time(), PLAN, ("OPEN",))])
+            t.sc.pump()
+        self.assertNotEqual(t.access(), [])
+        red("the stream logged on after a fault")
+
+    # W4C1-10: a watcher that dies before it is established is given up on at once, not at the timeout
+    def dead_before_established(self):
+        t = self.take(factory_kw={"establish_after": 10 ** 9})
+        real = t.factory.__call__
+
+        def dying(run_tree, plan):
+            w = Factory.__call__(t.factory, run_tree, plan)
+            w.die(1)
+            return w
+        t.sc.factory = dying
+        t0 = t.clock.time()
+        r = t.sc.handle("begin")
+        self.assertFalse(r["ok"])
+        del real
+        return t.clock.time() - t0
+
+    def test_a_death_before_established_is_seen_at_once(self):
+        self.assertLess(self.dead_before_established(), 1.0)
+
+    def test_mutant_death_while_arming_unseen_goes_red(self):
+        with mock.patch.object(sidecar.Sidecar, "_arm_gave_up",
+                               lambda self, w, t0: self.clock() - t0 > self.establish_timeout_s):
+            self.assertGreater(self.dead_before_established(), sidecar.ESTABLISH_TIMEOUT_S)
+        red("a death while arming seen only at the timeout")
+
+
 # ------------------------------------------------------------------------------------------------- interface 10's ast check
-# The lane's non-test box modules, each with its closed standard-library import allowlist (scan_record also imports
-# the round's own scrub.py, for scrub.NOTE). Test files are out of this check's scope.
+# Default-deny by construction (fold 2, W4C1-1, the lane lead's decision). For each of this lane's non-test box
+# modules: the closed set of modules it may import, and for each, the closed set of attribute chains it may use
+# (a module name is only ever the root of one of these chains: `x = os`, `socket.os`, `os.__dict__`, `os.popen` and
+# `argparse._os` are all refused); the closed set of `from` imports; and its subprocess call sites. Test files are
+# out of this check's scope.
 BOX_MODULES = {
-    "box/sidecar.py": {"__future__", "argparse", "dataclasses", "errno", "hashlib", "json", "os", "re", "selectors",
-                       "signal", "socket", "stat", "subprocess", "sys", "time"},
-    "box/scan_record.py": {"__future__", "dataclasses", "hashlib", "json", "os", "re", "stat", "sys", "scrub"},
+    "box/sidecar.py": {
+        "imports": {
+            "argparse": {"ArgumentParser"},
+            "errno": {"EACCES", "ENOENT"},
+            "hashlib": {"sha256"},
+            "json": {"dumps", "loads"},
+            "os": {"O_CLOEXEC", "O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_NONBLOCK", "O_RDONLY", "O_WRONLY", "close",
+                   "fdopen", "fstat", "fsync", "listdir", "lstat", "makedirs", "mkdir", "open", "path.basename",
+                   "path.dirname", "path.join", "path.lexists", "path.normpath", "read", "readlink", "rename",
+                   "scandir", "set_blocking", "unlink"},
+            "re": {"compile"},
+            "selectors": {"DefaultSelector", "EVENT_READ"},
+            "signal": {"SIGKILL", "SIGTERM", "signal"},
+            "socket": {"AF_UNIX", "SOCK_STREAM", "socket"},
+            "stat": {"S_ISDIR", "S_ISLNK", "S_ISREG"},
+            "subprocess": {"PIPE", "Popen"},
+            "sys": {"exit", "stdout.write"},
+            "time": {"sleep", "time"},
+        },
+        "from": {("__future__", "annotations"), ("dataclasses", "dataclass")},
+    },
+    "box/scan_record.py": {
+        "imports": {
+            "hashlib": {"sha256"},
+            "json": {"loads"},
+            "os": {"O_NOFOLLOW", "O_NONBLOCK", "O_RDONLY", "close", "fsync", "geteuid", "lstat", "open",
+                   "path.abspath", "path.dirname", "path.isabs", "path.join", "path.lexists", "read"},
+            "re": {"compile"},
+            "scrub": {"NOTE"},
+            "stat": {"S_IMODE", "S_ISREG"},
+            "sys": {"path", "path.insert"},
+        },
+        "from": {("__future__", "annotations")},
+    },
 }
-# The one subprocess call site of this lane's modules: (module, enclosing function, attribute).
+# The one subprocess call site of this lane's modules: (enclosing function, attribute).
 SUBPROCESS_SITES = {"box/sidecar.py": [("inotifywait_factory", "Popen")]}
-_FORBIDDEN_OS = ("kill", "killpg", "system", "fork", "forkpty")
-_FORBIDDEN_OS_PREFIX = ("exec", "spawn", "posix_spawn")
+# Builtins that reach a module or run code by name; refused anywhere, called or not.
+REFUSED_BUILTINS = {"getattr", "setattr", "delattr", "vars", "globals", "locals", "__import__", "exec", "eval",
+                    "compile", "__builtins__", "breakpoint"}
 
 
-def process_problems(src: str, rel: str, allowed: set, sites: list) -> list:
-    """Interface 10's default-deny over one module, by ast: its imports are within `allowed`; every reference to
-    os.kill, os.killpg, os.system, os.exec*, os.spawn*, os.posix_spawn*, os.fork*, pty.spawn or
-    asyncio.create_subprocess_* is refused; no call passes shell=True; subprocess is imported only where `sites`
-    names a call, and its only calls are exactly `sites` (function, attribute)."""
+def _chain(node) -> tuple:
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    return (node.id if isinstance(node, ast.Name) else None), ".".join(reversed(parts))
+
+
+def process_problems(src: str, rel: str, spec: dict, sites: list) -> list:
+    """Interface 10's default-deny over one module, by ast (see BOX_MODULES)."""
     tree = ast.parse(src)
-    out, aliases, calls = [], {}, []
+    imports, froms = spec["imports"], spec["from"]
+    out, aliases = [], {}
+    parents, scope = {}, {}
+
+    def walk(node, fn):
+        for child in ast.iter_child_nodes(node):
+            parents[child] = node
+            inner = child.name if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) else fn
+            scope[child] = fn
+            walk(child, inner)
+    walk(tree, None)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for a in node.names:
-                top = a.name.split(".")[0]
-                aliases[a.asname or top] = a.name if a.asname else top
-                if top not in allowed:
+                if a.name not in imports:
                     out.append(f"{rel}: imports {a.name}, outside its allowlist")
+                aliases[a.asname or a.name.split(".")[0]] = a.name
         elif isinstance(node, ast.ImportFrom):
-            mod = node.module or ""
-            if node.level or mod.split(".")[0] not in allowed:
-                out.append(f"{rel}: imports from {mod or '.'}, outside its allowlist")
-            if mod in ("os", "subprocess", "pty", "asyncio") or mod.startswith(("os.", "subprocess.", "asyncio.")):
-                out.append(f"{rel}: from {mod} import {', '.join(a.name for a in node.names)} (name the module)")
-    if "subprocess" in aliases.values() and not sites:
-        out.append(f"{rel}: imports subprocess")
-
-    def scopes(node, fn=None):
-        for child in ast.iter_child_nodes(node):
-            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                yield from scopes(child, child.name)
-            else:
-                yield child, fn
-                yield from scopes(child, fn)
-
-    for node, fn in scopes(tree):
-        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-            mod, attr = aliases.get(node.value.id), node.attr
-            if mod == "os" and (attr in _FORBIDDEN_OS or attr.startswith(_FORBIDDEN_OS_PREFIX)):
-                out.append(f"{rel}: names os.{attr}")
-            if mod == "pty" and attr == "spawn":
-                out.append(f"{rel}: names pty.spawn")
-            if mod == "asyncio" and attr.startswith("create_subprocess"):
-                out.append(f"{rel}: names asyncio.{attr}")
+            for a in node.names:
+                if node.level or (node.module, a.name) not in froms:
+                    out.append(f"{rel}: from {node.module or '.'} import {a.name}, outside its allowlist")
+    calls = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id in REFUSED_BUILTINS:
+            out.append(f"{rel}: names the builtin {node.id}")
         if isinstance(node, ast.Call):
             for kw in node.keywords:
-                if kw.arg == "shell" and not (isinstance(kw.value, ast.Constant) and kw.value.value is False):
+                if kw.arg is None:
+                    out.append(f"{rel}: a call with ** keywords")
+                elif kw.arg == "shell" and not (isinstance(kw.value, ast.Constant) and kw.value.value is False):
                     out.append(f"{rel}: a call with shell= other than False")
-            f = node.func
-            if isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name) and aliases.get(f.value.id) == \
-                    "subprocess":
-                calls.append((fn, f.attr))
+        if isinstance(node, ast.Name) and node.id in aliases:
+            top = node
+            while isinstance(parents.get(top), ast.Attribute) and parents[top].value is top:
+                top = parents[top]
+            mod, chain = aliases[node.id], _chain(top)[1]
+            if chain not in imports.get(mod, set()):
+                out.append(f"{rel}: uses {mod}{'.' + chain if chain else ' itself'}, outside its allowlist")
+                continue
+            if mod == "subprocess":
+                fn = scope.get(top)
+                called = isinstance(parents.get(top), ast.Call) and parents[top].func is top
+                if fn not in {f for f, _ in sites}:
+                    out.append(f"{rel}: uses subprocess.{chain} outside the named call site")
+                elif chain == "Popen" and not called:
+                    out.append(f"{rel}: references subprocess.Popen without calling it")
+                elif called:
+                    calls.append((fn, chain))
     if sorted(calls) != sorted(sites):
         out.append(f"{rel}: subprocess calls {sorted(calls)}, expected exactly {sorted(sites)}")
     return out
 
 
+def _append(form):
+    return lambda src: src + "\n" + form
+
+
+# Every form a review found hollow, and the earlier planted positives; each, applied to the real box/sidecar.py,
+# must be refused under that module's own allowlist and sites.
 PLANTED = {
-    "posix_spawn": "import os\ndef f():\n    os.posix_spawn('/bin/x', ['x'], {})\n",
-    "aliased kill": "import os as o\ndef f():\n    o.kill(1, 9)\n",
-    "from os import": "from os import system\n",
-    "subprocess elsewhere": "import subprocess\ndef helper():\n    subprocess.run(['x'])\n",
-    "shell true": "import subprocess\ndef inotifywait_factory():\n    subprocess.Popen('x', shell=True)\n",
-    "outside allowlist": "import ctypes\n",
-    "fork": "import os\nos.fork()\n",
-    "pty": "import pty\npty.spawn(['x'])\n",
+    "an alias rebound (x = os)": _append("x = os\n\ndef _p():\n    x.kill(1, 9)\n"),
+    "getattr(os, 'kill')": _append("def _p():\n    getattr(os, 'kill')(1, 9)\n"),
+    "vars(os)['system']": _append("def _p():\n    vars(os)['system']('x')\n"),
+    "os.__dict__['kill']": _append("def _p():\n    os.__dict__['kill'](1, 9)\n"),
+    "socket.os.kill": _append("def _p():\n    socket.os.kill(1, 9)\n"),
+    "os.popen": _append("def _p():\n    os.popen('x')\n"),
+    "__import__('subprocess')": _append("def _p():\n    __import__('subprocess').run(['x'])\n"),
+    "r = subprocess.run; r()": _append("def _p():\n    r = subprocess.run\n    r(['x'])\n"),
+    "exec('import subprocess')": _append("def _p():\n    exec('import subprocess')\n"),
+    "signal.pidfd_send_signal": _append("def _p():\n    signal.pidfd_send_signal(3, 9)\n"),
+    "**{'shell': True} in the factory": lambda src: src.replace("close_fds=True)",
+                                                                "close_fds=True, **{'shell': True})", 1),
+    "shell=True in the factory": lambda src: src.replace("shell=False, close_fds=True)",
+                                                         "shell=True, close_fds=True)", 1),
+    "Popen referenced, not called, in the factory": lambda src: src.replace(
+        "    proc = subprocess.Popen(", "    p_ = subprocess.Popen\n    proc = subprocess.Popen(", 1),
+    "subprocess elsewhere": _append("def helper():\n    subprocess.run(['x'])\n"),
+    "os.posix_spawn": _append("def _p():\n    os.posix_spawn('/bin/x', ['x'], {})\n"),
+    "import os as o; o.kill": _append("import os as o\n\ndef _p():\n    o.kill(1, 9)\n"),
+    "from os import system": _append("from os import system\n"),
+    "os.fork": _append("os.fork()\n"),
+    "import pty": _append("import pty\npty.spawn(['x'])\n"),
+    "import ctypes": _append("import ctypes\n"),
+    "argparse._os": _append("def _p():\n    argparse._os.kill(1, 9)\n"),
+    "os.path.os": _append("def _p():\n    os.path.os.kill(1, 9)\n"),
+    "sys.modules['os']": _append("def _p():\n    sys.modules['os'].kill(1, 9)\n"),
+    "globals()['os']": _append("def _p():\n    globals()['os'].kill(1, 9)\n"),
+    "eval": _append("def _p():\n    eval('1')\n"),
+    "compile": _append("def _p():\n    compile('1', 'f', 'eval')\n"),
+    "__builtins__": _append("def _p():\n    __builtins__['exec']('1')\n"),
 }
+
+
+def _source(rel: str) -> str:
+    with open(os.path.join(STUDY, rel), encoding="utf-8") as fh:
+        return fh.read()
+
+
+def planted_problems(name: str) -> list:
+    rel = "box/sidecar.py"
+    src = _source(rel)
+    planted = PLANTED[name](src)
+    if planted == src:
+        return ["NOT PLANTED (the form's anchor is gone)"]
+    return process_problems(planted, f"planted:{name}", BOX_MODULES[rel], SUBPROCESS_SITES[rel])
 
 
 def process_check() -> int:
     """The checks file's entry point: planted positives first (each must be refused), then this lane's modules."""
     bad = 0
-    for name, src in PLANTED.items():
-        sites = [("inotifywait_factory", "Popen")] if name == "shell true" else []
-        got = process_problems(src, f"planted:{name}", {"os", "subprocess", "pty"}, sites)
-        print(f"planted {name}: {'refused' if got else 'NOT REFUSED'}")
-        bad += not got
-    for rel, allowed in BOX_MODULES.items():
-        with open(os.path.join(STUDY, rel), encoding="utf-8") as fh:
-            got = process_problems(fh.read(), rel, allowed, SUBPROCESS_SITES.get(rel, []))
+    for name in PLANTED:
+        got = planted_problems(name)
+        ok = bool(got) and got != ["NOT PLANTED (the form's anchor is gone)"]
+        print(f"planted {name}: {'refused' if ok else 'NOT REFUSED'}")
+        bad += not ok
+    for rel, spec in BOX_MODULES.items():
+        got = process_problems(_source(rel), rel, spec, SUBPROCESS_SITES.get(rel, []))
         print(f"{rel}: {'ok' if not got else '; '.join(got)}")
         bad += bool(got)
     print(f"process check: {'ok' if not bad else f'{bad} problem(s)'}")
@@ -1697,37 +1949,41 @@ def process_check() -> int:
 
 
 class TestProcessCheck(unittest.TestCase):
-    def test_the_planted_positives_are_refused(self):
-        self.assertEqual(process_problems(PLANTED["posix_spawn"], "m", {"os"}, []), ["m: names os.posix_spawn"])
-        for name, src in PLANTED.items():
-            sites = [("inotifywait_factory", "Popen")] if name == "shell true" else []
-            allowed = {"os", "subprocess", "pty"}
+    def test_every_planted_form_is_refused(self):
+        for name in PLANTED:
             with self.subTest(name):
-                self.assertNotEqual(process_problems(src, "m", allowed, sites), [])
+                got = planted_problems(name)
+                self.assertTrue(got)
+                self.assertNotEqual(got, ["NOT PLANTED (the form's anchor is gone)"])
 
-    def test_the_sidecar_passes(self):
-        with open(SIDECAR_SOURCE, encoding="utf-8") as fh:
-            src = fh.read()
-        self.assertEqual(process_problems(src, "box/sidecar.py", BOX_MODULES["box/sidecar.py"],
-                                          SUBPROCESS_SITES["box/sidecar.py"]), [])
+    def test_both_modules_pass(self):
+        for rel, spec in BOX_MODULES.items():
+            with self.subTest(rel):
+                self.assertEqual(process_problems(_source(rel), rel, spec, SUBPROCESS_SITES.get(rel, [])), [])
+
+    def test_mutants_go_red(self):
+        rel, spec = "box/sidecar.py", BOX_MODULES["box/sidecar.py"]
+        src = _source(rel)
         moved = src.replace("def inotifywait_factory(", "def _helper_factory(")
-        self.assertNotEqual(process_problems(moved, "box/sidecar.py", BOX_MODULES["box/sidecar.py"],
-                                             SUBPROCESS_SITES["box/sidecar.py"]), [])
+        self.assertNotEqual(process_problems(moved, rel, spec, SUBPROCESS_SITES[rel]), [])
         red("the Popen call moved out of the named factory")
         extra = src + "\ndef again():\n    subprocess.run(['x'])\n"
-        self.assertNotEqual(process_problems(extra, "box/sidecar.py", BOX_MODULES["box/sidecar.py"],
-                                             SUBPROCESS_SITES["box/sidecar.py"]), [])
+        self.assertNotEqual(process_problems(extra, rel, spec, SUBPROCESS_SITES[rel]), [])
         red("a second subprocess call site")
-
-    def test_scan_record_passes_and_may_not_import_subprocess(self):
-        path = os.path.join(STUDY, "box", "scan_record.py")
-        with open(path, encoding="utf-8") as fh:
-            src = fh.read()
-        allowed = BOX_MODULES["box/scan_record.py"]
-        self.assertEqual(process_problems(src, "box/scan_record.py", allowed, []), [])
-        self.assertNotEqual(process_problems("import subprocess\n" + src, "box/scan_record.py",
-                                             allowed | {"subprocess"}, []), [])
+        sr_rel = "box/scan_record.py"
+        sr_spec = BOX_MODULES[sr_rel]
+        self.assertNotEqual(process_problems("import subprocess\n" + _source(sr_rel), sr_rel, sr_spec, []), [])
         red("scan_record importing subprocess")
+        # the check itself, made a deny-list again (aliases unchecked), lets the hollow forms through
+        with mock.patch.dict(BOX_MODULES["box/sidecar.py"]["imports"],
+                             {"os": spec["imports"]["os"] | {"", "__dict__", "popen"},
+                              "socket": spec["imports"]["socket"] | {"os.kill"}}):
+            self.assertEqual(process_problems(PLANTED["os.popen"](src), rel, BOX_MODULES[rel],
+                                              SUBPROCESS_SITES[rel]), [])
+        red("an attribute allowlist widened (os.popen through)")
+        with mock.patch.object(sys.modules[__name__], "REFUSED_BUILTINS", set()):
+            self.assertEqual(process_problems(PLANTED["eval"](src), rel, spec, SUBPROCESS_SITES[rel]), [])
+        red("the refused builtins dropped (eval through)")
 
 
 if __name__ == "__main__":

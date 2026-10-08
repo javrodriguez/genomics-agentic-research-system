@@ -538,5 +538,123 @@ class TestPending(unittest.TestCase):
                 sr.scan(c.files(), SECRETS, rules_scanner=None)
 
 
+# ------------------------------------------------------------------------------------------------- fold 2 (lane review 1)
+class TestFold2(Case):
+    """Lane review round 1's findings, folded on the lane lead's decisions (W4C1-3, -4c, -10, -11)."""
+
+    # W4C1-3: an empty input never passes
+    def test_an_empty_file_list_is_refused(self):
+        with self.assertRaises(sr.ScanError):
+            sr.scan([], SECRETS, rules_scanner=no_findings)
+
+    def test_mutant_empty_files_pass_goes_red(self):
+        with mock.patch.object(sr, "_require_files", lambda files: None):
+            self.assertTrue(sr.passed(sr.scan([], SECRETS, rules_scanner=no_findings)))
+        red("an empty file list passed")
+
+    def test_secrets_without_a_token_or_key_are_refused(self):
+        c = self.commit({"transcript": TOKEN})
+        for secrets in ([], [("email", EMAIL)]):
+            with self.subTest(secrets=[k for k, _ in secrets]):
+                with self.assertRaises(sr.ScanError):
+                    sr.scan(c.files(), secrets, rules_scanner=no_findings)
+        for secrets in ([("token", TOKEN)], [("key", KEY)]):
+            with self.subTest(secrets=[k for k, _ in secrets]):
+                sr.scan(self.commit().files(), secrets, rules_scanner=no_findings)
+
+    def test_mutant_no_secret_searched_passes_goes_red(self):
+        c = self.commit({"transcript": TOKEN})
+        with mock.patch.object(sr, "_require_search", lambda secrets: None):
+            r = sr.scan(c.files(), [], rules_scanner=no_findings)
+        self.assertTrue(sr.passed(r))
+        self.assertEqual(r["events"], 0)
+        red("a scan with no token or key searched passed")
+
+    # W4C1-4 (c): a login file not owned by its reader is refused
+    def login(self):
+        d = tempfile.mkdtemp()
+        p = os.path.join(d, "login.env")
+        with open(p, "w", encoding="utf-8") as fh:
+            fh.write(f"{GOOD}={TOKEN}\n")
+        os.chmod(p, 0o600)
+        self.addCleanup(lambda: (os.unlink(p), os.rmdir(d)))
+        return p
+
+    def test_a_login_file_owned_by_another_is_refused(self):
+        p = self.login()
+        real = os.geteuid()
+        with mock.patch.object(sr.os, "geteuid", lambda: real + 1):
+            with self.assertRaisesRegex(sr.LoginError, "not owned by its reader"):
+                sr.read_login(p, GOOD)
+
+    def test_mutant_owner_unchecked_goes_red(self):
+        p = self.login()
+        real = os.geteuid()
+        with mock.patch.object(sr.os, "geteuid", lambda: real + 1), \
+                mock.patch.object(sr, "_owned", lambda st: True):
+            self.assertEqual(sr.read_login(p, GOOD), TOKEN)
+        red("a login file owned by another accepted")
+
+    # W4C1-10: the email's minimum length, a value surviving its mask, the rules finding's shape
+    def test_the_email_minimum_length(self):
+        c = self.commit()
+        with self.assertRaises(sr.ScanError):
+            sr.scan(c.files(), SECRETS[:2] + [("email", "a@b.c")], rules_scanner=no_findings)
+        sr.scan(c.files(), SECRETS[:2] + [("email", "a@b.cd")], rules_scanner=no_findings)
+
+    def test_mutant_email_minimum_one_goes_red(self):
+        c = self.commit()
+        with mock.patch.dict(sr.MIN_LENGTH, {"email": 1}):
+            sr.scan(c.files(), SECRETS[:2] + [("email", "a@b.c")], rules_scanner=no_findings)
+        red("MIN_LENGTH email 1")
+
+    def test_a_value_surviving_its_mask_raises(self):
+        c = self.commit({"stream": TOKEN})
+        before = c.read("stream")
+        with mock.patch.object(sr, "_mask", lambda line, spans: line + b" "):
+            with self.assertRaisesRegex(sr.ScanError, "survived"):
+                sr.scan(c.files(), SECRETS, rules_scanner=no_findings)
+        self.assertEqual(c.read("stream"), before)
+
+    def test_mutant_survival_unchecked_goes_red(self):
+        c = self.commit({"stream": TOKEN})
+        with mock.patch.object(sr, "_mask", lambda line, spans: line + b" "), \
+                mock.patch.object(sr, "_survived", lambda after, needles: False):
+            sr.scan(c.files(), SECRETS, rules_scanner=no_findings)
+        self.assertIn(TOKEN.encode(), c.read("stream"))   # the value was written back
+        red("a value surviving its mask written")
+
+    def test_a_malformed_rules_finding_is_refused(self):
+        c = self.commit()
+        with self.assertRaises(sr.ScanError):
+            sr.scan(c.files(), SECRETS, rules_scanner=lambda p: [{"path": p[0], "line": 1}])
+
+    def test_mutant_finding_shape_unchecked_goes_red(self):
+        c = self.commit()
+        with mock.patch.object(sr, "_finding_ok", lambda f: True):
+            with self.assertRaises(KeyError):
+                sr.scan(c.files(), SECRETS, rules_scanner=lambda p: [{"path": p[0], "line": 1}])
+        red("a malformed rules finding read")
+
+    # W4C1-11: a non-callable rules scanner is NotReady
+    def test_a_non_callable_rules_scanner(self):
+        c = self.commit()
+        for bad in (sr.RULES_SCANNER, "x", 3):
+            with self.subTest(bad):
+                with self.assertRaises(sr.NotReady):
+                    sr.scan(c.files(), SECRETS, rules_scanner=bad)
+
+    def test_mutant_only_none_refused_goes_red(self):
+        c = self.commit()
+
+        def none_only(rs):
+            if rs is None:
+                raise sr.NotReady("none")
+        with mock.patch.object(sr, "_require_scanner", none_only):
+            with self.assertRaises(TypeError):
+                sr.scan(c.files(), SECRETS, rules_scanner=sr.RULES_SCANNER)
+        red("a non-callable rules scanner reaching the scan")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
