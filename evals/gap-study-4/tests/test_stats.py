@@ -882,7 +882,7 @@ class ReviewRound1(unittest.TestCase):
         two = cell("right", "right")
         two[0]["agent"] = {"harness": HX, "version": "0.0.2-synthetic"}
         self.assertTrue(refuses(stats.derive, two, design()))
-        with mock.patch.object(stats, "check_versions", lambda records: None):
+        with mock.patch.object(stats, "check_versions", lambda records: {}):
             self.assertFalse(refuses(stats.derive, two, design()))
 
     def test_bootstrap_order_statistics(self):

@@ -68,7 +68,12 @@ THE FAMILIES. Per model pair within each harness, one exact test per task, Holm 
 within-harness stronger-against-weaker contrast over the tasks that run, one per harness, Holm over the
 contrasts (this lane's reading: the stricter of "its own family"); between each harness's stronger model, an
 agent-system comparison, tested per task as above; every other cross-harness pair descriptive, with no test.
-check_families refuses any row that would present a cross-harness pair as a model comparison. Any sentence
+check_families refuses any row that would present a cross-harness pair as a model comparison.
+The contrast's Fisher table counts units over the tasks that run as one table and so ignores the clustering by
+task; table 6's nested bootstrap is the clustered reading beside it. design.harness_models lists only the models
+whose comparisons are pre-registered: a record of any other model (optional arm C's, unless the pre-registration
+lists it) is refused, never compared unplanned. The bounds are at intervals.ALPHA, the pre-registered 0.95;
+design.alpha drives the tests. Any sentence
 comparing models stays Javier's: stats prints numbers and family labels only.
 
 THE CHECK. `--check` with no results files prints "stats --check: no takes (0 results files); nothing was
@@ -89,6 +94,7 @@ import itertools
 import json
 import math
 import random
+import re
 import sys
 from fractions import Fraction
 from pathlib import Path
@@ -141,6 +147,15 @@ def _text(v) -> bool:
     return isinstance(v, str) and v != ""
 
 
+# An id, never free text: a task, model, wording, arm or harness name is printed in the published tables, and a
+# wording's own text (a holdout wording above all) must never reach a results record (review round 1, finding 9).
+ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+
+
+def _id(v) -> bool:
+    return isinstance(v, str) and ID.fullmatch(v) is not None
+
+
 def _one_level(r: dict) -> bool:
     """Exactly one of repeat and pressure is None (variants.cells)."""
     return (r["repeat"] is None) != (r["pressure"] is None)
@@ -153,14 +168,17 @@ def validate_record(r) -> dict:
     if set(r) != set(TAKE_FIELDS):
         raise StatsError(f"take record keys: missing {sorted(set(TAKE_FIELDS) - set(r))}, "
                          f"unknown {sorted(set(r) - set(TAKE_FIELDS))}")
-    for f in ("arm", "task", "model", "wording", "label"):
-        if not _text(r[f]):
-            raise StatsError(f"{f} must be a non-empty string: {r[f]!r}")
+    for f in ("arm", "task", "model", "wording"):
+        if not _id(r[f]):
+            raise StatsError(f"{f} must be an id ({ID.pattern}): {r[f]!r}")
+    if not _text(r["label"]):
+        raise StatsError(f"label must be a non-empty string: {r['label']!r}")
     if r["half"] not in HALVES:
         raise StatsError(f"half {r['half']!r} is not one of {HALVES}")
     if "agent" in TAKE_FIELDS:   # the agent check is tied to the field list (a mutant drops both together)
         a = r["agent"]
-        if not isinstance(a, dict) or set(a) != set(AGENT_FIELDS) or not all(_text(a[k]) for k in AGENT_FIELDS):
+        if (not isinstance(a, dict) or set(a) != set(AGENT_FIELDS) or not all(_text(a[k]) for k in AGENT_FIELDS)
+                or not _id(a.get("harness"))):
             raise StatsError(f"agent must be {{'harness': str, 'version': str}}, never defaulted: {a!r}")
     rep, pres = r["repeat"], r["pressure"]
     if rep is not None and (isinstance(rep, bool) or not isinstance(rep, int)):
@@ -184,8 +202,8 @@ def validate_record(r) -> dict:
         return r
     if r["label"] == labels4.HARNESS_ERROR:
         raise StatsError("the label harness-error belongs to the harness-error route only")
-    if route == labels4.ABORTED and r["label"] != labels4.ABORTED:
-        raise StatsError("an aborted record carries the reserved label aborted")
+    if (route == labels4.ABORTED) != (r["label"] == labels4.ABORTED):
+        raise StatsError("the label aborted and the route aborted come together")
     v = r["views"]
     if not isinstance(v, dict) or set(v) != set(VIEWS):
         raise StatsError(f"views must hold exactly {VIEWS}: {v!r}")
@@ -397,10 +415,11 @@ def _closed(d, fields, what):
 def validate_design(d) -> dict:
     """The design, or StatsError naming what is wrong with it. Closed, like the record."""
     _closed(d, DESIGN_FIELDS, "the design")
-    if not _texts(d["tasks_that_run"]):
+    if not _texts(d["tasks_that_run"]) or not all(_id(t) for t in d["tasks_that_run"]):
         raise StatsError("tasks_that_run is a non-empty list of distinct task ids")
     hm = d["harness_models"]
-    if not isinstance(hm, dict) or not hm or not all(_text(h) and _texts(m) for h, m in hm.items()):
+    if not isinstance(hm, dict) or not hm or not all(_id(h) and _texts(m) and all(_id(x) for x in m)
+                                                      for h, m in hm.items()):
         raise StatsError("harness_models maps each harness to a non-empty list of distinct model ids")
     sw = d["stronger_weaker"]
     if not isinstance(sw, dict):
@@ -446,6 +465,36 @@ def check_against_design(records: list, design: dict) -> None:
         if r["model"] not in design["harness_models"].get(h, ()):
             raise StatsError(f"model {r['model']!r} is not a design model of harness {h!r}")
     _arm_of(records)
+    check_versions(records)
+
+
+def check_versions(records: list) -> dict:
+    """(harness, model) -> the one agent version its records carry; two versions for one model are refused."""
+    out = {}
+    for r in records:
+        out.setdefault((r["agent"]["harness"], r["model"]), set()).add(r["agent"]["version"])
+    for (harness, model), versions in out.items():
+        if len(versions) != 1:
+            raise StatsError(f"{model} in {harness} carries agent versions {sorted(versions)}; one pin per model")
+    return {k: next(iter(v)) for k, v in out.items()}
+
+
+def agents_table(records: list):
+    """The agent field of every table: each (harness, model) with its pinned version."""
+    if not records:
+        return NO_TAKES
+    return [{"harness": h, "model": m, "version": v} for (h, m), v in sorted(check_versions(records).items())]
+
+
+def render_agents(rows) -> str:
+    out = ["### Agents", ""]
+    if rows == NO_TAKES:
+        return "\n".join(out + [NO_TAKES, ""])
+    out += ["Every cell below is keyed by its harness; each model ran at one pinned agent version.", "",
+            "| Harness | Model | Agent version |", "|---|---|---|"]
+    for r in rows:
+        out.append(f"| `{r['harness']}` | `{r['model']}` | `{r['version']}` |")
+    return "\n".join(out + [""])
 
 
 def family_size(design: dict) -> int:
@@ -740,8 +789,9 @@ def bootstrap_interval(rng: random.Random, tree: dict, reps: int, alpha: Fractio
         v = _resample(rng, tree)
         draws.append(Fraction(sum(v), len(v)))
     draws.sort()
-    lo = draws[min(reps - 1, math.floor(alpha / 2 * reps))]
-    hi = draws[max(0, math.ceil((1 - alpha / 2) * reps) - 1)]
+    k = math.ceil(alpha / 2 * reps)            # the k-th order statistic from each end, outward
+    lo = draws[max(0, k - 1)]
+    hi = draws[min(reps - 1, reps - k)]
     return lo, hi
 
 
@@ -845,7 +895,7 @@ def power_table(design: dict) -> list:
                 ps[t] = exact(xa, per_task, xb, per_task)
                 tot_a, tot_b = tot_a + xa, tot_b + xb
             any_task += any(v <= alpha for v in holm(ps, tasks).values())
-            contrast += min(Fraction(1), contrasts * exact(tot_a, tasks * per_task, tot_b, tasks * per_task)) <= alpha
+            contrast += holm({"c": exact(tot_a, tasks * per_task, tot_b, tasks * per_task)}, contrasts)["c"] <= alpha
             lo, hi = bootstrap_interval(rng, tree, pw["bootstrap_reps"], alpha)
             boot += lo > 0 or hi < 0
         rows.append({"point": dict(point), "sims": pw["sims"], "per_task_any": any_task, "contrast": contrast,
@@ -874,7 +924,7 @@ def derive(records: list, design: dict) -> dict:
     check_records(records)
     check_against_design(records, design)
     if not records:
-        return {"takes": 0, "design": design, "tables": {t: NO_TAKES for t in TABLES}}
+        return {"takes": 0, "design": design, "agents": NO_TAKES, "tables": {t: NO_TAKES for t in TABLES}}
     holds = holds_table(records, design)
     comps = comparisons(records, design)
     check_families(comps, design)
@@ -882,7 +932,7 @@ def derive(records: list, design: dict) -> dict:
               "chance_of_holding": chance_of_holding(printed_ns(holds)),
               "paired": paired_table(records, design), "per_wording": sensitivity_table(records, design),
               "comparisons": comps, "across_tasks": across_tasks(records, design), "power": power_table(design)}
-    return {"takes": len(records), "design": design, "tables": tables}
+    return {"takes": len(records), "design": design, "agents": agents_table(records), "tables": tables}
 
 
 def _say(k) -> str:
@@ -936,7 +986,9 @@ def render_paired(rows, design: dict) -> str:
             "|---|---|---|---|---|---|---|"]
     for r in rows:
         xn = NO_TAKES if r["units"] == NO_TAKES else f"{r['units_right']} of {r['units']}"
-        out.append(f"{_cellname(r)} | {r['wording'] or ''} | {xn} | {_say(r['incomplete'])} |")
+        inc = NO_TAKES if r["wording"] is None else _none(r["incomplete"])
+        wording = f"`{r['wording']}`" if r["wording"] else ""
+        out.append(f"{_cellname(r)} | {wording} | {xn} | {inc} |")
     return "\n".join(out + [""])
 
 
@@ -948,8 +1000,17 @@ def render_sensitivity(rows) -> str:
             "| Arm | Task | Model | Harness | Wording | Half | Right |", "|---|---|---|---|---|---|---|"]
     for r in rows:
         xn = NO_TAKES if r["n"] == NO_TAKES else f"{r['right']} of {r['n']}"
-        out.append(f"{_cellname(r)} | {r['wording'] or ''} | {r['half'] or ''} | {xn} |")
+        wording = f"`{r['wording']}`" if r["wording"] else ""
+        out.append(f"{_cellname(r)} | {wording} | {r['half'] or ''} | {xn} |")
     return "\n".join(out + [""])
+
+
+def _none(k: int) -> str:
+    return "none" if k == 0 else _say(k)
+
+
+def _side_incomplete(c) -> str:
+    return NO_TAKES if not c["n"] and not c["incomplete"] else _none(c["incomplete"])
 
 
 def _units_txt(c) -> str:
@@ -969,7 +1030,7 @@ def render_comparisons(rows, design: dict) -> str:
             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         task = "the tasks that run" if r["task"] is None else f"`{r['task']}`"
-        inc = f"{_say(r['a']['incomplete'])} and {_say(r['b']['incomplete'])}"
+        inc = f"{_side_incomplete(r['a'])} and {_side_incomplete(r['b'])}"
         if "p" in r:
             at = "" if r["at_alpha"] is None else ("yes" if r["at_alpha"] else "no")
             tail = f"{r['p']} | {r['adjusted']} | {at}"
@@ -1021,6 +1082,7 @@ def render_md(derived: dict) -> str:
     t = derived["tables"]
     d = derived["design"]
     out = ["## Statistics", ""]
+    out.append(render_agents(derived["agents"]))
     out.append(render_bounds(t["bounds"]))
     out.append(render_holds(t["holds"]))
     out.append(render_chance(t["chance_of_holding"]))
