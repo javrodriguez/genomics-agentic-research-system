@@ -80,8 +80,10 @@ MUTANT_CONFS = {
     "a host with a trailing dot": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n api.anthropic.com."),
     "a second dstdomain acl": (CC, "http_access deny !tunnel", "acl other dstdomain -n example.org\n"
                                "http_access deny !tunnel"),
-    "the same acl defined twice": (CC, "http_access deny !tunnel", "acl api_host dstdomain -n example.org\n"
-                                   "http_access deny !tunnel"),
+    # Fold 3 (W4A1-4 a): the extra definition comes FIRST, so only the duplicate refusal can catch it (squid would
+    # merge the two and allow example.org).
+    "the same acl defined twice": (CC, "acl api_host dstdomain -n api.anthropic.com",
+                                   "acl api_host dstdomain -n example.org\nacl api_host dstdomain -n api.anthropic.com"),
     "an http_access allow all": (CC, "http_access deny all", "http_access allow all\nhttp_access deny all"),
     "an allow that is not CONNECT": (CC, "http_access allow tunnel api_host", "http_access allow api_host"),
     "a second allow line": (CC, "http_access deny all", "http_access allow tunnel api_host\nhttp_access deny all"),
@@ -110,6 +112,14 @@ MUTANT_CONFS = {
     "the access log off": (CC, "access_log stdio:/dev/stdout", "access_log none"),
     "a pid file": (CC, "pid_filename none", "pid_filename /run/squid.pid"),
     "a continuation": (CC, "http_access deny all", "http_access deny \\\nall"),
+    # Fold 3 (W4A1-2): squid reads a physical line with fgets(BUFSIZ); a comment longer than BUFSIZ-1 (8191) ends
+    # early and its tail is read as a directive, here the first http_access rule.
+    "P2 a long comment hiding a directive": (CC, "http_access deny !tunnel", "#" + "x" * 8190
+                                             + "http_access allow all\nhttp_access deny !tunnel"),
+    "a line over 512 characters": (CC, "cache deny all", "cache deny all" + " " * 499),
+    "a carriage return": (CC, "cache deny all", "cache deny all\r"),
+    "a non-breaking space": (CC, "http_access deny all", "http_access deny\u00a0all"),
+    "a control character in a comment": (CC, "pid_filename none", "pid_filename none\n# \x0b"),
 }
 
 
@@ -238,6 +248,20 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(pc.allowed_hosts(conf_mutated("an allow that is not CONNECT")[1]), ["api.anthropic.com"])
         with self.assertRaises(pc.ProxyConfError):
             pc.allowed_hosts(conf_mutated("an unknown directive")[1])
+
+
+class ParseTest(unittest.TestCase):
+    def test_tokens_split_on_space_and_tab_only(self):
+        text = rendered(CC).replace("http_access deny all", "http_access\tdeny \t all")
+        self.assertEqual(pc.check(text, CC), [])   # squid splits on space and tab alike
+        self.assertIn(("http_access", ["deny", "all"]), [(d, a) for _, d, a in pc.parse(text)])
+
+    def test_the_line_length_limit(self):
+        self.assertEqual(pc.MAX_LINE, 512)
+        ok = rendered(CC).replace("cache deny all", "cache deny all" + " " * (512 - len("cache deny all")))
+        self.assertEqual(pc.check(ok, CC), [])     # exactly 512 is read
+        with self.assertRaises(pc.ProxyConfError):
+            pc.parse(ok.replace("cache deny all", "cache deny all "))
 
 
 class EgressImageTest(unittest.TestCase):

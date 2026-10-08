@@ -16,8 +16,11 @@ import inspect as pyinspect
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
+import types
 import unittest
 from unittest import mock
 
@@ -266,6 +269,34 @@ class LockSchemaTest(unittest.TestCase):
     def test_a_duplicate_key_in_a_lock_file_is_refused(self):
         with self.assertRaises(il.LockError):
             il._no_duplicates([("base", 1), ("base", 2)])
+        # Through load (fold 3, W4A1-4 b): the committed take-a lock with its `base` line written twice, at a path
+        # where it sits beside its Dockerfile (BOX_DIR patched), so only the duplicate can refuse it.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "image.lock")
+            with open(LOCK_PATHS["take-a"], encoding="utf-8") as fh:
+                text = fh.read()
+            text = text.replace('"base": "PENDING",', '"base": "PENDING",\n  "base": "PENDING",', 1)
+            self.assertEqual(text.count('"base": "PENDING"'), 2)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            with mock.patch.object(il, "BOX_DIR", tmp):
+                with self.assertRaises(il.LockError) as cm:
+                    il.load(path)
+                self.assertIn("duplicate key 'base'", str(cm.exception))
+                # The mutant without the hook loads the file silently.
+                with mock.patch.object(il, "_no_duplicates", dict):
+                    self.assertEqual(il.load(path)["image"], "take-a")
+
+    def test_a_lock_not_beside_its_dockerfile_is_refused(self):
+        # Fold 3, W4A1-4 c: the committed take-a lock, copied byte for byte to a folder with no Dockerfile of its own.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "image.lock")
+            shutil.copyfile(LOCK_PATHS["take-a"], path)
+            with self.assertRaises(il.LockError) as cm:
+                il.load(path)
+            self.assertIn("is not the Dockerfile beside", str(cm.exception))
+            # The same bytes at their own path load.
+            self.assertEqual(il.load(LOCK_PATHS["take-a"]), json.loads(open(path, encoding="utf-8").read()))
 
     def test_require_ready_names_every_pending_field(self):
         with self.assertRaises(il.NotReady) as cm:
@@ -457,6 +488,14 @@ MUTANT_DOCKERFILES = {
     # the parser refuses what it does not read
     "an unknown instruction": ("take-a", "ENTRYPOINT []", "FROB x\nENTRYPOINT []"),
     "a heredoc": ("take-a", "ENTRYPOINT []", "RUN <<EOT\ntrue\nEOT\nENTRYPOINT []"),
+    # Fold 3 (W4A1-1): BuildKit joins a continuation with no separator, so a check split as `"$(..)"\` / `=\` /
+    # `"${V}"` runs as `test "$(..)"="${V}"`, one non-empty word, always true. Both must be refused.
+    "P1a the Python check split around its =": ("take-a", "RUN " + il.PYTHON_CHECK, "RUN " + il.PYTHON_CHECK.replace(
+        " = ", "\\\n=\\\n")),
+    "P1b the installed-version check split around its =": ("take-a", "RUN " + CHECK_A, "RUN " + CHECK_A.replace(
+        " = ", "\\\n=\\\n")),
+    "a continuation joined inside a word": ("take-a", "RUN " + il.GIT_SAFE, "RUN " + il.GIT_SAFE.replace(
+        "--system", "--sys\\\n  tem")),
     "a parser directive": ("take-a", "# The arm A", "# escape=`\n# The arm A"),
     "a continuation off the end": ("take-a", "USER 10001:10001\n", "USER 10001:10001 \\\n"),
     # the sidecar image
@@ -632,7 +671,9 @@ class DockerfileTest(unittest.TestCase):
         self.assertEqual(snippet, "import platform; print(platform.python_version())")
 
     def test_the_sidecar_program_path(self):
-        self.assertEqual(il.SIDECAR_COPY, "sidecar.py /opt/w/sidecar.py")
+        # Fold 3 (W4A1-10): the copy target is a named constant (merge binding 6 reads it).
+        self.assertEqual(il.SIDECAR_PROGRAM, "/opt/w/sidecar.py")
+        self.assertEqual(il.SIDECAR_COPY, "sidecar.py " + il.SIDECAR_PROGRAM)
 
 
 class LockSetTest(unittest.TestCase):
@@ -670,6 +711,11 @@ class LockSetTest(unittest.TestCase):
         for image in il.IMAGES:
             self.assertEqual(committed(image)["dockerfile"], il.DOCKERFILES[image])
             self.assertTrue(os.path.isfile(os.path.join(il.BOX_DIR, il.DOCKERFILES[image])))
+
+
+def pull_ok(argv) -> bool:
+    """The build never pulls: --pull=false exactly once, right after `build`."""
+    return argv.count("--pull=false") == 1 and argv[1:3] == ["build", "--pull=false"]
 
 
 class BuildArgvTest(unittest.TestCase):
@@ -719,17 +765,26 @@ class BuildArgvTest(unittest.TestCase):
                 self.assertEqual(args["BASE"], BASE)
                 dockerfile_args = [i.args for i in il.parse_dockerfile(dockerfile(image)) if i.keyword == "ARG"]
                 self.assertEqual(sorted(args), sorted(dockerfile_args))
-                self.assertEqual(argv.count("--pull=false"), 1)
+                self.assertTrue(pull_ok(argv))
         with self.assertRaises(ValueError):
             il.build_argv(filled("take-a"), context="relative/ctx")
         with self.assertRaises(ValueError):
             il.build_argv(filled("sidecar"), context="/srv/ctx")   # the sidecar's context is box/
         self.assertEqual(il.build_argv(filled("sidecar"), context=il.BOX_DIR)[-1], il.BOX_DIR)
 
-    def test_a_dropped_pull_refusal_goes_red(self):
-        argv = il.build_argv(filled("take-a"), context="/srv/ctx")
-        with mock.patch.object(il, "CLIENT", "podman"):
-            self.assertNotEqual(il.build_argv(filled("take-a"), context="/srv/ctx")[0], argv[0])
+    def test_a_dropped_pull_flag_goes_red(self):
+        # Fold 3 (W4A1-6): the flag itself mutated, in a copy of the module's source loaded under its own file name.
+        with open(il.__file__, encoding="utf-8") as fh:
+            src = fh.read()
+        self.assertEqual(src.count('"--pull=false", '), 1)
+        mutant = types.ModuleType("image_lock_mutant")
+        mutant.__file__ = il.__file__
+        with mock.patch.dict(sys.modules, {"image_lock_mutant": mutant}):
+            exec(compile(src.replace('"--pull=false", ', ""), il.__file__, "exec"), mutant.__dict__)
+            argv = mutant.build_argv(filled("take-a"), context="/srv/ctx")
+        self.assertNotIn("--pull=false", argv)                    # the mutant builds without it
+        self.assertFalse(pull_ok(argv))                           # and the argv check test_the_argv uses goes red
+        self.assertTrue(pull_ok(il.build_argv(filled("take-a"), context="/srv/ctx")))
 
 
 class NeutralityTest(unittest.TestCase):
@@ -773,12 +828,14 @@ def print_mutants() -> None:
     for name in MUTANT_LOCKS:
         lock = mutated(name)
         found = il.problems(lock)
-        print(f"mutant lock {name!r}: red ({found[0]})")
+        print(f"mutant lock {name!r}: {'red' if found else 'GREEN'} ({found[0] if found else '-'})")
     lock = filled("take-a")
     for name in MUTANT_INSPECTS:
-        print(f"mutant inspect {name!r}: red ({il.check_labels(lock, inspect_mutated(name))[0]})")
+        found = il.check_labels(lock, inspect_mutated(name))
+        print(f"mutant inspect {name!r}: {'red' if found else 'GREEN'} ({found[0] if found else '-'})")
     for name in MUTANT_NULLABLE:
-        print(f"mutant nullable {name!r}: red ({il.problems(nullable_mutated(name))[0]})")
+        found = il.problems(nullable_mutated(name))
+        print(f"mutant nullable {name!r}: {'red' if found else 'GREEN'} ({found[0] if found else '-'})")
     for name in MUTANT_DOCKERFILES:
         image, text = dockerfile_mutated(name)
         found = il.check_dockerfile(text, committed(image))
