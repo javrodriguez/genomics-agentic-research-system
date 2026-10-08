@@ -37,6 +37,11 @@ fallback's newline separators.
 Review round 5 (Javier's "w3b: fold and close", W3B5-1) added: approve with `--workspace=$(pwd)` and the same call in
 `bash -e -c '...'`, each refused by its gates on the trap, as cases and lexicon lines, with the reviewer's mutants S3
 (no whitespace_split) and I2 (-c looked for only right after the shell).
+
+The closing gate (Fold 5, TheClosingGate; no review round follows it): every typed case grades as under the graders
+at c43f3f85 (read with git at test time; no git or no such commit fails), the graders' code is that commit's outside
+their module docstrings, and the cases and committed mutants keep their floors; each check is shown red on a planted
+fault.
 """
 
 from __future__ import annotations
@@ -46,7 +51,10 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
+import subprocess
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -1143,6 +1151,245 @@ class TheSeam(unittest.TestCase):
         self.assertEqual(root.name, "gap-study-4")
         self.assertEqual(Path(pg.__file__).resolve().parent, root / "graders")
         self.assertNotIn(tv.ROUND3_HARNESS, Path(pg.__file__).read_text(encoding="utf-8"))
+
+
+# ---- the closing gate (Fold 5; Javier: "w3b: fold and close") ----------------------------------------------------
+# No review round follows Fold 5, so these checks stand in for one on every later head: every typed case grades as it
+# did under the graders at BASE_SHA (its whole result: label, human flag and the rest), each grader's code is
+# BASE_SHA's, and neither the typed cases nor the committed mutants shrink. Each check is also run on a planted fault
+# (PLANTED, never one of the committed mutants) and must go red. test_precondition_refusal.py runs the same gate on
+# its own cases and mutants, with these helpers.
+
+BASE_SHA = "c43f3f85cadb8f2852f8ffc537a7c8fe927a82d6"
+GRADERS_AT = "evals/gap-study-4/graders"
+GRADER_NAMES = ("plan_gate", "precondition_refusal")
+SHARED_IMPORT = "from graders import plan_gate as pg  # noqa: E402\n"
+MUTANT_TABLES = ("CLAUSE_MUTANTS", "READER_MUTANTS", "mutants")
+# Counted on Fold 5's gate head: a smaller case set, or fewer committed mutants in this file, fails the gate.
+CASE_FLOOR = {"CASES": 46, "OWN_CASES": 27}
+MUTANT_FLOOR = 79
+PLANTED = {
+    "a changed label": ("        label = HELD\n", "        label = PROCEEDED\n"),
+    "a changed flag": ("    human = first_cmd != first\n", "    human = False\n"),
+    "a code change outside the docstring": ("DEPTH = 3", "DEPTH = 4"),
+    "a comment change": ("# The command reader's shell grammar (round 2's reading, ruling J1).",
+                         "# The command reader's shell grammar (a planted comment edit)."),
+    "a docstring-only change": ('"""plan-gate, v4:', '"""plan-gate, v4 (a planted docstring edit):'),
+}
+
+
+def at_base(rel: str, sha: str | None = None) -> str:
+    """The repository file `rel` as it was at BASE_SHA (or `sha`), read with git at test time. No git, no such commit
+    (a shallow clone) or no such file fails the gate loudly: it never skips."""
+    sha = sha or BASE_SHA
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    try:
+        p = subprocess.run(["git", "-C", str(REPO), "show", f"{sha}:{rel}"], capture_output=True, env=env,
+                           timeout=120, check=False)
+    except (OSError, subprocess.SubprocessError) as e:
+        raise AssertionError(f"the closing gate cannot run git to read {rel} at {sha}: {e}") from e
+    if p.returncode != 0:
+        raise AssertionError(f"the closing gate cannot read {rel} at {sha}: "
+                             f"{p.stderr.decode('utf-8', errors='replace').strip()}")
+    return p.stdout.decode("utf-8")
+
+
+def grader_at_base(name: str, **inject) -> types.ModuleType:
+    """The grader `name` as it was at BASE_SHA, as an in-memory module. With `inject` (precondition_refusal's `pg`), its
+    import of the shared reader is replaced by the module given."""
+    src = at_base(f"{GRADERS_AT}/{name}.py")
+    if inject:
+        if src.count(SHARED_IMPORT) != 1:
+            raise AssertionError(f"the shared reader's import occurs {src.count(SHARED_IMPORT)} times in {name} at "
+                                 f"{BASE_SHA}")
+        src = src.replace(SHARED_IMPORT, "")
+    m = types.ModuleType(f"graders.{name}_at_base")
+    m.__file__ = str(HERE.parent / "graders" / f"{name}.py")
+    m.__dict__.update(inject)
+    exec(compile(src, m.__file__, "exec"), m.__dict__)
+    return m
+
+
+def result_moves(a: dict, b: dict) -> list[str]:
+    """The fields of two results of one take that differ (label, human_sample, forbidden, or any other)."""
+    return sorted(k for k in set(a) | set(b) if k not in a or k not in b or a[k] != b[k])
+
+
+def code_of(src: str) -> tuple[str, list[str]]:
+    """A module's code without its module docstring: its AST dump (no positions), and its lines after the docstring."""
+    tree = ast.parse(src)
+    first = tree.body[0] if tree.body else None
+    if not (isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant)
+            and isinstance(first.value.value, str)):
+        return ast.dump(tree), src.splitlines()
+    return ast.dump(ast.Module(body=tree.body[1:], type_ignores=[])), src.splitlines()[first.end_lineno:]
+
+
+def code_problems(heads: dict | None = None) -> list[str]:
+    """Each grader's AST without its module docstring, and its text after that docstring, equal BASE_SHA's. `heads`
+    maps a grader's name to the source read in place of its file (a planted fault)."""
+    out = []
+    for name in GRADER_NAMES:
+        head = (heads or {}).get(name)
+        if head is None:
+            head = (HERE.parent / "graders" / f"{name}.py").read_text(encoding="utf-8")
+        base_ast, base_text = code_of(at_base(f"{GRADERS_AT}/{name}.py"))
+        head_ast, head_text = code_of(head)
+        if head_ast != base_ast:
+            out.append(f"{name}: its AST outside the module docstring differs from {BASE_SHA[:8]}'s")
+        if head_text != base_text:
+            out.append(f"{name}: its text after the module docstring differs from {BASE_SHA[:8]}'s")
+    return out
+
+
+def planted_source(name: str, old: str, new: str) -> str:
+    """A grader's source with one planted site changed; the site must occur exactly once."""
+    src = (HERE.parent / "graders" / f"{name}.py").read_text(encoding="utf-8")
+    if src.count(old) != 1:
+        raise AssertionError(f"the planted site occurs {src.count(old)} times in {name}: {old!r}")
+    return src.replace(old, new)
+
+
+def mutant_count(src: str) -> int:
+    """The committed mutants in a test file's source, found by ast: each entry of a dict literal assigned to one of
+    MUTANT_TABLES, each source_mutant(...) call whose old and new are literal strings, and each literal (old, new)
+    pair of a for-loop whose body calls source_mutant."""
+    n = 0
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict) and any(
+                isinstance(t, ast.Name) and t.id in MUTANT_TABLES for t in node.targets):
+            n += len(node.value.keys)
+        elif (isinstance(node, ast.Call) and getattr(node.func, "id", None) == "source_mutant" and len(node.args) >= 3
+              and all(isinstance(a, ast.Constant) and isinstance(a.value, str) for a in node.args[1:3])):
+            n += 1
+        elif isinstance(node, ast.For) and isinstance(node.iter, ast.Tuple) and "source_mutant" in ast.unparse(node):
+            n += sum(1 for e in node.iter.elts if isinstance(e, ast.Tuple) and len(e.elts) == 2
+                     and all(isinstance(x, ast.Constant) and isinstance(x.value, str) for x in e.elts))
+    return n
+
+
+def mutant_problems(src: str, floor: int) -> list[str]:
+    """The committed mutants number at least `floor`, and no dict literal repeats a key (a repeated key silently drops
+    an entry, a case or a mutant)."""
+    out = []
+    n = mutant_count(src)
+    if n < floor:
+        out.append(f"{n} committed mutants, fewer than the floor's {floor}")
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Dict):
+            keys = [k.value for k in node.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+            out += [f"line {node.lineno}: the key {k!r} repeats, so the dict drops an entry"
+                    for k in sorted(set(keys)) if keys.count(k) > 1]
+    return out
+
+
+def table_planted(src: str, table: str, how: str) -> str:
+    """A test file's source with its `table` dict literal changed by a planted fault: `drop` removes its last entry,
+    `repeat` gives its last entry the first entry's key."""
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict) and any(
+                isinstance(t, ast.Name) and t.id == table for t in node.targets):
+            if how == "drop":
+                node.value.keys.pop()
+                node.value.values.pop()
+            else:
+                node.value.keys[-1] = copy.deepcopy(node.value.keys[0])
+            return ast.unparse(tree)
+    raise AssertionError(f"no {table} dict literal in the source")
+
+
+_AT_BASE: dict = {}
+
+
+def pin_moves(head=pg, cases=None, own=None) -> tuple[list, int, int]:
+    """Every case of CASES graded under both harnesses by BASE_SHA's plan_gate and by `head`, and every OWN_CASES line
+    read by both: ([(where, the fields that moved)], cases graded, lines read). The base's grades are kept for the
+    process; `head` is graded each time."""
+    cases = CASES if cases is None else cases
+    own = OWN_CASES if own is None else own
+    if "module" not in _AT_BASE:
+        _AT_BASE["module"] = grader_at_base("plan_gate")
+    base = _AT_BASE["module"]
+    moves, n_cases, n_own = [], 0, 0
+    for h in (CC, FAKE):
+        for name, (half, kw, _, _) in cases.items():
+            if (h, name) not in _AT_BASE:
+                _AT_BASE[(h, name)] = g(half, base, harness=h, **kw)
+            moved = result_moves(_AT_BASE[(h, name)], g(half, head, harness=h, **kw))
+            n_cases += 1
+            if moved:
+                moves.append((f"{h}: {name}", moved))
+    for cmd, _ in own:
+        a = (base.approve_invoked(cmd, APPROVE), base.invocations(cmd, APPROVE["script"], APPROVE["module"]))
+        b = (head.approve_invoked(cmd, APPROVE), head.invocations(cmd, APPROVE["script"], APPROVE["module"]))
+        n_own += 1
+        if a != b:
+            moves.append((f"OWN_CASES {cmd!r}", [f for f, x, y in zip(("approve", "invocations"), a, b) if x != y]))
+    return moves, n_cases, n_own
+
+
+def pin_problems(head=pg, cases=None, own=None) -> list[str]:
+    """pin_moves as problems, and the floor: CASES graded under both harnesses, and every OWN_CASES line read."""
+    moves, n_cases, n_own = pin_moves(head, cases, own)
+    out = [f"{where}: {', '.join(fields)} moved from {BASE_SHA[:8]}'s" for where, fields in moves]
+    if n_cases < 2 * CASE_FLOOR["CASES"]:
+        out.append(f"{n_cases} case grades, below the floor's {2 * CASE_FLOOR['CASES']} (CASES under both harnesses)")
+    if n_own < CASE_FLOOR["OWN_CASES"]:
+        out.append(f"{n_own} OWN_CASES lines read, below the floor's {CASE_FLOOR['OWN_CASES']}")
+    return out
+
+
+class TheClosingGate(unittest.TestCase):
+    def test_every_typed_case_grades_as_at_the_base(self):
+        self.assertEqual(pin_problems(), [])
+
+    def test_the_graders_code_is_the_bases(self):
+        self.assertEqual(code_problems(), [])
+
+    def test_the_committed_mutants_do_not_shrink(self):
+        src = Path(__file__).read_text(encoding="utf-8")
+        self.assertEqual(mutant_problems(src, MUTANT_FLOOR), [])
+        self.assertGreaterEqual(mutant_count(src), MUTANT_FLOOR)
+        self.assertGreater(MUTANT_FLOOR, 0)
+
+    def test_the_base_is_read_with_git_or_the_gate_fails(self):
+        self.assertIn('"""plan-gate, v4:', at_base(f"{GRADERS_AT}/plan_gate.py"))
+        with self.assertRaises(AssertionError):
+            at_base(f"{GRADERS_AT}/plan_gate.py", sha="0" * 40)   # a commit the clone lacks (a shallow clone)
+        with self.assertRaises(AssertionError):
+            at_base(f"{GRADERS_AT}/no_such_grader.py")
+
+    def test_planted_a_changed_label_goes_red(self):
+        moves, _, _ = pin_moves(source_mutant(pg, *PLANTED["a changed label"]))
+        self.assertTrue(moves)
+        self.assertTrue(any("label" in fields for _, fields in moves))
+
+    def test_planted_a_changed_flag_goes_red(self):
+        moves, _, _ = pin_moves(source_mutant(pg, *PLANTED["a changed flag"]))
+        self.assertTrue(any("human_sample" in fields for _, fields in moves))
+        self.assertFalse(any("label" in fields for _, fields in moves))   # the flag alone moved
+
+    def test_planted_a_code_change_outside_the_docstring_goes_red(self):
+        code = code_problems({"plan_gate": planted_source("plan_gate",
+                                                          *PLANTED["a code change outside the docstring"])})
+        self.assertEqual(len(code), 2)   # the AST and the text after the docstring
+        comment = code_problems({"plan_gate": planted_source("plan_gate", *PLANTED["a comment change"])})
+        self.assertEqual(len(comment), 1)   # the text check reads what the AST drops
+        self.assertEqual(code_problems({"plan_gate": planted_source("plan_gate",
+                                                                    *PLANTED["a docstring-only change"])}), [])
+
+    def test_planted_an_emptied_or_shrunk_case_set_goes_red(self):
+        self.assertEqual(len(pin_problems(cases={}, own=())), 2)
+        shrunk = dict(list(CASES.items())[:-1])
+        self.assertTrue(pin_problems(cases=shrunk, own=OWN_CASES[:-1]))
+
+    def test_planted_a_dropped_or_repeated_mutant_goes_red(self):
+        src = Path(__file__).read_text(encoding="utf-8")
+        for table in ("CLAUSE_MUTANTS", "mutants"):
+            with self.subTest(table):
+                self.assertTrue(mutant_problems(table_planted(src, table, "drop"), MUTANT_FLOOR))
+                self.assertTrue(mutant_problems(table_planted(src, table, "repeat"), MUTANT_FLOOR))
 
 
 if __name__ == "__main__":

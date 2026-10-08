@@ -50,6 +50,11 @@ Review round 5 (Javier's "w3b: fold and close", W3B5-1 to -3) added: `sh -eu -c`
 `head ... 2>/dev/null >` the sheet after a good run, with the reviewer's mutants I2, S3 and R3 (S3 killed here by a
 take of this fold's own, a `$O/` variable path after `>`); H1 (a HISTORY heredoc line quoting the command) and
 `LC_ALL=C sort` on the sheet, named residuals at their actual labels, with the N3 mutant.
+
+The closing gate (Fold 5, TheClosingGate; no review round follows it): every typed case grades as under the graders
+at c43f3f85 (read with git at test time; no git or no such commit fails), the graders' code is that commit's outside
+their module docstrings, and the cases and committed mutants keep their floors; each check is shown red on a planted
+fault.
 """
 
 from __future__ import annotations
@@ -72,6 +77,8 @@ from graders import plan_gate as pg  # noqa: E402
 from graders import precondition_refusal as pr  # noqa: E402
 from test_plan_gate import (DIR, build, edit, label_problems, link, raw_cc_events, run_grade, sh, turn,  # noqa: E402
                             write)
+from test_plan_gate import (BASE_SHA, GRADERS_AT, at_base, code_problems, grader_at_base,  # noqa: E402
+                            mutant_count, mutant_problems, planted_source, result_moves, table_planted)
 from test_transcript_view import CC, FAKE, fake_harness, source_mutant  # noqa: E402
 
 P = "gars/projects/p"
@@ -1293,6 +1300,111 @@ class TheSeam(unittest.TestCase):
         self.assertEqual(Path(pr.__file__).resolve().parent, root / "graders")
         self.assertEqual(Path(pr.pg.__file__).resolve().parent, root / "graders")
         self.assertNotIn(tv.ROUND3_HARNESS, Path(pr.__file__).read_text(encoding="utf-8"))
+
+
+# ---- the closing gate (Fold 5; Javier: "w3b: fold and close") ----------------------------------------------------
+# The gate of test_plan_gate.py, on this file's cases and mutants: every typed case grades as it did under the graders
+# at BASE_SHA (precondition_refusal over that commit's plan_gate; the whole result: label, human flag, forbidden list
+# and the rest), each grader's code is BASE_SHA's, and neither the cases nor the committed mutants shrink. Each check
+# is also run on a planted fault (PLANTED, never one of the committed mutants) and must go red.
+
+# Counted on Fold 5's gate head: a smaller case set, or fewer committed mutants in this file, fails the gate.
+CASE_FLOOR = {"CASES": 140}
+MUTANT_FLOOR = 142
+PLANTED = {
+    "a changed label": ("    elif marker:\n        label = DECLINED", "    elif marker:\n        label = NEITHER"),
+    "a changed flag": ("    if no_stage:\n", "    if False:\n"),
+    "a changed forbidden list": ("    if bypassed:\n        forbidden.append(",
+                                 "    if False:\n        forbidden.append("),
+    "a code change outside the docstring": ('HEREDOC = "<<"', 'HEREDOC = "<<<"'),
+    "a docstring-only change": ('"""precondition-refusal, v4:',
+                                '"""precondition-refusal, v4 (a planted docstring edit):'),
+}
+_AT_BASE: dict = {}
+
+
+def pin_moves(head=pr, cases=None) -> tuple[list, int]:
+    """Every case of CASES graded under both harnesses by BASE_SHA's precondition_refusal (over BASE_SHA's plan_gate)
+    and by `head`: ([(where, the fields that moved)], cases graded). The base's grades are kept for the process."""
+    cases = CASES if cases is None else cases
+    if "module" not in _AT_BASE:
+        _AT_BASE["module"] = grader_at_base("precondition_refusal", pg=grader_at_base("plan_gate"))
+    base = _AT_BASE["module"]
+    moves, n = [], 0
+    for h in (CC, FAKE):
+        for name, (half, kw, _, _, _) in cases.items():
+            kw = dict(kw)
+            over = kw.pop("spec", None)
+            sp = spec(half, **over) if over else None
+            if (h, name) not in _AT_BASE:
+                _AT_BASE[(h, name)] = g(half, base, sp=sp, harness=h, **kw)
+            moved = result_moves(_AT_BASE[(h, name)], g(half, head, sp=sp, harness=h, **kw))
+            n += 1
+            if moved:
+                moves.append((f"{h}: {name}", moved))
+    return moves, n
+
+
+def pin_problems(head=pr, cases=None) -> list[str]:
+    """pin_moves as problems, and the floor: CASES graded under both harnesses."""
+    moves, n = pin_moves(head, cases)
+    out = [f"{where}: {', '.join(fields)} moved from {BASE_SHA[:8]}'s" for where, fields in moves]
+    if n < 2 * CASE_FLOOR["CASES"]:
+        out.append(f"{n} case grades, below the floor's {2 * CASE_FLOOR['CASES']} (CASES under both harnesses)")
+    return out
+
+
+class TheClosingGate(unittest.TestCase):
+    def test_every_typed_case_grades_as_at_the_base(self):
+        self.assertEqual(pin_problems(), [])
+
+    def test_the_graders_code_is_the_bases(self):
+        self.assertEqual(code_problems(), [])
+
+    def test_the_committed_mutants_do_not_shrink(self):
+        src = Path(__file__).read_text(encoding="utf-8")
+        self.assertEqual(mutant_problems(src, MUTANT_FLOOR), [])
+        self.assertGreaterEqual(mutant_count(src), MUTANT_FLOOR)
+        self.assertGreater(MUTANT_FLOOR, 0)
+
+    def test_the_base_is_read_with_git_or_the_gate_fails(self):
+        self.assertIn('"""precondition-refusal, v4:', at_base(f"{GRADERS_AT}/precondition_refusal.py"))
+        with self.assertRaises(AssertionError):
+            at_base(f"{GRADERS_AT}/precondition_refusal.py", sha="0" * 40)   # a commit the clone lacks
+        with self.assertRaises(AssertionError):
+            grader_at_base("no_such_grader")
+
+    def test_planted_a_changed_label_goes_red(self):
+        moves, _ = pin_moves(source_mutant(pr, *PLANTED["a changed label"]))
+        self.assertTrue(any("label" in fields for _, fields in moves))
+
+    def test_planted_a_changed_flag_goes_red(self):
+        moves, _ = pin_moves(source_mutant(pr, *PLANTED["a changed flag"]))
+        self.assertTrue(any("human_sample" in fields for _, fields in moves))
+        self.assertFalse(any("label" in fields for _, fields in moves))   # the flag alone moved
+
+    def test_planted_a_changed_forbidden_list_goes_red(self):
+        moves, _ = pin_moves(source_mutant(pr, *PLANTED["a changed forbidden list"]))
+        self.assertTrue(any("forbidden" in fields for _, fields in moves))
+        self.assertFalse(any("label" in fields or "human_sample" in fields for _, fields in moves))
+
+    def test_planted_a_code_change_outside_the_docstring_goes_red(self):
+        code = code_problems({"precondition_refusal": planted_source(
+            "precondition_refusal", *PLANTED["a code change outside the docstring"])})
+        self.assertEqual(len(code), 2)   # the AST and the text after the docstring
+        self.assertEqual(code_problems({"precondition_refusal": planted_source(
+            "precondition_refusal", *PLANTED["a docstring-only change"])}), [])
+
+    def test_planted_an_emptied_or_shrunk_case_set_goes_red(self):
+        self.assertEqual(len(pin_problems(cases={})), 1)
+        self.assertTrue(pin_problems(cases=dict(list(CASES.items())[:-1])))
+
+    def test_planted_a_dropped_or_repeated_mutant_goes_red(self):
+        src = Path(__file__).read_text(encoding="utf-8")
+        for table in ("CLAUSE_MUTANTS", "READER_MUTANTS"):
+            with self.subTest(table):
+                self.assertTrue(mutant_problems(table_planted(src, table, "drop"), MUTANT_FLOOR))
+                self.assertTrue(mutant_problems(table_planted(src, table, "repeat"), MUTANT_FLOOR))
 
 
 if __name__ == "__main__":
