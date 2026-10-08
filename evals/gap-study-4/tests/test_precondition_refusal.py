@@ -868,6 +868,9 @@ READER_MUTANTS = {
     "what a $( )'s closing ) token holds after it dropped (fix 3)": ("                tok = tok[k:]",
                                                                      '                tok = ""'),
     "the $( ) walk runs past its closing ) (fix 3)": ("while k < len(tok) and inner:", "while k < len(tok):"),
+    "what a $( )'s closing ) token holds after it always ends the call (fix 3)": (
+        "                if inner or not tok:\n                    continue\n",
+        "                if inner or not tok:\n                    continue\n                break\n"),
 }
 
 
