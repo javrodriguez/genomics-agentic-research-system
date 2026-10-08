@@ -116,6 +116,74 @@ class Published(unittest.TestCase):
                              (by_id[uid]["severity"], by_id[uid]["detection"]), uid)
 
 
+ANSWERS_COMMIT = "193b2b049a71e32cdbafd94f785749c41828f711"   # his answers, typed 7 Oct
+
+
+class HisAnswers(unittest.TestCase):
+    """Javier's answers in REVIEW.md are folded as he wrote them: his page is never edited, each
+    ruling is read from his own words, an "agree" adopts the proposed fix, and a "different fix"
+    adopts his text in place of the proposal."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.maps, cls.ranked, cls.summary, cls.contracts = B.build()
+        cls.answers = B.review_answers()
+        cls.md = open(os.path.join(LANE, "MAP.md"), encoding="utf-8").read()
+
+    def test_review_page_is_byte_identical_to_his_answers_commit(self):
+        mine = open(os.path.join(LANE, "REVIEW.md"), encoding="utf-8").read()
+        his = subprocess.run(["git", "-C", REPO, "show",
+                              "%s:evals/step-map/REVIEW.md" % ANSWERS_COMMIT],
+                             stdout=subprocess.PIPE, check=True, universal_newlines=True).stdout
+        self.assertEqual(mine, his)
+
+    def test_fifteen_answers_one_per_item(self):
+        self.assertEqual(len(self.answers), 15)
+        self.assertTrue(all(a.strip() for a in self.answers.values()))
+
+    def test_rulings_are_fourteen_agree_and_one_different_fix(self):
+        rulings = {uid: B.classify(a) for uid, a in self.answers.items()}
+        self.assertEqual(sorted(u for u, r in rulings.items() if r == "different fix"),
+                         ["S00-class"])
+        self.assertEqual(sum(1 for r in rulings.values() if r == "agree"), 14)
+
+    def test_agreed_items_adopt_the_proposed_fix(self):
+        """An "agree" adopts the "Proposed fix." paragraph he read, word for word."""
+        text = open(os.path.join(LANE, "REVIEW.md"), encoding="utf-8").read()
+        agreed = [r for r in self.ranked if (r.get("owner") or {}).get("ruling") == "agree"]
+        self.assertEqual(len({r["id"] for r in agreed}), 14)
+        for r in agreed:
+            item = text.split("<!-- %s -->" % r["id"])[1].split("Your answer:")[0]
+            self.assertIn("**Proposed fix.** %s\n" % r["fix_adopted"], item, r["id"])
+            self.assertIn(r["fix_adopted"], self.md, r["id"])
+
+    def test_item_one_adopts_his_fix_not_the_proposal(self):
+        rows = [r for r in self.ranked if r["id"] == "S00-class"]
+        self.assertEqual(len(rows), 1)
+        r = rows[0]
+        his = self.answers["S00-class"]
+        self.assertTrue(his.startswith("Different fix: "))
+        self.assertEqual(r["fix_adopted"], his[len("Different fix: "):])
+        self.assertNotEqual(r["fix_adopted"], r["fix"])
+        self.assertIn("public versus restricted data", r["fix_adopted"])
+        self.assertEqual(r["owner"]["answer"], his)
+
+    def test_unasked_decisions_carry_no_ruling(self):
+        asked = {r["id"] for r in self.ranked if r.get("owner")}
+        self.assertEqual(asked, set(self.answers))
+        for r in self.ranked:
+            if r["id"] not in self.answers:
+                self.assertIsNone(r["owner"], r["id"])
+                self.assertIsNone(r["fix_adopted"], r["id"])
+
+    def test_map_page_shows_his_words_and_the_superseded_proposal(self):
+        for para in [p for p in self.answers["S00-class"].split("\n") if p.strip()]:
+            self.assertIn(para, self.md)
+        superseded = [r["fix"] for r in self.ranked if r["id"] == "S00-class"][0]
+        self.assertIn(superseded, self.md)
+        self.assertIn("## His answers to REVIEW.md", self.md)
+
+
 class Validator(unittest.TestCase):
     """Each rule the validator enforces refuses a judgment that breaks it."""
 
@@ -217,6 +285,85 @@ class Validator(unittest.TestCase):
     def test_wrong_pin(self):
         self.edit("00_initialize_project.json", lambda d: d.update(sha="0" * 40))
         self.refuses("pinned to")
+
+
+class RulingsValidator(unittest.TestCase):
+    """The rulings file must agree with his words, cover exactly his answers, and never stand in
+    for an answer he did not give."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="stepmap-rulings-")
+        self.saved = (B.RULINGS, B.REVIEW)
+        B.RULINGS = os.path.join(self.tmp, "rulings.json")
+        B.REVIEW = os.path.join(self.tmp, "REVIEW.md")
+        shutil.copy(self.saved[0], B.RULINGS)
+        shutil.copy(self.saved[1], B.REVIEW)
+
+    def tearDown(self):
+        B.RULINGS, B.REVIEW = self.saved
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def rulings(self, fn):
+        with open(B.RULINGS, encoding="utf-8") as fh:
+            data = json.load(fh)
+        fn(data)
+        with open(B.RULINGS, "w", encoding="utf-8") as fh:
+            json.dump(data, fh)
+
+    def review(self, old, new):
+        with open(B.REVIEW, encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertEqual(text.count(old), 1, old)
+        with open(B.REVIEW, "w", encoding="utf-8") as fh:
+            fh.write(text.replace(old, new))
+
+    def refuses(self, needle):
+        with self.assertRaises(B.Invalid) as ctx:
+            B.build()
+        self.assertIn(needle, str(ctx.exception))
+
+    def test_baseline_builds(self):
+        B.build()
+
+    def test_a_missing_ruling(self):
+        self.rulings(lambda d: d["items"].pop("S00-yes"))
+        self.refuses("S00-yes")
+
+    def test_a_ruling_he_did_not_give(self):
+        self.rulings(lambda d: d["items"].update({"S00-title": {"ruling": "agree"}}))
+        self.refuses("S00-title")
+
+    def test_a_ruling_that_misreads_him(self):
+        self.rulings(lambda d: d["items"]["S00-yes"].update(ruling="different fix"))
+        self.refuses("his answer reads agree")
+
+    def test_item_one_read_as_agree(self):
+        self.rulings(lambda d: d["items"]["S00-class"].update(ruling="agree"))
+        self.refuses("his answer reads different fix")
+
+    def test_an_item_with_no_proposed_fix(self):
+        self.review("**Proposed fix.** A fixed word (for example", "**Proposal.** A fixed word (for example")
+        self.refuses("S00-yes has 0 proposed-fix paragraphs")
+
+    def test_a_blank_answer(self):
+        self.review("Your answer: I agree with the proposed fix.\n\n## Stage 01",
+                    "Your answer:\n\n## Stage 01")
+        self.refuses("blank or unclassified")
+
+    def test_an_unclassified_answer(self):
+        self.review("Your answer:  I agree with the proposed fix.\n\n## What else",
+                    "Your answer: re-rank: lower, because the plan lists inputs.\n\n## What else")
+        self.refuses("blank or unclassified")
+
+    def test_an_answer_with_no_item(self):
+        self.review("<!-- S03-assay -->", "<!-- S03-nothing -->")
+        self.refuses("S03-nothing")
+
+    def test_an_answer_with_no_item_even_when_ruled(self):
+        """A page item the map does not define is refused even if rulings.json rules it too."""
+        self.review("<!-- S03-assay -->", "<!-- S03-nothing -->")
+        self.rulings(lambda d: d["items"].update({"S03-nothing": d["items"].pop("S03-assay")}))
+        self.refuses("the map does not define: ['S03-nothing']")
 
 
 if __name__ == "__main__":

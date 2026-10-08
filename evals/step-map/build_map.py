@@ -15,6 +15,13 @@ reverse); a control outside the method note's 19 kinds; a rung outside R0-R5 or 
 that does not match the rung; a score outside 1-10; an occurrence with no measurement cited; a
 duplicate unsaid id; a defect reference that DEFECTS.md does not define.
 
+His answers (REVIEW.md, typed by Javier on 7 Oct 2026) are read from the page itself at every build,
+never copied: rulings.json only says how each answer reads ("agree" or "different fix"), and the
+build refuses a ruling that does not match his words, an answer it cannot classify, a ruling for an
+item he was not asked, or an answered item with no ruling. An "agree" adopts the proposed fix; a
+"different fix" adopts his own text (after its "Different fix:" label) in place of the proposal,
+which stays in the judgment as the superseded proposal.
+
 Ranking (the method note): severity, then detection, then occurrence (all unmeasured here, so it
 never decides), then the earliest step. Scores are not multiplied.
 Standard library only.
@@ -30,6 +37,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FACTS = os.path.join(HERE, "facts")
 JUDGMENT = os.path.join(HERE, "judgment")
 MAP = os.path.join(HERE, "map")
+REVIEW = os.path.join(HERE, "REVIEW.md")
+RULINGS = os.path.join(HERE, "rulings.json")
 
 CONTROL_KINDS = (
     "negative scope rules", "fixed response templates", "wait points", "one action per step",
@@ -66,6 +75,90 @@ def defect_ids():
         return set()
     with open(path, encoding="utf-8") as fh:
         return set(re.findall(r"\*\*(D\d+)\*\*", fh.read()))
+
+
+ANSWER_LABEL = "Your answer:"
+DIFFERENT_FIX = "Different fix: "
+AGREE_RE = re.compile(r"(?:i )?agree(?: with the proposed fix)?\.?", re.I)
+
+
+def review_answers(path=None):
+    """His answer to each REVIEW.md item, by decision id, exactly as typed (outer blank space
+    stripped): the text after "Your answer:" up to the next heading."""
+    with open(path or REVIEW, encoding="utf-8") as fh:
+        text = fh.read()
+    parts = re.split(r"<!-- ([A-Za-z0-9-]+) -->", text)[1:]
+    out = {}
+    for uid, body in zip(parts[::2], parts[1::2]):
+        body = re.split(r"\n#{2,3} ", body)[0]
+        if body.count(ANSWER_LABEL) != 1:
+            raise Invalid("REVIEW.md item %s has %d answer lines, not 1"
+                          % (uid, body.count(ANSWER_LABEL)))
+        if uid in out:
+            raise Invalid("REVIEW.md names item %s twice" % uid)
+        out[uid] = body.split(ANSWER_LABEL, 1)[1].strip()
+    return out
+
+
+def review_proposals(path=None):
+    """The "Proposed fix." paragraph of each REVIEW.md item, by decision id: the words he agreed to."""
+    with open(path or REVIEW, encoding="utf-8") as fh:
+        text = fh.read()
+    parts = re.split(r"<!-- ([A-Za-z0-9-]+) -->", text)[1:]
+    out = {}
+    for uid, body in zip(parts[::2], parts[1::2]):
+        found = re.findall(r"\*\*Proposed fix\.\*\* (.+?)\n\n" + re.escape(ANSWER_LABEL), body, re.S)
+        if len(found) != 1:
+            raise Invalid("REVIEW.md item %s has %d proposed-fix paragraphs, not 1" % (uid, len(found)))
+        out[uid] = found[0].strip()
+    return out
+
+
+def classify(answer):
+    """How one answer reads: "agree", "different fix", or None (blank or another reply)."""
+    if answer.startswith(DIFFERENT_FIX) and answer[len(DIFFERENT_FIX):].strip():
+        return "different fix"
+    if AGREE_RE.fullmatch(answer.strip()):
+        return "agree"
+    return None
+
+
+def apply_rulings(ranked):
+    """Bind his answers onto the ranked decisions: owner ruling, his words, the fix adopted."""
+    answers = review_answers()
+    proposals = review_proposals()
+    rulings = load(RULINGS)
+    if rulings.get("schema") != "stepmap-rulings/1":
+        raise Invalid("rulings.json: schema %r" % rulings.get("schema"))
+    items = rulings.get("items", {})
+    known = {r["id"] for r in ranked}
+    stray = sorted(set(answers) - known)
+    if stray:
+        raise Invalid("REVIEW.md answers items the map does not define: %s" % stray)
+    missing, extra = sorted(set(answers) - set(items)), sorted(set(items) - set(answers))
+    if missing or extra:
+        raise Invalid("rulings.json must cover exactly his answers: no ruling for %s; a ruling he "
+                      "was not asked for %s" % (missing, extra))
+    for uid in sorted(answers):
+        reads = classify(answers[uid])
+        if reads is None:
+            raise Invalid("his answer to %s is blank or unclassified: %r" % (uid, answers[uid][:80]))
+        if items[uid].get("ruling") != reads:
+            raise Invalid("rulings.json reads %s as %r, but his answer reads %s"
+                          % (uid, items[uid].get("ruling"), reads))
+        if set(items[uid]) != {"ruling"}:
+            raise Invalid("rulings.json %s carries more than a ruling: %s" % (uid, sorted(items[uid])))
+    for r in ranked:
+        answer = answers.get(r["id"])
+        if answer is None:
+            r["owner"], r["fix_adopted"] = None, None
+            continue
+        ruling = classify(answer)
+        r["owner"] = {"ruling": ruling, "answer": answer, "kind": "owner",
+                      "proposed_on_his_page": proposals[r["id"]],
+                      "source": "evals/step-map/REVIEW.md"}
+        r["fix_adopted"] = proposals[r["id"]] if ruling == "agree" else answer[len(DIFFERENT_FIX):]
+    return answers
 
 
 def facts_contracts():
@@ -243,6 +336,7 @@ def build():
                      "steps": steps}
     check_prose_ids(maps, unsaid_index)
     ranked = rank(unsaid_index, contracts)
+    apply_rulings(ranked)
     for cid in maps:
         maps[cid]["silent_ranked"] = [r for r in ranked if any(w["contract"] == cid
                                                                for w in r["where"])]
@@ -460,17 +554,22 @@ def render(maps, ranked, summary, contracts):
     lines += ["## Silent decisions per stage (judgment, ranked)", ""]
     for k, (title, _) in enumerate(GROUPS):
         lines += ["### " + title, "", "| Rank | Id | Kind | Where | Decision the model makes silently |"
-                  " Sev | Det | Fix |", "|---|---|---|---|---|---|---|---|"]
+                  " Sev | Det | Fix | His answer |", "|---|---|---|---|---|---|---|---|---|"]
         for r in [r for r in ranked if r["group"] == k]:
             where = ", ".join(sorted({"%s %s" % (w["contract"], w["step"]) for w in r["where"]}))
             if len(r["where"]) > 3:
                 where = "%s and %d more" % (", ".join(
                     "%s %s" % (w["contract"], w["step"]) for w in r["where"][:2]), len(r["where"]) - 2)
-            lines.append("| %d | %s | %s | %s | %s | %d | %d | %s → %s |" % (
+            ruling = (r["owner"] or {}).get("ruling")
+            fix = r["fix"] if ruling != "different fix" else \
+                "his fix (below; the proposal it replaces is listed there)"
+            lines.append("| %d | %s | %s | %s | %s | %d | %d | %s → %s | %s |" % (
                 r["rank_in_stage"], r["id"], r["kind"], md_escape(where + (" (also in: %s)" % "; ".join(
                     r["elsewhere"]) if r["elsewhere"] else "")), md_escape(r["decision"]),
-                r["severity"], r["detection"], md_escape(r["fix"]), r["fix_rung"]))
+                r["severity"], r["detection"], md_escape(fix), r["fix_rung"],
+                ruling or "not asked"))
         lines.append("")
+    lines += render_answers(ranked)
     lines += ["## Every step", ""]
     for cid, m in maps.items():
         lines += ["### `%s`" % m["path"], ""]
@@ -494,6 +593,36 @@ def render(maps, ranked, summary, contracts):
                 ", ".join(u["id"] for u in j["silent"]) or "none"))
         lines.append("")
     return "\n".join(lines) + "\n"
+
+
+def render_answers(ranked):
+    """His answers, read from REVIEW.md: what each one adopts, and his words in full where he chose
+    a different fix."""
+    seen, rows, different = set(), [], []
+    for r in ranked:
+        if not r["owner"] or r["id"] in seen:
+            continue
+        seen.add(r["id"])
+        rows.append("| %s | %s | %s |" % (r["id"], r["owner"]["ruling"], md_escape(
+            r["fix_adopted"] if r["owner"]["ruling"] == "agree" else "his own fix, below")))
+        if r["owner"]["ruling"] == "different fix":
+            different.append(r)
+    lines = ["## His answers to REVIEW.md (owner)", "",
+             "Javier answered the 15 items of `REVIEW.md` on 7 Oct 2026, in the file itself; the build"
+             " reads his words from there (`rulings.json` only records how each one reads, and the build"
+             " refuses a reading his words do not support). An \"agree\" adopts the fix his page proposed,"
+             " in the page's words (the table above gives the same fix in the map's terms). The %d decisions not on the page were not asked and keep the proposal only."
+             % len({r["id"] for r in ranked} - seen), "",
+             "| Id | His answer | Fix adopted |", "|---|---|---|"] + rows + [""]
+    for r in different:
+        lines += ["### %s: his different fix" % r["id"], "",
+                  "His words, exactly as typed in `REVIEW.md` (the fix adopted is everything after"
+                  " \"Different fix:\"):", ""]
+        lines += ["> " + line if line.strip() else ">" for line in r["owner"]["answer"].split("\n")]
+        lines += ["", "The proposal it replaces (superseded, kept in `judgment/` as the reviewer's"
+                  " reading): %s." % r["fix"].rstrip("."), "",
+                  "As his page put it: %s" % r["owner"]["proposed_on_his_page"], ""]
+    return lines
 
 
 def write_all(maps, md, out_map=MAP, out_md=os.path.join(HERE, "MAP.md")):
