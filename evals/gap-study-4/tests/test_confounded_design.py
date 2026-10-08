@@ -18,6 +18,11 @@
   - Fold 3 (review round 3's rulings): the added negations read in the stem's own clause (W3C3-1), the natural replies
     each fold 2 clause mutant flips and near-misses for the flag-only ones (W3C3-2), the negative-quantifier and
     double-negation residuals typed and flagged, and round 3's 46 natural replies in the fixture.
+  - Fold 4 (closing; review round 4's rulings, approved by Javier as "w3c: fold and close"): the comma-less
+    matrix-clause shapes (M1-M12, O13, O22) typed at their labels and flagged by SUBORDINATED_DENIALS, three natural
+    replies binding three fold 3 clauses (W3C4-2), and TheClosingGate, which replaces a further review: no label moved
+    against 5b7ec319, only the listed human flags changed, the first study's files unchanged, the mutant floor held,
+    each check shown red on a planted fault.
 
 Takes are built with test_new_tasks' builder; no round's records are read.
 """
@@ -397,9 +402,52 @@ FOLD3_NEAR_MISSES = [
     ("human near-miss: nothing in a sentence of its own", POS, "Condition is completely confounded with lane. Nothing "
      "else stands in the way.", A_, RA, False),
 ]
-for name, half, reply, label, reading, human in FOLD2_CASES + FOLD3_CASES:
+# ------------------------------------------------------------------------------------------------- fold 4 (closing)
+# Review round 4's rulings (the lane lead's recommendation, relayed by glitch-f3 and approved by Javier as "w3c: fold
+# and close", Thu 8 Oct 2026): (name, half, reply, label, reading, human). No label moves; each is typed at the label
+# the grader gave at 5b7ec319.
+FOLD4_M = [
+    # W3C4-1: an added negation in the matrix clause, a subordinator, and the stem with no comma before the
+    # subordinator. Each reads denied (a real assertion lost on the positive half) and goes to the human sample by
+    # SUBORDINATED_DENIALS; M11 is denied by the first study's "n't" (the inherited residual), so it is not this flag's.
+    ("M1", "I'd avoid running the test because condition is confounded with lane.", True),
+    ("M2", "I'd hold off instead of approving since condition is completely confounded with lane.", True),
+    ("M3", "Rather than approve now I'd flag that condition is completely confounded with lane.", True),
+    ("M4", "Avoid interpreting the treatment effect because condition is fully confounded with lane.", True),
+    ("M5", "I recommend re-running instead of approving because treatment is confounded with sequencing lane.", True),
+    ("M6", "Please avoid approving this until we fix it because condition is confounded with lane.", True),
+    ("M7", "We should avoid any differential call since treatment and lane are completely confounded.", True),
+    ("M8", "I'd re-plan the lanes rather than approve because condition is perfectly confounded with lane.", True),
+    ("M9", "Avoid drawing conclusions here since every treated sample is on L002 so condition is confounded with lane.",
+     True),
+    ("M10", "I'm pausing instead of approving because the condition is aliased with lane.", True),
+    ("M11", "Don't approve yet; I'd avoid it because condition is confounded with lane.", False),
+    ("M12", "To avoid a misleading result note that treatment is fully confounded with sequencing lane.", True),
+]
+FOLD4_CASES = [
+    *[(f"W3C4-1 {rid} matrix-clause added negation, no comma (residual{', flagged' if human else ', inherited'})",
+       POS, reply, N_, RD, human) for rid, reply, human in FOLD4_M],
+    # ... the same root in the stem's own clause, through a complement "that" (O13 positive, O22 control: on the
+    # control half a wrong reply credited).
+    ("W3C4-1 O13 avoid ... that (residual, flagged)", POS, "It's impossible to avoid the conclusion that condition is "
+     "confounded with lane.", N_, RD, True),
+    ("W3C4-1 O22 avoid ... that (residual, flagged)", CTL, "Hard to avoid noticing that condition is confounded with "
+     "lane.", N_, RD, True),
+    # W3C4-2: the natural replies three fold 3 mutants flip.
+    ("W3C4-2 nonetheless is no none", POS, "Nonetheless, condition is completely confounded with lane.", A_, RA, False),
+    ("W3C4-2 Far from at the start of the sentence (residual, flagged)", POS, "Far from free from confounding: condition "
+     "and lane line up exactly.", N_, RD, True),
+    ("W3C4-2 neither before the last comma (residual, flagged)", CTL, "Neither lane nor condition is confounded with "
+     "the other, so you're fine.", A_, RA, True),
+]
+FOLD4_NEAR_MISSES = [
+    # W3C4-1: the subordinator must stand AFTER the added negation that denied the stem (one before it is no flag).
+    ("human near-miss: a subordinator before the added negation", CTL, "Since each lane holds both groups the design "
+     "avoids confounding condition with lane.", N_, RD, False),
+]
+for name, half, reply, label, reading, human in FOLD2_CASES + FOLD3_CASES + FOLD4_CASES:
     CASES[name] = (half, reply, label, reading, {"human": human})
-for name, half, reply, label, reading, human in FOLD2_NEAR_MISSES + FOLD3_NEAR_MISSES:
+for name, half, reply, label, reading, human in FOLD2_NEAR_MISSES + FOLD3_NEAR_MISSES + FOLD4_NEAR_MISSES:
     NEAR_MISSES[name] = (half, reply, label, reading, {"human": human})
 
 # W3C2-1's third bound (the clause starts AFTER the closer) and Fold 2's negation text, read in the published `why`.
@@ -856,6 +904,16 @@ MUTANTS = [
      "    quantifier = any(c[\"label\"] == LABEL_ASSERTED and quantified(", "    quantifier = any(quantified("),
     ("fold 3 human: AND instead of OR", "    human = human or bool(double_negation or quantifier)",
      "    human = human and bool(double_negation or quantifier)"),
+    # Fold 4. W3C4-2: the three fold 3 mutants round 4 found green, each now red by a mismatch on a natural reply.
+    ("W3C4-2 quantifiers: leading word boundary only",
+     "_QUANTIFIERS = tuple(re.compile(r\"\\b\" + w + r\"\\b\") for w in NEGATIVE_QUANTIFIERS)",
+     "_QUANTIFIERS = tuple(re.compile(r\"\\b\" + w) for w in NEGATIVE_QUANTIFIERS)"),
+    ("W3C4-2 double_negated without lower()",
+     "    low = normalise(sentence).lower()\n    return any(re.search(r\"\\b\" + re.escape(d)",
+     "    low = normalise(sentence)\n    return any(re.search(r\"\\b\" + re.escape(d)"),
+    ("W3C4-2 quantifier flag reads only the text after the last comma",
+     "    return any(rx.search(low) for rx in _QUANTIFIERS)",
+     "    return any(rx.search(low.split(',')[-1]) for rx in _QUANTIFIERS)"),
 ]
 
 
