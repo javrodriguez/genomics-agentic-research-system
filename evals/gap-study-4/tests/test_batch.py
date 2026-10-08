@@ -2704,5 +2704,50 @@ class TestCli(unittest.TestCase):
         self.assertIn("nohup", err.getvalue())
 
 
+
+# ---------------------------------------------------------------- w1b's next touch (lane w4h-w1b-next-touch)
+def history_argument_problems() -> list[str]:
+    """W1B4-6 (i), w1b's next-touch item 4: a `history` argument that differs from `repo.history()` is refused
+    (BatchConfigError naming the first difference); one equal to it is accepted; a repo without history() (a test
+    double) may still take a `history` argument."""
+    p = []
+    _, _, _, _, r1, _ = run(2, plan={(1, 1): "watcher-overflow"})
+    good = r1.history()
+    differ = {
+        "an entry changed": ([dict(good[0], state=labels4.GRADED)] + good[1:], "history[0]"),
+        "an entry dropped": (good[:-1], f"history[{len(good) - 1}]"),
+        "an entry added": (good + [copy.deepcopy(good[-1])], f"history[{len(good)}]"),
+        "empty for a repo that holds outcomes": ([], "history[0]"),
+    }
+    for name, (given, first) in differ.items():
+        w = World()
+        try:
+            batch.Batch(FakeDriver(w), FakeRepo(w, prior=good), FakeWindow(w), table=test_table(), history=given)
+            p.append(f"{name}: accepted")
+        except batch.BatchConfigError as e:
+            if "repo.history()" not in str(e) or first not in str(e):
+                p.append(f"{name}: refused, but not naming {first} against repo.history() ({e})")
+        except Exception as e:  # noqa: BLE001 - a crash is not a refusal
+            p.append(f"{name}: crashed ({type(e).__name__}: {e})")
+    w = World()
+    try:
+        batch.Batch(FakeDriver(w), FakeRepo(w, prior=good), FakeWindow(w), table=test_table(),
+                    history=copy.deepcopy(good))
+    except Exception as e:  # noqa: BLE001
+        p.append(f"a history equal to repo.history() was refused: {e}")
+    try:
+        batch.Batch(None, None, None, table=test_table(), history=copy.deepcopy(good))
+    except Exception as e:  # noqa: BLE001
+        p.append(f"a repo without history() was refused its history argument: {e}")
+    return p
+
+
+class TestNextTouchHistory(unittest.TestCase):
+    """W1B4-6 (i): outside tests, Batch refuses a history argument that differs from repo.history()."""
+
+    def test_a_differing_history_argument_is_refused(self):
+        self.assertEqual(history_argument_problems(), [])
+
+
 if __name__ == "__main__":
     unittest.main()
