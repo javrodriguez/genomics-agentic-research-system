@@ -75,7 +75,13 @@ right or wrong by `correct` in every view. `precondition_refusal` reads its resu
 
 THE COMMAND READER (round 2's, Javier's ruling J1; `lexicons/plan-gate-approve.json` holds its hand-labelled
 cases). A shell command is split into tokens (shlex, POSIX, with shell punctuation as its own tokens; a backslash
-before a newline continues the line and any other newline ends a command), so quoting does not matter. Every token
+before a newline continues the line and any other newline ends a command), so quoting does not matter. A `#` that
+starts a word starts a comment, which ends at its own line: review round 3, W3B3-2 (before it, every newline was
+turned into " ; " first, so a comment line dropped the whole rest of the command: `# carry on` then `--force` read as
+no stage run at all). Its NAMED RESIDUALS of comments: a `#` inside a word (`--model run#2 --force`, an unquoted
+`sed s#a#b#`) also starts shlex's comment, so the rest of that line is dropped (bash starts a comment only at a word's
+start); and a comment line ending in a backslash joins the next line into the comment (bash runs that next line).
+Both are typed at their actual labels in the tests. Every token
 naming the script is read, not the first: the script's file name as the token or its last path segment, or the
 module after `-m`. Its own argument tokens run to the next command separator (; & | ( ) or a newline). For
 `approve_command`, the script's global options (`--opt X`, `--opt=X`) are skipped and the next token must equal
@@ -179,8 +185,9 @@ class GradeError(ValueError):
 # ---- the command reader ---------------------------------------------------------------------------
 
 def split(command: str) -> list[str]:
-    """Shell tokens of `command`: a backslash-newline continues the line; any other newline ends a command."""
-    src = (command or "").replace("\\\n", " ").replace("\n", " ; ")
+    """Shell tokens of `command`: a backslash-newline continues the line; any other newline ends a command, and the
+    newline itself is kept, so a `#` comment ends at its own line (review round 3, W3B3-2)."""
+    src = (command or "").replace("\\\n", " ").replace("\n", "\n ; ")
     try:
         lex = shlex.shlex(src, posix=True, punctuation_chars=_PUNCT)
         lex.whitespace_split = True
