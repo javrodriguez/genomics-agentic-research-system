@@ -164,6 +164,9 @@ class FakeWatcher:
         if self.rc is None:
             self.rc = -signal.SIGKILL
 
+    def setup_failed(self) -> bool:
+        return False
+
     def die(self, rc: int):
         self.rc, self.exited_at = rc, self.clock.time()
 
@@ -1512,23 +1515,33 @@ def pending_parameters(mod) -> list:
 class FakeProc:
     """Pipes standing in for the real watcher's stdout and stderr (no process)."""
 
-    def __init__(self, out: bytes, err: bytes):
-        self.fds = []
-        self.stdout, self.stderr = self._pipe(out), self._pipe(err)
+    def __init__(self, out: bytes, err: bytes, *, keep_err_open: bool = False):
+        self.fds, self.rc, self.err_w = [], None, None
+        self.stdout = self._pipe(out)
+        self.stderr = self._pipe(err, keep_open=keep_err_open)
 
-    def _pipe(self, data):
+    def _pipe(self, data, keep_open=False):
         r, w = os.pipe()
+        os.set_blocking(r, False)
         os.write(w, data)
-        os.close(w)
+        if keep_open:
+            self.err_w = w
+            self.fds.append(w)
+        else:
+            os.close(w)
         self.fds.append(r)
         return type("F", (), {"fileno": lambda self_, fd=r: fd})()
+
+    def poll(self):
+        return self.rc
 
     def close(self):
         for fd in self.fds:
             os.close(fd)
 
 
-FORMAT = {"fields": ["at", "path", "events"], "separator": "\t", "established": "Watches established."}
+FORMAT = {"fields": ["at", "path", "events"], "separator": "\t", "established": "Watches established.",
+          "setup_lines": ["Setting up watches.", "Setting up watches.  Beware: since -r was given, this may take a while!"]}
 
 
 class TestRealParser(unittest.TestCase):
@@ -1765,6 +1778,182 @@ class TestFold2(TakeCase):
         red("a death while arming seen only at the timeout")
 
 
+# ------------------------------------------------------------------------------------------------- fold 3 (lane review 2)
+class TestFold3(TakeCase):
+    """Lane review round 2's findings, folded on the lane lead's decisions (W4C2-2 to W4C2-7). The ast check
+    (W4C2-1) is in TestProcessCheck. No guard-evasion form is written here (glitch-f3's standing rule)."""
+
+    def watcher(self, err: bytes, *, keep_err_open=False, out: bytes = b""):
+        proc = FakeProc(out, err, keep_err_open=keep_err_open)
+        self.addCleanup(proc.close)
+        p = mock.patch.multiple(sidecar, INOTIFYWAIT_FORMAT=FORMAT, INOTIFYWAIT_SUBSECOND=True)
+        p.start()
+        self.addCleanup(p.stop)
+        return proc, sidecar._InotifyWatcher(proc, "/srv/rt")
+
+    # W4C2-2: a stderr line written after established and after a first read is still read
+    def late(self):
+        proc, w = self.watcher(b"Setting up watches.\nWatches established.\n", keep_err_open=True)
+        self.assertTrue(w.established())
+        self.assertEqual(w.read_ready(), [])
+        os.write(proc.err_w, b"Couldn't watch new directory /srv/rt/a/b: No space left on device\n")
+        return w.read_ready()
+
+    def test_a_late_stderr_line_is_a_fault(self):
+        self.assertEqual([(e.path, e.names) for e in self.late()], [("", (sidecar.STDERR_EVENT,))])
+
+    def test_mutant_no_drain_loop_goes_red(self):
+        with mock.patch.object(sidecar._InotifyWatcher, "_drain_stderr", lambda self: None):
+            self.assertEqual(self.late(), [])
+        red("stderr not drained after the first read (a late line reads clean)")
+
+    # W4C2-3: only the format's closed setup lines may come before the marker
+    PRE = b"Setting up watches.\nCouldn't watch /srv/rt/a: Permission denied\nWatches established.\n"
+
+    def test_an_unknown_line_before_the_marker_fails_the_arm(self):
+        _, w = self.watcher(self.PRE)
+        self.assertFalse(w.established())
+        self.assertTrue(w.setup_failed())
+        _, w2 = self.watcher(b"something Watches established.\n")
+        self.assertFalse(w2.established())
+        self.assertTrue(w2.setup_failed())
+        _, ok = self.watcher(b"Setting up watches.\nWatches established.\n")
+        self.assertTrue(ok.established())
+        self.assertFalse(ok.setup_failed())
+
+    def test_mutant_any_line_before_the_marker_goes_red(self):
+        with mock.patch.object(sidecar._InotifyWatcher, "_setup_line_ok", lambda self, line: True):
+            _, w = self.watcher(self.PRE)
+            self.assertTrue(w.established())
+        red("any line before the marker accepted")
+
+    def test_the_format_reason_names_the_setup_lines(self):
+        self.assertIn("setup lines", sidecar.pending()["inotifywait_format"])
+
+    def setup_failing_take(self):
+        t = self.take(factory_kw={"establish_after": 10 ** 9})
+
+        def failing(run_tree, plan):
+            w = Factory.__call__(t.factory, run_tree, plan)
+            w.setup_failed = lambda: True
+            return w
+        t.sc.factory = failing
+        t0 = t.clock.time()
+        r = t.sc.handle("begin")
+        return t, r, t.clock.time() - t0
+
+    def test_a_setup_failure_fails_the_arm_at_once(self):
+        t, r, elapsed = self.setup_failing_take()
+        self.assertFalse(r["ok"])
+        self.assertIsNone(r["rearmed_at"])
+        self.assertEqual(t.health(), [])               # no watcher-start
+        self.assertLess(elapsed, 1.0)
+
+    def test_mutant_setup_failure_unseen_goes_red(self):
+        with mock.patch.object(sidecar.Sidecar, "_arm_gave_up",
+                               lambda self, w, t0: w.poll() is not None or self.clock() - t0 > self.establish_timeout_s):
+            _, _, elapsed = self.setup_failing_take()
+        self.assertGreater(elapsed, sidecar.ESTABLISH_TIMEOUT_S)
+        red("a setup failure seen only at the timeout")
+
+    # W4C2-4: an exited watcher's unterminated last stderr line counts
+    def tail(self, rc):
+        proc, w = self.watcher(b"Watches established.\nFailed to watch /srv/rt/x; upper limit on inotify watches")
+        self.assertTrue(w.established())
+        proc.rc = rc
+        return w.read_ready()
+
+    def test_an_exited_watchers_tail_is_a_fault(self):
+        self.assertEqual([e.names for e in self.tail(1)], [(sidecar.STDERR_EVENT,)])
+        self.assertEqual(self.tail(None), [])         # still running: the line may yet complete
+
+    def test_mutant_tail_never_counted_goes_red(self):
+        with mock.patch.object(sidecar._InotifyWatcher, "_tail_counts", lambda self: False):
+            self.assertEqual(self.tail(1), [])
+        red("an exited watcher's unterminated stderr tail never counted")
+
+    # W4C2-5: CTL_DIR is normalised, with a non-empty segment under /tmp/ or /run/
+    def test_the_control_folder_is_normalised(self):
+        for bad in ("/tmp/../srv/ev/ctl", "/tmp/", "/run/", "/tmp", "/tmp//w"):
+            with self.subTest(bad):
+                with mock.patch.object(sidecar, "CTL_DIR", bad):
+                    self.assertFalse(sidecar.ctl_dir_ok())
+        for good in ("/tmp/w-ctl", "/run/w"):
+            with mock.patch.object(sidecar, "CTL_DIR", good):
+                self.assertTrue(sidecar.ctl_dir_ok())
+
+    def test_mutant_unnormalised_control_folder_goes_red(self):
+        with mock.patch.object(sidecar, "CTL_DIR", "/tmp/../srv/ev/ctl"), \
+                mock.patch.object(sidecar.os.path, "normpath", lambda p: p):
+            self.assertTrue(sidecar.ctl_dir_ok())
+        red("an unnormalised control folder accepted")
+
+    # W4C2-6: a deeply nested request is an ok: false reply
+    def test_a_deeply_nested_request(self):
+        t = self.take()
+        r = sidecar._handle_request(t.sc, b"[" * 100000)
+        self.assertFalse(r["ok"])
+        self.assertEqual(t.sc.state, "new")
+
+    def test_mutant_recursion_uncaught_goes_red(self):
+        t = self.take()
+        with mock.patch.object(sidecar, "_REQUEST_ERRORS", (ValueError,)):
+            with self.assertRaises(RecursionError):
+                sidecar._handle_request(t.sc, b"[" * 100000)
+        red("a deeply nested request kills PID 1")
+
+
+class TestFold3Ast(unittest.TestCase):
+    """W4C2-1 and W4C2-7: the ast check's attribute vocabulary and the factory's Popen shape, judged by
+    construction (no evasion form is planted: glitch-f3's standing rule)."""
+
+    REL = "box/sidecar.py"
+
+    def problems(self, src, spec=None):
+        return process_problems(src, self.REL, spec or BOX_MODULES[self.REL], SUBPROCESS_SITES[self.REL])
+
+    def test_each_vocabulary_is_exactly_the_modules_own(self):
+        for rel, spec in BOX_MODULES.items():
+            with self.subTest(rel):
+                used = {n.attr for n in ast.walk(ast.parse(_source(rel))) if isinstance(n, ast.Attribute)}
+                self.assertEqual(spec["attrs"], used)
+                self.assertFalse([a for a in spec["attrs"] if a.startswith("__")])
+
+    def test_mutant_vocabulary_widened_goes_red(self):
+        spec = dict(BOX_MODULES[self.REL])
+        spec["attrs"] = spec["attrs"] | {"popen"}
+        spec["imports"] = dict(spec["imports"], os=spec["imports"]["os"] | {"popen"})
+        self.assertEqual(self.problems(PLANTED["os.popen"](_source(self.REL)), spec), [])
+        red("the attribute vocabulary widened (os.popen through)")
+
+    def test_mutant_vocabulary_emptied_goes_red(self):
+        spec = dict(BOX_MODULES[self.REL], attrs=set())
+        self.assertNotEqual(self.problems(_source(self.REL), spec), [])
+        red("the attribute vocabulary emptied (the real module refused)")
+
+    def test_a_dunder_attribute_is_refused_even_when_listed(self):
+        spec = dict(BOX_MODULES[self.REL])
+        spec["attrs"] = spec["attrs"] | {"__dict__"}
+        spec["imports"] = dict(spec["imports"], os=spec["imports"]["os"] | {"__dict__"})
+        got = self.problems(PLANTED["os.__dict__['kill']"](_source(self.REL)), spec)
+        self.assertEqual(got, ["box/sidecar.py: the dunder attribute __dict__"])
+
+    def test_the_popen_shape_holds_and_binds(self):
+        src = _source(self.REL)
+        self.assertEqual(self.problems(src), [])
+        changed = src.replace("shell=False, close_fds=True)", "shell=False, close_fds=True, cwd=run_tree)", 1)
+        self.assertNotEqual(changed, src)
+        self.assertIn("box/sidecar.py: Popen's keywords are not exactly the pinned shape", self.problems(changed))
+
+    def test_mutant_popen_shape_unpinned_goes_red(self):
+        src = _source(self.REL)
+        changed = src.replace("shell=False, close_fds=True)", "shell=False, close_fds=True, cwd=run_tree)", 1)
+        with mock.patch.object(sys.modules[__name__], "POPEN_KEYWORDS",
+                               dict(POPEN_KEYWORDS, cwd=None)):
+            self.assertEqual(self.problems(changed), [])
+        red("the Popen keyword shape widened (cwd accepted)")
+
+
 # ------------------------------------------------------------------------------------------------- interface 10's ast check
 # Default-deny by construction (fold 2, W4C1-1, the lane lead's decision). For each of this lane's non-test box
 # modules: the closed set of modules it may import, and for each, the closed set of attribute chains it may use
@@ -1792,6 +1981,26 @@ BOX_MODULES = {
             "time": {"sleep", "time"},
         },
         "from": {("__future__", "annotations"), ("dataclasses", "dataclass")},
+        # every Attribute.attr the module uses, derived once from its source (fold 3, W4C2-1)
+        "attrs": {
+            'AF_UNIX', 'ArgumentParser', 'DefaultSelector', 'EACCES', 'ENOENT', 'EVENT_READ', 'O_CLOEXEC', 'O_CREAT',
+            'O_EXCL', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'O_WRONLY', 'PIPE', 'Popen', 'SIGKILL', 'SIGTERM',
+            'SOCK_STREAM', 'S_ISDIR', 'S_ISLNK', 'S_ISREG', '_access', '_arm', '_arm_gave_up', '_begin', '_beneath',
+            '_break', '_drain', '_drain_stderr', '_err', '_established', '_ev', '_event', '_finish', '_floor',
+            '_health', '_move_targets', '_out', '_pause', '_read', '_reply', '_setup_fault', '_setup_line_ok',
+            '_snap_command', '_snapshot', '_stamp', '_stderr_events', '_stop', '_sweep_temps', '_tail_counts',
+            '_temps', '_wait_exit', 'accept', 'add', 'add_argument', 'add_parser', 'add_subparsers', 'append', 'at',
+            'basename', 'bind', 'clock', 'close', 'command', 'compile', 'connect', 'count', 'decode', 'dirname',
+            'discard', 'dumps', 'encode', 'endswith', 'establish_timeout_s', 'established', 'evidence', 'exit',
+            'factory', 'fdopen', 'fileno', 'flush', 'force_stop', 'fstat', 'fsync', 'fullmatch', 'get', 'group',
+            'groups', 'handle', 'hexdigest', 'items', 'join', 'kill', 'label', 'lexists', 'listdir', 'listen',
+            'loads', 'lstat', 'lstrip', 'makedirs', 'makefile', 'mkdir', 'mode', 'name', 'names', 'next_label',
+            'normpath', 'open', 'opener', 'parse_args', 'partition', 'path', 'poll', 'problems', 'proc', 'pump',
+            'read', 'read_ready', 'readline', 'readlink', 'register', 'rename', 'request_stop', 'returncode',
+            'rpartition', 'rsplit', 'rstrip', 'run_tree', 'scandir', 'select', 'set_blocking', 'setdefault',
+            'setup_failed', 'sha256', 'signal', 'sleep', 'socket', 'split', 'st_mode', 'startswith', 'state',
+            'stderr', 'stdout', 'stop_timeout_s', 'terminate', 'time', 'unlink', 'update', 'values', 'watch',
+            'watcher', 'write'},
     },
     "box/scan_record.py": {
         "imports": {
@@ -1805,10 +2014,20 @@ BOX_MODULES = {
             "sys": {"path", "path.insert"},
         },
         "from": {("__future__", "annotations")},
+        "attrs": {
+            'NOTE', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'S_IMODE', 'S_ISREG', 'abspath', 'add', 'append',
+            'close', 'compile', 'count', 'decode', 'dirname', 'encode', 'endswith', 'fileno', 'find', 'flush',
+            'fsync', 'fullmatch', 'geteuid', 'group', 'hexdigest', 'insert', 'isabs', 'items', 'join', 'lexists',
+            'loads', 'lstat', 'open', 'path', 'read', 'setdefault', 'sha256', 'split', 'st_mode', 'st_uid',
+            'truncate', 'write'},
     },
 }
 # The one subprocess call site of this lane's modules: (enclosing function, attribute).
 SUBPROCESS_SITES = {"box/sidecar.py": [("inotifywait_factory", "Popen")]}
+# The factory's Popen call shape (fold 3, W4C2-7): one positional argument, the name `argv`, and exactly these
+# keywords, each with exactly this value ("PIPE" is subprocess.PIPE).
+POPEN_ARG = "argv"
+POPEN_KEYWORDS = {"stdout": "PIPE", "stderr": "PIPE", "shell": False, "close_fds": True}
 # Builtins that reach a module or run code by name; refused anywhere, called or not.
 REFUSED_BUILTINS = {"getattr", "setattr", "delattr", "vars", "globals", "locals", "__import__", "exec", "eval",
                     "compile", "__builtins__", "breakpoint"}
@@ -1847,7 +2066,13 @@ def process_problems(src: str, rel: str, spec: dict, sites: list) -> list:
                 if node.level or (node.module, a.name) not in froms:
                     out.append(f"{rel}: from {node.module or '.'} import {a.name}, outside its allowlist")
     calls = []
+    attrs = spec["attrs"]
     for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute):
+            if node.attr.startswith("__"):
+                out.append(f"{rel}: the dunder attribute {node.attr}")
+            elif node.attr not in attrs:
+                out.append(f"{rel}: the attribute {node.attr}, outside its vocabulary")
         if isinstance(node, ast.Name) and node.id in REFUSED_BUILTINS:
             out.append(f"{rel}: names the builtin {node.id}")
         if isinstance(node, ast.Call):
@@ -1873,8 +2098,31 @@ def process_problems(src: str, rel: str, spec: dict, sites: list) -> list:
                     out.append(f"{rel}: references subprocess.Popen without calling it")
                 elif called:
                     calls.append((fn, chain))
+                    if chain == "Popen":
+                        out += popen_shape_problems(parents[top], aliases, rel)
     if sorted(calls) != sorted(sites):
         out.append(f"{rel}: subprocess calls {sorted(calls)}, expected exactly {sorted(sites)}")
+    return out
+
+
+def popen_shape_problems(call, aliases, rel) -> list:
+    """The factory's Popen call has exactly the pinned shape (POPEN_ARG, POPEN_KEYWORDS)."""
+    out = []
+    if len(call.args) != 1 or not (isinstance(call.args[0], ast.Name) and call.args[0].id == POPEN_ARG):
+        out.append(f"{rel}: Popen's positional arguments are not exactly ({POPEN_ARG})")
+    got = {}
+    for kw in call.keywords:
+        v = kw.value
+        if isinstance(v, ast.Constant):
+            got[kw.arg] = v.value
+        elif isinstance(v, ast.Attribute) and isinstance(v.value, ast.Name) and aliases.get(v.value.id) == \
+                "subprocess":
+            got[kw.arg] = v.attr
+        else:
+            got[kw.arg] = None
+    if set(got) != set(POPEN_KEYWORDS) or any(got[k] != POPEN_KEYWORDS[k] or type(got[k]) is not
+                                              type(POPEN_KEYWORDS[k]) for k in POPEN_KEYWORDS):
+        out.append(f"{rel}: Popen's keywords are not exactly the pinned shape")
     return out
 
 
@@ -1977,7 +2225,8 @@ class TestProcessCheck(unittest.TestCase):
         # the check itself, made a deny-list again (aliases unchecked), lets the hollow forms through
         with mock.patch.dict(BOX_MODULES["box/sidecar.py"]["imports"],
                              {"os": spec["imports"]["os"] | {"", "__dict__", "popen"},
-                              "socket": spec["imports"]["socket"] | {"os.kill"}}):
+                              "socket": spec["imports"]["socket"] | {"os.kill"}}), \
+                mock.patch.dict(BOX_MODULES["box/sidecar.py"], {"attrs": spec["attrs"] | {"popen"}}):
             self.assertEqual(process_problems(PLANTED["os.popen"](src), rel, BOX_MODULES[rel],
                                               SUBPROCESS_SITES[rel]), [])
         red("an attribute allowlist widened (os.popen through)")
