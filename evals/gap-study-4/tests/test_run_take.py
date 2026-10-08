@@ -625,6 +625,29 @@ class TestExecArgv(MutantCase):
             ("tmp-variables-dropped", patched(rt, "RUN_TREE_TMPDIR_VARIABLES", ())),
         ])
 
+    def check_config_home(self):
+        """W4B2-1: a plain exec carries only a harness's config-home name, only at the config mount."""
+        out = []
+        if rt.agent_exec_argv(ID["take"], ["x"], config_home={"CODEX_HOME": "/opt/cfg"})[6:8] != [
+                "-e", "CODEX_HOME=/opt/cfg"]:
+            out.append("a config home was not carried")
+        for name, home in (("login name", {"CODEX_API_KEY": FAKE_VALUE}),
+                           ("not a config home", {"HTTPS_PROXY": "http://proxy:3128"}),
+                           ("wrong value", {"CODEX_HOME": "/tmp"})):
+            try:
+                argv = rt.agent_exec_argv(ID["take"], ["x"], config_home=home)
+                out.append(f"{name} accepted: {[a for a in argv if '=' in a]}"
+                           .replace(FAKE_VALUE, "<planted>"))
+            except rt.Refused as e:
+                if FAKE_VALUE in str(e):
+                    out.append("the refusal carries the value")
+        return out
+
+    def test_config_home_refusals(self):
+        self.assert_green_then_red(self.check_config_home, [
+            ("guard-dropped", patched(rt, "_config_home_allowed", lambda name, value: True)),
+        ])
+
     def test_agent_exec_argv(self):
         self.assertEqual(rt.agent_exec_argv(ID["take"], ["python3", "-c", "x"]),
                          ["docker", "exec", "--user", "10001:10001", "--workdir", "/", ID["take"], "python3", "-c",
@@ -1489,6 +1512,12 @@ SUBPROCESS_MODULE = "box/run_take.py"
 SUBPROCESS_SITE = ("DockerRuntime", "run")
 SUBPROCESS_NAMES = frozenset({"run", "TimeoutExpired"})
 GUARDED_MODULES = ("os", "subprocess")
+# W4B2-2, derived once from the three box modules' source and committed (TestAuditAllowlists binds both ways).
+OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "getuid",
+                      "listdir", "lstat", "makedirs", "mkdir", "open", "path", "walk"})
+DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
+# How subprocess may appear, at DockerRuntime.run only: run as the func of a call, TimeoutExpired in an except.
+SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})
 FORBIDDEN_OS = re.compile(r"(kill|killpg|system|popen|fork|forkpty|posix_spawnp?|exec[lvpe]*|spawn[lvpe]*)")
 
 
@@ -1654,6 +1683,44 @@ def process_audit(read=None) -> list:
         with open(os.path.join(HERE, rel), encoding="utf-8") as fh:
             out += audit_test_source(rel, fh.read())
     return out
+
+
+class TestAuditAllowlists(MutantCase):
+    """W4B2-2, by construction: each allowlist is exactly what the box modules use (derived once from their source
+    and committed), so widening a list leaves an unused entry and emptying it flags the real modules. The lane lead
+    ruled no new evasion forms; the residual is named in words in the lane report."""
+
+    def used(self):
+        os_attrs, dunders = set(), set()
+        for rel in BOX_MODULES:
+            tree = ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())
+            for n in ast.walk(tree):
+                if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == "os":
+                    os_attrs.add(n.attr)
+                name = n.attr if isinstance(n, ast.Attribute) else n.id if isinstance(n, ast.Name) else ""
+                if name.startswith("__") and name.endswith("__"):
+                    dunders.add(name)
+        return os_attrs, dunders
+
+    def check(self):
+        out = list(process_audit())
+        os_attrs, dunders = self.used()
+        out += [f"OS_ATTRS holds unused {a}" for a in sorted(set(OS_ATTRS) - os_attrs)]
+        out += [f"DUNDERS_ALLOWED holds unused {d}" for d in sorted(set(DUNDERS_ALLOWED) - dunders)]
+        if set(SUBPROCESS_USES) != {("run", "call"), ("TimeoutExpired", "except")}:
+            out.append(f"SUBPROCESS_USES is {sorted(SUBPROCESS_USES)}")
+        return out
+
+    def test_allowlists(self):
+        me = sys.modules[__name__]
+        self.assert_green_then_red(self.check, [
+            ("os-widened", patched(me, "OS_ATTRS", OS_ATTRS | {"system"})),
+            ("os-emptied", patched(me, "OS_ATTRS", frozenset())),
+            ("dunders-widened", patched(me, "DUNDERS_ALLOWED", DUNDERS_ALLOWED | {"__subclasses__"})),
+            ("dunders-emptied", patched(me, "DUNDERS_ALLOWED", frozenset())),
+            ("subprocess-uses-widened", patched(me, "SUBPROCESS_USES", SUBPROCESS_USES | {("run", "value")})),
+            ("subprocess-uses-emptied", patched(me, "SUBPROCESS_USES", frozenset())),
+        ])
 
 
 class TestProcessAudit(MutantCase):
