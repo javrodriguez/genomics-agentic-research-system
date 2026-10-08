@@ -28,6 +28,11 @@ other mutant; a `#` comment line before an approve, refused and run, and the lex
 approve, with the mutant that turns every newline back into " ; "; and the two comment residuals at their actual
 readings. Fold 3's own pre-review added: a refused approve with `du -h` on the next line of the same call, and the
 lexicon lines for a newline and for a `$( )` among approve's own tokens, with their mutants.
+
+Review round 4 (glitch-f3's rulings W3B4-1 and W3B4-5) added: approve with a trailing comment and `du -h` on the next
+line, as a case and a lexicon line, with the mutant that puts the separator before the newline; and an unbalanced-quote
+lexicon line (approve, `du -h` on the next line, a heredoc holding an apostrophe) with the mutants that drop the
+fallback's newline separators.
 """
 
 from __future__ import annotations
@@ -1024,7 +1029,8 @@ class TheCommandReader(unittest.TestCase):
             # review round 4, W3B4-5: the fallback's newline separators dropped, and the reviewer's m18 (every ;
             # dropped in the fallback); the unbalanced-quote line kills both
             "the fallback's newline separators dropped (W3B4-5)": (
-                "        return _FALLBACK.findall(src)", '        return _FALLBACK.findall(src.replace("\\n ; ", "\\n "))'),
+                "        return _FALLBACK.findall(src)",
+                '        return _FALLBACK.findall(src.replace("\\n ; ", "\\n "))'),
             "the fallback's separators dropped, the reviewer's m18 (W3B4-5)": (
                 "        return _FALLBACK.findall(src)", '        return _FALLBACK.findall(src.replace(";", " "))'),
         }
