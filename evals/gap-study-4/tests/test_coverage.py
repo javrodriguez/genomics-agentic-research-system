@@ -26,6 +26,10 @@ per pair:
   reach where     a cite, as `where`.
   reach excerpt   as `excerpt`.
 
+  Each reach value is bound to where its cites live (home_problems): `claude-only`, both under CLAUDE_HOMES;
+  `claude-and-codex`, `where` in DECIDE_FILES (the files `guard_hook.decide` reads) and `reach where` in
+  CODEX_HOMES; `every-agent`, neither cite in any of those (review round 1 of this lane, M4: a reach swapped
+  inside the vocabulary stayed green before).
   `reach` is REACH_NONE exactly when `caught` is CAUGHT_NO, and then `reach where` and `reach excerpt` hold
   exactly DASH. A cell may be wrapped in one pair of backticks; a `|` inside a cell is written `\\|`.
 
@@ -54,7 +58,7 @@ HISTORY. Every git read goes through git(); outside a work tree, in a shallow cl
 it raises, so the test errors loudly and never skips.
 
 Mutants (each asserted red, in memory): drop a row; double a row; a pair outside the list; a candidate mark
-moved; shift a line number; change a reach value; break the `none` rule both ways; put a value other than
+moved; shift a line number; change a reach value, outside the vocabulary and inside it; break the `none` rule both ways; put a value other than
 DASH in a `reach where` or `reach excerpt` cell of a `none` row; swap an excerpt between rows; give a mode cite
 the wrong mode; cite a path absent at the commit, a range outside the file, a non-gars path; point the commit,
 substituted in memory, at ANCESTOR_MUTANT (an ancestor of the round 4 base whose `gars/` tree differs from
@@ -116,6 +120,11 @@ REACH_VALUES = ("claude-only", "claude-and-codex", "every-agent")
 REACH_NONE = "none"
 DASH = "-"
 CITED_ROOT = "gars/"
+# Where each reach lives (glitch-f3's ruling 2, as the md defines it).
+CLAUDE_HOMES = ("gars/.claude/",)
+CODEX_HOMES = ("gars/_system/codex_hook.py", "gars/.codex/")
+DECIDE_FILES = ("gars/_system/guard_hook.py", "gars/_system/tools/policy.py", "gars/_system/tools/registry.json",
+                "gars/_system/tools/closed_output.py")
 
 CITE = re.compile(r"(?P<path>[^\s:@]+)(?::(?P<lo>[1-9][0-9]*)(?:-(?P<hi>[1-9][0-9]*))?|@(?P<mode>[0-7]{6}))\Z")
 SEPARATOR_CELL = re.compile(r":?-{3,}:?\Z")
@@ -126,7 +135,7 @@ NOTE_CITE = re.compile(r"(?P<path>[A-Za-z0-9_./-]+\.(?:py|json|toml|md)):(?P<lo>
 NOTE_MORE = re.compile(r"(?P<lo>[1-9][0-9]*)(?:-(?P<hi>[1-9][0-9]*))?")
 NOTE_ROOTS = {".claude/": "gars/", ".codex/": "gars/"}
 NOTE_DEFAULT_ROOT = "gars/_system/"
-NOTE_REFS = 38  # the notes' line references, counted by note_refs; a change to the notes re-counts them
+NOTE_REFS = 42  # the notes' line references, counted by note_refs; a change to the notes re-counts them
 
 
 class GitError(RuntimeError):
@@ -296,6 +305,24 @@ def pin_problems(commit: str) -> list[str]:
     return out
 
 
+def cited_path(cite: str) -> str:
+    m = CITE.match(cite)
+    return m["path"] if m else ""
+
+
+def home_problems(reach: str, where: str, reach_where: str, label: str) -> list[str]:
+    """A reach value is bound to where its two cites live (the md's own definitions): claude-only, both under
+    gars/.claude/; claude-and-codex, the guard in a file `decide` reads (DECIDE_FILES) and the reach cite in Codex's
+    envelope (CODEX_HOMES); every-agent, neither cite in any of those nor under gars/.claude/."""
+    w, r = cited_path(where), cited_path(reach_where)
+    under = lambda path, homes: any(path == h or (h.endswith("/") and path.startswith(h)) for h in homes)
+    harness = CLAUDE_HOMES + CODEX_HOMES + DECIDE_FILES
+    ok = {"claude-only": under(w, CLAUDE_HOMES) and under(r, CLAUDE_HOMES),
+          "claude-and-codex": under(w, DECIDE_FILES) and under(r, CODEX_HOMES),
+          "every-agent": not under(w, harness) and not under(r, harness)}.get(reach, True)
+    return [] if ok else [f"{label}: reach {reach!r} does not match where its cites live ({w}, {r})"]
+
+
 def note_bullets(text: str) -> list[str]:
     """The bullets of the NOTES_HEADING section, each joined into one string."""
     lines = text.splitlines()
@@ -400,6 +427,7 @@ def problems(text: str, commit: str = COMMIT, tasks_dir: Path = TASKS_DIR) -> li
                     out.append(f"{label}: {col} of a {REACH_NONE!r} row is {row[col]!r}, not {DASH!r}")
         else:
             out += cite_problems(tree, row["reach where"], row["reach excerpt"], f"{label} reach where")
+            out += home_problems(reach, row["where"], row["reach where"], label)
     for name in PAIRS:
         if name not in seen:
             out.append(f"{name} has no row")
@@ -588,6 +616,28 @@ class TheValues(Base):
                 continue
             with self.subTest(row=i):
                 self.assertRed(with_cell(self.text, i, "reach", "claude-and-gemini"), "is outside")
+
+    def test_mutant_reach_value_swapped_inside_the_vocabulary(self):
+        live = [i for i in range(len(PAIRS)) if cell_of(self.text, i, "reach") != REACH_NONE]
+        kinds = {cell_of(self.text, i, "reach") for i in live}
+        self.assertGreaterEqual(len(kinds), 2, "the table needs two reach kinds for this mutant to bite")
+        for i in live:
+            for other in REACH_VALUES:
+                if other == cell_of(self.text, i, "reach"):
+                    continue
+                with self.subTest(row=i, to=other):
+                    self.assertRed(with_cell(self.text, i, "reach", other), "does not match where its cites live")
+
+    def test_home_rule_each_value(self):
+        self.assertEqual(home_problems("claude-only", "gars/.claude/settings.json:5", "gars/.claude/settings.json:3", "t"), [])
+        self.assertTrue(home_problems("claude-only", "gars/_system/guard_hook.py:91", "gars/.claude/settings.json:3", "t"))
+        self.assertEqual(home_problems("claude-and-codex", "gars/_system/tools/policy.py:156", "gars/.codex/hooks.json:9", "t"), [])
+        self.assertTrue(home_problems("claude-and-codex", "gars/_system/stage00_register.py:513", "gars/_system/codex_hook.py:378", "t"))
+        self.assertTrue(home_problems("claude-and-codex", "gars/_system/guard_hook.py:91", "gars/_system/stage00_register.py:513", "t"))
+        self.assertEqual(home_problems("every-agent", "gars/_system/stage00_register.py:513", "gars/_system/stage00_register.py:863", "t"), [])
+        self.assertTrue(home_problems("every-agent", "gars/_system/guard_hook.py:91", "gars/_system/stage00_register.py:863", "t"))
+        self.assertTrue(home_problems("every-agent", "gars/_system/stage00_register.py:513", "gars/.codex/hooks.json:9", "t"))
+        self.assertTrue(home_problems("every-agent", "gars/.claude/settings.json:83", "gars/_system/stage00_register.py:863", "t"))
 
     def test_mutant_reach_none_disagrees_with_caught(self):
         no = [i for i in range(len(PAIRS)) if cell_of(self.text, i, "caught") == CAUGHT_NO]
