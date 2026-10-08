@@ -41,7 +41,13 @@ Nothing limits the purpose, and the purpose decides where the project's jobs may
 
 **Proposed fix.** Ask both from a fixed list taken from GARS's own data-policy table (a non-public answer goes to the person's own terminal, since the safety layer refuses it from the agent), show them in the closing message, and give the script's refusals an answer.
 
-Your answer:
+Your answer: Different fix: agree that the model must not infer the dataset’s class or purpose, but simplify the policy before adding questions.
+
+For the normal workflow, use public versus restricted data, with restricted data requiring a separate setup process. Distinguish software tests from real analyses only where that affects execution; derive this from the selected workflow when unambiguous, otherwise ask.
+
+Remove internal/pilot/commercial distinctions from routine registration unless a concrete supported capability requires them. Keep execution permissions in configuration and enforce them in code. Ask about agreements and usage restrictions only when relevant, and never infer that public availability permits every use.
+
+Revise the proposed fix and implementation plan around this simpler flow, including migration of existing records and tests that preserve the restrictions on unsupported data.
 
 ### 2. What counts as "yes" before the raw files are linked
 
@@ -55,7 +61,7 @@ There is no fixed answer, so a reply like "looks fine, but what about the undete
 
 **Proposed fix.** A fixed word (for example "link"), asked again on any other reply.
 
-Your answer:
+Your answer: I agree with the proposed fix.
 
 ### 3. One sample-name pattern for several assays
 
@@ -69,7 +75,7 @@ In a project with two or more assays whose files were read in different ways, th
 
 **Proposed fix.** The finishing step takes a pattern per assay, recorded when each folder was checked.
 
-Your answer:
+Your answer: I agree with the proposed fix.
 
 ## Stage 01: checking the design and writing the samplesheets
 
@@ -89,7 +95,7 @@ Declaring samples paired when they are not, written down as the contract asks, r
 
 **Proposed fix.** Offer each setting as a numbered list with what each value means, the way stage 02 already offers genomes and contrasts, and use the same list when you volunteer a strandedness; ask again on any other answer; the script writes the file and the history line.
 
-Your answer:
+Your answer: I agree with the proposed fix.
 
 ### 2. Which message follows the first, read-only check
 
@@ -106,7 +112,7 @@ If samplesheets from an earlier run are still there, stage 02 accepts them, sinc
 
 **Proposed fix.** The table's row for a clean check names the order the steps give, and says that the writing script, not the check, completes the stage.
 
-Your answer:
+Your answer: I agree with the proposed fix
 
 ### 3. What counts as "yes" before excluding samples or overwriting files
 
@@ -121,7 +127,7 @@ The contract says each of the two switches that clear these gates needs the user
 
 **Proposed fix.** A fixed word for each gate ("exclude", "overwrite"), and the script refuses a switch that has no matching recorded answer.
 
-Your answer:
+Your answer: I agree with the proposed fix.
 
 ## Stage 02, the router: settings menus and routing
 
@@ -139,7 +145,7 @@ The pre-flight check refuses only a chemistry the chosen aligner cannot run.
 
 **Proposed fix.** Add the chemistry menu to the router's settings step for single-cell, and show the choice in the confirmation message. The menu code already exists; only the contract omits it.
 
-Your answer:
+Your answer:  I agree with the proposed fix.
 
 ### 2. What counts as "yes" before the settings are written
 
@@ -154,7 +160,7 @@ The router's own human check says of a wrong contrast that nothing downstream ca
 
 **Proposed fix.** A fixed word ("write"), and the settings script refuses a write that differs from the trial run you saw.
 
-Your answer:
+Your answer:  I agree with the proposed fix.
 
 ### 3. The user's words about the statistical model become a formula (a rule exists; nothing checks it)
 
@@ -169,7 +175,7 @@ The settings script checks only that each term names a column of the design tabl
 
 **Proposed fix.** Offer formula choices built from the design table's own columns, the way the contrasts are already offered, and confirm them in the same message.
 
-Your answer:
+Your answer:  I agree with the proposed fix.
 
 ## Stage 02, the sub-stages: running the pipelines
 
@@ -186,7 +192,7 @@ These ten contracts share two shapes (seven nf-core pipelines, three analyses th
 
 **Proposed fix.** Each analysis finds its own input with GARS's resolver, as the differential-expression step already does.
 
-Your answer:
+Your answer:  I agree with the proposed fix.
 
 ### 2. Which AI model the history says ran the step (a rule exists; nothing checks it)
 
@@ -202,7 +208,7 @@ It is listed here because the pipelines are where it recurs most; it also appear
 
 **Proposed fix.** The script takes the model name from the software running the agent where it can, and otherwise records "unknown"; never from the agent's own words.
 
-Your answer:
+Your answer:  I agree with the proposed fix.
 
 ### 3. Naming where the input came from
 
@@ -215,7 +221,7 @@ Your answer:
 
 **Proposed fix.** The collecting step takes the producer's name from the resolver, not from the agent.
 
-Your answer:
+Your answer:  I agree with the proposed fix.
 
 ## Stage 03: custom analysis
 
@@ -232,7 +238,7 @@ The final check confirms only that the promised output files exist, are not empt
 
 **Proposed fix.** Show the scripts for approval too, and lock their fingerprints into the approval record the way the plan's already is.
 
-Your answer:
+Your answer:  I agree with the proposed fix.
 
 ### 2. The order in which several analysis scripts run
 
@@ -245,7 +251,7 @@ Your answer:
 
 **Proposed fix.** The plan lists its scripts in order, and GARS runs them as one job, or with declared dependencies.
 
-Your answer:
+Your answer:  I agree with the proposed fix.
 
 ### 3. Which project and assay the analysis draws on
 
@@ -258,7 +264,7 @@ Your answer:
 
 **Proposed fix.** List every assay's results and let the plan name the assay of each input.
 
-Your answer:
+Your answer:  I agree with the proposed fix.
 
 ## What else the map found
 
