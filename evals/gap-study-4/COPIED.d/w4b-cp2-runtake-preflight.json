@@ -27,6 +27,11 @@
       "reason": "Tests for box/preflight.py (interface 3) with fakes only: every check green on a passing world and red on its own breaks, missing or failed probes, the PENDING refusals, the programs' 3.11 floor and neutrality, the record's place and the after-take credential check, with their mutants."
     },
     {
+      "path": "tests/test_take_config.py",
+      "status": "new",
+      "reason": "Tests for box/take_config.py (interface 3): D8's values read back with tomllib and json, the PENDING refusals, no key and no study word in any file, and the freeze hash, with their mutants."
+    },
+    {
       "path": "COPIED.d/w4b-cp2-runtake-preflight.json",
       "status": "new",
       "reason": "This lane's copy-record fragment (interface 1)."
