@@ -22,6 +22,11 @@
       "reason": "Tests for box/run_take.py (interface 3) with fakes only: the process guard, every clause with its mutants, and interface 10's ast audit."
     },
     {
+      "path": "tests/test_preflight.py",
+      "status": "new",
+      "reason": "Tests for box/preflight.py (interface 3) with fakes only: every check green on a passing world and red on its own breaks, missing or failed probes, the PENDING refusals, the programs' 3.11 floor and neutrality, the record's place and the after-take credential check, with their mutants."
+    },
+    {
       "path": "COPIED.d/w4b-cp2-runtake-preflight.json",
       "status": "new",
       "reason": "This lane's copy-record fragment (interface 1)."
