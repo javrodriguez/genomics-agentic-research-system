@@ -81,9 +81,10 @@ turned into " ; " first, so a comment line dropped the whole rest of the command
 no stage run at all). Its NAMED RESIDUALS of comments: a `#` inside a word (`--model run#2 --force`, an unquoted
 `sed s#a#b#`) also starts shlex's comment, so the rest of that line is dropped (bash starts a comment only at a word's
 start); and a comment line ending in a backslash joins the next line into the comment (bash runs that next line).
-Both are typed at their actual labels in the tests. Every token
-naming the script is read, not the first: the script's file name as the token or its last path segment, or the
-module after `-m`. Its own argument tokens run to the next command separator (; & | ( ) or a newline). For
+Both are typed at their actual labels in the tests. Every token naming the script is read, not the first: the
+script's file name as the token or its last path segment, or the module after `-m`. Its own argument tokens run to
+the next command separator (; & | ( ) or a newline); a command substitution `$( )` among them is skipped and never
+ends them (Fold 3's own pre-review: `--project $(pwd)/gars/projects/p --force` keeps its `--force`). For
 `approve_command`, the script's global options (`--opt X`, `--opt=X`) are skipped and the next token must equal
 the subcommand whole. An approve call whose own argument tokens hold one of the closed help options HELP_OPTIONS
 (`-h`, `--help`) prints its help and approves nothing, so it is not an invocation (review round 2, W3B2-4: P5, the
@@ -209,7 +210,8 @@ def _names(words: list[str], i: int, script: str, module: str) -> bool:
 
 def invocations(command: str, script: str, module: str, depth: int = 0) -> list[list[str]]:
     """The argument tokens of every invocation of `script` (or `-m module`) in a shell command: the tokens after the
-    one naming it, up to the next command separator. Reads a shell's -c string and what eval runs, DEPTH deep."""
+    one naming it, up to the next command separator, a `$( )` among them skipped. Reads a shell's -c string and what
+    eval runs, DEPTH deep."""
     words = split(command)
     out = []
     for i, w in enumerate(words):
@@ -223,8 +225,14 @@ def invocations(command: str, script: str, module: str, depth: int = 0) -> list[
                     break
         if not _names(words, i, script, module):
             continue
-        args = []
+        args, inner = [], 0
         for tok in words[i + 1:]:
+            if inner:  # inside a `$( )` among the call's own tokens: the substitution's command, never the call's end
+                inner += tok.count("(") - tok.count(")") if _separator(tok) else 0
+                continue
+            if tok == "(" and args and args[-1].endswith("$"):
+                inner = 1
+                continue
             if _separator(tok):
                 break
             args.append(tok)
