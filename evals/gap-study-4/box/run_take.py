@@ -286,7 +286,10 @@ def _positive_int(v) -> bool:
 
 
 def check_spec(spec: TakeSpec) -> None:
-    """Refuse a spec create_argv must not run: a PENDING resource (NotReady), or any value off its rule."""
+    """Refuse a spec create_argv must not run: a PENDING resource (NotReady), or any value off its rule.
+
+    W4B2-3: the network must be a full 64-hex id here. Before launch the drive step cannot know the internal network's
+    id, so it passes a placeholder 64-hex id, which launch replaces with the network it creates (`_on_network`)."""
     if not isinstance(spec, TakeSpec):
         raise Refused("spec must be a TakeSpec")
     resources = {"memory_reservation": spec.memory_reservation, "memory": spec.memory, "cpus": spec.cpus,
@@ -434,6 +437,11 @@ def config_home_names() -> frozenset:
     return frozenset(k for env in HARNESS_ENV.values() for k, v in env.items() if v == CONFIG_MOUNT)
 
 
+def _config_home_allowed(name, value) -> bool:
+    """W4B2-1: only a harness's config-home name, and only at the config mount (never a login, never anything else)."""
+    return name in config_home_names() and value == CONFIG_MOUNT
+
+
 def agent_exec_argv(container_id: str, inner, *, workdir: str = "/", config_home=None) -> list:
     """A plain exec as the agent (preflight's reads): no variable but, when given, one harness's config home."""
     _check_id(container_id, "container id")
@@ -441,7 +449,7 @@ def agent_exec_argv(container_id: str, inner, *, workdir: str = "/", config_home
     workdir = _abs_path(workdir, "workdir") if workdir != "/" else "/"
     extra = []
     for name, value in sorted((config_home or {}).items()):
-        if name not in config_home_names() or value != CONFIG_MOUNT:
+        if not _config_home_allowed(name, value):
             raise Refused("a plain exec carries only a harness's config home, at the config mount")
         extra += ["-e", f"{name}={value}"]
     return [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, "--workdir", workdir, *extra, container_id, *inner]
@@ -692,7 +700,10 @@ def launch(runtime, spec: TakeSpec, *, sidecar: SidecarLaunch, proxy: ProxyLaunc
            caller_env=None) -> Launched:
     """Network, proxy, sidecar, take container, each created, inspected where interface 12 says, then started. A
     failure tears down everything made so far by its recorded id and raises LaunchError carrying the record. No agent
-    turn ever runs here. The launch record is written to `record_dir` either way."""
+    turn ever runs here. The launch record is written to `record_dir` either way.
+
+    W4B2-3: `spec.network` is a placeholder 64-hex id the drive step passes (it cannot know the id yet); launch
+    replaces it with the network it creates, and `Launched.spec` carries the spec preflight must use."""
     from box import preflight  # the take's expected inspect (interface 13); imported here, preflight imports us
 
     check_spec(spec)

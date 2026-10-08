@@ -1537,7 +1537,22 @@ def audit_source(rel: str, source: str) -> list:
     # W4B1-3: every load of the names os and subprocess must be the base of an attribute (never bound, passed or
     # subscripted), so the module object never reaches a name the audit cannot follow.
     attr_bases = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+    parents = {id(c): n for n in ast.walk(tree) for c in ast.iter_child_nodes(n)}
     for node in ast.walk(tree):
+        # W4B2-2, default-deny: os only through its committed attribute list; no dunder outside its committed list.
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "os" \
+                and node.attr not in OS_ATTRS:
+            out.append(f"{rel}: os.{node.attr} is not in OS_ATTRS")
+        dname = node.attr if isinstance(node, ast.Attribute) else node.id if isinstance(node, ast.Name) else ""
+        if dname.startswith("__") and dname.endswith("__") and dname not in DUNDERS_ALLOWED:
+            out.append(f"{rel}: {dname} is not in DUNDERS_ALLOWED")
+        # The one subprocess site: each use is a (name, how) of SUBPROCESS_USES.
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "subprocess":
+            parent = parents.get(id(node))
+            how = "call" if isinstance(parent, ast.Call) and parent.func is node else \
+                "except" if isinstance(parent, ast.ExceptHandler) and parent.type is node else "value"
+            if (node.attr, how) not in SUBPROCESS_USES:
+                out.append(f"{rel}: subprocess.{node.attr} used as a {how}, not one of SUBPROCESS_USES")
         if isinstance(node, ast.Name) and node.id in GUARDED_MODULES and isinstance(node.ctx, ast.Load) \
                 and id(node) not in attr_bases:
             out.append(f"{rel}: the module {node.id} is used as a value")
