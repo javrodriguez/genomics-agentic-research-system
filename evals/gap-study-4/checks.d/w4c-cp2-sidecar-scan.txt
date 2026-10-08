@@ -1,0 +1,3 @@
+# Lane w4c-cp2-sidecar-scan: CP2's sidecar (snapshots, watcher, health) and the commit scan, as code on fakes.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_sidecar.py
