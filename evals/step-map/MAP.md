@@ -91,7 +91,7 @@ Of the severity 1-4 steps, the unsaid decisions are: G-door (19 steps); G-door, 
 
 | Rank | Id | Kind | Where | Decision the model makes silently | Sev | Det | Fix | His answer |
 |---|---|---|---|---|---|---|---|---|
-| 1 | S00-class | unsaid | 00_initialize_project 15 | The dataset's data class and purpose, passed to finalize | 8 | 8 | his fix (below; the proposal it replaces is listed there) → R3 | different fix |
+| 1 | S00-class | unsaid | 00_initialize_project 15 | The dataset's data class and purpose, passed to finalize | 8 | 8 | his fix (below), not yet re-rated (R3 was the superseded proposal's rung) | different fix |
 | 2 | S00-yes | unsaid | 00_initialize_project 12 | Whether the user's reply to T4a is a yes before link runs | 8 | 5 | A fixed answer (`link`), re-asked on anything else → R1 | agree |
 | 3 | S00-onepattern | unsaid | 00_initialize_project 15 | Which sample-ID pattern finalize gets when assays used different ones | 8 | 5 | finalize takes a pattern per assay, recorded at inspect → R0 | agree |
 | 4 | S00-match | unsaid | 00_initialize_project 3 | Which menu entry the user's earlier phrase matches ('Your request matches 01') | 8 | 4 | `assays --select` on the original phrase returns the match or the ambiguity; the model only renders it → R0 | not asked |
@@ -169,7 +169,7 @@ Of the severity 1-4 steps, the unsaid decisions are: G-door (19 steps); G-door, 
 
 ## His answers to REVIEW.md (owner)
 
-Javier answered the 15 items of `REVIEW.md` on 7 Oct 2026, in the file itself; the build reads his words from there (`rulings.json` only records how each one reads, and the build refuses a reading his words do not support). An "agree" adopts the fix his page proposed, in the page's words (the table above gives the same fix in the map's terms). The 28 decisions not on the page were not asked and keep the proposal only.
+Javier answered the 15 items of `REVIEW.md` on 7 Oct 2026, in the file itself; the build reads his words from there (`rulings.json` only records how each one reads, and the build refuses a reading his words do not support). An "agree" adopts the fix his page proposed, in the page's words (the table above gives the reviewer's technical wording of it). The 28 decisions not on the page were not asked and keep the proposal only.
 
 | Id | His answer | Fix adopted |
 |---|---|---|

@@ -151,13 +151,15 @@ def apply_rulings(ranked):
     for r in ranked:
         answer = answers.get(r["id"])
         if answer is None:
-            r["owner"], r["fix_adopted"] = None, None
+            r["owner"], r["fix_adopted"], r["fix_status"] = None, None, "proposed (not asked)"
             continue
         ruling = classify(answer)
         r["owner"] = {"ruling": ruling, "answer": answer, "kind": "owner",
                       "proposed_on_his_page": proposals[r["id"]],
                       "source": "evals/step-map/REVIEW.md"}
         r["fix_adopted"] = proposals[r["id"]] if ruling == "agree" else answer[len(DIFFERENT_FIX):]
+        r["fix_status"] = "adopted (agreed)" if ruling == "agree" else \
+            "superseded by his fix (fix_adopted); fix and fix_rung are the proposal's"
     return answers
 
 
@@ -561,12 +563,12 @@ def render(maps, ranked, summary, contracts):
                 where = "%s and %d more" % (", ".join(
                     "%s %s" % (w["contract"], w["step"]) for w in r["where"][:2]), len(r["where"]) - 2)
             ruling = (r["owner"] or {}).get("ruling")
-            fix = r["fix"] if ruling != "different fix" else \
-                "his fix (below; the proposal it replaces is listed there)"
-            lines.append("| %d | %s | %s | %s | %s | %d | %d | %s → %s | %s |" % (
+            fix = "%s → %s" % (r["fix"], r["fix_rung"]) if ruling != "different fix" else \
+                "his fix (below), not yet re-rated (%s was the superseded proposal's rung)" % r["fix_rung"]
+            lines.append("| %d | %s | %s | %s | %s | %d | %d | %s | %s |" % (
                 r["rank_in_stage"], r["id"], r["kind"], md_escape(where + (" (also in: %s)" % "; ".join(
                     r["elsewhere"]) if r["elsewhere"] else "")), md_escape(r["decision"]),
-                r["severity"], r["detection"], md_escape(fix), r["fix_rung"],
+                r["severity"], r["detection"], md_escape(fix),
                 ruling or "not asked"))
         lines.append("")
     lines += render_answers(ranked)
@@ -611,7 +613,7 @@ def render_answers(ranked):
              "Javier answered the 15 items of `REVIEW.md` on 7 Oct 2026, in the file itself; the build"
              " reads his words from there (`rulings.json` only records how each one reads, and the build"
              " refuses a reading his words do not support). An \"agree\" adopts the fix his page proposed,"
-             " in the page's words (the table above gives the same fix in the map's terms). The %d decisions not on the page were not asked and keep the proposal only."
+             " in the page's words (the table above gives the reviewer's technical wording of it). The %d decisions not on the page were not asked and keep the proposal only."
              % len({r["id"] for r in ranked} - seen), "",
              "| Id | His answer | Fix adopted |", "|---|---|---|"] + rows + [""]
     for r in different:
