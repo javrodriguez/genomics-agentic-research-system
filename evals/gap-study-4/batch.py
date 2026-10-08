@@ -125,7 +125,8 @@ with no records) is still re-driven automatically, with no ruling.
 
 A RESTART CONTINUES, never resets (review round 2, W1B2-3). The caps and attempt numbers live in
 the committed outcomes, not in this process: `Batch` reads them from the repo (`repo.history()`,
-every outcome and ruling committed so far, in commit order; or a `history` argument read from it)
+every outcome and ruling committed so far, in commit order; or a `history` argument read from it, which is
+refused when it differs from `repo.history()`, naming the first difference, W1B4-6 (i))
 and rebuilds, before anything runs, walking it in order, the re-runs spent per half-cell and per
 slot, the rehearsal and pause events counted per half-cell, the closed half-cells (from their
 committed cell state, or from a ruling whose event reaches a cap), the last window event, each
@@ -257,6 +258,25 @@ def restart_waits(history: list) -> bool:
     return any(effective_route(e) == labels4.PAUSE for e in tail)
 
 
+def history_difference(given, held):
+    """W1B4-6 (i): where a `history` argument first differs from the repo's own `history()`, or None when they agree:
+    the first entry that differs (and its first differing key, when both are records), or the first entry one of
+    them lacks."""
+    if not isinstance(given, list) or not isinstance(held, list):
+        return None if given == held else f"the argument is {type(given).__name__}, repo.history() {type(held).__name__}"
+    for i, (a, b) in enumerate(zip(given, held)):
+        if a != b:
+            if isinstance(a, dict) and isinstance(b, dict):
+                keys = sorted((k for k in set(a) | set(b) if a.get(k, a) != b.get(k, b)), key=str)
+                return f"history[{i}] differs first at key {keys[0]!r}"
+            return f"history[{i}] differs"
+    if len(given) != len(held):
+        n = min(len(given), len(held))
+        more = "the argument" if len(given) > len(held) else "repo.history()"
+        return f"history[{n}] is held by {more} only ({len(given)} entries given, {len(held)} in repo.history())"
+    return None
+
+
 class BatchConfigError(RuntimeError):
     """The loop cannot start: pending data, an unhandled terminal state, a bad row, no nohup,
     untrustworthy history."""
@@ -348,12 +368,18 @@ class Batch:
         self.ruled: dict = {}                # (slot, attempt) -> (the ruling, its fate), from the history (W1B3-1)
         self.unruled: dict = {}              # slot -> (attempt, why): its last take awaits a ruling (W1B3-1)
         self.owed: dict = {}                 # slot -> (attempt, why): the history owes it this drive (W1B3-6)
+        read = getattr(repo, "history", None)
         if history is None:
-            read = getattr(repo, "history", None)
             if not callable(read):
                 raise BatchConfigError("the repo gives no history(): the caps and attempts of earlier runs "
                                        "cannot be rebuilt, so a restart could spend re-runs twice")
             history = read()
+        elif callable(read):
+            # W1B4-6 (i): a history argument is only ever the repo's own; one that differs is refused, never trusted
+            # over the committed record. A repo without history() (a test double) may still be handed one.
+            diff = history_difference(history, read())
+            if diff is not None:
+                raise BatchConfigError(f"the history argument differs from repo.history(): {diff}")
         self._replay(history)
 
     # ---------------------------------------------------------------------------- the history

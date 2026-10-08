@@ -2748,6 +2748,21 @@ class TestNextTouchHistory(unittest.TestCase):
     def test_a_differing_history_argument_is_refused(self):
         self.assertEqual(history_argument_problems(), [])
 
+    def test_history_argument_check_can_fail(self):
+        """The mutant: the comparison dropped (the base's rule, the argument used as given)."""
+        with mock.patch.object(batch, "history_difference", lambda given, held: None):
+            found = history_argument_problems()
+        for name in ("an entry changed", "an entry dropped", "empty for a repo that holds outcomes"):
+            self.assertIn(f"{name}: accepted", found)
+        self.assertTrue(any(x.startswith("an entry added: refused, but not naming") for x in found), found)
+
+    def test_the_first_difference_is_named(self):
+        a, b = {"slot": 1, "state": "graded"}, {"slot": 1, "state": "pause"}
+        self.assertEqual(batch.history_difference([a], [b]), "history[0] differs first at key 'state'")
+        self.assertIsNone(batch.history_difference([a], [dict(a)]))
+        self.assertIn("history[1] is held by the argument only", batch.history_difference([a, a], [a]))
+        self.assertIn("history[0] is held by repo.history() only", batch.history_difference([], [a]))
+
 
 if __name__ == "__main__":
     unittest.main()
