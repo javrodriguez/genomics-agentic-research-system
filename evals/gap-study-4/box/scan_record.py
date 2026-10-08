@@ -40,7 +40,7 @@ the rules scanner may still see them.
 THE INDEX. The scan masks the files on disk. The caller built the list from the staged index, so after a scan that
 masked anything it must stage the files again and check that each staged blob's sha256 equals the result's
 `sha256_after` before it commits; a commit of the earlier staging would carry the unmasked value (the drive and
-commit step's binding; named for the lane lead).
+commit step's binding, deferred there: the lane lead's call, fold 1 Q3).
 
 Result: {"masked": [{"path", "line", "kind", "offset"}], "events": int, "refused": [{"path", "line", "kind",
 "why"}], "files": [{"path", "sha256_before", "sha256_after"}], "holdout": "checked" | "not-checked"}.

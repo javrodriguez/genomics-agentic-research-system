@@ -1605,7 +1605,7 @@ def file_ok(path: str) -> bool:
 # the round's own scrub.py, for scrub.NOTE). Test files are out of this check's scope.
 BOX_MODULES = {
     "box/sidecar.py": {"__future__", "argparse", "dataclasses", "errno", "hashlib", "json", "os", "re", "selectors",
-                       "signal", "socket", "stat", "subprocess", "sys", "tempfile", "time"},
+                       "signal", "socket", "stat", "subprocess", "sys", "time"},
     "box/scan_record.py": {"__future__", "dataclasses", "hashlib", "json", "os", "re", "stat", "sys", "scrub"},
 }
 # The one subprocess call site of this lane's modules: (module, enclosing function, attribute).

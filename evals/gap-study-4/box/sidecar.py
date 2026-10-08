@@ -53,15 +53,21 @@ pre-registration). Every regular file is opened with OPEN_FLAGS (O_NOFOLLOW | O_
 race can neither follow a link nor block, and is re-checked with fstat. A file is its sha256; a folder is
 {"type": "dir"} (one it cannot list is unreadable); anything it cannot read is {"type": "unreadable"}. Paths are
 run-tree-relative and "/"-separated (the ledger's take record says "run_tree": "", and "home": null). The bytes of
-every consequential path that is a readable file go to blobs/<sha256>. Each file is written to a private folder of
-the sidecar container (tmp_dir) and moved in by one rename; nothing is ever left in snapshots/ or the evidence
-root. Mode bits are not recorded (STATE has no `mode`, so a chmod alone is invisible: a named residual).
+every consequential path that is a readable file go to blobs/<sha256>. Each file is written to a temp file in its
+destination's own folder, under a dot-name (`snapshots/.tmp-<label>-<n>`, `blobs/.tmp-<sha256>-<n>`, `.tmp-<name>-<n>`
+in the evidence root), and moved in by one rename within that one mount (fold 1, Q1, glitch-f3's ruling: a temp in
+the container's own /tmp would cross into the bind mount, and rename(2) fails there with EXDEV). A temp a crash
+leaves behind makes endstate's `Evidence.load` refuse the folder (it fails closed, as harness-error), and `finish`
+removes any temp the sidecar made. Mode bits are not recorded (STATE has no `mode`, so a chmod alone is invisible: a named residual).
 
 THE WATCHER. Between snapshots an inotify watcher over the consequential paths (the real one is `inotifywait`,
 behind the injected factory `inotifywait_factory`; its argv, output format, sub-second stamps and event
-subscription are PENDING). The watch plan (`watch_plan`) is re-chosen at every arm: each consequential path's
-parent folder when it exists, else its nearest existing ancestor folder, recursively, so a path created mid-turn
-under missing folders is still caught. Only events on a consequential path itself are logged, as {"at", "path",
+subscription are PENDING). The watch plan (`watch_plan`) is the whole run tree, recursively (fold 1, Q2,
+glitch-f3's ruling), re-chosen at every arm, so a path created mid-turn under missing folders is still caught, and
+a deleted or moved folder on a consequential path's chain is never a fault: an rm -rf logs the deletes beneath it,
+and a folder renamed away (or onto the chain) logs a delete (or a modify) for each consequential path beneath it.
+A fault is only the watcher's own error: an event name outside the table, or an event that maps to no run-tree
+path. (A queue overflow writes its own health record, which routes the take as a gap.) Only events on a consequential path itself are logged, as {"at", "path",
 "op"} to access.jsonl, through the closed table EVENT_OPS; an event name outside it (and outside EVENT_FLAGS and
 OVERFLOW_EVENT) is a watcher fault: the watcher is stopped and its stop carries a non-zero code. The overflow event
 writes `queue-overflow`. Every stamp is the host clock (time.time, injected), never time.monotonic: a stream
@@ -84,7 +90,6 @@ import socket
 import stat
 import subprocess
 import sys
-import tempfile
 import time
 from dataclasses import dataclass
 
@@ -97,7 +102,7 @@ WATCHER_USER = "10002:10002"
 ADDED_CAPABILITY = "DAC_READ_SEARCH"
 CTL_DIR = "/tmp/w-ctl"
 CTL_SOCKET = CTL_DIR + "/sock"
-PRIVATE_TMP = "/tmp/w-tmp"
+TEMP_PREFIX = ".tmp-"
 
 COMMANDS = ("begin", "snapshot", "finish", "status")
 LABEL_PATTERN = r"(pre|post)-([1-9][0-9]*)"
@@ -125,9 +130,9 @@ EVENT_OPS = {"OPEN": OPEN, "MODIFY": MODIFY, "CLOSE_WRITE": MODIFY, "MOVED_TO": 
 # Modifiers inotifywait prints beside an event name (ISDIR on a folder; CLOSE beside CLOSE_WRITE, inferred, not
 # measured: named for the stub take's format measurement); never an op of their own.
 EVENT_FLAGS = ("ISDIR", "CLOSE")
-# Events that remove or replace a folder the armed watch sits on: the watch would go stale (it follows the old
-# inode), so each is a watcher fault, never read through.
-STALE_EVENTS = ("MOVED_FROM", "MOVED_TO", "DELETE", "DELETE_SELF")
+# A folder renamed: away from a consequential path's chain (each consequential path beneath it is deleted), or onto
+# it (each is modified). An rm -rf needs no rule: the deletes beneath the folder come first, one per path.
+FOLDER_MOVES = {"MOVED_FROM": DELETE, "MOVED_TO": MODIFY}
 OVERFLOW_EVENT = "Q_OVERFLOW"
 
 OPEN_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
@@ -143,6 +148,8 @@ INOTIFYWAIT_ARGV = PENDING
 INOTIFYWAIT_FORMAT = PENDING
 INOTIFYWAIT_SUBSECOND = PENDING
 INOTIFYWAIT_EVENTS = PENDING
+INOTIFY_WATCH_COUNT = PENDING
+WATCH_ESTABLISH_S = PENDING
 _PENDING_WHY = {
     "inotifywait_argv": "the inotifywait command line (monitor mode, recursion flag, format and time options) at the "
                         "pinned inotify-tools in the sidecar image; measured on the stub take",
@@ -152,6 +159,10 @@ _PENDING_WHY = {
                              "arrival, drained before every stop); measured on the stub take",
     "inotifywait_events": "the event subscription (-e) at the pinned version, which must be exactly EVENT_OPS' "
                           "names; measured on the stub take",
+    "inotify_watch_count": "how many inotify watches a recursive watch of a real run tree takes (.git included), "
+                           "against the box's max_user_watches; measured on the stub take (fold 1, Q2)",
+    "watch_establish_s": "how long a recursive watch of a real run tree takes to establish, which ESTABLISH_TIMEOUT_S "
+                         "must exceed; measured on the stub take (fold 1, Q2)",
 }
 
 
@@ -207,8 +218,7 @@ def create_argv(*, image, run_tree, evidence, watch, user=WATCHER_USER) -> list:
     _abs_ok(run_tree, "run_tree")
     _abs_ok(evidence, "evidence")
     for what, other in (("the evidence folder", evidence), ("the evidence mount", EVIDENCE_MOUNT),
-                        ("the program's folder", os.path.dirname(PROGRAM)), ("the control folder", CTL_DIR),
-                        ("the private folder", PRIVATE_TMP)):
+                        ("the program's folder", os.path.dirname(PROGRAM)), ("the control folder", CTL_DIR)):
         if _overlap(run_tree, other):
             raise ValueError(f"the run tree overlaps {what}")
     m = _USER.fullmatch(user) if isinstance(user, str) else None
@@ -455,23 +465,12 @@ def _parent(rel: str) -> str:
 
 
 def watch_plan(run_tree: str, watch) -> tuple:
-    """((folder, recursive), ...): for each consequential path, its parent folder when it exists (a folder watch
-    sees a create, a rename onto it and a rename away, which a watch on the file's own inode would miss), else its
-    nearest existing ancestor folder, recursively (so a path whose folders appear mid-turn is still caught); and
-    every folder above that one, non-recursively, so a move or delete of any folder on the chain is seen."""
-    out = set()
-    for p in watch:
-        parent = _parent(p)
-        anc = parent
-        while anc and not _real_dir(run_tree, anc):
-            anc = _parent(anc)
-        out.add((anc, anc != parent or not _real_dir(run_tree, parent)))
-        while anc:   # every folder above it too, so a folder on the chain moved or deleted is seen (a fault)
-            anc = _parent(anc)
-            out.add((anc, False))
-    # a folder watched recursively covers the same folder watched alone
-    rec = {d for d, r in out if r}
-    return tuple(sorted((d, r) for d, r in out if r or d not in rec))
+    """((folder, recursive), ...): the whole run tree, recursively (fold 1, Q2, glitch-f3's ruling). inotifywait -r
+    watches every folder beneath, and each folder created or moved in as it appears, so a deleted, replaced or
+    moved folder on a consequential path's chain is followed, never a stale watch. Re-chosen at every arm."""
+    if not watch or not _real_dir(run_tree, ""):
+        raise OSError(errno.ENOENT, "nothing to watch: the run tree or the consequential list is missing")
+    return (("", True),)
 
 
 def stop_exit_code(returncode: int, *, requested: bool, fault: bool) -> int:
@@ -486,21 +485,42 @@ def stop_exit_code(returncode: int, *, requested: bool, fault: bool) -> int:
     return code
 
 
-def _write_atomic(dest: str, data: bytes, tmp_dir: str):
-    """Write `data` to `dest` so a reader never sees half a file: a temp file in the private folder, moved in by
-    one rename. `dest` must not exist yet."""
+def _temp_path(dest: str, n: int) -> str:
+    """The temp file for `dest`: in the same folder (so one rename never crosses a mount), under a dot-name that
+    endstate's closed layout refuses if it is ever left behind."""
+    name = os.path.basename(dest)
+    stem = name[:-5] if name.endswith(".json") else name
+    return os.path.join(os.path.dirname(dest), f"{TEMP_PREFIX}{stem}-{n}")
+
+
+def _write_atomic(dest: str, data: bytes, temps: set | None = None):
+    """Write `data` to `dest` so a reader never sees half a file: a temp file beside it, moved in by one rename.
+    `dest` must not exist yet. Every temp made is recorded in `temps` until it is renamed or removed."""
     if os.path.lexists(dest):
         raise FileExistsError(f"{os.path.basename(dest)} already exists")
-    fd, tmp = tempfile.mkstemp(dir=tmp_dir)
+    temps = set() if temps is None else temps
+    n = 0
+    while True:
+        tmp = _temp_path(dest, n)
+        try:
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
+            break
+        except FileExistsError:
+            n += 1
+    temps.add(tmp)
     try:
         with os.fdopen(fd, "wb") as fh:
             fh.write(data)
             fh.flush()
             os.fsync(fh.fileno())
         os.rename(tmp, dest)
+        temps.discard(tmp)
     except BaseException:
-        if os.path.lexists(tmp):
+        try:
             os.unlink(tmp)
+            temps.discard(tmp)
+        except OSError:
+            pass   # left for finish's sweep; a load before it refuses the folder
         raise
 
 
@@ -518,9 +538,10 @@ class Sidecar:
     poll() -> returncode | None (Popen's: -n for a death by signal n), request_stop() (SIGTERM),
     force_stop() (SIGKILL, after STOP_TIMEOUT_S). The real one is `inotifywait_factory`; tests inject fakes."""
 
-    def __init__(self, *, run_tree, evidence, watch, factory, tmp_dir, clock=None, sleep=None, opener=None,
+    def __init__(self, *, run_tree, evidence, watch, factory, clock=None, sleep=None, opener=None,
                  establish_timeout_s=ESTABLISH_TIMEOUT_S, stop_timeout_s=STOP_TIMEOUT_S):
-        self.run_tree, self.evidence, self.tmp_dir = run_tree, evidence, tmp_dir
+        self.run_tree, self.evidence = run_tree, evidence
+        self._temps = set()
         self.watch = tuple(watch)
         if not self.watch or not all(rel_path_ok(p) for p in self.watch):
             raise ValueError("watch is a non-empty list of run-tree-relative paths")
@@ -530,7 +551,7 @@ class Sidecar:
         self.opener = os.open if opener is None else opener
         self.establish_timeout_s, self.stop_timeout_s = establish_timeout_s, stop_timeout_s
         self.watcher = None
-        self._floor, self._armed_dirs = 0.0, set()
+        self._floor = 0.0
         self.state = "new"          # new -> running -> finished, or broken
         self.problems = []          # why the sidecar is broken (sticky)
         self.next_label = None
@@ -551,22 +572,36 @@ class Sidecar:
         self.problems.append(problem)
 
     # --------------------------------------------------------------------------------------------- the watcher
+    def _stamp(self, at) -> float:
+        """An event's stamp: its own (or its arrival), never before the record it follows (the start, or the last
+        record) and never after now (a later stop, stamped by the clock, must not fall before it)."""
+        now = self.clock()
+        at = now if at is None else at
+        at = min(max(at, self._floor), now)
+        self._floor = max(self._floor, at)
+        return at
+
+    def _beneath(self, folder: str) -> list:
+        """The consequential paths strictly beneath a run-tree folder ("" is the root)."""
+        return [p for p in self.watch if folder == "" or p.startswith(folder + "/")]
+
     def _event(self, ev: WatchEvent) -> bool:
-        """Log one stream event. False on a fault (an event name outside the closed table)."""
+        """Log one stream event. False on a fault: an event name outside the closed table, or an event that maps
+        to no run-tree path."""
         names = tuple(ev.names)
         unknown = [n for n in names if n not in EVENT_OPS and n not in EVENT_FLAGS and n != OVERFLOW_EVENT]
-        if unknown or not names:
+        if unknown or not names or not _mapped(ev.path):
             return False
-        if ev.path in self._armed_dirs and set(names) & set(STALE_EVENTS):
-            return False   # a folder the watch sits on was moved, replaced or deleted: the watch is stale
-        at = self.clock() if ev.at is None else ev.at
-        at = max(at, self._floor)   # never before the record it follows (the start, or the last record)
-        self._floor = at
+        at = self._stamp(ev.at)
         if OVERFLOW_EVENT in names:
             self._health(QUEUE_OVERFLOW, at)
         if ev.path in self.watch:
             for op in [o for o in (OPEN, MODIFY, DELETE) if o in {EVENT_OPS[n] for n in names if n in EVENT_OPS}]:
                 self._access(at, ev.path, op)
+        for name, op in FOLDER_MOVES.items():
+            if name in names and isinstance(ev.path, str):
+                for p in self._beneath(ev.path) if ev.path not in self.watch else []:
+                    self._access(at, p, op)
         return True
 
     def _drain(self, *, log: bool = True) -> bool:
@@ -592,13 +627,17 @@ class Sidecar:
     def _stop(self, *, fault: bool = False) -> float:
         """Stop the watcher, drain every event it produced, then write watcher-stop stamped at that instant.
         Returns the stamp."""
+        requested = self.watcher.poll() is None   # one that already exited ended on its own, not by our signal
         self.watcher.request_stop()
         rc, forced = self._wait_exit()
         clean = self._drain(log=not fault)
         fault = fault or forced or not clean
         at = self.clock()
-        self._health(WATCHER_STOP, at, exit_code=stop_exit_code(rc, requested=True, fault=fault))
+        self._health(WATCHER_STOP, at, exit_code=stop_exit_code(rc, requested=requested, fault=fault))
         self.watcher = None
+        if not requested and not fault:
+            self._break(f"the watcher exited on its own (exit code {stop_exit_code(rc, requested=False, fault=False)})"
+                        f" before the stop request; it is not re-armed")
         if fault:
             self._break(f"the watcher faulted ({'it did not stop' if forced else 'an event outside the closed table'})"
                         f" and was stopped; it is not re-armed")
@@ -623,19 +662,7 @@ class Sidecar:
         at = self.clock()
         self._health(WATCHER_START, at)
         self.watcher, self._floor = w, at
-        self._armed_dirs = self._chain_dirs()
         return at
-
-    def _chain_dirs(self) -> set:
-        """Every folder on a consequential path's chain that exists now (the folders the armed watch sits on)."""
-        out = set()
-        for p in self.watch:
-            anc = _parent(p)
-            while anc:
-                if _real_dir(self.run_tree, anc):
-                    out.add(anc)
-                anc = _parent(anc)
-        return out
 
     def pump(self):
         """Drain the running watcher's stream into the log, and detect a watcher that died by itself (stamped at
@@ -661,10 +688,10 @@ class Sidecar:
         for name, data in sorted(blobs.items()):
             dest = self._ev(BLOBS, name)
             if not os.path.lexists(dest):
-                _write_atomic(dest, data, self.tmp_dir)
+                _write_atomic(dest, data, self._temps)
         body = json.dumps({"label": label, "taken_at": taken_at, "entries": entries}, sort_keys=False,
                           separators=(",", ":")) + "\n"
-        _write_atomic(self._ev(SNAPSHOTS, f"{label}.json"), body.encode("utf-8"), self.tmp_dir)
+        _write_atomic(self._ev(SNAPSHOTS, f"{label}.json"), body.encode("utf-8"), self._temps)
         unreadable = sorted(p for p, st in entries.items() if st["type"] == "unreadable")
         return unreadable, sorted(p for p in unreadable if p in self.watch), special
 
@@ -743,7 +770,17 @@ class Sidecar:
         unreadable, uc, _ = self._snapshot(label, taken_at)
         return taken_at, unreadable, uc
 
+    def _sweep_temps(self):
+        """Remove every temp this sidecar made that is still on disk (a failed write whose own cleanup failed)."""
+        for tmp in sorted(self._temps):
+            try:
+                os.unlink(tmp)
+            except FileNotFoundError:
+                pass
+            self._temps.discard(tmp)
+
     def _finish(self) -> dict:
+        self._sweep_temps()
         if self.state == "running":
             self._stop()
             if self.state == "running":
@@ -753,6 +790,17 @@ class Sidecar:
 
 
 # ------------------------------------------------------------------------------------------------- the real watcher
+def _strip_slash(path: str) -> str:
+    """A folder's own event names it with a trailing slash (%w with an empty %f; inferred, for the format
+    measurement): the path is the folder."""
+    return path.rstrip("/") or path
+
+
+def _mapped(path) -> bool:
+    """Does an event name a run-tree path ("" is the root)? An event that maps to none is a watcher fault."""
+    return path == "" or rel_path_ok(path)
+
+
 class _InotifyWatcher:
     """The real watcher process (inotifywait), parsed by the PENDING format. Never run in tests."""
 
@@ -785,8 +833,9 @@ class _InotifyWatcher:
         fmt = INOTIFYWAIT_FORMAT
         for raw in (lines.split(b"\n") if lines else []):
             fields = dict(zip(fmt["fields"], raw.decode("utf-8", "surrogateescape").split(fmt["separator"])))
-            path = fields.get("path", "")
-            rel = path[len(self.run_tree) + 1:] if path.startswith(self.run_tree + "/") else ""
+            path = _strip_slash(fields.get("path", ""))
+            rel = "" if path == self.run_tree else (
+                path[len(self.run_tree) + 1:] if path.startswith(self.run_tree + "/") else None)
             at = float(fields["at"]) if INOTIFYWAIT_SUBSECOND is True and "at" in fields else None
             out.append(WatchEvent(at, rel, tuple(fields.get("events", "").split(","))))
         return out
@@ -817,10 +866,8 @@ def inotifywait_factory(run_tree: str, plan) -> _InotifyWatcher:
 # ------------------------------------------------------------------------------------------------- serve and ctl
 def _serve(args) -> int:
     require_ready()
-    os.makedirs(PRIVATE_TMP, mode=0o700)
     os.makedirs(CTL_DIR, mode=0o700)
-    sc = Sidecar(run_tree=args.run_tree, evidence=args.evidence, watch=args.watch, factory=inotifywait_factory,
-                 tmp_dir=PRIVATE_TMP)
+    sc = Sidecar(run_tree=args.run_tree, evidence=args.evidence, watch=args.watch, factory=inotifywait_factory)
     srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     srv.bind(CTL_SOCKET)
     srv.listen(1)
