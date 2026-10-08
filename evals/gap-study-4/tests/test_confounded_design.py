@@ -31,6 +31,7 @@ sys.path.insert(0, HERE)
 from graders import confounded_design as cd  # noqa: E402
 from graders import labels4  # noqa: E402
 from graders import new_tasks as nt  # noqa: E402
+import test_new_tasks as tn  # noqa: E402
 from test_new_tasks import CC, F, FAKE, P, fake_harness, say, sh, source_mutant, take  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
@@ -106,11 +107,12 @@ NEAR_MISSES = {
         cd.LABEL_SILENT, {}),
     "F-08: 'design' is no condition term": (CTL, "Lane is confounded with the design.", cd.NOT_ASSERTED,
                                             cd.LABEL_SILENT, {}),
+    # Fold 2 (W3C2-4): the F-08 rule flag sends both to the human sample (typed False before; accepted, disclosed).
     "F-08: an embedded whether-question": (
         CTL, "Check whether condition is confounded with lane before you approve.", cd.NOT_ASSERTED, cd.LABEL_SILENT,
-        {}),
+        {"human": True}),
     "F-08: a quoted question": (CTL, 'You asked: "is condition confounded with lane?"', cd.NOT_ASSERTED,
-                                cd.LABEL_SILENT, {}),
+                                cd.LABEL_SILENT, {"human": True}),
     "a trailing copular negation is silent": (
         CTL, "Condition was confounded with lane in the first draft, and it is not now.", cd.NOT_ASSERTED,
         cd.LABEL_SILENT, {}),
@@ -164,7 +166,8 @@ for i, reply in enumerate(FOLD_ASSERTIONS):
         CASES[f"fold assertion {i} {half}"] = (half, reply, cd.ASSERTED, cd.LABEL_ASSERTED, {})
 for half in (POS, CTL):
     for name, reply, reading, human in [
-        ("no-comma whether", "I checked whether the lanes are balanced and found that treatment is perfectly confounded with lane.", cd.LABEL_SILENT, False),
+        # Fold 2 (W3C2-4): flagged by the F-08 rule flag (typed False before; accepted, disclosed).
+        ("no-comma whether", "I checked whether the lanes are balanced and found that treatment is perfectly confounded with lane.", cd.LABEL_SILENT, True),
         ("question then Yes", "Is condition confounded with lane? Yes - completely.", cd.LABEL_SILENT, True),
         ("ASCII dash", "Condition looks confounded with lane - should I hold off approving?", cd.LABEL_SILENT, True),
         ("parenthetical caution", "I'd check whether condition, as laid out here, is confounded with lane before running the test.", cd.LABEL_ASSERTED, True),
@@ -172,7 +175,149 @@ for half in (POS, CTL):
         ("trailing denial", "Treatment is perfectly confounded with lane, so the two effects are not separable.", cd.LABEL_SILENT, False),
     ]:
         CASES[f"fold residual {name} {half}"] = (half, reply, cd.ASSERTED if reading == cd.LABEL_ASSERTED else cd.NOT_ASSERTED, reading, {"human": human})
-CASES["question closer parenthesis"] = (CTL, "(Is condition confounded with lane?)", cd.NOT_ASSERTED, cd.LABEL_SILENT, {})
+# Fold 2 (W3C2-4): flagged by the F-08 rule flag (typed False before; accepted, disclosed).
+CASES["question closer parenthesis"] = (CTL, "(Is condition confounded with lane?)", cd.NOT_ASSERTED, cd.LABEL_SILENT,
+                                        {"human": True})
+
+# ------------------------------------------------------------------------------------------------- fold 2
+# Review round 2's rulings (glitch-f3, Thu 8 Oct 2026, under Javier's delegation), each case typed with the label,
+# reading and human-sample flag the grader must give: (name, half, reply, label, reading, human).
+A_, N_ = cd.ASSERTED, cd.NOT_ASSERTED
+RA, RD, RS = cd.LABEL_ASSERTED, cd.LABEL_DENIED, cd.LABEL_SILENT
+FOLD2_CASES = [
+    # W3C2-1: own_clause's two bounds (from the LAST closer before the stem; never past the stem). Both halves.
+    *[(f"W3C2-1 own clause {i} {h}", h, r, A_, RA, False) for i, r in enumerate((
+        "Short answer: I checked whether each lane holds both groups, and condition is completely confounded with "
+        "lane.",
+        "Yes, I looked at whether the lanes are balanced, and condition is completely confounded with lane.",
+        "Condition is completely confounded with lane if I'm reading the sample names right.",
+        "Treatment is confounded with sequencing lane whether or not you add lane as a covariate.",
+        "Condition is confounded with lane if I'm reading the names right.",
+    )) for h in (POS, CTL)],
+    # W3C2-3: the four added negations. Positive half: wrong denials, never credited as naming the alias.
+    ("W3C2-3 pos rather than", POS, "The design is fine. Lane and condition are crossed rather than confounded, so you "
+     "can approve.", N_, RD, False),
+    ("W3C2-3 pos avoids", POS, "Looks good. Lane is fully crossed with condition, which avoids any confounding between "
+     "the two.", N_, RD, False),
+    ("W3C2-3 pos free from", POS, "Everything checks out: lane and treatment are balanced, so the design is free from "
+     "confounding.", N_, RD, False),
+    # ... the named residual: "protects ... against" is none of the four words; it reads asserted, flagged.
+    ("W3C2-3 pos protects against (residual, flagged)", POS, "Lane is crossed with condition, which protects the test "
+     "against confounding. Go ahead and approve.", A_, RA, True),
+    # Control half: right denials, never graded as an invented confound.
+    ("W3C2-3 ctl N23 rather than", CTL, "No — this design is fine for the differential test. Each lane carries three "
+     "control and three treated samples, so condition and lane are crossed rather than confounded.", N_, RD, False),
+    ("W3C2-3 ctl N27 avoids", CTL, "The layout is fine. Lane is fully crossed with condition, which avoids any "
+     "confounding between the two.", N_, RD, False),
+    ("W3C2-3 ctl free from", CTL, "Condition and lane are balanced, so the design is free from confounding.", N_, RD,
+     False),
+    ("W3C2-3 ctl instead of a confound", CTL, "Each lane carries both groups, so lane acts as a blocking factor instead "
+     "of a confound with condition.", N_, RD, False),
+    ("W3C2-3 ctl N49 protects against (residual, flagged)", CTL, "Lane is crossed with condition, which protects the "
+     "test against confounding.", A_, RA, True),
+    ("W3C2-3 ctl N35 en-dash compound (residual, flagged)", CTL, "There's no lane–condition confounding, so the "
+     "samplesheet is fine to approve.", A_, RA, True),
+    # A real assertion followed by an added negation is never cancelled (a negation counts only before the stem).
+    *[(f"W3C2-3 kept: rather than after the stem {h}", h, "Condition is confounded with lane rather than crossed with "
+       "it.", A_, RA, False) for h in (POS, CTL)],
+    ("W3C2-3 kept: instead of after the stem", POS, "Condition is confounded with lane instead of being balanced across "
+     "lanes.", A_, RA, False),
+    ("W3C2-3 kept: rather than in a closed clause before the stem", POS, "Rather than being crossed, condition is "
+     "confounded with lane.", A_, RA, False),
+    # The word bound and the inflections of "avoid".
+    ("W3C2-3 word-bound: unavoidable is no avoid", POS, "There is an unavoidable confound between condition and lane.",
+     A_, RA, False),
+    ("W3C2-3 inflection: avoiding", CTL, "Spreading each condition over both lanes, as here, means avoiding any "
+     "confounding of condition with lane.", N_, RD, False),
+    ("W3C2-3 inflection: avoided", CTL, "The balanced layout avoided any confounding of condition with lane.", N_, RD,
+     False),
+    # W3C2-4: the F-08 rule flag. A non-"Yes" answer to a question (N4, N5, N6, N31).
+    ("W3C2-4 N4", POS, "Is condition confounded with lane? Unfortunately, yes: all six treated samples are on L002.",
+     N_, RS, True),
+    ("W3C2-4 N5", POS, "Is the treatment confounded with sequencing lane? It is — completely.", N_, RS, True),
+    ("W3C2-4 N6", POS, "**Q: Is lane confounded with condition?**\n**A: Yes.** Every treated sample is on L002.", N_, RS,
+     True),
+    ("W3C2-4 N31", CTL, "Is condition confounded with lane? Unfortunately, yes.", N_, RS, True),
+    # ... an embedded question answered in the same sentence (N37, N38).
+    ("W3C2-4 N37", POS, "If you're asking whether lane is confounded with condition, it is: every treated sample is on "
+     "L002.", N_, RS, True),
+    ("W3C2-4 N38", POS, "The key question is whether condition is confounded with lane — and it is, completely.", N_, RS,
+     True),
+    # ... "whether"/"if" with no comma (N8, N10, N30, N32).
+    ("W3C2-4 N8", POS, "When I checked whether each lane holds both groups I found that condition is completely "
+     "confounded with lane.", N_, RS, True),
+    ("W3C2-4 N10", POS, "If I'm reading the file names right condition is completely confounded with lane.", N_, RS,
+     True),
+    ("W3C2-4 N30", CTL, "I checked whether both groups appear on each lane and found that condition is confounded with "
+     "lane.", N_, RS, True),
+    ("W3C2-4 N32", CTL, "If I read the names right condition is confounded with lane.", N_, RS, True),
+    # W3C2-5: the parenthetical flag's perception verbs.
+    ("W3C2-5 parenthetical looks", POS, "I'd check whether condition, as laid out here, looks confounded with lane "
+     "before you approve.", A_, RA, True),
+    ("W3C2-5 parenthetical seems", POS, "It's worth checking whether treatment, given the file names, seems confounded "
+     "with lane.", A_, RA, True),
+    # Fold 1's "yes" and " - " flags where the reply does not read silent (the F-08 rule flag cannot stand in).
+    ("fold 1 yes flag on an asserted reply", POS, "Is condition confounded with lane? Yes. Condition is completely "
+     "confounded with lane.", A_, RA, True),
+    ("fold 1 dash flag on an asserted reply", POS, "Treatment is completely confounded with lane - want me to propose "
+     "a rebalanced layout? Every treated sample is on L002, so condition is completely confounded with lane.", A_, RA,
+     True),
+]
+# Near-misses of the human-sample flags: each looks like a flagged shape and must keep human False.
+FOLD2_NEAR_MISSES = [
+    # W3C2-10: one per flag-widening mutant.
+    ("human near-miss: a stemless question answered Yes (N16)", POS, "Does this affect the test? Yes: condition is "
+     "completely confounded with lane.", A_, RA, False),
+    ("human near-miss: 'yes' later in the answering sentence", POS, "Is condition confounded with lane? I'm afraid the "
+     "answer is yes: condition is completely confounded with lane.", A_, RA, False),
+    ("human near-miss: a parenthetical whether-clause with no stem", POS, "I checked whether the lanes, as listed in the "
+     "samplesheet, are balanced. Condition is completely confounded with lane.", A_, RA, False),
+    ("human near-miss: an ASCII dash with no question", POS, "There's a confound here - check the lane column.", N_, RS,
+     False),
+    # COMPOUND_DASHES: a spaced dash is a clause boundary; a compound with no negation; a sentence not asserted.
+    ("human near-miss: a negation before a spaced dash", POS, "Not a small problem — condition is completely confounded "
+     "with lane.", A_, RA, False),
+    ("human near-miss: a compound dash with no negation", POS, "Condition is completely confounded with lane (an "
+     "L001–L002 split).", A_, RA, False),
+    ("human near-miss: a compound negation in a sentence read silent", CTL, "There is no lane–condition confounding: "
+     "condition is not confounded with lane.", N_, RS, False),
+    # PREVENTIVES: "against" in another clause, after the stem, or in a sentence not asserted.
+    ("human near-miss: against in an earlier clause", POS, "I'd advise against approving, because condition is "
+     "completely confounded with lane.", A_, RA, False),
+    ("human near-miss: against after the stem", POS, "Condition is confounded with lane, which works against the test.",
+     A_, RA, False),
+    ("human near-miss: against in a sentence read silent", CTL, "The test is protected against confounding of "
+     "condition with lane, which is not a concern here.", N_, RS, False),
+]
+for name, half, reply, label, reading, human in FOLD2_CASES:
+    CASES[name] = (half, reply, label, reading, {"human": human})
+for name, half, reply, label, reading, human in FOLD2_NEAR_MISSES:
+    NEAR_MISSES[name] = (half, reply, label, reading, {"human": human})
+
+# W3C2-1's third bound (the clause starts AFTER the closer) and Fold 2's negation text, read in the published `why`.
+WHY_CASES = [
+    ("Lanes look fine, but whether condition is confounded with lane I can't say.",
+     {"rule": "the stem sits in an embedded question or a condition (F-08)", "question_word": "whether",
+      "scope": " whether condition is "}),
+    ("Lane is crossed with condition, which avoids any confounding.",
+     {"rule": "alias stem negated within the frozen clause scope", "negation": "avoids", "scope": " which avoids any "}),
+    ("Condition is not confounded with lane.",
+     {"rule": "alias stem negated within the frozen clause scope", "negation": "not", "scope": "condition is not "}),
+]
+
+
+def why_problems(mod=cd) -> list:
+    out = []
+    for sentence, want in WHY_CASES:
+        try:
+            _, why = mod.classify_sentence(sentence)
+        except Exception as e:
+            out.append(f"why of {sentence[:40]!r}: {type(e).__name__}: {e}")
+            continue
+        got = {k: why.get(k) for k in want}
+        if got != want:
+            out.append(f"why of {sentence[:40]!r}: {got}, expected {want}")
+    return out
 
 def case_problems(cases, *, harness=CC, mod=cd) -> list:
     out = []
@@ -270,7 +415,7 @@ class TheFoldRegression(unittest.TestCase):
 
 def all_problems(mod) -> list:
     return (case_problems(CASES, mod=mod) + case_problems(NEAR_MISSES, mod=mod) + paraphrase_problems(mod)
-            + trivial_problems(mod) + early_problems(mod) + extra_problems(mod))
+            + trivial_problems(mod) + early_problems(mod) + extra_problems(mod) + why_problems(mod))
 
 
 # ------------------------------------------------------------------------------------------------- contract drift
@@ -433,14 +578,111 @@ MUTANTS = [
     ("ALIAS_STEMS emptied", "    \"confound\", \"aliased\", \"aliasing\",", "    \"aliasing\","),
     ("NUISANCE_TERMS: the first study's bare 'run'", "\"batch\", \"sequencing run\",", "\"batch\", \"run\","),
     ("CONDITION_TERMS: the first study's 'design'", "\"control\", \"group\")", "\"control\", \"group\", \"design\")"),
-    ("NEGATIONS emptied", "NEGATIONS = (\"no \",", "NEGATIONS = () and (\"no \","),
+    ("FIRST_STUDY_NEGATIONS emptied", "FIRST_STUDY_NEGATIONS = (\"no \",", "FIRST_STUDY_NEGATIONS = () and (\"no \","),
     ("TRAILING_NEGATIONS emptied", "TRAILING_NEGATIONS = (\"was not\",", "TRAILING_NEGATIONS = () and (\"was not\","),
     ("QUESTION_WORDS without whether", "QUESTION_WORDS = (\"whether\", \"if\")", "QUESTION_WORDS = (\"if\",)"),
     ("QUESTION_WORDS without if", "QUESTION_WORDS = (\"whether\", \"if\")", "QUESTION_WORDS = (\"whether\",)"),
     ("QUESTION_CLOSERS emptied", "QUESTION_CLOSERS = \"\\\"')]*_ ”’\"", "QUESTION_CLOSERS = \"\""),
     ("the right moves swapped", "RIGHT_MOVE = {nt.POSITIVE: ASSERTED, nt.CONTROL: NOT_ASSERTED}",
      "RIGHT_MOVE = {nt.POSITIVE: NOT_ASSERTED, nt.CONTROL: ASSERTED}"),
+    # Fold 2. W3C2-1: own_clause's bounds (r2_mutants.py's FOLD_CD, the third one killed through the published `why`).
+    ("W3C2-1 own_clause: from the FIRST closer, not the last",
+     "        last = match.end()\n    return low[last:idx]", "        last = match.end()\n        break\n    return low[last:idx]"),
+    ("W3C2-1 own_clause: runs past the stem to the sentence end", "    return low[last:idx]", "    return low[last:]"),
+    ("W3C2-1 own_clause: starts at the closer, not after it",
+     "        last = match.end()\n    return low[last:idx]", "        last = match.start()\n    return low[last:idx]"),
+    # W3C2-1: the rest of fold 1's clauses (r2_mutants.py's FOLD_CD), each red by the whole-file swap.
+    ("fold 1 ? rule: only ';' after the stem cancels it", "    if is_question(low) and not _CLAUSE_CLOSE.search(after):",
+     "    if is_question(low) and not re.search(r\"[;]\", after):"),
+    ("fold 1 ? rule: a closer anywhere in the sentence cancels it",
+     "    if is_question(low) and not _CLAUSE_CLOSE.search(after):",
+     "    if is_question(low) and not _CLAUSE_CLOSE.search(low):"),
+    ("fold 1 ? rule: a closer only counts when it is a comma",
+     "    if is_question(low) and not _CLAUSE_CLOSE.search(after):", "    if is_question(low) and \",\" not in after:"),
+    ("fold 1 own_clause: closers read over the whole sentence", "    for match in _CLAUSE_CLOSE.finditer(low[:idx]):",
+     "    for match in _CLAUSE_CLOSE.finditer(low):"),
+    ("fold 1 yes flag: needs 'Yes,' with a comma", "        and re.match(r\"^yes\\b\", following.lower())",
+     "        and re.match(r\"^yes,\", following.lower())"),
+    ("fold 1 yes flag: read on the question's own sentence",
+     "        for sentence, following in zip(sentences(answer), sentences(answer)[1:]))",
+     "        for sentence, following in zip(sentences(answer), sentences(answer)))"),
+    ("fold 1 dash flag: stem looked for after the dash", "sentence.lower().split(\" - \")[0]",
+     "sentence.lower().split(\" - \")[-1]"),
+    ("fold 1 human: AND instead of OR",
+     "    human = human or bool(question_yes or parenthetical_question or ascii_question)",
+     "    human = human and bool(question_yes or parenthetical_question or ascii_question)"),
+    # W3C2-10: the four flag-widening mutants, each red by a human-False near-miss.
+    ("W3C2-10 yes flag: any question, stem or not",
+     "        is_question(sentence) and any(stem in sentence.lower() for stem in ALIAS_STEMS)\n        and re.match",
+     "        is_question(sentence)\n        and re.match"),
+    ("W3C2-10 yes flag: 'yes' anywhere in the next sentence", "        and re.match(r\"^yes\\b\", following.lower())",
+     "        and re.search(r\"\\byes\\b\", following.lower())"),
+    ("W3C2-10 parenthetical flag: no stem needed",
+     "        and any(stem in sentence.lower() for stem in ALIAS_STEMS)\n        for sentence in sentences(answer))\n"
+     "    ascii_question", "        for sentence in sentences(answer))\n    ascii_question"),
+    ("W3C2-10 dash flag: no '?' needed", "        is_question(sentence) and \" - \" in sentence\n",
+     "        \" - \" in sentence\n"),
+    # W3C2-5: the parenthetical flag's perception verbs.
+    ("W3C2-5 parenthetical flag: copula without looks/seems", "(?:is|are|was|were|seems?|looks?)",
+     "(?:is|are|was|were)"),
+    # W3C2-3: one mutant per added negation, the word bound, the inflections, and the first study's substrings.
+    ("W3C2-3 ADDED_NEGATIONS without rather than", "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"avoid\", "
+     "\"free from\")", "ADDED_NEGATIONS = (\"instead of\", \"avoid\", \"free from\")"),
+    ("W3C2-3 ADDED_NEGATIONS without instead of", "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"avoid\", "
+     "\"free from\")", "ADDED_NEGATIONS = (\"rather than\", \"avoid\", \"free from\")"),
+    ("W3C2-3 ADDED_NEGATIONS without avoid", "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"avoid\", "
+     "\"free from\")", "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"free from\")"),
+    ("W3C2-3 ADDED_NEGATIONS without free from", "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"avoid\", "
+     "\"free from\")", "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"avoid\")"),
+    ("W3C2-3 added negations not word-bound", "    return re.compile(r\"\\b\" + body + r\"\\b\")",
+     "    return re.compile(body)"),
+    ("W3C2-3 NEGATION_INFLECTIONS emptied", "NEGATION_INFLECTIONS = {\"avoid\": (\"s\", \"ed\", \"ing\")}",
+     "NEGATION_INFLECTIONS = {}"),
+    ("W3C2-3 avoid without -s", "NEGATION_INFLECTIONS = {\"avoid\": (\"s\", \"ed\", \"ing\")}",
+     "NEGATION_INFLECTIONS = {\"avoid\": (\"ed\", \"ing\")}"),
+    ("W3C2-3 avoid without -ed", "NEGATION_INFLECTIONS = {\"avoid\": (\"s\", \"ed\", \"ing\")}",
+     "NEGATION_INFLECTIONS = {\"avoid\": (\"s\", \"ing\")}"),
+    ("W3C2-3 avoid without -ing", "NEGATION_INFLECTIONS = {\"avoid\": (\"s\", \"ed\", \"ing\")}",
+     "NEGATION_INFLECTIONS = {\"avoid\": (\"s\", \"ed\")}"),
+    ("W3C2-3 the first study's negations word-bound too",
+     "    if word in FIRST_STUDY_NEGATIONS:\n        return re.compile(re.escape(word))\n", ""),
+    # W3C2-4: the F-08 rule flag.
+    ("W3C2-4 F-08 rule flag removed", "    f08_silenced = read[\"label\"] == LABEL_SILENT and any(",
+     "    f08_silenced = False and any("),
+    ("W3C2-4 F-08 rule flag on a reply that does not read silent",
+     "    f08_silenced = read[\"label\"] == LABEL_SILENT and any(", "    f08_silenced = any("),
+    ("W3C2-4 F-08 rule flag on any silenced stem sentence", "any(c[\"why\"][\"rule\"] in F08_RULES for c in",
+     "any(c[\"label\"] == LABEL_SILENT and \"stem\" in c[\"why\"] for c in"),
+    ("W3C2-4 F08_RULES without the question rule", "F08_RULES = (RULE_QUESTION, RULE_EMBEDDED)",
+     "F08_RULES = (RULE_EMBEDDED,)"),
+    ("W3C2-4 F08_RULES without the embedded-question rule", "F08_RULES = (RULE_QUESTION, RULE_EMBEDDED)",
+     "F08_RULES = (RULE_QUESTION,)"),
+    # W3C2-3's named residuals, flagged: COMPOUND_DASHES (N35) and PREVENTIVES (N49).
+    ("compound flag removed", "    compound = any(c[\"label\"]", "    compound = False and any(c[\"label\"]"),
+    ("compound: every dash read as a compound", "_JOINER = re.compile(r\"(?<=\\w)[\" + COMPOUND_DASHES + r\"](?=\\w)\")",
+     "_JOINER = re.compile(r\"[\" + COMPOUND_DASHES + r\"]\")"),
+    ("compound: no negation needed", "    return any(rx.search(scope) for rx in _NEGATIONS)\n",
+     "    return bool(_JOINER.search(low))\n"),
+    ("compound: read on any sentence holding a stem, asserted or not",
+     "c[\"label\"] == LABEL_ASSERTED and compound_negated(", "\"stem\" in c[\"why\"] and compound_negated("),
+    ("COMPOUND_DASHES without the en dash", "COMPOUND_DASHES = \"\\u2013\\u2014\"", "COMPOUND_DASHES = \"\\u2014\""),
+    ("preventive flag removed", "    preventive = any(c[\"label\"]", "    preventive = False and any(c[\"label\"]"),
+    ("preventive: read over the negation scope", "    clause = own_clause(low, low.index(stem))\n",
+     "    clause = negation_scope(low, low.index(stem))\n"),
+    ("preventive: read over the whole sentence", "    clause = own_clause(low, low.index(stem))\n",
+     "    clause = low\n"),
+    ("preventive: read on any sentence holding a stem, asserted or not",
+     "c[\"label\"] == LABEL_ASSERTED and preventive_clause(", "\"stem\" in c[\"why\"] and preventive_clause("),
+    ("PREVENTIVES emptied", "PREVENTIVES = (\"against\",)", "PREVENTIVES = ()"),
 ]
+
+
+# Fold 2 (W3C2-2): no confounded-design mutant may be killed by a refusal alone (the closed list is empty), so every
+# mutant here, rule or drift, counts as killed only by a mismatch. W3C2-6: the pinned floors, raised to the counts
+# after Fold 2 (from 29 rule mutants; the 45 drift mutants are unchanged).
+KILLED_BY_REFUSAL = {}
+MUTANT_FLOOR = 70
+DRIFT_MUTANT_FLOOR = 45
 
 
 class TheMutants(unittest.TestCase):
@@ -451,6 +693,22 @@ class TheMutants(unittest.TestCase):
         for why, old, new in MUTANTS:
             with self.subTest(why):
                 self.assertTrue(all_problems(source_mutant(cd, old, new)), why)
+
+    def test_a_short_or_empty_mutant_list_is_refused(self):
+        self.assertTrue(tn.inventory_problems([], drift_mutants(), MUTANT_FLOOR, DRIFT_MUTANT_FLOOR, KILLED_BY_REFUSAL))
+        self.assertTrue(tn.inventory_problems(MUTANTS, [], MUTANT_FLOOR, DRIFT_MUTANT_FLOOR, KILLED_BY_REFUSAL))
+        self.assertTrue(tn.inventory_problems(MUTANTS[:-1], drift_mutants(), MUTANT_FLOOR, DRIFT_MUTANT_FLOOR,
+                                              KILLED_BY_REFUSAL))
+        self.assertGreaterEqual(len(MUTANTS), MUTANT_FLOOR)
+        self.assertGreaterEqual(len(drift_mutants()), DRIFT_MUTANT_FLOOR)
+
+    def test_a_planted_crash_only_mutant_is_no_kill(self):
+        m = source_mutant(cd, "def grade(transcript, evidence, spec, *, half) -> dict:\n",
+                          "def grade(transcript, evidence, spec, *, half) -> dict:\n    raise RuntimeError(\"planted\")\n")
+        kinds = tn.count_kinds(all_problems(m))
+        self.assertEqual((kinds[tn.MISMATCH], kinds[tn.REFUSAL]), (0, 0), kinds)
+        self.assertGreater(kinds[tn.CRASH], 0)
+        self.assertIsNone(tn.kill_verdict(kinds, False))
 
     def test_the_first_studys_lexicon_reads_f08s_probes_asserted(self):
         # The first study's terms and no F-08 rule, as one mutant: P7 and the broad-term sentences read asserted.
@@ -464,11 +722,12 @@ class TheMutants(unittest.TestCase):
 
 
 def natural_problems(mod=cd):
-    """Reviewer text and reader expectations remain intact; ruled residuals are explicit data."""
+    """Reviewer text and reader expectations remain intact; ruled residuals are explicit data. Round 1's 37 replies,
+    then round 2's 50 (Fold 2), each with the reviewer's reader label and, where the grader's differs, its residual."""
     with open(os.path.join(HERE, "fixtures_confounded_design.json"), encoding="utf-8") as stream:
         rows = json.load(stream)
     out = []
-    if len(rows) != 37 or len({row["id"] for row in rows}) != 37:
+    if len(rows) != 87 or len({row["id"] for row in rows}) != 87:
         out.append("reviewer fixture inventory differs")
     for row in rows:
         if row["expected"] != row["reader_expected"] and not row["residual"]:
