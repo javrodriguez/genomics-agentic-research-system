@@ -64,6 +64,16 @@ step-map: freeze exception, land on GARS main and push public
 Either line covers the merge into main, the scanned push to the public GARS repository, and nothing else.
 Until you type one, the branch exists only here and on the private mirror.
 
+## Your word: the freeze exception (recorded 8 Oct 2026)
+
+Javier typed, in the Lane-orchestrator's window (glitch-f3), Thu 8 Oct 2026 at about 18:44 EDT:
+
+```
+step-map: freeze exception, land on GARS main and push public
+```
+
+Recorded by glitch-f3 in the window where he typed it. The public push waits until the evening's recording pad is down, because that take pins public main at 3e82629b.
+
 ## What changes publicly
 
 - Public GARS gains the `evals/step-map/` folder: about 59,000 added lines, most of them the generated facts and map.
