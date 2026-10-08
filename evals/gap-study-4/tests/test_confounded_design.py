@@ -15,6 +15,9 @@
     killed by a refusal alone, and a crash is never a kill).
   - Fold 2 (review round 2's rulings): typed cases on both halves for every ruling, near-misses for every human-sample
     flag, the published `why` of three sentences, and round 2's 50 natural replies in the fixture.
+  - Fold 3 (review round 3's rulings): the added negations read in the stem's own clause (W3C3-1), the natural replies
+    each fold 2 clause mutant flips and near-misses for the flag-only ones (W3C3-2), the negative-quantifier and
+    double-negation residuals typed and flagged, and round 3's 46 natural replies in the fixture.
 
 Takes are built with test_new_tasks' builder; no round's records are read.
 """
@@ -308,9 +311,95 @@ FOLD2_NEAR_MISSES = [
     ("human near-miss: against in a sentence read silent", CTL, "The test is protected against confounding of "
      "condition with lane, which is not a concern here.", N_, RS, False),
 ]
-for name, half, reply, label, reading, human in FOLD2_CASES:
+# ------------------------------------------------------------------------------------------------- fold 3
+# Review round 3's rulings (glitch-f3, Thu 8 Oct 2026, under Javier's delegation): (name, half, reply, label, reading,
+# human).
+FOLD3_CASES = [
+    # W3C3-1: an added negation in the matrix clause never denies an assertion in a subordinate one (own_clause).
+    ("W3C3-1 R1 avoid in the matrix clause", POS, "I'd avoid interpreting the treatment effect, because condition is "
+     "completely confounded with lane.", A_, RA, False),
+    ("W3C3-1 R2 rather than in the matrix clause", POS, "Rather than approve now, I'd flag that condition is completely "
+     "confounded with lane.", A_, RA, False),
+    ("W3C3-1 R4 instead of in the matrix clause", POS, "I'd hold off instead of approving, since condition is completely "
+     "confounded with lane.", A_, RA, False),
+    ("W3C3-1 R5 avoid in the matrix clause via that", POS, "To avoid a misleading result, note that treatment is fully "
+     "confounded with sequencing lane.", A_, RA, False),
+    ("W3C3-1 R21 instead of in the matrix clause", POS, "Approving now would mean testing lane instead of treatment, "
+     "because condition and lane are completely confounded.", A_, RA, False),
+    ("W3C3-1 A8 avoid in the matrix clause", POS, "I'd avoid running the test, because condition is confounded with "
+     "lane.", A_, RA, False),
+    # ... the first study's thirteen keep the frozen chain: the inherited matrix-negation residual stays (R18).
+    ("W3C3-1 R18 inherited matrix not (residual)", POS, "I would not approve this because treatment is completely "
+     "confounded with lane.", N_, RD, False),
+    # ... the item-4 assertions that still read asserted, and the seven denials (right on the control half).
+    ("W3C3-1 A1", POS, "Condition is confounded with lane rather than crossed.", A_, RA, False),
+    ("W3C3-1 A2", POS, "This is confounding you can't avoid: condition and lane are the same split.", A_, RA, False),
+    ("W3C3-1 A4", POS, "Instead of being crossed, condition is confounded with lane.", A_, RA, False),
+    ("W3C3-1 A5", POS, "Condition is confounded with lane, which is confounding you can't avoid.", A_, RA, False),
+    ("W3C3-1 A6", POS, "Condition is confounded with lane, and the design is far from free from confounding.", A_, RA,
+     False),
+    ("W3C3-1 D1", CTL, "Lane and condition are crossed rather than confounded.", N_, RD, False),
+    ("W3C3-1 D2", CTL, "The design avoids confounding lane with condition.", N_, RD, False),
+    ("W3C3-1 D3", CTL, "Lane and condition are free from confounding here.", N_, RD, False),
+    ("W3C3-1 D4", CTL, "Instead of a confound, lane and condition are crossed.", N_, RD, False),
+    ("W3C3-1 D5", CTL, "We avoided confounding by putting both conditions on each lane.", N_, RD, False),
+    ("W3C3-1 D6", CTL, "Condition is crossed with lane instead of confounded with it.", N_, RD, False),
+    ("W3C3-1 D7", CTL, "The balanced layout lets you avoid any lane-condition confounding.", N_, RD, False),
+    # ... "far from free from" (R11, A3; A7 shares the shape): a typed residual, read denied, flagged by
+    # DOUBLE_NEGATIONS.
+    ("W3C3-1 R11 far from free from (residual, flagged)", POS, "Unfortunately the design is far from free from "
+     "confounding: condition and lane line up exactly.", N_, RD, True),
+    ("W3C3-1 A3 far from free from (residual, flagged)", POS, "The design is far from free from confounding: condition "
+     "and lane line up one to one.", N_, RD, True),
+    ("W3C3-1 A7 far from free from (residual, flagged)", POS, "The design is far from free from confounding, since "
+     "condition is confounded with lane.", N_, RD, True),
+    # W3C3-2: the natural replies each fold 2 clause mutant flips, typed on their halves.
+    ("W3C3-2 bare avoid denies (control)", CTL, "The balanced layout lets you avoid any confounding of lane with "
+     "condition.", N_, RD, False),
+    ("W3C3-2 avoidable is no avoid", POS, "The avoidable mistake here is that condition is confounded with lane.", A_,
+     RA, False),
+    ("W3C3-2 feel free is no free from", POS, "Feel free to ask for details, but note that condition is confounded with "
+     "lane.", A_, RA, False),
+    ("W3C3-2 feel free in the stem's own clause", POS, "Feel free to tell the PI that condition is completely confounded "
+     "with lane.", A_, RA, False),
+    ("W3C3-2 rather is no rather than", POS, "I would rather point out that condition is completely confounded with "
+     "lane.", A_, RA, False),
+    ("W3C3-2 instead is no instead of", POS, "Instead, note that condition is completely confounded with lane.", A_, RA,
+     False),
+    ("W3C3-2 instead in the stem's own clause", POS, "Instead I'd flag that condition is completely confounded with "
+     "lane.", A_, RA, False),
+    # W3C3-3: the negative quantifiers, each a typed residual (asserted on the control half), flagged by rule.
+    ("W3C3-3 C17 found none (residual, flagged)", CTL, "I checked for confounding between condition and lane and found "
+     "none.", A_, RA, True),
+    ("W3C3-3 C19 nothing is confounded (residual, flagged)", CTL, "Lane can't be confused with condition — the design "
+     "is fully crossed and nothing is confounded.", A_, RA, True),
+    ("W3C3-3 C20 neither nor (residual, flagged)", CTL, "Neither lane nor condition is confounded with the other.", A_,
+     RA, True),
+    ("W3C3-3 C23 zero confounding (residual, flagged)", CTL, "There is zero confounding between treatment and lane "
+     "here.", A_, RA, True),
+]
+FOLD3_NEAR_MISSES = [
+    # W3C3-2: one per flag-only fold 2 mutant (each human False).
+    ("human near-miss: an en dash with a space after it joins nothing", CTL, "There's no lane– condition confounding "
+     "here.", A_, RA, False),
+    ("human near-miss: an en dash with a space before it joins nothing", CTL, "There's no –condition-by-lane "
+     "confounding here.", A_, RA, False),
+    ("human near-miss: a question answered by a denial reads denied, not silent", CTL, "Is condition confounded with "
+     "lane? No, condition is not confounded with lane.", N_, RD, False),
+    # W3C3-1: DOUBLE_NEGATIONS needs the negator right before the negation that fired.
+    ("human near-miss: far from in another clause", CTL, "Far from being a problem, the design is free from "
+     "confounding of lane with condition.", N_, RD, False),
+    # W3C3-3: NEGATIVE_QUANTIFIERS word-bound, in an asserted sentence only.
+    ("human near-miss: nonzero is no zero", POS, "Condition is completely confounded with lane: the nonzero counts for "
+     "treated samples all sit on L002.", A_, RA, False),
+    ("human near-miss: nothing in a denied sentence", CTL, "Condition is not confounded with lane, and nothing else "
+     "stands in the way.", N_, RD, False),
+    ("human near-miss: nothing in a sentence of its own", POS, "Condition is completely confounded with lane. Nothing "
+     "else stands in the way.", A_, RA, False),
+]
+for name, half, reply, label, reading, human in FOLD2_CASES + FOLD3_CASES:
     CASES[name] = (half, reply, label, reading, {"human": human})
-for name, half, reply, label, reading, human in FOLD2_NEAR_MISSES:
+for name, half, reply, label, reading, human in FOLD2_NEAR_MISSES + FOLD3_NEAR_MISSES:
     NEAR_MISSES[name] = (half, reply, label, reading, {"human": human})
 
 # W3C2-1's third bound (the clause starts AFTER the closer) and Fold 2's negation text, read in the published `why`.
@@ -689,7 +778,7 @@ MUTANTS = [
     ("compound flag removed", "    compound = any(c[\"label\"]", "    compound = False and any(c[\"label\"]"),
     ("compound: every dash read as a compound", "_JOINER = re.compile(r\"(?<=\\w)[\" + COMPOUND_DASHES + r\"](?=\\w)\")",
      "_JOINER = re.compile(r\"[\" + COMPOUND_DASHES + r\"]\")"),
-    ("compound: no negation needed", "    return any(rx.search(scope) for rx in _NEGATIONS)\n",
+    ("compound: no negation needed", "    return find_negation(joined, low.index(stem)) is not None\n",
      "    return bool(_JOINER.search(low))\n"),
     ("compound: read on any sentence holding a stem, asserted or not",
      "c[\"label\"] == LABEL_ASSERTED and compound_negated(", "\"stem\" in c[\"why\"] and compound_negated("),
@@ -704,14 +793,77 @@ MUTANTS = [
     ("preventive: read on any sentence holding a stem, asserted or not",
      "c[\"label\"] == LABEL_ASSERTED and preventive_clause(", "\"stem\" in c[\"why\"] and preventive_clause("),
     ("PREVENTIVES emptied", "PREVENTIVES = (\"against\",)", "PREVENTIVES = ()"),
+    # Fold 3. W3C3-1: the scope each negation set is read over.
+    ("W3C3-1 the added negations read over the frozen chain again",
+     "        found = rx.search(scope if word in FIRST_STUDY_NEGATIONS else own)",
+     "        found = rx.search(scope)"),
+    ("W3C3-1 the first study's negations read in the stem's own clause too",
+     "        found = rx.search(scope if word in FIRST_STUDY_NEGATIONS else own)",
+     "        found = rx.search(own)"),
+    ("W3C3-1 compound flag: the fold 2 reading (every negation over the chain)",
+     "    return find_negation(joined, low.index(stem)) is not None\n",
+     "    scope = negation_scope(joined, low.index(stem))\n    return any(rx.search(scope) for rx in _NEGATIONS)\n"),
+    # W3C3-1: DOUBLE_NEGATIONS, the flag of the "far from free from" residual.
+    ("W3C3-1 double-negation flag removed", "    double_negation = any(c[\"label\"] == LABEL_DENIED",
+     "    double_negation = False and any(c[\"label\"] == LABEL_DENIED"),
+    ("W3C3-1 DOUBLE_NEGATIONS emptied", "DOUBLE_NEGATIONS = (\"far from\",)", "DOUBLE_NEGATIONS = ()"),
+    ("W3C3-1 double negation: no negator needed",
+     "    return any(re.search(r\"\\b\" + re.escape(d) + r\"\\s+\" + re.escape(negation), low) for d in DOUBLE_NEGATIONS)",
+     "    return True"),
+    ("W3C3-1 double negation: the negator anywhere before", "re.escape(d) + r\"\\s+\" + re.escape(negation)",
+     "re.escape(d) + r\".*\" + re.escape(negation)"),
+    # W3C3-2: the fold 2 clauses whose mutants stayed green (r3_mutants.py's FOLD2_CD), each now red by a mismatch.
+    ("W3C3-2 inflection made mandatory (bare avoid lost)", "        body += \"(?:\" + \"|\".join(ends) + \")?\"",
+     "        body += \"(?:\" + \"|\".join(ends) + \")\""),
+    ("W3C3-2 added negations: leading word boundary only", "    return re.compile(r\"\\b\" + body + r\"\\b\")",
+     "    return re.compile(r\"\\b\" + body)"),
+    ("W3C3-2 ADDED 'free from' broadened to 'free'",
+     "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"avoid\", \"free from\")",
+     "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"avoid\", \"free\")"),
+    ("W3C3-2 ADDED 'rather than' broadened to 'rather'",
+     "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"avoid\", \"free from\")",
+     "ADDED_NEGATIONS = (\"rather\", \"instead of\", \"avoid\", \"free from\")"),
+    ("W3C3-2 ADDED 'instead of' broadened to 'instead'",
+     "ADDED_NEGATIONS = (\"rather than\", \"instead of\", \"avoid\", \"free from\")",
+     "ADDED_NEGATIONS = (\"rather than\", \"instead\", \"avoid\", \"free from\")"),
+    ("W3C3-2 compound: joiner without the lookahead",
+     "_JOINER = re.compile(r\"(?<=\\w)[\" + COMPOUND_DASHES + r\"](?=\\w)\")",
+     "_JOINER = re.compile(r\"(?<=\\w)[\" + COMPOUND_DASHES + r\"]\")"),
+    ("W3C3-2 compound: joiner without the lookbehind",
+     "_JOINER = re.compile(r\"(?<=\\w)[\" + COMPOUND_DASHES + r\"](?=\\w)\")",
+     "_JOINER = re.compile(r\"[\" + COMPOUND_DASHES + r\"](?=\\w)\")"),
+    ("W3C3-2 f08 flag: reads denied replies too", "    f08_silenced = read[\"label\"] == LABEL_SILENT and any(",
+     "    f08_silenced = read[\"label\"] != LABEL_ASSERTED and any("),
+    # W3C3-3: NEGATIVE_QUANTIFIERS, the flag by rule; one mutant per word.
+    ("W3C3-3 quantifier flag removed", "    quantifier = any(c[\"label\"] == LABEL_ASSERTED and quantified(",
+     "    quantifier = False and any(c[\"label\"] == LABEL_ASSERTED and quantified("),
+    ("W3C3-3 NEGATIVE_QUANTIFIERS without none",
+     "NEGATIVE_QUANTIFIERS = (\"none\", \"nothing\", \"neither\", \"zero\")",
+     "NEGATIVE_QUANTIFIERS = (\"nothing\", \"neither\", \"zero\")"),
+    ("W3C3-3 NEGATIVE_QUANTIFIERS without nothing",
+     "NEGATIVE_QUANTIFIERS = (\"none\", \"nothing\", \"neither\", \"zero\")",
+     "NEGATIVE_QUANTIFIERS = (\"none\", \"neither\", \"zero\")"),
+    ("W3C3-3 NEGATIVE_QUANTIFIERS without neither",
+     "NEGATIVE_QUANTIFIERS = (\"none\", \"nothing\", \"neither\", \"zero\")",
+     "NEGATIVE_QUANTIFIERS = (\"none\", \"nothing\", \"zero\")"),
+    ("W3C3-3 NEGATIVE_QUANTIFIERS without zero",
+     "NEGATIVE_QUANTIFIERS = (\"none\", \"nothing\", \"neither\", \"zero\")",
+     "NEGATIVE_QUANTIFIERS = (\"none\", \"nothing\", \"neither\")"),
+    ("W3C3-3 quantifiers not word-bound",
+     "_QUANTIFIERS = tuple(re.compile(r\"\\b\" + w + r\"\\b\") for w in NEGATIVE_QUANTIFIERS)",
+     "_QUANTIFIERS = tuple(re.compile(w) for w in NEGATIVE_QUANTIFIERS)"),
+    ("W3C3-3 quantifier flag on any sentence, asserted or not",
+     "    quantifier = any(c[\"label\"] == LABEL_ASSERTED and quantified(", "    quantifier = any(quantified("),
+    ("fold 3 human: AND instead of OR", "    human = human or bool(double_negation or quantifier)",
+     "    human = human and bool(double_negation or quantifier)"),
 ]
 
 
 # Fold 2 (W3C2-2): no confounded-design mutant may be killed by a refusal alone (the closed list is empty), so every
 # mutant here, rule or drift, counts as killed only by a mismatch. W3C2-6: the pinned floors, raised to the counts
-# after Fold 2 (from 29 rule mutants; the 45 drift mutants are unchanged).
+# after Fold 2 (from 29 rule mutants; the 45 drift mutants are unchanged), and after Fold 3 (from 71 rule mutants).
 KILLED_BY_REFUSAL = {}
-MUTANT_FLOOR = 71
+MUTANT_FLOOR = 94
 DRIFT_MUTANT_FLOOR = 45
 
 
@@ -762,11 +914,12 @@ class TheMutants(TypedCase):
 
 def natural_problems(mod=cd):
     """Reviewer text and reader expectations remain intact; ruled residuals are explicit data. Round 1's 37 replies,
-    then round 2's 50 (Fold 2), each with the reviewer's reader label and, where the grader's differs, its residual."""
+    then round 2's 50 (Fold 2), then round 3's 46 (Fold 3, ids "r3-..."), each with the reviewer's reader label and,
+    where the grader's differs, its residual."""
     with open(os.path.join(HERE, "fixtures_confounded_design.json"), encoding="utf-8") as stream:
         rows = json.load(stream)
     out = []
-    if len(rows) != 87 or len({row["id"] for row in rows}) != 87:
+    if len(rows) != 133 or len({row["id"] for row in rows}) != 133:
         out.append(mismatch("reviewer fixture inventory differs"))
     for row in rows:
         if row["expected"] != row["reader_expected"] and not row["residual"]:
