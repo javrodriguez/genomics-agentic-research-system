@@ -857,5 +857,101 @@ class TheCheck(unittest.TestCase):
                              (0, "stats --check: no takes (0 results files); nothing was compared\n"))
 
 
+PLAN_MODELS = {"hx-real": ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5-20251001"],
+               "hy-real": ["gpt-6.1-sol", "gpt-6-luna"], "hz-real": ["gemini-3.8-flash", "gemini-3.5-flash-lite"]}
+PLAN_TASKS = ("number-fidelity", "precondition-refusal", "scope-read", "template-adherence", "plan-gate",
+              "confounded-design", "explain-not-act", "approval-scope", "conditional-yes")
+
+
+class ReviewRound1(unittest.TestCase):
+    """The lane's own fresh-context review (opus-medium), findings 1-9."""
+
+    def test_no_zero_beside_no_takes(self):
+        text = stats.render_md(stats.derive(cell("right", "right"), design()))
+        bad = []
+        for line in text.splitlines():
+            if line.startswith("|") and "no takes" in line:
+                cells = [c.strip() for c in line.strip("|").split("|")]
+                if any(c in ("0", "0 and 0") for c in cells):
+                    bad.append(line)
+        self.assertEqual(bad, [])
+
+    def test_agent_version_printed_and_one_per_model(self):
+        text = stats.render_md(stats.derive(cell("right", "right"), design()))
+        self.assertIn("`0.0.1-synthetic`", text)
+        two = cell("right", "right")
+        two[0]["agent"] = {"harness": HX, "version": "0.0.2-synthetic"}
+        self.assertTrue(refuses(stats.derive, two, design()))
+        with mock.patch.object(stats, "check_versions", lambda records: None):
+            self.assertFalse(refuses(stats.derive, two, design()))
+
+    def test_bootstrap_order_statistics(self):
+        counter = itertools.count()
+        with mock.patch.object(stats, "_resample", lambda rng, tree: [next(counter)]):
+            lo, hi = stats.bootstrap_interval(None, {}, 200, Fraction(1, 20))
+        self.assertEqual((lo, hi), (4, 195))     # the 5th from each end of 200: the 0.025 and 0.975 statistics
+
+    def test_holm_family_at_the_call_site_counts_untested_tasks(self):
+        recs = unit_cell(9, 1, task="t1", model="m1") + unit_cell(2, 8, task="t1", model="m2")
+        for t in NINE[1:]:
+            recs += cell("right", "right", task=t, model="m1")
+        d = design(tasks=NINE)
+        p = stats.intervals.fisher_two_sided(9, 10, 2, 10)
+
+        def adjusted():
+            return rows_for(stats.comparisons(recs, d), task="t1", model_a="m1", model_b="m2")[0]["adjusted"]
+
+        self.assertEqual(adjusted(), stats.intervals.fmt_p(9 * p))
+        real = stats.holm
+        with mock.patch.object(stats, "holm", lambda ps, m: real(ps, sum(v is not None for v in ps.values()))):
+            self.assertNotEqual(adjusted(), stats.intervals.fmt_p(9 * p))
+
+    def test_contrast_family_is_the_contrasts(self):
+        rows = stats.comparisons(rich_records()[:0] + cell("right", "right"), design(tasks=("t1", "t2")))
+        contrasts = [r for r in rows if r["family"] == stats.FAMILIES[1]]
+        self.assertEqual({r["family_size"] for r in contrasts}, {3})
+
+    def test_power_applies_the_corrections(self):
+        d = design(tasks=NINE, power=dict(design()["power"], sims=30, bootstrap_reps=10, grid=[
+            {"stronger": "0.750", "weaker": "0.550", "task_spread": "0.000", "wording_spread": "0.000"}]))
+        real = stats.power_table(d)[0]
+        with mock.patch.object(stats, "holm", lambda ps, m: dict(ps)):   # mutant: no correction anywhere
+            loose = stats.power_table(d)[0]
+        self.assertGreater(loose["per_task_any"], real["per_task_any"])
+        self.assertGreater(loose["contrast"], real["contrast"])
+
+    def test_one_arm_per_model(self):
+        recs = cell("right", "right", arm="A") + cell("right", "right", arm="C", task="t2")
+        self.assertTrue(refuses(stats.derive, recs, design()))
+        with mock.patch.object(stats, "_arm_of", lambda records: {}):
+            self.assertFalse(refuses(stats.derive, recs, design()))
+
+    def test_aborted_label_needs_the_aborted_route(self):
+        self.assertTrue(refuses(stats.validate_record, rec(label="aborted", route="graded", views=dict(VIEWS_STOP))))
+
+    def test_ids_are_ids(self):
+        for kw in ({"wording": "Please run the 100 samples / now"}, {"task": "t 1"}, {"arm": "A%"}):
+            self.assertTrue(refuses(stats.validate_record, rec(**kw)), kw)
+        with mock.patch.object(stats, "ID", stats.re.compile(r".+")):
+            self.assertFalse(refuses(stats.validate_record, rec(wording="Please run the 100 samples / now")))
+
+    def test_render_with_the_plans_ids_passes_both_linters(self):
+        import random
+        rng = random.Random(8)
+        hm = PLAN_MODELS
+        d = design(tasks=PLAN_TASKS, harness_models=hm,
+                   stronger_weaker={h: [m[0], m[-1]] for h, m in hm.items()},
+                   cross_vendor=[m[0] for m in hm.values()])
+        recs = []
+        for h, models in hm.items():
+            for m in models:
+                for t in PLAN_TASKS[:3]:
+                    words = [rng.choice(["right", "right", "wrong", "stop", "harness-error"]) for _ in range(10)]
+                    recs += cell(words, "right", task=t, model=m, harness=h, arm=h[:2].upper())
+        text = stats.render_md(stats.derive(recs, d))
+        self.assertIn("claude-haiku-4-5-20251001", text)
+        self.assertEqual(Table8NoTakesAndRender.lint(None, text), (0, 0))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
