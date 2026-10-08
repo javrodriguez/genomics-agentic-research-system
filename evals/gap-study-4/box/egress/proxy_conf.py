@@ -57,6 +57,10 @@ ACL_TYPES = ("port", "method", "dstdomain")
 HOST_RE = re.compile(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+")
 ACL_NAME_RE = re.compile(r"[a-z][a-z0-9_]*")
 ACCESS_LOG = "stdio:/dev/stdout"
+# squid's acl reference: "For dstdomain and dstdom_regex a reverse lookup is tried if a IP based URL is used and no
+# match is found"; `-n` disables lookups. Without it a CONNECT to an IP whose reverse name is the allowed host would
+# pass, so the one host acl carries `-n` (this lane's decision, the stricter reading).
+NO_LOOKUP = "-n"
 
 
 class ProxyConfError(ValueError):
@@ -69,7 +73,8 @@ class NotReady(RuntimeError):
 
 def pending() -> dict:
     """Every PENDING value of this module, with why and where it gets measured."""
-    return {name: PENDING_WHY[name] for name in PENDING_WHY if globals()[name] == PENDING}
+    values = {"USER": USER}
+    return {name: PENDING_WHY[name] for name in PENDING_WHY if values[name] == PENDING}
 
 
 def launch_fields() -> dict:
@@ -148,7 +153,7 @@ def allowed_hosts(text: str) -> list:
         domains = [a for a in names if a in acls and acls[a][0] == "dstdomain"]
         if len(domains) != 1 or any(a.startswith("!") for a in names) or any(a not in acls for a in names):
             raise ProxyConfError(f"line {n}: an allow line must be bounded by exactly one dstdomain acl")
-        hosts.extend(acls[domains[0]][1])
+        hosts.extend(v for v in acls[domains[0]][1] if v != NO_LOOKUP)
     return hosts
 
 
@@ -183,6 +188,9 @@ def check(text: str, harness: str) -> list:
         out.append("exactly one dstdomain acl")
     else:
         values = domains[0][1]
+        if values[:1] != [NO_LOOKUP]:
+            out.append(f"the dstdomain acl must open with {NO_LOOKUP} (no reverse lookup of an IP-based CONNECT)")
+        values = values[1:] if values[:1] == [NO_LOOKUP] else values
         if len(values) != 1:
             out.append(f"the dstdomain acl must hold one host, not {values}")
         for v in values:

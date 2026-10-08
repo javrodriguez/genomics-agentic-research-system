@@ -37,6 +37,9 @@ import os
 import re
 from dataclasses import dataclass
 
+import harness_bookkeeping
+from box.egress import proxy_conf
+
 PENDING = "PENDING"
 SCHEMA = 1
 
@@ -61,14 +64,15 @@ DOCKERFILES = {
     EGRESS_IMAGE: "egress/Dockerfile",
 }
 
-# Nullability by image: "required" never null, "null" always null, "optional" null or a value.
-REQUIRED, NULL, OPTIONAL = "required", "null", "optional"
+# Nullability by image: "required" never null, "null" always null, "null-or-pending" null or PENDING (never a
+# pinned value: the egress image records no Python, so a pending one keeps its lock unready, as the brief reads).
+REQUIRED, NULL, NULL_OR_PENDING = "required", "null", "null-or-pending"
 NULLABLE = {
     "take-a": {"harness": REQUIRED, "python": REQUIRED, "users": REQUIRED},
     "take-o": {"harness": REQUIRED, "python": REQUIRED, "users": REQUIRED},
     "take-g": {"harness": REQUIRED, "python": REQUIRED, "users": REQUIRED},
     SIDECAR_IMAGE: {"harness": NULL, "python": REQUIRED, "users": REQUIRED},
-    EGRESS_IMAGE: {"harness": NULL, "python": OPTIONAL, "users": NULL},
+    EGRESS_IMAGE: {"harness": NULL, "python": NULL_OR_PENDING, "users": NULL},
 }
 
 KEYS = ("schema", "image", "dockerfile", "base", "harness", "python", "image_id", "users", "pending")
@@ -78,12 +82,13 @@ EXTRA_KEYS = {EGRESS_IMAGE: ("squid",)}
 # Every field that may hold PENDING, as the `pending` map names it.
 PENDABLE = ("base", "harness.version", "python", "image_id", "squid")
 
-BASE_RE = re.compile(r"(?P<name>[a-z0-9][a-z0-9._/:-]*)@(?P<digest>sha256:[0-9a-f]{64})")
+# A repository name (an optional registry host with port, then path parts), never a tag, then the digest.
+BASE_RE = re.compile(r"(?P<name>([a-z0-9.-]+(:[0-9]+)?/)?[a-z0-9._-]+(/[a-z0-9._-]+)*)@(?P<digest>sha256:[0-9a-f]{64})")
 VERSION_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 # The in-container floor is Python 3.11 (interface 17).
 PYTHON_RE = re.compile(r"3\.(1[1-9]|[2-9][0-9])\.[0-9]+")
 IMAGE_ID_RE = re.compile(r"sha256:[0-9a-f]{64}")
-SQUID_RE = re.compile(r"[0-9][A-Za-z0-9.+~:-]*")
+SQUID_RE = re.compile(r"[0-9]+\.[0-9]+[A-Za-z0-9.+~:-]*")
 PACKAGE_RE = re.compile(r"@[a-z0-9-]+/[a-z0-9-]+")
 NAME_RE = re.compile(r"[a-z][a-z0-9]{1,15}")
 # Names a box user may never take: root, the usual system accounts, and the users a base or package may bring.
@@ -107,6 +112,13 @@ LABEL_ARGS = {
 BUILD_ARGS = ("BASE", "BASE_NAME", "BASE_DIGEST", "HARNESS_VERSION", "PYTHON_VERSION", "SQUID_VERSION")
 
 CLIENT = "docker"
+
+# Each take image's npm package, built from the seam's harness names (imported, never typed here).
+HARNESS_PACKAGES = {
+    "take-a": "@anthropic-ai/" + harness_bookkeeping.CLAUDE_CODE,
+    "take-o": "@openai/" + proxy_conf.CODEX,
+    "take-g": "@google/" + proxy_conf.GEMINI + "-cli",
+}
 
 
 class LockError(ValueError):
@@ -184,6 +196,9 @@ def problems(lock) -> list:
         if rule == REQUIRED and v is None:
             out.append(f"{field}: may not be null for {image}")
             continue
+        if rule == NULL_OR_PENDING and v not in (None, PENDING):
+            out.append(f"{field}: must be null or {PENDING} for {image}")
+            continue
         if v is None:
             continue
         if field == "harness":
@@ -191,6 +206,8 @@ def problems(lock) -> list:
                 out.append("harness: must hold exactly package and version")
             else:
                 _value(v["package"], PACKAGE_RE, "harness.package", out, pendable=False)
+                if v["package"] != HARNESS_PACKAGES.get(image):
+                    out.append(f"harness.package: {v['package']!r} is not {image}'s harness")
                 _value(v["version"], VERSION_RE, "harness.version", out)
         elif field == "python":
             _value(v, PYTHON_RE, "python", out)
@@ -332,6 +349,8 @@ def build_argv(lock, *, context: str) -> list:
     args = build_args(lock)
     if not isinstance(context, str) or not os.path.isabs(context):
         raise ValueError("context must be an absolute path")
+    if lock["image"] == SIDECAR_IMAGE and os.path.abspath(context) != BOX_DIR:
+        raise ValueError(f"the sidecar image's build context is {BOX_DIR}")
     argv = [CLIENT, "build", "--pull=false", "--file", os.path.join(BOX_DIR, lock["dockerfile"])]
     for k, v in args.items():
         argv += ["--build-arg", f"{k}={v}"]
@@ -424,13 +443,23 @@ FORBIDDEN_PACKAGES = ("docker*", "podman", "containerd", "runc", "buildah", "cur
                       "ftp", "lynx", "aria2")
 # Words no RUN may hold, whatever it installs: privilege helpers and fetchers.
 FORBIDDEN_RUN_WORDS = ("sudo", "su", "doas", "setcap", "pip", "pip3", "curl", "wget", "dpkg", "apk", "yum", "dnf")
-SETUID_RE = re.compile(r"chmod\s+(-\S+\s+)*([ugoa]*\+[rwx]*s|[2-7][0-7]{3})\b")
+SETUID_RE = re.compile(r"(chmod|install)\s+(-\S+\s+)*(-m\s+)?([ugoa]*[+=][rwx]*s|0*[2-7][0-7]{3})\b")
 
 PYTHON_CHECK = ("test \"$(python3 -c 'import platform; print(platform.python_version())')\" = \"${PYTHON_VERSION}\"")
 GIT_SAFE = "git config --system --add safe.directory '*'"
 NPM_INSTALL = 'npm install -g "{package}@${{HARNESS_VERSION}}"'
 VERSION_CHECK = ('test "$(node -p \'require(process.argv[1]).version\' "$(npm root -g)/{package}/package.json")"'
                  ' = "${{HARNESS_VERSION}}"')
+APT_LINE = ("apt-get update && apt-get install -y --no-install-recommends " + " ".join(PACKAGES)
+            + " && rm -rf /var/lib/apt/lists/*")
+EGRESS_APT_LINE = ('apt-get update && apt-get install -y --no-install-recommends "squid=${SQUID_VERSION}"'
+                   " && rm -rf /var/lib/apt/lists/*")
+USERS_LINE = ("groupadd --gid {a[gid]} {a[name]}"
+              " && useradd --uid {a[uid]} --gid {a[gid]} --create-home --home-dir /home/{a[name]} --shell /bin/bash"
+              " {a[name]}"
+              " && groupadd --gid {w[gid]} {w[name]}"
+              " && useradd --uid {w[uid]} --gid {w[gid]} --no-create-home --home-dir /nonexistent"
+              " --shell /usr/sbin/nologin {w[name]}")
 SIDECAR_COPY = "sidecar.py /opt/w/sidecar.py"
 SQUID_PACKAGE = "squid=${SQUID_VERSION}"
 # The ENV lines each image carries, exactly.
@@ -448,6 +477,20 @@ LAST_USER = {
     "take-g": f"{AGENT_UID}:{AGENT_UID}",
     SIDECAR_IMAGE: f"{WATCHER_UID}:{WATCHER_UID}",
 }
+
+
+def expected_runs(lock) -> list:
+    """The RUN lines of `lock`'s image, exactly and in order: a closed vocabulary, so nothing else can run at build."""
+    validate(lock)
+    image = lock["image"]
+    if image == EGRESS_IMAGE:
+        return [EGRESS_APT_LINE]
+    users = USERS_LINE.format(a=lock["users"]["agent"], w=lock["users"]["watcher"])
+    runs = [APT_LINE, PYTHON_CHECK, users, GIT_SAFE]
+    if image in TAKE_IMAGES:
+        package = lock["harness"]["package"]
+        runs += [NPM_INSTALL.format(package=package), VERSION_CHECK.format(package=package)]
+    return runs
 
 
 def arg_names(lock) -> tuple:
@@ -566,6 +609,8 @@ def check_dockerfile(text: str, lock) -> list:
     elif copies:
         out.append("no COPY in this image")
     runs = [i.args for i in ins if i.keyword == "RUN"]
+    if runs != expected_runs(lock):
+        out.append("the RUN lines are not exactly the closed sequence for this image (image_lock.expected_runs)")
     for r in runs:
         words = set(re.findall(r"[A-Za-z0-9_.+-]+", r))
         for w in FORBIDDEN_RUN_WORDS:

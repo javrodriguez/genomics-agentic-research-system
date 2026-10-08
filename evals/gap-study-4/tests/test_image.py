@@ -132,6 +132,8 @@ MUTANT_LOCKS = {
     "an unknown image": _set(("image",), "take-z"),
     "the wrong dockerfile": _set(("dockerfile",), "codex/Dockerfile"),
     "a base by tag": _set(("base",), "registry.example/fake-base:latest"),
+    "a base with a tag and a digest": _set(("base",), "registry.example/fake-base:9@sha256:" + "a" * 64),
+    "another image's harness package": _set(("harness", "package"), "@openai/" + pc.CODEX),
     "a short base digest": _set(("base",), "registry.example/fake-base@sha256:" + "a" * 63),
     "a harness version with a range": _set(("harness", "version"), "^9.8.7"),
     "a harness version with a tag": _set(("harness", "version"), "latest"),
@@ -401,6 +403,36 @@ MUTANT_DOCKERFILES = {
     "a USER after the agent": ("take-a", "USER 10001:10001", "USER 10001:10001\nUSER 0"),
     "no USER": ("take-a", "USER 10001:10001\n", ""),
     "the last USER the watcher": ("take-o", "USER 10001:10001", "USER 10002:10002"),
+    # the reviewer's GREEN probes (review round 1): a RUN outside the closed sequence, each red
+    "npm i of another version": ("take-a", "ENV DISABLE", 'RUN npm i -g "' + PACKAGES["take-a"] + '@latest"\nENV DISABLE'),
+    "npm update": ("take-a", "ENV DISABLE", "RUN npm update -g " + PACKAGES["take-a"] + "\nENV DISABLE"),
+    "npm add": ("take-a", "ENV DISABLE", "RUN npm add -g left-pad\nENV DISABLE"),
+    "npx": ("take-a", "ENV DISABLE", "RUN npx -y some-tool\nENV DISABLE"),
+    "yarn global add": ("take-a", "ENV DISABLE", "RUN yarn global add left-pad\nENV DISABLE"),
+    "npm i in the sidecar": ("sidecar", "ENTRYPOINT []", "RUN npm i -g " + PACKAGES["take-a"] + "\nENTRYPOINT []"),
+    "npm i in egress": ("egress", "ENTRYPOINT []", "RUN npm i -g x\nENTRYPOINT []"),
+    "apt-get -y install": ("take-a", "ENV DISABLE", "RUN apt-get -y install vim-tiny\nENV DISABLE"),
+    "apt-get with options before install": ("take-a", "ENV DISABLE", "RUN apt-get update && apt-get -y "
+                                            "--no-install-recommends install perl\nENV DISABLE"),
+    "egress apt-get -y install": ("egress", "ENTRYPOINT []", "RUN apt-get -y install perl\nENTRYPOINT []"),
+    "usermod to uid 0": ("take-a", "ENV DISABLE", "RUN usermod -o -u 0 dana\nENV DISABLE"),
+    "usermod into root's group": ("take-a", "ENV DISABLE", "RUN usermod -aG root dana\nENV DISABLE"),
+    "a passwd line appended": ("take-a", "ENV DISABLE", "RUN echo 'x::0:0::/:/bin/sh' >> /etc/passwd\nENV DISABLE"),
+    "a sudoers drop-in": ("take-a", "ENV DISABLE", "RUN echo 'dana ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/x\n"
+                          "ENV DISABLE"),
+    "a setuid mode with a leading zero": ("take-a", "ENV DISABLE", "RUN chmod 04755 /usr/bin/find\nENV DISABLE"),
+    "a setuid bit by =": ("take-a", "ENV DISABLE", "RUN chmod u=rwxs /usr/bin/find\nENV DISABLE"),
+    "install -m 4755": ("take-a", "ENV DISABLE", "RUN install -m 4755 /usr/bin/find /usr/local/bin/f\nENV DISABLE"),
+    "adduser": ("take-a", "ENV DISABLE", "RUN adduser --disabled-password kim\nENV DISABLE"),
+    "a world-writable passwd": ("take-a", "ENV DISABLE", "RUN chmod 777 /etc/passwd\nENV DISABLE"),
+    "safe.directory unset later": ("take-a", "ENV DISABLE", "RUN git config --system --unset-all safe.directory\n"
+                                   "ENV DISABLE"),
+    "python3 replaced after its check": ("take-a", "ENV DISABLE", "RUN ln -sf /usr/bin/true /usr/bin/python3\n"
+                                         "ENV DISABLE"),
+    "a git setting holding a word": ("take-a", "ENV DISABLE", "RUN git config --system user.name kim\nENV DISABLE"),
+    "python in egress": ("egress", "ENTRYPOINT []", "RUN python3 -V\nENTRYPOINT []"),
+    "the watcher with a login shell": ("take-a", "--shell /usr/sbin/nologin eli", "--shell /bin/bash eli"),
+    "the watcher with a home": ("take-a", "--no-create-home --home-dir /nonexistent", "--create-home --home-dir /home/eli"),
     # 6. git's ownership
     "no safe.directory": ("take-a", "RUN " + il.GIT_SAFE + "\n", ""),
     "a narrower safe.directory": ("take-a", "safe.directory '*'", "safe.directory /srv"),
@@ -470,6 +502,9 @@ MUTANT_NULLABLE = {
     "egress with users": ("egress", lambda lock: lock.update(users=copy.deepcopy(committed("take-a")["users"]))),
     "egress without squid": ("egress", _drop(("squid",))),
     "egress with a squid range": ("egress", _set(("squid",), ">=6")),
+    "egress with a bare squid major": ("egress", _set(("squid",), "6")),
+    "egress with a pinned python": ("egress", _set(("python",), "3.12.1")),
+    "take-g with the arm A package": ("take-g", _set(("harness", "package"), PACKAGES["take-a"])),
     "take-o with harness null": ("take-o", _set(("harness",), None)),
     "take-g with users null": ("take-g", _set(("users",), None)),
     "take-o with python null": ("take-o", _set(("python",), None)),
@@ -489,7 +524,7 @@ PATH_RE = re.compile(r"(?<![\w$}])/[A-Za-z0-9_.@*/-]+")
 def agent_visible(image: str) -> dict:
     """The strings of a take image the agent can read: every path, label key and ENV line, and its user names."""
     ins = il.parse_dockerfile(dockerfile(image))
-    out = {"paths": [], "label keys": [], "env": [], "users": []}
+    out = {"paths": [], "label keys": [], "env": [], "users": [], "instructions": [i.args for i in ins]}
     for i in ins:
         if i.keyword in ("RUN", "COPY", "USER"):
             out["paths"] += PATH_RE.findall(i.args)
@@ -600,7 +635,7 @@ class DockerfileTest(unittest.TestCase):
 
 class LockSetTest(unittest.TestCase):
     def test_the_nullable_table(self):
-        R, N, O = il.REQUIRED, il.NULL, il.OPTIONAL
+        R, N, O = il.REQUIRED, il.NULL, il.NULL_OR_PENDING
         self.assertEqual(il.NULLABLE, {
             "take-a": {"harness": R, "python": R, "users": R}, "take-o": {"harness": R, "python": R, "users": R},
             "take-g": {"harness": R, "python": R, "users": R}, "sidecar": {"harness": N, "python": R, "users": R},
@@ -612,8 +647,8 @@ class LockSetTest(unittest.TestCase):
             with self.subTest(name):
                 self.assertTrue(il.problems(nullable_mutated(name)), name)
 
-    def test_egress_python_may_be_null_or_a_value(self):
-        for v in (None, il.PENDING, "3.12.1"):
+    def test_egress_python_may_be_null_or_pending(self):
+        for v in (None, il.PENDING):
             lock = filled("egress")
             lock["python"] = v
             if v == il.PENDING:
@@ -654,7 +689,7 @@ class BuildArgvTest(unittest.TestCase):
                         lock[field] = il.PENDING
                     lock["pending"] = {field: "measured at the build"}
                     with self.assertRaises(il.NotReady) as cm:
-                        il.build_argv(lock, context="/srv/ctx")
+                        il.build_argv(lock, context=il.BOX_DIR)
                     self.assertIn(field, str(cm.exception))
 
     def test_a_pending_image_id_alone_does_not_block_the_build(self):
@@ -668,10 +703,11 @@ class BuildArgvTest(unittest.TestCase):
         for image in il.IMAGES:
             with self.subTest(image):
                 lock = filled(image)
-                argv = il.build_argv(lock, context="/srv/ctx")
+                ctx = il.BOX_DIR if image == il.SIDECAR_IMAGE else "/srv/ctx"
+                argv = il.build_argv(lock, context=ctx)
                 self.assertEqual(argv[:5], ["docker", "build", "--pull=false", "--file",
                                             os.path.join(il.BOX_DIR, il.DOCKERFILES[image])])
-                self.assertEqual(argv[-1], "/srv/ctx")
+                self.assertEqual(argv[-1], ctx)
                 pairs = list(zip(argv[5:-1:2], argv[6:-1:2]))
                 args = dict(v.split("=", 1) for k, v in pairs if k == "--build-arg")
                 labels = dict(v.split("=", 1) for k, v in pairs if k == "--label")
@@ -684,6 +720,9 @@ class BuildArgvTest(unittest.TestCase):
                 self.assertEqual(argv.count("--pull=false"), 1)
         with self.assertRaises(ValueError):
             il.build_argv(filled("take-a"), context="relative/ctx")
+        with self.assertRaises(ValueError):
+            il.build_argv(filled("sidecar"), context="/srv/ctx")   # the sidecar's context is box/
+        self.assertEqual(il.build_argv(filled("sidecar"), context=il.BOX_DIR)[-1], il.BOX_DIR)
 
     def test_a_dropped_pull_refusal_goes_red(self):
         argv = il.build_argv(filled("take-a"), context="/srv/ctx")
@@ -696,7 +735,7 @@ class NeutralityTest(unittest.TestCase):
         for image in il.TAKE_IMAGES:
             with self.subTest(image):
                 seen = agent_visible(image)
-                self.assertTrue(seen["paths"] and seen["label keys"] and seen["env"] and seen["users"])
+                self.assertTrue(all(seen.values()), [k for k, v in seen.items() if not v])
                 for kind, strings in seen.items():
                     self.assertEqual(leak_hits(strings), [], kind)
 

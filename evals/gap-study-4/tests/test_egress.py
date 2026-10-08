@@ -60,9 +60,9 @@ import harness_bookkeeping as hb  # noqa: E402
 from box import image_lock as il  # noqa: E402
 from box.egress import proxy_conf as pc  # noqa: E402
 
-# The allowed hosts as D8 B2 item 8 states them; the harness names typed once each here (interface 11).
-HOSTS = {hb.CLAUDE_CODE: "api.anthropic.com", "codex": "api.openai.com",
-         "gemini": "generativelanguage.googleapis.com"}
+# The allowed hosts as D8 B2 item 8 states them, keyed by the module's own harness constants.
+HOSTS = {hb.CLAUDE_CODE: "api.anthropic.com", pc.CODEX: "api.openai.com",
+         pc.GEMINI: "generativelanguage.googleapis.com"}
 CC = hb.CLAUDE_CODE
 
 
@@ -72,14 +72,15 @@ def rendered(harness: str = CC) -> str:
 
 # Each policy clause, mutated in a rendered configuration: (harness, old, new). Every one must be refused by check.
 MUTANT_CONFS = {
-    "a second dstdomain value": (CC, "dstdomain api.anthropic.com", "dstdomain api.anthropic.com example.org"),
-    "a leading-dot domain": (CC, "dstdomain api.anthropic.com", "dstdomain .anthropic.com"),
-    "a dstdom_regex": (CC, "dstdomain api.anthropic.com", "dstdom_regex ^api.anthropic.com$"),
-    "a dstdomain flag": (CC, "dstdomain api.anthropic.com", "dstdomain -n api.anthropic.com"),
-    "a host with a trailing dot": (CC, "dstdomain api.anthropic.com", "dstdomain api.anthropic.com."),
-    "a second dstdomain acl": (CC, "http_access deny !tunnel", "acl other dstdomain example.org\n"
+    "a second dstdomain value": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n api.anthropic.com example.org"),
+    "a leading-dot domain": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n .anthropic.com"),
+    "a dstdom_regex": (CC, "dstdomain -n api.anthropic.com", "dstdom_regex -n ^api.anthropic.com$"),
+    "a reverse lookup allowed": (CC, "dstdomain -n api.anthropic.com", "dstdomain api.anthropic.com"),
+    "a second dstdomain flag": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n -i api.anthropic.com"),
+    "a host with a trailing dot": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n api.anthropic.com."),
+    "a second dstdomain acl": (CC, "http_access deny !tunnel", "acl other dstdomain -n example.org\n"
                                "http_access deny !tunnel"),
-    "the same acl defined twice": (CC, "http_access deny !tunnel", "acl api_host dstdomain example.org\n"
+    "the same acl defined twice": (CC, "http_access deny !tunnel", "acl api_host dstdomain -n example.org\n"
                                    "http_access deny !tunnel"),
     "an http_access allow all": (CC, "http_access deny all", "http_access allow all\nhttp_access deny all"),
     "an allow that is not CONNECT": (CC, "http_access allow tunnel api_host", "http_access allow api_host"),
@@ -95,11 +96,11 @@ MUTANT_CONFS = {
     "a port range": (CC, "acl tls_port port 443", "acl tls_port port 1-65535"),
     "a second port acl": (CC, "http_access deny !tunnel", "acl web port 80\nhttp_access deny !tunnel"),
     "a second method": (CC, "acl tunnel method CONNECT", "acl tunnel method CONNECT GET"),
-    "the codex render carrying the Anthropic host": (pc.CODEX, "dstdomain api.openai.com",
-                                                    "dstdomain api.anthropic.com"),
-    "the gemini render carrying the OpenAI host": (pc.GEMINI, "dstdomain generativelanguage.googleapis.com",
-                                                  "dstdomain api.openai.com"),
-    "an unrendered slot": (CC, "dstdomain api.anthropic.com", "dstdomain " + "@ALLOWED_HOST@"),
+    "the codex render carrying the Anthropic host": (pc.CODEX, "dstdomain -n api.openai.com",
+                                                    "dstdomain -n api.anthropic.com"),
+    "the gemini render carrying the OpenAI host": (pc.GEMINI, "dstdomain -n generativelanguage.googleapis.com",
+                                                  "dstdomain -n api.openai.com"),
+    "an unrendered slot": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n " + "@ALLOWED_HOST@"),
     "an unknown directive": (CC, "cache deny all", "cache deny all\nalways_direct allow all"),
     "an unknown acl type": (CC, "acl tls_port port 443", "acl tls_port dst 0.0.0.0/0"),
     "a second listening port": (CC, "http_port 3128", "http_port 3128\nhttp_port 8080"),
@@ -141,7 +142,7 @@ class GuardTest(unittest.TestCase):
 class ConstantsTest(unittest.TestCase):
     def test_the_shared_values(self):
         self.assertEqual(pc.HOSTS, HOSTS)
-        self.assertEqual(set(HOSTS), {hb.CLAUDE_CODE, pc.CODEX, pc.GEMINI})
+        self.assertEqual((pc.CODEX, pc.GEMINI), ("codex", "gemini"))
         self.assertIn(hb.CLAUDE_CODE, pc.HOSTS)
         self.assertEqual((pc.ALIAS, pc.PORT, pc.PROXY_URL), ("proxy", 3128, "http://proxy:3128"))
         self.assertEqual(pc.CONF_PATH, "/etc/squid/squid.conf")
@@ -197,7 +198,7 @@ class RenderTest(unittest.TestCase):
         self.assertTrue(pc.check(text, CC))   # the unrendered template itself is refused
         lines = [ln for ln in text.split("\n") if ln and not ln.startswith("#")]
         self.assertEqual(lines, ["http_port 3128", "acl tls_port port 443", "acl tunnel method CONNECT",
-                                 "acl api_host dstdomain @ALLOWED_HOST@", "http_access deny !tunnel",
+                                 "acl api_host dstdomain -n @ALLOWED_HOST@", "http_access deny !tunnel",
                                  "http_access deny tunnel !tls_port", "http_access allow tunnel api_host",
                                  "http_access deny all", "cache deny all", "access_log stdio:/dev/stdout",
                                  "pid_filename none"])
