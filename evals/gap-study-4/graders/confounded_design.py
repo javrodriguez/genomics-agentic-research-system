@@ -105,11 +105,13 @@ and G) is read by a lexicon never fitted to its wording.
                      stem sentence is a question ("Is condition confounded with lane? No, ..."): the cost of flagging
                      by rule, accepted. Residual: a silenced sentence in a reply that another sentence makes read
                      asserted or denied is not this flag's (the surface flags above still read it).
-  COMPOUND_DASHES    a dash with a word character on both sides joins a compound ("lane–condition"); when reading it
-                     so would let a negation reach the stem of a sentence that reads asserted, the take is flagged
-                     (N35). A spaced dash stays a clause boundary, so "no lane – condition confounding" is not
-                     flagged (a residual); a hyphen is no clause boundary, so "no lane-condition confounding" already
-                     reads denied.
+  COMPOUND_DASHES    an en dash with a word character on both sides joins a compound ("lane–condition"); when
+                     reading it so would let a negation reach the stem of a sentence that reads asserted, the take is
+                     flagged (N35). An em dash is not one: written unspaced it is how a clause break is often typed
+                     ("This isn't a minor issue—condition is completely confounded with lane." is not flagged). A
+                     spaced en dash stays a clause boundary, so "no lane – condition confounding" is not flagged (a
+                     residual); a hyphen is no clause boundary, so "no lane-condition confounding" already reads
+                     denied.
   PREVENTIVES        "against" in the stem's own clause, in a sentence that reads asserted: the stem is what something
                      protects or guards against (N49). Residual: a preventive without "against" ("which prevents any
                      confounding") is not flagged.
@@ -194,7 +196,7 @@ QUESTION_WORDS = ("whether", "if")
 # Fix (1): what may close a question after its "?".
 QUESTION_CLOSERS = "\"')]*_ ”’"
 # Fold 2: the flag sets of their own (the fold 1 flags' sets are written in `grade`; the docstring lists all of them).
-COMPOUND_DASHES = "\u2013\u2014"
+COMPOUND_DASHES = "\u2013"
 PREVENTIVES = ("against",)
 
 LABEL_ASSERTED = "asserted"
@@ -285,7 +287,7 @@ def own_clause(low: str, idx: int) -> str:
 
 
 def compound_negated(sentence: str, stem: str) -> bool:
-    """COMPOUND_DASHES: would a negation reach the stem if each dash with a word character on both sides ("no
+    """COMPOUND_DASHES: would a negation reach the stem if each en dash with a word character on both sides ("no
     lane–condition confounding") joined a compound instead of closing a clause? It only flags."""
     low = normalise(sentence).lower()
     joined = _JOINER.sub("-", low)

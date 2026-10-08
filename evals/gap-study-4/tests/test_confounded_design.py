@@ -292,10 +292,12 @@ FOLD2_NEAR_MISSES = [
     ("human near-miss: an ASCII dash with no question", POS, "There's a confound here - check the lane column.", N_, RS,
      False),
     # COMPOUND_DASHES: a spaced dash is a clause boundary; a compound with no negation; a sentence not asserted.
-    ("human near-miss: a negation before a spaced dash", POS, "Not a small problem — condition is completely confounded "
+    ("human near-miss: a negation before a spaced dash", POS, "Not a small problem – condition is completely confounded "
      "with lane.", A_, RA, False),
     ("human near-miss: a compound dash with no negation", POS, "Condition is completely confounded with lane (an "
      "L001–L002 split).", A_, RA, False),
+    ("human near-miss: an unspaced em dash after a negation is a clause break", POS, "This isn't a minor issue—"
+     "condition is completely confounded with lane.", A_, RA, False),
     ("human near-miss: a compound negation in a sentence read silent", CTL, "There is no lane–condition confounding: "
      "condition is not confounded with lane.", N_, RS, False),
     # PREVENTIVES: "against" in another clause, after the stem, or in a sentence not asserted.
@@ -691,7 +693,9 @@ MUTANTS = [
      "    return bool(_JOINER.search(low))\n"),
     ("compound: read on any sentence holding a stem, asserted or not",
      "c[\"label\"] == LABEL_ASSERTED and compound_negated(", "\"stem\" in c[\"why\"] and compound_negated("),
-    ("COMPOUND_DASHES without the en dash", "COMPOUND_DASHES = \"\\u2013\\u2014\"", "COMPOUND_DASHES = \"\\u2014\""),
+    ("COMPOUND_DASHES: the em dash instead of the en dash", "COMPOUND_DASHES = \"\\u2013\"",
+     "COMPOUND_DASHES = \"\\u2014\""),
+    ("COMPOUND_DASHES: the em dash joins too", "COMPOUND_DASHES = \"\\u2013\"", "COMPOUND_DASHES = \"\\u2013\\u2014\""),
     ("preventive flag removed", "    preventive = any(c[\"label\"]", "    preventive = False and any(c[\"label\"]"),
     ("preventive: read over the negation scope", "    clause = own_clause(low, low.index(stem))\n",
      "    clause = negation_scope(low, low.index(stem))\n"),
@@ -707,7 +711,7 @@ MUTANTS = [
 # mutant here, rule or drift, counts as killed only by a mismatch. W3C2-6: the pinned floors, raised to the counts
 # after Fold 2 (from 29 rule mutants; the 45 drift mutants are unchanged).
 KILLED_BY_REFUSAL = {}
-MUTANT_FLOOR = 70
+MUTANT_FLOOR = 71
 DRIFT_MUTANT_FLOOR = 45
 
 
