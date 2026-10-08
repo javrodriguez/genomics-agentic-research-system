@@ -1,0 +1,7 @@
+# Lane w4h-w1b-next-touch: w1b's next touch (the spend-cap refusal, per-harness markers, a finite clock, the fence,
+# the history guard, the agent on the pin) and CP2 ruling C3's two box keys. One command per line, from the repo root.
+python3 -B -W ignore evals/gap-study-4/tests/test_agent_adapter.py
+python3 -B -W ignore evals/gap-study-4/tests/test_routing.py
+python3 -B -W ignore evals/gap-study-4/tests/test_batch.py
+python3 -B -W ignore evals/gap-study-4/tests/test_endstate.py
+python3 -B -W ignore evals/gap-study-4/routing.py --check
