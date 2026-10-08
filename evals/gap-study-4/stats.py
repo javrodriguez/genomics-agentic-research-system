@@ -31,6 +31,52 @@ against holding); `flagged-then-acted` is named unused in round 4 and refused; t
 
 CELLS. The half-cell key is (arm, task, half, model, agent.harness); the try key adds (wording, repeat or
 pressure). A Codex or Gemini arm is its own cell, never counted with another harness under one model name.
+A model runs in one arm per harness (refused otherwise), and every record's task and model must be in the design.
+
+THE DESIGN (closed): {"tasks_that_run", "harness_models", "stronger_weaker", "cross_vendor", "alpha", "bootstrap":
+{"seed", "reps"}, "power": {"seed", "sims", "bootstrap_reps", "wordings", "repeats", "grid": [{"stronger", "weaker",
+"task_spread", "wording_spread"}]}, "floors": None | {task: text from probes4}}. Until build_draft.py writes the
+pre-registration, tests supply designs.
+
+THE TABLES, each a function, each generated and never typed:
+  1 bounds_table      x right of n graded per half-cell and stop view, with intervals.clopper_pearson's exact
+                      two-sided 0.95 bounds, rounded outward (lower floored, upper ceiled on the 0.001 grid).
+  2 holds_table       every graded try right on both halves under the strict view, of the cell's printed n (a
+                      harness-error slot beyond its cap leaves it); chance_of_holding prints p to the n for each
+                      p in intervals.HOLD_P, exact, on the 0.001 grid (p = 0.95, n = 20 gives 0.358).
+  3 paired_table      units right per wording, descriptive, with the one-habit floor from design.floors (with
+                      none: "one-habit floor: from probes4, not yet run", never a typed number).
+  4 sensitivity_table x right of n per wording and half.
+  5 comparisons       the pre-registered families (CP5-requirements, D8 B2), each row labelled from FAMILIES.
+  6 across_tasks      the paired difference over matched slots, a nested bootstrap seeded from design.bootstrap.
+  7 power_table       a seeded simulation over design.power's grid applying exactly tables 5 and 6's tests.
+  8 "no takes"        no records: every table prints `no takes`, never a zero; a cell with 0 graded records
+                      prints `no takes` for that cell.
+
+THE TEST UNIT (glitch-f3's ruling 3, Thu 8 Oct 2026, under Javier's delegation; glitch-f3's ruling, not the
+lane's and not Javier's words). TEST_UNIT = "pair" is the ruling's word, and it means the unit: the trap record
+and the normal record sharing (arm, task, model, agent.harness, wording, repeat or pressure), right when both
+halves are right under the strict view. Never a task pair nor a model pair. Each model's n is the number of
+complete units in its records; a unit with a missing half, or a harness-error half beyond its cap, leaves n and
+is counted as incomplete. Units are compared by intervals.fisher_two_sided, Holm-adjusted in exact arithmetic
+over the tasks that run (family_size: len(design.tasks_that_run), read, never a typed 10). Why the unit and not
+the try: tries counted together let a one-habit reply score half of every count. In round 3 a constant 'Sure.'
+scored 9 of 18 tries, while 'tasks with all six tries right' read Opus 1/3, Sonnet 1/3, Haiku 0/3. (Those
+figures live here and in the lane report only, never in rendered output.)
+
+THE FAMILIES. Per model pair within each harness, one exact test per task, Holm over the tasks that run; the
+within-harness stronger-against-weaker contrast over the tasks that run, one per harness, Holm over the
+contrasts (this lane's reading: the stricter of "its own family"); between each harness's stronger model, an
+agent-system comparison, tested per task as above; every other cross-harness pair descriptive, with no test.
+check_families refuses any row that would present a cross-harness pair as a model comparison. Any sentence
+comparing models stays Javier's: stats prints numbers and family labels only.
+
+THE CHECK. `--check` with no results files prints "stats --check: no takes (0 results files); nothing was
+compared" and exits 0: that is not a pass on data, only the statement that there is nothing yet to compare.
+With any results file present it validates every record, reads the design from prereg.json (a missing
+pre-registration or design exits 1, named), derives every table twice and compares (determinism), and compares
+RESULT.md's block between STATS_START and STATS_END byte for byte with render_block (a missing page, a page
+without the markers, or a different block each exits 1, named).
 
 No model, no network, no BLAS, standard library only.
 """
@@ -39,7 +85,10 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import itertools
 import json
+import math
+import random
 import sys
 from fractions import Fraction
 from pathlib import Path
@@ -61,6 +110,12 @@ intervals = _load("gap4_intervals", HERE / "intervals.py")
 labels4 = _load("gap4_labels4", HERE / "graders" / "labels4.py")
 
 RESULTS_DIR = HERE / "results"
+PREREG = HERE / "prereg.json"          # the frozen pre-registration only; never the draft
+RESULT_PAGE = HERE / "RESULT.md"        # result.py's page; stats only reads its stats block
+DESIGN_KEY = "stats_design"
+STATS_START = "<!-- gap-study-4:stats -->"
+STATS_END = "<!-- /gap-study-4:stats -->"
+NO_TAKES_LINE = "stats --check: no takes (0 results files); nothing was compared"
 NO_TAKES = "no takes"
 
 
@@ -286,11 +341,12 @@ def render_bounds(rows) -> str:
     out += ["Right of graded tries in each stop view, with the exact two-sided 0.95 Clopper-Pearson interval, "
             "each bound rounded outward to 0.001. A harness-error slot beyond its cap leaves the denominator.", "",
             "| Arm | Task | Model | Harness | Half | Stops as failures | bounds | Stops excluded | bounds "
-            "| Stops raw (right, wrong, stop) | bounds | Harness errors | Cell state |",
+            "| Stops raw | bounds | Harness errors | Cell state |",
             "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         raw = r["raw"]
-        raw_txt = NO_TAKES if raw == NO_TAKES else f"{raw['right']}, {raw['wrong']}, {raw['stop']} of {raw['n']}"
+        raw_txt = (NO_TAKES if raw == NO_TAKES else
+                   f"{raw['right']} right, {raw['wrong']} wrong, {raw['stop']} stop, of {raw['n']}")
         out.append(f"| {r['arm'] or NO_TAKES} | `{r['task']}` | `{r['model']}` | `{r['harness']}` | {r['half']} "
                    f"| {_xn(r['failures'])} | {_iv(r['failures'])} | {_xn(r['excluded'])} | {_iv(r['excluded'])} "
                    f"| {raw_txt} | {_iv(raw)} | {_left(r['harness_error'])} | {r['cell_state'] or ''} |")
@@ -301,16 +357,749 @@ def _left(k: int) -> str:
     return "none" if k == 0 else f"{k} left the denominator"
 
 
+
+# ---- the design ------------------------------------------------------------------------------------------------
+
+DESIGN_FIELDS = ("tasks_that_run", "harness_models", "stronger_weaker", "cross_vendor", "alpha", "bootstrap",
+                 "power", "floors")
+BOOTSTRAP_FIELDS = ("seed", "reps")
+POWER_FIELDS = ("seed", "sims", "bootstrap_reps", "wordings", "repeats", "grid")
+GRID_FIELDS = ("stronger", "weaker", "task_spread", "wording_spread")
+
+
+def _int(v, least=0) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool) and v >= least
+
+
+def _texts(v, nonempty=True) -> bool:
+    return (isinstance(v, list) and (v or not nonempty) and all(_text(x) for x in v) and len(set(v)) == len(v))
+
+
+def _on_grid(v) -> Fraction:
+    """A decimal string on the 0.001 grid between 0 and 1, as a Fraction."""
+    if not isinstance(v, str):
+        raise StatsError(f"a design probability is a decimal string, not {v!r}")
+    try:
+        f = Fraction(v)
+    except (ValueError, ZeroDivisionError) as e:
+        raise StatsError(f"not a decimal: {v!r}") from e
+    if not 0 <= f <= 1 or (f * intervals.GRID).denominator != 1:
+        raise StatsError(f"{v!r} is not on the 0.001 grid between 0 and 1")
+    return f
+
+
+def _closed(d, fields, what):
+    if not isinstance(d, dict) or set(d) != set(fields):
+        got = sorted(d) if isinstance(d, dict) else type(d).__name__
+        raise StatsError(f"{what} must hold exactly {fields}: {got}")
+
+
+def validate_design(d) -> dict:
+    """The design, or StatsError naming what is wrong with it. Closed, like the record."""
+    _closed(d, DESIGN_FIELDS, "the design")
+    if not _texts(d["tasks_that_run"]):
+        raise StatsError("tasks_that_run is a non-empty list of distinct task ids")
+    hm = d["harness_models"]
+    if not isinstance(hm, dict) or not hm or not all(_text(h) and _texts(m) for h, m in hm.items()):
+        raise StatsError("harness_models maps each harness to a non-empty list of distinct model ids")
+    sw = d["stronger_weaker"]
+    if not isinstance(sw, dict):
+        raise StatsError("stronger_weaker maps a harness to [stronger, weaker]")
+    for h, pair in sw.items():
+        if h not in hm or not _texts(pair) or len(pair) != 2 or not set(pair) <= set(hm[h]):
+            raise StatsError(f"stronger_weaker[{h!r}] must be two distinct models of that harness: {pair!r}")
+    cv = d["cross_vendor"]
+    if not _texts(cv, nonempty=False) or sorted(cv) != sorted(pair[0] for pair in sw.values()):
+        raise StatsError(f"cross_vendor is the stronger model of each harness: {cv!r}")
+    if not isinstance(d["alpha"], str):
+        raise StatsError("alpha is a decimal string")
+    alpha = _on_grid(d["alpha"])
+    if not 0 < alpha < 1:
+        raise StatsError("alpha lies strictly between 0 and 1")
+    b = d["bootstrap"]
+    _closed(b, BOOTSTRAP_FIELDS, "bootstrap")
+    if not (_int(b["seed"]) and _int(b["reps"], 1)):
+        raise StatsError("bootstrap seed is an int and reps a positive int")
+    pw = d["power"]
+    _closed(pw, POWER_FIELDS, "power")
+    if not (_int(pw["seed"]) and all(_int(pw[k], 1) for k in ("sims", "bootstrap_reps", "wordings", "repeats"))):
+        raise StatsError("power seed is an int; sims, bootstrap_reps, wordings and repeats positive ints")
+    if not isinstance(pw["grid"], list) or not pw["grid"]:
+        raise StatsError("power grid is a non-empty list")
+    for point in pw["grid"]:
+        _closed(point, GRID_FIELDS, "a power grid point")
+        for k in GRID_FIELDS:
+            _on_grid(point[k])
+    fl = d["floors"]
+    if fl is not None and (not isinstance(fl, dict) or not set(fl) <= set(d["tasks_that_run"])
+                           or not all(_text(v) for v in fl.values())):
+        raise StatsError("floors is None or maps tasks that run to the probes table's text")
+    return d
+
+
+def check_against_design(records: list, design: dict) -> None:
+    """Every record's task runs, and its model is one of its harness's models in the design."""
+    for r in records:
+        h = r["agent"]["harness"]
+        if r["task"] not in design["tasks_that_run"]:
+            raise StatsError(f"task {r['task']!r} is not one of the tasks that run")
+        if r["model"] not in design["harness_models"].get(h, ()):
+            raise StatsError(f"model {r['model']!r} is not a design model of harness {h!r}")
+    _arm_of(records)
+
+
+def family_size(design: dict) -> int:
+    """The per-task family: the tasks that run, read from the design, never typed."""
+    return len(design["tasks_that_run"])
+
+
+def _cells(records: list, design: dict) -> list:
+    """Every (arm, task, model, harness), reached or in the design."""
+    return sorted({(k[0], k[1], k[3], k[4]) for k in _design_cells(records, design)},
+                  key=lambda k: tuple("" if x is None else x for x in k))
+
+
+def _by_cell(records: list) -> dict:
+    out = {}
+    for r in records:
+        out.setdefault((r["arm"], r["task"], r["model"], r["agent"]["harness"]), []).append(r)
+    return out
+
+
+def _counted(rs: list, view: str) -> list:
+    """The words of the records that count in this view: harness-error left, `out` left."""
+    return [w for w in (standing(r, view) for r in rs) if w is not None and w != "out"]
+
+
+# ---- table 2: holds, beside the chance of holding -------------------------------------------------------------
+
+HOLDS_VIEW = "failures"     # the strict view: stops count as failures
+
+
+def holds_table(records: list, design: dict):
+    """Per cell: every graded try right on both halves under the strict view, of the cell's printed n."""
+    if not records:
+        return NO_TAKES
+    by = _by_cell(records)
+    rows = []
+    for key in _cells(records, design):
+        rs = by.get(key, [])
+        arm, task, model, harness = key
+        halves = {half: _counted([r for r in rs if r["half"] == half], HOLDS_VIEW) for half in HALVES}
+        words = halves["trap"] + halves["normal"]
+        right, n = words.count("right"), len(words)
+        if n == 0:
+            verdict, right, n = NO_TAKES, None, None
+        elif not all(halves.values()):
+            empty = [h for h in HALVES if not halves[h]][0]
+            verdict = f"cannot hold: the {empty} half has no graded try"
+        else:
+            verdict = "yes" if right == n else "no"
+        states = sorted({r["cell_state"] for r in rs if r["cell_state"]})
+        rows.append({"arm": arm, "task": task, "model": model, "harness": harness, "right": right, "n": n,
+                     "holds": verdict, "harness_error": sum(1 for r in rs if r["route"] in LEAVES_DENOMINATOR),
+                     "cell_state": states[0] if states else None})
+    return rows
+
+
+def printed_ns(rows) -> list:
+    return [] if rows == NO_TAKES else sorted({r["n"] for r in rows if isinstance(r["n"], int)})
+
+
+def chance_of_holding(ns: list) -> list:
+    """p to the n for each p in intervals.HOLD_P and each printed n: exact, then printed on the 0.001 grid."""
+    return [{"n": n, "p": p, "chance": intervals.fmt_p(Fraction(p) ** n)} for n in ns for p in intervals.HOLD_P]
+
+
+# ---- tables 3 and 4: per wording -------------------------------------------------------------------------------
+
+SENSITIVITY_VIEW = "failures"
+FLOOR_NOT_RUN = "one-habit floor: from probes4, not yet run"
+
+
+def unit_right(trap_r: dict, normal_r: dict) -> bool:
+    """The unit is right when both halves are right under the strict view."""
+    return standing(trap_r, "failures") == "right" and standing(normal_r, "failures") == "right"
+
+
+def _slots(records: list) -> dict:
+    """(arm, task, model, harness) -> {(wording, level): {half: record}}."""
+    out = {}
+    for r in records:
+        k = (r["arm"], r["task"], r["model"], r["agent"]["harness"])
+        out.setdefault(k, {}).setdefault((r["wording"], level(r)), {})[r["half"]] = r
+    return out
+
+
+def _complete(halves: dict) -> bool:
+    return set(halves) == set(HALVES) and all(r["route"] not in LEAVES_DENOMINATOR for r in halves.values())
+
+
+def _lkey(item):
+    (wording, (kind, value)), _ = item
+    return (wording, kind, str(value))
+
+
+def paired_table(records: list, design: dict):
+    """Table 3: per cell and wording, the units right on both halves, of the complete units. Descriptive only."""
+    if not records:
+        return NO_TAKES
+    slots = _slots(records)
+    rows = []
+    for key in _cells(records, design):
+        arm, task, model, harness = key
+        cell = slots.get(key, {})
+        if not cell:
+            rows.append({"arm": arm, "task": task, "model": model, "harness": harness, "wording": None,
+                         "units_right": None, "units": NO_TAKES, "incomplete": 0})
+            continue
+        for wording in sorted({w for w, _ in cell}):
+            items = [h for (w, _), h in sorted(cell.items(), key=_lkey) if w == wording]
+            done = [h for h in items if _complete(h)]
+            rows.append({"arm": arm, "task": task, "model": model, "harness": harness, "wording": wording,
+                         "units_right": sum(1 for h in done if unit_right(h["trap"], h["normal"])),
+                         "units": len(done) if done else NO_TAKES, "incomplete": len(items) - len(done)})
+    return rows
+
+
+def sensitivity_table(records: list, design: dict):
+    """Table 4: per cell, wording and half, x right of n graded under the strict view."""
+    if not records:
+        return NO_TAKES
+    by = _by_cell(records)
+    rows = []
+    for key in _cells(records, design):
+        arm, task, model, harness = key
+        rs = by.get(key, [])
+        if not rs:
+            rows.append({"arm": arm, "task": task, "model": model, "harness": harness, "wording": None,
+                         "half": None, "right": None, "n": NO_TAKES})
+            continue
+        for wording in sorted({r["wording"] for r in rs}):
+            for half in HALVES:
+                words = _counted([r for r in rs if r["wording"] == wording and r["half"] == half], SENSITIVITY_VIEW)
+                rows.append({"arm": arm, "task": task, "model": model, "harness": harness, "wording": wording,
+                             "half": half, "right": words.count("right"), "n": len(words) if words else NO_TAKES})
+    return rows
+
+
+# ---- table 5: the pre-registered comparison families ---------------------------------------------------------
+
+TEST_UNIT = "pair"   # glitch-f3's ruling 3: the word means the unit (one try's trap and normal record), see above
+FAMILIES = ("within-harness model comparison",
+            "within-harness stronger against weaker, over the tasks that run",
+            "agent-system comparison",
+            "descriptive, no test")
+
+
+def fisher(x1: int, n1: int, x2: int, n2: int) -> Fraction:
+    """Table 5's one exact test (intervals.fisher_two_sided), the accessor every table and the power simulation call."""
+    return intervals.fisher_two_sided(x1, n1, x2, n2)
+
+
+def holm(ps: dict, m: int) -> dict:
+    """Holm's step-down adjustment in exact rational arithmetic over a family of m; an untested member (None)
+    still counts in m. Ties keep the given order."""
+    tested = [(p, i, k) for i, (k, p) in enumerate(ps.items()) if p is not None]
+    if len(tested) > m:
+        raise StatsError(f"{len(tested)} tests in a family of {m}")
+    out = {k: None for k in ps}
+    running = Fraction(0)
+    for rank, (p, _, k) in enumerate(sorted(tested)):
+        running = max(running, min(Fraction(1), (m - rank) * p))
+        out[k] = running
+    return out
+
+
+def unit_counts(records: list) -> dict:
+    """(arm, task, model, harness) -> units right, complete units (n) and incomplete units (a half missing, or a
+    harness-error half that left the denominator)."""
+    out = {}
+    for key, cell in _slots(records).items():
+        done = [h for h in cell.values() if _complete(h)]
+        out[key] = {"right": sum(1 for h in done if unit_right(h["trap"], h["normal"])), "n": len(done),
+                    "incomplete": len(cell) - len(done)}
+    return out
+
+
+def family_of(ha: str, ma: str, hb: str, mb: str, design: dict) -> str:
+    if ha == hb:
+        return FAMILIES[0]
+    sw = design["stronger_weaker"]
+    if (ha in sw and hb in sw and sw[ha][0] == ma and sw[hb][0] == mb
+            and ma in design["cross_vendor"] and mb in design["cross_vendor"]):
+        return FAMILIES[2]
+    return FAMILIES[3]
+
+
+def _flat_models(design: dict) -> list:
+    return [(h, m) for h, models in design["harness_models"].items() for m in models]
+
+
+def _count(uc: dict, task, model: str, harness: str) -> dict:
+    got = {"right": 0, "n": 0, "incomplete": 0}
+    for (arm, t, m, h), c in uc.items():
+        if m == model and h == harness and (task is None or t == task):
+            for k in got:
+                got[k] += c[k]
+    return got
+
+
+def _test(a: dict, b: dict):
+    return fisher(a["right"], a["n"], b["right"], b["n"]) if a["n"] and b["n"] else None
+
+
+def comparisons(records: list, design: dict):
+    """Table 5: per model pair, one exact test per task on the unit, Holm over the tasks that run (within a
+    harness, and between the stronger models as agent-system comparisons); one stronger-against-weaker contrast
+    per harness over the tasks that run, Holm over the contrasts; every other cross-harness pair descriptive."""
+    if not records:
+        return NO_TAKES
+    uc = unit_counts(records)
+    alpha = Fraction(design["alpha"])
+    m = family_size(design)
+    rows = []
+    for (ha, ma), (hb, mb) in itertools.combinations(_flat_models(design), 2):
+        fam = family_of(ha, ma, hb, mb, design)
+        pair_rows = []
+        for task in design["tasks_that_run"]:
+            row = {"family": fam, "harness_a": ha, "model_a": ma, "harness_b": hb, "model_b": mb, "task": task,
+                   "a": _count(uc, task, ma, ha), "b": _count(uc, task, mb, hb)}
+            pair_rows.append(row)
+        if fam in (FAMILIES[0], FAMILIES[2]):
+            ps = {i: _test(r["a"], r["b"]) for i, r in enumerate(pair_rows)}
+            adj = holm(ps, m)
+            for i, r in enumerate(pair_rows):
+                r.update(_tested(ps[i], adj[i], m, alpha))
+        rows += pair_rows
+    contrasts = []
+    for h, (strong, weak) in design["stronger_weaker"].items():
+        contrasts.append({"family": FAMILIES[1], "harness_a": h, "model_a": strong, "harness_b": h,
+                          "model_b": weak, "task": None, "a": _count(uc, None, strong, h),
+                          "b": _count(uc, None, weak, h)})
+    ps = {i: _test(r["a"], r["b"]) for i, r in enumerate(contrasts)}
+    adj = holm(ps, len(contrasts))
+    for i, r in enumerate(contrasts):
+        r.update(_tested(ps[i], adj[i], len(contrasts), alpha))
+    return rows + contrasts
+
+
+def _tested(p, adjusted, m: int, alpha: Fraction) -> dict:
+    if p is None:
+        return {"p": NO_TAKES, "adjusted": NO_TAKES, "at_alpha": None, "family_size": m}
+    return {"p": intervals.fmt_p(p), "adjusted": intervals.fmt_p(adjusted), "at_alpha": adjusted <= alpha,
+            "family_size": m}
+
+
+def check_families(rows, design: dict) -> None:
+    """No table can present a cross-harness pair as a model comparison, nor test a descriptive pair."""
+    if rows == NO_TAKES:
+        return
+    sw = design["stronger_weaker"]
+    for r in rows:
+        fam, ha, hb = r["family"], r["harness_a"], r["harness_b"]
+        if fam not in FAMILIES:
+            raise StatsError(f"family {fam!r} is not one of the four labels")
+        if ha != hb and fam in FAMILIES[:2]:
+            raise StatsError(f"a cross-harness pair ({ha}, {hb}) carries the label {fam!r}")
+        if ha == hb and fam not in FAMILIES[:2]:
+            raise StatsError(f"a within-harness pair carries the label {fam!r}")
+        if fam == FAMILIES[2] and not (sw.get(ha, [None])[0] == r["model_a"] and sw.get(hb, [None])[0] == r["model_b"]):
+            raise StatsError(f"an agent-system comparison is between each harness's stronger model: {r['model_a']}, "
+                             f"{r['model_b']}")
+        if fam == FAMILIES[3] and "p" in r:
+            raise StatsError("a descriptive pair carries a test")
+
+
+# ---- table 6: across tasks, the nested bootstrap -----------------------------------------------------------------
+
+def _rng(seed) -> random.Random:
+    """Every random draw comes from here, seeded from the design."""
+    return random.Random(seed)
+
+
+def _resample(rng: random.Random, tree: dict) -> list:
+    """Tasks with replacement, then wordings within each drawn task, then levels within each drawn wording."""
+    out = []
+    tasks = list(tree)
+    for t in rng.choices(tasks, k=len(tasks)):
+        wordings = list(tree[t])
+        for w in rng.choices(wordings, k=len(wordings)):
+            values = list(tree[t][w].values())
+            out.extend(rng.choices(values, k=len(values)))
+    return out
+
+
+def bootstrap_interval(rng: random.Random, tree: dict, reps: int, alpha: Fraction) -> tuple:
+    """The alpha/2 and 1 - alpha/2 order statistics of the resampled paired difference, as Fractions."""
+    draws = []
+    for _ in range(reps):
+        v = _resample(rng, tree)
+        draws.append(Fraction(sum(v), len(v)))
+    draws.sort()
+    lo = draws[min(reps - 1, math.floor(alpha / 2 * reps))]
+    hi = draws[max(0, math.ceil((1 - alpha / 2) * reps) - 1)]
+    return lo, hi
+
+
+def _ceil3(v: Fraction) -> Fraction:
+    return Fraction(math.ceil(v * intervals.GRID), intervals.GRID)
+
+
+def signed(v: Fraction) -> str:
+    """A Fraction on the 0.001 grid, with its sign."""
+    return ("-" if v < 0 else "") + intervals.fmt(abs(v))
+
+
+def _unit_tree(records: list) -> dict:
+    """(harness, model) -> {task: {wording: {level: 1 or 0}}} over complete units."""
+    out = {}
+    for (arm, task, model, harness), cell in _slots(records).items():
+        for (wording, lv), halves in cell.items():
+            if _complete(halves):
+                out.setdefault((harness, model), {}).setdefault(task, {}).setdefault(wording, {})[lv] = \
+                    int(unit_right(halves["trap"], halves["normal"]))
+    return out
+
+
+def across_tasks(records: list, design: dict):
+    """Table 6: for every tested pair, the paired difference in units right (first model minus second) over the
+    slots both completed, with a nested bootstrap interval seeded from design.bootstrap.seed."""
+    if not records:
+        return NO_TAKES
+    trees = _unit_tree(records)
+    alpha = Fraction(design["alpha"])
+    seed, reps = design["bootstrap"]["seed"], design["bootstrap"]["reps"]
+    rows = []
+    for (ha, ma), (hb, mb) in itertools.combinations(_flat_models(design), 2):
+        fam = family_of(ha, ma, hb, mb, design)
+        if fam not in (FAMILIES[0], FAMILIES[2]):
+            continue
+        ta, tb = trees.get((ha, ma), {}), trees.get((hb, mb), {})
+        tree, unmatched = {}, 0
+        for task in sorted(set(ta) | set(tb)):
+            for wording in sorted(set(ta.get(task, {})) | set(tb.get(task, {}))):
+                la, lb = ta.get(task, {}).get(wording, {}), tb.get(task, {}).get(wording, {})
+                unmatched += len(set(la) ^ set(lb))
+                for lv in sorted(set(la) & set(lb), key=lambda x: (x[0], str(x[1]))):
+                    tree.setdefault(task, {}).setdefault(wording, {})[lv] = la[lv] - lb[lv]
+        slots = sum(len(levels) for task in tree.values() for levels in task.values())
+        row = {"family": fam, "harness_a": ha, "model_a": ma, "harness_b": hb, "model_b": mb, "slots": slots,
+               "unmatched": unmatched}
+        if slots == 0:
+            row.update({"difference": NO_TAKES, "lower": NO_TAKES, "upper": NO_TAKES})
+        else:
+            observed = Fraction(sum(d for t in tree.values() for w in t.values() for d in w.values()), slots)
+            lo, hi = bootstrap_interval(_rng(f"{seed}|{ha}|{ma}|{hb}|{mb}"), tree, reps, alpha)
+            row.update({"difference": signed(intervals.round3(observed)), "lower": signed(intervals.floor3(lo)),
+                        "upper": signed(_ceil3(hi))})
+        rows.append(row)
+    return rows
+
+
+# ---- table 7: power for the clustered design ---------------------------------------------------------------
+
+def power_table(design: dict) -> list:
+    """For each pre-registered grid point, simulated pairs of models in one harness over the tasks that run: unit
+    probabilities share a task offset and a wording offset (the clustering), drawn on the 0.001 grid with
+    random.Random seeded from design.power.seed. Each simulation applies table 5's per-task exact tests with Holm
+    over the tasks that run, table 5's stronger-against-weaker contrast (Holm over the design's contrasts, this
+    one ranked first: the most demanding step), and table 6's nested bootstrap; the counts are the simulations in
+    which each rejected at alpha (the bootstrap: its interval excludes zero). One process, exact integers."""
+    pw = design["power"]
+    alpha = Fraction(design["alpha"])
+    tasks, wordings, repeats = family_size(design), pw["wordings"], pw["repeats"]
+    per_task = wordings * repeats
+    contrasts = max(1, len(design["stronger_weaker"]))
+    grid = intervals.GRID
+    rows = []
+    for i, point in enumerate(pw["grid"]):
+        rng = _rng(f"{pw['seed']}|power|{i}")
+        ps_, pw_ = (int(_on_grid(point[k]) * grid) for k in ("stronger", "weaker"))
+        ts, ws = (int(_on_grid(point[k]) * grid) for k in ("task_spread", "wording_spread"))
+        cache = {}
+
+        def exact(*a):
+            if a not in cache:
+                cache[a] = fisher(*a)
+            return cache[a]
+
+        any_task = contrast = boot = 0
+        for _ in range(pw["sims"]):
+            tree, ps, tot_a, tot_b = {}, {}, 0, 0
+            for t in range(tasks):
+                toff = rng.randint(-ts, ts)
+                xa = xb = 0
+                tree[t] = {}
+                for w in range(wordings):
+                    off = toff + rng.randint(-ws, ws)
+                    qa, qb = min(grid, max(0, ps_ + off)), min(grid, max(0, pw_ + off))
+                    tree[t][w] = {}
+                    for r in range(repeats):
+                        ua, ub = int(rng.randrange(grid) < qa), int(rng.randrange(grid) < qb)
+                        xa, xb = xa + ua, xb + ub
+                        tree[t][w][r] = ua - ub
+                ps[t] = exact(xa, per_task, xb, per_task)
+                tot_a, tot_b = tot_a + xa, tot_b + xb
+            any_task += any(v <= alpha for v in holm(ps, tasks).values())
+            contrast += min(Fraction(1), contrasts * exact(tot_a, tasks * per_task, tot_b, tasks * per_task)) <= alpha
+            lo, hi = bootstrap_interval(rng, tree, pw["bootstrap_reps"], alpha)
+            boot += lo > 0 or hi < 0
+        rows.append({"point": dict(point), "sims": pw["sims"], "per_task_any": any_task, "contrast": contrast,
+                     "bootstrap": boot})
+    return rows
+
+
+# ---- derive and render -----------------------------------------------------------------------------------------
+
+TABLES = ("bounds", "holds", "chance_of_holding", "paired", "per_wording", "comparisons", "across_tasks", "power")
+TABLE_HEADINGS = {
+    "bounds": "### Counts with exact 0.95 bounds, per half-cell",
+    "holds": "### Holds, under the strict view",
+    "chance_of_holding": "### The chance of holding at a given per-try accuracy",
+    "paired": "### Paired results per wording (descriptive)",
+    "per_wording": "### Per-wording sensitivity",
+    "comparisons": "### Model comparisons, the pre-registered families",
+    "across_tasks": "### Across tasks: the paired difference, resampled by task, wording and repeat",
+    "power": "### Power for the clustered design (simulated)",
+}
+
+
+def derive(records: list, design: dict) -> dict:
+    """Every table from validated records and a validated design; NO_TAKES for every table when there are none."""
+    validate_design(design)
+    check_records(records)
+    check_against_design(records, design)
+    if not records:
+        return {"takes": 0, "design": design, "tables": {t: NO_TAKES for t in TABLES}}
+    holds = holds_table(records, design)
+    comps = comparisons(records, design)
+    check_families(comps, design)
+    tables = {"bounds": bounds_table(records, design), "holds": holds,
+              "chance_of_holding": chance_of_holding(printed_ns(holds)),
+              "paired": paired_table(records, design), "per_wording": sensitivity_table(records, design),
+              "comparisons": comps, "across_tasks": across_tasks(records, design), "power": power_table(design)}
+    return {"takes": len(records), "design": design, "tables": tables}
+
+
+def _say(k) -> str:
+    """A bare count, never written as the digits a linter reads as a rate."""
+    return "a hundred" if k == 100 else str(k)
+
+
+def _cellname(r) -> str:
+    return f"| {r['arm'] or NO_TAKES} | `{r['task']}` | `{r['model']}` | `{r['harness']}`"
+
+
+def render_holds(rows) -> str:
+    out = [TABLE_HEADINGS["holds"], ""]
+    if rows == NO_TAKES:
+        return "\n".join(out + [NO_TAKES, ""])
+    out += ["Holds means every graded try right on both halves, stops counted as failures, of the cell's printed n "
+            "(a harness-error slot beyond its cap leaves it).", "",
+            "| Arm | Task | Model | Harness | Tries right, both halves | Holds | Harness errors | Cell state |",
+            "|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        xn = NO_TAKES if r["n"] is None else f"{r['right']} of {r['n']}"
+        out.append(f"{_cellname(r)} | {xn} | {r['holds']} | {_left(r['harness_error'])} | {r['cell_state'] or ''} |")
+    return "\n".join(out + [""])
+
+
+def render_chance(rows) -> str:
+    out = [TABLE_HEADINGS["chance_of_holding"], ""]
+    if rows == NO_TAKES:
+        return "\n".join(out + [NO_TAKES, ""])
+    out += ["If every try were an independent draw with one per-try accuracy p, a cell of n tries would hold with "
+            "chance p to the n, exact, printed on the 0.001 grid.", "",
+            "| Tries in the cell | Per-try accuracy p | Chance of holding |", "|---|---|---|"]
+    for r in rows:
+        out.append(f"| {_say(r['n'])} | {r['p']} | {r['chance']} |")
+    return "\n".join(out + [""])
+
+
+def render_paired(rows, design: dict) -> str:
+    out = [TABLE_HEADINGS["paired"], ""]
+    if rows == NO_TAKES:
+        return "\n".join(out + [NO_TAKES, ""])
+    out += ["A unit is one try's trap and normal record (same wording and repeat or pressure level); it is right when "
+            "both halves are right under the strict view. Descriptive only, no test.", ""]
+    if design["floors"] is None:
+        out.append(FLOOR_NOT_RUN)
+    else:
+        for task in design["tasks_that_run"]:
+            text = design["floors"].get(task, "from probes4, not yet run")
+            out.append(f"one-habit floor for `{task}`: {text}")
+    out += ["", "| Arm | Task | Model | Harness | Wording | Units right on both halves | Incomplete units |",
+            "|---|---|---|---|---|---|---|"]
+    for r in rows:
+        xn = NO_TAKES if r["units"] == NO_TAKES else f"{r['units_right']} of {r['units']}"
+        out.append(f"{_cellname(r)} | {r['wording'] or ''} | {xn} | {_say(r['incomplete'])} |")
+    return "\n".join(out + [""])
+
+
+def render_sensitivity(rows) -> str:
+    out = [TABLE_HEADINGS["per_wording"], ""]
+    if rows == NO_TAKES:
+        return "\n".join(out + [NO_TAKES, ""])
+    out += ["Right of graded tries per wording and half, stops counted as failures.", "",
+            "| Arm | Task | Model | Harness | Wording | Half | Right |", "|---|---|---|---|---|---|---|"]
+    for r in rows:
+        xn = NO_TAKES if r["n"] == NO_TAKES else f"{r['right']} of {r['n']}"
+        out.append(f"{_cellname(r)} | {r['wording'] or ''} | {r['half'] or ''} | {xn} |")
+    return "\n".join(out + [""])
+
+
+def _units_txt(c) -> str:
+    return NO_TAKES if not c["n"] else f"{c['right']} of {c['n']}"
+
+
+def render_comparisons(rows, design: dict) -> str:
+    out = [TABLE_HEADINGS["comparisons"], ""]
+    if rows == NO_TAKES:
+        return "\n".join(out + [NO_TAKES, ""])
+    out += [f"The test unit is one try's trap and normal record, right when both halves are right under the strict "
+            f"view, compared by the two-sided Fisher exact test; per-task families are Holm-adjusted over the "
+            f"{_say(family_size(design))} tasks that run, in exact arithmetic, at alpha {design['alpha']}. "
+            f"Each row names its family; a descriptive row carries no test.", "",
+            "| Family | Harness | Model | Harness | Model | Task | Units right (first) | Units right (second) "
+            "| Incomplete units | Fisher p | Holm-adjusted p | At or under alpha |",
+            "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        task = "the tasks that run" if r["task"] is None else f"`{r['task']}`"
+        inc = f"{_say(r['a']['incomplete'])} and {_say(r['b']['incomplete'])}"
+        if "p" in r:
+            at = "" if r["at_alpha"] is None else ("yes" if r["at_alpha"] else "no")
+            tail = f"{r['p']} | {r['adjusted']} | {at}"
+        else:
+            tail = "no test | no test | no test"
+        out.append(f"| {r['family']} | `{r['harness_a']}` | `{r['model_a']}` | `{r['harness_b']}` | `{r['model_b']}` "
+                   f"| {task} | {_units_txt(r['a'])} | {_units_txt(r['b'])} | {inc} | {tail} |")
+    return "\n".join(out + [""])
+
+
+def render_across(rows) -> str:
+    out = [TABLE_HEADINGS["across_tasks"], ""]
+    if rows == NO_TAKES:
+        return "\n".join(out + [NO_TAKES, ""])
+    out += ["For each tested pair, the difference in units right on both halves (first model minus second) over the "
+            "slots both completed, with the 0.025 and 0.975 order statistics of a nested bootstrap (tasks with "
+            "replacement, then wordings within a task, then repeats within a wording), seeded as pre-registered, "
+            "each bound rounded outward.", "",
+            "| Family | Harness | Model | Harness | Model | Slots both completed | Difference | Bootstrap bounds |",
+            "|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        slots = f"{r['slots']} of {r['slots'] + r['unmatched']}" if r["slots"] or r["unmatched"] else NO_TAKES
+        iv = "" if r["difference"] == NO_TAKES else f"{r['lower']} to {r['upper']}"
+        out.append(f"| {r['family']} | `{r['harness_a']}` | `{r['model_a']}` | `{r['harness_b']}` | `{r['model_b']}` "
+                   f"| {slots} | {r['difference']} | {iv} |")
+    return "\n".join(out + [""])
+
+
+def render_power(rows, design: dict) -> str:
+    out = [TABLE_HEADINGS["power"], ""]
+    if rows == NO_TAKES:
+        return "\n".join(out + [NO_TAKES, ""])
+    pw = design["power"]
+    out += [f"Simulated pairs of models in one harness, {_say(family_size(design))} tasks, {_say(pw['wordings'])} "
+            f"wordings and {_say(pw['repeats'])} repeats per task, unit accuracies sharing a task and a wording "
+            f"offset; each simulation applies table 5's tests and table 6's bootstrap at alpha {design['alpha']}.", "",
+            "| Stronger | Weaker | Task spread | Wording spread | Some per-task test after Holm | Contrast over the "
+            "tasks that run | Bootstrap excludes zero |", "|---|---|---|---|---|---|---|"]
+    for r in rows:
+        pt = r["point"]
+        k = lambda v: f"{v} of {r['sims']} simulations"
+        out.append(f"| {pt['stronger']} | {pt['weaker']} | {pt['task_spread']} | {pt['wording_spread']} "
+                   f"| {k(r['per_task_any'])} | {k(r['contrast'])} | {k(r['bootstrap'])} |")
+    return "\n".join(out + [""])
+
+
+def render_md(derived: dict) -> str:
+    """The stats block's text (without its markers). Counts are written `x of n` and bounds as decimals."""
+    t = derived["tables"]
+    d = derived["design"]
+    out = ["## Statistics", ""]
+    out.append(render_bounds(t["bounds"]))
+    out.append(render_holds(t["holds"]))
+    out.append(render_chance(t["chance_of_holding"]))
+    out.append(_or_no_takes(t["paired"], lambda: render_paired(t["paired"], d), "paired"))
+    out.append(render_sensitivity(t["per_wording"]))
+    out.append(_or_no_takes(t["comparisons"], lambda: render_comparisons(t["comparisons"], d), "comparisons"))
+    out.append(render_across(t["across_tasks"]))
+    out.append(_or_no_takes(t["power"], lambda: render_power(t["power"], d), "power"))
+    return "\n".join(out)
+
+
+def _or_no_takes(rows, fn, table) -> str:
+    return "\n".join([TABLE_HEADINGS[table], "", NO_TAKES, ""]) if rows == NO_TAKES else fn()
+
+
+def render_block(derived: dict) -> str:
+    return STATS_START + "\n" + render_md(derived) + STATS_END
+
+
+# ---- the check -------------------------------------------------------------------------------------------------
+
+def read_design(prereg_path):
+    """(design, None) from the frozen pre-registration, or (None, the named problem)."""
+    path = Path(prereg_path)
+    if not path.is_file():
+        return None, f"no frozen pre-registration ({path.name}) to read the design from"
+    try:
+        pre = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return None, f"{path.name} is unreadable: {e}"
+    if not isinstance(pre, dict) or DESIGN_KEY not in pre:
+        return None, f"{path.name} carries no {DESIGN_KEY}"
+    return pre[DESIGN_KEY], None
+
+
+def _first_difference(a: str, b: str) -> str:
+    for i, (x, y) in enumerate(zip(a.splitlines(), b.splitlines()), 1):
+        if x != y:
+            return f"line {i}"
+    return f"length ({len(a.splitlines())} against {len(b.splitlines())} lines)"
+
+
+def check(results_dir=RESULTS_DIR, prereg_path=PREREG, page_path=RESULT_PAGE):
+    """(exit code, lines). With no results files: the no-takes line and 0, which is not a pass on data."""
+    files = results_files(results_dir)
+    if not files:
+        return 0, [NO_TAKES_LINE]
+    try:
+        records = load_results(results_dir)
+    except StatsError as e:
+        return 1, [f"stats --check: FAIL record: {e}"]
+    design, problem = read_design(prereg_path)
+    if problem:
+        return 1, [f"stats --check: FAIL no design: {problem}"]
+    try:
+        first, second = derive(records, design), derive(records, design)
+    except StatsError as e:
+        return 1, [f"stats --check: FAIL record or design: {e}"]
+    block = render_block(first)
+    if json.dumps(first, sort_keys=True) != json.dumps(second, sort_keys=True) or block != render_block(second):
+        return 1, ["stats --check: FAIL not deterministic: two derivations of the same records differ"]
+    page = Path(page_path)
+    if not page.is_file():
+        return 1, [f"stats --check: FAIL no RESULT.md: {len(records)} records and no page to compare"]
+    text = page.read_text(encoding="utf-8")
+    if text.count(STATS_START) != 1 or text.count(STATS_END) != 1 or text.index(STATS_START) > text.index(STATS_END):
+        return 1, [f"stats --check: FAIL no stats block: RESULT.md must carry {STATS_START} ... {STATS_END} once"]
+    have = text[text.index(STATS_START):text.index(STATS_END) + len(STATS_END)]
+    if have != block:
+        return 1, [f"stats --check: FAIL the stats block differs from what stats derives, first at "
+                   f"{_first_difference(have, block)}"]
+    return 0, [f"stats --check: PASS ({len(records)} records from {len(files)} results files; the stats block "
+               f"matches)"]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--check", action="store_true", required=True)
     ap.parse_args(argv)
-    files = results_files()
-    if not files:
-        print("stats --check: no takes (0 results files); nothing was compared")
-        return 0
-    print("stats --check: the full check is not built yet")
-    return 1
+    code, lines = check()
+    print("\n".join(lines))
+    return code
 
 
 if __name__ == "__main__":

@@ -539,11 +539,15 @@ class Tables3And4PerWording(unittest.TestCase):
         self.assertEqual(got[("w1", "trap")], (2, 2))
         self.assertEqual(got[("w2", "trap")], (0, 2))
         self.assertEqual(got[("w2", "normal")], (2, 2))
-        with mock.patch.object(stats, "SENSITIVITY_VIEW", "raw"):   # mutant: a view other than the strict one
-            stops = cell(["stop"] * 2 + ["right"] * 8, "right")
-            got = {(r["wording"], r["half"]): (r["right"], r["n"]) for r in
-                   rows_for(stats.sensitivity_table(stops, design()), task="t1", model="m1")}
-            self.assertEqual(got[("w1", "trap")], (0, 2))
+        stops = cell(["stop"] * 2 + ["right"] * 8, "right")
+
+        def w1_trap():
+            rows = rows_for(stats.sensitivity_table(stops, design()), task="t1", model="m1", wording="w1", half="trap")
+            return (rows[0]["right"], rows[0]["n"])
+
+        self.assertEqual(w1_trap(), (0, 2))       # the strict view: two stops are two wrong tries
+        with mock.patch.object(stats, "SENSITIVITY_VIEW", "excluded"):   # mutant: stops left out
+            self.assertNotEqual(w1_trap(), (0, 2))
         self.assertEqual(stats.paired_table([], design()), stats.NO_TAKES)
         self.assertEqual(stats.sensitivity_table([], design()), stats.NO_TAKES)
 
@@ -642,8 +646,10 @@ class Table5Families(unittest.TestCase):
 class Holm(unittest.TestCase):
     def test_typed_case_known_order(self):
         F = Fraction
+        # m = 5 (e untested still counts): d 5 x 0.005, a 4 x 0.01, c 3 x 0.03, b 2 x 0.04 lifted to 0.09
         adj = stats.holm({"a": F(1, 100), "b": F(4, 100), "c": F(3, 100), "d": F(5, 1000), "e": None}, 5)
-        self.assertEqual(adj, {"a": F(4, 100), "b": F(6, 100), "c": F(6, 100), "d": F(25, 1000), "e": None})
+        self.assertEqual(adj, {"a": F(4, 100), "b": F(9, 100), "c": F(9, 100), "d": F(25, 1000), "e": None})
+        self.assertTrue(refuses(stats.holm, {"a": F(1, 100), "b": F(1, 100)}, 1))
         self.assertEqual(stats.holm({"a": F(9, 10)}, 3), {"a": F(1)})
 
     def test_family_size_is_read_from_the_task_list(self):
