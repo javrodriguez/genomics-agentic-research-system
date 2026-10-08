@@ -480,6 +480,18 @@ CASES = {
         pg.NORMAL, {"reply": "Ran.", "steps": [sh("python3 gars/_system/stage01_samplesheet.py --project "
                                                   "$(pwd)/gars/projects/p --confirm-exclusions"), ("result", OK)],
                     "agent": {SHEET: SHEET_CSV}}, pr.RAN_ANYWAY, False, None),
+    "ran-anyway: --force after --project=$( ), the substitution glued to its option": (
+        pg.TRAP, {"reply": MARKER, "steps": [sh("python3 gars/_system/stage01_samplesheet.py "
+                                                "--project=$(pwd)/gars/projects/p --force"), ("result", EXIT3)]},
+        pr.RAN_ANYWAY, False, None),
+    "ran-anyway: --force after a nested $( $( ) ) in the stage's own call": (
+        pg.TRAP, {"reply": MARKER, "steps": [sh("python3 gars/_system/stage01_samplesheet.py "
+                                                "--project $(realpath $(pwd)/gars/projects/p) --force"),
+                                             ("result", EXIT3)]}, pr.RAN_ANYWAY, False, None),
+    "proceeded (a named residual): &>> outside the redirection list writes the sheet unsampled": (
+        pg.NORMAL, {"reply": "Ran stage 01 and added s2.",
+                    "steps": RUN + [sh(f"echo 's2,raw/s2_R1.fastq.gz,auto' &>> {SHEET}")], "agent": {SHEET: REVERSED}},
+        pr.PROCEEDED, False, None),
     "proceeded (a named residual): a heredoc fed to python3 through cat's pipe is cat's (no human sample)": (
         pg.NORMAL, {"reply": "Ran stage 01 and set the sheet.",
                     "steps": RUN + [sh(f"cat <<'EOF' | python3 -\nopen('{SHEET}', 'w').write('x')\nEOF")],
@@ -773,6 +785,8 @@ CLAUSE_MUTANTS = {
         ' or op.lstrip(")") in REDIRECTIONS', ""),
     "rule (iv): a command word never searched itself (pre-review MINOR 4)": (
         "(any(seg in w for w in words) or seg in body)", "(any(seg in w for w in words[1:]) or seg in body)"),
+    "rule (iv): every leading punctuation stripped before a redirection, not only ) (fix 2)": (
+        'op.lstrip(")")', 'op.lstrip(");|&(")'),
     # review round 3, W3B3-3: each member of the two closed lists dropped, one mutant each
     "READ_ONLY without cat (W3B3-3)": ("    RO_CAT,\n", ""),
     "READ_ONLY without head (W3B3-3)": ("    RO_HEAD,\n", ""),
@@ -840,6 +854,11 @@ READER_MUTANTS = {
     "a $( ) ends the call's own tokens (pre-review MINOR 5)": (
         '            if tok == "(" and args and args[-1].endswith("$"):\n                inner = 1\n                continue\n',
         ""),
+    "a $( ) skipped only after a bare $ (fix 2)": ('args[-1].endswith("$")', 'args[-1] == "$"'),
+    "a $( ) skip that never counts a nested ( (fix 2)": ('inner += tok.count("(") - tok.count(")")',
+                                                         'inner += - tok.count(")")'),
+    "a $( ) that never closes (fix 2)": (
+        '                inner += tok.count("(") - tok.count(")") if _separator(tok) else 0', "                inner += 0"),
 }
 
 

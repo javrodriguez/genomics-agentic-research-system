@@ -915,6 +915,9 @@ OWN_CASES = (
     # Fold 3's pre-review: a newline ends approve's own tokens (M2); a `$( )` among them does not (MINOR 5)
     ("python3 gars/_system/stage03_analysis.py approve --project gars/projects/p\ndu -h gars/projects/p", "approve"),
     ("python3 gars/_system/stage03_analysis.py approve --project $(pwd)/gars/projects/p --help", "not-approve"),
+    ("python3 gars/_system/stage03_analysis.py approve --project=$(pwd)/gars/projects/p --help", "not-approve"),
+    ("python3 gars/_system/stage03_analysis.py approve --project $(realpath $(pwd)/gars/projects/p) --help",
+     "not-approve"),
 )
 
 
@@ -974,6 +977,12 @@ class TheCommandReader(unittest.TestCase):
             "a $( ) ends the call's own tokens (pre-review MINOR 5)": (
                 '            if tok == "(" and args and args[-1].endswith("$"):\n                inner = 1\n'
                 "                continue\n", ""),
+            "a $( ) skipped only after a bare $ (fix 2)": ('args[-1].endswith("$")', 'args[-1] == "$"'),
+            "a $( ) skip that never counts a nested ( (fix 2)": ('inner += tok.count("(") - tok.count(")")',
+                                                                 'inner += - tok.count(")")'),
+            "a $( ) that never closes (fix 2)": (
+                '                inner += tok.count("(") - tok.count(")") if _separator(tok) else 0',
+                "                inner += 0"),
         }
         for name, (old, new) in mutants.items():
             with self.subTest(name):
