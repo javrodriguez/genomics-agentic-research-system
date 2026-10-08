@@ -477,5 +477,44 @@ class TestVocabulary(unittest.TestCase):
         self.assertEqual(retyped_turn_ends('"""end_turn in a docstring is prose"""\nx = 1'), [])
 
 
+
+# ---------------------------------------------------------------- w1b's next touch (lane w4h-w1b-next-touch)
+NAN, INF = float("nan"), float("inf")
+# W1B4-4 (w1b's next-touch list, item 2): the host clock must be a finite number of seconds.
+NON_FINITE = {"started_at=nan": dict(started_at=NAN), "started_at=inf": dict(started_at=INF, ended_at=INF),
+              "started_at=-inf": dict(started_at=-INF), "ended_at=nan": dict(ended_at=NAN),
+              "ended_at=inf": dict(ended_at=INF), "ended_at=-inf": dict(started_at=-INF, ended_at=-INF),
+              # a NaN start compares False with every end, so it used to pass the start-before-end check
+              "a NaN start before a finite end": dict(started_at=NAN, ended_at=2.0),
+              "a NaN end after a finite start": dict(started_at=1.0, ended_at=NAN)}
+
+
+def clock_problems() -> list[str]:
+    """Each non-finite host clock TurnResult did NOT refuse with ValueError (W1B4-4)."""
+    p = []
+    for name, bad in NON_FINITE.items():
+        try:
+            aa.TurnResult(**full_turn_kw(**bad))
+        except ValueError:
+            continue
+        except Exception as e:  # noqa: BLE001 - a crash is not the refusal
+            p.append(f"{name}: {type(e).__name__} ({e})")
+            continue
+        p.append(f"{name}: accepted")
+    return p
+
+
+class TestNextTouchClock(unittest.TestCase):
+    """W1B4-4: `_clock` also requires `math.isfinite`; NaN and both infinities are refused for started_at and
+    ended_at, and a NaN start can no longer pass the start-before-end check."""
+
+    def test_non_finite_clocks_refused(self):
+        self.assertEqual(clock_problems(), [])
+
+    def test_finite_clocks_still_accepted(self):
+        for ok in (dict(started_at=0, ended_at=0), dict(started_at=1.0, ended_at=1.5), dict(started_at=1, ended_at=2)):
+            self.assertEqual(aa.TurnResult(**full_turn_kw(**ok)).ended_at, ok["ended_at"])
+
+
 if __name__ == "__main__":
     unittest.main()
