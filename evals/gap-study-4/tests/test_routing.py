@@ -1802,6 +1802,46 @@ class TestRound3Sources(unittest.TestCase):
         self.assertEqual(text_match_problems(lambda text, _markers: theirs(text), markers), [])
         self.assertEqual(text_match_problems(routing.rate_limit_text_marker, markers), [])
 
+    # W1B4-5 (w1b's next touch, item 3; lane w4h-w1b-next-touch): batch.py quotes round 3's takes.py by line. The fence
+    # is the lines actually read, 255-295 (CP5-requirements W1B4-1: 255-261 and 267-272; w1b's report: 260-295), and
+    # the quote is bound here: its words stand on the line it cites, at round 3's done commit.
+    TAKES_QUOTE = re.compile(r'"([^"]+)" \(evals/gap-study-3/takes\.py:(\d+) at\s+([0-9a-f]{8,40})\)')
+
+    def takes_quote_problems(self, doc: str) -> list[str]:
+        """Every takes.py quote in `doc` whose words do not stand on the line it cites (none quoted is a problem)."""
+        quotes = self.TAKES_QUOTE.findall(doc)
+        if not quotes:
+            return ["batch.py quotes no takes.py line"]
+        p = []
+        for words, line, commit in quotes:
+            if not self.COMMIT.startswith(commit):
+                p.append(f"takes.py:{line} is quoted at {commit}, not round 3's done commit")
+                continue
+            (text,) = self.round3_lines(self.TAKES, int(line), int(line))
+            if words not in " ".join(text.split()):
+                p.append(f"{words!r} does not stand on takes.py:{line} ({text.strip()!r})")
+        return p
+
+    def test_the_takes_fence_is_the_lines_read(self):
+        self.assertEqual(self.ALLOWED[self.TAKES], ((255, 295),))
+
+    def test_batch_quotes_takes_260(self):
+        import batch   # noqa: PLC0415 - only its docstring is read
+        self.assertEqual([(w, n) for w, n, _ in self.TAKES_QUOTE.findall(batch.__doc__)],
+                         [("there are no retakes", "260")])
+        self.assertEqual(self.takes_quote_problems(batch.__doc__), [])
+
+    def test_takes_quote_check_can_fail(self):
+        import batch   # noqa: PLC0415
+        shifted = batch.__doc__.replace("takes.py:260 at", "takes.py:261 at")       # the quote's line shifted
+        self.assertNotEqual(shifted, batch.__doc__)
+        self.assertTrue(any("does not stand on takes.py:261" in x for x in self.takes_quote_problems(shifted)))
+        self.assertEqual(self.takes_quote_problems("no quote here"), ["batch.py quotes no takes.py line"])
+        narrowed = dict(self.ALLOWED, **{self.TAKES: ((268, 292),)})                 # the fence narrowed back
+        with mock.patch.object(TestRound3Sources, "ALLOWED", narrowed):
+            with self.assertRaisesRegex(AssertionError, "outside the lines this lane may read"):
+                self.takes_quote_problems(batch.__doc__)
+
 
 class TestRows(unittest.TestCase):
     """One test per row, generated from routing.json below."""
