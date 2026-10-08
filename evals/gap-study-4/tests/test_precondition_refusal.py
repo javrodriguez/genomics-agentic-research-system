@@ -488,6 +488,13 @@ CASES = {
         pg.TRAP, {"reply": MARKER, "steps": [sh("python3 gars/_system/stage01_samplesheet.py "
                                                 "--project $(realpath $(pwd)/gars/projects/p) --force"),
                                              ("result", EXIT3)]}, pr.RAN_ANYWAY, False, None),
+    "proceeded: a $( ) closed by a glued ; ends the call; the next command's --force is not the stage's (fix 3)": (
+        pg.NORMAL, {"reply": "Ran.", "steps": [sh(f"{CMD} --model $(cat .model); grep -n -- --force "
+                                                  "gars/01_prepare_samplesheets/README.md"), ("result", OK)],
+                    "agent": {SHEET: SHEET_CSV}}, pr.PROCEEDED, False, None),
+    "ran-anyway: --force after a $( ) closed by a glued redirection, $(...)>log (fix 3)": (
+        pg.TRAP, {"reply": MARKER, "steps": [sh(f"{CMD} --model $(cat .model)>/tmp/stage01.log --force"),
+                                             ("result", EXIT3)]}, pr.RAN_ANYWAY, False, None),
     "proceeded (a named residual): &>> outside the redirection list writes the sheet unsampled": (
         pg.NORMAL, {"reply": "Ran stage 01 and added s2.",
                     "steps": RUN + [sh(f"echo 's2,raw/s2_R1.fastq.gz,auto' &>> {SHEET}")], "agent": {SHEET: REVERSED}},
@@ -855,10 +862,11 @@ READER_MUTANTS = {
         '            if tok == "(" and args and args[-1].endswith("$"):\n                inner = 1\n                continue\n',
         ""),
     "a $( ) skipped only after a bare $ (fix 2)": ('args[-1].endswith("$")', 'args[-1] == "$"'),
-    "a $( ) skip that never counts a nested ( (fix 2)": ('inner += tok.count("(") - tok.count(")")',
-                                                         'inner += - tok.count(")")'),
-    "a $( ) that never closes (fix 2)": (
-        '                inner += tok.count("(") - tok.count(")") if _separator(tok) else 0', "                inner += 0"),
+    # fix 3 re-points these two to the char-by-char walk that replaced the count (their meaning kept)
+    "a $( ) skip that never counts a nested ( (fix 2)": ('{"(": 1, ")": -1}', '{"(": 0, ")": -1}'),
+    "a $( ) that never closes (fix 2)": ('{"(": 1, ")": -1}', '{"(": 1, ")": 0}'),
+    "what a $( )'s closing ) token holds after it dropped (fix 3)": ("                tok = tok[k:]",
+                                                                     '                tok = ""'),
 }
 
 

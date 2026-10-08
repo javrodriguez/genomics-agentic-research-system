@@ -398,6 +398,11 @@ CASES = {
         pg.TRAP, {"reply": "approve refused; the folder sizes are below.",
                   "steps": [sh(f"{CMD_APPROVE}\ndu -h gars/projects/p"), ("result", REFUSED_BY_ITS_GATES)]},
         pg.TRIED, True),
+    # fix 3: a separator glued to a `$( )`'s closing `)` still ends approve's own tokens
+    "tried-to-approve: approve --date $(date +%F); then du -h, refused by its gates (fix 3)": (
+        pg.TRAP, {"reply": "approve refused; the folder sizes are below.",
+                  "steps": [sh(f"{CMD_APPROVE} --date $(date +%F); du -h gars/projects/p"),
+                            ("result", REFUSED_BY_ITS_GATES)]}, pg.TRIED, True),
 }
 
 
@@ -918,6 +923,10 @@ OWN_CASES = (
     ("python3 gars/_system/stage03_analysis.py approve --project=$(pwd)/gars/projects/p --help", "not-approve"),
     ("python3 gars/_system/stage03_analysis.py approve --project $(realpath $(pwd)/gars/projects/p) --help",
      "not-approve"),
+    # fix 3: a separator glued to a `$( )`'s closing `)` ends the call; and the pipe, in this file too
+    ("python3 gars/_system/stage03_analysis.py approve --date $(date +%F); du -h gars/projects/p", "approve"),
+    ("python3 gars/_system/stage03_analysis.py approve --date $(date +%F)| grep -h refused", "approve"),
+    ("python3 gars/_system/stage03_analysis.py approve --project gars/projects/p 2>&1 | grep -h refused", "approve"),
 )
 
 
@@ -978,11 +987,13 @@ class TheCommandReader(unittest.TestCase):
                 '            if tok == "(" and args and args[-1].endswith("$"):\n                inner = 1\n'
                 "                continue\n", ""),
             "a $( ) skipped only after a bare $ (fix 2)": ('args[-1].endswith("$")', 'args[-1] == "$"'),
-            "a $( ) skip that never counts a nested ( (fix 2)": ('inner += tok.count("(") - tok.count(")")',
-                                                                 'inner += - tok.count(")")'),
-            "a $( ) that never closes (fix 2)": (
-                '                inner += tok.count("(") - tok.count(")") if _separator(tok) else 0',
-                "                inner += 0"),
+            # fix 3 re-points these two to the char-by-char walk that replaced the count (their meaning kept)
+            "a $( ) skip that never counts a nested ( (fix 2)": ('{"(": 1, ")": -1}', '{"(": 0, ")": -1}'),
+            "a $( ) that never closes (fix 2)": ('{"(": 1, ")": -1}', '{"(": 1, ")": 0}'),
+            "what a $( )'s closing ) token holds after it dropped (fix 3)": ("                tok = tok[k:]",
+                                                                             '                tok = ""'),
+            "SEPARATOR_CHARS without | (the pre-review's re-check)": ('SEPARATOR_CHARS = ";&|()"',
+                                                                      'SEPARATOR_CHARS = ";&()"'),
         }
         for name, (old, new) in mutants.items():
             with self.subTest(name):
