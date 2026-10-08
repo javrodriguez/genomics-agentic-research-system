@@ -371,5 +371,478 @@ class Table1Bounds(unittest.TestCase):
         self.assertEqual(stats.render_bounds(stats.NO_TAKES).strip().splitlines()[-1], "no takes")
 
 
+NINE = tuple(f"t{i}" for i in range(1, 10))
+
+
+def equal_elsewhere(tasks, skip, models=("m1", "m2"), harness=HX):
+    """Every model right on every slot of every task but the named ones: equal counts, Fisher p of one."""
+    out = []
+    for t in tasks:
+        if t in skip:
+            continue
+        for m in models:
+            out += cell("right", "right", task=t, model=m, harness=harness)
+    return out
+
+
+def units_pattern(k_right, k_wrong=0, missing=0):
+    """A slot pattern: k_right units right on both halves, k_wrong units wrong on both, `missing` slots absent."""
+    words = ["right"] * k_right + ["wrong"] * k_wrong + [None] * missing
+    assert len(words) == 10
+    return words
+
+
+def unit_cell(k_right, k_wrong=0, missing=0, **kw):
+    pat = units_pattern(k_right, k_wrong, missing)
+    return cell(pat, pat, **kw)
+
+
+def rows_for(rows, **want):
+    return [r for r in rows if all(r.get(k) == v for k, v in want.items())]
+
+
+def rich_records():
+    """Synthetic records over three harnesses, three tasks (one at pressure levels), stops, an abort and
+    harness errors: the shape the run will produce, with standings drawn from a seeded generator."""
+    import random
+    rng = random.Random(20261008)
+    out = []
+    for harness, models in design()["harness_models"].items():
+        for m in models:
+            arm = {HX: "A", HY: "O", HZ: "G"}[harness]
+            for task in ("t1", "t2", "t3"):
+                for half in stats.HALVES:
+                    for wording in WORDINGS:
+                        levels = [(None, False), (None, True)] if task == "t3" else [(1, None), (2, None)]
+                        for repeat, pressure in levels:
+                            word = rng.choice(["right"] * 6 + ["wrong"] * 2 + ["stop", "aborted", "harness-error"])
+                            out.append(outcome(word, half=half, task=task, model=m, agent=agent(harness), arm=arm,
+                                               wording=wording, repeat=repeat, pressure=pressure))
+    return out
+
+
+class TheDesignIsClosed(unittest.TestCase):
+    def test_a_sound_design_passes(self):
+        stats.validate_design(design())
+
+    def test_refusals(self):
+        self.assertTrue(refuses(stats.validate_design, dict(design(), extra=1)))
+        d = design()
+        del d["floors"]
+        self.assertTrue(refuses(stats.validate_design, d))
+        for kw in ({"tasks_that_run": []}, {"tasks_that_run": ["t1", "t1"]}, {"alpha": 0.05}, {"alpha": "2"},
+                   {"stronger_weaker": {HX: ["m1", "m1"]}}, {"stronger_weaker": {HX: ["m1", "nope"]}},
+                   {"cross_vendor": ["m3", "y1", "z1"]}, {"bootstrap": {"seed": 1}},
+                   {"bootstrap": {"seed": 1, "reps": 0}}, {"power": {"seed": 1}},
+                   {"harness_models": {HX: []}}, {"floors": {"not-a-task": "x"}}):
+            self.assertTrue(refuses(stats.validate_design, design(**kw)), kw)
+        with mock.patch.object(stats, "DESIGN_FIELDS", stats.DESIGN_FIELDS + ("extra",)):
+            self.assertFalse(refuses(stats.validate_design, dict(design(), extra=1)))
+
+    def test_records_outside_the_design_refused(self):
+        self.assertTrue(refuses(stats.derive, cell("right", "right", task="t9"), design()))
+        self.assertTrue(refuses(stats.derive, cell("right", "right", model="y1", harness=HX), design()))
+        with mock.patch.object(stats, "check_against_design", lambda records, d: None):
+            self.assertFalse(refuses(stats.derive, cell("right", "right", task="t9"), design()))
+
+
+class Table2Holds(unittest.TestCase):
+    def holds(self, recs, d=None):
+        rows = stats.holds_table(recs, d or design())
+        got = rows_for(rows, task="t1", model="m1", harness=HX)
+        self.assertEqual(len(got), 1)
+        return got[0]
+
+    def test_every_try_right_on_both_halves_holds(self):
+        row = self.holds(cell("right", "right"))
+        self.assertEqual((row["holds"], row["right"], row["n"]), ("yes", 20, 20))
+        row = self.holds(cell(["wrong"] + ["right"] * 9, "right"))
+        self.assertEqual((row["holds"], row["right"], row["n"]), ("no", 19, 20))
+
+    def test_strict_view_stops_count_as_failures(self):
+        recs = cell(["stop"] + ["right"] * 9, "right")
+        self.assertEqual(self.holds(recs)["holds"], "no")
+        with mock.patch.object(stats, "HOLDS_VIEW", "excluded"):   # mutant: stops excluded
+            self.assertEqual(self.holds(recs)["holds"], "yes")
+
+    def test_harness_error_leaves_n_and_n_is_printed(self):
+        recs = cell(["harness-error"] + ["right"] * 9, "right")
+        row = self.holds(recs)
+        self.assertEqual((row["holds"], row["n"], row["harness_error"]), ("yes", 19, 1))
+        self.assertIn("19 of 19", stats.render_holds(stats.holds_table(recs, design())))
+        with mock.patch.object(stats, "LEAVES_DENOMINATOR", ()):
+            self.assertEqual(self.holds(recs)["holds"], "no")
+
+    def test_aborted_counts_against_holding(self):
+        recs = cell(["aborted"] + ["right"] * 9, "right")
+        self.assertEqual(self.holds(recs)["holds"], "no")
+        with mock.patch.object(stats, "LEAVES_DENOMINATOR", stats.LEAVES_DENOMINATOR + ("aborted",)):
+            self.assertEqual(self.holds(recs)["holds"], "yes")
+
+    def test_a_half_with_no_graded_try_cannot_hold(self):
+        row = self.holds(cell("right", "harness-error"))
+        self.assertNotIn(row["holds"], ("yes", "no"))
+        self.assertIn("normal", row["holds"])
+        row = rows_for(stats.holds_table(cell("right", "right"), design()), task="t2", model="m1")[0]
+        self.assertEqual(row["holds"], stats.NO_TAKES)
+
+    def test_chance_of_holding_binds_the_plans_figure(self):
+        chance = {(c["n"], c["p"]): c["chance"] for c in stats.chance_of_holding([20])}
+        self.assertEqual(chance[(20, "0.95")], "0.358")   # plan: a 95%-reliable model holds only 36% of the time
+        self.assertEqual(chance[(20, "0.9")], "0.122")
+        self.assertEqual([p for (n, p) in chance], list(stats.intervals.HOLD_P))
+        with mock.patch.object(stats.intervals, "round3", stats.intervals.floor3):   # mutant: rounded down
+            chance = {(c["n"], c["p"]): c["chance"] for c in stats.chance_of_holding([20])}
+            self.assertEqual(chance[(20, "0.9")], "0.121")
+
+    def test_chance_is_for_each_printed_n_and_never_a_zero(self):
+        rows = stats.holds_table(cell(["harness-error"] + ["right"] * 9, "right"), design())
+        ns = stats.printed_ns(rows)
+        self.assertEqual(ns, [19])
+        chance = {(c["n"], c["p"]): c["chance"] for c in stats.chance_of_holding(ns)}
+        self.assertEqual(chance[(19, "0.5")], "under 0.001")
+        self.assertEqual(stats.holds_table([], design()), stats.NO_TAKES)
+
+
+class Tables3And4PerWording(unittest.TestCase):
+    def test_paired_units_per_wording(self):
+        trap = ["right", "right", "wrong", "right"] + ["right"] * 6
+        normal = ["right", "wrong", "right", "right"] + ["right"] * 6
+        rows = stats.paired_table(cell(trap, normal), design())
+        w1 = rows_for(rows, task="t1", model="m1", wording="w1")[0]
+        w2 = rows_for(rows, task="t1", model="m1", wording="w2")[0]
+        self.assertEqual((w1["units_right"], w1["units"]), (1, 2))
+        self.assertEqual((w2["units_right"], w2["units"]), (1, 2))
+        # mutant: a unit counted right on one half only
+        with mock.patch.object(stats, "unit_right", lambda trap_r, normal_r: stats.standing(trap_r, "failures") == "right"):
+            w1 = rows_for(stats.paired_table(cell(trap, normal), design()), task="t1", model="m1", wording="w1")[0]
+            self.assertEqual(w1["units_right"], 2)
+
+    def test_the_floor_is_never_typed(self):
+        text = stats.render_paired(stats.paired_table(cell("right", "right"), design()), design())
+        self.assertIn("one-habit floor: from probes4, not yet run", text)
+        floor_lines = [line for line in text.splitlines() if "one-habit floor" in line]
+        self.assertTrue(floor_lines)
+        self.assertFalse(any(ch.isdigit() for line in floor_lines for ch in line.replace("probes4", "")))
+        d = design(floors={"t1": "from the probes table"})
+        text = stats.render_paired(stats.paired_table(cell("right", "right"), d), d)
+        self.assertIn("one-habit floor for `t1`: from the probes table", text)
+        with mock.patch.object(stats, "FLOOR_NOT_RUN", "one-habit floor: 0.5"):   # mutant: a typed floor
+            text = stats.render_paired(stats.paired_table(cell("right", "right"), design()), design())
+            floor_lines = [line for line in text.splitlines() if "one-habit floor" in line]
+            self.assertTrue(any(ch.isdigit() for line in floor_lines for ch in line.replace("probes4", "")))
+
+    def test_per_wording_sensitivity(self):
+        trap = ["right", "right", "wrong", "wrong"] + ["right"] * 6
+        rows = stats.sensitivity_table(cell(trap, "right"), design())
+        got = {(r["wording"], r["half"]): (r["right"], r["n"]) for r in rows_for(rows, task="t1", model="m1")}
+        self.assertEqual(got[("w1", "trap")], (2, 2))
+        self.assertEqual(got[("w2", "trap")], (0, 2))
+        self.assertEqual(got[("w2", "normal")], (2, 2))
+        with mock.patch.object(stats, "SENSITIVITY_VIEW", "raw"):   # mutant: a view other than the strict one
+            stops = cell(["stop"] * 2 + ["right"] * 8, "right")
+            got = {(r["wording"], r["half"]): (r["right"], r["n"]) for r in
+                   rows_for(stats.sensitivity_table(stops, design()), task="t1", model="m1")}
+            self.assertEqual(got[("w1", "trap")], (0, 2))
+        self.assertEqual(stats.paired_table([], design()), stats.NO_TAKES)
+        self.assertEqual(stats.sensitivity_table([], design()), stats.NO_TAKES)
+
+
+class TheTestUnit(unittest.TestCase):
+    """glitch-f3's ruling 3: TEST_UNIT = "pair" means the unit (the trap and the normal record of one try)."""
+
+    def test_the_constant(self):
+        self.assertEqual(stats.TEST_UNIT, "pair")
+        self.assertIn("ruling 3", stats.__doc__)
+        self.assertIn("unit", stats.__doc__)
+
+    def test_units_complete_and_incomplete(self):
+        recs = cell(["right"] * 8 + [None, "harness-error"], "right")
+        u = stats.unit_counts(recs)[("A", "t1", "m1", HX)]
+        self.assertEqual((u["right"], u["n"], u["incomplete"]), (8, 8, 2))
+
+    def test_constant_reply_fixture_reads_by_units_never_by_tries(self):
+        # A one-habit reply ('Sure.' to every line): wrong on every trap half, right on every normal half.
+        recs = cell("wrong", "right", model="m1") + unit_cell(5, 5, model="m2")
+        rows = rows_for(stats.comparisons(recs, design(tasks=("t1",))), task="t1", model_a="m1", model_b="m2")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual((rows[0]["a"]["right"], rows[0]["a"]["n"]), (0, 10))
+        self.assertEqual(rows[0]["p"], stats.intervals.fmt_p(stats.intervals.fisher_two_sided(0, 10, 5, 10)))
+        self.assertNotEqual(rows[0]["p"], "1.000")
+
+        def by_tries(records):
+            out = {}
+            for r in records:
+                if r["route"] in stats.LEAVES_DENOMINATOR:
+                    continue
+                k = (r["arm"], r["task"], r["model"], r["agent"]["harness"])
+                c = out.setdefault(k, {"right": 0, "n": 0, "incomplete": 0})
+                c["n"] += 1
+                c["right"] += stats.standing(r, "failures") == "right"
+            return out
+
+        with mock.patch.object(stats, "unit_counts", by_tries):   # mutant: tries counted together
+            rows = rows_for(stats.comparisons(recs, design(tasks=("t1",))), task="t1", model_a="m1", model_b="m2")
+            self.assertEqual(rows[0]["p"], "1.000")
+
+    def test_contrast_reads_units_too(self):
+        recs = cell("wrong", "right", model="m1") + unit_cell(5, 5, model="m3")
+        c = rows_for(stats.comparisons(recs, design(tasks=("t1",))), family=stats.FAMILIES[1], harness_a=HX)[0]
+        self.assertEqual((c["a"]["right"], c["a"]["n"], c["b"]["right"], c["b"]["n"]), (0, 10, 5, 10))
+
+
+class Table5Families(unittest.TestCase):
+    def test_the_labels(self):
+        self.assertEqual(stats.FAMILIES, ("within-harness model comparison",
+                                          "within-harness stronger against weaker, over the tasks that run",
+                                          "agent-system comparison", "descriptive, no test"))
+
+    def all_rows(self):
+        return stats.comparisons(rich_records(), design())
+
+    def test_every_row_carries_a_family_from_the_closed_set(self):
+        rows = self.all_rows()
+        self.assertTrue(rows)
+        self.assertTrue(all(r["family"] in stats.FAMILIES for r in rows))
+        self.assertEqual({r["family"] for r in rows}, set(stats.FAMILIES))
+
+    def test_no_cross_harness_pair_is_a_model_comparison(self):
+        rows = self.all_rows()
+        for r in rows:
+            if r["harness_a"] != r["harness_b"]:
+                self.assertIn(r["family"], stats.FAMILIES[2:])
+                if {r["model_a"], r["model_b"]} <= {"m1", "y1", "z1"}:
+                    self.assertEqual(r["family"], "agent-system comparison")
+                    self.assertNotEqual(r["p"], None)
+                else:
+                    self.assertEqual(r["family"], "descriptive, no test")
+                    self.assertNotIn("p", r)
+            else:
+                self.assertIn(r["family"], stats.FAMILIES[:2])
+        # the guard derive runs: a family function that names a cross-harness pair a model comparison is refused
+        with mock.patch.object(stats, "family_of", lambda ha, ma, hb, mb, d: stats.FAMILIES[0]):
+            self.assertTrue(refuses(stats.derive, rich_records(), design()))
+        # and a descriptive pair that carried a test is refused too
+        with mock.patch.object(stats, "family_of", lambda ha, ma, hb, mb, d:
+                               stats.FAMILIES[0] if ha == hb else stats.FAMILIES[2]):
+            self.assertTrue(refuses(stats.derive, rich_records(), design()))
+
+    def test_within_harness_pairs_are_every_pair_in_the_design(self):
+        rows = [r for r in self.all_rows() if r["family"] == stats.FAMILIES[0]]
+        pairs = {(r["harness_a"], r["model_a"], r["model_b"]) for r in rows}
+        self.assertEqual(pairs, {(HX, "m1", "m2"), (HX, "m1", "m3"), (HX, "m2", "m3"), (HY, "y1", "y2"),
+                                 (HZ, "z1", "z2")})
+        self.assertTrue(all(r["family_size"] == 3 for r in rows))
+        contrasts = [r for r in self.all_rows() if r["family"] == stats.FAMILIES[1]]
+        self.assertEqual({(r["harness_a"], r["model_a"], r["model_b"]) for r in contrasts},
+                         {(HX, "m1", "m3"), (HY, "y1", "y2"), (HZ, "z1", "z2")})
+        self.assertTrue(all(r["task"] is None and r["family_size"] == 3 for r in contrasts))
+
+
+class Holm(unittest.TestCase):
+    def test_typed_case_known_order(self):
+        F = Fraction
+        adj = stats.holm({"a": F(1, 100), "b": F(4, 100), "c": F(3, 100), "d": F(5, 1000), "e": None}, 5)
+        self.assertEqual(adj, {"a": F(4, 100), "b": F(6, 100), "c": F(6, 100), "d": F(25, 1000), "e": None})
+        self.assertEqual(stats.holm({"a": F(9, 10)}, 3), {"a": F(1)})
+
+    def test_family_size_is_read_from_the_task_list(self):
+        self.assertEqual(stats.family_size(design(tasks=NINE)), 9)
+        recs = unit_cell(9, 1, task="t1", model="m1") + unit_cell(2, 8, task="t1", model="m2") + \
+            equal_elsewhere(NINE, {"t1"})
+        d = design(tasks=NINE)
+        row = rows_for(stats.comparisons(recs, d), task="t1", model_a="m1", model_b="m2")[0]
+        self.assertEqual(row["family_size"], 9)
+        self.assertTrue(row["at_alpha"])          # 9 x 0.00548 = 0.0493
+        with mock.patch.object(stats, "family_size", lambda d: 10):   # mutant: a typed 10
+            row = rows_for(stats.comparisons(recs, d), task="t1", model_a="m1", model_b="m2")[0]
+            self.assertFalse(row["at_alpha"])
+
+    def test_holm_not_bonferroni(self):
+        recs = (unit_cell(10, task="t1", model="m1") + unit_cell(0, 10, task="t1", model="m2")
+                + unit_cell(8, 0, 2, task="t2", model="m1") + unit_cell(0, 3, 7, task="t2", model="m2")
+                + equal_elsewhere(NINE, {"t1", "t2"}))
+        d = design(tasks=NINE)
+        row = rows_for(stats.comparisons(recs, d), task="t2", model_a="m1", model_b="m2")[0]
+        self.assertEqual((row["a"]["n"], row["b"]["n"]), (8, 3))
+        self.assertTrue(row["at_alpha"])          # 8 x 0.00606 = 0.0485
+
+        def bonferroni(ps, m):
+            return {k: None if p is None else min(Fraction(1), m * p) for k, p in ps.items()}
+
+        with mock.patch.object(stats, "holm", bonferroni):
+            row = rows_for(stats.comparisons(recs, d), task="t2", model_a="m1", model_b="m2")[0]
+            self.assertFalse(row["at_alpha"])     # 9 x 0.00606 = 0.0545
+
+
+class Table6AcrossTasks(unittest.TestCase):
+    def three_tasks(self):
+        # t1: m1 right on every unit, m2 wrong on every unit; t2, t3: both right everywhere
+        return (unit_cell(10, model="m1", task="t1") + unit_cell(0, 10, model="m2", task="t1")
+                + equal_elsewhere(("t2", "t3"), set()))
+
+    def row(self, recs, d=None):
+        rows = rows_for(stats.across_tasks(recs, d or design()), model_a="m1", model_b="m2")
+        self.assertEqual(len(rows), 1)
+        return rows[0]
+
+    def test_difference_and_determinism(self):
+        r1, r2 = self.row(self.three_tasks()), self.row(self.three_tasks())
+        self.assertEqual(r1, r2)
+        self.assertEqual(r1["difference"], "0.333")
+        self.assertEqual(r1["slots"], 30)
+        constant = self.row(unit_cell(10, model="m1") + unit_cell(0, 10, model="m2"))
+        self.assertEqual((constant["difference"], constant["lower"], constant["upper"]), ("1.000", "1.000", "1.000"))
+
+    def test_resampled_by_task_then_wording_then_repeat(self):
+        nested = self.row(self.three_tasks())
+
+        def flat(rng, tree):
+            values = [d for task in tree.values() for wording in task.values() for d in wording.values()]
+            return [rng.choice(values) for _ in values]
+
+        with mock.patch.object(stats, "_resample", flat):   # mutant: slots resampled flat
+            flat_row = self.row(self.three_tasks())
+        width = lambda r: Fraction(r["upper"]) - Fraction(r["lower"])
+        self.assertGreater(width(nested), width(flat_row))
+
+    def test_seeded_from_the_design(self):
+        import random
+        a = self.row(rich_records(), design())
+        with mock.patch.object(stats, "_rng", lambda seed: random.Random()):   # mutant: unseeded
+            runs = {json.dumps(stats.across_tasks(rich_records(), design())) for _ in range(4)}
+            self.assertGreater(len(runs), 1)
+        self.assertEqual(a, self.row(rich_records(), design()))
+
+    def test_negative_differences_format(self):
+        r = rows_for(stats.across_tasks(unit_cell(0, 10, model="m1") + unit_cell(10, model="m2"), design()),
+                     model_a="m1", model_b="m2")[0]
+        self.assertEqual(r["difference"], "-1.000")
+        self.assertEqual(stats.signed(Fraction(-1, 10)), "-0.100")
+        self.assertEqual(stats.across_tasks([], design()), stats.NO_TAKES)
+
+
+class Table7Power(unittest.TestCase):
+    def test_seeded_and_deterministic(self):
+        d = design()
+        self.assertEqual(stats.power_table(d), stats.power_table(d))
+
+    def test_extremes(self):
+        d = design(power=dict(design()["power"], grid=[
+            {"stronger": "1.000", "weaker": "0.000", "task_spread": "0.000", "wording_spread": "0.000"},
+            {"stronger": "0.500", "weaker": "0.500", "task_spread": "0.000", "wording_spread": "0.000"}]))
+        rows = stats.power_table(d)
+        sims = d["power"]["sims"]
+        self.assertEqual((rows[0]["per_task_any"], rows[0]["contrast"], rows[0]["bootstrap"]), (sims, sims, sims))
+        self.assertLess(rows[1]["contrast"], sims)
+        # it applies table 5's exact test: a Fisher that never rejects makes the simulation never reject
+        with mock.patch.object(stats, "fisher", lambda x1, n1, x2, n2: Fraction(1)):
+            rows = stats.power_table(d)
+            self.assertEqual((rows[0]["per_task_any"], rows[0]["contrast"]), (0, 0))
+        # and table 6's resampling: a bootstrap whose interval is the whole line never excludes zero
+        with mock.patch.object(stats, "bootstrap_interval", lambda rng, tree, reps, alpha: (Fraction(-1), Fraction(1))):
+            self.assertEqual(stats.power_table(d)[0]["bootstrap"], 0)
+
+
+class Table8NoTakesAndRender(unittest.TestCase):
+    def test_empty_prints_no_takes_for_every_table(self):
+        derived = stats.derive([], design())
+        self.assertEqual(set(derived["tables"]), set(stats.TABLES))
+        self.assertTrue(all(v == stats.NO_TAKES for v in derived["tables"].values()))
+        text = stats.render_md(derived)
+        for heading in stats.TABLE_HEADINGS.values():
+            self.assertIn(heading, text)
+        body = [line for line in text.splitlines() if line and not line.startswith("#")]
+        self.assertEqual(set(body), {"no takes"})
+
+    def test_render_passes_both_linters(self):
+        text = stats.render_md(stats.derive(rich_records(), design()))
+        for table in stats.TABLE_HEADINGS.values():
+            self.assertIn(table, text)
+        self.assertEqual(self.lint(text), (0, 0))
+        # the linters can fail: a family label in the banned vocabulary goes red
+        with mock.patch.object(stats, "FAMILIES", ("pooled model comparison",) + stats.FAMILIES[1:]):
+            bad = stats.render_md(stats.derive(rich_records(), design()))
+        self.assertNotEqual(self.lint(bad), (0, 0))
+        self.assertNotEqual(self.lint("3 out of 10 takes, 30%"), (0, 0))
+
+    def lint(self, text):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "stats-block.md"
+            path.write_text(text, encoding="utf-8")
+            codes = []
+            for linter in ("lint_language.py", "lint_pooling.py"):
+                got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(HERE / linter), str(path)],
+                                     capture_output=True, text=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+                codes.append(got.returncode)
+            return tuple(codes)
+
+
+class TheCheck(unittest.TestCase):
+    def fixture(self, tmp, *, results=True, prereg=True, key=True, page=True, markers=True, block=None):
+        tmp = Path(tmp)
+        res = tmp / "results"
+        res.mkdir()
+        recs = rich_records()
+        if results:
+            (res / "all.json").write_text(json.dumps(recs))
+        pre = tmp / "prereg.json"
+        if prereg:
+            pre.write_text(json.dumps({stats.DESIGN_KEY: design()} if key else {"tasks": []}))
+        pg = tmp / "RESULT.md"
+        if page:
+            text = stats.render_block(stats.derive(recs, design())) if block is None else block
+            if not markers:
+                text = text.replace(stats.STATS_START, "").replace(stats.STATS_END, "")
+            pg.write_text("# Round 4\n\n" + text + "\n\nmore of the page\n")
+        return res, pre, pg
+
+    def run_check(self, **kw):
+        with tempfile.TemporaryDirectory() as tmp:
+            return stats.check(*self.fixture(tmp, **kw))
+
+    def test_empty_is_no_takes_and_not_a_pass(self):
+        code, lines = self.run_check(results=False, prereg=False, page=False)
+        self.assertEqual((code, lines), (0, ["stats --check: no takes (0 results files); nothing was compared"]))
+        self.assertIn("not a pass on data", stats.__doc__)
+
+    def test_a_good_page_passes(self):
+        code, lines = self.run_check()
+        self.assertEqual(code, 0, lines)
+        self.assertTrue(lines[-1].startswith("stats --check: PASS"))
+
+    def test_each_named_problem(self):
+        for kw, word in (({"prereg": False}, "no design"), ({"key": False}, "no design"),
+                         ({"page": False}, "no RESULT.md"), ({"markers": False}, "no stats block"),
+                         ({"block": stats.STATS_START + "\nedited\n" + stats.STATS_END}, "differs")):
+            code, lines = self.run_check(**kw)
+            self.assertEqual(code, 1, kw)
+            self.assertTrue(any(word in line for line in lines), (kw, lines))
+
+    def test_a_bad_record_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            res, pre, pg = self.fixture(tmp)
+            (res / "bad.json").write_text(json.dumps([rec(agent=None)]))
+            code, lines = stats.check(res, pre, pg)
+            self.assertEqual(code, 1)
+            self.assertTrue(any("record" in line for line in lines))
+
+    def test_nondeterminism_is_caught(self):
+        import random
+        with mock.patch.object(stats, "_rng", lambda seed: random.Random()):   # mutant: unseeded
+            code, lines = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertTrue(any("not deterministic" in line for line in lines), lines)
+
+    def test_the_cli_on_this_tree(self):
+        got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(HERE / "stats.py"), "--check"],
+                             capture_output=True, text=True, env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+        if stats.results_files():
+            self.assertEqual(got.returncode, 0, got.stdout)   # a committed page must match once results exist
+        else:
+            self.assertEqual((got.returncode, got.stdout),
+                             (0, "stats --check: no takes (0 results files); nothing was compared\n"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
