@@ -1926,7 +1926,7 @@ class TestRecordKeys(unittest.TestCase):
     """W1B-2: one test per record key, dropped and set to None, each refused."""
 
     def test_leaf_list_covers_the_schema(self):
-        self.assertEqual(len(COUNT_LEAVES), 5)
+        self.assertEqual(len(COUNT_LEAVES), 6)   # + quiescence_cap_survivors (CP2 ruling C3; lane w4h, see its report)
         self.assertEqual(len(FLAG_LEAVES), 10)
         self.assertEqual(set(_leaf_paths()) - {"ledger.end", "ledger.turn_ends", "ledger.turn_outputs",
                                                 "exit.exec_codes", "init", "pin", "api_errors", "checker_reasons"},
