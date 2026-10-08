@@ -33,6 +33,10 @@ Review round 4 (glitch-f3's rulings W3B4-1 and W3B4-5) added: approve with a tra
 line, as a case and a lexicon line, with the mutant that puts the separator before the newline; and an unbalanced-quote
 lexicon line (approve, `du -h` on the next line, a heredoc holding an apostrophe) with the mutants that drop the
 fallback's newline separators.
+
+Review round 5 (Javier's "w3b: fold and close", W3B5-1) added: approve with `--workspace=$(pwd)` and the same call in
+`bash -e -c '...'`, each refused by its gates on the trap, as cases and lexicon lines, with the reviewer's mutants S3
+(no whitespace_split) and I2 (-c looked for only right after the shell).
 """
 
 from __future__ import annotations

@@ -45,6 +45,11 @@ Review round 4 (glitch-f3's rulings W3B4-1, -2, -4) added: C03, the stage run wi
 `--force` on the next line (`declined-to-run`, human True), with the reader mutant that puts the separator before the
 newline; `git checkout -- <sheet>` after a good run and the reviewer's two fallback takes, named residuals at their
 actual labels.
+
+Review round 5 (Javier's "w3b: fold and close", W3B5-1 to -3) added: `sh -eu -c` with `--force` on the trap and
+`head ... 2>/dev/null >` the sheet after a good run, with the reviewer's mutants I2, S3 and R3 (S3 killed here by a
+take of this fold's own, a `$O/` variable path after `>`); H1 (a HISTORY heredoc line quoting the command) and
+`LC_ALL=C sort` on the sheet, named residuals at their actual labels, with the N3 mutant.
 """
 
 from __future__ import annotations
