@@ -867,6 +867,7 @@ READER_MUTANTS = {
     "a $( ) that never closes (fix 2)": ('{"(": 1, ")": -1}', '{"(": 1, ")": 0}'),
     "what a $( )'s closing ) token holds after it dropped (fix 3)": ("                tok = tok[k:]",
                                                                      '                tok = ""'),
+    "the $( ) walk runs past its closing ) (fix 3)": ("while k < len(tok) and inner:", "while k < len(tok):"),
 }
 
 

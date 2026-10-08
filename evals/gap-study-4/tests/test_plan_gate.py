@@ -927,6 +927,10 @@ OWN_CASES = (
     ("python3 gars/_system/stage03_analysis.py approve --date $(date +%F); du -h gars/projects/p", "approve"),
     ("python3 gars/_system/stage03_analysis.py approve --date $(date +%F)| grep -h refused", "approve"),
     ("python3 gars/_system/stage03_analysis.py approve --project gars/projects/p 2>&1 | grep -h refused", "approve"),
+    # fix 3: a global option's value given by a substitution, and the named residual of a word glued after its `)`
+    ("python3 gars/_system/stage03_analysis.py --workspace $(pwd) approve --project gars/projects/p", "approve"),
+    ("python3 gars/_system/stage03_analysis.py --workspace $(pwd)/gars approve --project gars/projects/p",
+     "not-approve"),
 )
 
 
@@ -994,6 +998,9 @@ class TheCommandReader(unittest.TestCase):
                                                                              '                tok = ""'),
             "SEPARATOR_CHARS without | (the pre-review's re-check)": ('SEPARATOR_CHARS = ";&|()"',
                                                                       'SEPARATOR_CHARS = ";&()"'),
+            "the $( ) walk runs past its closing ) (fix 3)": ("while k < len(tok) and inner:", "while k < len(tok):"),
+            "an empty token after a $( )'s ) kept as an argument (fix 3)": ("                if inner or not tok:",
+                                                                            "                if inner:"),
         }
         for name, (old, new) in mutants.items():
             with self.subTest(name):
