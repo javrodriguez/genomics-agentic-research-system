@@ -95,9 +95,14 @@ API_ERROR_FIELDS = ("status", "type", "text")
 # The box's own records, every one REQUIRED by `harness_records` (a missing one is never read as
 # "nothing happened"): what no adapter produces. `outside_reach_events` is the drive step's count of
 # outside-reach events (routing.py's docstring says exactly what it counts).
+# CP2 ruling C3 (glitch-f3, 17:35; names fixed at 17:42) adds the last two: `unreadable_consequential`, the run-tree
+# paths among the task's consequential ones that the sidecar could not read (a list of strings, from the sidecar
+# reply's field of that name), and `quiescence_cap_survivors`, the processes still alive at the quiescence cap (an
+# int >= 0, W2A2-6).
 BOX_KEYS = ("preflight_ok", "container_started", "container_exited", "sidecar",
             "unexplained_operator_diffs", "checker_reasons", "quiescence_kill",
-            "outside_reach_events", "finalize_abort", "committed")
+            "outside_reach_events", "finalize_abort", "committed",
+            "unreadable_consequential", "quiescence_cap_survivors")
 
 
 class AdapterStateError(RuntimeError):
@@ -279,7 +284,8 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
     `box` must carry exactly `BOX_KEYS`: `preflight_ok`, `container_started`, `container_exited`
     (the runtime's exit record shows the container itself died), `sidecar` ({start_record,
     stop_record, exit_code, queue_overflow}), `unexplained_operator_diffs`, `checker_reasons`,
-    `quiescence_kill`, `outside_reach_events`, `finalize_abort`, `committed`. A missing key raises
+    `quiescence_kill`, `outside_reach_events`, `finalize_abort`, `committed`, and (CP2 ruling C3)
+    `unreadable_consequential` and `quiescence_cap_survivors`. A missing key raises
     `BoxRecordError` (missing evidence is never read as "nothing happened"), and so does an unknown
     one. Values are copied as given, never coerced: `routing.check_records` type-checks them, so a
     None or a string counter is refused there instead of silently becoming 0 or True.
@@ -303,6 +309,7 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
     outputs = [t.agent_output for t in turns]
     sidecar = box["sidecar"]
     reasons = box["checker_reasons"]
+    unreadable = box["unreadable_consequential"]
     return {
         "ledger": {
             "first_turn_started": any(outputs),
@@ -328,4 +335,6 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
         "checker_reasons": list(reasons) if isinstance(reasons, list) else reasons,
         "quiescence_kill": box["quiescence_kill"],
         "events": {"outside_reach": box["outside_reach_events"]},
+        "unreadable_consequential": list(unreadable) if isinstance(unreadable, list) else unreadable,
+        "quiescence_cap_survivors": box["quiescence_cap_survivors"],
     }

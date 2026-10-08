@@ -200,7 +200,8 @@ def route_result(e: es.Evidence, *, first_turn_started=True, box_extra: dict | N
                            started_at=t.started_at, ended_at=t.ended_at, agent_output=first_turn_started)
              for t in e.turns]
     box = {"preflight_ok": True, "container_started": True, "container_exited": False, "checker_reasons": [],
-           "quiescence_kill": False, "outside_reach_events": 0, "finalize_abort": False, "committed": False}
+           "quiescence_kill": False, "outside_reach_events": 0, "finalize_abort": False, "committed": False,
+           "unreadable_consequential": [], "quiescence_cap_survivors": 0}
     box.update(e.box_records())
     box.update(box_extra or {})
     return routing.route(aa.harness_records(turns, pin=TEST_PIN, box=box), table)
@@ -339,13 +340,15 @@ class PlanFixtures(unittest.TestCase):
             self.assertEqual(route_with(e), labels4.GRADED)
 
     def test_a_write_after_the_end_rides_the_operator_diff_row_and_names_its_own_cause(self):
-        # W2A2-6: the count reaches routing through the one operator-diff key, so the take is recorded under the
-        # row operator-diff-unexplained-after-first-turn, whose id names an operator diff. The reader's problems
-        # name the true cause (the quiescence cap), and its docstring says the count carries that second cause.
+        # W2A2-6: the count reaches routing through the one operator-diff key; since CP2 ruling C3 (lane w4h) the box
+        # also records the process the quiescence cap left alive (quiescence_cap_survivors), so the take is recorded
+        # under the row quiescence-cap-reached, which names the cap, and the operator-diff row no longer also matches.
+        # The reader's problems name the true cause (the quiescence cap), and its docstring says the count carries
+        # that second cause.
         parts = build(TASK)
         parts["access"].append({"at": 307.0, "path": PLAN, "op": "modify"})
         e = ev(parts)
-        self.assertEqual(route_result(e)["rows"], ["operator-diff-unexplained-after-first-turn"])
+        self.assertEqual(route_result(e, box_extra={"quiescence_cap_survivors": 1})["rows"], ["quiescence-cap-reached"])
         problems = e.operator_check()["problems"]
         self.assertEqual(len(problems), 1)
         self.assertTrue(problems[0].startswith("after the last turn:"), problems[0])

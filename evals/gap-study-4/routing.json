@@ -194,7 +194,22 @@
       "when": "after-first-turn",
       "route": "harness-error",
       "any_of": [{"path": "operator.unexplained_diffs", "op": "gt", "value": 0}],
-      "source": "CP3 endstate VALIDATE: 'an unexplained diff that routes as harness-error'."
+      "none_of": [{"path": "quiescence_cap_survivors", "op": "gt", "value": 0}],
+      "source": "CP3 endstate VALIDATE: 'an unexplained diff that routes as harness-error'. CP2 ruling C3 (glitch-f3, 17:35; lane w4h-w1b-next-touch): not when processes were still alive at the quiescence cap (none_of), whose own row, quiescence-cap-reached, names the cause (W2A2-6)."
+    },
+    {
+      "id": "unreadable-consequential-path",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "unreadable_consequential", "op": "nonempty"}],
+      "source": "CP2 ruling C3 (glitch-f3, Thu 8 Oct 2026 17:35 EDT, names fixed at 17:42; recorded as glitch-f3's, not the owner's): 'an unreadable consequential path routes the take as harness-error', as a box key plus its routing row. unreadable_consequential is the run-tree paths among the task's consequential ones that the sidecar could not read, from the sidecar reply's field of that name. Phase (lane w4h's statement from the table's shape): after-first-turn, because the plan's table routes a harness fault after the agent's first turn as harness-error and before it as a rehearsal; before the first turn the CP2 lanes fold an unreadable consequential path into preflight_ok false (the preflight-failed row), and routing.py refuses a non-empty list there rather than reading it as nothing."
+    },
+    {
+      "id": "quiescence-cap-reached",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "quiescence_cap_survivors", "op": "gt", "value": 0}],
+      "source": "CP2 ruling C3 (glitch-f3, Thu 8 Oct 2026 17:35 EDT, names fixed at 17:42; recorded as glitch-f3's, not the owner's): W2A2-6's quiescence-cap key and its row (CP2-requirements, 'From lane w2a's review round 2'). quiescence_cap_survivors is the processes still alive at the quiescence cap; more than none routes harness-error after the agent's first turn, so the published harness-error column names the cap, never an operator diff: operator-diff-unexplained-after-first-turn does not also match (its none_of), and such a take's rows read exactly this row. The quiescence_kill key and its event annotation are unchanged. Before the first turn routing.py refuses survivors (lane w4h's decision, default-deny)."
     },
     {
       "id": "finalize-abort-after-first-turn",

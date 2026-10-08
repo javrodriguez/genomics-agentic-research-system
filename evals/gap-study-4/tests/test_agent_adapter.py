@@ -26,7 +26,8 @@ SIDECAR = {"start_record": True, "stop_record": True, "exit_code": 0, "queue_ove
 # Every box key, explicitly (none is defaulted by harness_records).
 BOX = {"preflight_ok": True, "container_started": True, "container_exited": False, "sidecar": dict(SIDECAR),
        "unexplained_operator_diffs": 0, "checker_reasons": [], "quiescence_kill": False,
-       "outside_reach_events": 0, "finalize_abort": False, "committed": False}
+       "outside_reach_events": 0, "finalize_abort": False, "committed": False,
+       "unreadable_consequential": [], "quiescence_cap_survivors": 0}
 
 
 def turn(**kw) -> aa.TurnResult:
@@ -93,7 +94,9 @@ BOX_LANDS = {"preflight_ok": ("preflight", "ok"), "container_started": ("exit", 
              "unexplained_operator_diffs": ("operator", "unexplained_diffs"),
              "checker_reasons": ("checker_reasons", None), "quiescence_kill": ("quiescence_kill", None),
              "outside_reach_events": ("events", "outside_reach"), "finalize_abort": ("ledger", "finalize_abort"),
-             "committed": ("ledger", "committed")}
+             "committed": ("ledger", "committed"),
+             "unreadable_consequential": ("unreadable_consequential", None),
+             "quiescence_cap_survivors": ("quiescence_cap_survivors", None)}
 
 
 def coercion_problems() -> list[str]:

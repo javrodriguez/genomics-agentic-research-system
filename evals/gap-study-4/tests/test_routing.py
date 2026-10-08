@@ -117,6 +117,8 @@ def baseline(phase: str, pin: dict | None = None) -> dict:
         "checker_reasons": [],
         "quiescence_kill": False,
         "events": {"outside_reach": 0},
+        "unreadable_consequential": [],
+        "quiescence_cap_survivors": 0,
     }
 
 
@@ -195,6 +197,8 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
         set_api(rec, [{"status": 500, "type": "api_error", "text": None}])
     elif op == "empty" and path == "api_errors":
         rec["api_errors"] = []
+    elif op == "nonempty" and path == "unreadable_consequential":   # CP2 ruling C3 (lane w4h): a made-up path
+        set_path(rec, path, ["data/staging/samples.csv"])
     elif op == "in_operator_reasons":
         set_path(rec, path, [any_phase_reason(table)])
     elif op == "in_checker_events":
@@ -403,7 +407,8 @@ SIDECAR = {"start_record": True, "stop_record": True, "exit_code": 0, "queue_ove
 def full_box(**kw) -> dict:
     b = {"preflight_ok": True, "container_started": True, "container_exited": False, "sidecar": dict(SIDECAR),
          "unexplained_operator_diffs": 0, "checker_reasons": [], "quiescence_kill": False,
-         "outside_reach_events": 0, "finalize_abort": False, "committed": False}
+         "outside_reach_events": 0, "finalize_abort": False, "committed": False,
+         "unreadable_consequential": [], "quiescence_cap_survivors": 0}
     b.update(kw)
     return b
 
@@ -2637,23 +2642,25 @@ def _qk(r):
 
 C3_CASES = {   # name -> (records builder, route or REFUSED, winning rows, matched rows or None, events)
     "an unreadable consequential path after the first turn": (
-        lambda: c3_record(A, SOME_PATHS[:1]), labels4.HARNESS_ERROR, [UNREADABLE_ROW], [UNREADABLE_ROW], []),
+        lambda: c3_record(A, SOME_PATHS[:1]), labels4.HARNESS_ERROR, [UNREADABLE_ROW], [UNREADABLE_ROW, "end-turn"], []),
     "two unreadable consequential paths after the first turn": (
         lambda: c3_record(A, SOME_PATHS), labels4.HARNESS_ERROR, [UNREADABLE_ROW], None, []),
     "an unreadable consequential path before the first turn is refused": (
         lambda: c3_record(B, SOME_PATHS[:1]), REFUSED, None, None, []),
     "an unreadable path after a silent turn, before the first turn, is refused": (
         lambda: c3_record(B, SOME_PATHS[:1], edits=[silent_turn]), REFUSED, None, None, []),
+    "an unreadable path beside a silent timeout, before the first turn, is refused": (
+        lambda: c3_record(B, SOME_PATHS[:1], edits=[silent_timeout]), REFUSED, None, None, []),
     "processes alive at the quiescence cap": (
-        lambda: c3_record(A, survivors=1), labels4.HARNESS_ERROR, [CAP_ROW], [CAP_ROW], []),
+        lambda: c3_record(A, survivors=1), labels4.HARNESS_ERROR, [CAP_ROW], [CAP_ROW, "end-turn"], []),
     "the cap's survivors and the operator diff they caused: the cap's row alone (W2A2-6)": (
-        lambda: c3_record(A, survivors=2, edits=[_diffs(1)]), labels4.HARNESS_ERROR, [CAP_ROW], [CAP_ROW], []),
+        lambda: c3_record(A, survivors=2, edits=[_diffs(1)]), labels4.HARNESS_ERROR, [CAP_ROW], [CAP_ROW, "end-turn"], []),
     "an operator diff with no survivors stays the operator-diff row": (
-        lambda: c3_record(A, edits=[_diffs(1)]), labels4.HARNESS_ERROR, [OP_DIFF_ROW], [OP_DIFF_ROW], []),
+        lambda: c3_record(A, edits=[_diffs(1)]), labels4.HARNESS_ERROR, [OP_DIFF_ROW], [OP_DIFF_ROW, "end-turn"], []),
     "survivors before the first turn are refused (lane w4h decision)": (
         lambda: c3_record(B, survivors=1, edits=[silent_timeout]), REFUSED, None, None, []),
     "survivors beside an out-of-memory kill: aborted": (
-        lambda: c3_record(A, survivors=1, edits=[_oom]), labels4.ABORTED, ["cgroup-kill"], ["cgroup-kill", CAP_ROW], []),
+        lambda: c3_record(A, survivors=1, edits=[_oom]), labels4.ABORTED, ["cgroup-kill"], ["cgroup-kill", CAP_ROW, "end-turn"], []),
     "an unreadable path beside a rate limit: pause": (
         lambda: c3_record(A, SOME_PATHS[:1], edits=[_rate, _end_error(1)]), labels4.PAUSE, ["rate-limit"], None, []),
     "survivors beside a quiescence kill: the cap's row, and the kill's event": (
@@ -2705,6 +2712,12 @@ def c3_type_problems(table: dict) -> list[str]:
     return p
 
 
+# The plan's oracle carries them too, so the mutation sweep (all_problems) sees every C3 row and the operator-diff
+# row's new none_of (the per-scenario tests generated above predate these entries; scenario_problems reads them all).
+SCENARIOS.update({f"C3: {name}": Sc(build, route, rows, matched, events, False)
+                  for name, (build, route, rows, matched, events) in C3_CASES.items()})
+
+
 class TestNextTouchC3(unittest.TestCase):
     """CP2 ruling C3: `unreadable_consequential` (row unreadable-consequential-path) and `quiescence_cap_survivors`
     (row quiescence-cap-reached), both after-first-turn and harness-error."""
@@ -2724,6 +2737,27 @@ class TestNextTouchC3(unittest.TestCase):
 
     def test_the_c3_rows_route(self):
         self.assertEqual(c3_problems(test_table()), [])
+        self.assertEqual(scenario_problems(test_table()), [])
+
+    def test_c3_check_can_fail(self):
+        """Each C3 row's route changed, the row removed, its condition mutated, and the operator-diff row's new none_of
+        deleted: the oracle goes red (the mutation sweep covers them all; these name the C3 ones)."""
+        survivors = [d for d, t in mutants(test_table())
+                     if any(k in d for k in (UNREADABLE_ROW, CAP_ROW, OP_DIFF_ROW)) and not all_problems(t)]
+        self.assertEqual(survivors, [])
+        described = " ".join(d for d, _ in mutants(test_table()))
+        for what in (f"{UNREADABLE_ROW}: removed", f"{CAP_ROW}: removed", f"{CAP_ROW}: route -> graded",
+                     f"{OP_DIFF_ROW}: none_of deleted", f"{OP_DIFF_ROW}: none_of[0] gt mutated"):
+            self.assertIn(what, described)
+        real = routing.check_records
+
+        def reads_nothing_early(records, table):   # the mutant: the before-first-turn refusals dropped
+            return [x for x in real(records, table) if "before the agent's first turn: " not in x]
+        with mock.patch.object(routing, "check_records", reads_nothing_early):
+            found = c3_problems(test_table())
+        for name in ("an unreadable path beside a silent timeout, before the first turn, is refused",
+                     "survivors before the first turn are refused (lane w4h decision)"):
+            self.assertTrue(any(x.startswith(name) for x in found), (name, found))
 
     def test_the_c3_keys_are_typed_never_coerced(self):
         self.assertEqual(c3_type_problems(test_table()), [])

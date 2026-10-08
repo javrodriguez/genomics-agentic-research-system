@@ -35,6 +35,15 @@ records are:
                      routing.json's reasons_only_before_first_turn (no-first-agent-turn) after
                      the agent's first turn started is refused (W1B2-8)
     quiescence_kill  (bool) the box stopped a background process at the quiescence cap
+    unreadable_consequential   (CP2 ruling C3) the run-tree paths among the task's consequential ones
+                     the sidecar could not read (non-empty strs), from the sidecar reply's field of
+                     that name. After the agent's first turn a non-empty list routes harness-error
+                     (unreadable-consequential-path); before it, it is refused (a preflight failure is
+                     CP2's to fold into preflight.ok), never read as nothing
+    quiescence_cap_survivors   (CP2 ruling C3; W2A2-6) the processes still alive at the quiescence cap
+                     (int >= 0). After the first turn > 0 routes harness-error (quiescence-cap-reached),
+                     and the operator-diff row does not also match; before it, > 0 is refused (lane
+                     w4h decision)
     events           outside_reach (count, int >= 0): how many outside-reach EVENTS the drive step
                      recorded for the take, each one an instance of the agent's own text or actions
                      reaching the token, the account email, a study path or anything outside the run
@@ -129,6 +138,8 @@ RECORD_SCHEMA = {
     "checker_reasons": None,
     "quiescence_kill": None,
     "events": ("outside_reach",),
+    "unreadable_consequential": None,    # CP2 ruling C3
+    "quiescence_cap_survivors": None,    # CP2 ruling C3 (W2A2-6)
 }
 
 # The fields of one API-error record (all three required; status int or None, type str or None, text
@@ -201,6 +212,10 @@ LEAF_TYPES = {
     "operator.unexplained_diffs": (_is_count, "a non-negative int"),
     "quiescence_kill": (_is_bool, "a bool"),
     "events.outside_reach": (_is_count, "a non-negative int"),
+    # CP2 ruling C3: checked whole, never coerced
+    "unreadable_consequential": (lambda v: isinstance(v, list) and all(_is_str(x) and x for x in v),
+                                 "a list of run-tree paths (non-empty strs)"),
+    "quiescence_cap_survivors": (_is_count, "a non-negative int"),
 }
 # Lists, element by element.
 LIST_TYPES = {
@@ -619,6 +634,16 @@ def check_records(records: dict, table: dict) -> list[str]:
             p.append(f"pin harness {pin['harness']!r} has no {what} in routing.json's {key}: refused, never defaulted")
     if records["ledger"]["committed"]:
         p.append("the take is already committed: a route must be decided before the commit")
+    if phase_of(records) == labels4.BEFORE_FIRST_TURN:
+        # CP2 ruling C3: before the agent's first turn an unreadable consequential path is a preflight failure (CP2
+        # folds it into preflight.ok), so one arriving here is refused, never read as nothing; and (lane w4h's
+        # decision, default-deny) so are processes alive at the quiescence cap
+        if records["unreadable_consequential"]:
+            p.append(f"unreadable_consequential {records['unreadable_consequential']} before the agent's first turn: "
+                     f"a preflight failure, refused for a human (never read as nothing)")
+        if records["quiescence_cap_survivors"]:
+            p.append(f"quiescence_cap_survivors {records['quiescence_cap_survivors']} before the agent's first turn: "
+                     f"refused for a human")
     early = [r for r in records["checker_reasons"] if r in table["reasons_only_before_first_turn"]["ids"]]
     if early and phase_of(records) == labels4.AFTER_FIRST_TURN:
         # W1B2-8: the reason says "before the first turn" while the harness records say it started.
