@@ -578,3 +578,114 @@ Before this report's commit, at 14:14 EDT on `6bef073a` plus this file (light-ok
 
 1. A7: a ruling on whether a "far from"-negated added negation should be cancelled (it would fix R11, A3 and A7, and is a further departure), or the flag stands.
 2. R10 and R18 (inherited first-study matrix negation, P14's shape) stay unflagged with no ruling to flag them; CP5 counts them per arm.
+
+## Fold 4 (closing) — review round 4, folded on the Mac, Thu 8 October 2026
+
+Javier's word: "w3c: fold and close".
+The lane lead's recommendation, relayed by glitch-f3 and approved by Javier in those words, folds round 4 (head `5b7ec319`) and ends the review rounds: the committed closing gate below replaces a further review.
+No label and no reading moves; the only grader change is one new human-sample flag plus the corrected docstring and copy-record claim.
+
+Commits: `8212a382` (red tests), `921d1522` (the flag, the corrected claim, the fold 4 mutants, floor 101), `37006c5f` (the closing gate), then this report.
+
+**Recording hold.** The lane lead relayed a recording hold at 15:12 EDT, while this fold was being built.
+Under it no test file, CLI-child swap or suite ran on the Mac, so every commit of this fold says "tests pending (recording hold)".
+The red run, the per-commit runs of the four checks and the seven CLI-child swaps are not quoted here: they move to athena on this head (or to after the hold), and their lines below are the expected outcomes, marked as such, not results.
+The one measurement that ran is `w3c-r4/f4_measure.py` (light-ok, before the hold), whose output is quoted below.
+
+### The rulings (the lane lead's, approved by Javier as "w3c: fold and close"; recorded with their ids)
+
+- **W3C4-1** (MAJOR): the subordinator flag, with no reading change; the M1-M12, O13 and O22 shapes typed as named residuals at their actual labels, plus one unflagged near-miss; the flag's mutant committed; the "never denies" claim corrected with its figures (this folds **W3C4-4**, NIT: the cost claim names its row set).
+- **W3C4-2** (MAJOR): three typed cases and three mutants, MUTANT_FLOOR raised.
+- **W3C4-3** (NIT): no action.
+
+### The flag: SUBORDINATED_DENIALS (`graders/confounded_design.py`, `subordinated_denial` and one line in `grade`)
+
+A sentence read denied by one of the four ADDED negations, with a `_SUBORDINATOR` word after the last occurrence of that negation and before the stem, in the stem's own clause, goes to the human sample.
+It is the reviewer's `r4_subflag.py` prototype, written against the matched negation's own pattern instead of a raw `rfind` (my decision, below).
+Its measure, re-derived in memory over `5b7ec319` with the flag as committed (`w3c-r4/f4_measure.py`, which imports `f4_neg_net.py` and `f4_fix_proto.py`, copies of `r4_neg_net.py` and `r4_fix_proto.py`, repointed):
+
+```
+133 rows: 133 flagged 0
+    ('control', False) n 9 flagged 0
+    ('control', True) n 49 flagged 0
+    ('positive', False) n 7 flagged 0
+    ('positive', True) n 68 flagged 0
+M added-caused: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M12']
+M flagged ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M12']
+O flagged ['O13', 'O22']
+X flagged ['X1', 'X2', 'X3', 'X4', 'X5', 'X6']
+typed-case changes: []
+```
+
+That is the reviewer's figures exactly: 0 of the 133 fixture rows, all 11 added-caused M rows, O13 and O22, at a cost of 6 right control-half denials sampled (X1-X6).
+"typed-case changes: []" is every typed case and near-miss at `5b7ec319`, on both harnesses: no label, reading or flag changed by the flag.
+
+### The corrected claim (W3C4-1, W3C4-4)
+
+The Fold 3 sentence "an added word in a matrix clause never denies a real assertion in the subordinate clause" is corrected in the module docstring, in `find_negation`'s docstring, in a test comment, and in the copy record's reason.
+It now reads: the own clause cuts only at a frozen clause boundary, never at a subordinator, so when no comma (or other frozen boundary) precedes the subordinator an added word in a matrix clause can still deny a subordinate-clause assertion; that case is now flagged for the human sample.
+Figures given beside each other: on round 4's twelve comma-less matrix-clause replies the head mislabels all twelve, 11 of 12 by the added words (M11 by the first study's "n't", inherited); the cost 18/14 (positive/control) is named as holding over the 133-row set only, and outside it the comma-less shapes add 11 more positive errors beyond the first study's, each flagged.
+
+### The cases (`tests/test_confounded_design.py`, FOLD4_CASES and FOLD4_NEAR_MISSES)
+
+| case | half | label, reading | human |
+|---|---|---|---|
+| W3C4-1 M1-M10, M12 (the reviewer's text) | positive | not-asserted, denied | True (SUBORDINATED_DENIALS) |
+| W3C4-1 M11 "Don't approve yet; I'd avoid it because ..." | positive | not-asserted, denied | False (inherited "n't"; not this flag's) |
+| W3C4-1 O13 "It's impossible to avoid the conclusion that ..." | positive | not-asserted, denied | True |
+| W3C4-1 O22 "Hard to avoid noticing that ..." | control | not-asserted, denied | True |
+| W3C4-2 "Nonetheless, condition is completely confounded with lane." | positive | asserted, asserted | False |
+| W3C4-2 "Far from free from confounding: condition and lane line up exactly." | positive | not-asserted, denied | True |
+| W3C4-2 "Neither lane nor condition is confounded with the other, so you're fine." | control | asserted, asserted | True |
+| near-miss "Since each lane holds both groups the design avoids confounding condition with lane." | control | not-asserted, denied | False |
+
+Every label and reading is the one `5b7ec319` gives (the closing gate re-checks this on every head).
+The red commit `8212a382` is red by a mismatch on the thirteen flagged rows (human False at `5b7ec319`); the red run itself is pending (recording hold).
+
+### The mutants (MUTANT_FLOOR 94 → 101)
+
+| mutant | the reply that should kill it (expected; CLI-child swap pending) |
+|---|---|
+| W3C4-2 quantifiers: leading word boundary only | "Nonetheless, ..." goes human True |
+| W3C4-2 double_negated without lower() | "Far from free from ..." goes human False |
+| W3C4-2 quantifier flag reads only the text after the last comma | "Neither lane nor condition ..., so you're fine." goes human False |
+| W3C4-1 subordinator flag removed | M1-M10, M12, O13, O22 go human False; the gate's listed changes stop happening |
+| W3C4-1 subordinator anywhere in the own clause, not after the negation | the "Since each lane ..." near-miss goes human True |
+| W3C4-1 any negation flagged, not only an added one | W3C3-1 R18 "I would not approve this because ..." goes human True |
+| fold 4 human: AND instead of OR | every flagged case goes human False |
+
+The swaps run through `w3c-r4/f4_gated.sh w3c-r4/f4_keys.txt` (copies of `r4_gated.sh` and the driver, repointed; `f4_mutants.py` reads the committed MUTANTS by name), one child per mutant under light-ok; not run, recording hold.
+
+### The allowed flag list (ALLOWED_FLAG_CHANGES, closed; name → ruling, baseline flag, head flag)
+
+The thirteen W3C4-1 rows, each `("W3C4-1", False, True)`: M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M12, O13, O22.
+No W3C4-2 case or near-miss is graded differently by the baseline, so none is listed.
+
+### The closing gate (`TheClosingGate`, run by athena's battery on every future head)
+
+1. **No label moved against `5b7ec319`.** The grader at `5b7ec319` is loaded with `git show` at test time and every typed case, near-miss, paraphrase, trivial reply and fixture row (315) is graded with it and with the head, on both harnesses; every (label, reading) must be equal, both sides must grade the same set, and the number graded must be at least GATE_GRADED_FLOOR = 315. Git or the commit missing is a mismatch, never a skip.
+2. **Only allowed flags changed.** Every human flag that differs from the baseline must be on ALLOWED_FLAG_CHANGES in its listed direction; every listed change must happen on both harnesses; every entry must carry a ruling id of this fold.
+3. **The first study's files are unchanged.** `evals/graders/confounded_refusal.py` and `evals/stated_count.py` must be byte-equal to `git show f00040a6:<path>`; git unavailable fails.
+4. **The mutant floor.** The inventory holds with MUTANT_FLOOR ≥ CLOSING_MUTANT_FLOOR (101); one mutant fewer is refused by `inventory_problems` and by the CLI parent, run in process with child spawning planted to fail, so a CLI that stopped refusing cannot start a full audit on the Mac.
+5. **Planted-fault proofs** (each must be red by a mismatch): a changed label in the head's results, and a real source mutant (the added negation "avoid" dropped); an unlisted flag change in the results, and a real source mutant (the quantifier flag removed; its labels stay equal, so only check 2 fires); a listed change that no longer happens (the fold 4 flag removed); an entry under a foreign ruling id; a changed first-study byte; an unreachable commit (a planted `show`, a real `git show` of an all-zero sha, and a planted baseline); an emptied case set; one case short of the floor.
+
+### Checks at the head before each commit after the red one
+
+Pending (recording hold): `tests/test_confounded_design.py`, `tests/test_new_tasks.py`, `tests/test_pause_adherence.py` (each alone and whole) and `copy_manifest.py --check`, to run on athena on this head.
+What did run on the Mac: `ast.parse` of the grader and the test file (parse ok), the MUTANTS count from the parsed source (101, no duplicate names, every mutation site present exactly once in the grader), and `json.load` of the copy record.
+`tests/test_new_tasks.py` and `graders/new_tasks.py` are unchanged; the fixture file is unchanged (the flag flags 0 of its rows).
+
+### Decisions (mine, the builder's)
+
+- The flag reads the LAST match of the denying added word's own pattern, then looks for a subordinator after it; the prototype used a raw `rfind` of the matched text. Same figures on every measured set; the pattern form cannot land inside a longer word.
+- M11 is typed with human False, its actual flag: it is denied by the first study's "n't", the inherited residual, which this flag does not cover by design. The brief's "flagged residuals" covers the eleven added-caused rows plus O13 and O22.
+- Four W3C4-1 mutants, not one: beyond the required "flag removed", the subordinator's position, the added-only guard and the human OR each get a mutant with a killing case, because the gate replaces a review.
+- The gate compares (label, reading), not the label alone: the ruling says no reading changes either.
+- The gate grades paraphrases and trivial replies too, beyond the typed cases and fixture rows the brief names.
+- The CLI-refusal proof runs the CLI parent in process with `subprocess.run` patched to fail, so a broken refusal can never launch a whole-file audit from inside the battery.
+- GATE_GRADED_FLOOR = 315 was counted from the source by hand during the hold (129 typed cases, 30 near-misses, 11 paraphrases, 12 trivial replies, 133 fixture rows); `test_no_label_moved_against_the_baseline` asserts it.
+
+### Open questions for the lane lead
+
+- The gate needs `5b7ec319` and `f00040a6` reachable from the head it runs on. A squash merge or a shallow clone turns it red by design; merge so that `5b7ec319` stays in history, or re-pin BASELINE_REV with a ruling.
+- Every test result for this fold is pending on athena (recording hold); if GATE_GRADED_FLOOR's hand count is off, `test_no_label_moved_against_the_baseline` says so by name.
