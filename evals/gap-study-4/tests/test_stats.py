@@ -348,14 +348,23 @@ class Table1Bounds(unittest.TestCase):
         self.assertNotIn("0 of 0", text)
 
     def test_cells_keep_harnesses_apart(self):
-        recs = cell("right", "right", model="m1", harness=HX) + cell("wrong", "wrong", model="y1", harness=HY)
-        rows = stats.bounds_table(recs, design())
-        self.assertEqual(self.row(rows, model="y1", harness=HY, task="t1", half="trap")["failures"]["right"], 0)
-        self.assertEqual(self.row(rows, model="m1", harness=HX, task="t1", half="trap")["failures"]["right"], 10)
-        with mock.patch.object(stats, "half_cell_key", lambda r: (r["arm"], r["task"], r["half"], "one-model")):
-            with self.assertRaises((stats.StatsError, AssertionError)):
-                rows = stats.bounds_table(recs, design())
-                self.row(rows, model="m1", harness=HX, task="t1", half="trap")
+        # one model name under two harnesses, same arm: two cells, never one
+        recs = cell("right", "right", model="m1", harness=HX) + cell("wrong", "wrong", model="m1", harness=HY)
+        d = design(harness_models={HX: ["m1"], HY: ["m1"]}, stronger_weaker={}, cross_vendor=[])
+
+        def counts(rows, harness):
+            got = [r["failures"] for r in rows if r["harness"] == harness and r["task"] == "t1"
+                   and r["half"] == "trap" and r["model"] == "m1"]
+            return got
+
+        rows = stats.bounds_table(recs, d)
+        self.assertEqual([(c["right"], c["n"]) for c in counts(rows, HX)], [(10, 10)])
+        self.assertEqual([(c["right"], c["n"]) for c in counts(rows, HY)], [(0, 10)])
+        # mutant: a cell key without the harness counts the two harnesses as one cell
+        with mock.patch.object(stats, "half_cell_key",
+                               lambda r: (r["arm"], r["task"], r["half"], r["model"], "one-harness")):
+            rows = stats.bounds_table(recs, d)
+            self.assertNotEqual([(c["right"], c["n"]) for c in counts(rows, HX) if c != stats.NO_TAKES], [(10, 10)])
 
     def test_no_records_is_no_takes_for_the_table(self):
         self.assertEqual(stats.bounds_table([], design()), stats.NO_TAKES)
