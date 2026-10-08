@@ -149,7 +149,8 @@ window before its first launch.
 THE START GATE. The loop refuses to start (`BatchConfigError`, and `batch.py --check` exits 1)
 while routing.json still lacks what only the owner or a later checkpoint can supply: round 3's
 pause cap, round 3's operator-side reasons (an empty list, or a status starting PENDING), the
-rate-limit markers' ruling (a status starting PENDING, W1B2-6), or the pre-registered pin
+rate-limit markers' ruling (a status starting PENDING, W1B2-6), the spend-cap lists' ruling (a
+status starting PENDING: Claude Code's list is open, ruling 3 of 17:42), or the pre-registered pin
 profiles (CP5). Every row must name its agent ({harness, version}: interface 8, never defaulted)
 and a model that has a profile under that harness, and its agent's version must be that profile's
 (a row that fails any of these is refused before it is registered).
@@ -324,6 +325,9 @@ def start_problems(table: dict) -> list[str]:
         p.append("pin_profiles_status is PENDING in routing.json")
     if str(table.get("rate_limit_markers_status", PENDING)).startswith(PENDING):
         p.append("rate_limit_markers_status is PENDING in routing.json")
+    if str(table.get("spend_cap_markers_status", PENDING)).startswith(PENDING):
+        # item 1 (ruling 3 of 17:42): an unruled spend-cap list never lets the loop start
+        p.append("spend_cap_markers_status is PENDING in routing.json (a spend cap stops for a human ruling)")
     return p
 
 

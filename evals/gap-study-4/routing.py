@@ -77,7 +77,18 @@ RATE-LIMIT MARKERS (glitch-f3's ruling, 6 Oct 2026). An API error carries a rate
 its status or type is one of routing.json's markers for that field (exact membership), or when its
 `text` carries one of the text markers by round 3's bounded search (`rate_limit_text_marker`): each
 marker word-bounded and case-insensitive. The text matched is only ever the API-error record's own
-harness-side text; the agent's reply never reaches the records.
+harness-side text; the agent's reply never reaches the records. The markers, and the reset wait CP2's
+`wait_reset` reads, are keyed by harness (`AgentAdapter.name`; w1b's next-touch item 1): the take's
+own harness's entry is read (`pin.harness`), and a harness with no entry is refused, never defaulted.
+
+THE SPEND-CAP REFUSAL (w1b's next-touch item 1; glitch-f3's ruling 4, 8 Oct 2026; glitch-f3's, not
+the owner's). A vendor spend cap is not a rate limit: it arrives as a 429 too, and as a pause the loop
+would wait for a window that never resets. routing.json's `spend_cap_refusal` is one closed rule
+beside the rows, shaped like the pin refusal: in every phase, when an API error's status, type or text
+carries a spend-cap marker of the take's own harness (`spend_cap_markers`, exact membership, the text
+by the same bounded search), `route()` refuses the take for a human ruling, whatever rows match. It is
+outranked by nothing, so it is decided above pause and a spend-cap 429 never reaches the rate-limit
+row; it never re-runs and never waits. No route is added to labels4.ROUTES.
 
 ANNOTATING. `annotate()` decides the table's annotations (an outside reach: an event, and the
 text masked before commit; a quiescence kill: an event; an event id arriving as a checker reason:
@@ -91,6 +102,7 @@ No model is called anywhere in this module. Standard library only.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import sys
@@ -122,6 +134,11 @@ RECORD_SCHEMA = {
 # The fields of one API-error record (all three required; status int or None, type str or None, text
 # str or None: the harness-side error text, never the agent's reply). glitch-f3's ruling added text.
 API_ERROR_KEYS = ("status", "type", "text")
+# Item 1 (lane w4h): each harness's rate-limit entry, and its spend-cap list, in routing.json (closed key sets).
+RATE_MARKER_KEYS = API_ERROR_KEYS + ("reset_wait", "source")
+SPEND_MARKER_KEYS = API_ERROR_KEYS + ("source",)
+SPEND_REFUSAL_KEYS = ("id", "when", "any_of", "outranked_by", "source")
+SPEND_OP = "in_spend_cap_markers"
 # API-error fields whose rate-limit markers match by round 3's bounded search, not exact membership.
 TEXT_MARKER_FIELDS = ("text",)
 
@@ -136,7 +153,7 @@ ANNOTATION_ONLY = ("events",)
 
 OPS = ("eq", "ne", "gt", "truthy", "falsy", "not_null", "is_null", "nonempty", "empty",
        "in_operator_reasons", "in_checker_events", "in_rate_limit_markers", "differs_from_pin",
-       "present_differs_from_pin", "nonzero_outside_timeout")
+       "present_differs_from_pin", "nonzero_outside_timeout", SPEND_OP)
 _VALUE_OPS = ("eq", "ne", "gt")
 
 
@@ -207,13 +224,17 @@ def _known_path(path: str) -> bool:
     return subs is not None and tail in subs
 
 
-def _condition_problems(owner: str, conds: list, p: list):
+def _condition_problems(owner: str, conds: list, p: list, spend: bool = False):
     for c in conds:
         if not isinstance(c, dict):
             p.append(f"{owner}: a condition must be a dict")
             continue
         if c.get("op") not in OPS:
             p.append(f"{owner}: unknown op {c.get('op')!r}")
+        elif (c.get("op") == SPEND_OP) != spend:
+            # item 1: only the spend-cap refusal reads the spend-cap lists, and it reads nothing else
+            p.append(f"{owner}: op {c.get('op')!r} " + ("is read by the spend_cap_refusal alone" if not spend else
+                                                       f"is not {SPEND_OP}, the spend_cap_refusal's only op"))
         if not _known_path(c.get("path", "")):
             p.append(f"{owner}: path {c.get('path')!r} is not a harness record")
         if c.get("op") in _VALUE_OPS and "value" not in c:
@@ -256,7 +277,7 @@ def check_table(table: dict) -> list[str]:
     for key in ("pin_fields", "graded_ends", "rate_limit_markers", "rate_limit_markers_status", "operator_reasons",
                 "operator_reasons_status", "driver_decided_reasons", "reasons_only_before_first_turn",
                 "checker_reasons_become_events", "pin_profiles", "pin_profiles_status", "pin_refusal", "rows",
-                "annotations"):
+                "annotations", "spend_cap_markers", "spend_cap_markers_status", "spend_cap_refusal"):
         if key not in table:
             p.append(f"missing {key}")
     if p:
@@ -274,7 +295,7 @@ def check_table(table: dict) -> list[str]:
         # where the plan says "graded as usual, the text masked".
         p.append(f"operator_reasons and checker_reasons_become_events share ids "
                  f"{sorted(set(events['ids']) & set(table['operator_reasons']))}: an event is never an operator reason")
-    for key in ("operator_reasons_status", "pin_profiles_status", "rate_limit_markers_status"):
+    for key in ("operator_reasons_status", "pin_profiles_status", "rate_limit_markers_status", "spend_cap_markers_status"):
         if not _is_str(table[key]) or not table[key]:
             p.append(f"{key} must say where the data stands")
     listed = set(table["operator_reasons"]) if isinstance(table["operator_reasons"], list) else set()
@@ -315,27 +336,15 @@ def check_table(table: dict) -> list[str]:
                 if isinstance(c, dict) and c.get("path") == "ledger.end" and c.get("op") in ("eq", "ne") \
                         and c.get("value") not in labels4.TURN_ENDS:
                     p.append(f"{row.get('id')}: ledger.end compared with {c.get('value')!r}, not a labels4 turn end")
-    # Rate-limit markers are API-error fields, each with a non-empty list of markers.
-    markers = {k: v for k, v in table["rate_limit_markers"].items() if k != "source"}
-    if not markers:
-        p.append("rate_limit_markers names no marker")
-    for k, v in markers.items():
-        if k not in API_ERROR_KEYS:
-            p.append(f"rate_limit_markers key {k!r} is not an API-error field {list(API_ERROR_KEYS)}")
-        if not isinstance(v, list) or not v:
-            p.append(f"rate_limit_markers {k!r} must be a non-empty list")
-        elif k in TEXT_MARKER_FIELDS:
-            # Round 3's search lowercases the error text only: an upper-case marker could never match,
-            # and an empty one would match at every word boundary.
-            for m in v:
-                if not _is_str(m) or not m or m != m.lower():
-                    p.append(f"rate_limit_markers {k!r}: text marker {m!r} must be a non-empty lower-case string")
+    p += _marker_problems(table)
     p += _pin_refusal_problems(table["pin_refusal"], order)
+    p += _spend_refusal_problems(table["spend_cap_refusal"])
     ids = [row.get("id") for row in table["rows"]] + [a.get("id") for a in table["annotations"]]
-    if isinstance(table["pin_refusal"], dict):
-        ids.append(table["pin_refusal"].get("id"))
+    for rule in ("pin_refusal", "spend_cap_refusal"):
+        if isinstance(table[rule], dict):
+            ids.append(table[rule].get("id"))
     if len(set(ids)) != len(ids):
-        p.append("row, annotation and pin_refusal ids repeat")
+        p.append("row, annotation, pin_refusal and spend_cap_refusal ids repeat")
     seen_routes = set()
     for row in table["rows"]:
         rid = row.get("id")
@@ -371,6 +380,103 @@ def check_table(table: dict) -> list[str]:
         if not a.get("any_of"):
             p.append(f"{aid}: any_of must hold at least one condition")
         _condition_problems(aid, a.get("any_of", []), p)
+    return p
+
+
+def _marker_list_problems(where: str, k: str, v, nonempty: bool) -> list[str]:
+    """One API-error field's marker list: a list (non-empty for the rate-limit markers); statuses are ints, types
+    non-empty strings, and text markers non-empty lower-case strings (round 3's search lowercases the error text only:
+    an upper-case marker could never match, and an empty one would match at every word boundary)."""
+    if not isinstance(v, list) or (nonempty and not v):
+        return [f"{where} {k!r} must be a {'non-empty ' if nonempty else ''}list"]
+    p = []
+    for m in v:
+        if k == "status" and not _is_int(m):
+            p.append(f"{where} {k!r}: status {m!r} must be an int")
+        elif k == "type" and not (_is_str(m) and m):
+            p.append(f"{where} {k!r}: type {m!r} must be a non-empty string")
+        elif k in TEXT_MARKER_FIELDS and (not _is_str(m) or not m or m != m.lower()):
+            p.append(f"{where} {k!r}: text marker {m!r} must be a non-empty lower-case string")
+    return p
+
+
+def _marker_problems(table: dict) -> list[str]:
+    """Item 1: the rate-limit markers (with each harness's reset wait) and the spend-cap lists, each keyed by harness;
+    both name the same harnesses, every pin profile's harness has both, and no spend-cap marker of a harness is also
+    one of its rate-limit markers (a spend cap is never a rate limit)."""
+    p = []
+    rate, spend = table["rate_limit_markers"], table["spend_cap_markers"]
+    for key, entries, keys in (("rate_limit_markers", rate, RATE_MARKER_KEYS),
+                               ("spend_cap_markers", spend, SPEND_MARKER_KEYS)):
+        if not isinstance(entries, dict) or not entries:
+            p.append(f"{key} must map each harness (AgentAdapter.name) to its entry")
+            continue
+        for harness, e in entries.items():
+            where = f"{key} {harness!r}"
+            if not _is_str(harness) or not harness:
+                p.append(f"{key}: harness {harness!r} must be a non-empty name")
+                continue
+            if not isinstance(e, dict):
+                p.append(f"{where} must be a dict of {list(keys)}")
+                continue
+            p += [f"{where} key {k!r} is not an API-error field {list(API_ERROR_KEYS)}" for k in e if k not in keys]
+            p += [f"{where} has no {k}" for k in keys if k not in e]
+            for k in API_ERROR_KEYS:
+                if k in e:
+                    p += _marker_list_problems(where, k, e[k], nonempty=key == "rate_limit_markers")
+            if key == "rate_limit_markers" and all(isinstance(e.get(k), list) for k in API_ERROR_KEYS) \
+                    and not any(e[k] for k in API_ERROR_KEYS):
+                p.append(f"{where} names no marker")
+            if "source" in e and not (_is_str(e["source"]) and e["source"]):
+                p.append(f"{where}: no source cited")
+            if "reset_wait" in e:
+                w = e["reset_wait"]
+                if w is not None and not (isinstance(w, (int, float)) and not isinstance(w, bool)
+                                          and math.isfinite(w) and w > 0):
+                    p.append(f"{where}: reset_wait must be null (none stated) or a positive number of seconds, "
+                             f"got {w!r}")
+    if p or not isinstance(rate, dict) or not isinstance(spend, dict):
+        return p
+    if set(rate) != set(spend):
+        p.append(f"rate_limit_markers and spend_cap_markers must name the same harnesses, got {sorted(rate)} and "
+                 f"{sorted(spend)}")
+    for harness in sorted(set(rate) & set(spend)):
+        for k in API_ERROR_KEYS:
+            both = set(rate[harness][k]) & set(spend[harness][k])
+            if both:
+                p.append(f"spend_cap_markers {harness!r} {k}: {sorted(both, key=str)} are also its rate-limit markers: "
+                         f"a spend cap is never a rate limit")
+    if isinstance(table["pin_profiles"], dict):
+        for harness in table["pin_profiles"]:
+            if harness not in rate:
+                p.append(f"pin_profiles harness {harness!r} has no rate_limit_markers or spend_cap_markers entry")
+    return p
+
+
+def _spend_refusal_problems(rule) -> list[str]:
+    """Item 1 (glitch-f3's ruling 4; W4BR-w4h-7): the spend-cap refusal is a closed rule. It applies in every phase, is
+    outranked by nothing (so it is decided above pause), and reads only the API-error fields, with in_spend_cap_markers
+    alone."""
+    if not isinstance(rule, dict) or set(rule) != set(SPEND_REFUSAL_KEYS):
+        return [f"spend_cap_refusal must hold exactly {list(SPEND_REFUSAL_KEYS)}"]
+    p = []
+    if not _is_str(rule["id"]) or not rule["id"]:
+        p.append("spend_cap_refusal: no id")
+    if rule["when"] != labels4.ANY_TIME:
+        p.append(f"spend_cap_refusal: phase {rule['when']!r}, not {labels4.ANY_TIME!r} (a spend cap stops the loop in "
+                 f"every phase)")
+    if rule["outranked_by"] != []:
+        p.append(f"spend_cap_refusal: outranked by nothing (glitch-f3's ruling 4: it ranks above pause), got "
+                 f"{rule['outranked_by']!r}")
+    if not isinstance(rule["any_of"], list) or not rule["any_of"]:
+        p.append("spend_cap_refusal: any_of must hold at least one condition")
+    else:
+        _condition_problems("spend_cap_refusal", rule["any_of"], p, spend=True)
+        for c in rule["any_of"]:
+            if isinstance(c, dict) and c.get("path") not in [f"api_errors.{k}" for k in API_ERROR_KEYS]:
+                p.append(f"spend_cap_refusal reads {c.get('path')!r}: only the API-error record's fields")
+    if not rule["source"]:
+        p.append("spend_cap_refusal: no source cited")
     return p
 
 
@@ -508,6 +614,9 @@ def check_records(records: dict, table: dict) -> list[str]:
                  f"routing.json's pin_profiles")
     elif any(pin[f] != profile[f] for f in profile):
         p.append(f"the pin is not {pin['model']!r}'s pre-registered profile: the driver is never trusted for it")
+    for key, what in (("rate_limit_markers", "rate-limit markers"), ("spend_cap_markers", "spend-cap list")):
+        if pin["harness"] not in table[key]:   # item 1: the take's own harness's entry, never a default
+            p.append(f"pin harness {pin['harness']!r} has no {what} in routing.json's {key}: refused, never defaulted")
     if records["ledger"]["committed"]:
         p.append("the take is already committed: a route must be decided before the commit")
     early = [r for r in records["checker_reasons"] if r in table["reasons_only_before_first_turn"]["ids"]]
@@ -565,9 +674,10 @@ def holds(cond: dict, records: dict, table: dict) -> bool:
         return any(r in table["operator_reasons"] for r in v)
     if op == "in_checker_events":
         return any(r in table["checker_reasons_become_events"]["ids"] for r in v)
-    if op == "in_rate_limit_markers":
+    if op in ("in_rate_limit_markers", SPEND_OP):   # the take's own harness's entry (item 1)
         field = path.partition(".")[2]
-        markers = table["rate_limit_markers"].get(field, [])
+        markers = harness_markers(table, "rate_limit_markers" if op == "in_rate_limit_markers" else "spend_cap_markers",
+                                  records)[field]
         if field in TEXT_MARKER_FIELDS:
             return any(x is not None and rate_limit_text_marker(x, markers) is not None for x in v)
         return any(x is not None and x in markers for x in v)
@@ -581,6 +691,12 @@ def holds(cond: dict, records: dict, table: dict) -> bool:
         ends = records["ledger"]["turn_ends"]
         return any(code != 0 for code, end in zip(v, ends) if end != labels4.TIMED_OUT)
     raise TableError(f"unknown op {op!r}")
+
+
+def harness_markers(table: dict, key: str, records: dict) -> dict:
+    """The take's own harness's entry of routing.json's `key` (rate_limit_markers or spend_cap_markers), read by its
+    pin's harness (item 1). check_records refuses a harness with no entry before any condition is read."""
+    return table[key][records["pin"]["harness"]]
 
 
 def phase_of(records: dict) -> str:
@@ -603,6 +719,14 @@ def pin_refusal_holds(records: dict, table: dict) -> bool:
     if rule["when"] not in (labels4.ANY_TIME, phase_of(records)):
         return False
     return all(holds(c, records, table) for c in rule["all_of"])
+
+
+def spend_cap_holds(records: dict, table: dict) -> bool:
+    """routing.json's spend-cap refusal holds on these records (item 1): its phase, and any of its conditions."""
+    rule = table["spend_cap_refusal"]
+    if rule["when"] not in (labels4.ANY_TIME, phase_of(records)):
+        return False
+    return any(holds(c, records, table) for c in rule["any_of"])
 
 
 def annotate(records: dict, table: dict | None = None) -> dict:
@@ -636,6 +760,13 @@ def route(records: dict, table: dict | None = None) -> dict:
     top = min((level[row["route"]] for row in matched), default=None)
     winners = [row for row in matched if level[row["route"]] == top]
     routes = sorted({row["route"] for row in winners})
+    spend = table["spend_cap_refusal"]
+    if spend_cap_holds(records, table) and not set(routes) & set(spend["outranked_by"]):
+        # item 1 (glitch-f3's ruling 4): outranked by nothing, so above pause; a human rules, never a re-run or a wait
+        raise RoutingRefused(f"{spend['id']}: an API error carries a spend-cap marker of harness "
+                             f"{records['pin']['harness']!r}: a spend cap, not a rate limit; refused for a human ruling "
+                             f"whatever else matches (matched {[m['id'] for m in matched]}): it never re-runs and never "
+                             f"waits for a usage window")
     rule = table["pin_refusal"]
     if pin_refusal_holds(records, table) and not set(routes) & set(rule["outranked_by"]):
         # W1B3-2: whatever else matches; only a route the rule names (the rate-limit pause) outranks it

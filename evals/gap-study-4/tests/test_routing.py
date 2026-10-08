@@ -202,7 +202,7 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
     elif op == "in_rate_limit_markers":
         key = path.partition(".")[2]
         err = {"status": None, "type": None, "text": None}
-        err[key] = table["rate_limit_markers"][key][0]
+        err[key] = table["rate_limit_markers"][TEST_HARNESS][key][0]
         set_api(rec, [err])
     elif op in ("differs_from_pin", "present_differs_from_pin"):
         rec["init"][0] = dict(init_of(rec["pin"]), model="not-the-pin")
@@ -745,7 +745,7 @@ def _seam_edit(cond: dict, table: dict, turns: list, box: dict, end: str | None 
         turns[:] = [_silent(end, api_errors=[{"status": 500, "type": "api_error", "text": None}])]
     elif head == "api_errors" and op == "in_rate_limit_markers":
         err = {"status": None, "type": None, "text": None}
-        err[tail] = table["rate_limit_markers"][tail][0]
+        err[tail] = table["rate_limit_markers"][TEST_HARNESS][tail][0]
         turns[:] = [_silent(end, api_errors=[err])]
     elif path == "ledger.end" and op == "eq" and cond["value"] in (labels4.TIMED_OUT, labels4.END_ERROR):
         turns[:] = [_silent(cond["value"])]
@@ -1187,18 +1187,18 @@ def mutants(table: dict):
             t = copy.deepcopy(table)
             t["annotations"][i]["any_of"][j][key] = val
             yield f"annotation {a['id']}: any_of[{j}] {c['op']} mutated", t
-    for key, values in table["rate_limit_markers"].items():
-        if key == "source":
+    for key, values in table["rate_limit_markers"][TEST_HARNESS].items():
+        if key in ("source", "reset_wait"):   # not marker lists (reset_wait: item 1)
             continue
         t = copy.deepcopy(table)
-        del t["rate_limit_markers"][key]
+        del t["rate_limit_markers"][TEST_HARNESS][key]
         yield f"rate_limit_markers: {key} deleted", t
         for j, v in enumerate(values):
             t = copy.deepcopy(table)
-            t["rate_limit_markers"][key][j] = _other(v)
+            t["rate_limit_markers"][TEST_HARNESS][key][j] = _other(v)
             yield f"rate_limit_markers: {key}[{j}] {v!r} -> {_other(v)!r}", t
     t = copy.deepcopy(table)
-    t["rate_limit_markers"]["code"] = t["rate_limit_markers"].pop("status")
+    t["rate_limit_markers"][TEST_HARNESS]["code"] = t["rate_limit_markers"][TEST_HARNESS].pop("status")
     yield "rate_limit_markers: status renamed to a non-API-error key", t
     for j, eid in enumerate(table["checker_reasons_become_events"]["ids"]):   # W1B2-2
         t = copy.deepcopy(table)
@@ -1566,16 +1566,16 @@ class TestRoutingTable(unittest.TestCase):
     def test_rate_limit_marker_keys_are_api_error_fields(self):
         """W1B-6."""
         t = copy.deepcopy(REAL)
-        t["rate_limit_markers"]["code"] = [429]
+        t["rate_limit_markers"][TEST_HARNESS]["code"] = [429]
         self.assertTrue(any("not an API-error field" in x for x in routing.check_table(t)))
 
     def test_text_markers_are_non_empty_lower_case_strings(self):
         """Round 3's bounded search lowercases the error text only, so an upper-case marker could never match,
         and an empty one would match at every word boundary."""
-        self.assertEqual(REAL["rate_limit_markers"]["text"], [m.lower() for m in REAL["rate_limit_markers"]["text"]])
+        self.assertEqual(REAL["rate_limit_markers"][TEST_HARNESS]["text"], [m.lower() for m in REAL["rate_limit_markers"][TEST_HARNESS]["text"]])
         for bad in ("Rate Limit", "", 429, None):
             t = copy.deepcopy(REAL)
-            t["rate_limit_markers"]["text"] = ["rate limit", bad]
+            t["rate_limit_markers"][TEST_HARNESS]["text"] = ["rate limit", bad]
             self.assertTrue(any("text marker" in x for x in routing.check_table(t)), bad)
 
     def test_graded_ends_checked_against_labels4(self):
@@ -1797,8 +1797,8 @@ class TestRound3Sources(unittest.TestCase):
         return markers
 
     def test_text_markers_are_round_3s_in_order(self):
-        self.assertEqual(REAL["rate_limit_markers"]["text"], list(self.round3_markers()))
-        source = REAL["rate_limit_markers"]["source"]
+        self.assertEqual(REAL["rate_limit_markers"][TEST_HARNESS]["text"], list(self.round3_markers()))
+        source = REAL["rate_limit_markers"][TEST_HARNESS]["source"]
         for cite in ("glitch-f3", "evals/gap-study-3/drive.py:149", self.COMMIT, "driver_constants.rate_limit_markers"):
             self.assertIn(cite, source)
 
@@ -1811,7 +1811,7 @@ class TestRound3Sources(unittest.TestCase):
         exec(compile("\n".join(lines), f"{self.DRIVE}@{self.COMMIT[:8]}:912", "exec",    # noqa: S102 - pinned, read lines
                      flags=__future__.annotations.compiler_flag, dont_inherit=True), ns)
         theirs = ns["matched_marker"]
-        markers = REAL["rate_limit_markers"]["text"]
+        markers = REAL["rate_limit_markers"][TEST_HARNESS]["text"]
         self.assertEqual(text_match_problems(lambda text, _markers: theirs(text), markers), [])
         self.assertEqual(text_match_problems(routing.rate_limit_text_marker, markers), [])
 
@@ -1857,7 +1857,7 @@ class TestRound3Sources(unittest.TestCase):
 
 
     def test_claude_code_reset_wait_is_round_3s_none(self):
-        """w1b's next-touch item 1 (lane w4h): claude-code's reset_wait is round 3's. Round 3 states none in drive.py
+        """w1b's next-touch item 1 (lane w4h): the Claude Code entry's reset_wait is round 3's. Round 3 states none in drive.py
         140-160 (its constants beside RATE_LIMIT_MARKERS: no reset wait among them), so it is null, named for CP2's
         wait_reset."""
         lines = self.round3_lines(self.DRIVE, 140, 160)
@@ -2084,7 +2084,7 @@ class TestRateLimitText(unittest.TestCase):
             self.assertTrue(any("routed pause" in x for x in agent_text_problems(test_table())))
 
     def test_word_bounded_and_case_insensitive(self):
-        self.assertEqual(text_match_problems(routing.rate_limit_text_marker, REAL["rate_limit_markers"]["text"]), [])
+        self.assertEqual(text_match_problems(routing.rate_limit_text_marker, REAL["rate_limit_markers"][TEST_HARNESS]["text"]), [])
 
     def test_word_bound_check_can_fail(self):
         def substring(text, markers):   # the mutant: a plain substring match
@@ -2092,7 +2092,7 @@ class TestRateLimitText(unittest.TestCase):
 
         def case_sensitive(text, markers):   # the mutant: the text not lowercased
             return next((m for m in markers if re.search(r"(?<![\w])" + re.escape(m) + r"(?![\w])", text)), None)
-        markers = REAL["rate_limit_markers"]["text"]
+        markers = REAL["rate_limit_markers"][TEST_HARNESS]["text"]
         for mutant in (substring, case_sensitive):
             self.assertNotEqual(text_match_problems(mutant, markers), [], mutant.__name__)
             with mock.patch.object(routing, "rate_limit_text_marker", mutant):
@@ -2180,7 +2180,7 @@ class TestGridAndMutations(unittest.TestCase):
                      "rate_limit_markers: text deleted", "pin_refusal: removed", "pin_refusal: outranked_by emptied",
                      "pin_refusal: all_of[0] present_differs_from_pin mutated", "pin_refusal: phase -> after-first-turn"):
             self.assertIn(what, described)
-        for j in range(len(REAL["rate_limit_markers"]["text"])):   # every text marker, alone (glitch-f3's ruling)
+        for j in range(len(REAL["rate_limit_markers"][TEST_HARNESS]["text"])):   # every text marker, alone (glitch-f3's ruling)
             self.assertIn(f"rate_limit_markers: text[{j}]", described)
         self.assertIn("rate-limit: any_of[2] in_rate_limit_markers mutated", described)
 
@@ -2344,9 +2344,13 @@ class TestNextTouchAgentPin(unittest.TestCase):
         real = routing.check_records
 
         def harness_blind(records, table):   # the mutant: the profile lookup no longer refuses an unknown harness
-            return [x for x in real(records, table) if "pin harness" not in x]
+            return [x for x in real(records, table) if "pre-registered profile" not in x]
+        t = nt_table()                       # fake-second has markers and a spend list here, and no profile (item 1)
+        t["rate_limit_markers"][NT_FAKE] = copy.deepcopy(FAKE_RATE)
+        t["spend_cap_markers"][NT_FAKE] = copy.deepcopy(FAKE_SPEND)
+        self.assertEqual(agent_pin_problems(t), [])
         with mock.patch.object(routing, "check_records", harness_blind):
-            found = agent_pin_problems(nt_table())
+            found = _guarded("agent pin", agent_pin_problems, t)
         self.assertTrue(any(x.startswith("a harness with no profiles: want refused") for x in found), found)
         with mock.patch.object(routing, "PIN_KEYS", routing.PLAN_PIN_FIELDS):   # the base's pin: no harness
             found = _guarded("agent pin", agent_pin_problems, nt_table())         # a crash is a finding, never a pass
@@ -2401,7 +2405,7 @@ def take_with(errors: list, phase: str, pin: dict | None = None) -> dict:
 def spend_cases(table: dict) -> dict:
     """name -> (records, want): want is REFUSED for the spend-cap refusal, else (route, rows)."""
     cases = {}
-    spend = table["spend_cap_markers"][NT_FAKE]
+    spend = FAKE_SPEND                   # the test's own list, so a type dropped from the table is still a scenario
     for phase in (B, A):
         for typ in spend["type"]:          # one scenario per spend-cap type: a 429 whose text says 429 and rate limit
             cases[f"{phase}: spend type {typ} as a 429"] = (
@@ -2414,11 +2418,11 @@ def spend_cases(table: dict) -> dict:
             take_with([_err("internal", 500, "api_error"), _err(None, 429, spend["type"][0])], phase), REFUSED)
         cases[f"{phase}: fake-second's own rate limit pauses"] = (
             take_with([_err(None, None, FAKE_RATE["type"][0])], phase), (labels4.PAUSE, ["rate-limit"]))
-        cases[f"{phase}: claude-code's rate-limit type is no marker under fake-second"] = (
+        cases[f"{phase}: the real harness's rate-limit type is no marker under fake-second"] = (
             take_with([_err(None, None, REAL["rate_limit_markers"][TEST_HARNESS]["type"][0])], phase),
             (labels4.REHEARSAL, ["api-error-before-first-turn"]) if phase == B
             else (labels4.HARNESS_ERROR, ["api-error-after-first-turn"]))
-        cases[f"{phase}: fake-second's spend type is no marker under claude-code"] = (
+        cases[f"{phase}: fake-second's spend type is no marker under the real harness"] = (
             take_with([_err(None, None, spend["type"][0])], phase, PIN),
             (labels4.REHEARSAL, ["api-error-before-first-turn"]) if phase == B
             else (labels4.HARNESS_ERROR, ["api-error-after-first-turn"]))
@@ -2466,7 +2470,7 @@ class TestNextTouchSpendCap(unittest.TestCase):
         self.assertEqual(set(REAL["rate_limit_markers"][TEST_HARNESS]), {"status", "type", "text", "reset_wait", "source"})
 
     def test_the_rekeyed_claude_code_values_are_the_old_flat_ones(self):
-        """Ruling 3 of 17:42: the re-keyed claude-code entry equals the base's flat one (W4BR-w4h-5), less the new
+        """Ruling 3 of 17:42: the re-keyed Claude Code entry equals the base's flat one (W4BR-w4h-5), less the new
         reset_wait; its source keeps the old one's words."""
         p = subprocess.run(["git", "-C", TestRound3Sources.ROOT, "show", f"{OLD_FLAT}:evals/gap-study-4/routing.json"],
                            capture_output=True)
@@ -2554,6 +2558,47 @@ class TestNextTouchSpendCap(unittest.TestCase):
         t = copy.deepcopy(REAL)
         t["rate_limit_markers"]["codex"] = copy.deepcopy(FAKE_RATE)
         self.assertEqual(harness_name_problems(t, SEAM_NAMES), ["'codex' is no harness the seam registers"])
+
+    def test_spend_check_can_fail(self):
+        def paused(found):
+            return [x for x in found if "as a 429: want refused" in x and x.endswith("got pause")]
+        t = spend_table()
+        t["spend_cap_refusal"]["outranked_by"] = [labels4.PAUSE]          # the refusal put below pause
+        self.assertEqual(len(paused(spend_problems(t))), 2 * len(FAKE_SPEND["type"]))
+        t = spend_table()
+        t["spend_cap_refusal"]["when"] = labels4.BEFORE_FIRST_TURN         # the refusal in one phase only
+        self.assertTrue(any(x.startswith(f"{A}: spend type") and x.endswith("got pause") for x in spend_problems(t)))
+        with mock.patch.object(routing, "spend_cap_holds", lambda records, table: False):   # no refusal at all
+            self.assertEqual(len(paused(spend_problems(spend_table()))), 2 * len(FAKE_SPEND["type"]))
+        for j, typ in enumerate(FAKE_SPEND["type"]):                       # each spend type dropped from the list
+            t = spend_table()
+            del t["spend_cap_markers"][NT_FAKE]["type"][j]
+            self.assertTrue(any(x.startswith(f"{B}: spend type {typ} as a 429") for x in spend_problems(t)), typ)
+        real = routing.harness_markers
+
+        def claude_codes(table, key, records):   # the mutant: markers no longer keyed by the take's harness
+            return real(table, key, {"pin": dict(records["pin"], harness=TEST_HARNESS)})
+        with mock.patch.object(routing, "harness_markers", claude_codes):
+            found = spend_problems(spend_table())
+        self.assertTrue(any("fake-second's own rate limit pauses" in x for x in found), found)
+        self.assertTrue(any("the real harness's rate-limit type is no marker under fake-second" in x for x in found), found)
+
+    def test_the_harness_check_can_fail(self):
+        real = routing.check_records
+
+        def defaulting(records, table):   # the mutant: an unknown harness let through to the markers
+            return [x for x in real(records, table) if "refused, never defaulted" not in x]
+        t = spend_table()
+        rec = take_with([_err(None, 429, None)], A)
+        del t["rate_limit_markers"][NT_FAKE]       # an unsound table: fake-second's markers gone
+        with self.assertRaisesRegex(routing.RoutingRefused, "has no rate-limit markers"):
+            routing.route(rec, t)
+        with mock.patch.object(routing, "check_records", defaulting):
+            with self.assertRaises(KeyError):      # the markers read with no entry: a crash, never a refusal
+                routing.route(rec, t)
+        t = spend_table()
+        t["spend_cap_refusal"]["outranked_by"] = [labels4.PAUSE]
+        self.assertTrue(any("outranked by nothing" in x for x in routing.check_table(t)))
 
 
 if __name__ == "__main__":

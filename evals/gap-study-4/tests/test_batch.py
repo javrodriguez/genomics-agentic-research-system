@@ -68,6 +68,7 @@ def test_table() -> dict:
     t = copy.deepcopy(routing.load_table())
     t["pin_profiles"] = copy.deepcopy(PROFILES)
     t["pin_profiles_status"] = "TEST-ONLY: two injected profiles"
+    t["spend_cap_markers_status"] = f"TEST-ONLY: {HARNESS}'s spend-cap list, not yet ruled, gated off (item 1)"
     return t
 
 
@@ -2869,7 +2870,7 @@ class TestNextTouchAgentRow(unittest.TestCase):
 
 
 
-# Item 1 (ruling 3 of 17:42): batch.start_problems refuses claude-code's PENDING spend-cap list like every other PENDING
+# Item 1 (ruling 3 of 17:42): batch.start_problems refuses the Claude Code entry's PENDING spend-cap list like every other PENDING
 # status, so the loop never starts on an unruled spend cap.
 def spend_gate_problems() -> list[str]:
     p = []
@@ -2898,6 +2899,16 @@ def spend_gate_problems() -> list[str]:
 class TestNextTouchSpendGate(unittest.TestCase):
     def test_a_pending_spend_cap_list_refuses_to_start(self):
         self.assertEqual(spend_gate_problems(), [])
+
+    def test_spend_gate_check_can_fail(self):
+        real = batch.start_problems
+
+        def ignores_the_spend_cap(table):   # the mutant: the PENDING spend-cap list not gated
+            return [x for x in real(table) if "spend_cap_markers_status" not in x]
+        with mock.patch.object(batch, "start_problems", ignores_the_spend_cap):
+            found = spend_gate_problems()
+        self.assertIn("spend_cap_markers_status PENDING: the loop would start", found)
+        self.assertIn("spend_cap_markers_status missing: the loop would start", found)
 
 
 if __name__ == "__main__":
