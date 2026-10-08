@@ -41,6 +41,7 @@ sys.path.insert(0, _ROOT)
 
 import agent_adapter as aa  # noqa: E402
 import batch  # noqa: E402
+import harness_bookkeeping as hb  # noqa: E402  (the seam's harness name, never typed here: interface 8)
 import routing  # noqa: E402
 from graders import labels4  # noqa: E402
 
@@ -2762,6 +2763,74 @@ class TestNextTouchHistory(unittest.TestCase):
         self.assertIsNone(batch.history_difference([a], [dict(a)]))
         self.assertIn("history[1] is held by the argument only", batch.history_difference([a, a], [a]))
         self.assertIn("history[0] is held by repo.history() only", batch.history_difference([], [a]))
+
+
+
+# Interface 8 (item 5, the schema half): a registered row requires `agent` ({"harness", "version"}, never defaulted);
+# pin_profiles is keyed by harness, then model; expected_pin reads row["agent"]["harness"]; a row whose agent.version
+# differs from its pin's version never starts.
+NT_HARNESS = hb.CLAUDE_CODE
+NT_FAKE = "fake-second"                      # the test-only second harness (interface 8)
+NT_PROFILES = {NT_HARNESS: {"test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
+                            "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"}}}
+
+
+def nt_table() -> dict:
+    t = test_table()
+    t["pin_profiles"] = copy.deepcopy(NT_PROFILES)
+    return t
+
+
+def nt_row(slot=1, model="test-model-a", **agent) -> dict:
+    a = {"harness": NT_HARNESS, "version": NT_PROFILES[NT_HARNESS][model]["version"]}
+    a.update(agent)
+    return {"slot": slot, "half_cell": "hc-a", "row_id": slot, "model": model, "agent": a}
+
+
+def agent_row_problems() -> list[str]:
+    """Interface 8 on the registered row (item 5)."""
+    p = []
+    t = nt_table()
+    want = dict(NT_PROFILES[NT_HARNESS]["test-model-b"], model="test-model-b", harness=NT_HARNESS)
+    try:
+        got = batch.expected_pin(nt_row(model="test-model-b"), t)
+        if got != want:
+            p.append(f"expected_pin: {got}, want {want}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"expected_pin raised {type(e).__name__}: {e}")
+    b = batch.Batch(None, None, None, table=t, history=[])
+    try:
+        if b.row_problems([nt_row(1), nt_row(2, model="test-model-b")]):
+            p.append(f"clean rows refused: {b.row_problems([nt_row(1), nt_row(2, model='test-model-b')])}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"clean rows crashed the row check: {type(e).__name__}: {e}")
+    no_agent = nt_row()
+    del no_agent["agent"]
+    bad = {
+        "a row without agent": (no_agent, "agent"),
+        "agent None": (dict(nt_row(), agent=None), "agent"),
+        "agent without its version": (dict(nt_row(), agent={"harness": NT_HARNESS}), "agent"),
+        "agent with an extra key": (nt_row(model_id="x"), "agent"),
+        "agent version not a string": (nt_row(version=1), "agent"),
+        "a harness with no profiles": (nt_row(harness=NT_FAKE), "no pre-registered pin profile"),
+        "agent.version differs from its pin's version": (nt_row(version="9.9.9"), "version"),
+    }
+    for name, (r, why) in bad.items():
+        try:
+            found = b.row_problems([r])
+        except Exception as e:  # noqa: BLE001 - a crash is not a refusal
+            p.append(f"{name}: crashed ({type(e).__name__}: {e})")
+            continue
+        if not any(why in x for x in found):
+            p.append(f"{name}: want refused naming {why!r}, got {found}")
+    return p
+
+
+class TestNextTouchAgentRow(unittest.TestCase):
+    """Interface 8 (w1b's next-touch item 5): the batch rows gain `agent` beside `model`, required."""
+
+    def test_the_row_carries_its_agent(self):
+        self.assertEqual(agent_row_problems(), [])
 
 
 if __name__ == "__main__":

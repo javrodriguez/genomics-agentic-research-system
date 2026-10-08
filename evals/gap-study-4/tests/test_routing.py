@@ -62,6 +62,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import agent_adapter as aa  # noqa: E402  (the seam only; routing.py never imports it)
+import harness_bookkeeping as hb  # noqa: E402  (the seam's harness name, never typed here: interface 8)
 import routing  # noqa: E402
 from graders import labels4  # noqa: E402
 
@@ -2229,6 +2230,87 @@ class TestPurityAndCaps(unittest.TestCase):
         def wrong_cap(records, table):
             return dict(routing.route(records, table), cap=table["caps"][labels4.GRADED])
         self.assertNotEqual(cap_problems(wrong_cap, test_table()), [])
+
+
+
+# ---------------------------------------------------------------- w1b's next touch (lane w4h-w1b-next-touch)
+# Interface 8 (item 5, the schema half): the routing pin carries the take's harness (AgentAdapter.name) beside its
+# model, and pin_profiles is keyed by harness, then model. The harness is the seam's own name, never typed here.
+NT_HARNESS = hb.CLAUDE_CODE
+NT_FAKE = "fake-second"                      # the test-only second harness (interface 8)
+NT_INIT_FIELDS = ("model", "permission_mode", "version")   # an init event's fields, typed once here
+NT_PROFILES = {NT_HARNESS: {"test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
+                            "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"}}}
+NT_PIN = dict(NT_PROFILES[NT_HARNESS]["test-model-a"], model="test-model-a", harness=NT_HARNESS)
+
+
+def nt_init(pin: dict) -> dict:
+    """An init event under `pin`: the pin's init fields (an init event names no harness)."""
+    return {f: pin[f] for f in NT_INIT_FIELDS}
+
+
+def nt_table() -> dict:
+    t = copy.deepcopy(REAL)
+    t["pin_profiles"] = copy.deepcopy(NT_PROFILES)
+    t["pin_profiles_status"] = "TEST-ONLY: two injected profiles under one harness"
+    return t
+
+
+def nt_record(phase: str, pin: dict | None = None) -> dict:
+    """baseline(phase), its pin the harness-keyed one and its init events under that pin."""
+    pin = dict(pin or NT_PIN)
+    rec = baseline(phase)
+    rec["pin"] = dict(pin)
+    rec["init"] = [nt_init(pin) for _ in rec["init"]]
+    return rec
+
+
+def agent_pin_problems(table: dict) -> list[str]:
+    """Interface 8 on the routing pin: a take under its harness-keyed profile routes; a pin without its harness, with
+    a harness that is no string, or with a harness the table holds no profiles for is refused; an init event never
+    carries the harness."""
+    p = []
+    for phase, want in ((A, labels4.GRADED), (B, None)):
+        got = try_route(nt_record(phase), table)
+        if want is not None and (isinstance(got, Exception) or got["route"] != want):
+            p.append(f"a clean {phase} take under its harness-keyed profile: {got}")
+    for name, edit, why in (
+            ("the pin without its harness", lambda r: r["pin"].pop("harness"), "pin must hold exactly"),
+            ("a None harness", lambda r: r["pin"].update(harness=None), "pin values must be strings"),
+            ("a harness with no profiles", lambda r: r["pin"].update(harness=NT_FAKE), NT_FAKE),
+            ("an init event carrying the harness", lambda r: r["init"][0].update(harness=NT_HARNESS), "init[0]")):
+        rec = nt_record(A)
+        edit(rec)
+        got = try_route(rec, table)
+        if not isinstance(got, routing.RoutingRefused) or why not in str(got):
+            p.append(f"{name}: want refused naming {why!r}, got {got}")
+    return p
+
+
+class TestNextTouchAgentPin(unittest.TestCase):
+    """Interface 8 (w1b's next-touch item 5): the routing pin gains `harness`, and pin_profiles is keyed by harness,
+    then model. pin_profiles stays empty and PENDING (CP5's values), its status reworded to the new shape."""
+
+    def test_the_pin_carries_its_harness(self):
+        self.assertEqual(agent_pin_problems(nt_table()), [])
+
+    def test_profiles_are_keyed_by_harness_then_model(self):
+        self.assertEqual(routing.check_table(nt_table()), [])
+        flat = nt_table()
+        flat["pin_profiles"] = copy.deepcopy(NT_PROFILES[NT_HARNESS])   # the old shape: keyed by model alone
+        self.assertTrue(any("pin_profiles" in x or "pin profile" in x for x in routing.check_table(flat)))
+        for bad in ({NT_HARNESS: {}}, {"": NT_PROFILES[NT_HARNESS]}, {NT_HARNESS: {"test-model-a": {"version": "1"}}}):
+            t = nt_table()
+            t["pin_profiles"] = copy.deepcopy(bad)
+            self.assertNotEqual(routing.check_table(t), [], bad)
+
+    def test_the_pending_status_names_the_new_shape(self):
+        self.assertEqual(REAL["pin_profiles"], {})
+        status = REAL["pin_profiles_status"]
+        self.assertTrue(status.startswith("PENDING (CP5)"), status)
+        for cite in ("keyed by harness", "then model", "interface 8"):
+            self.assertIn(cite, status)
+        self.assertEqual(tuple(routing.PIN_KEYS), ("harness",) + NT_INIT_FIELDS)
 
 
 if __name__ == "__main__":
