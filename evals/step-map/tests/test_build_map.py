@@ -184,6 +184,41 @@ class HisAnswers(unittest.TestCase):
         self.assertIn("## His answers to REVIEW.md", self.md)
 
 
+class FixPlan(unittest.TestCase):
+    """FIXES.md (the batch plan from his answers) is bound to his page and to the pin."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = open(os.path.join(LANE, "FIXES.md"), encoding="utf-8").read()
+        cls.answers = B.review_answers()
+
+    def test_cited_lines_exist_at_the_pin(self):
+        refs = re.findall(r"`(gars/[^`:]+):(\d+)`", self.text)
+        self.assertGreaterEqual(len(refs), 15)
+        cache = {}
+        for path, line in refs:
+            if path not in cache:
+                cache[path] = show(path).split("\n")
+            self.assertTrue(cache[path][int(line) - 1].strip(), "%s:%s" % (path, line))
+
+    def test_cited_files_exist_at_the_pin(self):
+        for path in set(re.findall(r"`(gars/[^`:]+\.py)`", self.text)):
+            show(path)
+
+    def test_the_agreed_list_is_his_fourteen(self):
+        section = self.text.split("## The fourteen he agreed to")[1].split("\n## ")[0]
+        listed = re.findall(r"\b(?:S0[0-3]|[RDG])-[a-z]+\b", section)
+        agreed = [u for u, a in self.answers.items() if B.classify(a) == "agree"]
+        self.assertEqual(sorted(listed), sorted(agreed))
+
+    def test_item_one_quotes_his_words_whole(self):
+        section = self.text.split("### His fix, in his words")[1].split("\n###")[0]
+        block = [line for line in section.strip().split("\n") if line.startswith(">")]
+        quoted = "\n".join(line[2:] for line in block)
+        self.assertEqual(quoted, self.answers["S00-class"])
+        self.assertIn("\n".join(block), section)   # one contiguous quote, nothing left out
+
+
 class Validator(unittest.TestCase):
     """Each rule the validator enforces refuses a judgment that breaks it."""
 
