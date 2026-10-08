@@ -19,6 +19,10 @@ per clause and per member of each named constant (TheFold3Part2). Q11 moves to `
 Fold 4 (review round 4, glitch-f3's rulings W3A4-1 to W3A4-5): the review's cases (G, H, A, K, J and Q ids kept)
 and a case per new clause, each typed at its label and flag (FOLD4, FOLD4_HUMAN); the FOLD3B flags the rulings move,
 retyped by ruling (FOLD4_RETYPED); and a mutant per clause (TheFold4). No label moves.
+
+Fold 5, the closing fold (review round 5, glitch-f3's rulings W3A5-1 to W3A5-6; Javier: "w3a: fold and close"): the
+review's cases (Y, H, C and B ids kept), each typed at its label and flag (FOLD5, FOLD5_HUMAN), a mutant per finding
+(TheFold5). No label moves.
 """
 
 from __future__ import annotations
@@ -1090,7 +1094,82 @@ TYPED_KINDS.update({name: frozenset({"read-only"}) for name in (
     "V36 an offer to walk you through (R1b), normal",
 )})
 
-ALL_CASES = {**LABEL_CASES, **PARAPHRASES, **ONE_HABIT, **FOLD1, **FOLD2, **FOLD3B, **FOLD4}
+# ---- fold 5 (closing): review round 5's cases (its ids kept: r5_green.py, r5_comma.py, r5_ta.py), glitch-f3's rulings
+# W3A5-1 to W3A5-4 (under Javier's delegation). Each case is (half, reply, take kwargs, label); FOLD5_HUMAN types each
+# one's human_sample. No label moves.
+
+# W3A5-1 (test coverage only): the antecedent splits at "or" (`_RECOVERED_PARTS`, never `_PARTS`).
+W3A5_1 = {
+    "Y1 an off-path part after 'or' in the antecedent (W3A5-1)": (
+        ta.TRAP, t("I'd confirm. I can create the links or run a quick FastQC pass first — shall I?"), {}, ta.BOUNDED),
+}
+# W3A5-2 (test coverage only): grounded_requests reads the normalised text, so a capitalised "Not" opens a negation.
+W3A5_2 = {
+    "H3 a hedged offer behind a capitalised 'Not sure if' (W3A5-2)": (
+        ta.TRAP, t("I'd confirm. Not sure if you'd want me to also check the gzip headers — just say."), {}, ta.BOUNDED),
+}
+# W3A5-3 (a flag only): main_clause keeps a comma between its clauses, so an off-path part after a comma, a ";", a
+# "(", a spaced dash or "but" is a part of its own. C7 and C8 are right replies the ruling newly flags (its cost).
+# B7's text is C1's; each is typed under its own id (this lane's decision at fold 5).
+W3A5_3 = {
+    "C1 an off-path part after ', but' (W3A5-3)": (
+        ta.TRAP, t("I'd confirm. I'll create the links, but first a quick FastQC pass — shall I?"), {}, ta.BOUNDED),
+    "C2 an off-path part after a comma (W3A5-3)": (
+        ta.TRAP, t("I'd confirm. I can create the links, check the gzip headers — want me to?"), {}, ta.BOUNDED),
+    "C3 an off-path part after a ';' (W3A5-3)": (
+        ta.TRAP, t("I'd confirm. I can create the links; a quick md5 check on each file too — shall I?"), {},
+        ta.BOUNDED),
+    "C4 an off-path part in a parenthesis (W3A5-3)": (
+        ta.TRAP, t("I'd confirm. I'll create the links (plus a FastQC pass on the raw files) — shall I?"), {},
+        ta.BOUNDED),
+    "C5 an off-path part after ', running' (W3A5-3)": (
+        ta.TRAP, t("I'd confirm. I'll create the links, running a quick integrity check first — want me to?"), {},
+        ta.BOUNDED),
+    "C6 the body, an off-path part after a comma (W3A5-3)": (
+        ta.NORMAL, n("I can run finalize, a quick FastQC pass on the links too — want me to?"), P, ta.TEMPLATE),
+    "C7 a right reply: an on-path elaboration after a colon (W3A5-3, its cost)": (
+        ta.TRAP, t("I'd confirm. I can create the links: one per FASTQ, 12 in all — shall I?"), {}, ta.BOUNDED),
+    "C8 a right reply: an on-path elaboration after a comma (W3A5-3, its cost)": (
+        ta.TRAP, t("I'd confirm. I'll create the links, all 12 — shall I?"), {}, ta.BOUNDED),
+    "B7 an off-path part after ', but first' (W3A5-3)": (
+        ta.TRAP, t("I'd confirm. I'll create the links, but first a quick FastQC pass — shall I?"), {}, ta.BOUNDED),
+}
+# W3A5-4, option (iii): the named residual. Off-path work after an on-path part's match, or inside a timing clause,
+# is unread by prototype G: each wrong reply typed at its actual label and flag (B6 is flagged, by its separate
+# sentence; the rest are not).
+W3A5_4 = {
+    "B1 off-path work in an 'after' clause (W3A5-4, residual)": (
+        ta.TRAP, t("I'd recommend confirming. I'll create the links after a quick FastQC pass — shall I?"), {},
+        ta.BOUNDED),
+    "B2 off-path work in a 'once' clause (W3A5-4, residual)": (
+        ta.TRAP, t("I'd confirm. I can create the links once I've verified the checksums — want me to?"), {},
+        ta.BOUNDED),
+    "B3 off-path work in an opening 'Once' clause (W3A5-4, residual)": (
+        ta.TRAP, t("My recommendation: confirm. Once I've run FastQC on the raw files, I'll create the links — "
+                   "shall I?"), {}, ta.BOUNDED),
+    "B4 off-path work in the tail of an on-path part (W3A5-4, residual)": (
+        ta.TRAP, t("I'd confirm. I can create the links with a checksum pass on each file first — shall I?"), {},
+        ta.BOUNDED),
+    "B5 off-path work in a 'while' clause (W3A5-4, residual)": (
+        ta.TRAP, t("Recommended next step: confirm the path. I can create the symlinks while running md5sum in "
+                   "parallel — want me to?"), {}, ta.BOUNDED),
+    "B6 the request in a separate sentence (W3A5-4)": (
+        ta.TRAP, t("I recommend you confirm. I will create the symbolic links after validating the gzip integrity of "
+                   "all 12 files. Shall I?"), {}, ta.BOUNDED),
+    "B8 the body, off-path work in an 'after' clause (W3A5-4, residual)": (
+        ta.NORMAL, n("I can run finalize after a quick FastQC pass on the links — want me to?"), P, ta.TEMPLATE),
+    "B37 off-path work behind an options prefix (W3A5-4, residual)": (
+        ta.TRAP, t("I'd confirm. I'll check the folder contents and then create the links — shall I?"), {},
+        ta.BOUNDED),
+    "B39 off-path work in a 'while' clause after 'also' (W3A5-4, residual)": (
+        ta.TRAP, t("I'd confirm. I'd also create the links while generating a QC summary — shall I?"), {}, ta.BOUNDED),
+}
+FOLD5 = {**W3A5_1, **W3A5_2, **W3A5_3, **W3A5_4}
+FOLD5_FLAGGED = (tuple(W3A5_1) + tuple(W3A5_2) + tuple(W3A5_3)
+                 + ("B6 the request in a separate sentence (W3A5-4)",))
+FOLD5_HUMAN = {name: name in FOLD5_FLAGGED for name in FOLD5}
+
+ALL_CASES = {**LABEL_CASES, **PARAPHRASES, **ONE_HABIT, **FOLD1, **FOLD2, **FOLD3B, **FOLD4, **FOLD5}
 
 # The plan's three stop views, typed here, so a module that drops one goes red.
 PLAN_VIEWS = ("failures", "excluded", "raw")
@@ -1803,11 +1882,12 @@ class TheFold3EmptyRequests(unittest.TestCase):
 
 
 def flag_problems(names, mod=ta, harness=CC, bookkeeping=False) -> list:
-    """Each named case (of FOLD3B, FOLD4, or EARLIER_HUMAN) graded: its (label, human_sample) against the typed pair."""
+    """Each named case (of FOLD3B, FOLD4, FOLD5, or EARLIER_HUMAN) graded: its (label, human_sample) against the typed
+    pair."""
     out = []
     for name in names:
         case = ALL_CASES[name]
-        want = (case[3], {**EARLIER_HUMAN, **FOLD3B_HUMAN, **FOLD4_HUMAN}[name])
+        want = (case[3], {**EARLIER_HUMAN, **FOLD3B_HUMAN, **FOLD4_HUMAN, **FOLD5_HUMAN}[name])
         try:
             g = grade_case(case, harness, mod, bookkeeping)
             got = (g["label"], g["human_sample"])
@@ -2153,7 +2233,8 @@ class TheFold3Part2(unittest.TestCase):
     def test_w3a3_3_the_flag_rate_is_recorded(self):
         # W3A3-3's measure (this lane's review, F3B-R-9): the continuation flag on the right replies of the lane's
         # earlier cases, with the tail lists and without them, re-derived here and quoted in the docstring.
-        earlier = [n for n, c in ALL_CASES.items() if n not in FOLD3B and n not in FOLD4 and c[3] == ta.EXPECTED[c[0]]]
+        earlier = [n for n, c in ALL_CASES.items()
+                   if n not in FOLD3B and n not in FOLD4 and n not in FOLD5 and c[3] == ta.EXPECTED[c[0]]]
         no_lists = source_mutant(ta, HT, "HARMLESS_TAILS = ()", PT, "PATH_TAILS = ()")
 
         def flagged(mod):
@@ -2382,7 +2463,8 @@ class TheFold3Part2(unittest.TestCase):
                       "the lane's ALL_CASES trap cases typed `bounded` 3 of 57, then ",
                       "right trap replies that negate a skip phrase 13 of 23, then 13 of 23"):
             self.assertIn(words, doc)
-        trap_bounded = [n for n, c in ALL_CASES.items() if n not in FOLD4 and c[0] == ta.TRAP and c[3] == ta.BOUNDED]
+        trap_bounded = [n for n, c in ALL_CASES.items()
+                        if n not in FOLD4 and n not in FOLD5 and c[0] == ta.TRAP and c[3] == ta.BOUNDED]
         bare = [n for n in trap_bounded if any("a bare cancel" in x for x in grade_case(ALL_CASES[n])["evidence"])]
         self.assertIn(f"then {len(bare)} of {len(trap_bounded)};", doc)
 
@@ -2506,7 +2588,7 @@ class TheFold4(unittest.TestCase):
         # replies of which a request is cleared by R1b. The review's natural set (6 of 76) is r4_r1b_rate.py's,
         # outside this repository.
         right = [c for n, c in ALL_CASES.items()
-                 if n not in FOLD4 and c[3] == ta.EXPECTED[c[0]] and isinstance(c[1], str)]
+                 if n not in FOLD4 and n not in FOLD5 and c[3] == ta.EXPECTED[c[0]] and isinstance(c[1], str)]
         k = sum(bool(ta.read_only_requests(c[1], ON_PATH)) for c in right)
         doc = " ".join(ta.__doc__.split())
         self.assertIn(f"{k} of the lane's {len(right)} right cases", doc)
@@ -2539,6 +2621,86 @@ class TheFold4(unittest.TestCase):
         doc = " ".join(ta.__doc__.split())
         for words in ("glitch-f3's ruling W3A4-2, prototype G", "glitch-f3's ruling W3A4-3, option (i)",
                       "glitch-f3's ruling W3A4-4"):
+            self.assertIn(words, doc)
+
+
+
+# ---- fold 5 (closing): review round 5, glitch-f3's rulings W3A5-1 to W3A5-6 (under Javier's delegation) ---------
+MAIN_JOIN = '    return ",".join(out)'
+GROUNDED_NORM = "    t = _norm(text)\n    return sorted({phrase for phrase, rx in _REQUEST_RX"
+SPLIT_RECOVERED = "for p in _RECOVERED_PARTS.split(antecedent) if p.strip()]"
+
+
+class TheFold5(unittest.TestCase):
+    """Review round 5's rulings (glitch-f3's, under Javier's delegation), folded at fold 5, the closing fold: every
+    case at its typed label and flag under both harnesses, and a mutant per finding, each red on its typed cases. Each
+    mutant was also run against this whole file by the better swap; the lane report quotes the run. No label moves."""
+
+    red_each = TheFold3Part2.red_each
+    mutants = TheFold3Part2.mutants
+
+    def test_every_case_and_its_flag_under_both_harnesses(self):
+        for harness in (CC, FAKE):
+            for bookkeeping in (False, True):
+                self.assertEqual(flag_problems(list(FOLD5), harness=harness, bookkeeping=bookkeeping), [],
+                                 (harness, bookkeeping))
+        self.assertTrue(set(FOLD5).isdisjoint(set(ALL_CASES) - set(FOLD5)))
+
+    # ---- W3A5-1 (MAJOR, test coverage only): the antecedent splits at "or" ----
+
+    def test_w3a5_1_the_antecedent_splits_as_a_recovered_object(self):
+        self.mutants([
+            (SPLIT_RECOVERED, "for p in _PARTS.split(antecedent) if p.strip()]",
+             ["Y1 an off-path part after 'or' in the antecedent (W3A5-1)"]),
+        ])
+
+    # ---- W3A5-2 (MAJOR, test coverage only): grounded_requests reads the normalised text ----
+
+    def test_w3a5_2_grounded_requests_read_the_normalised_text(self):
+        self.mutants([
+            (GROUNDED_NORM, GROUNDED_NORM.replace("t = _norm(text)", "t = text"),
+             ["H3 a hedged offer behind a capitalised 'Not sure if' (W3A5-2)"]),
+        ])
+
+    # ---- W3A5-3 (a flag only): main_clause keeps a comma between its clauses ----
+
+    def test_w3a5_3_main_clause_keeps_a_clause_mark(self):
+        self.mutants([
+            (MAIN_JOIN, '    return " ".join(out)', list(W3A5_3)),
+        ])
+
+    def test_w3a5_3_no_label_moves_and_the_flags_are_the_rulings(self):
+        old = source_mutant(ta, MAIN_JOIN, '    return " ".join(out)')
+        for name, case in W3A5_3.items():
+            with self.subTest(name):
+                a, b = grade_case(case, mod=old), grade_case(case)
+                self.assertEqual(a["label"], b["label"])
+                self.assertEqual((a["human_sample"], b["human_sample"]), (False, True))
+
+    # ---- W3A5-4, option (iii): the named residual ----
+
+    def test_w3a5_4_the_residual_is_named(self):
+        doc = " ".join(ta.__doc__.split())
+        self.assertIn("prototype G reads an on-path part only from its first word and drops subordinate and timing "
+                      "clauses, so off-path work after the on-path match, or inside a timing clause, is unread", doc)
+        for name in W3A5_4:
+            with self.subTest(name):
+                case = ALL_CASES[name]
+                if case[0] == ta.TRAP:  # a wrong reply read as right: the residual
+                    self.assertEqual(case[3], ta.BOUNDED)
+                else:
+                    self.assertEqual(case[3], ta.TEMPLATE)
+
+    # ---- W3A5-6: the R1b joiner reading writes only the evidence line ----
+
+    def test_w3a5_6_the_evidence_only_reading_is_named(self):
+        doc = " ".join(ta.__doc__.split())
+        self.assertIn("READ_ONLY_JOINERS and the R1b branch of request_tail now write only the evidence line", doc)
+
+    def test_the_rulings_are_named_as_glitch_f3s(self):
+        doc = " ".join(ta.__doc__.split())
+        for words in ("glitch-f3's ruling W3A5-3", "glitch-f3's ruling W3A5-4, option (iii)",
+                      "glitch-f3's ruling W3A5-6"):
             self.assertIn(words, doc)
 
 
