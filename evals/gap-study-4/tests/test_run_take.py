@@ -1432,6 +1432,45 @@ PLANTED = {
 }
 
 
+LANE_TESTS = ("tests/test_run_take.py", "tests/test_preflight.py", "tests/test_take_config.py")
+PROCESS_CALLS = frozenset({"run", "Popen", "call", "check_call", "check_output", "getoutput", "getstatusoutput"})
+
+
+def audit_test_source(rel: str, source: str) -> list:
+    """Interface 16: in this lane's test files, a direct subprocess call appears only inside `_round3_leak_words`,
+    and that helper runs `git show` with a list argv."""
+    tree = ast.parse(source)
+    out = []
+    helpers = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_round3_leak_words"]
+    if len(helpers) != 1:
+        out.append(f"{rel}: not exactly one _round3_leak_words helper")
+    inside = {id(n) for h in helpers for n in ast.walk(h)}
+    # The planted calls that prove the guard is armed (each must raise the guard's tripwire).
+    armed = {id(n) for f in ast.walk(tree) if isinstance(f, ast.FunctionDef) and f.name == "test_guard_is_armed"
+             for n in ast.walk(f)}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
+                and isinstance(node.func.value, ast.Name) and node.func.value.id == "subprocess" \
+                and node.func.attr in PROCESS_CALLS:
+            if id(node) in armed:
+                continue
+            if id(node) not in inside:
+                out.append(f"{rel}: subprocess.{node.func.attr} outside _round3_leak_words")
+            elif not (node.args and isinstance(node.args[0], ast.List)
+                      and [getattr(e, "value", None) for e in node.args[0].elts[:1]] == ["git"]
+                      and any(isinstance(e, ast.Constant) and e.value == "show" for e in node.args[0].elts)):
+                out.append(f"{rel}: the leak-word read is not git show with a list argv")
+    return out
+
+
+TEST_PLANTED = {
+    "call-outside-helper": "def _round3_leak_words():\n    subprocess.run(['git', 'show', 'x'])\n"
+                           "def f():\n    subprocess.Popen(['x'])\n",
+    "no-helper": "x = 1\n",
+    "shell-string": "def _round3_leak_words():\n    subprocess.run('git show x', shell=True)\n",
+}
+
+
 def process_audit(read=None) -> list:
     """Planted positives first (each must be caught), then the three real modules (each must be clean)."""
     out = []
@@ -1442,6 +1481,12 @@ def process_audit(read=None) -> list:
         path = os.path.join(HERE, rel)
         src = read(rel) if read else open(path, encoding="utf-8").read()
         out += audit_source(rel, src)
+    for name, src in TEST_PLANTED.items():
+        if not audit_test_source("planted", src):
+            out.append(f"planted test {name} was not caught")
+    for rel in LANE_TESTS:
+        with open(os.path.join(HERE, rel), encoding="utf-8") as fh:
+            out += audit_test_source(rel, fh.read())
     return out
 
 
@@ -1460,6 +1505,7 @@ class TestProcessAudit(MutantCase):
             ("take-config-kills", with_added("box/take_config.py", "\nos.kill(1, 9)\n")),
             ("second-run-site", with_added("box/run_take.py", "\ndef g():\n    subprocess.run([])\n")),
             ("planted-dropped", lambda: mock.patch.dict(PLANTED, {"posix-spawn-import": ("box/x.py", "x = 1\n")})),
+            ("test-call-allowed", patched(sys.modules[__name__], "audit_test_source", lambda rel, src: [])),
         ])
 
 
@@ -1471,7 +1517,8 @@ if __name__ == "__main__":
         problems = process_audit()
         for p in problems:
             print(f"process audit: {p}")
-        print(f"process audit: {len(PLANTED)} planted positives caught, {len(BOX_MODULES)} modules read, "
+        print(f"process audit: {len(PLANTED) + len(TEST_PLANTED)} planted positives caught, "
+              f"{len(BOX_MODULES)} modules and {len(LANE_TESTS)} test files read, "
               f"{len(problems)} problem(s)")
         sys.exit(1 if problems else 0)
     unittest.main(verbosity=2)
