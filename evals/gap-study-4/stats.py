@@ -156,6 +156,20 @@ def _id(v) -> bool:
     return isinstance(v, str) and ID.fullmatch(v) is not None
 
 
+# An agent version is printed in the Agents table: id-like, no spaces, pipes or slashes (W4E1-7; CP2 to confirm).
+VERSION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,127}")
+
+
+def _check_agent(a) -> None:
+    """agent is {"harness": an id, "version": an id-like pin}, required and never defaulted."""
+    if (not isinstance(a, dict) or set(a) != set(AGENT_FIELDS) or not all(_text(a[k]) for k in AGENT_FIELDS)
+                or not _id(a.get("harness"))):
+        raise StatsError(f"agent must be {{'harness': str, 'version': str}}, never defaulted: {a!r}")
+    version = a.get("version")
+    if version is not None and VERSION_ID.fullmatch(version) is None:
+        raise StatsError(f"agent.version must match {VERSION_ID.pattern}: {version!r}")
+
+
 def _one_level(r: dict) -> bool:
     """Exactly one of repeat and pressure is None (variants.cells)."""
     return (r["repeat"] is None) != (r["pressure"] is None)
@@ -175,14 +189,12 @@ def validate_record(r) -> dict:
         raise StatsError(f"label must be a non-empty string: {r['label']!r}")
     if r["half"] not in HALVES:
         raise StatsError(f"half {r['half']!r} is not one of {HALVES}")
-    if "agent" in TAKE_FIELDS:   # the agent check is tied to the field list (a mutant drops both together)
-        a = r["agent"]
-        if (not isinstance(a, dict) or set(a) != set(AGENT_FIELDS) or not all(_text(a[k]) for k in AGENT_FIELDS)
-                or not _id(a.get("harness"))):
-            raise StatsError(f"agent must be {{'harness': str, 'version': str}}, never defaulted: {a!r}")
+    _check_agent(r.get("agent"))
     rep, pres = r["repeat"], r["pressure"]
     if rep is not None and (isinstance(rep, bool) or not isinstance(rep, int)):
         raise StatsError(f"repeat must be an int or None: {rep!r}")
+    if rep is not None and rep < 0:
+        raise StatsError(f"repeat must not be negative: {rep!r}")
     if pres is not None and not isinstance(pres, bool):
         raise StatsError(f"pressure must be a bool or None: {pres!r}")
     if not _one_level(r):
@@ -232,20 +244,35 @@ def try_key(r: dict) -> tuple:
 
 
 def check_records(records: list) -> list:
-    """Every record valid, and no try twice."""
-    seen = set()
+    """Every record valid, no try twice, and one kind of level (repeat or pressure) per task (W4E1-10)."""
+    seen, kinds = set(), {}
     for r in records:
         validate_record(r)
         k = try_key(r)
         if k in seen:
             raise StatsError(f"two records of one try: {k}")
         seen.add(k)
+        kinds.setdefault(r["task"], set()).add(level(r)[0])
+    for task, got in kinds.items():
+        if len(got) != 1:
+            raise StatsError(f"task {task!r} carries both repeat and pressure levels; one kind per task")
     return records
 
 
+def _strays(folder: Path) -> list:
+    """Every entry of the results folder that is not a top-level *.json file (a subfolder, another suffix)."""
+    return sorted(p.name for p in folder.iterdir() if not (p.is_file() and p.suffix == ".json"))
+
+
 def results_files(folder=RESULTS_DIR) -> list:
+    """The top-level *.json files; StatsError when the folder holds anything else, so no record goes unseen."""
     folder = Path(folder)
-    return sorted(folder.glob("*.json")) if folder.is_dir() else []
+    if not folder.is_dir():
+        return []
+    strays = _strays(folder)
+    if strays:
+        raise StatsError(f"the results folder holds entries that are not top-level *.json files: {strays}")
+    return sorted(folder.glob("*.json"))
 
 
 def load_results(folder=RESULTS_DIR) -> list:
@@ -316,7 +343,7 @@ def _view_counts(rs: list, view: str):
         out = words.count("out")
         n = len(words) - out
         if n == 0:
-            return NO_TAKES
+            return f"{_say(out)} stops excluded, none counted" if out else NO_TAKES
         return dict(zip(("right", "n", "lower", "upper", "out"), (right, n, *bound(right, n), out)))
     n = len(words)
     if n == 0:
@@ -345,11 +372,11 @@ def bounds_table(records: list, design: dict):
 
 
 def _xn(c, word="right") -> str:
-    return NO_TAKES if c == NO_TAKES else f"{c[word]} of {c['n']}"
+    return c if isinstance(c, str) else f"{c[word]} of {c['n']}"
 
 
 def _iv(c) -> str:
-    return "" if c == NO_TAKES else f"{c['lower']} to {c['upper']}"
+    return "" if isinstance(c, str) else f"{c['lower']} to {c['upper']}"
 
 
 def render_bounds(rows) -> str:
@@ -412,6 +439,12 @@ def _closed(d, fields, what):
         raise StatsError(f"{what} must hold exactly {fields}: {got}")
 
 
+def _canonical(f: Fraction) -> str:
+    """The shortest decimal spelling of a grid value: 0.05, never 0.050000."""
+    text = intervals.fmt(f).rstrip("0")
+    return text + "0" if text.endswith(".") else text
+
+
 def validate_design(d) -> dict:
     """The design, or StatsError naming what is wrong with it. Closed, like the record."""
     _closed(d, DESIGN_FIELDS, "the design")
@@ -427,6 +460,10 @@ def validate_design(d) -> dict:
     for h, pair in sw.items():
         if h not in hm or not _texts(pair) or len(pair) != 2 or not set(pair) <= set(hm[h]):
             raise StatsError(f"stronger_weaker[{h!r}] must be two distinct models of that harness: {pair!r}")
+    for h, models in hm.items():
+        if len(models) >= 2 and h not in sw:
+            raise StatsError(f"harness {h!r} has {len(models)} models and no stronger_weaker entry (D8 B2: one "
+                             f"contrast per harness)")
     cv = d["cross_vendor"]
     if not _texts(cv, nonempty=False) or sorted(cv) != sorted(pair[0] for pair in sw.values()):
         raise StatsError(f"cross_vendor is the stronger model of each harness: {cv!r}")
@@ -435,6 +472,8 @@ def validate_design(d) -> dict:
     alpha = _on_grid(d["alpha"])
     if not 0 < alpha < 1:
         raise StatsError("alpha lies strictly between 0 and 1")
+    if d["alpha"] != _canonical(alpha):
+        raise StatsError(f"alpha is written in its shortest spelling, {_canonical(alpha)!r}, not {d['alpha']!r}")
     b = d["bootstrap"]
     _closed(b, BOOTSTRAP_FIELDS, "bootstrap")
     if not (_int(b["seed"]) and _int(b["reps"], 1)):
@@ -1023,7 +1062,9 @@ def render_comparisons(rows, design: dict) -> str:
         return "\n".join(out + [NO_TAKES, ""])
     out += [f"The test unit is one try's trap and normal record, right when both halves are right under the strict "
             f"view, compared by the two-sided Fisher exact test; per-task families are Holm-adjusted over the "
-            f"{_say(family_size(design))} tasks that run, in exact arithmetic, at alpha {design['alpha']}. "
+            f"{_say(family_size(design))} tasks that run, and each stronger-against-weaker contrast over the "
+            f"{_say(len(design['stronger_weaker']))} stronger-against-weaker contrasts, in exact arithmetic, at "
+            f"alpha {design['alpha']}. "
             f"Each row names its family; a descriptive row carries no test.", "",
             "| Family | Harness | Model | Harness | Model | Task | Units right (first) | Units right (second) "
             "| Incomplete units | Fisher p | Holm-adjusted p | At or under alpha |",
@@ -1052,7 +1093,7 @@ def render_across(rows) -> str:
             "| Family | Harness | Model | Harness | Model | Slots both completed | Difference | Bootstrap bounds |",
             "|---|---|---|---|---|---|---|---|"]
     for r in rows:
-        slots = f"{r['slots']} of {r['slots'] + r['unmatched']}" if r["slots"] or r["unmatched"] else NO_TAKES
+        slots = f"{r['slots']} of {r['slots'] + r['unmatched']}" if r["slots"] else NO_TAKES
         iv = "" if r["difference"] == NO_TAKES else f"{r['lower']} to {r['upper']}"
         out.append(f"| {r['family']} | `{r['harness_a']}` | `{r['model_a']}` | `{r['harness_b']}` | `{r['model_b']}` "
                    f"| {slots} | {r['difference']} | {iv} |")
@@ -1127,13 +1168,18 @@ def _first_difference(a: str, b: str) -> str:
 
 def check(results_dir=RESULTS_DIR, prereg_path=PREREG, page_path=RESULT_PAGE):
     """(exit code, lines). With no results files: the no-takes line and 0, which is not a pass on data."""
-    files = results_files(results_dir)
+    try:
+        files = results_files(results_dir)
+    except StatsError as e:
+        return 1, [f"stats --check: FAIL results folder: {e}"]
     if not files:
         return 0, [NO_TAKES_LINE]
     try:
         records = load_results(results_dir)
     except StatsError as e:
         return 1, [f"stats --check: FAIL record: {e}"]
+    if not records:   # W4E1-9: files that hold no record are no takes, never a pass
+        return 0, [f"stats --check: no takes ({len(files)} results files, 0 records); nothing was compared"]
     design, problem = read_design(prereg_path)
     if problem:
         return 1, [f"stats --check: FAIL no design: {problem}"]

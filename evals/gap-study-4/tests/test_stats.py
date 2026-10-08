@@ -991,12 +991,12 @@ class ReviewRound1Lane(unittest.TestCase):
         p = stats.intervals.fisher_two_sided(9, 10, 2, 10)
         self.assertEqual((c["p"], c["adjusted"]), (stats.intervals.fmt_p(p), stats.intervals.fmt_p(3 * p)))
 
-    POWER_POINTS = [{"stronger": "0.500", "weaker": "0.500", "task_spread": "0.000", "wording_spread": "0.000"},
-                    {"stronger": "0.500", "weaker": "0.500", "task_spread": "0.400", "wording_spread": "0.000"},
-                    {"stronger": "0.500", "weaker": "0.500", "task_spread": "0.000", "wording_spread": "0.400"}]
-    # Bound on the seed (W4E1-4): measured on this code, f755ac32's power_table plus fold 1; a change to the
-    # clustering, the seed or the tests applied changes them.
-    POWER_BOUND = None   # bound in the fix commit, from the fixed code
+    POWER_POINTS = [{"stronger": "0.700", "weaker": "0.500", "task_spread": "0.000", "wording_spread": "0.000"},
+                    {"stronger": "0.700", "weaker": "0.500", "task_spread": "0.400", "wording_spread": "0.000"},
+                    {"stronger": "0.700", "weaker": "0.500", "task_spread": "0.000", "wording_spread": "0.400"}]
+    # Bound on the seed (W4E1-4), measured on fold 1's power_table; zeroing the task offset or the wording offset, or
+    # changing the seed or the tests applied, changes them.
+    POWER_BOUND = [(7, 18, 17), (2, 24, 30), (2, 14, 15)]
 
     def test_w4e1_4_power_clustering_is_bound(self):
         d = design(tasks=NINE, power=dict(design()["power"], sims=40, bootstrap_reps=20, grid=self.POWER_POINTS))
