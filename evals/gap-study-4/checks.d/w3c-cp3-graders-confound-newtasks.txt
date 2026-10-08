@@ -1,0 +1,15 @@
+# Lane w3c-cp3-graders-confound-newtasks: CP3's confounded-design grader and the three new pairs' grader.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_confounded_design.py
+python3 -B -W ignore evals/gap-study-4/tests/test_new_tasks.py
+# The default-deny sweep of every graders/*.py must pass with these two graders in the tree.
+python3 -B -W ignore evals/gap-study-4/tests/test_pause_adherence.py
+# Neither grader types a harness name or calls harness_types (the sweep checks it too; this names the two files).
+! grep -nE "claude-code|fake-second|harness_types" evals/gap-study-4/graders/confounded_design.py evals/gap-study-4/graders/new_tasks.py
+# Neither imports stated_count, another round's module, the driver or the adapter, and neither opens a file.
+! grep -nE "^[[:space:]]*(import|from)[[:space:]].*(stated_count|gap.study.[123]|evals\.graders|confounded_refusal|drive|agent_adapter)" evals/gap-study-4/graders/confounded_design.py evals/gap-study-4/graders/new_tasks.py
+! grep -nE "\bopen\(" evals/gap-study-4/graders/confounded_design.py evals/gap-study-4/graders/new_tasks.py
+
+# Full-file swaps: clean no-change controls, then every committed rule and drift mutant.
+python3 -B -W ignore evals/gap-study-4/tests/test_new_tasks.py --whole-file-audit
+python3 -B -W ignore evals/gap-study-4/tests/test_confounded_design.py --whole-file-audit
