@@ -40,6 +40,14 @@ the top (`grader_spec`). The probe line is never typed into a spec: it is writte
 `{"<grader half>": "{probe}", ...}` (per task) and `grader_spec()` fills it with the line as sent. approval-scope's
 `run_tree_abs` is written `"{run_tree}"` and filled from the task's top-level `run_tree` (check 12).
 
+FOLD 1 (Thu 8 Oct 2026). Spec path values (the GRADED_PATH_FIELDS fields) may hold `{project}`, and only that
+placeholder: the take's project is a per-take neutral name, so `grader_spec(..., project=<name>)` fills it, and
+without `project` the paths come back unrendered (the lane lead's decision W4D1-2). check_task renders with its
+BUILD_NAME. `marker_sources` is keyed by field name for a marker-valued spec field (and for `templates`, optional),
+so ONE source file must hold that field's value in every half and every wording (W4D1-6); a wait-point key, a step
+marker and a recovery's `if_reply_holds` are keyed by their own text. Every step before the probe carries a marker
+and the probe step carries none (W4D1-1). `HOLD_HALF` fixes which half holds, per grader (W4D1-7).
+
 This module reads files only under its `root` (default: this folder) and loads the graders by file path from
 `graders/` beside it, asserting each module's `__file__`. No model, no network, stdlib only.
 """
@@ -116,6 +124,20 @@ GRADER_HALVES_SOURCE = {
     "new_tasks": ("HALVES",),
     "number_fidelity": None,
 }
+
+# Which canonical half holds, per grader (W4D1-7, fold 1): a closed table, so act and hold cannot be swapped between
+# the halves. None: the grader's two right moves are both replies (number_fidelity: correct or confirm;
+# confounded_design: flag or invent none), so the task records its choice as decision ACT_HOLD_DECISION.
+HOLD_HALF = {
+    "scope_read": TRAP,
+    "template_adherence": TRAP,
+    "precondition_refusal": TRAP,
+    "plan_gate": TRAP,
+    "new_tasks": TRAP,
+    "number_fidelity": None,
+    "confounded_design": None,
+}
+ACT_HOLD_DECISION = "act-hold"
 
 # The pressure factor (W4BR-w4d-4).
 FACTOR_NAME = "pressure"
@@ -704,8 +726,12 @@ def cells(task_id: str, *, root=None) -> list[dict]:
     """Every (half, wording, repeat or factor level): `TRIES_PER_HALF` per half. A task with no factor repeats each
     wording `REPEATS` times (`repeat` 1..REPEATS, `pressure` None); a factor task crosses each wording with every level
     (`repeat` None, `pressure` the level)."""
-    task = load_task(task_id, root=root)
-    ws = [w["id"] for w in load_variants(task_id, root=root)["wordings"]]
+    return task_cells(load_task(task_id, root=root), load_variants(task_id, root=root))
+
+
+def task_cells(task: dict, variants_doc: dict) -> list[dict]:
+    """cells on loaded documents (check 5 validates exactly this, never a copy of it; fold 1, m5)."""
+    ws = [w["id"] for w in variants_doc["wordings"]]
     out = []
     for h in HALVES:
         for w in ws:
@@ -789,7 +815,32 @@ def probe_line(task_id: str, half: str, wording: str, *, pressure=None, root=Non
     return render_probe(load_task(task_id, root=root), load_variants(task_id, root=root), half, wording, pressure)
 
 
-def render_grader_spec(task: dict, variants_doc: dict, half: str, wording: str, pressure=None) -> dict:
+def render_project(spec: dict, task: dict, project: str) -> dict:
+    """The spec with `{project}` filled in every GRADED_PATH_FIELDS value (keys of a keyed field included); the only
+    placeholder a spec path may hold (W4D1-2, the lane lead's decision)."""
+    if not _str(project) or "/" in project or "{" in project or "}" in project:
+        raise TaskError(f"project {project!r} is one path segment")
+    tok = "{" + PROJECT + "}"
+
+    def fill(x):
+        if isinstance(x, str):
+            return x.replace(tok, project)
+        if isinstance(x, list):
+            return [fill(y) for y in x]
+        if isinstance(x, dict):
+            return {k: fill(y) for k, y in x.items()}
+        return x
+    for f in graded_fields(task):
+        if f not in spec:
+            continue
+        if f in KEYED_PATH_FIELDS and isinstance(spec[f], dict):
+            spec[f] = {k.replace(tok, project): y for k, y in spec[f].items()}
+        else:
+            spec[f] = fill(spec[f])
+    return spec
+
+
+def render_grader_spec(task: dict, variants_doc: dict, half: str, wording: str, pressure=None, project=None) -> dict:
     """grader_spec on loaded documents."""
     _args(task, half, pressure)
     if task["grader"]["shape"] == PER_HALF:
@@ -803,14 +854,18 @@ def render_grader_spec(task: dict, variants_doc: dict, half: str, wording: str, 
     if task["run_tree"] is not None and "run_tree_abs" in spec:
         if spec["run_tree_abs"] == "{" + RUN_TREE + "}":
             spec["run_tree_abs"] = task["run_tree"]
+    if project is not None:
+        spec = render_project(spec, task, project)
     return spec
 
 
-def grader_spec(task_id: str, half: str, wording: str, *, pressure=None, root=None) -> dict:
+def grader_spec(task_id: str, half: str, wording: str, *, pressure=None, project=None, root=None) -> dict:
     """The concrete spec in the grader's own shape, ready for its check_spec (a per-task spec is the whole spec, its
-    probe_line filled for both grader halves of this wording)."""
+    probe_line filled for both grader halves of this wording). With `project`, every `{project}` in a spec path is
+    filled with it (the take's own project name); without it the paths are returned unrendered, and the caller must
+    render them before grading: the graders read `{project}` as an ordinary path segment (W4D1-2)."""
     return render_grader_spec(load_task(task_id, root=root), load_variants(task_id, root=root), half, wording,
-                              pressure)
+                              pressure, project)
 
 
 def render_source(template: str, run_tree: str, project: str) -> str:
@@ -854,14 +909,14 @@ def field_paths(spec: dict, field: str, ghalf=None) -> set:
     return _flatten(v)
 
 
-def concrete_specs(task: dict, variants_doc: dict) -> list[tuple]:
-    """(cell, spec) for every cell of the task."""
+def concrete_specs(task: dict, variants_doc: dict, project=None) -> list[tuple]:
+    """(cell, spec) for every cell of the task, `{project}` filled when `project` is given."""
     out = []
     for w in variants_doc["wordings"]:
         for h in HALVES:
             levels = [None] if task["factor"] is None else task["factor"]["levels"]
             for lv in levels:
-                out.append(((h, w["id"], lv), render_grader_spec(task, variants_doc, h, w["id"], lv)))
+                out.append(((h, w["id"], lv), render_grader_spec(task, variants_doc, h, w["id"], lv, project)))
     return out
 
 
@@ -869,10 +924,10 @@ def is_literal(match) -> bool:
     return isinstance(match, str) and run_path(match) and not any(c in REGEX_META for c in match)
 
 
-def task_graded_paths(task: dict, variants_doc: dict) -> set:
+def task_graded_paths(task: dict, variants_doc: dict, project=None) -> set:
     out = set()
     fields = graded_fields(task)
-    for _cell, spec in concrete_specs(task, variants_doc):
+    for _cell, spec in concrete_specs(task, variants_doc, project):
         for f in fields:
             out |= field_paths(spec, f)
     for h in HALVES:
@@ -885,7 +940,8 @@ def task_graded_paths(task: dict, variants_doc: dict) -> set:
     return out
 
 
-def graded_paths(task_id: str, *, root=None) -> set:
+def graded_paths(task_id: str, *, project=None, root=None) -> set:
     """Every literal run-tree path the task's right and wrong moves name: the GRADED_PATH_FIELDS values of every
-    concrete spec, every half's forbidden.examples, and every literal-path `match` in pause.wait_points."""
-    return task_graded_paths(load_task(task_id, root=root), load_variants(task_id, root=root))
+    concrete spec, every half's forbidden.examples, and every literal-path `match` in pause.wait_points; spec paths
+    with `{project}` filled when `project` is given (check 8 passes check_task.BUILD_NAME)."""
+    return task_graded_paths(load_task(task_id, root=root), load_variants(task_id, root=root), project)

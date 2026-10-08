@@ -25,6 +25,16 @@ glitch-f3's rulings 5-8):
   11 empty store        a plan_gate task's built fixture holds nothing under its approval store
   12 run_tree_abs       approval-scope's spec carries the task's run tree, and the source renders under it
 
+FOLD 1 (Thu 8 Oct 2026; Review A with glitch-f3's rulings, Review B with the lane lead's decisions). Check 2 refuses a
+'..' segment in the source template and a typed project in a spelled source path; check 3 requires a marker on every
+step before the probe and none on it (W4D1-1), and pushback lines that differ only in their counts (m2); check 4 reads
+the holding half from variants.HOLD_HALF (W4D1-7); check 5 validates variants.task_cells itself (m5); check 6 mirrors
+the driver's take-time refusals and pins (W4D1-3, m4); check 7 requires literal examples (M2) and binds each pattern
+to the half's graded paths only, template_adherence to its examples (M3); checks 7, 8, 9 and 11 render `{project}`
+with BUILD_NAME (W4D1-2); check 9 refuses {project}/{source} in a derived step (m1) and any other placeholder in a
+spec path; check 10 binds each recovery's `if_reply_holds` and, when named, `templates` (W4D1-5); a single-task run
+names a file stem (n1).
+
 WHAT THIS GATE CANNOT SEE (deferred, never built around): that contract-following walks emit each marker (W3C1-8 (i),
 the walk's half: CP2's sealed box and Javier's walk token), that the box's run tree is its own realpath (W3C1-8 (iii):
 CP2's preflight record), and anything in a transcript: check_task reads none.
@@ -76,6 +86,9 @@ SKELETON_NAME = "PLAN_SKELETON"
 # ---- check 10: the marker-valued spec fields (W3C1-8 (i), W4BR-w4d-6) ---------------------------------------------
 MARKER_FIELDS = ("wait_point", "refusal_marker", "pause_marker", "ask_marker", "flag_marker", "draft_stamp",
                  "approval_stamp")
+
+# Fields a task MAY bind to the pinned contract through marker_sources (W4D1-5): template_adherence's bodies.
+OPTIONAL_MARKER_FIELDS = ("templates",)
 
 # ---- check 6 and 11: where a fixture is built, as drive.build_take_fixture places it ----------------------------
 BUILD_NAME = "zqcheck"
@@ -137,6 +150,25 @@ def relative_hits(text: str) -> list[str]:
     return [r for r in RELATIVE_STARTS if re.search(BEFORE_START + re.escape(r), text, re.M)]
 
 
+def source_climbs(tmpl: str) -> list[str]:
+    """Fold 1, m3: a source template with a '..' (or '.' or empty) segment can leave the run tree."""
+    if any(seg in ("..", ".", "") for seg in tmpl.split("/")):
+        return [_p(2, "absolute source", "source_template holds a '..', '.' or empty segment: the source could "
+                                         "leave the run tree")]
+    return []
+
+
+def spells_source(tail: str, text: str) -> bool:
+    """Fold 1, n2: does `text` spell the source's run-tree-relative path, with {project} written out or as any one
+    segment (a typed project name)?"""
+    if not tail:
+        return False
+    if tail in text:
+        return True
+    parts = [re.escape(x) for x in tail.split("{" + v.PROJECT + "}")]
+    return len(parts) > 1 and re.search(r"[^/\s'\"`]+".join(parts), text) is not None
+
+
 def check_2_absolute_source(task: dict, doc: dict) -> list[str]:
     out = []
     tmpl = task["source_template"]
@@ -146,9 +178,10 @@ def check_2_absolute_source(task: dict, doc: dict) -> list[str]:
     if names.count(v.PROJECT) < 1 or set(names) - {v.RUN_TREE, v.PROJECT} or names.count(v.RUN_TREE) != 1:
         out.append(_p(2, "absolute source", "source_template holds {run_tree} once, {project}, and nothing else in "
                                             "braces"))
+    out += source_climbs(tmpl)
     tail = tmpl[len("{" + v.RUN_TREE + "}/"):] if tmpl.startswith("{" + v.RUN_TREE + "}/") else tmpl
     for where, text in sent_texts(task, doc):
-        if tail and tail in text:
+        if spells_source(tail, text):
             out.append(_p(2, "absolute source", f"{where} spells the source path; a line names it only as {{source}}"))
         for r in relative_hits(text):
             out.append(_p(2, "absolute source", f"{where} holds the relative path start {r!r}: the contract runs "
@@ -199,6 +232,41 @@ def wait_point_problems(task: dict) -> list[str]:
         if keys != markers:
             out.append(_p(3, "one element", f"halves.{h}: pause.wait_points keys {sorted(keys)} are not its step "
                                             f"markers before the probe {sorted(markers)}"))
+    return out
+
+
+def marker_shape_problems(task: dict) -> list[str]:
+    """W4D1-1 (fold 1): every step before the probe carries a marker, and the probe step none, because
+    pause_adherence places the probe at the first turn that expects no marker."""
+    out = []
+    for h in v.HALVES:
+        half = task["halves"][h]
+        for s in half["operator_script"]:
+            if s["n"] < half["probe_operator_turn"] and s.get("marker") is None:
+                out.append(_p(3, "one element", f"halves.{h} step {s['n']} comes before the probe and carries no "
+                                                "marker: pause_adherence would take it for the probe"))
+            if s["n"] == half["probe_operator_turn"] and s.get("marker") is not None:
+                out.append(_p(3, "one element", f"halves.{h}'s probe step carries a marker: pause_adherence would "
+                                                "find no probe and refuse every take"))
+    return out
+
+
+COUNT = re.compile(r"\d+")
+
+
+def pushback_counts_only(task: dict) -> list[str]:
+    """Fold 1, m2 (glitch-f3's ruling): the one-element rule holds on a derived step too: the two halves' pushback
+    lines differ only in their counts (digit runs; this lane's decision: a pushback count is written in digits)."""
+    out = []
+    for d in task["derived_steps"]:
+        lines = [next((s["line"] for s in task["halves"][h]["operator_script"] if s["n"] == d["n"]), None)
+                 for h in v.HALVES]
+        if None in lines:
+            continue
+        a, b = lines
+        if COUNT.sub("#", a) != COUNT.sub("#", b) or a == b:
+            out.append(_p(3, "one element", f"derived step {d['n']}: the two halves' pushback lines differ in more "
+                                            "than their counts (or not at all)"))
     return out
 
 
@@ -258,6 +326,8 @@ def check_3_one_element(task: dict, doc: dict) -> list[str]:
     if len(set(texts)) != len(texts):
         out.append(_p(3, "one element", "the five wordings are pairwise different in opening or probe"))
     out += wait_point_problems(task)
+    out += marker_shape_problems(task)
+    out += pushback_counts_only(task)
     return out
 
 
@@ -280,8 +350,23 @@ def expected_label(task: dict, half: str, spec: dict | None = None) -> str:
     return mod.EXPECTED[g]
 
 
+def hold_half_problems(task: dict) -> list[str]:
+    """W4D1-7 (fold 1): the holding half is the grader's, from variants.HOLD_HALF; where the table says None the task
+    records its choice as decision act-hold."""
+    name = v.grader_name(task)
+    want = v.HOLD_HALF[name]
+    if want is None:
+        if not any(d["id"] == v.ACT_HOLD_DECISION for d in task["decisions"]):
+            return [_p(4, "act and hold", f"{name}'s two right moves are both replies: the task records which half "
+                                          f"holds as decision {v.ACT_HOLD_DECISION!r}")]
+        return []
+    if task["halves"][want]["right_move"]["kind"] != v.HOLD:
+        return [_p(4, "act and hold", f"the {want} half holds for {name} (variants.HOLD_HALF)")]
+    return []
+
+
 def check_4_act_and_hold(task: dict, doc: dict) -> list[str]:
-    out = []
+    out = hold_half_problems(task)
     kinds = sorted(task["halves"][h]["right_move"]["kind"] for h in v.HALVES)
     if kinds != sorted(v.KINDS):
         out.append(_p(4, "act and hold", f"one half acts and one holds; these are {kinds}"))
@@ -341,7 +426,7 @@ def check_5_factors(task: dict, doc: dict) -> list[str]:
     want_levels = len(task["factor"]["levels"]) if task["factor"] else v.REPEATS
     if v.N_WORDINGS * want_levels != v.TRIES_PER_HALF:
         out.append(_p(5, "factors", f"{v.N_WORDINGS} wordings x {want_levels} is not TRIES_PER_HALF"))
-    cs = _cells(task, doc)
+    cs = v.task_cells(task, doc)
     for h in v.HALVES:
         mine = [c for c in cs if c["half"] == h]
         if len(mine) != v.TRIES_PER_HALF:
@@ -359,19 +444,6 @@ def check_5_factors(task: dict, doc: dict) -> list[str]:
                     out.append(_p(5, "factors", f"the row of cell {c} reads another level"))
             except ValueError as e:
                 out.append(_p(5, "factors", f"precondition_refusal.check_row refuses the row of cell {c}: {e}"))
-    return out
-
-
-def _cells(task: dict, doc: dict) -> list[dict]:
-    out = []
-    for h in v.HALVES:
-        for w in doc["wordings"]:
-            if task["factor"] is None:
-                out += [{"half": h, "wording": w["id"], "repeat": r, "pressure": None}
-                        for r in range(1, v.REPEATS + 1)]
-            else:
-                out += [{"half": h, "wording": w["id"], "repeat": None, "pressure": lv}
-                        for lv in task["factor"]["levels"]]
     return out
 
 
@@ -393,10 +465,69 @@ def _run(argv: list) -> subprocess.CompletedProcess:
                           env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
 
 
-def build_fixture_tree(fx: dict, run_tree: Path, name: str, repo: Path) -> dict:
+def _tree_sha():
+    """fixtures/copy_project.tree_sha, the recipe drive.py pins a first-study fixture by (loaded by path)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("gap4_copy_project", ROUND / "fixtures" / "copy_project.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.tree_sha
+
+
+EXITS = re.compile(r"exits (\d+) \(expected (\d+)\)")
+
+
+def fixture_refusals(fx: dict, run_tree: Path, name: str, built: dict, pins: bool) -> list[str]:
+    """W4D1-3 and m4 (fold 1): the refusals drive.build_take_fixture and build_first_study_fixture make at take
+    time, mirrored, so a task check_task passes is not refused on every take. `pins` False skips the pins (a
+    seed + 1 build is not the pinned one)."""
+    out = []
+    kind = fx["kind"]
+    staging = run_tree / "data" / "staging" / name
+    if kind == "generated" and pins and fx["sha256"] and built["manifest_sha256"] != fx["sha256"]:
+        out.append(f"the generated fixture hashes to {str(built['manifest_sha256'])[:12]}, and the half pins "
+                   f"{fx['sha256'][:12]}")
+    if kind == "first-study" and pins:
+        try:
+            import hashlib as _h
+            md5 = _h.md5((staging / "samples.csv").read_bytes()).hexdigest()
+        except OSError:
+            md5 = None
+        if md5 != fx["design_table"]["md5"]:
+            out.append(f"samples.csv md5 is {md5}, and design_table.md5 pins {fx['design_table']['md5']}")
+        if fx["sha256"] and _tree_sha()(staging, name) != fx["sha256"]:
+            out.append("the first-study tree does not hash to its pinned sha256 (copy_project.tree_sha)")
+    if kind == "project":
+        if not (run_tree / "gars" / "projects" / name).is_dir():
+            out.append(f"the project generator built no gars/projects/{name}")
+        first = (built.get("stdout", "").strip().splitlines() or [""])[0]
+        if not EXITS.search(first):
+            out.append("the project generator's first stdout line does not read 'exits N (expected M)'")
+    if kind == "copied-tree":
+        try:
+            man = json.loads(built.get("stdout", ""))
+            if not isinstance(man, dict):
+                raise ValueError("not an object")
+        except ValueError:
+            out.append("the copied-tree generator's stdout is not a JSON object")
+            man = {}
+        if pins and fx["sha256"] and man.get("tree_sha256_name_invariant") != fx["sha256"]:
+            out.append("the copied tree's tree_sha256_name_invariant is not its pinned sha256")
+    return out
+
+
+def build_fixture_tree(fx: dict, run_tree: Path, name: str, repo: Path, pins: bool = True) -> dict:
     """Build one fixture into `run_tree` the way drive.build_take_fixture places it (re-implemented here; never the
     driver, which builds take run trees). Returns {"manifest_sha256": <the generator manifest's fixture_sha256, or
-    None>}; raises RuntimeError when a builder exits non-zero."""
+    None>}; raises RuntimeError when a builder exits non-zero or the driver would refuse it (fixture_refusals)."""
+    built = _build(fx, run_tree, name, repo)
+    bad = fixture_refusals(fx, run_tree, name, built, pins)
+    if bad:
+        raise RuntimeError("; ".join(bad))
+    return {"manifest_sha256": built["manifest_sha256"]}
+
+
+def _build(fx: dict, run_tree: Path, name: str, repo: Path) -> dict:
     staging = run_tree / "data" / "staging" / name
     kind = fx["kind"]
     gen = repo / fx["generator"]
@@ -429,13 +560,13 @@ def build_fixture_tree(fx: dict, run_tree: Path, name: str, repo: Path) -> dict:
                   "--workspace", run_tree / "gars", "--staging", run_tree / "data" / "staging"])
         if r.returncode != 0:
             raise RuntimeError(f"the project generator exited {r.returncode}: {r.stdout[-200:]}{r.stderr[-200:]}")
-        return {"manifest_sha256": None}
+        return {"manifest_sha256": None, "stdout": r.stdout}
     if kind == "copied-tree":
         (run_tree / "gars" / "projects").mkdir(parents=True, exist_ok=True)
         r = _run([gen, "--name", name, "--projects", run_tree / "gars" / "projects"])
         if r.returncode != 0:
             raise RuntimeError(f"the copy exited {r.returncode}: {r.stdout[-200:]}{r.stderr[-200:]}")
-        return {"manifest_sha256": None}
+        return {"manifest_sha256": None, "stdout": r.stdout}
     raise RuntimeError(f"fixture kind {kind!r} has no builder")
 
 
@@ -464,12 +595,12 @@ def tree_hash(root: Path, masks: list, name: str) -> str:
     return h.hexdigest()
 
 
-def build_and_hash(fx: dict, repo: Path, name: str = BUILD_NAME) -> tuple:
+def build_and_hash(fx: dict, repo: Path, name: str = BUILD_NAME, pins: bool = True) -> tuple:
     """(tree hash, manifest sha) of one fresh build in its own temporary folder."""
     with tempfile.TemporaryDirectory(prefix="gap4-check-task-") as tmp:
         run_tree = Path(tmp) / "run"
         run_tree.mkdir()
-        got = build_fixture_tree(fx, run_tree, name, repo)
+        got = build_fixture_tree(fx, run_tree, name, repo, pins)
         masks = sorted({str(Path(tmp)).encode(), os.path.realpath(tmp).encode()}, key=len, reverse=True)
         return tree_hash(run_tree, masks, name), got["manifest_sha256"]
 
@@ -485,7 +616,7 @@ def check_6_determinism(task: dict, doc: dict, *, root=None) -> list[str]:
         fx = task["halves"][h]["fixture"]
         try:
             a, ma = build_and_hash(fx, repo)
-            b, mb = build_and_hash(fx, repo)
+            b, mb = build_and_hash(fx, repo, pins=False)
         except (RuntimeError, OSError) as e:
             out.append(_p(6, "determinism", f"halves.{h}: the fixture did not build ({e})"))
             continue
@@ -496,7 +627,7 @@ def check_6_determinism(task: dict, doc: dict, *, root=None) -> list[str]:
                                             "builds, or is missing"))
         if fx["seed_sensitive"]:
             try:
-                c, _ = build_and_hash({**fx, "seed": fx["seed"] + 1}, repo)
+                c, _ = build_and_hash({**fx, "seed": fx["seed"] + 1}, repo, pins=False)
             except (RuntimeError, OSError) as e:
                 out.append(_p(6, "determinism", f"halves.{h}: the fixture did not build from seed + 1 ({e})"))
                 continue
@@ -515,12 +646,19 @@ def half_graded_paths(task: dict, doc: dict, half: str) -> set:
     out = set()
     fields = v.graded_fields(task)
     ghalf = task["grader_halves"][half] if task["grader_halves"] else None
-    for (h, _w, _lv), spec in v.concrete_specs(task, doc):
+    for (h, _w, _lv), spec in v.concrete_specs(task, doc, BUILD_NAME):
         if task["grader"]["shape"] == v.PER_HALF and h != half:
             continue
         for f in fields:
             out |= v.field_paths(spec, f, ghalf if task["grader"]["shape"] == v.PER_TASK else None)
     return out
+
+
+def examples_literal(h: str, fb: dict) -> list[str]:
+    """Fold 1, M2 (glitch-f3's ruling): every example is a literal run-tree path: no regex metacharacter, no brace
+    (so no `{project}`)."""
+    return [_p(7, "forbidden", f"halves.{h}: the example {ex!r} is not a literal run-tree path (a regex or a "
+                               "placeholder)") for ex in fb["examples"] if not v.is_literal(ex)]
 
 
 def examples_matched(h: str, fb: dict, compiled: list) -> list[str]:
@@ -542,8 +680,18 @@ def patterns_exemplified(h: str, fb: dict, compiled: list) -> list[str]:
 
 def patterns_bound(h: str, bound: set, compiled: list) -> list[str]:
     """Every pattern fully matches a path the half's specs grade (GRADED_PATH_FIELDS) or one of its examples."""
-    return [_p(7, "forbidden", f"halves.{h}: the pattern {rx.pattern!r} binds no graded path or example")
+    return [_p(7, "forbidden", f"halves.{h}: the pattern {rx.pattern!r} binds no graded path of the half")
             for rx in compiled if not any(rx.fullmatch(p) for p in bound)]
+
+
+def binding_paths(task: dict, doc: dict, h: str) -> set:
+    """Fold 1, M3 (glitch-f3's ruling; folds W4D1-4): what a forbidden pattern must bind. For every grader but
+    template_adherence, the half's GRADED_PATH_FIELDS values only (rendered with BUILD_NAME), so an invented example
+    cannot carry a pattern no spec grades; template_adherence names its paths only as its patterns, so its literal
+    examples bind them."""
+    if v.grader_name(task) == v.TEMPLATE:
+        return set(task["halves"][h]["forbidden"]["examples"])
+    return half_graded_paths(task, doc, h)
 
 
 def hold_forbids(h: str, half: dict) -> list[str]:
@@ -596,7 +744,8 @@ def check_7_forbidden(task: dict, doc: dict) -> list[str]:
         out += examples_matched(h, fb, compiled)
         out += patterns_exemplified(h, fb, compiled)
         out += hold_forbids(h, half)
-        out += patterns_bound(h, half_graded_paths(task, doc, h) | set(fb["examples"]), compiled)
+        out += examples_literal(h, fb)
+        out += patterns_bound(h, binding_paths(task, doc, h), compiled)
         out += template_binding(task, doc, h)
     return out
 
@@ -607,7 +756,7 @@ def check_7_forbidden(task: dict, doc: dict) -> list[str]:
 
 def check_8_exclusions(task: dict, doc: dict, *, table=None) -> list[str]:
     out = []
-    paths = v.task_graded_paths(task, doc)
+    paths = v.task_graded_paths(task, doc, BUILD_NAME)
     if not paths and v.grader_name(task) != v.NUMBER_FIDELITY:
         out.append(_p(8, "exclusions", "graded_paths is empty: the task's moves name no run-tree path"))
     tbl = hb.TABLE if table is None else table
@@ -651,24 +800,55 @@ def accepts(task: dict, spec: dict, half: str):
         mod.check_spec(task["task"], spec)
     else:
         mod.check_spec(spec)
+    spec_half_matches(task, spec, half)
+
+
+def spec_half_matches(task: dict, spec: dict, half: str):
+    """A per-half spec's own `half` is this half's grader name (M1, fold 1: shown red on precondition_refusal and
+    plan_gate, whose check_spec accepts either half)."""
+    name = v.grader_name(task)
+    mod = v.load_grader(name)
     if v.GRADER_SHAPES[name] == v.PER_HALF and "half" in mod.SPEC_FIELDS and spec.get("half") != task["grader_halves"][half]:
         raise ValueError(f"the spec's half {spec.get('half')!r} is not this half's grader name")
+
+
+def unrenderable_steps(task: dict) -> list[str]:
+    """The probe step and every derived step (m1, fold 1) name no {project} or {source}: each is found by its exact
+    line, which the spec cannot render."""
+    out = []
+    for h in v.HALVES:
+        half = task["halves"][h]
+        exact = {half["probe_operator_turn"]} | {d["n"] for d in task["derived_steps"]}
+        for s in half["operator_script"]:
+            if s["n"] in exact and ("{" + v.PROJECT + "}" in s["line"] or "{" + v.SOURCE + "}" in s["line"]):
+                out.append(_p(9, "grader accepts", f"halves.{h} step {s['n']} names {{project}} or {{source}}: the "
+                                                   "grader finds it by its exact line, which the spec cannot render"))
+    return out
+
+
+def path_placeholder_problems(task: dict, doc: dict) -> list[str]:
+    """W4D1-2 (fold 1): a spec path may hold {project} and no other placeholder."""
+    out = []
+    for (h, w, lv), spec in v.concrete_specs(task, doc):
+        for f in v.graded_fields(task):
+            for p in v.field_paths(spec, f):
+                if set(v.placeholders(p)) - {v.PROJECT} or v._PLACEHOLDER.sub("", p).count("{") or \
+                        v._PLACEHOLDER.sub("", p).count("}"):
+                    out.append(_p(9, "grader accepts", f"{h} {w}: the spec path {p!r} holds a placeholder other "
+                                                       "than {project}"))
+    return sorted(set(out))
 
 
 def check_9_grader_accepts(task: dict, doc: dict) -> list[str]:
     out = []
     name = v.grader_name(task)
-    for (h, w, lv), spec in v.concrete_specs(task, doc):
+    for (h, w, lv), spec in v.concrete_specs(task, doc, BUILD_NAME):
         try:
             accepts(task, spec, h)
         except (ValueError, RuntimeError) as e:   # every grader's GradeError is a ValueError; number_fidelity raises one
             out.append(_p(9, "grader accepts", f"{h} {w} pressure={lv}: {name} refuses the spec: {e}"))
-    for h in v.HALVES:
-        probe = task["halves"][h]["probe_operator_turn"]
-        line = next(s["line"] for s in task["halves"][h]["operator_script"] if s["n"] == probe)
-        if "{" + v.PROJECT + "}" in line or "{" + v.SOURCE + "}" in line:
-            out.append(_p(9, "grader accepts", f"halves.{h}'s probe step names {{project}} or {{source}}: the grader "
-                                               "finds the probe by its exact line, which the spec cannot render"))
+    out += unrenderable_steps(task)
+    out += path_placeholder_problems(task, doc)
     if name == v.NUMBER_FIDELITY:
         for (h, w, lv), spec in v.concrete_specs(task, doc):
             d = {x["n"] for x in task["derived_steps"]}
@@ -677,7 +857,7 @@ def check_9_grader_accepts(task: dict, doc: dict) -> list[str]:
                 out.append(_p(9, "grader accepts", f"{h} {w}: the spec's pushback_line is not the derived step's line"))
                 break
     try:
-        v.load_grader("pause_adherence").check_wait_points(task["pause"]["wait_points"])
+        v.load_grader(v.PAUSE_ADHERENCE).check_wait_points(task["pause"]["wait_points"])
     except ValueError as e:
         out.append(_p(9, "grader accepts", f"pause_adherence refuses the wait points: {e}"))
     return out
@@ -701,6 +881,15 @@ def task_markers(task: dict, doc: dict) -> dict:
         for s in task["halves"][h]["operator_script"]:
             if s.get("marker") is not None:
                 out.setdefault(s["marker"], set()).add(s["marker"])
+            if "recovery" in s:   # W4D1-5: drive.py matches it byte for byte in the reply
+                t = s["recovery"]["if_reply_holds"]
+                out.setdefault(t, set()).add(t)
+    srcs = task["marker_sources"]
+    for f in OPTIONAL_MARKER_FIELDS:   # W4D1-5: bound when the task names a source for it
+        if f in srcs:
+            for _cell, spec in v.concrete_specs(task, doc):
+                if f in spec:
+                    out.setdefault(f, set()).update(v._flatten(spec[f]))
     return out
 
 
@@ -756,7 +945,7 @@ def check_11_empty_store(task: dict, doc: dict, *, root=None) -> list[str]:
     out = []
     repo = _repo_of(root)
     seen = set()
-    for (h, _w, _lv), spec in v.concrete_specs(task, doc):
+    for (h, _w, _lv), spec in v.concrete_specs(task, doc, BUILD_NAME):
         key = (h, spec["approval_store"], spec["plan_path"])
         if key in seen:
             continue
@@ -820,6 +1009,10 @@ ROOTED = ("check_6_determinism", "check_11_empty_store")
 
 def problems(task_id: str, *, root=None, table=None) -> list[str]:
     """Every problem with one task: check 1 first (and only it, when it finds any), then checks 2-12."""
+    try:
+        v._check_id(task_id)   # fold 1, n1: a single-task run names a file stem, never a path
+    except v.TaskError as e:
+        return [_p(1, "schema", str(e))]
     bad, task, doc = check_1_schema(task_id, root=root)
     if bad:
         return bad
