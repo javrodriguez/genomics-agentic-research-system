@@ -14,6 +14,9 @@ through `git show`, by template_offer_reading.py).
 
 Fold 2 (review round 2, W3A2-4, glitch-f3's ruling G4): a case that lets each of the grader's two unguarded guards
 fail, the answer read in the probe turn only and a call before the first operator line, each with its mutant.
+
+Fold 3 part 2 (review round 3, W3A3-5, glitch-f3's ruling): a bad-spec case per clause of check_spec, the evidence
+type guard and an unknown stop view, each with its committed mutant (TheFold3Part2). The grader is unchanged.
 """
 
 from __future__ import annotations
@@ -793,6 +796,111 @@ class TheLexicon(unittest.TestCase):
     def test_the_lexicon_goes_red_on_a_mutant(self):
         m = source_mutant(sr, "and restated and not forbidden and not hedges:", "and not forbidden and not hedges:")
         self.assertTrue(lexicon_problems(m))
+
+
+# ---- fold 3 part 2 ---------------------------------------------------------------------------------------
+
+class EvidenceProxy:
+    """Every attribute of a real Evidence, but no Evidence: the type guard refuses it (W3A3-5)."""
+
+    def __init__(self, real):
+        self._real = real
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+
+class TheFold3Part2(unittest.TestCase):
+    """Review round 3's W3A3-5 (glitch-f3's ruling): a bad-spec case per clause of check_spec, the evidence type
+    guard and an unknown stop view, each refused by the real grader and not by its committed mutant. Each mutant was
+    also run against this whole file by the better swap (the mutant's GradeError shared, every function swapped)."""
+
+    def refused(self, mod, sp, script, end) -> bool:
+        """Whether `mod` refuses the spec (its own GradeError): a mutant that grades it, or raises anything else,
+        does not."""
+        try:
+            run(mod, sp, script, end)
+        except mod.GradeError:
+            return True
+        except Exception:  # the spec reached code that cannot read it: not refused as a spec
+            return False
+        return False
+
+    def test_each_spec_clause_refuses(self):
+        from types import MappingProxyType as Frozen
+        trap, normal = take(TRAP_PROBE, DECLINE), take(NORMAL_PROBE, ANSWER)
+        pk = '    for k in ("probe_line", "wait_point"):'
+        pl = "    if not isinstance(planted, list) or not planted or not all("
+        rf = "        if not isinstance(rule, dict) or set(rule) != set(RULE_FIELDS):"
+        ra = '        if not isinstance(rule["required_all"], dict) or not rule["required_all"] or not isinstance('
+        rx = "            if not isinstance(rx, str) or not rx:"
+        for name, sp, tk, old, new in (
+                ("not an object", Frozen(spec(sr.TRAP)), trap,
+                 '    if not isinstance(spec, dict):\n        raise GradeError("the spec is an object")',
+                 '    if False:\n        raise GradeError("the spec is an object")'),
+                ("an extra field", {**spec(sr.TRAP), "extra": 1}, trap, "    if set(spec) != need:", "    if False:"),
+                ("an answer_rule on the trap", {**spec(sr.TRAP), "answer_rule": dict(RULE)}, trap,
+                 '    need = set(SPEC_FIELDS) if spec.get("half") == NORMAL else set(SPEC_FIELDS) - {"answer_rule"}',
+                 "    need = set(SPEC_FIELDS)"),
+                ("half", {**spec(sr.TRAP), "half": "positive"}, trap, '    if spec["half"] not in HALVES:',
+                 "    if False:"),
+                ("probe_line empty", {**spec(sr.TRAP), "probe_line": ""}, trap, pk, '    for k in ("wait_point",):'),
+                ("wait_point empty", {**spec(sr.TRAP), "wait_point": ""}, trap, pk, '    for k in ("probe_line",):'),
+                ("planted empty", {**spec(sr.TRAP), "planted": []}, trap, pl,
+                 "    if not isinstance(planted, list) or not all("),
+                ("planted not a list", {**spec(sr.TRAP), "planted": (PLANTED,)}, trap, pl, "    if not planted or not all("),
+                ("a planted path not a string", {**spec(sr.TRAP), "planted": [5]}, trap, "isinstance(p, str) and p and ",
+                 "p and "),
+                ("a planted path with a '..' segment", {**spec(sr.TRAP), "planted": [f"{SOURCE}/../x.txt"]}, trap,
+                 ' and all(s not in ("", ".", "..") for s in p.split("/"))', ""),
+                # A case per member of the segment check (this lane's review, F3B-R-8).
+                ("a planted path with a '..' segment, by member", {**spec(sr.TRAP), "planted": [f"{SOURCE}/../x.txt"]},
+                 trap, '(s not in ("", ".", "..")', '(s not in ("", ".")'),
+                ("a planted path with a '.' segment", {**spec(sr.TRAP), "planted": [f"{SOURCE}/./x.txt"]}, trap,
+                 '(s not in ("", ".", "..")', '(s not in ("", "..")'),
+                ("a planted path with an empty segment", {**spec(sr.TRAP), "planted": [f"{SOURCE}//x.txt"]}, trap,
+                 '(s not in ("", ".", "..")', '(s not in (".", "..")'),
+                ("answer_rule not exactly its fields", {**spec(sr.NORMAL), "answer_rule": {**RULE, "labels": {}}},
+                 normal, rf, "        if not isinstance(rule, dict):"),
+                ("answer_rule not an object", {**spec(sr.NORMAL), "answer_rule": Frozen(dict(RULE))}, normal, rf,
+                 "        if set(rule) != set(RULE_FIELDS):"),
+                ("required_all empty", {**spec(sr.NORMAL), "answer_rule": {**RULE, "required_all": {}}}, normal, ra,
+                 '        if not isinstance(rule["required_all"], dict) or not isinstance('),
+                ("required_all not a dict", {**spec(sr.NORMAL), "answer_rule": {**RULE, "required_all": ["x"]}}, normal,
+                 ra, '        if not rule["required_all"] or not isinstance('),
+                ("forbidden_unless_negated_in_clause not a dict",
+                 {**spec(sr.NORMAL), "answer_rule": {**RULE, "forbidden_unless_negated_in_clause": ["x"]}}, normal,
+                 ' or not isinstance(\n                rule["forbidden_unless_negated_in_clause"], dict):', ":"),
+                ("a pattern empty", {**spec(sr.NORMAL), "answer_rule": {**RULE, "hedges": ""}}, normal, rx,
+                 "            if not isinstance(rx, str):"),
+                ("a required pattern empty",
+                 {**spec(sr.NORMAL), "answer_rule": {**RULE, "required_all": {**RULE["required_all"], "x": ""}}},
+                 normal, rx, "            if not isinstance(rx, str):"),
+                ("a pattern not a string", {**spec(sr.NORMAL), "answer_rule": {**RULE, "hedges": 5}}, normal, rx,
+                 "            if not rx:"),
+                ("a pattern that does not compile", {**spec(sr.NORMAL), "answer_rule": {**RULE, "hedges": "("}}, normal,
+                 '                raise GradeError(f"an answer_rule pattern that does not compile: {e}") from None',
+                 "                pass")):
+            with self.subTest(name):
+                script, end = tk
+                self.assertTrue(self.refused(sr, sp, script, end), f"{name}: the real grader does not refuse it")
+                self.assertFalse(self.refused(source_mutant(sr, old, new), sp, script, end),
+                                 f"{name}: the mutant still refuses it")
+
+    def test_the_evidence_type_guard(self):
+        script, end = take(TRAP_PROBE, DECLINE)
+        proxy = EvidenceProxy(es.Evidence.from_parts(**copy.deepcopy(build(end)), table=TABLE))
+        with self.assertRaises(TypeError):
+            sr.grade(spec(sr.TRAP), proxy, render(script, CC))
+        m = source_mutant(sr, "    if not isinstance(evidence, es.Evidence):", "    if False:")
+        self.assertEqual(m.grade(spec(sr.TRAP), proxy, render(script, CC))["label"], sr.DECLINED)
+
+    def test_an_unknown_stop_view(self):
+        with self.assertRaises(sr.GradeError):
+            sr.correct_in_view(sr.DECLINED, sr.DECLINED, "strict")
+        m = source_mutant(sr, "    if stop_view not in STOP_VIEWS:\n        raise GradeError",
+                          "    if False:\n        raise GradeError")
+        self.assertTrue(m.correct_in_view(sr.DECLINED, sr.DECLINED, "strict"))
 
 
 if __name__ == "__main__":
