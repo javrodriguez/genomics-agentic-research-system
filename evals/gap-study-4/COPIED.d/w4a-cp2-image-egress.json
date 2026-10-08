@@ -7,6 +7,11 @@
       "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
     },
     {
+      "path": "box/image_lock.py",
+      "status": "new",
+      "reason": "The box images' lock reader (CP2): the closed lock schema with nullability bound by image, the pending map and its refusals (NotReady), the expected labels and check_labels against docker image inspect, and the constructed (never run) docker build argv."
+    },
+    {
       "path": "box/image.lock",
       "status": "new",
       "reason": "The arm A (and C) take image's lock (CP2): base digest, Claude Code version, Python version and built image id, each PENDING with its reason until CP2 builds on the real box; the fixed users 10001, 10002 and 10003."

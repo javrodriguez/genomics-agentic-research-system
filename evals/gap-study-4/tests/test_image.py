@@ -258,16 +258,19 @@ class LockSchemaTest(unittest.TestCase):
             self.assertIn(field, str(cm.exception))
 
     def test_a_dropped_refusal_goes_red(self):
-        with mock.patch.object(il, "_pending_fields", lambda lock: []):
-            self.assertTrue(il.ready(committed("take-a")))   # the mutant waves the unfilled lock through
-        self.assertFalse(il.ready(committed("take-a")))
+        lock = committed("take-a")
+        with mock.patch.object(il, "_pending_fields", lambda lock: []), \
+                mock.patch.object(il, "problems", lambda lock: []):
+            self.assertTrue(il.ready(lock))   # the mutant waves the unfilled lock through
+        self.assertFalse(il.ready(lock))
 
     def test_the_fixed_ids(self):
         self.assertEqual((il.AGENT_UID, il.WATCHER_UID, il.KEEPALIVE_UID), (10001, 10002, 10003))
         for const, field, role in (("AGENT_UID", "uid", "agent"), ("WATCHER_UID", "uid", "watcher"),
                                    ("KEEPALIVE_UID", "uid", "keepalive")):
+            lock = filled("take-a")
             with self.subTest(const), mock.patch.object(il, const, getattr(il, const) + 7):
-                self.assertTrue(il.problems(filled("take-a")))
+                self.assertTrue(il.problems(lock))
 
 
 class LabelsTest(unittest.TestCase):
@@ -299,10 +302,12 @@ class LabelsTest(unittest.TestCase):
         self.assertEqual(il.LABELS, ("org.opencontainers.image.base.name", "org.opencontainers.image.base.digest",
                                      "app.cli.version", "app.python.version", "app.squid.version"))
         self.assertEqual(set(il.LABEL_ARGS), set(il.LABELS))
-        with mock.patch.object(il, "LABELS", il.LABELS[1:]):
-            lock = filled("take-a")
-            self.assertTrue(il.check_labels(lock, {"Id": IMAGE_ID, "Config": {"Labels": dict(
-                matching_inspect(filled("take-a"))["Config"]["Labels"])}}))
+        lock = filled("take-a")
+        ins = matching_inspect(lock)
+        for k in il.LABELS:
+            with self.subTest(k), mock.patch.object(il, "LABELS", tuple(x for x in il.LABELS if x != k)):
+                if k in ins["Config"]["Labels"]:
+                    self.assertTrue(il.check_labels(lock, ins))   # a dropped label key goes red
 
     def test_no_parameter_can_override_a_pending_value(self):
         # The public API takes a lock (validated) and an inspect or a context; no parameter carries a pinned value.
