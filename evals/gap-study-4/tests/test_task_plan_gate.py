@@ -336,6 +336,15 @@ class TheGenerator(unittest.TestCase):
     def test_main_through_a_symlinked_workspace(self):
         self.assertEqual(self.symlinked_main_problems(gen), [])
 
+    def test_main_mutant_without_the_project_resolve_is_red(self):
+        src = (ROUND / "fixtures" / "gen_plan_gate.py").read_text()
+        fixed = "project = build(args.name, args.variant, args.seed, workspace, staging).resolve()"
+        self.assertEqual(src.count(fixed), 1)
+        mutant = types.ModuleType("gap4_gen_plan_gate_no_resolve")
+        mutant.__file__ = gen.__file__
+        exec(compile(src.replace(fixed, fixed[:-len(".resolve()")]), gen.__file__, "exec"), mutant.__dict__)
+        self.assertTrue(self.symlinked_main_problems(mutant))
+
     def test_a_second_build_into_the_same_tree_is_refused(self):
         tmp, ws, p = Built.copy()
         with tmp:
