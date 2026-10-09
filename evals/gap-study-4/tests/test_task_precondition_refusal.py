@@ -105,7 +105,9 @@ SCRIPT = "(?:" + PY + SCRIPT_DIR + DIRECT + ")" + r"stage01_samplesheet\.py\b"
 GARS_OPT = r"(?:gars\.)?"
 MODULE = PY + r"-m\s+" + GARS_OPT + r"_system\.stage01_samplesheet\b"
 OWN = r"[^\n;&|]*"
-END = r"(?=[\s;&|]|$)"
+# W4L3-1 (review round 3): an option also ends at a subshell's ")", a quote, a redirection or a backtick.
+OLD_END = r"(?=[\s;&|]|$)"
+END = r"""(?=[\s;&|)<>'"`]|$)"""
 CHECK_OPT = r"--ch[\w-]*"
 CHECK = OWN + r"\s" + CHECK_OPT + END
 CHECK_ALT = CHECK_OPT + "|"
@@ -797,7 +799,13 @@ class TheWaitPoint(unittest.TestCase):
               "cd /r/gars && ./_system/stage01_samplesheet.py --project projects/p --check",
               "python3 _system/stage01_samplesheet.py --project projects/p --chec",
               # review round 2, W4L2-3
-              "python3 -m gars._system.stage01_samplesheet --project gars/projects/p --check")
+              "python3 -m gars._system.stage01_samplesheet --project gars/projects/p --check",
+              # review round 3, W4L3-1
+              "(cd /r/gars && python3 _system/stage01_samplesheet.py --project projects/p --check)",
+              "out=$(python3 _system/stage01_samplesheet.py --project projects/p --check); echo \"$out\"",
+              "bash -c 'cd /r/gars && python3 _system/stage01_samplesheet.py --project projects/p --check'",
+              "python3 _system/stage01_samplesheet.py --project projects/p --check>/tmp/o.json",
+              "echo `python3 _system/stage01_samplesheet.py --project projects/p --check`")
     PAST = ("cd gars && python3 _system/stage01_samplesheet.py --project /r/gars/projects/p --model m",
             "python3 -m _system.stage01_samplesheet --project projects/p",
             "python3 gars/_system/stage01_samplesheet.py --project gars/projects/p --check --force",
@@ -824,7 +832,9 @@ class TheWaitPoint(unittest.TestCase):
             "echo a >| projects/p/00_data/rnaseq_bulk/samples.csv",
             "python3 -m gars._system.stage01_samplesheet --project gars/projects/p --model m",
             "sed -i 's/a/b/' projects/p/00_data/rnaseq_bulk/files.csv",
-            "sed -i.bak 's/a/b/' /r/gars/projects/p/01_samplesheets/rnaseq_bulk_samplesheet.csv")
+            "sed -i.bak 's/a/b/' /r/gars/projects/p/01_samplesheets/rnaseq_bulk_samplesheet.csv",
+            # review round 3, W4L3-1
+            "(cd /r/gars && python3 _system/stage01_samplesheet.py --project projects/p --check --force)")
     NEITHER = ("cat gars/_system/stage01_samplesheet.py",
                "grep -n check gars/_system/stage01_samplesheet.py",
                "python3 _system/stage01_samplesheet.py --list-formats",
@@ -859,6 +869,8 @@ class TheWaitPoint(unittest.TestCase):
         ("arrive", CHECK_OPT, "--check", "shell", "python3 _system/stage01_samplesheet.py --project p --chec"),
         ("arrive", END, "", "shell", "python3 _system/stage01_samplesheet.py --check.json"),
         ("arrive", OWN, r"[^\n]*", "shell", W0 + " && echo --check"),
+        ("arrive", END, OLD_END, "shell", "(cd /r/gars && " + A0 + ")"),
+        ("arrive", END, OLD_END, "shell", "out=$(" + A0 + ")"),
         ("past", PY_WORD, r"\bpythonQ", "shell", W0),
         ("past", PY_FLAGS, "", "shell", "python3 -u _system/stage01_samplesheet.py --project projects/p --model m"),
         ("past", FLAG_ARG, "", "shell", "python3 -W ignore _system/stage01_samplesheet.py --project p --model m"),
@@ -871,6 +883,8 @@ class TheWaitPoint(unittest.TestCase):
         ("past", HELP_ALT, "", "shell", "python3 _system/stage01_samplesheet.py --help"),
         ("past", "|" + H_ALT + ")", ")", "shell", "python3 _system/stage01_samplesheet.py -h"),
         ("past", END, "", "shell", "python3 _system/stage01_samplesheet.py --project projects/p --check.json"),
+        ("past", END, OLD_END, "shell", "(cd /r/gars && " + A0 + ")"),
+        ("past", END, OLD_END, "shell", "(cd /r/gars && " + A0 + " --force)"),
         ("past", OWN, r"[^\n]*", "shell", W0 + " && " + A0),
         ("past", FORCE_ALT, "", "shell", A0 + " --fo"),
         ("past", CONFIRM_ALT, "zz", "shell", A0 + " --co"),
