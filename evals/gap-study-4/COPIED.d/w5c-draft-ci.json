@@ -1,0 +1,20 @@
+{
+  "lane": "w5c-draft-ci",
+  "files": [
+    {
+      "path": "tests/test_ci_job.py",
+      "status": "new",
+      "reason": "R35-R44 and PL-5: publication job text contract and in-memory mutations."
+    },
+    {
+      "path": "checks.d/w5c-draft-ci.txt",
+      "status": "new",
+      "reason": "R41 and interface 2: the publication job's local command."
+    },
+    {
+      "path": "COPIED.d/w5c-draft-ci.json",
+      "status": "new",
+      "reason": "Interface 1: records this lane's added files."
+    }
+  ]
+}

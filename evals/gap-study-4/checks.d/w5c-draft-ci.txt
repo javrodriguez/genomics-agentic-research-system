@@ -1,0 +1,4 @@
+# Exit 0 binds the added job's command list, history boundary and text restrictions (R35-R44).
+python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py
+# Task 1 stopped before edits: R4 and R10's required quotations meet unchanged mandatory lints.
+# Its two draft commands remain owed with the draft implementation; see the lane report.
