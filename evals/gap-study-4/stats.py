@@ -262,16 +262,17 @@ def check_records(records: list) -> list:
     return records
 
 
-def _ignored(name: str) -> bool:
-    """A dot-named entry that is not *.json (.DS_Store, .gitkeep) is ignored; a dot-named .json is read as records
-    (W4E2-3, the lane lead's decision)."""
-    return name.startswith(".") and not name.endswith(".json")
+def _ignored(p: Path) -> bool:
+    """A dot-named regular file that is not .json in any case (.DS_Store, .gitkeep) is ignored; a dot-named .json
+    is read as records (W4E2-3), and a dot-named folder or a dot-named .JSON file is never skipped (W4E3-1; both
+    the lane lead's decisions)."""
+    return p.is_file() and p.name.startswith(".") and not p.name.lower().endswith(".json")
 
 
 def _strays(folder: Path) -> list:
     """Every entry of the results folder that is not a top-level *.json file (a subfolder, another suffix)."""
     return sorted(p.name for p in folder.iterdir()
-                  if not _ignored(p.name) and not (p.is_file() and p.suffix == ".json"))
+                  if not _ignored(p) and not (p.is_file() and p.suffix == ".json"))
 
 
 def results_files(folder=RESULTS_DIR) -> list:
@@ -282,7 +283,7 @@ def results_files(folder=RESULTS_DIR) -> list:
     strays = _strays(folder)
     if strays:
         raise StatsError(f"the results folder holds entries that are not top-level *.json files: {strays}")
-    return sorted(p for p in folder.iterdir() if p.is_file() and p.suffix == ".json" and not _ignored(p.name))
+    return sorted(p for p in folder.iterdir() if p.is_file() and p.suffix == ".json" and not _ignored(p))
 
 
 def load_results(folder=RESULTS_DIR) -> list:
