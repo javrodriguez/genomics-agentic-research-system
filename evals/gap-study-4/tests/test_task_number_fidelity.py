@@ -183,6 +183,67 @@ def citation_problems(task: dict, helper: bytes, cited: dict) -> list[str]:
     return out
 
 
+# Review round 1 (W4K1-1 to -4): the slot's place, the script's flow, the fixture's seed flag and the status.
+T3 = "Reply with a comma-separated list of IDs"
+T3B = "Raw data path for"
+T4A = "Confirm to create symlinks under"
+STATUS = "repaired-pushback"
+
+
+def slot_place_problems(task: dict, doc: dict) -> list[str]:
+    """W4K1-1: the element is a slot carrying the asserted counts IN THE PROBE: every wording's probe holds the slot
+    exactly once and its opening none (check 3 accepts either place; this task fixes the probe)."""
+    out = []
+    slot = "{" + task["element"]["slot"] + "}"
+    for w in doc["wordings"]:
+        if w["probe"].count(slot) != 1:
+            out.append(f"{w['id']}: the probe holds {slot} {w['probe'].count(slot)} times, not once")
+        if slot in w["opening"]:
+            out.append(f"{w['id']}: the opening holds {slot}; the counts are asserted in the probe only")
+    return out
+
+
+def script_flow_problems(task: dict) -> list[str]:
+    """W4K1-2: what keeps a contract-following take from ending did-not-reach. Step 1 carries the project title and
+    the absolute source (so stage 00 skips T1 and reaches the T3 menu, step 1's marker); exactly one step carries a
+    recovery, the step whose marker is T4a, answering T3b's raw-data-path question with exactly {source}
+    (drive.py fires a recovery only on its own step, only when that step's marker is unheld)."""
+    out = []
+    for h in v.HALVES:
+        script = task["halves"][h]["operator_script"]
+        first = script[0]["line"]
+        for ph in ("{project}", "{source}"):
+            if ph not in first:
+                out.append(f"{h}: step 1 does not carry {ph}")
+        if script[0].get("marker") != T3:
+            out.append(f"{h}: step 1's marker is not the T3 menu")
+        recs = [s for s in script if "recovery" in s]
+        if len(recs) != 1:
+            out.append(f"{h}: {len(recs)} steps carry a recovery, not exactly one")
+            continue
+        s = recs[0]
+        if s.get("marker") != T4A:
+            out.append(f"{h}: the recovery sits on step {s['n']}, whose marker is not T4a")
+        if s["recovery"].get("if_reply_holds") != T3B:
+            out.append(f"{h}: the recovery does not answer T3b ({T3B!r})")
+        if s["recovery"].get("send") != "{source}":
+            out.append(f"{h}: the recovery sends {s['recovery'].get('send')!r}, not exactly '{{source}}'")
+    return out
+
+
+def seed_flag_problems(task: dict, sensitive: bool) -> list[str]:
+    """W4K1-3: each half's seed_sensitive equals what the generator does (seed + 1 builds another tree), so check
+    6's seed + 1 clause is never silently skipped."""
+    return [f"{h}: seed_sensitive is {task['halves'][h]['fixture']['seed_sensitive']!r}; the generator is "
+            f"{'seed-sensitive' if sensitive else 'not seed-sensitive'}"
+            for h in v.HALVES if task["halves"][h]["fixture"]["seed_sensitive"] is not sensitive]
+
+
+def status_problems(task: dict) -> list[str]:
+    """W4K1-4: the task is repaired + pushback."""
+    return [] if task["status"] == STATUS else [f"status is {task['status']!r}, not {STATUS!r}"]
+
+
 # =================================================================================================================
 
 class Loading(unittest.TestCase):
@@ -433,8 +494,82 @@ class Mutants(unittest.TestCase):
 
     def test_recovery_marker_without_a_source(self):
         t, d = docs()
-        t["marker_sources"].pop("Raw data path for")
+        # review W4K1-2: the recovery and its source must be there, asserted, before the mutant pops the key
+        self.assertIn(T3B, t["marker_sources"])
+        self.assertEqual(script_flow_problems(t), [])
+        t["marker_sources"].pop(T3B)
         self.hit(ct.check_10_markers(t, d), "has no marker_sources entry")
+
+
+class ReviewRound1(unittest.TestCase):
+    """W4K1-1 to -4, each guard green on the task and red on its in-memory mutants."""
+
+    def test_slot_in_the_probe(self):
+        t, d = docs()
+        self.assertEqual(slot_place_problems(t, d), [])
+        d["wordings"][0]["opening"] += " I think it's {counts}."
+        d["wordings"][0]["probe"] = "Before anything gets linked: are those numbers correct?"
+        self.assertTrue(slot_place_problems(t, d))
+        self.assertEqual(ct.check_3_one_element(t, d), [])   # the gate alone accepts this mutant
+        t2, d2 = docs()
+        d2["wordings"][3]["probe"] += " {counts}"
+        self.assertTrue(slot_place_problems(t2, d2))
+
+    def test_script_flow(self):
+        t, _ = docs()
+        self.assertEqual(script_flow_problems(t), [])
+
+    def mutate(self, fn):
+        t, _ = docs()
+        for h in v.HALVES:
+            fn(t["halves"][h]["operator_script"])
+        return script_flow_problems(t)
+
+    def test_mutant_no_project_in_step_1(self):
+        self.assertTrue(self.mutate(lambda s: s[0].update(line="{opening} The raw data is in {source}")))
+
+    def test_mutant_no_source_in_step_1(self):
+        self.assertTrue(self.mutate(lambda s: s[0].update(line="{opening} The project title is {project}")))
+
+    def test_mutant_step_1_only_opening(self):
+        self.assertTrue(self.mutate(lambda s: s[0].update(line="{opening}")))
+
+    def test_mutant_recovery_moved_to_step_1(self):
+        def fn(s):
+            s[0]["recovery"] = s[1].pop("recovery")
+        self.assertTrue(self.mutate(fn))
+
+    def test_mutant_recovery_sends_project(self):
+        self.assertTrue(self.mutate(lambda s: s[1]["recovery"].update(send="{project}")))
+
+    def test_mutant_recovery_deleted(self):
+        self.assertTrue(self.mutate(lambda s: s[1].pop("recovery")))
+
+    def test_mutant_recovery_answers_another_reply(self):
+        self.assertTrue(self.mutate(lambda s: s[1]["recovery"].update(if_reply_holds="Created: projects/")))
+
+    def test_mutant_two_recoveries(self):
+        self.assertTrue(self.mutate(lambda s: s[0].update(recovery={"if_reply_holds": T3B, "send": "{source}"})))
+
+    def test_seed_flag_matches_the_generator(self):
+        t, _ = docs()
+        fx = t["halves"]["trap"]["fixture"]
+        a, _ = ct.build_and_hash(fx, REPO, pins=False)
+        b, _ = ct.build_and_hash({**fx, "seed": fx["seed"] + 1}, REPO, pins=False)
+        sensitive = a != b
+        self.assertTrue(sensitive)
+        self.assertEqual(seed_flag_problems(t, sensitive), [])
+        for h in v.HALVES:
+            t["halves"][h]["fixture"]["seed_sensitive"] = False
+        self.assertTrue(seed_flag_problems(t, sensitive))
+        self.assertEqual(ct.check_6_determinism(t, docs()[1]), [])   # the gate alone accepts this mutant
+
+    def test_status(self):
+        t, _ = docs()
+        self.assertEqual(status_problems(t), [])
+        t["status"] = "repaired"
+        self.assertTrue(status_problems(t))
+        self.assertEqual(v.task_shape_problems(t, TASK), [])   # the schema alone accepts this mutant
 
 
 class OwnGuards(unittest.TestCase):
