@@ -11,14 +11,26 @@ Carried items (the lane lead's brief):
     no mount `type` key (w4b's W4B2-5); `cap_add` stays PENDING until the stub take;
   - binding 5 runs run_take.read_login and scan_record.read_login over the union of both lanes' planted login
     fixtures (read from their test files by ast, never imported; every value is fake, every file is planted in a
-    temporary folder),
-    plus the four cases the merge found apart (glitch-f3's ruling, a merge-time exception to lane w4c);
+    temporary folder), plus the four cases the merge found apart (glitch-f3's ruling, a merge-time exception to lane
+    w4c), plus the placement cases of the binding 5 review, round 1 (B5R1-2): a symlinked file, inside a repository,
+    a repository reached through a symlinked folder, `..` after one, a plain file through a link inside a repository,
+    a missing file, a relative path, and an owner case under one uid mock both readers share. The real-path walk is
+    bound here on both sides (glitch-f3): a mutant that puts abspath back on either reader goes red;
   - binding 6 binds image_lock.SIDECAR_PROGRAM to sidecar.PROGRAM;
   - binding 8 binds preflight's lock keys to w4a's schema paths only: preflight does not yet read the locks through
     image_lock.load. Binding 8: load wiring is CP2's first sequential lane.
 
 No model, no container, no network; nothing reads a real login file.
 """
+
+# Binding 5 review, round 1: the NITs, named and not fixed (the lane lead's call).
+#   B5R1-5  clause (i) is enforced twice in scan_record (the regex's 0x80-0xff and the ascii decode), so each layer
+#           alone is an equivalent mutant; neither is marked as the rule or the backstop.
+#   B5R1-6  test_scan_record's (iv) mutant patches the global os.path.isabs, not a module-local helper.
+#   B5R1-7  the 12 w4c fixtures asked "as written" (A_LOGIN_NAME, outside ALLOWED) all stop at the name gate in
+#           both readers; the 12 asked as a real login name carry the binding.
+#   B5R1-8  scan_record's `allowed` refuses a frozenset (it fails closed).
+#   B5R1-9  no COPIED.d reason names the merge-time edits to box/scan_record.py and its tests.
 
 from __future__ import annotations
 
@@ -282,11 +294,61 @@ class TestBinding5Login(Binding):
         except errors:
             return ("refuse", None)
 
+    def agree(self, label, path, name) -> list:
+        b = self.outcome(rt.read_login, rt.LoginRefused, path, name)
+        c = self.outcome(lambda q, n: sr.read_login(q, n, allowed=ALLOWED), sr.LoginError, path, name)
+        return [] if b == c else [f"{label}: run_take {b[0]}, scan_record {c[0]}"]
+
+    def placement(self) -> list:
+        """B5R1-2: where the file sits and who owns it, both readers on each case."""
+        out = []
+        good = f"{NAME}={fixtures_b.FAKE_VALUE}\n"
+        with tempfile.TemporaryDirectory(prefix="w-") as d:
+            def plant(folder):
+                os.makedirs(folder, exist_ok=True)
+                p = os.path.join(folder, "f.line")
+                with open(p, "w", encoding="utf-8") as fh:
+                    fh.write(good)
+                os.chmod(p, 0o600)
+                return p
+            plain = plant(os.path.join(d, "plain"))
+            repo = os.path.join(d, "repo")
+            os.makedirs(os.path.join(repo, ".git"))
+            inside = plant(os.path.join(repo, "sub"))
+            os.symlink(plain, os.path.join(d, "link.line"))
+            os.symlink(os.path.join(repo, "sub"), os.path.join(d, "lnk"))
+            os.symlink(os.path.join(d, "plain"), os.path.join(repo, "out"))
+            cases = {"a plain file": (plain, "accept"),
+                     "a symlinked file": (os.path.join(d, "link.line"), "refuse"),
+                     "inside a repository": (inside, "refuse"),
+                     "a repository through a symlinked folder": (os.path.join(d, "lnk", "f.line"), "refuse"),
+                     "`..` after a symlinked folder": (os.path.join(d, "lnk", "..", "sub", "f.line"), "refuse"),
+                     "a plain file through a link inside a repository": (os.path.join(repo, "out", "f.line"), "accept"),
+                     "a missing file": (os.path.join(d, "nope.line"), "refuse"),
+                     "a relative path": (os.path.relpath(plain), "refuse")}
+            for label, (path, want) in cases.items():
+                out += self.agree(f"placement: {label}", path, NAME)
+                got = self.outcome(rt.read_login, rt.LoginRefused, path, NAME)[0]
+                if got != want:
+                    out.append(f"placement: {label}: run_take {got}, expected {want} (the case does not bite)")
+            real = os.getuid()
+            if rt.os is not sr.os:
+                out.append("the two readers do not share one os module, so one uid mock cannot reach both")
+            with mock.patch.object(os, "getuid", lambda: real + 1):
+                out += self.agree("owner: another uid", plain, NAME)
+                if self.outcome(rt.read_login, rt.LoginRefused, plain, NAME)[0] != "refuse":
+                    out.append("owner: another uid: run_take accepted (the mock does not bite)")
+        return out
+
     def check(self):
         out = []
         fixtures = login_fixtures()
         if len([k for k in fixtures if k.startswith("w4b:")]) != 15 or len(fixtures_c.LOGIN_FIXTURES) != 12:
             out.append("the union is not w4b's 15 and w4c's 12 planted fixtures")
+        for k, kw in fixtures_b.LOGIN_REFUSALS.items():
+            if not set(kw) <= {"text", "mode"}:
+                out.append(f"w4b:{k} uses {sorted(set(kw) - {'text', 'mode'})}, which the union does not read")
+        out += self.placement()
         with tempfile.TemporaryDirectory(prefix="w-") as d:
             for i, (label, (name, body, mode, relative)) in enumerate(sorted(fixtures.items())):
                 p = os.path.join(d, f"f{i}.line")
@@ -295,10 +357,7 @@ class TestBinding5Login(Binding):
                 os.chmod(p, mode)
                 if relative:
                     p = os.path.relpath(p)
-                b = self.outcome(rt.read_login, rt.LoginRefused, p, name)
-                c = self.outcome(lambda q, n: sr.read_login(q, n, allowed=ALLOWED), sr.LoginError, p, name)
-                if b != c:
-                    out.append(f"{label}: run_take {b[0]}, scan_record {c[0]}")
+                out += self.agree(label, p, name)
         return out
 
     def test_the_union_holds_both_outcomes(self):
@@ -316,6 +375,26 @@ class TestBinding5Login(Binding):
     def test_binding_5(self):
         self.green_then_red("binding 5: scan_record's login cap back at 64 KiB",
                             mock.patch.object(sr, "LOGIN_MAX_BYTES", 1 << 16))
+
+    def test_binding_5_real_path_on_both_sides(self):
+        """glitch-f3: the real-path walk is bound here, so a change on either side shows."""
+        self.green_then_red("binding 5: abspath back in scan_record's repository walk",
+                            mock.patch.object(sr, "_real_path", os.path.abspath))
+        self.green_then_red("binding 5: abspath back in run_take's repository walk",
+                            mock.patch.object(rt, "outside_every_repository", lexical_outside_every_repository))
+
+
+def lexical_outside_every_repository(path: str) -> bool:
+    """run_take.outside_every_repository with abspath in place of realpath: the mutant's body, nothing else changed."""
+    p = os.path.abspath(path)
+    cur = p if os.path.isdir(p) else os.path.dirname(p)
+    while True:
+        if os.path.lexists(os.path.join(cur, ".git")):
+            return False
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            return True
+        cur = parent
 
 
 # ------------------------------------------------------------------------------------------------ binding 6
