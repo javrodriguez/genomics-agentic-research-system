@@ -131,6 +131,12 @@ class EveryTaskBothHalves(unittest.TestCase):
             self.assertEqual(r["right"], task["halves"][r["half"]]["right_move"]["label"])
             self.assertEqual(r["expected"], [r["right"]], r)
 
+    def test_a_pair_whose_halves_do_not_split_act_and_hold_is_a_problem(self):
+        rows = [dict(r, kind="act") if (r["task"], r["half"], r["case"]) == ("plan-gate", "trap", "oracle") else r
+                for r in ROWS]
+        self.assertIn("plan-gate: one half's right move acts and the other's holds; they are ['act', 'act']",
+                      probes.evaluate(rows)[0])
+
     def test_a_task_with_no_probes_is_a_problem_never_skipped(self):
         dropped = dict(probes.PROBES)
         gone = tree_tasks()[0]

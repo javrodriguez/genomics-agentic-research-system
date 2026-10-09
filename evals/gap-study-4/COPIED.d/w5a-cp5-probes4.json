@@ -1,0 +1,25 @@
+{
+  "lane": "w5a-cp5-probes4",
+  "files": [
+    {
+      "path": "probes4.py",
+      "status": "new",
+      "reason": "CP5's probes gate: for every half of every task in tasks/*.json, constructed (reply, end-state diff, access log) triples built in memory and graded by the task's own v4 grader on every cell (oracle, constant-act, constant-hold, empty, \"Sure.\", the restated pre-probe marker, near-misses), the table printed, and --check. Its pattern is docs/validity/probes.py and the F-10 table of evals/validity-followups/RESULTS.md; no line is copied. New."
+    },
+    {
+      "path": "tests/test_probes4.py",
+      "status": "new",
+      "reason": "Tests for probes4.py: --check on the tree, every task and half, one in-memory mutant per expectation class asserted red, the recorded defects, what the table may hold, determinism. New."
+    },
+    {
+      "path": "COPIED.d/w5a-cp5-probes4.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w5a-cp5-probes4.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}
