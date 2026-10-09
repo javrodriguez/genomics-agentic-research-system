@@ -25,6 +25,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import batch
 import prereg
+import study
 
 CAPS = {"openai": Decimal(260), "google": Decimal(140)}
 TOTAL_CAP = Decimal(400)
@@ -164,7 +165,8 @@ def walk_gate(walks, spend, start):
 
 
 def month_turn_allowed(arm, now, trimmed):
-    if arm not in ("O", "G"):
+    # Vendor initials identify their arms; only arms in the active study can spend.
+    if arm not in ({vendor[0].upper() for vendor in CAPS} & set(study.ARMS)):
         return True
     now = utc(now)
     # Only the last day's 23:30 UTC window requires a next-month release.
