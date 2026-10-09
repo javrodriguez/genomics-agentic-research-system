@@ -126,19 +126,24 @@ def problems(text, baseline, introduced):
     need(re.findall(r"^    runs-on: (.+)$", block, re.M) == ["ubuntu-latest"], "R35.runner")
     need(re.findall(r"^      - uses: (.+)$", block, re.M) ==
          ["actions/checkout@v4", "actions/setup-python@v5"], "R35.actions")
-    need('          fetch-depth: 0\n' in block, "R35.depth")
+    actions = dict(re.findall(r"^      - uses: ([^\n]+)\n(.*?)(?=^      - |\Z)", block, re.M | re.S))
+    checkout = actions.get("actions/checkout@v4", "")
+    setup = actions.get("actions/setup-python@v5", "")
+    need('        with:\n' in checkout and '          fetch-depth: 0\n' in checkout, "R35.depth")
     need(all(word in comments for word in ("copy gate", "ledger", "history", "shallow clone")), "R35.history")
-    need('          python-version: "3.12"\n' in block, "R35.python")
+    need('        with:\n' in setup and '          python-version: "3.12"\n' in setup, "R35.python")
     env = ('    env:\n      GIT_CONFIG_COUNT: "2"\n'
            '      GIT_CONFIG_KEY_0: maintenance.auto\n      GIT_CONFIG_VALUE_0: "false"\n'
            '      GIT_CONFIG_KEY_1: gc.auto\n      GIT_CONFIG_VALUE_1: "0"\n')
     need(env in block, "R35.maintenance")
     need(entries and len({n for n, _, _ in entries}) == len(entries)
          and all(re.search(r"^        # \S", body, re.M) for _, body, _ in entries), "R35.comments")
+    need(not re.search(r"^ {4,8}(?:if|continue-on-error|shell|working-directory):", block, re.M), "R35.runnable")
     need("plan 299" in comments and "intervals job" in comments and "stats.py" in comments
          and "CP8" in comments, "R35.scope")
     refs = re.findall(r"^\s*ref:\s*(.*)$", block, re.M)
     need(not refs or (len(refs) == 1 and re.fullmatch(r"[0-9a-fA-F]{40}", refs[0])), "R36.ref")
+    need(refs == re.findall(r"^\s*ref:\s*(.*)$", checkout, re.M), "R36.location")
     need(all(word in comments for word in ("CP8", "publication commit", "done commit", "full sha", "Javier")),
          "R36.publication")
 
@@ -201,10 +206,10 @@ def problems(text, baseline, introduced):
             '  python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --check\nfi'
         )
         need(run == expected_copy, "R42.branches")
-        need(sum("copy_manifest.py" in line for entry in runs for line in entry.splitlines()) == 2,
-             "R42.only")
     else:
         need(False, "R42.branches")
+    need(sum("copy_manifest.py" in line for entry in runs for line in entry.splitlines()) == 2,
+         "R42.only")
     need(ZERO_RULE in comments, "R43.rule")
     for command in AFTER:
         if command in command_steps:
@@ -248,8 +253,14 @@ def mutations():
         "maintenance": ("R35.maintenance", 'GIT_CONFIG_VALUE_0: "false"', 'GIT_CONFIG_VALUE_0: "true"'),
         "gc": ("R35.maintenance", 'GIT_CONFIG_VALUE_1: "0"', 'GIT_CONFIG_VALUE_1: "1"'),
         "step-comment": ("R35.comments", "        # Binds the permitted publication language.\n", ""),
+        "job-condition": ("R35.runnable", "    steps:\n", "    if: false\n    steps:\n"),
+        "step-condition": ("R35.runnable", "        # Binds the permitted publication language.\n",
+                           "        if: false\n        # Binds the permitted publication language.\n"),
+        "ignored-exit": ("R35.runnable", "    steps:\n", "    continue-on-error: true\n    steps:\n"),
         "interval-comment": ("R35.scope", "intervals job", "secondary job"),
         "floating-ref": ("R36.ref", "          fetch-depth: 0", "          ref: main\n          fetch-depth: 0"),
+        "ref-location": ("R36.location", '          python-version: "3.12"',
+                         '          ref: ' + 'a' * 40 + '\n          python-version: "3.12"'),
         "publication-comment": ("R36.publication", "done commit", "later commit"),
         "secret": ("R37.secrets", "    steps:\n", "    token: ${{ secrets.FAKE }}\n    steps:\n"),
         "permissions": ("R37.permissions", "    steps:\n", "    permissions: write-all\n    steps:\n"),
@@ -267,11 +278,25 @@ def mutations():
         "copy-location": ("R42.branches", '$RUNNER_TEMP/frozen-tree', 'frozen-tree'),
         "copy-after": ("R42.branches", 'python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --check', COPY),
         "copy-print": ("R42.branches", 'echo "copy gate commit: $freeze"', 'echo "copy checked"'),
+        "copy-head-print": ("R42.branches", 'echo "copy gate commit: $(git rev-parse HEAD)"', 'echo "copy checked"'),
+        "copy-cleanup": ("R42.branches", "trap 'git worktree remove \"$copy_root\"' EXIT", "true"),
         "copy-extra": ("R42.only", f'echo "{PRIVATE_MESSAGE}"', COPY),
         "zero-comment": ("R43.rule", "AFTER the freeze", "BEFORE the freeze"),
         "kickoff": ("R44.step", KICKOFF, BASE),
         "additive-assertion": ("R44.step", 'test "$removed" -eq 0', 'test "$removed" -ge 0'),
     }
+    language_step = ('      - name: Language rules\n'
+                     '        # Binds the permitted publication language.\n'
+                     f'        run: {BEFORE[0]}\n')
+    separation_step = ('      - name: Separation of rounds\n'
+                       "        # Binds the fresh baseline's prohibition on joining earlier counts.\n"
+                       f'        run: {BEFORE[1]}\n')
+    edits['before-wrapper'] = ('R38.before:' + BEFORE[0], f'        run: {BEFORE[0]}\n',
+                              f'        run: |\n          echo ready\n          {BEFORE[0]}\n')
+    edits['combined-steps'] = ('R38.separate', language_step + separation_step,
+        language_step.replace(f'run: {BEFORE[0]}', f'run: |\n          {BEFORE[0]}\n          {BEFORE[1]}'))
+    edits['extra-step'] = ('R38.total', '    steps:\n',
+        '    steps:\n      - name: Extra\n        # A fake extra command.\n        run: echo extra\n')
     for name, command in (("push", "git push"), ("gh", "gh run list"), ("deploy", "deploy fake"),
                           ("upload", "upload fake"), ("release", "release fake"), ("network", "curl https://example.invalid")):
         edits[name] = ("R37." + name, f'echo "{PRIVATE_MESSAGE}"', command)
