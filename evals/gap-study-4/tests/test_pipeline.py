@@ -27,6 +27,9 @@ import takes
 import batch
 import routing
 import variants
+import check_results as cr
+import agent_adapter as aa
+import harness_bookkeeping as hb
 from graders import labels4
 
 MUTANT = None
@@ -43,6 +46,11 @@ def mutations():
         "row-agent": (takes, "agent_problems", lambda row: []),
         "final-slot": (takes, "slot_final", lambda outcome: False),
         "closed-cell": (takes, "cell_closed", lambda history, cell: False),
+        "recorded-route": (cr, "verify_route", lambda outcome, table: None),
+        "pause-block": (cr, "pause_event", lambda history, taken: ("take", taken["slot"], taken["attempt"])),
+        "window-span": (cr, "window_problems", lambda history: []),
+        "ruled-state": (cr, "ruling_closes", lambda count, cap: False),
+        "ruled-route": (cr, "ruled_route", lambda ruling: labels4.GRADED),
     }
 
 
@@ -285,6 +293,124 @@ class Registration(unittest.TestCase):
             takes.guard_registration(r, 1, [], [])
         with mock.patch.object(takes, "agent_problems", lambda row: []):
             takes.guard_registration(r, 1, [], [])
+
+
+def table():
+    t = copy.deepcopy(routing.load_table())
+    harness = hb.CLAUDE_CODE
+    t["pin_profiles"] = {harness: {"synthetic-model": {"permission_mode": "synthetic-mode", "version": "0.0.1"}}}
+    t["pin_profiles_status"] = "RULED: synthetic profile"
+    t["spend_cap_markers_status"] = "RULED: synthetic fixture"
+    return t
+
+
+def recorded(state, r=None, attempt=1, window=1):
+    """Drive-side synthetic records; the real routing function records their decision."""
+    r = row() if r is None else r
+    pin = dict(table()["pin_profiles"][hb.CLAUDE_CODE]["synthetic-model"],
+               harness=hb.CLAUDE_CODE, model="synthetic-model")
+    turn = aa.TurnResult(exit_code=0, text="synthetic", stream_path=None, end_reason=labels4.END_TURN,
+                         init=pin, api_errors=[], counters={"oom_kill_delta": 0, "pids_max_delta": 0},
+                         started_at=1.0, ended_at=2.0, agent_output=True)
+    box = {"preflight_ok": True, "container_started": True, "container_exited": False,
+           "sidecar": {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": False},
+           "unexplained_operator_diffs": 0, "checker_reasons": [], "quiescence_kill": False,
+           "outside_reach_events": 0, "finalize_abort": False, "committed": False,
+           "unreadable_consequential": [], "quiescence_cap_survivors": 0}
+    turns = [turn]
+    if state == labels4.REHEARSAL:
+        turns = []
+        box["preflight_ok"] = False
+    elif state == labels4.HARNESS_ERROR:
+        box["sidecar"]["queue_overflow"] = True
+    elif state == labels4.ABORTED:
+        turn.counters["oom_kill_delta"] = 1
+    raw = aa.harness_records(turns, pin=pin, box=box)
+    if state == labels4.PAUSE:
+        markers = table()["rate_limit_markers"][hb.CLAUDE_CODE]
+        raw["api_errors"] = [{"status": markers["status"][0], "type": None, "text": None}]
+    decision = routing.route(raw, table())
+    assert decision["route"] == state
+    return outcome(r, attempt, state, records=raw, decision=decision,
+                   events=decision["events"], mask=decision["mask"], mask_basis="annotations",
+                   final=state not in batch.RERUN_ROUTES, rerun=state in batch.RERUN_ROUTES,
+                   window_event=window if state == labels4.PAUSE else None)
+
+
+def ruling(r, attempt=1, route=labels4.PAUSE, word=labels4.RULE_ROUTE, by="synthetic-person"):
+    return {"kind": labels4.RULING, "slot": r["slot"], "attempt": attempt,
+            "ruling": word, "route": route, "by": by}
+
+
+class PublicationHistory(unittest.TestCase):
+    def setUp(self):
+        self.assertTrue(callable(getattr(cr, "publication", None)), "publication reads committed outcomes and rulings")
+
+    def test_every_route_is_reverified_without_replacement(self):
+        routes = {r["route"] for r in table()["rows"]}
+        self.assertEqual(routes, set(labels4.ROUTES))
+        for state in labels4.ROUTES:
+            with self.subTest(state=state):
+                o = recorded(state)
+                original = copy.deepcopy(o)
+                cr.verify_route(o, table())
+                self.assertEqual(o, original)
+                broken = copy.deepcopy(o)
+                broken["decision"]["rows"] = []
+                with self.assertRaisesRegex(ValueError, "recorded route"):
+                    cr.verify_route(broken, table())
+                with mock.patch.object(cr, "verify_route", lambda o, t: None):
+                    cr.publication([broken], table())
+
+    def test_ruled_pause_counts_its_existing_block_once(self):
+        stopped = outcome(row(2), state=labels4.FAILED, final=False)
+        history = [recorded(labels4.PAUSE, row(1)), stopped, recorded(labels4.PAUSE, row(3)), ruling(row(2))]
+        got = cr.publication(history, table())
+        self.assertEqual(len(got["window_events"]["c1"]), 1)
+        self.assertEqual(got["cells"], {})
+        with mock.patch.object(cr, "pause_event", lambda h, o: ("take", o["slot"], o["attempt"])):
+            self.assertEqual(len(cr.publication(history, table())["window_events"]["c1"]), 2)
+
+    def test_ruled_pause_requires_unique_block_and_existing_take(self):
+        absent = [ruling(row())]
+        with self.assertRaises(ValueError):
+            cr.publication(absent, table())
+        ambiguous = [recorded(labels4.PAUSE), outcome(row(2), state=labels4.FAILED, final=False), ruling(row(2))]
+        with self.assertRaisesRegex(ValueError, "uniquely"):
+            cr.publication(ambiguous, table())
+
+    def test_ruled_half_cell_closes_from_the_ruling(self):
+        history = []
+        cap = batch.half_cell_cap(table(), labels4.REHEARSAL)
+        for attempt in range(1, cap + 1):
+            history.extend([outcome(row(), attempt, labels4.FAILED, final=False),
+                            ruling(row(), attempt, route=labels4.REHEARSAL)])
+        got = cr.publication(history, table())
+        self.assertEqual(got["cells"]["c1"]["state"], labels4.INCOMPLETE_MECHANICAL)
+        self.assertTrue(all(o.get("cell_state") is None for o in history if not batch.is_ruling(o)))
+        with mock.patch.object(cr, "ruling_closes", lambda count, cap: False):
+            self.assertNotIn("c1", cr.publication(history, table())["cells"])
+
+    def test_ruled_take_publishes_under_the_ruled_route(self):
+        history = [outcome(row(), state=labels4.FAILED, final=False), ruling(row(), route=labels4.ABORTED)]
+        got = cr.publication(history, table())
+        self.assertEqual(got["outcomes"][0]["state"], labels4.ABORTED)
+        with mock.patch.object(cr, "ruled_route", lambda r: labels4.GRADED):
+            self.assertEqual(cr.publication(history, table())["outcomes"][0]["state"], labels4.GRADED)
+
+    def test_window_event_must_fit_one_block(self):
+        too_many = [recorded(labels4.PAUSE, row(i)) for i in range(1, batch.BLOCK + 2)]
+        with self.assertRaisesRegex(ValueError, "window event"):
+            cr.publication(too_many, table())
+        with mock.patch.object(cr, "window_problems", lambda h: []):
+            cr.publication(too_many, table())
+        repeated = [recorded(labels4.PAUSE, row(), 1), recorded(labels4.PAUSE, row(), 2)]
+        with self.assertRaises(ValueError):
+            cr.publication(repeated, table())
+        interleaved = [recorded(labels4.PAUSE, row(1), window=1),
+                       recorded(labels4.PAUSE, row(2), window=2), recorded(labels4.PAUSE, row(3), window=1)]
+        with self.assertRaises(ValueError):
+            cr.publication(interleaved, table())
 
 
 if __name__ == "__main__":
