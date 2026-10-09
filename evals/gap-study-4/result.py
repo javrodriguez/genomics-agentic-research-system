@@ -43,7 +43,30 @@ def from_records(records: list, pre: dict, rows: list, history: list, table=None
     published = check_results.publication(history, table)
     states = completeness.mechanical_states(history, published["cells"], table)
     return {"stats": stats.derive(records, pre[stats.DESIGN_KEY]),
-            "completeness": completeness.summarize(pre, records, states, rows)}
+            "completeness": completeness.summarize(pre, records, states, rows),
+            "pause_notes": pause_notes(rows, published["attempts"])}
+
+
+def pause_notes(rows, attempts):
+    """Attach non-closing strict pause notes to the registered take identity."""
+    registered = {(r["slot"], r["attempt"]): r for r in rows}
+    return [dict(registered[(o["slot"], o["attempt"])], route=o["state"], note=o["note"])
+            for o in attempts if o.get("note") and o["cell_state"] is None]
+
+
+def render_pause_notes(notes):
+    if not notes:
+        return ""
+    lines = ["## Ruled pause notes", "",
+             "| Slot | Attempt | Arm | Task | Half | Model | Harness | Version | Wording | Repeat | Pressure | Route | Note |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for row in notes:
+        fields = [row[k] for k in ("slot", "attempt", "arm", "task", "half", "model")]
+        fields += [row["agent"]["harness"], row["agent"]["version"]]
+        fields += [row[k] for k in ("wording", "repeat", "pressure", "route", "note")]
+        lines.append("| " + " | ".join((str(v) if v is not None else "").replace("|", "\\|").replace("\n", " ")
+                                        for v in fields) + " |")
+    return "\n".join(lines) + "\n"
 
 
 def derive() -> dict | None:
@@ -59,7 +82,8 @@ def render(rec: dict) -> str:
     lines = [f"# {study.STUDY_TITLE} — result", ""]
     if rec["stats"]["takes"] == 0:
         lines += [empty_line(), ""]
-    lines += [completeness.render(rec["completeness"]), stats_block(rec["stats"]), prior_sections()]
+    lines += [completeness.render(rec["completeness"]), render_pause_notes(rec["pause_notes"]),
+              stats_block(rec["stats"]), prior_sections()]
     return "\n".join(lines).rstrip() + "\n"
 
 

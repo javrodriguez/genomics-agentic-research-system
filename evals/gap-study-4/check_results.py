@@ -5,7 +5,8 @@ Default, --check and --ledger all check the complete publication. No recorded
 route is repaired. Before the freeze an empty tree says no takes, never zeros.
 After the freeze the pinned bytes and frozen content are checked before records
 are regraded with local v4 files. Publication reads committed cell states and
-closed rulings; candidate blocks for a ruled pause must agree on its event count.
+closed rulings; differing candidate counts for a ruled pause use the strict
+own-event count with a publication note (round 3 re-ruling).
 Under w5b-4, runtime outputs have no copy fragment. Their commit history must
 start strictly after the freeze, including outputs later removed from the tree.
 Only the disposable rehearsal plan passes --rehearsal-plan: its exact placeholder
@@ -37,6 +38,8 @@ import batch  # noqa: E402
 import routing  # noqa: E402
 from graders import labels4  # noqa: E402
 import stats  # noqa: E402
+
+STRICT_PAUSE_NOTE = "ruled pause counted strictly"
 
 
 def validate_ledger(rows: list) -> dict:
@@ -95,8 +98,8 @@ def window_problems(history: list) -> list[str]:
     return bad
 
 
-def pause_event(history: list, taken: dict) -> tuple:
-    """Derive the ruled take's event; no seventh ruling field (narrowed PL-3).
+def pause_event(history: list, taken: dict) -> dict:
+    """Derive the ruled take's event and publication note; no seventh ruling field.
 
     Enumerate admissible block edges, not exponentially many partitions. An edge
     spans one to BLOCK outcomes, has no repeated slot and cannot split one
@@ -105,6 +108,7 @@ def pause_event(history: list, taken: dict) -> tuple:
     the same half-cell count. Sharing reduces the count only when that window
     already belongs to this half-cell through another outcome. Otherwise the
     ruled take has its own event, regardless of another cell's window identity.
+    If candidate counts differ, use batch's strict own-event count and name it.
     """
     outcomes = [o for o in history if not batch.is_ruling(o)]
     key = (taken["slot"], taken["attempt"])
@@ -149,8 +153,8 @@ def pause_event(history: list, taken: dict) -> tuple:
             event = ("window", next(iter(events)))
         choices[len(cell_events | {event})] = event
     if len(choices) != 1:
-        raise ValueError("the ruled pause's event count cannot be derived uniquely from committed history")
-    return next(iter(choices.values()))
+        return {"event": ("take", *key), "note": STRICT_PAUSE_NOTE}
+    return {"event": next(iter(choices.values())), "note": None}
 
 
 def ruling_closes(count: int, cap: int) -> bool:
@@ -166,7 +170,8 @@ def publication(history: list, table: dict | None = None) -> dict:
 
     Ordinary cell states are read, never regenerated from a cap. A route ruling
     has no outcome carrying its fate, so its handler's fate is evaluated at the
-    ruling's position. Pauses reuse their uniquely derived block event (PL-3).
+    ruling's position. Pauses share a block event when its count is unambiguous;
+    differing candidate counts use the strict own-event count with a note.
     """
     table = routing.load_table() if table is None else table
     try:
@@ -199,7 +204,12 @@ def publication(history: list, table: dict | None = None) -> dict:
             state, cell = ruled_route(entry), taken["half_cell"]
             o = dict(taken, state=state, ruling=copy.deepcopy(entry))
             if state in batch.CELL_CAPPED_ROUTES:
-                event = pause_event(history, taken) if state == labels4.PAUSE else ("take", *key)
+                event = ("take", *key)
+                if state == labels4.PAUSE:
+                    pause = pause_event(history, taken)
+                    event = pause["event"]
+                    if pause["note"]:
+                        o["note"] = pause["note"]
                 events[(cell, state)].add(event)
                 closes = ruling_closes(len(events[(cell, state)]), batch.half_cell_cap(table, state))
                 o.update(final=closes, rerun=not closes, beyond_cap=closes)
@@ -222,7 +232,9 @@ def publication(history: list, table: dict | None = None) -> dict:
             spent_cell[(cell, state)] += 1
             spent_slot[(o["slot"], state)] += 1
         if o["cell_state"] is not None:
-            cells[cell] = {"state": o["cell_state"], "reason": o["cell_reason"]}
+            cells[cell] = dict(cells.get(cell, {}), state=o["cell_state"], reason=o["cell_reason"])
+            if o.get("note"):
+                cells[cell]["note"] = o["note"]
         effective[(o["slot"], o["attempt"])] = o
         if o["final"]:
             final_slots.add(o["slot"])

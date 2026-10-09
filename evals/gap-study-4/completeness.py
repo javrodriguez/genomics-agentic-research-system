@@ -40,6 +40,9 @@ def committed_state(cell, states):
 def mechanical_states(history, published, table=None):
     """Read strict closures through batch's replay only; never drive or register."""
     states = dict(published)
+    for cell, state in published.items():
+        if state.get("note"):
+            states[cell] = dict(state, state=f"{state['state']} ({state['note']})")
     if history:
         try:
             strict = batch.Batch(None, None, None, table=table, history=history).closed_cells

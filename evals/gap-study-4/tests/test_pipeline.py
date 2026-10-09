@@ -197,7 +197,8 @@ def mutations():
         "final-slot": (takes, "slot_final", lambda outcome: False),
         "closed-cell": (takes, "cell_closed", lambda history, cell: False),
         "recorded-route": (cr, "verify_route", lambda outcome, table: None),
-        "pause-block": (cr, "pause_event", lambda history, taken: ("take", taken["slot"], taken["attempt"])),
+        "pause-block": (cr, "pause_event", lambda history, taken:
+                        {"event": ("take", taken["slot"], taken["attempt"]), "note": None}),
         "window-span": (cr, "window_problems", lambda history: []),
         "ruled-state": (cr, "ruling_closes", lambda count, cap: False),
         "ruled-route": (cr, "ruled_route", lambda ruling: labels4.GRADED),
@@ -688,7 +689,8 @@ class PublicationHistory(unittest.TestCase):
         got = cr.publication(history, table())
         self.assertEqual(len(got["window_events"]["c1"]), 1)
         self.assertEqual(got["cells"], {})
-        with mock.patch.object(cr, "pause_event", lambda h, o: ("take", o["slot"], o["attempt"])):
+        with mock.patch.object(cr, "pause_event", lambda h, o:
+                               {"event": ("take", o["slot"], o["attempt"]), "note": None}):
             self.assertEqual(len(cr.publication(history, table())["window_events"]["c1"]), 2)
 
     def test_ruled_pause_requires_existing_take(self):
