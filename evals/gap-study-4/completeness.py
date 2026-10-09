@@ -103,9 +103,13 @@ def render(summary: dict) -> str:
     for c in summary["cells"]:
         agent = c["agent"]
         n = str(c["recorded"]) if c["recorded"] else stats.NO_TAKES
-        reason = (c["reason"] or "").replace("|", "\\|").replace("\n", " ")
+        state = c["state"].replace("|", "\\|").replace("\n", " ")
+        reason = c["reason"] or ""
+        if reason and reason in c["state"]:
+            reason = ""
+        reason = reason.replace("|", "\\|").replace("\n", " ")
         lines.append(f"| {c['arm']} | {c['task']} | {c['half']} | {c['model']} | {agent['harness']} | "
-                     f"{agent['version']} | {n} | {c['planned']} | {c['state']} | {reason} |")
+                     f"{agent['version']} | {n} | {c['planned']} | {state} | {reason} |")
     return "\n".join(lines) + "\n"
 
 
