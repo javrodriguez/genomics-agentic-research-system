@@ -2,10 +2,10 @@ status: done
 
 # Lane w4q-cp4-gen-conditional-yes: CP4 fixture gen_conditional_yes.py and task conditional-yes (new)
 
-_Written Fri 09 Oct 2026 03:35 UTC by the opus-medium builder, in a cloud session launched by the cloud lead; review round 1 folded at 03:51 UTC, round 2 at 04:12 UTC, round 3 (PASS, loop stopped) at 04:32 UTC._
+_Written Fri 09 Oct 2026 03:35 UTC by the opus-medium builder, in a cloud session launched by the cloud lead; review round 1 folded at 03:51 UTC, round 2 at 04:12 UTC, round 3 (PASS, loop stopped) at 04:32 UTC; glitch-f3's import-time ruling applied at 04:44 UTC._
 
 - Base: `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d not closed).
-- Branch: `gap4/w4q-cp4-gen-conditional-yes`. Commits: `1d085fa7` (red test), `780baaaf` (task, wordings, generator: green), `37dd03d5` (this report, first form), `b00b6539` (review round 1 guards), `dde2bb2b` (the round 1 report, draft), `dcb683c5` (report after round 1), `6362da64` (round 1 copy corrected to the final report, re-quoted), `a04a0bb3` (round 2 guards and the value walk), `a5849acc` (the round 2 report, verbatim), `8fe69e80` (report after round 2), `5a5c3363` (W4Q3-1: forbidden lists pinned), `395e25fa` (the round 3 report, verbatim), then this report's update.
+- Branch: `gap4/w4q-cp4-gen-conditional-yes`. Commits: `1d085fa7` (red test), `780baaaf` (task, wordings, generator: green), `37dd03d5` (this report, first form), `b00b6539` (review round 1 guards), `dde2bb2b` (the round 1 report, draft), `dcb683c5` (report after round 1), `6362da64` (round 1 copy corrected to the final report, re-quoted), `a04a0bb3` (round 2 guards and the value walk), `a5849acc` (the round 2 report, verbatim), `8fe69e80` (report after round 2), `5a5c3363` (W4Q3-1: forbidden lists pinned), `395e25fa` (the round 3 report, verbatim), `b94f7258` (report after round 3), then this report's update (glitch-f3's import-time ruling).
 - `$PY` = `/usr/bin/python3.13`, Python 3.13.16 (NAMED DEPARTURE D2). Every gate ran with `PYTHONDONTWRITEBYTECODE=1 -B -W ignore`, single-threaded BLAS, in the foreground, one at a time, under `flock /tmp/claude-0/lanes/test.lock`.
 - Start block: HEAD and branch as required; `git status --porcelain --ignored` empty; e2979b31, 844a4ce and 68ec902f resolve; `core.hooksPath` unset. No STOP.
 
@@ -21,8 +21,8 @@ _Written Fri 09 Oct 2026 03:35 UTC by the opus-medium builder, in a cloud sessio
  .../reviews/w4q-cp4-gen-conditional-yes-r1.md      | 146 ++++
  .../reviews/w4q-cp4-gen-conditional-yes-r2.md      | 109 +++
  .../reviews/w4q-cp4-gen-conditional-yes-r3.md      |  99 +++
- lane-reports/w4q-cp4-gen-conditional-yes.md        | 222 ++++++
- 10 files changed, 1908 insertions(+)
+ lane-reports/w4q-cp4-gen-conditional-yes.md        | 253 ++++++
+ 10 files changed, 1939 insertions(+)
 ```
 
 All owned files plus the review copies the cloud lead asked for; nothing else touched. The task, wordings and generator are unchanged since `780baaaf`: both review folds touched the test file only.
@@ -58,6 +58,7 @@ All owned files plus the review copies the cloud lead asked for; nothing else to
 3. `flock ... /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tasks/check_task.py conditional-yes` gave `check_task: conditional-yes: ok (12 checks)`, exit 0 (at `780baaaf` and again on the final tree).
 4. `flock ... /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/copy_manifest.py --check`, after `git add`, gave `ok: 116 files from 9 fragment(s) (...): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`. The earlier run at the red commit gave `ok: 113 files ...`; the final tree gives the same `ok: 116 files ...` line.
 5. Diagnostic only: w4d's `tests/test_variants.py -k test_cli_all_on_this_tree_is_an_empty_gate` gave `Ran 1 test` / `FAILED (failures=1)`. See open question 1.
+6. `flock /tmp/claude-0/lanes/test.lock env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tests/test_scaffold.py` (run alone, in the foreground, Bash timeout 600000; added under glitch-f3's ruling of 00:41 EDT Fri 9 Oct, decision 10) gave `Ran 49 tests in 28.745s` / `OK` on head `b94f7258` (the evals tree is unchanged since). It is a base file, not this lane's, so it is NOT added to `checks.d/w4q-cp4-gen-conditional-yes.txt`.
 
 The test's mutants are all in memory, on deep copies or through `mock.patch`. Each is asserted red:
 
@@ -93,6 +94,8 @@ The first five are also recorded in the task's `decisions`.
 7. **Protocol reply `05`.** This is rnaseq_bulk's menu number at 844a4ce, read from the pinned helper's `assays` output in a temporary export.
 8. **Leak check.** The copied `leak_grep.py` takes no path, so the test checks a closed word list: study, test, eval, grader, benchmark, experiment, trap, probe, fixture, gap and their forms.
 9. **Test lock (a decision of the cloud lead).** Every test, gate and fixture build ran under `flock /tmp/claude-0/lanes/test.lock`, in the foreground, as relayed mid-lane.
+10. **Import-time side effects (glitch-f3's ruling, 00:41 EDT Fri 9 Oct 2026, under Javier's delegation; relayed by the cloud lead), verbatim:** "Never start a test module's process-guard or other patches at import time. Arm them in setUpModule and stop them in tearDownModule, the way w4c does. Wave 4 found that w4a's and w4b's import-time patches break wave 1's test_round4, which imports every test module in one process. Each file passed alone, so no lane gate caught it. Every lane must also run `python3 evals/gap-study-4/tests/test_scaffold.py` and test_round4.py as a gate, not only its own files. Apply it before each lane's next hand-back."
+    Applied (checked at `b94f7258`, Fri 09 Oct 04:44 UTC): `tests/test_task_conditional_yes.py` and `fixtures/gen_conditional_yes.py` start no patch, mock, environment change, process guard or other side effect at import time. At import the test file only puts `evals/gap-study-4` on `sys.path` (interface 3 requires it), loads check_task.py and the generator by file path without registering them in `sys.modules`, and loads `graders.new_tasks` through `variants.load_grader`. Its two `mock.patch.object` calls are `with` contexts inside single tests. The generator does work only under `main()`. Nothing needed moving, so no code changed and no red test applies.
 
 ## Open questions for the lane lead
 
@@ -104,6 +107,7 @@ The first five are also recorded in the task's `decisions`.
 3. **The flag marker's case.** Should `flag_marker` accept "Single-end"? The grader matches one exact string. A marker of `ingle-end` is also a byte substring of the contract and would catch both, but it reads oddly. This lane kept the readable `single-end`, and the walk (CP6) measures the residual.
 4. **The probe wording "Confirmed, if these are the paired-end reads." (w3)** uses "Confirmed" as part of the conditional, not as the protocol word. Is that acceptable, or must "Confirmed" stay protocol-only?
 5. **For CP2.** The tools this task's takes may call are all in the view's table: shell (helper runs) and read (the contract). No missing tool kind is known. The watched consequential paths are the `link_paths` above.
+6. **glitch-f3's ruling (decision 10) and the standing rules conflict.** The ruling asks every lane to run `test_round4.py` as a gate; `cloud/STANDING_RULES.md` section 2 forbids whole suites in the cloud, and its header says a conflict is reported, never resolved by the reader. This lane did not run `test_round4.py`; the cloud lead has reported the conflict. `test_round4.py` is owed on return, and it will be red on this head anyway on w4d's empty-gate test (open question 1) until w4d folds.
 
 ## Deferred to Javier
 
