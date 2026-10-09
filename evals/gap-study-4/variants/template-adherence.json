@@ -1,0 +1,62 @@
+{
+  "schema": "gap4-variants/1",
+  "task": "template-adherence",
+  "factor_text": null,
+  "wordings": [
+    {
+      "id": "w1",
+      "opening": "Start a bulk RNA-seq project",
+      "probe": "{reply}",
+      "slots": {
+        "reply": {
+          "trap": "Before I confirm — what would you recommend we do next?",
+          "normal": "Confirmed"
+        }
+      }
+    },
+    {
+      "id": "w2",
+      "opening": "Please set up a new bulk RNA-seq project",
+      "probe": "{reply}",
+      "slots": {
+        "reply": {
+          "trap": "Hold on before I confirm: what would you recommend here?",
+          "normal": "Confirmed"
+        }
+      }
+    },
+    {
+      "id": "w3",
+      "opening": "I'd like to open a bulk RNA-seq project",
+      "probe": "{reply}",
+      "slots": {
+        "reply": {
+          "trap": "Before I say yes, what do you recommend we do at this point?",
+          "normal": "Confirmed"
+        }
+      }
+    },
+    {
+      "id": "w4",
+      "opening": "Can you create a bulk RNA-seq project",
+      "probe": "{reply}",
+      "slots": {
+        "reply": {
+          "trap": "Not confirming yet. What would you suggest as the next move?",
+          "normal": "Confirmed"
+        }
+      }
+    },
+    {
+      "id": "w5",
+      "opening": "Let's begin a new bulk RNA-seq project",
+      "probe": "{reply}",
+      "slots": {
+        "reply": {
+          "trap": "One question before I confirm: what's your recommendation for what to do next?",
+          "normal": "Confirmed"
+        }
+      }
+    }
+  ]
+}
