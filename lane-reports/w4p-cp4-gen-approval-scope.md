@@ -49,6 +49,22 @@ Commits, in order:
 - At the red commit, the same `--check` printed `ok: 112 files from 9 fragment(s) ...`.
 - W4P2-1's mutant: with the "changed raw/" clause deleted from the generator in the worktree (restored, never committed), the test file printed `FAIL: test_a_refusal_that_touched_raw` and `FAILED (failures=1)` (41 tests).
 - Evidence for open question 1: `check_task.py --all` prints `check_task: approval-scope: ok (12 checks)` and exits 0.
+- Added under glitch-f3's import-time ruling (below), on the same tree (code unchanged since 8627ec44), Fri 9 Oct 2026 04:43 UTC: `flock /tmp/claude-0/lanes/test.lock env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tests/test_scaffold.py`
+  `Ran 49 tests in 28.061s` / `OK` (exit 0). test_scaffold.py is a base file, not this lane's, so it is not added to `checks.d/w4p-cp4-gen-approval-scope.txt`.
+
+### glitch-f3's ruling on import-time patches (00:41 EDT Fri 9 Oct 2026, under Javier's delegation; glitch-f3's ruling, never Javier's words), verbatim
+
+"Never start a test module's process-guard or other patches at import time. Arm them in setUpModule and stop them in tearDownModule, the way w4c does. Wave 4 found that w4a's and w4b's import-time patches break wave 1's test_round4, which imports every test module in one process. Each file passed alone, so no lane gate caught it. Every lane must also run `python3 evals/gap-study-4/tests/test_scaffold.py` and test_round4.py as a gate, not only its own files. Apply it before each lane's next hand-back."
+
+How this lane applied it (the cloud lead's handling):
+- **No import-time side effect found.** I checked `tests/test_task_approval_scope.py` and `fixtures/gen_approval_scope.py`. At import, the test module does only these things:
+  - It puts `evals/gap-study-4` on `sys.path`, which interface 3 requires.
+  - It loads `check_task.py` and the generator by file path, without registering either in `sys.modules`.
+  - It imports `graders/new_tasks.py` through `variants.load_grader`.
+  - It defines constants and an empty cache.
+- Every `mock.patch` in the test file is a per-test context manager. Nothing is started at import, no environment variable is set, and there is no process guard. The generator holds only constants and functions at import. So nothing moved and no code changed.
+- test_scaffold.py was run as a gate (above).
+- test_round4.py was NOT run: see open question 9.
 
 Not run here (owed, run by glitch-f3 on return): `test_round4.py`, `run_checks.py`, the whole-file audits, and the walks (CP6).
 
@@ -140,6 +156,11 @@ There is one wait point. Its patterns are the link-confirmation reading of `paus
 6. **(W4P1-4 a) No check holds that each probe is a yes to link.** The five probes were read by hand as yeses; a probe turned into a no (the reviewer's M10) stays green. A human reading at the freeze is the guard.
 7. **(W4P1-4 c) For CP2:** drive.py (1018-1021) records this generator's link exit under `stage01_check_exit`/`stage01_expected_exit`. It works, since check_take 1313 compares the two for equality, but the names are wrong for this task.
 8. **(W4P1-4 d) A walk risk for CP6:** the take enters stage 00 mid-Process, with the project already existing. A contract-following agent may run `create` first and get T7 before it inspects the source.
+9. **glitch-f3's import-time ruling conflicts with the cloud's standing rules.**
+   - The ruling asks every lane to run test_round4.py as a gate.
+   - `cloud/STANDING_RULES.md` section 2 forbids whole suites in the cloud, and its header says a conflict is reported, never resolved by the reader. So test_round4.py was not run here.
+   - The cloud lead has reported the conflict.
+   - test_round4.py is owed on return. It will be red on this head anyway, on w4d's empty-gate test (open question 1), until w4d folds.
 
 ## Deferred to Javier
 
