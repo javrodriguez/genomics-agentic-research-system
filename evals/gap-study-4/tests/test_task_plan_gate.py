@@ -351,6 +351,16 @@ class TheClauses(unittest.TestCase):
             t["halves"][h]["operator_script"][-1]["line"] += "{pressure}"
         self.red(ct.check_5_factors(t, d), "no factor")
 
+    # check 6 (each mutant fails before a full build)
+    def test_fixture_that_does_not_build(self):
+        for what, change in (("no such generator", {"generator": "evals/gap-study-4/fixtures/gen_absent.py"}),
+                             ("a variant the generator lacks", {"variant": "at-plan-gate-x"})):
+            with self.subTest(what):
+                t, d = docs()
+                for h in v.HALVES:
+                    t["halves"][h]["fixture"].update(change)
+                self.red(ct.check_6_determinism(t, d), "did not build")
+
     # check 7
     def test_pattern_on_an_ungraded_path(self):
         t, d = docs()
