@@ -25,6 +25,13 @@ THE REVIEW MUST ALREADY BE COMMITTED. This file checks that the sha it is handed
 that touches the pre-freeze review directory, and refuses otherwise. A seed that names nothing is a seed
 the run could have invented.
 
+ROUND 4'S COPY SNAPSHOT (glitch-f3's ruling w5b-3). COPIED.json is exactly derive()
+over the build fragments before any freeze output is written. The freeze then writes
+prereg.json and COPIED.d/freeze.json, which claims both outputs and itself. All three
+belong to the freeze's one commit. The new fragment is deliberately absent from the
+snapshot: --check compares with nothing committed, so there is no self-hash cycle.
+Any existing output refuses another freeze, including an interrupted first write.
+
 No model, no network, stdlib only.
 """
 
@@ -46,9 +53,46 @@ sys.path.insert(0, str(HERE))
 
 import prereg  # noqa: E402
 import study  # noqa: E402
+import copy_manifest  # noqa: E402
 
 DRAFT = HERE / "prereg-draft.json"
 FROZEN = HERE / "prereg.json"
+
+
+def output_fragment() -> dict:
+    return {"lane": "freeze", "files": [
+        {"path": path, "status": "new", "reason": "written once by freeze.py at the freeze"}
+        for path in ("COPIED.json", "prereg.json", "COPIED.d/freeze.json")
+    ]}
+
+
+def outputs_exist(root: Path) -> bool:
+    return any((root / p).exists() for p in ("COPIED.json", "prereg.json", "COPIED.d/freeze.json"))
+
+
+def snapshot(manifest, folder: Path) -> dict:
+    return manifest.derive(folder)
+
+
+def write_outputs(frozen: dict, *, root=HERE, manifest=copy_manifest) -> tuple[Path, ...]:
+    """Write the three outputs, for one subsequent commit; no partial write is retryable.
+
+    The caller has checked the review, rehearsal, design and pins. This boundary
+    independently checks the build's copy record before taking its snapshot.
+    """
+    root = Path(root)
+    if outputs_exist(root):
+        raise ValueError("a freeze output already exists; the freeze happens once")
+    folder = root / "COPIED.d"
+    bad = manifest.problems(folder)
+    if bad:
+        raise ValueError("cannot freeze the copy record: " + "; ".join(bad))
+    copied = snapshot(manifest, folder)
+    outputs = ((root / "COPIED.json", copied), (root / "prereg.json", frozen),
+               (folder / "freeze.json", output_fragment()))
+    for path, data in outputs:
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return tuple(path for path, _ in outputs)
 
 # Everything the frozen file must be able to prove did not move afterwards.
 #
@@ -337,8 +381,8 @@ def main() -> int:
                   "real freeze needs a rehearsal record, not this flag.")
             return 2
 
-    if FROZEN.is_file():
-        print(f"refusing: {FROZEN.name} already exists. The freeze happens once — a study whose "
+    if outputs_exist(HERE):
+        print(f"refusing: a freeze output already exists. The freeze happens once — a study whose "
               f"pre-registration can be re-frozen has none.")
         return 2
 
@@ -628,11 +672,10 @@ def main() -> int:
         print("\npreview only. Re-run with --write to freeze.")
         return 0
 
-    FROZEN.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+    write_outputs(d)
     print(f"\nfrozen: {FROZEN.relative_to(REPO)}")
     print("The draft is kept beside it. The freeze commit body carries the line printed above as `commit body`.")
-    print("Before committing, run verification/round1-regrade/regrade_environment.py --write: that record names the "
-          "pre-registration in force by sha, and the freeze commit carries it rewritten beside the frozen file.")
+    print("Commit prereg.json, COPIED.json and COPIED.d/freeze.json together, once.")
     return 0
 
 
