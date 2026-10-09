@@ -82,6 +82,11 @@ def review_mutations():
             '"pause_notes": pause_notes(rows, published["attempts"])', '"pause_notes": []'),
         "strict-pause-row-render": source_mutant(result_page, "render",
             'render_pause_notes(rec["pause_notes"])', '""'),
+        "unescaped-state": source_mutant(completeness, "render",
+            '''state = c["state"].replace("|", "\\\\|").replace("\\n", " ")''',
+            'state = c["state"]'),
+        "duplicate-state-reason": source_mutant(completeness, "render",
+            'if reason and reason in c["state"]:', 'if False:'),
         "strict-close-state": source_mutant(completeness, "mechanical_states",
             'strict = batch.Batch(None, None, None, table=table, history=history).closed_cells',
             'strict = {}'),
@@ -1029,6 +1034,19 @@ def pre_registration(tasks=("synthetic-task",)):
 class Reporting(unittest.TestCase):
     def setUp(self):
         self.assertTrue(callable(getattr(result_page, "from_records", None)), "result renders stats tables")
+
+    def test_strict_close_state_is_escaped_and_reason_printed_once(self):
+        reason = "synthetic | reason\ncontinued"
+        escaped = "synthetic \\| reason continued"
+        for state in (f"{labels4.INCOMPLETE_MECHANICAL} (strict close: {reason})",
+                      labels4.INCOMPLETE_MECHANICAL):
+            with self.subTest(state=state):
+                summary = completeness.summarize(pre_registration(), [],
+                    {"c1": {"state": state, "reason": reason}}, [])
+                text = completeness.render(summary)
+                self.assertIn(state.replace("|", "\\|").replace("\n", " "), text)
+                self.assertEqual(text.count(escaped), 1)
+                self.assertNotIn(reason, text)
 
     def test_mechanical_replay_error_is_value_error_and_cli_refusal(self):
         history = after_ruled_final_history()
