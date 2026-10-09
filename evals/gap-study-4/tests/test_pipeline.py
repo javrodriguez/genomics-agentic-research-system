@@ -55,6 +55,8 @@ def mutations():
         "freeze-claims": (freeze, "output_fragment", lambda: {"lane": "freeze", "files": []}),
         "freeze-once": (freeze, "outputs_exist", lambda root: False),
         "freeze-snapshot": (freeze, "snapshot", lambda manifest, folder: {"files": []}),
+        "stored-records": (cr, "records_equal", lambda actual, wanted: True),
+        "published-page": (cr, "page_equal", lambda actual, wanted: True),
         "design-row": (takes, "require_planned_row", lambda row, pre: None),
         "stale-row": (takes, "outside_live_block", lambda waiting, live: []),
         "four-open": (takes, "OPEN_LIMIT", 4),
@@ -853,6 +855,47 @@ class LedgerDoor(unittest.TestCase):
                 takes.commit_registration(wrong, 1, root=repo.root, repo=repo.root, pre=pre)
             with mock.patch.object(takes, "require_planned_row", lambda row, pre: None):
                 takes.commit_registration(wrong, 1, root=repo.root, repo=repo.root, pre=pre)
+
+
+class PublishedArtifacts(unittest.TestCase):
+    def test_checker_binds_records_page_agent_and_final_route(self):
+        self.assertTrue(callable(getattr(cr, "check_publication", None)), "checker must read interface 11 records")
+        runner = get_run()
+        r = row(); rows = [dict(r, attempt=1)]
+        history = [recorded(labels4.GRADED, r)]
+        grader = lambda r, o: {"label": "synthetic-right", "correct": True}
+        records = runner.produce(rows, history, grader, table=table())["records"]
+        pre = pre_registration()
+        page = result_page.render(result_page.from_records(records, pre, rows, history, table()))
+        self.assertEqual(cr.check_publication(rows, history, records, pre, page, grader, table()), [])
+        corrupt = copy.deepcopy(records); corrupt[0]["label"] = "synthetic-other"
+        self.assertTrue(cr.check_publication(rows, history, corrupt, pre, page, grader, table()))
+        with mock.patch.object(cr, "records_equal", lambda actual, wanted: True):
+            self.assertEqual(cr.check_publication(rows, history, corrupt, pre, page, grader, table()), [])
+        without_agent = page.replace("synthetic-harness", "missing")
+        self.assertTrue(cr.check_publication(rows, history, records, pre, without_agent, grader, table()))
+        with mock.patch.object(cr, "page_equal", lambda actual, wanted: True):
+            self.assertEqual(cr.check_publication(rows, history, records, pre, without_agent, grader, table()), [])
+        corrupt = copy.deepcopy(records); del corrupt[0]["agent"]
+        with self.assertRaises(stats.StatsError):
+            cr.check_publication(rows, history, corrupt, pre, page, grader, table())
+
+    def test_produce_drives_fake_takes_through_all_routes(self):
+        runner = get_run()
+        for state in labels4.ROUTES:
+            r = row(); o = recorded(state, r)
+            if state == labels4.HARNESS_ERROR:
+                # First permitted re-run, then a final error on the same slot.
+                first = copy.deepcopy(o)
+                second = recorded(state, r, attempt=2)
+                second.update(final=True, rerun=False, beyond_cap=True)
+                history, rows = [first, second], [dict(r, attempt=n) for n in (1, 2)]
+            else:
+                history, rows = [o], [dict(r, attempt=1)]
+            got = runner.produce(rows, history, lambda r, o: {"label": "synthetic-right", "correct": True}, table=table())
+            self.assertEqual(len(got["records"]), 0 if state in stats.NEVER_IN_RESULTS else 1)
+            if got["records"]:
+                self.assertEqual(got["records"][0]["route"], state)
 
 if __name__ == "__main__":
     if "--mutant" in sys.argv:
