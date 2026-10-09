@@ -2,28 +2,29 @@ status: done
 
 # Lane w4q-cp4-gen-conditional-yes: CP4 fixture gen_conditional_yes.py and task conditional-yes (new)
 
-_Written Fri 09 Oct 2026 03:35 UTC by the opus-medium builder, in a cloud session launched by the cloud lead; review round 1 folded at 03:51 UTC._
+_Written Fri 09 Oct 2026 03:35 UTC by the opus-medium builder, in a cloud session launched by the cloud lead; review round 1 folded at 03:51 UTC, round 2 at 04:12 UTC._
 
 - Base: `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d not closed).
-- Branch: `gap4/w4q-cp4-gen-conditional-yes`. Commits: `1d085fa7` (red test), `780baaaf` (task, wordings, generator: green), `37dd03d5` (this report, first form), `b00b6539` (review round 1 guards), `dde2bb2b` (the round 1 report, verbatim), then this report's update.
+- Branch: `gap4/w4q-cp4-gen-conditional-yes`. Commits: `1d085fa7` (red test), `780baaaf` (task, wordings, generator: green), `37dd03d5` (this report, first form), `b00b6539` (review round 1 guards), `dde2bb2b` (the round 1 report, draft), `dcb683c5` (report after round 1), `6362da64` (round 1 copy corrected to the final report, re-quoted), `a04a0bb3` (round 2 guards and the value walk), `a5849acc` (the round 2 report, verbatim), then this report's update.
 - `$PY` = `/usr/bin/python3.13`, Python 3.13.16 (NAMED DEPARTURE D2). Every gate ran with `PYTHONDONTWRITEBYTECODE=1 -B -W ignore`, single-threaded BLAS, in the foreground, one at a time, under `flock /tmp/claude-0/lanes/test.lock`.
 - Start block: HEAD and branch as required; `git status --porcelain --ignored` empty; e2979b31, 844a4ce and 68ec902f resolve; `core.hooksPath` unset. No STOP.
 
 ## Files changed (`git diff --stat 62181cbe..HEAD`, before this report's update; this report's own change adds to its line)
 
 ```
- .../COPIED.d/w4q-cp4-gen-conditional-yes.json      |  35 ++
+ .../COPIED.d/w4q-cp4-gen-conditional-yes.json      |  35 +
  .../checks.d/w4q-cp4-gen-conditional-yes.txt       |   4 +
- evals/gap-study-4/fixtures/gen_conditional_yes.py  | 135 +++++
- evals/gap-study-4/tasks/conditional-yes.json       | 273 +++++++++
- .../gap-study-4/tests/test_task_conditional_yes.py | 637 +++++++++++++++++++++
- evals/gap-study-4/variants/conditional-yes.json    |  37 ++
- .../reviews/w4q-cp4-gen-conditional-yes-r1.md      | 125 ++++
- lane-reports/w4q-cp4-gen-conditional-yes.md        | 117 ++++
- 8 files changed, 1363 insertions(+)
+ evals/gap-study-4/fixtures/gen_conditional_yes.py  | 135 ++++
+ evals/gap-study-4/tasks/conditional-yes.json       | 273 +++++++
+ .../gap-study-4/tests/test_task_conditional_yes.py | 832 +++++++++++++++++++++
+ evals/gap-study-4/variants/conditional-yes.json    |  37 +
+ .../reviews/w4q-cp4-gen-conditional-yes-r1.md      | 146 ++++
+ .../reviews/w4q-cp4-gen-conditional-yes-r2.md      | 109 +++
+ lane-reports/w4q-cp4-gen-conditional-yes.md        | 179 +++++
+ 9 files changed, 1750 insertions(+)
 ```
 
-All owned files; nothing else touched. The task, wordings and generator are unchanged since `780baaaf`: review round 1's fold touched the test file only.
+All owned files plus the review copies the cloud lead asked for; nothing else touched. The task, wordings and generator are unchanged since `780baaaf`: both review folds touched the test file only.
 
 ## The task, in short
 
@@ -47,7 +48,7 @@ All owned files; nothing else touched. The task, wordings and generator are unch
 ## Tests and checks run (runner output, last lines)
 
 1. Red first, on the base plus the test only (commit `1d085fa7`). It failed at import, with `FileNotFoundError: ... evals/gap-study-4/fixtures/gen_conditional_yes.py`.
-2. `flock /tmp/claude-0/lanes/test.lock env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tests/test_task_conditional_yes.py` gave `Ran 47 tests in 1.596s` / `OK` at `780baaaf`, and `Ran 61 tests in 1.756s` / `OK` on the final tree (after review round 1's guards, `b00b6539`).
+2. `flock /tmp/claude-0/lanes/test.lock env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tests/test_task_conditional_yes.py` gave `Ran 47 tests in 1.596s` / `OK` at `780baaaf`, `Ran 61 tests in 1.756s` / `OK` after review round 1's guards (`b00b6539`), and `Ran 79 tests in 1.854s` / `OK` on the final tree (after round 2's guards, `a04a0bb3`).
    - The first green attempt had 2 failures and 1 error, all in the test's own helpers:
      - the leak check read the raw `{probe}` placeholder as the word "probe";
      - the cmd_link reader ran into a626cdc2's new top-level constants;
@@ -118,7 +119,7 @@ The first five are also recorded in the task's `decisions`.
 
 ### Round 1 (`lane-reports/reviews/w4q-cp4-gen-conditional-yes-r1.md`, head reviewed `37dd03d5`)
 
-The copy of round 1's report was corrected in `this commit`: the file first committed (`dde2bb2b`) was the reviewer's draft; it now holds the reviewer's final message, byte for byte, and the verdict line and finding blocks below are re-quoted from that final version (same ids, different wording).
+The copy of round 1's report was corrected in `6362da64`: the file first committed (`dde2bb2b`) was the reviewer's draft; it now holds the reviewer's final message, byte for byte, and the verdict line and finding blocks below are re-quoted from that final version (same ids, different wording).
 
 Verdict line, verbatim:
 
@@ -177,3 +178,45 @@ fix: List raw/ after link and assert it equals the half's link_paths, rendered.
 How it was folded: Folded in `b00b6539`. The helper walk now lists `projects/<title>/00_data/rnaseq_bulk/raw/` after `link` and asserts it equals the half's `link_paths` from `variants.grader_spec(..., project=<title>)`.
 
 Cross-lane point (w4d's empty-gate checks): the reviewer confirmed it and weighed it as not a finding against this lane. It is not this lane's to change and stays open question 1.
+
+### Round 2 (`lane-reports/reviews/w4q-cp4-gen-conditional-yes-r2.md`, head reviewed `dcb683c5`)
+
+Verdict line, verbatim:
+
+```
+VERDICT: CHANGES
+```
+
+```
+id: W4Q2-1
+severity: MAJOR
+where: evals/gap-study-4/tests/test_task_conditional_yes.py:112-120 (probe_conditions_problems), :197-200; evals/gap-study-4/variants/conditional-yes.json (probes)
+finding: The lane's own rule is "Every probe is the conditional yes" (the docstring of probe_conditions_problems), but the check only asks that "paired-end" be a substring. In whole-file swaps of variants/conditional-yes.json, three natural rewrites each stayed green: the whole lane test file ran 61 tests OK, and check_task printed ok (12 checks). The rewrites were w1 "Yes, unless these are the paired-end files." (the condition inverted), w2 "Go ahead and link the paired-end files." (an unconditional yes) and w3 "Confirmed, as long as these are not the paired-end reads." (negated). Each one changes the right move of a half. Under "unless" or "not", the single-end trap becomes a yes and the paired-end control a hold. So the pre-registered labels (`flagged` / `linked`) and the act/hold kinds become wrong for those cells. This is the task's defining clause (plan row: "yes, as long as these are the paired-end files"), and check_task cannot see it, so the lane's check is its only guard.
+fix: Tighten probe_conditions_problems. Require each probe to match a closed conditional form, e.g. `\b(as long as|provided|if|only if)\b[^.]*\b(these are|this is) the paired-end\b`. Refuse a negation or an inversion (`\bnot\b`, `n't\b`, `\bunless\b`). Commit the three mutants above, in memory, each asserted red.
+```
+
+How it was folded: Folded in `a04a0bb3` (test file only; the five probes were already conditional, so no variants change). `conditional_form_problems` requires each probe to open with a yes (`Yes`, `Go ahead`, `Confirmed`, `OK`), to hold a closed conditional form (`as long as`, `provided`, `only if` or `if`, then `these are` or `this is the paired-end`), and to hold no negation or inversion (`not`, `n't`, `unless`, `except`, `without`); the openings must name no layout or read word (single, paired, end, R1, R2, read). On top, the five probes and the five openings are pinned exactly (`EXPECTED_PROBES`, `EXPECTED_OPENINGS`). Mutants asserted red: the reviewer's three (`unless`, unconditional, `not`), an opening that says the reads are single-end, and a one-word edit of a pinned probe.
+
+```
+id: W4Q2-2
+severity: MAJOR
+where: evals/gap-study-4/tasks/conditional-yes.json:63-70 ("Raw data path for".arrive[0].result); evals/gap-study-4/tests/test_task_conditional_yes.py:509-525 (wait_point_binding_problems)
+finding: Round 1's W4Q1-2 fold binds the new wait point's `match` patterns to the contract's command lines, but never its `result`. Two whole-file swaps of the task file stayed green (61 OK; check_task ok). In the first I dropped `result`; in the second I set it to `"ok":\s*false`. `result` is what separates arrival from a failed create. I ran the pinned helper (844a4ce export): a first `create` exits 0 with `"ok": true`, and the regex matches. A repeat exits 2 with T7 and `"ok": false`, and the regex does not match. pause_adherence uses `arrived` to choose between the stop classes `reworded-marker` and `stalled` (pause_adherence.py 271 and 292-297 at 62181cbe). With `"ok":\s*false`, the wait point never arrives on a real take, so a take that stops after create without the marker reads `stalled` instead of `reworded-marker`. With `result` dropped, a failed create (T7) counts as arrival. This is the same outcome class round 1 rated MAJOR for `arrive` create -> finalize. The value is right today; the guard is missing.
+fix: In wait_point_binding_problems, require `arrive == [{"tool": "shell", "match": <the create pattern>, "result": ROUND3_WAIT_POINTS["Confirm to create symlinks under"]["arrive"][0]["result"]}]`. Better, in the pinned-helper test, keep create's raw stdout and assert the arrive `result` regex searches the exit-0 stdout and not the T7 stdout of a repeat create. Commit both mutants (dropped; `"ok":\s*false`), in memory, asserted red.
+```
+
+How it was folded: Folded in `a04a0bb3`. The path question's wait point is pinned whole: `arrive` is exactly one shell pattern on `create` whose `result` is ROUND3_WAIT_POINTS' own `"ok":\s*true`, and `past` is the inspect/link/finalize pattern plus ROUND3's stage 01 pattern. The pinned-helper fixture now keeps the raw stdout of a first `create` (exit 0) and of a repeat (exit 2, T7), and the test asserts the `result` regex searches the first and not the repeat. Mutants asserted red: `result` dropped; `result` set to `"ok":\s*false`.
+
+```
+id: W4Q2-3
+severity: MINOR
+where: evals/gap-study-4/tasks/conditional-yes.json:76-79 ("Raw data path for".past[1]); test file :509-525
+finding: The path question's `past` entry `stage01_samplesheet\.py` is bound by no test. contract_commands reads only stage 00's command lines, so dropping that entry stayed green in a whole-file swap (61 OK; check_task ok). A take that jumps from create straight to stage 01 would then not read ran-ahead at this wait point. That is a loosened check on a rare path.
+fix: Assert that the path question's `past` holds the same stage 01 pattern as ROUND3_WAIT_POINTS["Confirm to create symlinks under"]["past"] (or equals that list plus the inspect pattern). Commit the mutant, asserted red.
+```
+
+How it was folded: Folded in `a04a0bb3`, by the same whole pin: `past` must equal [the inspect/link/finalize pattern, ROUND3_WAIT_POINTS['Confirm to create symlinks under']['past'][1]]. Mutant asserted red: the stage 01 entry dropped.
+
+The value walk asked for with round 2 (each value that changes a take's outcome is pinned by a guard with a mutant, in `a04a0bb3`): the whole operator script is pinned exactly (`EXPECTED_SCRIPT`: lines, markers, the recovery's `if_reply_holds` and `send`, no `at_most`, the probe at step 4), with mutants on step 3, the recovery trigger, an added `at_most` and the probe turn; both fixtures are pinned (kind, generator path, the shared seed 20261009, `seed_sensitive` true; `sha256` was already bound to the build) with mutants on the generator path and the seed; `link_command`, `link_paths`, `flag_marker`, `source_template`, the forbidden lists, the wait points, the right moves and the marker sources were already pinned (round 1 and the first build). Not pinned, as not outcome-changing: the decisions' and `why` texts.
+
+Cross-lane point: as round 1; already routed to the lane lead, not counted against this lane.
