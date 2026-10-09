@@ -52,6 +52,7 @@ def mutations():
     return {
         "runtime-timing": (cr, "runtime_timing_problems", lambda: []),
         "attempt-identity": (runner, "require_registered_outcome", lambda o, registered: None),
+        "evidence-identity": (runner, "require_evidence_identity", lambda row, evidence: None),
         "registration-ruling": (takes, "registration_outcomes", lambda history: [o for o in history if not batch.is_ruling(o)]),
         "freeze-identity": (freeze, "planned_order", lambda draft, seed: []),
         "output-pins": (freeze, "generated_pins", lambda outputs: []),
@@ -923,6 +924,72 @@ class LedgerDoor(unittest.TestCase):
 
 
 class PublishedArtifacts(unittest.TestCase):
+    def test_committed_artifacts_regrade_and_publish_through_cli(self):
+        from contextlib import ExitStack
+        from graders import endstate
+        runner = get_run()
+        self.assertTrue(callable(getattr(runner, "require_evidence_identity", None)))
+        with repository() as repo:
+            root = repo.root / study.STUDY_REL
+            folder = root / "artifacts/s1"
+            evidence = folder / "evidence"
+            (evidence / endstate.SNAPSHOTS).mkdir(parents=True)
+            r = row(record_dir="artifacts/s1", project="synthetic-project")
+            ledger = [{"kind": endstate.TAKE, "model": r["model"], "agent": r["agent"],
+                       "run_tree": "repo", "home": "home"},
+                      {"kind": endstate.TURN, "n": 1, "started_at": 1, "ended_at": 2}]
+            (evidence / endstate.LEDGER).write_text("\n".join(json.dumps(x) for x in ledger) + "\n")
+            for name in (endstate.ACCESS, endstate.HEALTH):
+                (evidence / name).write_text("")
+            for label, at in (("pre-1", 0), ("post-1", 3)):
+                (evidence / endstate.SNAPSHOTS / (label + ".json")).write_text(
+                    json.dumps({"label": label, "taken_at": at, "entries": {}}))
+            (folder / "transcript.jsonl").write_text("")
+            commit(repo.root, [study.rel("artifacts/s1")], "Record synthetic take artifacts")
+            spec = {"true_counts": {"raw": 2, "samples": 1}, "probe_counts": {"raw": 4, "samples": 3},
+                    "pushback_counts": {"raw": 4, "samples": 3}, "probe_line": "step-p", "pushback_line": "step-q"}
+            rows, history = [dict(r, attempt=1)], [recorded(labels4.GRADED, r)]
+            pre = pre_registration(); pre["rows"] = [r]
+            with ExitStack() as stack:
+                for module, key, value in ((runner, "HERE", root), (runner, "REPO", repo.root),
+                                          (runner, "RECORDS", root / "records"),
+                                          (result_page, "RECORDS", root / "records"),
+                                          (result_page, "PAGE", root / "RESULT.md")):
+                    stack.enter_context(mock.patch.object(module, key, value))
+                stack.enter_context(mock.patch.object(variants, "load_task", return_value={"grader_halves": None}))
+                stack.enter_context(mock.patch.object(variants, "grader_name", return_value="number_fidelity"))
+                stack.enter_context(mock.patch.object(variants, "grader_spec", return_value=spec))
+                # Grader source remains the real local v4 file; only the data root is scratch.
+                original_loader = runner.grader_for
+                def local_grader(name):
+                    with mock.patch.object(runner, "HERE", HERE):
+                        return original_loader(name)
+                stack.enter_context(mock.patch.object(runner, "grader_for", local_grader))
+                stack.enter_context(mock.patch.object(takes, "load_rows", return_value=rows))
+                stack.enter_context(mock.patch.object(takes, "read_history", return_value=history))
+                stack.enter_context(mock.patch.object(runner.prereg, "require_frozen", return_value=pre))
+                native_writer = runner.write_records
+                stack.enter_context(mock.patch.object(runner, "write_records", lambda records: native_writer(records, root=root)))
+                native_table = table()
+                stack.enter_context(mock.patch.object(routing, "load_table", return_value=native_table))
+                stack.enter_context(redirect_stdout(io.StringIO()))
+                self.assertEqual(runner.main(["--all"]), 0)
+                self.assertEqual(runner.main(["--check"]), 0)
+                self.assertEqual(result_page.main(["--write"]), 0)
+                self.assertEqual(result_page.main(["--check"]), 0)
+                records = stats.load_results(root / "records")
+                self.assertEqual(records[0]["views"], stats.STOP_VIEWS)
+                self.assertEqual(cr.check_publication(rows, history, records, pre,
+                                 (root / "RESULT.md").read_text(), runner.grade_committed, native_table), [])
+                loaded = endstate.Evidence.load(evidence)
+                runner.require_evidence_identity(r, loaded)
+                for name, wrong in (("model", "synthetic-other"), ("version", "0.0.2"), ("harness", "synthetic-other")):
+                    with mock.patch.object(loaded, name, wrong):
+                        with self.assertRaisesRegex(ValueError, "evidence"):
+                            runner.require_evidence_identity(r, loaded)
+                        with mock.patch.object(runner, "require_evidence_identity", lambda r, e: None):
+                            runner.require_evidence_identity(r, loaded)
+
     def test_every_attempt_binds_its_registration_model_and_agent(self):
         runner = get_run()
         self.assertTrue(callable(getattr(runner, "require_registered_outcome", None)))
