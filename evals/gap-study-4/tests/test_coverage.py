@@ -44,8 +44,8 @@ WHAT A CITE MUST HOLD (cite_problems):
   - a mode cite's mode is the one `git ls-tree` prints for that path at the commit, and its excerpt is the mode;
   - the path's last segment is not CONTRACT_NAME: a stage contract instructs the model and never catches a move
     (W4F1-3).
-  A `claude-and-codex` row's reach excerpt also holds DECIDE_CALL: the reach cite is a call of `decide` in Codex's
-  envelope, never another line of that file (W4F1-3).
+  A `claude-and-codex` row's reach excerpt also holds DECIDE_CALL, and its reach cite is one of DECIDE_LINES, the
+  envelope's own `decide(` call lines, each re-read at the commit (W4F1-3, W4F2-1).
 
 THE READING LINES (fold 1, reading_problems): each of READING_LINES opens a bullet of "how to read it", and
 STAGE_LINE names, as a backticked pair, every pair in STAGE_00_PAIRS and no other pair (W4F1-1). No
@@ -131,6 +131,10 @@ DASH = "-"
 CITED_ROOT = "gars/"
 CONTRACT_NAME = "CONTEXT.md"  # W4F1-3: a stage contract instructs the model; it is never what catches a move
 DECIDE_CALL = "decide("       # W4F1-3: a claude-and-codex reach cite is a call of guard_hook.decide
+# W4F2-1 (the lane lead's decision): the only claude-and-codex reach cites, the envelope's own decide( call lines at
+# COMMIT; decide_line_problems re-reads each and requires its first line, stripped, to open with DECIDE_CALL.
+DECIDE_LINES = ("gars/_system/codex_hook.py:323", "gars/_system/codex_hook.py:378",
+                "gars/_system/codex_hook.py:416-417", "gars/_system/codex_hook.py:426")
 STAGE_00_PAIRS = ("scope-read", "template-adherence", "number-fidelity", "approval-scope", "conditional-yes")  # W4F1-1
 # The "how to read it" lines fold 1 added (W4F1-1, -2, -3); the first names every stage 00 pair and no other pair.
 READING_LINES = ("Each row's stage.", "Reach is the weakest.", "A verdict is a reading.")
@@ -405,6 +409,19 @@ def note_problems(text: str, caught: dict[str, str], tree: Tree) -> list[str]:
     return out
 
 
+def decide_line_problems(tree: Tree) -> list[str]:
+    """Each of DECIDE_LINES is a statement that calls decide (its first cited line, stripped, opens with
+    DECIDE_CALL), never a docstring or comment line that mentions it (W4F2-1)."""
+    out = []
+    for cite in DECIDE_LINES:
+        m = CITE.match(cite)
+        lines = file_lines(tree.text(m["path"]) or "") if m and not m["mode"] else []
+        lo = int(m["lo"]) if m and m["lo"] else 0
+        if not (0 < lo <= len(lines)) or not lines[lo - 1].strip().startswith(DECIDE_CALL):
+            out.append(f"{cite} is not a {DECIDE_CALL} call line at {tree.commit}")
+    return out
+
+
 def reading_line(text: str, head: str) -> str:
     for line in text.splitlines():
         if line.startswith(f"- **{head}**"):
@@ -465,6 +482,9 @@ def problems(text: str, commit: str = COMMIT, tasks_dir: Path = TASKS_DIR) -> li
             out += home_problems(reach, row["where"], row["reach where"], label)
             if reach == "claude-and-codex" and DECIDE_CALL not in row["reach excerpt"]:
                 out.append(f"{label}: a claude-and-codex reach excerpt is a {DECIDE_CALL} call in Codex's envelope")
+            if reach == "claude-and-codex" and row["reach where"] not in DECIDE_LINES:
+                out.append(f"{label}: reach where {row['reach where']} is not one of the envelope's decide( call lines")
+    out += decide_line_problems(tree)
     for name in PAIRS:
         if name not in seen:
             out.append(f"{name} has no row")
@@ -951,6 +971,10 @@ class TheFold2(Base):
         doc = with_cell(with_cell(self.text, i, "reach where", "gars/_system/codex_hook.py:320"), i, "reach excerpt",
                         "decide()'s verdict with its refusal text kept")
         self.assertRed(doc, "is not one of the envelope's decide( call lines")
+        # Mutant: the docstring line 320 admitted to DECIDE_LINES in memory is red, as a line that is no call.
+        with mock.patch.object(THIS, "DECIDE_LINES", DECIDE_LINES + ("gars/_system/codex_hook.py:320",)):
+            self.assertEqual(decide_line_problems(Tree(COMMIT)),
+                             [f"gars/_system/codex_hook.py:320 is not a decide( call line at {COMMIT}"])
 
 
 class TheForwardBinding(Base):
