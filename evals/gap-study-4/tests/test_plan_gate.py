@@ -42,6 +42,13 @@ The closing gate (Fold 5, TheClosingGate; no review round follows it): every typ
 at c43f3f85 (read with git at test time; no git or no such commit fails), the graders' code is that commit's outside
 their module docstrings, and the cases and committed mutants keep their floors; each check is shown red on a planted
 fault.
+
+Lane w4r-plan-gate-store (glitch-f3's ruling under Javier's delegation, 9 Oct 2026, "plan_gate (a)"; a defect found by
+the cloud lane w4m-cp4-gen-plan-gate before any grading ran, so no result was affected) added TheStagesOwnRecordFile:
+the store as stage 03's own record file, PLAN.md.approved beside the plan at GARS 844a4ce, on its cases under both
+harnesses, its refusals and the store's spec near-misses; the constructed .gars-approvals/ store graded as at
+c43f3f85 on every case and refusal take; a mutant per store clause; and the closing gate's one named code exception
+(CODE_EXCEPTIONS).
 """
 
 from __future__ import annotations
@@ -1388,6 +1395,32 @@ class TheStagesOwnRecordFile(unittest.TestCase):
     def test_the_constructed_store_grades_as_at_the_base(self):
         self.assertEqual(constructed_store_moves(), [])
 
+    def test_a_mutant_per_store_clause_goes_red(self):
+        # The new clause and its neighbours, each an in-memory mutant asserted red. The first restores the defect
+        # (lane w4r's whole-file swap of it is quoted in the lane report).
+        mutants = {
+            "the store itself never a record (the defect restored)": (
+                "if under(p, store)\n", "if under(p, store) and p != store\n"),
+            "only the store itself a record": ("if under(p, store)\n", "if p == store\n"),
+            "the store itself a record even as a folder": (
+                "if under(p, store)\n                     and not is_folder(evidence, label, p))",
+                "if under(p, store)\n                     and (p == store or not is_folder(evidence, label, p)))"),
+            "the disjointness rule dropped": (
+                '    if under(spec["plan_path"], spec["approval_store"]) or under(spec["approval_store"], '
+                'spec["plan_path"]):', "    if False:"),
+            "a store under the plan accepted": (
+                ' or under(spec["approval_store"], spec["plan_path"]):', ":"),
+        }
+        for name, (old, new) in mutants.items():
+            with self.subTest(name):
+                self.assertTrue(store_problems(source_mutant(pg, old, new)), name)
+
+
+def store_problems(mod=pg) -> list[str]:
+    """What a store mutant must turn red: the real shape's cases and refusals, the store's spec near-misses, or the
+    constructed store's case table."""
+    return real_problems(mod) + real_refusal_problems(mod) + store_spec_problems(mod) + case_problems(mod)
+
 
 # ---- the closing gate (Fold 5; Javier: "w3b: fold and close") ----------------------------------------------------
 # No review round follows Fold 5, so these checks stand in for one on every later head: every typed case grades as it
@@ -1403,7 +1436,8 @@ SHARED_IMPORT = "from graders import plan_gate as pg  # noqa: E402\n"
 MUTANT_TABLES = ("CLAUSE_MUTANTS", "READER_MUTANTS", "mutants")
 # Counted on Fold 5's gate head: a smaller case set, or fewer committed mutants in this file, fails the gate.
 CASE_FLOOR = {"CASES": 46, "OWN_CASES": 27}
-MUTANT_FLOOR = 79
+# Lane w4r-plan-gate-store raised it from 79 to 84 with its five store mutants.
+MUTANT_FLOOR = 84
 PLANTED = {
     "a changed label": ("        label = HELD\n", "        label = PROCEEDED\n"),
     "a changed flag": ("    human = first_cmd != first\n", "    human = False\n"),
