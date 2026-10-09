@@ -41,15 +41,18 @@ sys.path.insert(0, _ROOT)
 
 import agent_adapter as aa  # noqa: E402
 import batch  # noqa: E402
+import harness_bookkeeping as hb  # noqa: E402  (the seam's harness name, never typed here: interface 8)
 import routing  # noqa: E402
 from graders import labels4  # noqa: E402
 
 # Test-only pin profiles, injected in memory (CP5 pre-registers the real ones; until then routing.json's
 # pin_profiles is empty and PENDING).
-PROFILES = {"test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
-            "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"}}
-PIN = dict(PROFILES["test-model-a"], model="test-model-a")
-OTHER_PIN = dict(PROFILES["test-model-b"], model="test-model-b")
+# Keyed by harness, then model (interface 8; the harness is the seam's own name, never typed here).
+HARNESS = hb.CLAUDE_CODE
+PROFILES = {HARNESS: {"test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
+                      "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"}}}
+PIN = dict(PROFILES[HARNESS]["test-model-a"], model="test-model-a", harness=HARNESS)
+OTHER_PIN = dict(PROFILES[HARNESS]["test-model-b"], model="test-model-b", harness=HARNESS)
 # The real pause cap: round 3's pause_cap (3 per half-cell), filled under Javier's ruling "gap4 routing: A"
 # and re-derived from round 3's prereg.json by test_routing.py's TestRound3Sources.
 PAUSE_CAP = routing.load_table()["caps"][labels4.PAUSE]["events_per_half_cell"]
@@ -64,7 +67,8 @@ WAIT_S = 10.0   # a hang detector for the barrier and ordering events, never a t
 def test_table() -> dict:
     t = copy.deepcopy(routing.load_table())
     t["pin_profiles"] = copy.deepcopy(PROFILES)
-    t["pin_profiles_status"] = "TEST-ONLY: two injected profiles"
+    t["pin_profiles_status"] = "RULED (TEST-ONLY): two injected profiles"
+    t["spend_cap_markers_status"] = f"RULED (TEST-ONLY): {HARNESS}'s spend-cap list, opened for the tests (item 1)"
     return t
 
 
@@ -93,7 +97,8 @@ def _box(**kw):
     """Every box record, explicitly: harness_records defaults none of them."""
     b = {"preflight_ok": True, "container_started": True, "container_exited": False, "sidecar": dict(SIDECAR),
          "unexplained_operator_diffs": 0, "checker_reasons": [], "quiescence_kill": False,
-         "outside_reach_events": 0, "finalize_abort": False, "committed": False}
+         "outside_reach_events": 0, "finalize_abort": False, "committed": False,
+         "unreadable_consequential": [], "quiescence_cap_survivors": 0}
     b.update(kw)
     return b
 
@@ -261,7 +266,8 @@ class FakeDriver:
             results = [adapter.turn(f"line {i}", first=(i == 0), budget_s=1) for i in range(len(turns))]
             adapter.end_take()
             self.world.texts[(row["slot"], attempt)] = "\n".join(r.text for r in results)
-            pin = self.pins.get(row["slot"], dict(PROFILES[row["model"]], model=row["model"]))
+            harness = row["agent"]["harness"]
+            pin = self.pins.get(row["slot"], dict(PROFILES[harness][row["model"]], model=row["model"], harness=harness))
             records = aa.harness_records(results, pin=pin, box=box)
             edit = self.records_edit.get(row["slot"])
             if edit:
@@ -339,12 +345,19 @@ class FakeWindow:
         self.world.log("reset")
 
 
+def agent_of(model) -> dict:
+    """A registered row's agent (interface 8): its harness, and its model's profile version (a made-up one for a model
+    with no profile, which the row check refuses on its model)."""
+    return {"harness": HARNESS, "version": PROFILES[HARNESS].get(model, {}).get("version", "0.0.0-no-profile")}
+
+
 def rows(n, half_cell="hc-a", model=PIN["model"]):
-    return [{"slot": i, "half_cell": half_cell, "row_id": i, "model": model} for i in range(1, n + 1)]
+    return [{"slot": i, "half_cell": half_cell, "row_id": i, "model": model, "agent": agent_of(model)}
+            for i in range(1, n + 1)]
 
 
 def row(slot, half_cell, model=PIN["model"]):
-    return {"slot": slot, "half_cell": half_cell, "row_id": slot, "model": model}
+    return {"slot": slot, "half_cell": half_cell, "row_id": slot, "model": model, "agent": agent_of(model)}
 
 
 def rows_in(cells: list[str]) -> list[dict]:
@@ -796,7 +809,8 @@ class TestStartGate(unittest.TestCase):
             self.assertIn(what, buf.getvalue())
         for filled in ("pause", "operator_reasons", "rate_limit"):   # filled, or ruled (W1B2-6)
             self.assertNotIn(filled, buf.getvalue())
-        self.assertTrue(all("pin_profiles" in x for x in buf.getvalue().splitlines()), buf.getvalue())
+        self.assertTrue(all("pin_profiles" in x or "spend_cap_markers_status" in x   # + item 1, w4h (see its report)
+                            for x in buf.getvalue().splitlines()), buf.getvalue())
         ready = test_table()
         with mock.patch.object(routing, "load_table", lambda *a: copy.deepcopy(ready)), \
                 redirect_stdout(io.StringIO()) as out:
@@ -2702,6 +2716,306 @@ class TestCli(unittest.TestCase):
         with mock.patch.object(batch, "under_nohup", lambda: False), redirect_stderr(io.StringIO()) as err:
             self.assertEqual(batch.main([]), 2)
         self.assertIn("nohup", err.getvalue())
+
+
+
+# ---------------------------------------------------------------- w1b's next touch (lane w4h-w1b-next-touch)
+def history_argument_problems() -> list[str]:
+    """W1B4-6 (i), w1b's next-touch item 4: a `history` argument that differs from `repo.history()` is refused
+    (BatchConfigError naming the first difference); one equal to it is accepted; a repo without history() (a test
+    double) may still take a `history` argument."""
+    p = []
+    _, _, _, _, r1, _ = run(2, plan={(1, 1): "watcher-overflow"})
+    good = r1.history()
+    differ = {
+        "an entry changed": ([dict(good[0], state=labels4.GRADED)] + good[1:], "history[0]"),
+        "an entry dropped": (good[:-1], f"history[{len(good) - 1}]"),
+        "an entry added": (good + [copy.deepcopy(good[-1])], f"history[{len(good)}]"),
+        "empty for a repo that holds outcomes": ([], "history[0]"),
+    }
+    for name, (given, first) in differ.items():
+        w = World()
+        try:
+            batch.Batch(FakeDriver(w), FakeRepo(w, prior=good), FakeWindow(w), table=test_table(), history=given)
+            p.append(f"{name}: accepted")
+        except batch.BatchConfigError as e:
+            if "repo.history()" not in str(e) or first not in str(e):
+                p.append(f"{name}: refused, but not naming {first} against repo.history() ({e})")
+        except Exception as e:  # noqa: BLE001 - a crash is not a refusal
+            p.append(f"{name}: crashed ({type(e).__name__}: {e})")
+    w = World()
+    try:
+        batch.Batch(FakeDriver(w), FakeRepo(w, prior=good), FakeWindow(w), table=test_table(),
+                    history=copy.deepcopy(good))
+    except Exception as e:  # noqa: BLE001
+        p.append(f"a history equal to repo.history() was refused: {e}")
+    try:
+        batch.Batch(None, None, None, table=test_table(), history=copy.deepcopy(good))
+    except Exception as e:  # noqa: BLE001
+        p.append(f"a repo without history() was refused its history argument: {e}")
+    return p
+
+
+class TestNextTouchHistory(unittest.TestCase):
+    """W1B4-6 (i): outside tests, Batch refuses a history argument that differs from repo.history()."""
+
+    def test_a_differing_history_argument_is_refused(self):
+        self.assertEqual(history_argument_problems(), [])
+
+    def test_history_argument_check_can_fail(self):
+        """The mutant: the comparison dropped (the base's rule, the argument used as given)."""
+        with mock.patch.object(batch, "history_difference", lambda given, held: None):
+            found = history_argument_problems()
+        for name in ("an entry changed", "an entry dropped", "empty for a repo that holds outcomes"):
+            self.assertIn(f"{name}: accepted", found)
+        self.assertTrue(any(x.startswith("an entry added: refused, but not naming") for x in found), found)
+
+    def test_the_first_difference_is_named(self):
+        a, b = {"slot": 1, "state": "graded"}, {"slot": 1, "state": "pause"}
+        self.assertEqual(batch.history_difference([a], [b]), "history[0] differs first at key 'state'")
+        self.assertIsNone(batch.history_difference([a], [dict(a)]))
+        self.assertIn("history[1] is held by the argument only", batch.history_difference([a, a], [a]))
+        self.assertIn("history[0] is held by repo.history() only", batch.history_difference([], [a]))
+
+
+
+# Interface 8 (item 5, the schema half): a registered row requires `agent` ({"harness", "version"}, never defaulted);
+# pin_profiles is keyed by harness, then model; expected_pin reads row["agent"]["harness"]; a row whose agent.version
+# differs from its pin's version never starts.
+NT_HARNESS = hb.CLAUDE_CODE
+NT_FAKE = "fake-second"                      # the test-only second harness (interface 8)
+NT_PROFILES = {NT_HARNESS: {"test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
+                            "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"}}}
+
+
+def nt_table() -> dict:
+    t = test_table()
+    t["pin_profiles"] = copy.deepcopy(NT_PROFILES)
+    return t
+
+
+def nt_row(slot=1, model="test-model-a", **agent) -> dict:
+    a = {"harness": NT_HARNESS, "version": NT_PROFILES[NT_HARNESS][model]["version"]}
+    a.update(agent)
+    return {"slot": slot, "half_cell": "hc-a", "row_id": slot, "model": model, "agent": a}
+
+
+def agent_row_problems() -> list[str]:
+    """Interface 8 on the registered row (item 5)."""
+    p = []
+    t = nt_table()
+    want = dict(NT_PROFILES[NT_HARNESS]["test-model-b"], model="test-model-b", harness=NT_HARNESS)
+    try:
+        got = batch.expected_pin(nt_row(model="test-model-b"), t)
+        if got != want:
+            p.append(f"expected_pin: {got}, want {want}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"expected_pin raised {type(e).__name__}: {e}")
+    b = batch.Batch(None, None, None, table=t, history=[])
+    try:
+        if b.row_problems([nt_row(1), nt_row(2, model="test-model-b")]):
+            p.append(f"clean rows refused: {b.row_problems([nt_row(1), nt_row(2, model='test-model-b')])}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"clean rows crashed the row check: {type(e).__name__}: {e}")
+    no_agent = nt_row()
+    del no_agent["agent"]
+    bad = {
+        "a row without agent": (no_agent, "agent"),
+        "agent None": (dict(nt_row(), agent=None), "agent"),
+        "agent without its version": (dict(nt_row(), agent={"harness": NT_HARNESS}), "agent"),
+        "agent with an extra key": (nt_row(model_id="x"), "agent"),
+        "agent version not a string": (nt_row(version=1), "agent"),
+        "a harness with no profiles": (nt_row(harness=NT_FAKE), "no pre-registered pin profile"),
+        "agent.version differs from its pin's version": (nt_row(version="9.9.9"), "version"),
+    }
+    for name, (r, why) in bad.items():
+        try:
+            found = b.row_problems([r])
+        except Exception as e:  # noqa: BLE001 - a crash is not a refusal
+            p.append(f"{name}: crashed ({type(e).__name__}: {e})")
+            continue
+        if not any(why in x for x in found):
+            p.append(f"{name}: want refused naming {why!r}, got {found}")
+    return p
+
+
+class TestNextTouchAgentRow(unittest.TestCase):
+    """Interface 8 (w1b's next-touch item 5): the batch rows gain `agent` beside `model`, required."""
+
+    def test_the_row_carries_its_agent(self):
+        self.assertEqual(agent_row_problems(), [])
+
+    def test_a_run_under_the_agent(self):
+        """Rows carrying agent run graded under their harness-keyed profiles; a driver pin naming another harness is
+        blocked (the pin is the registered row's, never the driver's)."""
+        b, out, *_ = run(3)
+        self.assertEqual([o["state"] for o in out], [labels4.GRADED] * 3)
+        b, out, w, d, r, _ = run(3, pins={2: dict(PIN, harness=NT_FAKE)})
+        self.assertEqual(sibling_problems(out, w, r, b, labels4.BLOCKED), [])
+        self.assertIn(NT_FAKE, next(o for o in out if o["slot"] == 2)["reason"])
+
+    def test_agent_row_check_can_fail(self):
+        def model_only(row, table):   # the base's expected_pin: keyed by model alone, no harness on the pin
+            return dict(table["pin_profiles"][row["agent"]["harness"]][row["model"]], model=row["model"])
+        with mock.patch.object(batch, "expected_pin", model_only):
+            self.assertTrue(any(x.startswith("expected_pin:") for x in agent_row_problems()))
+            b, out, *_ = run(2)
+        self.assertEqual({o["state"] for o in out}, {labels4.BLOCKED})
+        with mock.patch.object(batch, "agent_problems", lambda row: []):   # agent no longer required
+            found = agent_row_problems()
+        for name in ("a row without agent", "agent None", "agent without its version"):
+            self.assertTrue(any(x.startswith(f"{name}: crashed") or x.startswith(f"{name}: want") for x in found),
+                            (name, found))
+        with mock.patch.object(batch, "version_problems", lambda row, table: []):   # the version check dropped
+            found = agent_row_problems()
+        self.assertEqual(found, ["agent.version differs from its pin's version: want refused naming 'version', got []"])
+
+
+
+# Item 1 (ruling 3 of 17:42): batch.start_problems refuses the Claude Code entry's PENDING spend-cap list like every other PENDING
+# status, so the loop never starts on an unruled spend cap.
+def spend_gate_problems() -> list[str]:
+    p = []
+    bad = {"spend_cap_markers_status PENDING": lambda t: t.update(spend_cap_markers_status="PENDING (glitch-f3): x"),
+           "spend_cap_markers_status missing": lambda t: t.pop("spend_cap_markers_status")}
+    for name, edit in bad.items():
+        t = test_table()
+        try:
+            edit(t)
+            batch.Batch(None, None, None, table=t, history=[])
+            p.append(f"{name}: the loop would start")
+        except batch.BatchConfigError as e:
+            if "spend_cap_markers_status" not in str(e):
+                p.append(f"{name}: refused for another reason ({e})")
+        except Exception as e:  # noqa: BLE001 - a crash is not a refusal
+            p.append(f"{name}: crashed ({type(e).__name__}: {e})")
+    try:
+        found = batch.start_problems(routing.load_table())
+        if not any(x.startswith("spend_cap_markers_status") for x in found):
+            p.append(f"the real table's PENDING spend-cap list is not refused: {found}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"start_problems crashed on the real table ({type(e).__name__}: {e})")
+    return p
+
+
+class TestNextTouchSpendGate(unittest.TestCase):
+    def test_a_pending_spend_cap_list_refuses_to_start(self):
+        self.assertEqual(spend_gate_problems(), [])
+
+    def test_spend_gate_check_can_fail(self):
+        real = batch.start_problems
+
+        def ignores_the_spend_cap(table):   # the mutant: the PENDING spend-cap list not gated
+            return [x for x in real(table) if "spend_cap_markers_status" not in x]
+        with mock.patch.object(batch, "start_problems", ignores_the_spend_cap):
+            found = spend_gate_problems()
+        self.assertIn("spend_cap_markers_status PENDING: the loop would start", found)
+        self.assertIn("spend_cap_markers_status missing: the loop would start", found)
+
+
+
+class TestNextTouchFold1Gate(unittest.TestCase):
+    """Lane review round 1, W4H1-1 (the lane lead's decision: fold for the spend line only): the spend-cap status is
+    refused unless, stripped and upper-cased, it does not start with PENDING."""
+
+    LOOSE = ("pending (glitch-f3): x", " PENDING (glitch-f3): x", "Pending", "\tPENDING")
+
+    def loose_problems(self):
+        p = []
+        for status in self.LOOSE:
+            t = test_table()
+            t["spend_cap_markers_status"] = status
+            if not any(x.startswith("spend_cap_markers_status") for x in batch.start_problems(t)):
+                p.append(f"{status!r}: the loop would start")
+        return p
+
+    def test_a_loosely_written_pending_spend_status_refuses_to_start(self):
+        self.assertEqual(self.loose_problems(), [])
+        self.assertFalse(any("spend_cap_markers_status" in x for x in batch.start_problems(test_table())))
+
+    def test_loose_pending_check_can_fail(self):
+        with mock.patch.object(batch, "is_pending", lambda status: str(status).startswith(batch.PENDING)):  # the base's
+            self.assertEqual(len(self.loose_problems()), len(self.LOOSE))                                   # prefix rule
+
+
+
+def loose_status_problems(key: str) -> list[str]:
+    """W4H1-1 as glitch-f3 ruled it (under Javier's delegation): every status line of start_problems refuses a loosely
+    written PENDING (case, leading whitespace)."""
+    p = []
+    for status in TestNextTouchFold1Gate.LOOSE:
+        t = test_table()
+        t[key] = status
+        if not any(x.startswith(key) for x in batch.start_problems(t)):
+            p.append(f"{key} {status!r}: the loop would start")
+    return p
+
+
+class TestNextTouchFold1Siblings(unittest.TestCase):
+    """glitch-f3's ruling on W4H1-1: the three sibling status lines are read the same way as the spend line."""
+
+    def test_operator_reasons_status(self):
+        self.assertEqual(loose_status_problems("operator_reasons_status"), [])
+
+    def test_pin_profiles_status(self):
+        self.assertEqual(loose_status_problems("pin_profiles_status"), [])
+
+    def test_rate_limit_markers_status(self):
+        self.assertEqual(loose_status_problems("rate_limit_markers_status"), [])
+
+    def test_sibling_check_can_fail(self):
+        with mock.patch.object(batch, "is_pending", lambda status: str(status).startswith(batch.PENDING)):
+            for key in ("operator_reasons_status", "pin_profiles_status", "rate_limit_markers_status"):
+                self.assertEqual(len(loose_status_problems(key)), len(TestNextTouchFold1Gate.LOOSE), key)
+
+
+
+# Lane review round 2, W4H2-1 (the lane lead's decision): the start gate is an allow-list. A status is ruled only when,
+# stripped and upper-cased, it starts with RULED or FILLED and holds no PENDING anywhere; everything else is pending,
+# on all four status lines (glitch-f3's W4H1-1 ruling: the four lines gated the same way).
+STATUS_KEYS = ("operator_reasons_status", "pin_profiles_status", "rate_limit_markers_status", "spend_cap_markers_status")
+NOT_RULED = ("\u200bPENDING (glitch-f3): x", "\ufeffPENDING (glitch-f3): x", "'PENDING'", "Status: PENDING",
+             "RULED for codex; PENDING for claude-code", "TBD", "not yet ruled", "FILLED, pending a re-read", "",
+             "TEST-ONLY: two injected profiles")
+RULED_OK = ("RULED 6 Oct 2026 by glitch-f3", "FILLED 6 Oct 2026", "  ruled (test-only)", "Filled")
+
+
+def allow_list_problems() -> list[str]:
+    p = []
+    for key in STATUS_KEYS:
+        for status in NOT_RULED:
+            t = test_table()
+            t[key] = status
+            if not any(x.startswith(key) for x in batch.start_problems(t)):
+                p.append(f"{key} {status!r}: the loop would start")
+        for status in RULED_OK:
+            t = test_table()
+            t[key] = status
+            if any(x.startswith(key) for x in batch.start_problems(t)):
+                p.append(f"{key} {status!r}: a ruled status was refused")
+    return p
+
+
+class TestNextTouchFold2Gate(unittest.TestCase):
+    def test_the_gate_is_an_allow_list(self):
+        self.assertEqual(allow_list_problems(), [])
+        self.assertEqual(batch.start_problems(test_table()), [])   # the test table's statuses are ruled
+
+    def test_allow_list_check_can_fail(self):
+        def prefix_only(status):     # mutant: the "no PENDING anywhere" half dropped
+            return not str(status).strip().upper().startswith(batch.RULED_WORDS)
+        with mock.patch.object(batch, "is_pending", prefix_only):
+            found = allow_list_problems()
+        for key in STATUS_KEYS:
+            self.assertIn(f"{key} 'RULED for codex; PENDING for claude-code': the loop would start", found)
+
+        def deny_only(status):       # mutant: the allow-list half dropped (PENDING anywhere is the only refusal)
+            return batch.PENDING in str(status).upper()
+        with mock.patch.object(batch, "is_pending", deny_only):
+            found = allow_list_problems()
+        for key in STATUS_KEYS:
+            for status in ("TBD", "not yet ruled"):
+                self.assertIn(f"{key} {status!r}: the loop would start", found)
 
 
 if __name__ == "__main__":

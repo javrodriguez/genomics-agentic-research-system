@@ -125,7 +125,8 @@ with no records) is still re-driven automatically, with no ruling.
 
 A RESTART CONTINUES, never resets (review round 2, W1B2-3). The caps and attempt numbers live in
 the committed outcomes, not in this process: `Batch` reads them from the repo (`repo.history()`,
-every outcome and ruling committed so far, in commit order; or a `history` argument read from it)
+every outcome and ruling committed so far, in commit order; or a `history` argument read from it, which is
+refused when it differs from `repo.history()`, naming the first difference, W1B4-6 (i))
 and rebuilds, before anything runs, walking it in order, the re-runs spent per half-cell and per
 slot, the rehearsal and pause events counted per half-cell, the closed half-cells (from their
 committed cell state, or from a ruling whose event reaches a cap), the last window event, each
@@ -147,9 +148,13 @@ window before its first launch.
 
 THE START GATE. The loop refuses to start (`BatchConfigError`, and `batch.py --check` exits 1)
 while routing.json still lacks what only the owner or a later checkpoint can supply: round 3's
-pause cap, round 3's operator-side reasons (an empty list, or a status starting PENDING), the
-rate-limit markers' ruling (a status starting PENDING, W1B2-6), or the pre-registered pin
-profiles (CP5). Every row must name a model that has a profile.
+pause cap, round 3's operator-side reasons (an empty list, or a status not ruled), the rate-limit
+markers' ruling (W1B2-6), the spend-cap lists' ruling (Claude Code's list is open, ruling 3 of
+17:42), or the pre-registered pin profiles (CP5). A status is ruled only when, stripped and
+upper-cased, it starts with RULED or FILLED and holds no PENDING anywhere (`is_pending`; lane
+review round 2, W4H2-1); every other status keeps the loop from starting. Every row must name its agent ({harness, version}: interface 8, never defaulted)
+and a model that has a profile under that harness, and its agent's version must be that profile's
+(a row that fails any of these is refused before it is registered).
 
 A REPO OR WINDOW FAILURE STOPS, never sinks (review round 2, W1B2-5). If `register` raises, every
 row of the block already registered is committed `failed` (masked fail-closed, nothing launched),
@@ -164,9 +169,9 @@ object with three methods,
                                      If it raises after creating a container, the exception's
                                      `container_id` attribute (when set) is recorded and removed
     drive(row, container_id) -> dict the take's harness-side records, in routing.py's schema; its
-                                     `pin` must be the registered row's model's pre-registered
-                                     profile, or the take is blocked (the driver is never trusted
-                                     for the pin)
+                                     `pin` must be the registered row's harness, model and that
+                                     model's pre-registered profile under that harness, or the take
+                                     is blocked (the driver is never trusted for the pin)
     remove(container_id) -> None     remove exactly that container (never called with None)
 
 and a repo object with `register(row, attempt)` and `commit_records(row, attempt, outcome)`, each
@@ -215,6 +220,10 @@ OUTCOME_KEYS = ("slot", "half_cell", "attempt", "container_id", "state", "reason
 RULING_KEYS = ("kind", "slot", "attempt", "ruling", "route", "by")
 
 
+# Interface 8 (w1b's next-touch item 5): a registered row's agent, {"harness": AgentAdapter.name, "version":
+# AgentAdapter.version()}, required beside its model and never defaulted.
+AGENT_KEYS = ("harness", "version")
+
 # Routes that re-run a slot, whose spent re-runs a restart must count again.
 RERUN_ROUTES = (labels4.REHEARSAL, labels4.HARNESS_ERROR, labels4.PAUSE)
 # Routes counted per half-cell, round 3's unit, whose cap closes the half-cell (glitch-f3's ruling, THE CELL CAPS).
@@ -257,6 +266,25 @@ def restart_waits(history: list) -> bool:
     return any(effective_route(e) == labels4.PAUSE for e in tail)
 
 
+def history_difference(given, held):
+    """W1B4-6 (i): where a `history` argument first differs from the repo's own `history()`, or None when they agree:
+    the first entry that differs (and its first differing key, when both are records), or the first entry one of
+    them lacks."""
+    if not isinstance(given, list) or not isinstance(held, list):
+        return None if given == held else f"the argument is {type(given).__name__}, repo.history() {type(held).__name__}"
+    for i, (a, b) in enumerate(zip(given, held)):
+        if a != b:
+            if isinstance(a, dict) and isinstance(b, dict):
+                keys = sorted((k for k in set(a) | set(b) if a.get(k, a) != b.get(k, b)), key=str)
+                return f"history[{i}] differs first at key {keys[0]!r}"
+            return f"history[{i}] differs"
+    if len(given) != len(held):
+        n = min(len(given), len(held))
+        more = "the argument" if len(given) > len(held) else "repo.history()"
+        return f"history[{n}] is held by {more} only ({len(given)} entries given, {len(held)} in repo.history())"
+    return None
+
+
 class BatchConfigError(RuntimeError):
     """The loop cannot start: pending data, an unhandled terminal state, a bad row, no nohup,
     untrustworthy history."""
@@ -285,25 +313,64 @@ def pending_caps(table: dict) -> list[str]:
     return out
 
 
+# The words a ruled status starts with (lane review round 2, W4H2-1, the lane lead's decision): an allow-list.
+RULED_WORDS = ("RULED", "FILLED")
+
+
+def is_pending(status) -> bool:
+    """True unless the status is ruled. A status is ruled only when, stripped and upper-cased, it starts with one of
+    RULED_WORDS and holds no PENDING anywhere (lane review round 2, W4H2-1, the lane lead's decision). Everything else
+    is pending: "PENDING (x)", "pending", a zero-width space before PENDING, "Status: PENDING", "RULED for codex;
+    PENDING for claude-code", "TBD", "not yet ruled". All four start_problems status lines read a status this way
+    (glitch-f3's ruling on W4H1-1, under Javier's delegation, relayed by the lane lead)."""
+    s = str(status).strip().upper()
+    return not (s.startswith(RULED_WORDS) and PENDING not in s)
+
+
 def start_problems(table: dict) -> list[str]:
     """Everything that keeps the loop from starting on this table (empty when it may start)."""
     p = [f"cap {r} is still pending in routing.json" for r in pending_caps(table)]
     if not table.get("operator_reasons"):
         p.append("operator_reasons is empty in routing.json (round 3's operator-side reasons)")
-    if str(table.get("operator_reasons_status", PENDING)).startswith(PENDING):
-        p.append("operator_reasons_status is PENDING in routing.json")
+    if is_pending(table.get("operator_reasons_status", PENDING)):
+        p.append("operator_reasons_status is not ruled in routing.json (RULED or FILLED, with no PENDING)")
     if not table.get("pin_profiles"):
         p.append("pin_profiles is empty in routing.json (CP5 pre-registers them)")
-    if str(table.get("pin_profiles_status", PENDING)).startswith(PENDING):
-        p.append("pin_profiles_status is PENDING in routing.json")
-    if str(table.get("rate_limit_markers_status", PENDING)).startswith(PENDING):
-        p.append("rate_limit_markers_status is PENDING in routing.json")
+    if is_pending(table.get("pin_profiles_status", PENDING)):
+        p.append("pin_profiles_status is not ruled in routing.json (RULED or FILLED, with no PENDING)")
+    if is_pending(table.get("rate_limit_markers_status", PENDING)):
+        p.append("rate_limit_markers_status is not ruled in routing.json (RULED or FILLED, with no PENDING)")
+    if is_pending(table.get("spend_cap_markers_status", PENDING)):
+        # item 1 (ruling 3 of 17:42): an unruled spend-cap list never lets the loop start
+        p.append("spend_cap_markers_status is not ruled in routing.json (RULED or FILLED, with no PENDING): a spend "
+                 "cap stops for a human ruling")
     return p
 
 
 def expected_pin(row: dict, table: dict) -> dict:
-    """The pin a take of this registered row must run under: its model and that model's profile."""
-    return dict(table["pin_profiles"][row["model"]], model=row["model"])
+    """The pin a take of this registered row must run under: its harness (the row's agent), its model, and that
+    model's profile under that harness (interface 8: pin_profiles is keyed by harness, then model)."""
+    harness = row["agent"]["harness"]
+    return dict(table["pin_profiles"][harness][row["model"]], model=row["model"], harness=harness)
+
+
+def agent_problems(row: dict) -> list[str]:
+    """Interface 8: the row's agent is exactly {harness, version}, non-empty strings, never defaulted."""
+    agent = row.get("agent")
+    if (not isinstance(agent, dict) or set(agent) != set(AGENT_KEYS)
+            or not all(isinstance(agent[k], str) and agent[k] for k in AGENT_KEYS)):
+        return [f"row {row.get('slot')}: agent must be exactly {list(AGENT_KEYS)} as non-empty strings (interface 8; "
+                f"never defaulted), got {agent!r}"]
+    return []
+
+
+def version_problems(row: dict, table: dict) -> list[str]:
+    """Interface 8 (item 5): a row whose agent.version is not its pin's version cannot run under its pin. Lane w4h's
+    decision: it is refused before it is registered (nothing is driven), never driven and then blocked."""
+    want = expected_pin(row, table)["version"]
+    if row["agent"]["version"] != want:
+        return [f"row {row['slot']}: agent version {row['agent']['version']!r} is not its pin's version {want!r}"]
+    return []
 
 
 class Batch:
@@ -348,12 +415,18 @@ class Batch:
         self.ruled: dict = {}                # (slot, attempt) -> (the ruling, its fate), from the history (W1B3-1)
         self.unruled: dict = {}              # slot -> (attempt, why): its last take awaits a ruling (W1B3-1)
         self.owed: dict = {}                 # slot -> (attempt, why): the history owes it this drive (W1B3-6)
+        read = getattr(repo, "history", None)
         if history is None:
-            read = getattr(repo, "history", None)
             if not callable(read):
                 raise BatchConfigError("the repo gives no history(): the caps and attempts of earlier runs "
                                        "cannot be rebuilt, so a restart could spend re-runs twice")
             history = read()
+        elif callable(read):
+            # W1B4-6 (i): a history argument is only ever the repo's own; one that differs is refused, never trusted
+            # over the committed record. A repo without history() (a test double) may still be handed one.
+            diff = history_difference(history, read())
+            if diff is not None:
+                raise BatchConfigError(f"the history argument differs from repo.history(): {diff}")
         self._replay(history)
 
     # ---------------------------------------------------------------------------- the history
@@ -575,8 +648,13 @@ class Batch:
         for r in rows:
             if not isinstance(r, dict) or not all(k in r for k in ("slot", "half_cell", "model")):
                 p.append(f"row {r!r} must name slot, half_cell and model")
-            elif r["model"] not in self.table["pin_profiles"]:
-                p.append(f"row {r['slot']}: model {r['model']!r} has no pre-registered pin profile")
+            elif agent_problems(r):
+                p += agent_problems(r)
+            elif r["model"] not in self.table["pin_profiles"].get(r["agent"]["harness"], {}):
+                p.append(f"row {r['slot']}: model {r['model']!r} has no pre-registered pin profile under harness "
+                         f"{r['agent']['harness']!r}")
+            elif version_problems(r, self.table):
+                p += version_problems(r, self.table)
             elif self.slot_cell.get(r["slot"], r["half_cell"]) != r["half_cell"]:
                 p.append(f"row {r['slot']}: committed under half-cell {self.slot_cell[r['slot']]!r}, "
                          f"not {r['half_cell']!r}")

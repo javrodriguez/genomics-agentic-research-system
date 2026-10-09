@@ -1,0 +1,15 @@
+{
+  "lane": "w4h-w1b-next-touch",
+  "files": [
+    {
+      "path": "COPIED.d/w4h-w1b-next-touch.json",
+      "status": "new",
+      "reason": "Lane w4h-w1b-next-touch's copy-record fragment (interface 1). It claims only this lane's own new files; the w1b and w2a files it edits under the named exceptions (glitch-f3's ruling 9 of 17:25 and rulings 1-3 of 17:42) stay claimed by their own lanes' fragments."
+    },
+    {
+      "path": "checks.d/w4h-w1b-next-touch.txt",
+      "status": "new",
+      "reason": "Lane w4h-w1b-next-touch's local checks (interface 2): each of the four test files it touches, alone, and routing.py --check."
+    }
+  ]
+}

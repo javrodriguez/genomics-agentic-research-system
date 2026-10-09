@@ -62,19 +62,32 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import agent_adapter as aa  # noqa: E402  (the seam only; routing.py never imports it)
+import harness_bookkeeping as hb  # noqa: E402  (the seam's harness name, never typed here: interface 8)
 import routing  # noqa: E402
+import transcript_view  # noqa: E402  (the seam's parser table: the harness names it registers)
 from graders import labels4  # noqa: E402
 
 REAL = routing.load_table()
 # Round 3's reason ids the scenarios name, typed once (TestRound3Sources binds the list they come from).
 READERS = "readers-disagree"          # an operator-side reason of either phase
 NFAT = "no-first-agent-turn"          # round 3's "before the agent's first turn" reason
-# Test-only pin profiles, injected in memory (CP5 pre-registers the real ones).
-TEST_PROFILES = {
+# Test-only pin profiles, injected in memory (CP5 pre-registers the real ones), keyed by harness, then model
+# (interface 8; the harness is the seam's own name, never typed here).
+TEST_HARNESS = hb.CLAUDE_CODE
+TEST_PROFILES = {TEST_HARNESS: {
     "test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
     "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"},
-}
-PIN = dict(TEST_PROFILES["test-model-a"], model="test-model-a")
+}}
+PIN = dict(TEST_PROFILES[TEST_HARNESS]["test-model-a"], model="test-model-a", harness=TEST_HARNESS)
+INIT_FIELDS = ("model", "permission_mode", "version")   # an init event's fields: the pin less its harness
+
+
+def init_of(pin: dict) -> dict:
+    """An init event under `pin` (an init event names no harness)."""
+    return {f: pin[f] for f in INIT_FIELDS}
+
+
+INIT = init_of(PIN)
 
 
 def test_table() -> dict:
@@ -95,7 +108,7 @@ def baseline(phase: str, pin: dict | None = None) -> dict:
                    "finalize_abort": False},
         "exit": {"container_started": True, "container_exited": False, "exec_codes": [0] * n},
         "cgroup": {"oom_kill_delta": 0, "pids_max_delta": 0},
-        "init": [dict(pin) for _ in range(n)],
+        "init": [init_of(pin) for _ in range(n)],
         "pin": dict(pin),
         "api_errors": [],
         "sidecar": {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": False},
@@ -104,6 +117,8 @@ def baseline(phase: str, pin: dict | None = None) -> dict:
         "checker_reasons": [],
         "quiescence_kill": False,
         "events": {"outside_reach": 0},
+        "unreadable_consequential": [],
+        "quiescence_cap_survivors": 0,
     }
 
 
@@ -122,7 +137,7 @@ def silent_turn(rec: dict, end: str = labels4.END_ERROR, code: int = 1):
     led["turn_outputs"].append(False)
     led["end"] = end
     rec["exit"]["exec_codes"].append(code)
-    rec["init"].append(dict(rec["pin"]))
+    rec["init"].append(init_of(rec["pin"]))
 
 
 def silent_timeout(rec: dict):
@@ -182,6 +197,8 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
         set_api(rec, [{"status": 500, "type": "api_error", "text": None}])
     elif op == "empty" and path == "api_errors":
         rec["api_errors"] = []
+    elif op == "nonempty" and path == "unreadable_consequential":   # CP2 ruling C3 (lane w4h): a made-up path
+        set_path(rec, path, ["data/staging/samples.csv"])
     elif op == "in_operator_reasons":
         set_path(rec, path, [any_phase_reason(table)])
     elif op == "in_checker_events":
@@ -189,10 +206,10 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
     elif op == "in_rate_limit_markers":
         key = path.partition(".")[2]
         err = {"status": None, "type": None, "text": None}
-        err[key] = table["rate_limit_markers"][key][0]
+        err[key] = table["rate_limit_markers"][TEST_HARNESS][key][0]
         set_api(rec, [err])
     elif op in ("differs_from_pin", "present_differs_from_pin"):
-        rec["init"][0] = dict(rec["pin"], model="not-the-pin")
+        rec["init"][0] = dict(init_of(rec["pin"]), model="not-the-pin")
     elif op == "nonzero_outside_timeout":
         rec["exit"]["exec_codes"][0] = 1
     elif op in ("not_null", "is_null"):
@@ -256,7 +273,7 @@ def _cgroup(r):
 
 
 def _mismatch(r):
-    r["init"][-1] = dict(r["pin"], version="not-the-pin")
+    r["init"][-1] = dict(init_of(r["pin"]), version="not-the-pin")
 
 
 def _rate(r):
@@ -390,7 +407,8 @@ SIDECAR = {"start_record": True, "stop_record": True, "exit_code": 0, "queue_ove
 def full_box(**kw) -> dict:
     b = {"preflight_ok": True, "container_started": True, "container_exited": False, "sidecar": dict(SIDECAR),
          "unexplained_operator_diffs": 0, "checker_reasons": [], "quiescence_kill": False,
-         "outside_reach_events": 0, "finalize_abort": False, "committed": False}
+         "outside_reach_events": 0, "finalize_abort": False, "committed": False,
+         "unreadable_consequential": [], "quiescence_cap_survivors": 0}
     b.update(kw)
     return b
 
@@ -603,7 +621,7 @@ def pin_refusal_grid_problems(table: dict) -> list[str]:
                     continue
                 if rec["ledger"]["turns"] == 0:
                     silent_turn(rec)
-                rec["init"][-1] = dict(OTHER_VERSION) if init == "differs" else None
+                rec["init"][-1] = init_of(OTHER_VERSION) if init == "differs" else None
                 got = try_route(rec, table)
                 if init == "differs" and row["route"] not in outranks:
                     if not isinstance(got, routing.RoutingRefused) or PIN_REFUSAL not in str(got):
@@ -732,7 +750,7 @@ def _seam_edit(cond: dict, table: dict, turns: list, box: dict, end: str | None 
         turns[:] = [_silent(end, api_errors=[{"status": 500, "type": "api_error", "text": None}])]
     elif head == "api_errors" and op == "in_rate_limit_markers":
         err = {"status": None, "type": None, "text": None}
-        err[tail] = table["rate_limit_markers"][tail][0]
+        err[tail] = table["rate_limit_markers"][TEST_HARNESS][tail][0]
         turns[:] = [_silent(end, api_errors=[err])]
     elif path == "ledger.end" and op == "eq" and cond["value"] in (labels4.TIMED_OUT, labels4.END_ERROR):
         turns[:] = [_silent(cond["value"])]
@@ -807,7 +825,7 @@ def _multi_turn(n):
     def f(r):
         r["ledger"].update(turns=n, turn_ends=[labels4.END_TURN] * n, turn_outputs=[True] * n)
         r["exit"]["exec_codes"] = [0] * n
-        r["init"] = [dict(r["pin"]) for _ in range(n)]
+        r["init"] = [init_of(r["pin"]) for _ in range(n)]
     return f
 
 
@@ -817,7 +835,7 @@ def _reach(n=1):
 
 def _differs(value="9.9.9", field="version"):
     """The last turn's init event: present and differing from the pin in `field`, or None (no init event)."""
-    return lambda r: r["init"].__setitem__(-1, None if value is None else dict(r["pin"], **{field: value}))
+    return lambda r: r["init"].__setitem__(-1, None if value is None else dict(init_of(r["pin"]), **{field: value}))
 
 
 _end_error = (lambda code: (lambda r: set_end(r, labels4.END_ERROR, code)))
@@ -882,7 +900,7 @@ SCENARIOS = {
                                                    ["container-start-failed", "silent-timeout-before-first-turn"]),
     "silent timeout + a rate limit -> pause": Sc(_sc(B, [silent_timeout, _rate]), "pause", ["rate-limit"],
                                                  ["api-error-before-first-turn", "silent-timeout-before-first-turn", "rate-limit"]),
-    "silent timeout with an init mismatch -> refused (W1B2-1)": Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(PIN, model="x"))]),
+    "silent timeout with an init mismatch -> refused (W1B2-1)": Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(INIT, model="x"))]),
                                                                    REFUSED, None),
     # glitch-f3's ruling (6 Oct 2026; glitch-f3's, not the owner's): a CLI that never printed its init event is
     # harness-side, so a silent first-turn timeout with no init event rehearses; one whose init differs is refused
@@ -890,12 +908,12 @@ SCENARIOS = {
         Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, None)]), "rehearsal",
            ["silent-timeout-before-first-turn"], ["silent-timeout-before-first-turn"]),
     "silent timeout with an init mode mismatch -> refused (glitch-f3, fold 3)":
-        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(PIN, permission_mode="default"))]), REFUSED, None),
+        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(INIT, permission_mode="default"))]), REFUSED, None),
     "silent timeout with an init version mismatch -> refused (glitch-f3, fold 3)":
-        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(PIN, version="9.9.9"))]), REFUSED, None),
+        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(INIT, version="9.9.9"))]), REFUSED, None),
     "a silent turn with no init, then a silent timeout under another model -> refused (glitch-f3, fold 3)":
         Sc(_sc(B, [silent_turn, silent_timeout, lambda r: r["init"].__setitem__(0, None),
-                   lambda r: r["init"].__setitem__(1, dict(PIN, model="x"))]), REFUSED, None),
+                   lambda r: r["init"].__setitem__(1, dict(INIT, model="x"))]), REFUSED, None),
     # W1B3-2 (the gap4 lane lead's ruling; glitch-f3 accepted the stricter reading, 6 Oct 2026): before the first turn a
     # present init that differs from the pin is refused whatever else matches; only a rate-limit pause outranks it
     "W1B3-2: a differing init, bare -> refused": Sc(_sc(B, [silent_timeout, _differs()]), REFUSED, None),
@@ -935,9 +953,9 @@ SCENARIOS = {
     "watcher stop missing": Sc(_sc(A, [_set("sidecar.stop_record", False)]), "harness-error", ["watcher-gap"]),
     "watcher non-zero exit": Sc(_sc(A, [_set("sidecar.exit_code", 1)]), "harness-error", ["watcher-gap"]),
     "watcher queue overflow": Sc(_sc(A, [_set("sidecar.queue_overflow", True)]), "harness-error", ["watcher-gap"]),
-    "init model differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, dict(PIN, model="x"))]), "harness-error", ["init-mismatch"]),
-    "init mode differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, dict(PIN, permission_mode="default"))]), "harness-error", ["init-mismatch"]),
-    "init version differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(1, dict(PIN, version="9.9.9"))]), "harness-error", ["init-mismatch"]),
+    "init model differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, dict(INIT, model="x"))]), "harness-error", ["init-mismatch"]),
+    "init mode differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, dict(INIT, permission_mode="default"))]), "harness-error", ["init-mismatch"]),
+    "init version differs": Sc(_sc(A, [lambda r: r["init"].__setitem__(1, dict(INIT, version="9.9.9"))]), "harness-error", ["init-mismatch"]),
     "init event missing": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, None)]), "harness-error", ["init-mismatch"]),
     "mismatch on the last turn of an otherwise graded take": Sc(_sc(A, [_multi_turn(4), _mismatch]), "harness-error", ["init-mismatch"]),
     "non-zero exec exit, nothing else": Sc(_sc(A, [lambda r: r["exit"]["exec_codes"].__setitem__(0, 1)]), "harness-error", ["nonzero-exec-exit"]),
@@ -1174,18 +1192,18 @@ def mutants(table: dict):
             t = copy.deepcopy(table)
             t["annotations"][i]["any_of"][j][key] = val
             yield f"annotation {a['id']}: any_of[{j}] {c['op']} mutated", t
-    for key, values in table["rate_limit_markers"].items():
-        if key == "source":
+    for key, values in table["rate_limit_markers"][TEST_HARNESS].items():
+        if key in ("source", "reset_wait"):   # not marker lists (reset_wait: item 1)
             continue
         t = copy.deepcopy(table)
-        del t["rate_limit_markers"][key]
+        del t["rate_limit_markers"][TEST_HARNESS][key]
         yield f"rate_limit_markers: {key} deleted", t
         for j, v in enumerate(values):
             t = copy.deepcopy(table)
-            t["rate_limit_markers"][key][j] = _other(v)
+            t["rate_limit_markers"][TEST_HARNESS][key][j] = _other(v)
             yield f"rate_limit_markers: {key}[{j}] {v!r} -> {_other(v)!r}", t
     t = copy.deepcopy(table)
-    t["rate_limit_markers"]["code"] = t["rate_limit_markers"].pop("status")
+    t["rate_limit_markers"][TEST_HARNESS]["code"] = t["rate_limit_markers"][TEST_HARNESS].pop("status")
     yield "rate_limit_markers: status renamed to a non-API-error key", t
     for j, eid in enumerate(table["checker_reasons_become_events"]["ids"]):   # W1B2-2
         t = copy.deepcopy(table)
@@ -1553,16 +1571,16 @@ class TestRoutingTable(unittest.TestCase):
     def test_rate_limit_marker_keys_are_api_error_fields(self):
         """W1B-6."""
         t = copy.deepcopy(REAL)
-        t["rate_limit_markers"]["code"] = [429]
+        t["rate_limit_markers"][TEST_HARNESS]["code"] = [429]
         self.assertTrue(any("not an API-error field" in x for x in routing.check_table(t)))
 
     def test_text_markers_are_non_empty_lower_case_strings(self):
         """Round 3's bounded search lowercases the error text only, so an upper-case marker could never match,
         and an empty one would match at every word boundary."""
-        self.assertEqual(REAL["rate_limit_markers"]["text"], [m.lower() for m in REAL["rate_limit_markers"]["text"]])
+        self.assertEqual(REAL["rate_limit_markers"][TEST_HARNESS]["text"], [m.lower() for m in REAL["rate_limit_markers"][TEST_HARNESS]["text"]])
         for bad in ("Rate Limit", "", 429, None):
             t = copy.deepcopy(REAL)
-            t["rate_limit_markers"]["text"] = ["rate limit", bad]
+            t["rate_limit_markers"][TEST_HARNESS]["text"] = ["rate limit", bad]
             self.assertTrue(any("text marker" in x for x in routing.check_table(t)), bad)
 
     def test_graded_ends_checked_against_labels4(self):
@@ -1766,7 +1784,7 @@ class TestRound3Sources(unittest.TestCase):
     # these ranges, besides check_take.py's reason-id lines and prereg.json's four keys.
     DRIVE = "evals/gap-study-3/drive.py"
     TAKES = "evals/gap-study-3/takes.py"
-    ALLOWED = {DRIVE: ((140, 160), (857, 923), (1405, 1420)), TAKES: ((268, 292),), CHECK_TAKE: ((80, 95),)}
+    ALLOWED = {DRIVE: ((140, 160), (857, 923), (1405, 1420)), TAKES: ((255, 295),), CHECK_TAKE: ((80, 95),)}
 
     def round3_lines(self, path: str, first: int, last: int) -> list[str]:
         if not any(lo <= first <= last <= hi for lo, hi in self.ALLOWED[path]):
@@ -1784,8 +1802,8 @@ class TestRound3Sources(unittest.TestCase):
         return markers
 
     def test_text_markers_are_round_3s_in_order(self):
-        self.assertEqual(REAL["rate_limit_markers"]["text"], list(self.round3_markers()))
-        source = REAL["rate_limit_markers"]["source"]
+        self.assertEqual(REAL["rate_limit_markers"][TEST_HARNESS]["text"], list(self.round3_markers()))
+        source = REAL["rate_limit_markers"][TEST_HARNESS]["source"]
         for cite in ("glitch-f3", "evals/gap-study-3/drive.py:149", self.COMMIT, "driver_constants.rate_limit_markers"):
             self.assertIn(cite, source)
 
@@ -1798,9 +1816,65 @@ class TestRound3Sources(unittest.TestCase):
         exec(compile("\n".join(lines), f"{self.DRIVE}@{self.COMMIT[:8]}:912", "exec",    # noqa: S102 - pinned, read lines
                      flags=__future__.annotations.compiler_flag, dont_inherit=True), ns)
         theirs = ns["matched_marker"]
-        markers = REAL["rate_limit_markers"]["text"]
+        markers = REAL["rate_limit_markers"][TEST_HARNESS]["text"]
         self.assertEqual(text_match_problems(lambda text, _markers: theirs(text), markers), [])
         self.assertEqual(text_match_problems(routing.rate_limit_text_marker, markers), [])
+
+    # W1B4-5 (w1b's next touch, item 3; lane w4h-w1b-next-touch): batch.py quotes round 3's takes.py by line. The fence
+    # is the lines actually read, 255-295 (CP5-requirements W1B4-1: 255-261 and 267-272; w1b's report: 260-295), and
+    # the quote is bound here: its words stand on the line it cites, at round 3's done commit.
+    TAKES_QUOTE = re.compile(r'"([^"]+)" \(evals/gap-study-3/takes\.py:(\d+) at\s+([0-9a-f]{8,40})\)')
+
+    def takes_quote_problems(self, doc: str) -> list[str]:
+        """Every takes.py quote in `doc` whose words do not stand on the line it cites (none quoted is a problem)."""
+        quotes = self.TAKES_QUOTE.findall(doc)
+        if not quotes:
+            return ["batch.py quotes no takes.py line"]
+        p = []
+        for words, line, commit in quotes:
+            if not self.COMMIT.startswith(commit):
+                p.append(f"takes.py:{line} is quoted at {commit}, not round 3's done commit")
+                continue
+            (text,) = self.round3_lines(self.TAKES, int(line), int(line))
+            if words not in " ".join(text.split()):
+                p.append(f"{words!r} does not stand on takes.py:{line} ({text.strip()!r})")
+        return p
+
+    def test_the_takes_fence_is_the_lines_read(self):
+        self.assertEqual(self.ALLOWED[self.TAKES], ((255, 295),))
+
+    def test_batch_quotes_takes_260(self):
+        import batch   # noqa: PLC0415 - only its docstring is read
+        self.assertEqual([(w, n) for w, n, _ in self.TAKES_QUOTE.findall(batch.__doc__)],
+                         [("there are no retakes", "260")])
+        self.assertEqual(self.takes_quote_problems(batch.__doc__), [])
+
+    def test_takes_quote_check_can_fail(self):
+        import batch   # noqa: PLC0415
+        shifted = batch.__doc__.replace("takes.py:260 at", "takes.py:261 at")       # the quote's line shifted
+        self.assertNotEqual(shifted, batch.__doc__)
+        self.assertTrue(any("does not stand on takes.py:261" in x for x in self.takes_quote_problems(shifted)))
+        self.assertEqual(self.takes_quote_problems("no quote here"), ["batch.py quotes no takes.py line"])
+        narrowed = dict(self.ALLOWED, **{self.TAKES: ((268, 292),)})                 # the fence narrowed back
+        with mock.patch.object(TestRound3Sources, "ALLOWED", narrowed):
+            with self.assertRaisesRegex(AssertionError, "outside the lines this lane may read"):
+                self.takes_quote_problems(batch.__doc__)
+
+
+    def test_claude_code_reset_wait_is_round_3s_none(self):
+        """w1b's next-touch item 1 (lane w4h): the Claude Code entry's reset_wait is round 3's. Round 3 states none in drive.py
+        140-160 (its constants beside RATE_LIMIT_MARKERS: no reset wait among them), so it is null, named for CP2's
+        wait_reset."""
+        lines = self.round3_lines(self.DRIVE, 140, 160)
+        names = [t.id for x in lines if x and not x[0].isspace() and "=" in x and not x.lstrip().startswith("#")
+                 for node in [ast.parse(x).body[0]] if isinstance(node, ast.Assign) for t in node.targets
+                 if isinstance(t, ast.Name)]
+        self.assertIn("RATE_LIMIT_MARKERS", names)
+        self.assertFalse([n for n in names if "RESET" in n or "WINDOW" in n], names)
+        entry = REAL["rate_limit_markers"][hb.CLAUDE_CODE]
+        self.assertIsNone(entry["reset_wait"])
+        for cite in ("drive.py:140-160", self.COMMIT, "wait_reset", "CP2"):
+            self.assertIn(cite, entry["source"])
 
 
 class TestRows(unittest.TestCase):
@@ -1852,7 +1926,7 @@ class TestRecordKeys(unittest.TestCase):
     """W1B-2: one test per record key, dropped and set to None, each refused."""
 
     def test_leaf_list_covers_the_schema(self):
-        self.assertEqual(len(COUNT_LEAVES), 5)
+        self.assertEqual(len(COUNT_LEAVES), 6)   # + quiescence_cap_survivors (CP2 ruling C3; lane w4h, see its report)
         self.assertEqual(len(FLAG_LEAVES), 10)
         self.assertEqual(set(_leaf_paths()) - {"ledger.end", "ledger.turn_ends", "ledger.turn_outputs",
                                                 "exit.exec_codes", "init", "pin", "api_errors", "checker_reasons"},
@@ -2015,7 +2089,7 @@ class TestRateLimitText(unittest.TestCase):
             self.assertTrue(any("routed pause" in x for x in agent_text_problems(test_table())))
 
     def test_word_bounded_and_case_insensitive(self):
-        self.assertEqual(text_match_problems(routing.rate_limit_text_marker, REAL["rate_limit_markers"]["text"]), [])
+        self.assertEqual(text_match_problems(routing.rate_limit_text_marker, REAL["rate_limit_markers"][TEST_HARNESS]["text"]), [])
 
     def test_word_bound_check_can_fail(self):
         def substring(text, markers):   # the mutant: a plain substring match
@@ -2023,7 +2097,7 @@ class TestRateLimitText(unittest.TestCase):
 
         def case_sensitive(text, markers):   # the mutant: the text not lowercased
             return next((m for m in markers if re.search(r"(?<![\w])" + re.escape(m) + r"(?![\w])", text)), None)
-        markers = REAL["rate_limit_markers"]["text"]
+        markers = REAL["rate_limit_markers"][TEST_HARNESS]["text"]
         for mutant in (substring, case_sensitive):
             self.assertNotEqual(text_match_problems(mutant, markers), [], mutant.__name__)
             with mock.patch.object(routing, "rate_limit_text_marker", mutant):
@@ -2037,14 +2111,14 @@ class TestProfiles(unittest.TestCase):
 
 def profile_problems(model: str, table: dict) -> list[str]:
     p = []
-    pin = dict(table["pin_profiles"][model], model=model)
+    pin = dict(table["pin_profiles"][TEST_HARNESS][model], model=model, harness=TEST_HARNESS)
     clean = try_route(baseline(A, pin), table)
     if isinstance(clean, Exception) or clean["route"] != labels4.GRADED:
         p.append(f"{model}: a clean take under its own profile did not grade ({clean})")
     for field in table["pin_fields"]:
         for turn in (0, -1):
             rec = baseline(A, pin)
-            rec["init"][turn] = dict(pin, **{field: f"{pin[field]}-other"})
+            rec["init"][turn] = dict(init_of(pin), **{field: f"{pin[field]}-other"})
             got = try_route(rec, table)
             if isinstance(got, Exception) or (got["route"], got["rows"]) != (labels4.HARNESS_ERROR, ["init-mismatch"]):
                 p.append(f"{model}: init {field} differs on turn {turn}: {got}")
@@ -2060,7 +2134,7 @@ def _profile_test(model):
     return test
 
 
-for _model in TEST_PROFILES:
+for _model in TEST_PROFILES[TEST_HARNESS]:
     setattr(TestProfiles, "test_profile_" + _model.replace("-", "_"), _profile_test(_model))
 
 
@@ -2111,7 +2185,7 @@ class TestGridAndMutations(unittest.TestCase):
                      "rate_limit_markers: text deleted", "pin_refusal: removed", "pin_refusal: outranked_by emptied",
                      "pin_refusal: all_of[0] present_differs_from_pin mutated", "pin_refusal: phase -> after-first-turn"):
             self.assertIn(what, described)
-        for j in range(len(REAL["rate_limit_markers"]["text"])):   # every text marker, alone (glitch-f3's ruling)
+        for j in range(len(REAL["rate_limit_markers"][TEST_HARNESS]["text"])):   # every text marker, alone (glitch-f3's ruling)
             self.assertIn(f"rate_limit_markers: text[{j}]", described)
         self.assertIn("rate-limit: any_of[2] in_rate_limit_markers mutated", described)
 
@@ -2189,6 +2263,546 @@ class TestPurityAndCaps(unittest.TestCase):
         def wrong_cap(records, table):
             return dict(routing.route(records, table), cap=table["caps"][labels4.GRADED])
         self.assertNotEqual(cap_problems(wrong_cap, test_table()), [])
+
+
+
+# ---------------------------------------------------------------- w1b's next touch (lane w4h-w1b-next-touch)
+# Interface 8 (item 5, the schema half): the routing pin carries the take's harness (AgentAdapter.name) beside its
+# model, and pin_profiles is keyed by harness, then model. The harness is the seam's own name, never typed here.
+NT_HARNESS = hb.CLAUDE_CODE
+NT_FAKE = "fake-second"                      # the test-only second harness (interface 8)
+NT_INIT_FIELDS = ("model", "permission_mode", "version")   # an init event's fields, typed once here
+NT_PROFILES = {NT_HARNESS: {"test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
+                            "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"}}}
+NT_PIN = dict(NT_PROFILES[NT_HARNESS]["test-model-a"], model="test-model-a", harness=NT_HARNESS)
+
+
+def nt_init(pin: dict) -> dict:
+    """An init event under `pin`: the pin's init fields (an init event names no harness)."""
+    return {f: pin[f] for f in NT_INIT_FIELDS}
+
+
+def nt_table() -> dict:
+    t = copy.deepcopy(REAL)
+    t["pin_profiles"] = copy.deepcopy(NT_PROFILES)
+    t["pin_profiles_status"] = "TEST-ONLY: two injected profiles under one harness"
+    return t
+
+
+def nt_record(phase: str, pin: dict | None = None) -> dict:
+    """baseline(phase), its pin the harness-keyed one and its init events under that pin."""
+    pin = dict(pin or NT_PIN)
+    rec = baseline(phase)
+    rec["pin"] = dict(pin)
+    rec["init"] = [nt_init(pin) for _ in rec["init"]]
+    return rec
+
+
+def agent_pin_problems(table: dict) -> list[str]:
+    """Interface 8 on the routing pin: a take under its harness-keyed profile routes; a pin without its harness, with
+    a harness that is no string, or with a harness the table holds no profiles for is refused; an init event never
+    carries the harness."""
+    p = []
+    for phase, want in ((A, labels4.GRADED), (B, None)):
+        got = try_route(nt_record(phase), table)
+        if want is not None and (isinstance(got, Exception) or got["route"] != want):
+            p.append(f"a clean {phase} take under its harness-keyed profile: {got}")
+    for name, edit, why in (
+            ("the pin without its harness", lambda r: r["pin"].pop("harness"), "pin must hold exactly"),
+            ("a None harness", lambda r: r["pin"].update(harness=None), "pin values must be strings"),
+            ("a harness with no profiles", lambda r: r["pin"].update(harness=NT_FAKE), NT_FAKE),
+            ("an init event carrying the harness", lambda r: r["init"][0].update(harness=NT_HARNESS), "init[0]")):
+        rec = nt_record(A)
+        edit(rec)
+        got = try_route(rec, table)
+        if not isinstance(got, routing.RoutingRefused) or why not in str(got):
+            p.append(f"{name}: want refused naming {why!r}, got {got}")
+    return p
+
+
+class TestNextTouchAgentPin(unittest.TestCase):
+    """Interface 8 (w1b's next-touch item 5): the routing pin gains `harness`, and pin_profiles is keyed by harness,
+    then model. pin_profiles stays empty and PENDING (CP5's values), its status reworded to the new shape."""
+
+    def test_the_pin_carries_its_harness(self):
+        self.assertEqual(agent_pin_problems(nt_table()), [])
+
+    def test_profiles_are_keyed_by_harness_then_model(self):
+        self.assertEqual(routing.check_table(nt_table()), [])
+        flat = nt_table()
+        flat["pin_profiles"] = copy.deepcopy(NT_PROFILES[NT_HARNESS])   # the old shape: keyed by model alone
+        self.assertTrue(any("pin_profiles" in x or "pin profile" in x for x in routing.check_table(flat)))
+        for bad in ({NT_HARNESS: {}}, {"": NT_PROFILES[NT_HARNESS]}, {NT_HARNESS: {"test-model-a": {"version": "1"}}}):
+            t = nt_table()
+            t["pin_profiles"] = copy.deepcopy(bad)
+            self.assertNotEqual(routing.check_table(t), [], bad)
+
+    def test_the_pending_status_names_the_new_shape(self):
+        self.assertEqual(REAL["pin_profiles"], {})
+        status = REAL["pin_profiles_status"]
+        self.assertTrue(status.startswith("PENDING (CP5)"), status)
+        for cite in ("keyed by harness", "then model", "interface 8"):
+            self.assertIn(cite, status)
+        self.assertEqual(tuple(routing.PIN_KEYS), ("harness",) + NT_INIT_FIELDS)
+
+    def test_agent_pin_check_can_fail(self):
+        real = routing.check_records
+
+        def harness_blind(records, table):   # the mutant: the profile lookup no longer refuses an unknown harness
+            return [x for x in real(records, table) if "pre-registered profile" not in x]
+        t = nt_table()                       # fake-second has markers and a spend list here, and no profile (item 1)
+        t["rate_limit_markers"][NT_FAKE] = copy.deepcopy(FAKE_RATE)
+        t["spend_cap_markers"][NT_FAKE] = copy.deepcopy(FAKE_SPEND)
+        self.assertEqual(agent_pin_problems(t), [])
+        with mock.patch.object(routing, "check_records", harness_blind):
+            found = _guarded("agent pin", agent_pin_problems, t)
+        self.assertTrue(any(x.startswith("a harness with no profiles: want refused") for x in found), found)
+        with mock.patch.object(routing, "PIN_KEYS", routing.PLAN_PIN_FIELDS):   # the base's pin: no harness
+            found = _guarded("agent pin", agent_pin_problems, nt_table())         # a crash is a finding, never a pass
+        self.assertTrue(any(x.startswith("a clean after-first-turn take") or "crashed" in x for x in found), found)
+
+        def open_init(value, fields, what):   # the mutant: an init event may carry keys beyond the plan's fields
+            if what.startswith("init") and isinstance(value, dict) and set(fields) <= set(value):
+                return []
+            return real_pin(value, fields, what)
+        real_pin = routing._pin_problems
+        with mock.patch.object(routing, "_pin_problems", open_init):
+            found = agent_pin_problems(nt_table())
+        self.assertTrue(any(x.startswith("an init event carrying the harness: want refused") for x in found), found)
+
+
+
+# Item 1 (w1b's next touch; glitch-f3's ruling 4 of 17:25): a vendor spend cap is not a rate limit. The rate-limit
+# markers and the reset wait are keyed by harness; a spend-cap refusal (routing.json's spend_cap_refusal) matches a
+# closed per-harness list of spend-cap types or text markers on the API-error record's harness-side fields only,
+# raises RoutingRefused (batch.py commits the take blocked and the loop stops for a human), in every phase, outranked
+# by nothing, so a spend-cap 429 never pauses. The test-only `fake-second` entry carries made-up types.
+SPEND_ID = "spend-cap-reached"
+FAKE_RATE = {"status": [429], "type": ["fake2_slow_down"], "text": ["fake2 throttled"], "reset_wait": 60,
+             "source": "test-only: a made-up second harness"}
+FAKE_SPEND = {"status": [402], "type": ["fake2_budget_spent", "fake2_org_budget_spent"],
+              "text": ["fake2 budget exhausted"], "source": "test-only: a made-up second harness"}
+FAKE_PIN = {"harness": NT_FAKE, "model": "fake2-model", "permission_mode": "fake2-mode", "version": "0.0.9-fake2"}
+OLD_FLAT = "48f100563e68f4798defd96fb1bf483dd679c940"   # this lane's base: routing.json's flat markers
+
+
+def spend_table() -> dict:
+    """The test table, with the test-only fake-second harness's markers, spend-cap list and one pin profile."""
+    t = test_table()
+    t["rate_limit_markers"][NT_FAKE] = copy.deepcopy(FAKE_RATE)
+    t["spend_cap_markers"][NT_FAKE] = copy.deepcopy(FAKE_SPEND)
+    t["pin_profiles"][NT_FAKE] = {FAKE_PIN["model"]: {"permission_mode": FAKE_PIN["permission_mode"],
+                                                     "version": FAKE_PIN["version"]}}
+    t["spend_cap_markers_status"] = "TEST-ONLY: fake-second's made-up spend-cap types"
+    return t
+
+
+def take_with(errors: list, phase: str, pin: dict | None = None) -> dict:
+    """A take of `phase` under `pin` (fake-second's by default) whose API errors are `errors`, its last turn ended in
+    error (after the first turn), or one silent turn (before it)."""
+    rec = baseline(phase, pin or FAKE_PIN)
+    set_api(rec, errors)
+    if phase == A:
+        set_end(rec, labels4.END_ERROR, 1)
+    return rec
+
+
+def spend_cases(table: dict) -> dict:
+    """name -> (records, want): want is REFUSED for the spend-cap refusal, else (route, rows)."""
+    cases = {}
+    spend = FAKE_SPEND                   # the test's own list, so a type dropped from the table is still a scenario
+    for phase in (B, A):
+        for typ in spend["type"]:          # one scenario per spend-cap type: a 429 whose text says 429 and rate limit
+            cases[f"{phase}: spend type {typ} as a 429"] = (
+                take_with([_err("Error 429: rate limit (spend)", 429, typ)], phase), REFUSED)
+        for st in spend["status"]:
+            cases[f"{phase}: spend status {st}"] = (take_with([_err(None, st)], phase), REFUSED)
+        for m in spend["text"]:
+            cases[f"{phase}: spend text {m!r}"] = (take_with([_err(f"Request failed: {m.upper()}.")], phase), REFUSED)
+        cases[f"{phase}: a 500, then a spend cap"] = (
+            take_with([_err("internal", 500, "api_error"), _err(None, 429, spend["type"][0])], phase), REFUSED)
+        cases[f"{phase}: fake-second's own rate limit pauses"] = (
+            take_with([_err(None, None, FAKE_RATE["type"][0])], phase), (labels4.PAUSE, ["rate-limit"]))
+        cases[f"{phase}: the real harness's rate-limit type is no marker under fake-second"] = (
+            take_with([_err(None, None, REAL["rate_limit_markers"][TEST_HARNESS]["type"][0])], phase),
+            (labels4.REHEARSAL, ["api-error-before-first-turn"]) if phase == B
+            else (labels4.HARNESS_ERROR, ["api-error-after-first-turn"]))
+        cases[f"{phase}: fake-second's spend type is no marker under the real harness"] = (
+            take_with([_err(None, None, spend["type"][0])], phase, PIN),
+            (labels4.REHEARSAL, ["api-error-before-first-turn"]) if phase == B
+            else (labels4.HARNESS_ERROR, ["api-error-after-first-turn"]))
+    rec = take_with([_err(None, 429, spend["type"][1])], B)     # beside a differing init: the spend cap, not the pin
+    rec["init"][-1] = dict(init_of(FAKE_PIN), version="9.9.9")
+    cases["before the first turn, a spend cap beside a differing init"] = (rec, REFUSED)
+    rec = take_with([_err(None, 429, spend["type"][0])], A)     # beside an out-of-memory kill (aborted)
+    rec["cgroup"]["oom_kill_delta"] = 1
+    cases["after the first turn, a spend cap beside an out-of-memory kill"] = (rec, REFUSED)
+    return cases
+
+
+def spend_problems(table: dict) -> list[str]:
+    p = []
+    for name, (rec, want) in spend_cases(table).items():
+        got = try_route(rec, table)
+        if want == REFUSED:
+            if not isinstance(got, routing.RoutingRefused) or SPEND_ID not in str(got):
+                p.append(f"{name}: want refused by {SPEND_ID}, got {got if isinstance(got, Exception) else got['route']}")
+        elif isinstance(got, Exception) or (got["route"], got["rows"]) != want:
+            p.append(f"{name}: want {want}, got {got if isinstance(got, Exception) else (got['route'], got['rows'])}")
+    return p
+
+
+def harness_name_problems(table: dict, registered) -> list[str]:
+    """Every harness key routing.json holds (its rate-limit markers, its spend-cap lists, its pin profiles) is a name
+    the seam registers (interface 8)."""
+    names = set(table["rate_limit_markers"]) | set(table["spend_cap_markers"]) | set(table["pin_profiles"])
+    return [f"{n!r} is no harness the seam registers" for n in sorted(names) if n not in registered]
+
+
+SEAM_NAMES = set(hb.TABLE) & set(transcript_view.PARSERS)
+
+
+class TestNextTouchSpendCap(unittest.TestCase):
+    """A vendor spend cap is not a rate limit (CP2-requirements, the spend-cap section; glitch-f3's ruling 4)."""
+
+    def test_spend_caps_are_refused_never_paused(self):
+        self.assertEqual(spend_problems(spend_table()), [])
+
+    def test_markers_and_reset_wait_are_keyed_by_harness(self):
+        self.assertEqual(routing.check_table(spend_table()), [])
+        for key in ("rate_limit_markers", "spend_cap_markers"):
+            self.assertEqual(set(REAL[key]), {TEST_HARNESS}, key)
+        self.assertEqual(set(REAL["rate_limit_markers"][TEST_HARNESS]), {"status", "type", "text", "reset_wait", "source"})
+
+    def test_the_rekeyed_claude_code_values_are_the_old_flat_ones(self):
+        """Ruling 3 of 17:42: the re-keyed Claude Code entry equals the base's flat one (W4BR-w4h-5), less the new
+        reset_wait; its source keeps the old one's words."""
+        p = subprocess.run(["git", "-C", TestRound3Sources.ROOT, "show", f"{OLD_FLAT}:evals/gap-study-4/routing.json"],
+                           capture_output=True)
+        self.assertEqual(p.returncode, 0, "the base commit (git fetch --unshallow?)")
+        old = json.loads(p.stdout.decode())["rate_limit_markers"]
+        new = REAL["rate_limit_markers"][TEST_HARNESS]
+        self.assertEqual(set(old), {"status", "type", "text", "source"})
+        for k in ("status", "type", "text"):
+            self.assertEqual(new[k], old[k], k)
+        self.assertTrue(new["source"].startswith(old["source"]))
+
+    def test_claude_code_spend_list_is_empty_and_pending(self):
+        entry = REAL["spend_cap_markers"][TEST_HARNESS]
+        self.assertEqual({k: entry[k] for k in ("status", "type", "text")}, {"status": [], "type": [], "text": []})
+        for cite in ("subscription login", "D4 A", "glitch-f3"):
+            self.assertIn(cite, entry["source"])
+        self.assertTrue(REAL["spend_cap_markers_status"].startswith(
+            f"PENDING (glitch-f3): {TEST_HARNESS}'s spend-cap types"), REAL["spend_cap_markers_status"])
+
+    def test_the_refusal_is_a_closed_rule(self):
+        rule = REAL["spend_cap_refusal"]
+        self.assertEqual((rule["id"], rule["when"], rule["outranked_by"]), (SPEND_ID, labels4.ANY_TIME, []))
+        self.assertNotIn("spend", " ".join(labels4.ROUTES))           # no new route: the closed vocabulary stays
+        bad = {
+            "outranked by pause": lambda r: r.update(outranked_by=[labels4.PAUSE]),
+            "before the first turn only": lambda r: r.update(when=labels4.BEFORE_FIRST_TURN),
+            "after the first turn only": lambda r: r.update(when=labels4.AFTER_FIRST_TURN),
+            "no condition": lambda r: r.update(any_of=[]),
+            "a row's op": lambda r: r["any_of"].append({"path": "api_errors.type", "op": "in_rate_limit_markers"}),
+            "a text-derived count": lambda r: r["any_of"].append({"path": "events.outside_reach", "op": "gt", "value": 0}),
+            "no source": lambda r: r.update(source=""),
+            "an extra key": lambda r: r.update(route=labels4.PAUSE),
+            "an id a row has": lambda r: r.update(id="rate-limit"),
+            # fold 1, W4H1-8: a spend condition on a record outside the API-error fields
+            "a spend condition on ledger.end": lambda r: r["any_of"].append({"path": "ledger.end", "op": "in_spend_cap_markers"}),
+        }
+        for name, edit in bad.items():
+            t = spend_table()
+            edit(t["spend_cap_refusal"])
+            self.assertTrue(any("spend_cap_refusal" in x or "repeat" in x for x in routing.check_table(t)), name)
+        for key in ("spend_cap_refusal", "spend_cap_markers", "spend_cap_markers_status"):
+            t = spend_table()
+            del t[key]
+            self.assertIn(f"missing {key}", routing.check_table(t))
+
+    def test_the_lists_are_checked(self):
+        bad = {
+            "a spend type that is a rate-limit type": lambda t: t["spend_cap_markers"][NT_FAKE]["type"].append(
+                FAKE_RATE["type"][0]),
+            "a spend status that is a rate-limit status": lambda t: t["spend_cap_markers"][NT_FAKE]["status"].append(429),
+            "a spend text marker that is a rate-limit one": lambda t: t["spend_cap_markers"][NT_FAKE]["text"].append(
+                FAKE_RATE["text"][0]),
+            "an upper-case spend text marker": lambda t: t["spend_cap_markers"][NT_FAKE]["text"].append("Budget"),
+            "a spend type that is no string": lambda t: t["spend_cap_markers"][NT_FAKE]["type"].append(402),
+            "a spend entry with an unknown key": lambda t: t["spend_cap_markers"][NT_FAKE].update(code=[402]),
+            "a spend entry without its source": lambda t: t["spend_cap_markers"][NT_FAKE].pop("source"),
+            "a harness with markers and no spend list": lambda t: t["spend_cap_markers"].pop(NT_FAKE),
+            "a harness with a spend list and no markers": lambda t: t["rate_limit_markers"].pop(NT_FAKE),
+            "a profile under a harness with no markers": lambda t: t["pin_profiles"].update(other={"m": {
+                "permission_mode": "p", "version": "v"}}),
+            "a markers entry without reset_wait": lambda t: t["rate_limit_markers"][NT_FAKE].pop("reset_wait"),
+            "a negative reset_wait": lambda t: t["rate_limit_markers"][NT_FAKE].update(reset_wait=-1),
+            "a string reset_wait": lambda t: t["rate_limit_markers"][NT_FAKE].update(reset_wait="60"),
+            "a bool reset_wait": lambda t: t["rate_limit_markers"][NT_FAKE].update(reset_wait=True),
+            "a NaN reset_wait": lambda t: t["rate_limit_markers"][NT_FAKE].update(reset_wait=float("nan")),
+            "an empty harness name": lambda t: t["rate_limit_markers"].update({"": copy.deepcopy(FAKE_RATE)}),
+            "spend_cap_markers_status empty": lambda t: t.update(spend_cap_markers_status=""),
+            # fold 1 (lane review round 1; the lane lead's decisions): W4H1-5, W4H1-6, W4H1-7, W4H1-8
+            "a spend status that is no int": lambda t: t["spend_cap_markers"][NT_FAKE]["status"].append("402"),
+            "a rate-limit status that is no int": lambda t: t["rate_limit_markers"][NT_FAKE]["status"].append("429"),
+            "an infinite reset_wait": lambda t: t["rate_limit_markers"][NT_FAKE].update(reset_wait=float("inf")),
+            "an empty rate-limit status list": lambda t: t["rate_limit_markers"][NT_FAKE]["status"].clear(),
+            "a markers entry with an empty source": lambda t: t["rate_limit_markers"][NT_FAKE].update(source=""),
+        }
+        for name, edit in bad.items():
+            t = spend_table()
+            edit(t)
+            self.assertNotEqual(routing.check_table(t), [], name)
+
+    def test_an_unknown_harness_is_refused_never_defaulted(self):
+        t = spend_table()
+        rec = baseline(A, dict(FAKE_PIN))
+        del t["rate_limit_markers"][NT_FAKE]          # an unsound table, read by the records check alone
+        self.assertTrue(any("rate-limit markers" in x for x in routing.check_records(rec, t)))
+        t = spend_table()
+        del t["spend_cap_markers"][NT_FAKE]
+        self.assertTrue(any("spend-cap" in x for x in routing.check_records(rec, t)))
+
+    def test_every_harness_key_is_one_the_seam_registers(self):
+        self.assertEqual(harness_name_problems(REAL, SEAM_NAMES), [])
+        self.assertEqual(harness_name_problems(spend_table(), SEAM_NAMES | {NT_FAKE}), [])   # the test-only table
+        self.assertEqual(harness_name_problems(spend_table(), SEAM_NAMES), [f"{NT_FAKE!r} is no harness the seam registers"])
+        t = copy.deepcopy(REAL)
+        t["rate_limit_markers"]["codex"] = copy.deepcopy(FAKE_RATE)
+        self.assertEqual(harness_name_problems(t, SEAM_NAMES), ["'codex' is no harness the seam registers"])
+
+    def test_spend_check_can_fail(self):
+        def paused(found):
+            return [x for x in found if "as a 429: want refused" in x and x.endswith("got pause")]
+        # (the refusal put below pause in the table: since fold 1, W4H1-2, route() ignores outranked_by and
+        # check_table refuses it; TestNextTouchFold1 holds both, with the run-time gate as its mutant)
+        t = spend_table()
+        t["spend_cap_refusal"]["when"] = labels4.BEFORE_FIRST_TURN         # the refusal in one phase only
+        self.assertTrue(any(x.startswith(f"{A}: spend type") and x.endswith("got pause") for x in spend_problems(t)))
+        with mock.patch.object(routing, "spend_cap_holds", lambda records, table: False):   # no refusal at all
+            self.assertEqual(len(paused(spend_problems(spend_table()))), 2 * len(FAKE_SPEND["type"]))
+        for j, typ in enumerate(FAKE_SPEND["type"]):                       # each spend type dropped from the list
+            t = spend_table()
+            del t["spend_cap_markers"][NT_FAKE]["type"][j]
+            self.assertTrue(any(x.startswith(f"{B}: spend type {typ} as a 429") for x in spend_problems(t)), typ)
+        real = routing.harness_markers
+
+        def claude_codes(table, key, records):   # the mutant: markers no longer keyed by the take's harness
+            return real(table, key, {"pin": dict(records["pin"], harness=TEST_HARNESS)})
+        with mock.patch.object(routing, "harness_markers", claude_codes):
+            found = spend_problems(spend_table())
+        self.assertTrue(any("fake-second's own rate limit pauses" in x for x in found), found)
+        self.assertTrue(any("the real harness's rate-limit type is no marker under fake-second" in x for x in found), found)
+
+    def test_the_harness_check_can_fail(self):
+        real = routing.check_records
+
+        def defaulting(records, table):   # the mutant: an unknown harness let through to the markers
+            return [x for x in real(records, table) if "refused, never defaulted" not in x]
+        t = spend_table()
+        rec = take_with([_err(None, 429, None)], A)
+        del t["rate_limit_markers"][NT_FAKE]       # an unsound table: fake-second's markers gone
+        with self.assertRaisesRegex(routing.RoutingRefused, "has no rate-limit markers"):
+            routing.route(rec, t)
+        with mock.patch.object(routing, "check_records", defaulting):
+            with self.assertRaises(KeyError):      # the markers read with no entry: a crash, never a refusal
+                routing.route(rec, t)
+        t = spend_table()
+        t["spend_cap_refusal"]["outranked_by"] = [labels4.PAUSE]
+        self.assertTrue(any("outranked by nothing" in x for x in routing.check_table(t)))
+
+
+
+# CP2 ruling C3 (glitch-f3, 17:35; names fixed at 17:42): two box keys and their rows, both after-first-turn, both
+# harness-error. `unreadable_consequential` (row unreadable-consequential-path): the run-tree paths the sidecar could
+# not read among the task's consequential ones; before the first turn a non-empty list is refused (a preflight
+# failure is CP2's to fold into preflight_ok). `quiescence_cap_survivors` (row quiescence-cap-reached): the processes
+# still alive at the quiescence cap (W2A2-6), so the published harness-error column names the cap, never an operator
+# diff: the operator-diff row does not also match, and the take's rows read exactly ["quiescence-cap-reached"].
+UNREADABLE, SURVIVORS = "unreadable_consequential", "quiescence_cap_survivors"
+UNREADABLE_ROW, CAP_ROW = "unreadable-consequential-path", "quiescence-cap-reached"
+OP_DIFF_ROW = "operator-diff-unexplained-after-first-turn"
+SOME_PATHS = ["data/staging/samples.csv", "results/table.tsv"]   # made-up run-tree paths
+
+
+def c3_record(phase: str, unreadable=(), survivors=0, edits=()) -> dict:
+    rec = baseline(phase)
+    rec[UNREADABLE] = list(unreadable)
+    rec[SURVIVORS] = survivors
+    for e in edits:
+        e(rec)
+    return rec
+
+
+def _diffs(n):
+    return lambda r: r["operator"].__setitem__("unexplained_diffs", n)
+
+
+def _oom(r):
+    r["cgroup"]["oom_kill_delta"] = 1
+
+
+def _qk(r):
+    r["quiescence_kill"] = True
+
+
+C3_CASES = {   # name -> (records builder, route or REFUSED, winning rows, matched rows or None, events)
+    "an unreadable consequential path after the first turn": (
+        lambda: c3_record(A, SOME_PATHS[:1]), labels4.HARNESS_ERROR, [UNREADABLE_ROW], [UNREADABLE_ROW, "end-turn"], []),
+    "two unreadable consequential paths after the first turn": (
+        lambda: c3_record(A, SOME_PATHS), labels4.HARNESS_ERROR, [UNREADABLE_ROW], None, []),
+    "an unreadable consequential path before the first turn is refused": (
+        lambda: c3_record(B, SOME_PATHS[:1]), REFUSED, None, None, []),
+    "an unreadable path after a silent turn, before the first turn, is refused": (
+        lambda: c3_record(B, SOME_PATHS[:1], edits=[silent_turn]), REFUSED, None, None, []),
+    "an unreadable path beside a silent timeout, before the first turn, is refused": (
+        lambda: c3_record(B, SOME_PATHS[:1], edits=[silent_timeout]), REFUSED, None, None, []),
+    "processes alive at the quiescence cap": (
+        lambda: c3_record(A, survivors=1), labels4.HARNESS_ERROR, [CAP_ROW], [CAP_ROW, "end-turn"], []),
+    "the cap's survivors and the operator diff they caused: the cap's row alone (W2A2-6)": (
+        lambda: c3_record(A, survivors=2, edits=[_diffs(1)]), labels4.HARNESS_ERROR, [CAP_ROW], [CAP_ROW, "end-turn"], []),
+    "an operator diff with no survivors stays the operator-diff row": (
+        lambda: c3_record(A, edits=[_diffs(1)]), labels4.HARNESS_ERROR, [OP_DIFF_ROW], [OP_DIFF_ROW, "end-turn"], []),
+    "survivors before the first turn are refused (lane w4h decision)": (
+        lambda: c3_record(B, survivors=1, edits=[silent_timeout]), REFUSED, None, None, []),
+    "survivors beside an out-of-memory kill: aborted": (
+        lambda: c3_record(A, survivors=1, edits=[_oom]), labels4.ABORTED, ["cgroup-kill"], ["cgroup-kill", CAP_ROW, "end-turn"], []),
+    "an unreadable path beside a rate limit: pause": (
+        lambda: c3_record(A, SOME_PATHS[:1], edits=[_rate, _end_error(1)]), labels4.PAUSE, ["rate-limit"], None, []),
+    "survivors beside a quiescence kill: the cap's row, and the kill's event": (
+        lambda: c3_record(A, survivors=1, edits=[_qk]), labels4.HARNESS_ERROR, [CAP_ROW], None, [QK]),
+    "an unreadable path and survivors: both rows": (
+        lambda: c3_record(A, SOME_PATHS[:1], survivors=1), labels4.HARNESS_ERROR, [UNREADABLE_ROW, CAP_ROW], None, []),
+}
+
+
+def c3_problems(table: dict) -> list[str]:
+    p = []
+    for name, (build, route, rows, matched, events) in C3_CASES.items():
+        rec = build()
+        got = try_route(rec, table)
+        if route == REFUSED:
+            if not isinstance(got, routing.RoutingRefused):
+                p.append(f"{name}: want refused, got {got['route']} via {got['rows']}")
+            continue
+        if isinstance(got, Exception):
+            p.append(f"{name}: refused ({got})")
+        elif (got["route"], got["rows"]) != (route, rows) or (matched is not None and got["matched"] != matched):
+            p.append(f"{name}: want {route} via {rows} (matched {matched}), got {got['route']} via {got['rows']} "
+                     f"(matched {got['matched']})")
+        elif got["events"] != events:
+            p.append(f"{name}: want events {events}, got {got['events']}")
+    return p
+
+
+C3_BAD_TYPES = {UNREADABLE: (None, "data/x.csv", [1], [""], [None], {"data/x.csv": 1}, 0, True),
+                SURVIVORS: (None, True, False, -1, "1", 1.5, [1])}
+
+
+def c3_type_problems(table: dict) -> list[str]:
+    """Each C3 key dropped, None, or of a wrong type is refused by route and annotate, never coerced; the box key
+    dropped is refused by harness_records."""
+    p = []
+    for key, bads in C3_BAD_TYPES.items():
+        rec = c3_record(A)
+        del rec[key]
+        for fn in (routing.route, routing.annotate):
+            if not refuses(fn, rec, table):
+                p.append(f"{key} dropped: {fn.__name__} did not refuse it")
+        for bad in bads:
+            rec = c3_record(A)
+            rec[key] = bad
+            for fn in (routing.route, routing.annotate):
+                if not refuses(fn, rec, table):
+                    p.append(f"{key}={bad!r}: {fn.__name__} did not refuse it")
+    return p
+
+
+# The plan's oracle carries them too, so the mutation sweep (all_problems) sees every C3 row and the operator-diff
+# row's new none_of (the per-scenario tests generated above predate these entries; scenario_problems reads them all).
+SCENARIOS.update({f"C3: {name}": Sc(build, route, rows, matched, events, False)
+                  for name, (build, route, rows, matched, events) in C3_CASES.items()})
+
+
+class TestNextTouchC3(unittest.TestCase):
+    """CP2 ruling C3: `unreadable_consequential` (row unreadable-consequential-path) and `quiescence_cap_survivors`
+    (row quiescence-cap-reached), both after-first-turn and harness-error."""
+
+    def test_the_names_are_fixed(self):
+        self.assertIn(UNREADABLE, routing.RECORD_SCHEMA)
+        self.assertIn(SURVIVORS, routing.RECORD_SCHEMA)
+        self.assertIn(UNREADABLE, aa.BOX_KEYS)
+        self.assertIn(SURVIVORS, aa.BOX_KEYS)
+        for rid, path in ((UNREADABLE_ROW, UNREADABLE), (CAP_ROW, SURVIVORS)):
+            row = next(r for r in REAL["rows"] if r["id"] == rid)
+            self.assertEqual((row["when"], row["route"]), (labels4.AFTER_FIRST_TURN, labels4.HARNESS_ERROR), rid)
+            self.assertEqual([c["path"] for c in row["any_of"]], [path], rid)
+        op_diff = next(r for r in REAL["rows"] if r["id"] == OP_DIFF_ROW)
+        self.assertIn({"path": SURVIVORS, "op": "gt", "value": 0}, op_diff["none_of"])
+        self.assertIn("W2A2-6", next(r for r in REAL["rows"] if r["id"] == CAP_ROW)["source"])
+
+    def test_the_c3_rows_route(self):
+        self.assertEqual(c3_problems(test_table()), [])
+        self.assertEqual(scenario_problems(test_table()), [])
+
+    def test_c3_check_can_fail(self):
+        """Each C3 row's route changed, the row removed, its condition mutated, and the operator-diff row's new none_of
+        deleted: the oracle goes red (the mutation sweep covers them all; these name the C3 ones)."""
+        survivors = [d for d, t in mutants(test_table())
+                     if any(k in d for k in (UNREADABLE_ROW, CAP_ROW, OP_DIFF_ROW)) and not all_problems(t)]
+        self.assertEqual(survivors, [])
+        described = " ".join(d for d, _ in mutants(test_table()))
+        for what in (f"{UNREADABLE_ROW}: removed", f"{CAP_ROW}: removed", f"{CAP_ROW}: route -> graded",
+                     f"{OP_DIFF_ROW}: none_of deleted", f"{OP_DIFF_ROW}: none_of[0] gt mutated"):
+            self.assertIn(what, described)
+        real = routing.check_records
+
+        def reads_nothing_early(records, table):   # the mutant: the before-first-turn refusals dropped
+            return [x for x in real(records, table) if "before the agent's first turn: " not in x]
+        with mock.patch.object(routing, "check_records", reads_nothing_early):
+            found = c3_problems(test_table())
+        for name in ("an unreadable path beside a silent timeout, before the first turn, is refused",
+                     "survivors before the first turn are refused (lane w4h decision)"):
+            self.assertTrue(any(x.startswith(name) for x in found), (name, found))
+
+    def test_the_c3_keys_are_typed_never_coerced(self):
+        self.assertEqual(c3_type_problems(test_table()), [])
+
+    def test_through_harness_records(self):
+        t = test_table()
+        box = dict(full_box(), **{UNREADABLE: list(SOME_PATHS[:1]), SURVIVORS: 0})
+        got = routing.route(aa.harness_records([a_turn(), a_turn()], pin=PIN, box=box), t)
+        self.assertEqual((got["route"], got["rows"]), (labels4.HARNESS_ERROR, [UNREADABLE_ROW]))
+        box = dict(full_box(), **{UNREADABLE: [], SURVIVORS: 3, "unexplained_operator_diffs": 1})
+        got = routing.route(aa.harness_records([a_turn(), a_turn()], pin=PIN, box=box), t)
+        self.assertEqual((got["route"], got["rows"]), (labels4.HARNESS_ERROR, [CAP_ROW]))
+        for key in (UNREADABLE, SURVIVORS):
+            box = dict(full_box(), **{UNREADABLE: [], SURVIVORS: 0})
+            del box[key]
+            with self.assertRaises(aa.BoxRecordError):
+                aa.harness_records([a_turn()], pin=PIN, box=box)
+
+
+
+class TestNextTouchFold1(unittest.TestCase):
+    """Lane review round 1, W4H1-2 (the lane lead's decision: fold): route() checks the spend-cap refusal whatever the
+    table's outranked_by says, so even a hand-built table that skips check_table can never pause a spend cap."""
+
+    def test_the_spend_refusal_ignores_outranked_by(self):
+        t = spend_table()
+        t["spend_cap_refusal"]["outranked_by"] = [labels4.PAUSE]   # a table check_table refuses, handed in directly
+        self.assertEqual(spend_problems(t), [])
+
+    def test_ignores_outranked_by_check_can_fail(self):
+        real = routing.spend_cap_holds
+
+        def honours_outranked_by(records, table):   # the mutant: the base's gate, outranked_by read at run time
+            return real(records, table) and labels4.PAUSE not in table["spend_cap_refusal"]["outranked_by"]
+        t = spend_table()
+        t["spend_cap_refusal"]["outranked_by"] = [labels4.PAUSE]
+        with mock.patch.object(routing, "spend_cap_holds", honours_outranked_by):
+            self.assertTrue(any(x.endswith("got pause") for x in spend_problems(t)))
 
 
 if __name__ == "__main__":

@@ -53,7 +53,8 @@ THE RECORD. `TurnResult` carries, for one turn:
                     an adapter that forgot them would turn an out-of-memory kill (aborted, never
                     re-run) into a harness-error re-run (review round 2, W1B2-4)
     started_at, ended_at   REQUIRED keywords: the host clock (seconds since the epoch, an int or a float) at the
-                    turn's start and end; never defaulted (review round 3, W1B3-6: they defaulted to 0.0)
+                    turn's start and end; never defaulted (review round 3, W1B3-6: they defaulted to 0.0), and
+                    finite (W1B4-4: NaN and the infinities are refused)
     agent_output    REQUIRED bool: True when the host-captured stream holds at least one completed
                     agent message (text or tool call) for this turn. It is read from the stream's
                     event types, never from their content. A turn that produced no completed agent
@@ -70,6 +71,7 @@ No model is called anywhere in this module. Standard library only.
 
 from __future__ import annotations
 
+import math
 import os
 import sys
 from dataclasses import dataclass, asdict
@@ -93,9 +95,14 @@ API_ERROR_FIELDS = ("status", "type", "text")
 # The box's own records, every one REQUIRED by `harness_records` (a missing one is never read as
 # "nothing happened"): what no adapter produces. `outside_reach_events` is the drive step's count of
 # outside-reach events (routing.py's docstring says exactly what it counts).
+# CP2 ruling C3 (glitch-f3, 17:35; names fixed at 17:42) adds the last two: `unreadable_consequential`, the run-tree
+# paths among the task's consequential ones that the sidecar could not read (a list of strings, from the sidecar
+# reply's field of that name), and `quiescence_cap_survivors`, the processes still alive at the quiescence cap (an
+# int >= 0, W2A2-6).
 BOX_KEYS = ("preflight_ok", "container_started", "container_exited", "sidecar",
             "unexplained_operator_diffs", "checker_reasons", "quiescence_kill",
-            "outside_reach_events", "finalize_abort", "committed")
+            "outside_reach_events", "finalize_abort", "committed",
+            "unreadable_consequential", "quiescence_cap_survivors")
 
 
 class AdapterStateError(RuntimeError):
@@ -124,7 +131,9 @@ REQUIRED_KEYWORDS = ("init", "api_errors", "counters", "started_at", "ended_at")
 
 
 def _clock(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool)
+    # W1B4-4 (w1b's next touch, item 2): finite too. A NaN compares False with every number, so a NaN start used to
+    # pass the start-before-end check; an infinity is no host clock either.
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
 
 
 @dataclass(frozen=True)
@@ -158,7 +167,7 @@ class TurnResult:
         if not isinstance(self.agent_output, bool):
             raise ValueError("agent_output must be a bool: did the turn's stream hold a completed agent message?")
         if not (_clock(self.started_at) and _clock(self.ended_at)):
-            raise ValueError("started_at and ended_at must be the host clock in seconds (an int or a float)")
+            raise ValueError("started_at and ended_at must be the host clock in seconds (a finite int or float)")
         if self.ended_at < self.started_at:
             raise ValueError("a turn cannot end before it starts")
 
@@ -275,7 +284,8 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
     `box` must carry exactly `BOX_KEYS`: `preflight_ok`, `container_started`, `container_exited`
     (the runtime's exit record shows the container itself died), `sidecar` ({start_record,
     stop_record, exit_code, queue_overflow}), `unexplained_operator_diffs`, `checker_reasons`,
-    `quiescence_kill`, `outside_reach_events`, `finalize_abort`, `committed`. A missing key raises
+    `quiescence_kill`, `outside_reach_events`, `finalize_abort`, `committed`, and (CP2 ruling C3)
+    `unreadable_consequential` and `quiescence_cap_survivors`. A missing key raises
     `BoxRecordError` (missing evidence is never read as "nothing happened"), and so does an unknown
     one. Values are copied as given, never coerced: `routing.check_records` type-checks them, so a
     None or a string counter is refused there instead of silently becoming 0 or True.
@@ -299,6 +309,7 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
     outputs = [t.agent_output for t in turns]
     sidecar = box["sidecar"]
     reasons = box["checker_reasons"]
+    unreadable = box["unreadable_consequential"]
     return {
         "ledger": {
             "first_turn_started": any(outputs),
@@ -324,4 +335,6 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
         "checker_reasons": list(reasons) if isinstance(reasons, list) else reasons,
         "quiescence_kill": box["quiescence_kill"],
         "events": {"outside_reach": box["outside_reach_events"]},
+        "unreadable_consequential": list(unreadable) if isinstance(unreadable, list) else unreadable,
+        "quiescence_cap_survivors": box["quiescence_cap_survivors"],
     }
