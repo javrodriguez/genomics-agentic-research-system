@@ -179,12 +179,14 @@ def publication(history: list, table: dict | None = None) -> dict:
     bad += batch.Batch.cell_history_problems(SimpleNamespace(table=table), history)
     if bad:
         raise ValueError("; ".join(bad))
-    effective, cells = {}, {}
+    effective, cells, final_slots = {}, {}, set()
     events = collections.defaultdict(set)
     spent_cell, spent_slot = collections.Counter(), collections.Counter()
     for entry in history:
         if not batch.is_ruling(entry):
             o = copy.deepcopy(entry)
+            if o["slot"] in final_slots:
+                raise ValueError(f"slot {o['slot']} attempt {o['attempt']} comes after its final effective attempt")
             verify_route(o, table)
             if o["state"] in (labels4.GRADED, labels4.ABORTED) and not o["final"]:
                 raise ValueError("a graded or aborted outcome must be final")
@@ -222,6 +224,8 @@ def publication(history: list, table: dict | None = None) -> dict:
         if o["cell_state"] is not None:
             cells[cell] = {"state": o["cell_state"], "reason": o["cell_reason"]}
         effective[(o["slot"], o["attempt"])] = o
+        if o["final"]:
+            final_slots.add(o["slot"])
     return {"outcomes": [o for o in effective.values() if o["final"]], "cells": cells,
             "window_events": {cell: sorted(es, key=repr) for (cell, route), es in events.items()
                               if route == labels4.PAUSE},

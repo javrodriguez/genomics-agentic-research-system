@@ -41,7 +41,10 @@ def mechanical_states(history, published, table=None):
     """Read strict closures through batch's replay only; never drive or register."""
     states = dict(published)
     if history:
-        strict = batch.Batch(None, None, None, table=table, history=history).closed_cells
+        try:
+            strict = batch.Batch(None, None, None, table=table, history=history).closed_cells
+        except batch.BatchConfigError as exc:
+            raise ValueError(str(exc)) from exc
         for cell, reason in strict.items():
             if cell not in states:
                 states[cell] = {"state": f"{labels4.INCOMPLETE_MECHANICAL} (strict close: {reason})",
