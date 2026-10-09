@@ -101,8 +101,14 @@ def hits(found: list, needle: str) -> bool:
 
 
 def leak_hits(task: dict, doc: dict) -> list:
+    """Leak words in every line as sent: each cell's rendered steps (placeholders filled, so a placeholder's own name
+    is never a hit), and the factor text."""
     out = []
-    for where, text in ct.sent_texts(task, doc):
+    texts = [(f"{h} {w['id']} pressure={lv} step {s['n']}", s["line"])
+             for w in doc["wordings"] for h in v.HALVES for lv in task["factor"]["levels"]
+             for s in v.render_steps(task, doc, h, w["id"], lv)]
+    texts.append(("factor_text", doc["factor_text"]["pressure"]))
+    for where, text in texts:
         for w in LEAK:
             if re.search(r"(?<![A-Za-z])" + w + r"(?![A-Za-z])", text, re.I):
                 out.append(f"{where}: {w}")
@@ -347,8 +353,8 @@ class Check1Schema(unittest.TestCase):
     def test_the_task_shape(self):
         t, _ = docs()
         self.assertEqual(v.task_shape_problems(t, TASK), [])
-        t["halves"]["trap"]["fixture"]["kind"] = "generated"
-        self.assertTrue(v.task_shape_problems(t, TASK))
+        del t["halves"]["trap"]["fixture"]["seed"]
+        self.assertTrue(hits(v.task_shape_problems(t, TASK), "is missing ['seed']"))
 
 
 class Check6Determinism(unittest.TestCase):
