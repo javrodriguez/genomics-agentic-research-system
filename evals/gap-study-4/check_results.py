@@ -21,6 +21,7 @@ import subprocess
 import sys
 import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
@@ -164,6 +165,7 @@ def publication(history: list, table: dict | None = None) -> dict:
     if bad:
         raise ValueError("; ".join(bad))
     bad = window_problems(history)
+    bad += batch.Batch.cell_history_problems(SimpleNamespace(table=table), history)
     if bad:
         raise ValueError("; ".join(bad))
     effective, cells = {}, {}
@@ -173,6 +175,8 @@ def publication(history: list, table: dict | None = None) -> dict:
         if not batch.is_ruling(entry):
             o = copy.deepcopy(entry)
             verify_route(o, table)
+            if o["state"] in (labels4.GRADED, labels4.ABORTED) and not o["final"]:
+                raise ValueError("a graded or aborted outcome must be final")
         else:
             key = (entry["slot"], entry["attempt"])
             taken = effective[key]
