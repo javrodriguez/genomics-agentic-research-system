@@ -55,6 +55,7 @@ def mutations():
         "freeze-claims": (freeze, "output_fragment", lambda: {"lane": "freeze", "files": []}),
         "freeze-once": (freeze, "outputs_exist", lambda root: False),
         "freeze-snapshot": (freeze, "snapshot", lambda manifest, folder: {"files": []}),
+        "design-row": (takes, "require_planned_row", lambda row, pre: None),
         "stale-row": (takes, "outside_live_block", lambda waiting, live: []),
         "four-open": (takes, "OPEN_LIMIT", 4),
         "row-agent": (takes, "agent_problems", lambda row: []),
@@ -826,6 +827,28 @@ class FreezeCoverage(unittest.TestCase):
             self.assertNotEqual(freeze_rehearsal.COMMANDS, expected)
         for name in ("freeze", "scratch_git", "study"):
             self.assertEqual(Path(getattr(freeze_rehearsal, name).__file__).resolve().parent, HERE.resolve())
+
+
+class LedgerDoor(unittest.TestCase):
+    def test_registration_commits_the_full_planned_identity_and_audits_it(self):
+        self.assertTrue(callable(getattr(takes, "commit_registration", None)), "the ledger door must use the live guard")
+        with repository() as repo:
+            r = row()
+            pre = {"rows": [r]}
+            guard = takes.RegistrationGuard()
+            got = takes.commit_registration(r, 1, guard=guard, root=repo.root, repo=repo.root, pre=pre)
+            rows = takes.load_rows(root=repo.root, repo=repo.root)
+            self.assertEqual(rows, [dict(r, attempt=1)])
+            self.assertEqual(rows[0]["agent"], r["agent"])
+            self.assertEqual(takes.row_commits(root=repo.root, repo=repo.root), {0: got})
+            with self.assertRaisesRegex(ValueError, "earlier row|already registered"):
+                takes.commit_registration(r, 1, root=repo.root, repo=repo.root, pre=pre)
+        with repository() as repo:
+            wrong = dict(r, model="synthetic-other")
+            with self.assertRaisesRegex(ValueError, "pre-registered"):
+                takes.commit_registration(wrong, 1, root=repo.root, repo=repo.root, pre=pre)
+            with mock.patch.object(takes, "require_planned_row", lambda row, pre: None):
+                takes.commit_registration(wrong, 1, root=repo.root, repo=repo.root, pre=pre)
 
 if __name__ == "__main__":
     if "--mutant" in sys.argv:
