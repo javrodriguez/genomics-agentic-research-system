@@ -151,16 +151,22 @@ def filled(harness=rt.CLAUDE_CODE):
 
 
 class World:
-    """A passing take: spec, lock, sidecar expectation and the raw records a FakeRuntime gave run()."""
+    """A passing take: spec, lock, sidecar expectation and the raw records a FakeRuntime gave run().
+
+    The run tree and the config folder are the test's own fixed fake paths, never under the host's temp root: their
+    path is agent-visible and judged for leak words, and a host's temp root may carry one (athena's did). Only the
+    evidence folder is a real temp folder, for the host-side health read; its path is never judged."""
+    FAKE_TREE = True
+    FAKE_ROOT = "/srv/w0/t1"
 
     def __init__(self, harness=rt.CLAUDE_CODE):
         self.tmp = tempfile.mkdtemp(prefix="w-")
         self.harness = harness
-        self.tree = os.path.join(self.tmp, "tree")
-        self.cfg = os.path.join(self.tmp, "cfg")
+        root = self.FAKE_ROOT if self.FAKE_TREE else self.tmp
+        self.tree = os.path.join(root, "tree")
+        self.cfg = os.path.join(root, "cfg")
         self.ev = os.path.join(self.tmp, "rec", "ev")
-        for d in (self.tree, self.cfg, self.ev):
-            os.makedirs(d)
+        os.makedirs(self.ev)
         with open(os.path.join(self.ev, "health.jsonl"), "w") as fh:
             fh.write(json.dumps({"kind": "watcher-start", "at": 1.0}) + "\n")
         self.spec = rt.TakeSpec(image=IMAGE, run_tree=self.tree, config_dir=self.cfg, network=ID["net"],
@@ -222,7 +228,9 @@ class World:
 
     def raw(self):
         fake = FakeRuntime(self.script())
-        with mock.patch.object(pf, "STUDY_PATHS", STUDY):   # the host-side read looks for the filled list
+        # The host-side study-folder read looks for the filled list in the fake run tree: answered by the fixture
+        # (absent), never by whatever the host holds at that path.
+        with mock.patch.object(pf, "STUDY_PATHS", STUDY), mock.patch.object(pf.os.path, "lexists", lambda p: False):
             raw = pf.run(fake, self.probes(), begin_reply=self.begin, caller_env={"PATH": "/bin"})
         assert not fake.unexpected and not fake.script, (fake.unexpected, fake.script)
         return raw
@@ -815,6 +823,54 @@ class TestProcessesProgram(MutantCase):
         self.assert_green_then_red(lambda: [h for h in ARMS if pf.refused_names(h, HOSTS) != REFUSED_NAMES[h]], [
             ("other-vendors-dropped", patched(pf, "BLOCKED_NAMES", ("github.com", "huggingface.co", "x.example"))),
         ])
+
+
+@contextlib.contextmanager
+def host_temp(kind):
+    """A fake host temp root. "study-word": a folder whose name carries a lane lead word, as athena's battery folder
+    did on Linux (gap4-wave4-merge-...); "neutral": a plain folder, as on the Mac. Nothing else of the host is read."""
+    parent = tempfile.mkdtemp(prefix="w-")
+    root = os.path.join(parent, "gap4-host" if kind == "study-word" else "plain-host")
+    os.makedirs(root)
+    with mock.patch.object(tempfile, "tempdir", root):
+        yield root
+
+
+class TestHostIndependence(MutantCase):
+    """The athena red (Linux only): the World's run tree sat under the host's temp root, whose path carried a study
+    word there, so run-tree-path-neutral failed in every world and the missing-probe mutant survived. The fixtures'
+    agent-visible paths must come from the test's own fakes, whatever the host's temp root is called."""
+
+    def check(self):
+        out = []
+        ev = TestEvaluate()
+        for kind in ("study-word", "neutral"):
+            with host_temp(kind):
+                for h in ARMS:
+                    with filled():
+                        rec = World(h).evaluate()
+                    if failing(rec):
+                        out.append(f"{kind} host, {h}: a passing world fails {failing(rec)}")
+                with mock.patch.dict(pf.CHECKS, {k: _assume_missing(f) for k, f in pf.CHECKS.items()}):
+                    if not ev.missing_or_failed():
+                        out.append(f"{kind} host: the missing-assumed-to-pass mutant survives")
+        return out
+
+    def test_host_temp_root_is_never_read(self):
+        self.assert_green_then_red(self.check, [
+            ("tree-under-host-temp", patched(World, "FAKE_TREE", False)),
+        ])
+
+
+def _assume_missing(fn):
+    def wrapped(*a):
+        try:
+            return fn(*a)
+        except pf._Fail as e:
+            if "missing" in str(e) or "failed" in str(e) or "exited" in str(e) or "no " in str(e):
+                return "assumed"
+            raise
+    return wrapped
 
 
 class TestRecordAndPostflight(MutantCase):
