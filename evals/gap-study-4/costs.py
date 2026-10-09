@@ -201,7 +201,7 @@ def main(argv=None):
         if not calls:
             print("costs: no takes; no cost measured or written")
             return 0
-        value = render(account(calls, prereg.require_frozen()["price_table"]))
+        value = render(account(calls, prereg.require_frozen("publishing per-call costs")["price_table"]))
         if args.write:
             PAGE.write_text(value)
         elif args.check and (not PAGE.exists() or PAGE.read_text() != value):
