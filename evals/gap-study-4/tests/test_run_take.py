@@ -1543,6 +1543,9 @@ MODULE_ATTRS = {
     "stat": frozenset({"S_IMODE", "S_ISLNK", "S_ISREG"}), "sys": frozenset({"path"}),
 }
 GETATTR_ALLOWED = frozenset({("e", "filename"), ("e", "stdout")})
+# W4B4-2: the dynamic-access builtins, each loaded only as the func of a direct call.
+DYNAMIC_BUILTINS = frozenset({"getattr", "eval", "exec", "compile", "vars", "globals", "locals", "setattr",
+                              "delattr", "__import__"})
 FORBIDDEN_OS = re.compile(r"(kill|killpg|system|popen|fork|forkpty|posix_spawnp?|exec[lvpe]*|spawn[lvpe]*)")
 
 
@@ -1563,6 +1566,28 @@ def audit_source(rel: str, source: str) -> list:
     # subscripted), so the module object never reaches a name the audit cannot follow.
     attr_bases = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
     parents = {id(c): n for n in ast.walk(tree) for c in ast.iter_child_nodes(n)}
+    # W4B4-1, by construction: every name an import binds to a module is used only as an attribute base, only with
+    # an entry in MODULE_ATTRS (os and subprocess have their own lists), and no plain import is renamed.
+    import_bound = set()
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Import):
+            for a in n.names:
+                import_bound.add(a.asname or a.name.split(".")[0])
+                if a.asname:
+                    out.append(f"{rel}: import {a.name} as {a.asname}: no plain import is renamed")
+        if isinstance(n, ast.ImportFrom) and n.module == "box":
+            import_bound |= {a.asname or a.name for a in n.names}
+    # W4B4-2, by construction: each dynamic-access builtin is loaded only as the func of a direct call.
+    call_funcs = {id(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call)}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+            if node.id in import_bound and id(node) not in attr_bases:
+                out.append(f"{rel}: the module {node.id} is used as a value")
+            if node.id in DYNAMIC_BUILTINS and id(node) not in call_funcs:
+                out.append(f"{rel}: {node.id} is loaded other than as the func of a direct call")
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id in import_bound \
+                and node.value.id not in MODULE_ATTRS and node.value.id not in GUARDED_MODULES:
+            out.append(f"{rel}: {node.value.id}.{node.attr}: {node.value.id} has no entry in MODULE_ATTRS")
     for node in ast.walk(tree):
         # W4B3-3, default-deny by construction over from-imports, module attributes and getattr.
         if isinstance(node, ast.ImportFrom):
