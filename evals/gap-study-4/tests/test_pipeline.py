@@ -51,6 +51,7 @@ def mutations():
     runner = get_run()
     return {
         "runtime-timing": (cr, "runtime_timing_problems", lambda: []),
+        "registration-ruling": (takes, "registration_outcomes", lambda history: [o for o in history if not batch.is_ruling(o)]),
         "freeze-identity": (freeze, "planned_order", lambda draft, seed: []),
         "output-pins": (freeze, "generated_pins", lambda outputs: []),
         "pin-all": (freeze, "owned_paths", lambda manifest, folder: [e["path"] for lane, e in manifest.load_fragments(folder)[0] if e["path"].endswith(".py")]),
@@ -332,6 +333,31 @@ class Registration(unittest.TestCase):
             takes.guard_registration(r, 1, [], [])
         with mock.patch.object(takes, "agent_problems", lambda row: []):
             takes.guard_registration(r, 1, [], [])
+
+    def test_route_rulings_release_or_close_registration(self):
+        self.assertTrue(callable(getattr(takes, "registration_outcomes", None)))
+        r = row()
+        for route in labels4.ROUTES:
+            with self.subTest(route=route):
+                history = [outcome(r, state=labels4.FAILED, final=False), ruling(r, route=route)]
+                if route in batch.RERUN_ROUTES:
+                    try:
+                        takes.guard_registration(r, 2, [dict(r, attempt=1)], history)
+                    except ValueError as exc:
+                        self.fail(f"a committed route ruling permits this re-run: {exc}")
+                else:
+                    with self.assertRaisesRegex(ValueError, "final"):
+                        takes.guard_registration(r, 2, [dict(r, attempt=1)], history)
+        history = []
+        for attempt in range(1, batch.half_cell_cap(table(), labels4.REHEARSAL) + 1):
+            history += [outcome(r, attempt, labels4.FAILED, final=False),
+                        ruling(r, attempt, route=labels4.REHEARSAL)]
+        rows = [dict(r, attempt=i) for i in range(1, 4)]
+        with self.assertRaisesRegex(ValueError, "closed"):
+            takes.guard_registration(row(2), 1, rows, history)
+        with mock.patch.object(takes, "registration_outcomes", lambda h: [o for o in h if not batch.is_ruling(o)]):
+            with self.assertRaises(ValueError):
+                takes.guard_registration(r, 2, rows[:1], history[:2])
 
 
 def table():
