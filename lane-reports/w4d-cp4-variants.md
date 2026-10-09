@@ -273,3 +273,17 @@ Each commit is marked "(gates pending the lift)". The Mac hold was on, so nothin
 - template_adherence: on the normal half, forbid the template change before the probe only. A forbidden.post pattern that matches the change the template reports is refused.
 - template_changes is bound to the rendered examples of both halves. A pattern that names no example must have a project segment matching both render names.
 - A wait-point regex whose project segment types a name is refused, as a literal match already is.
+
+### Fold 4 closing gate (run Thu 8 Oct 2026, from 23:31 EDT, after the relayed lift; head 62181cbe)
+Each run was chained after light-ok, one process at a time:
+- test_variants.py alone: `Ran 134 tests in 41.758s` / `OK`.
+- test_pause_adherence.py alone: `Ran 30 tests in 2.872s` / `OK`.
+- copy_manifest.py --check: `ok: 110 files from 8 fragment(s) ... 8 frozen paths unchanged since 68ec902f63bf`.
+- The reviewer's swap_r4.py, copied and retargeted to an archive of 62181cbe (`scratchpad/w4d-fold4/swap_r4_copy.py`). The archive has no .git, so 39 git-reading tests fail in the baseline. Every mutant was RED beyond that baseline: Y1 +1, Y3 +1, Z1 +3, Z2 +3, Z3 +1, Z4 +4, Z5 +1, Z6 +1, Z7 +2.
+- The new fold 4 mutants (`scratchpad/w4d-fold4/swap4.py`, a whole-file swap in the worktree, 134 tests):
+  - W4D4-1a, normal_post_spares_template dropped: failures=1, RED.
+  - W4D4-1b, the segment test dropped: failures=4, RED.
+  - W4D4-2, the wait-point regex clause dropped: failures=3, RED.
+  - W4D4-1b "own half only": failures=0, which makes it the named equivalent mutant described next.
+
+**A named equivalent mutant (glitch-f3's ruling, under Javier's delegation: option 2).** W4D4-1b's "own half only" swap binds template_changes to the normal half's examples alone, and it changes no pass/refuse outcome. A template_changes pattern that names no example passes only when its project segment fully matches both render names. A pattern that types a project fails both render names whichever half's examples are searched, so binding against one half's examples or both refuses the same documents. Only the number of messages differs. The binding stays, as the reviewer's fix (b), and this swap is recorded as equivalent, not as a missing test.
