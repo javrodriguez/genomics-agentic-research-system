@@ -1113,12 +1113,12 @@ class ReviewRound2Lane(unittest.TestCase):
             for name in (".DS_Store", ".gitkeep"):
                 (res / name).write_text("")
             self.assertEqual(stats.check(res, pre, pg)[0], 0)
-            with mock.patch.object(stats, "_ignored", lambda name: False):   # mutant: dotfiles are strays
+            with mock.patch.object(stats, "_ignored", lambda path: False):   # mutant: dotfiles are strays
                 self.assertEqual(stats.check(res, pre, pg)[0], 1)
         with tempfile.TemporaryDirectory() as tmp:
             (Path(tmp) / ".hidden.json").write_text(json.dumps(cell("right", "right")))
             self.assertEqual(len(stats.load_results(Path(tmp))), 20)
-            with mock.patch.object(stats, "_ignored", lambda name: name.startswith(".")):   # mutant: .json skipped
+            with mock.patch.object(stats, "_ignored", lambda path: path.name.startswith(".")):   # mutant: .json skipped
                 self.assertEqual(stats.load_results(Path(tmp)), [])
 
     def test_w4e2_4_levels_one_kind_per_task_across_models(self):
@@ -1130,6 +1130,23 @@ class ReviewRound2Lane(unittest.TestCase):
     def test_w4e2_5_docstring_names_the_strays_and_empty_lines(self):
         self.assertIn("not a top-level *.json", stats.__doc__)
         self.assertIn("results files, 0 records", stats.__doc__)
+
+
+class ReviewRound3Lane(unittest.TestCase):
+    """W4E3-1 (fold 3, the lane lead's decision): only dot-named regular files that are not .json, in any case, are
+    ignored; a dot-named folder and a dot-named .JSON file are strays or records, never skipped."""
+
+    def test_w4e3_1_dot_folder_and_upper_case_json_are_not_ignored(self):
+        for stray in (".d/x.json", ".t.JSON"):
+            with tempfile.TemporaryDirectory() as tmp:
+                res, pre, pg = TheCheck.fixture(TheCheck(), tmp)
+                path = res / stray
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(cell("right", "right", task="t2")))
+                self.assertEqual(stats.check(res, pre, pg)[0], 1, stray)
+                # mutant: every dot-named entry skipped
+                with mock.patch.object(stats, "_ignored", lambda p: p.name.startswith(".")):
+                    self.assertEqual(stats.check(res, pre, pg)[0], 0, stray)
 
 
 if __name__ == "__main__":
