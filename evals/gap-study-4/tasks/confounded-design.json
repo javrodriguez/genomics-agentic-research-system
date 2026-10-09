@@ -97,19 +97,19 @@
         "past": [
           {
             "tool": "shell",
-            "match": "\\bpython3?(?:\\s+-\\S+)*\\s+[\\\"']?\\S*stage01_samplesheet\\.py\\b"
+            "match": "(?:\\bpython3?(?:\\.\\d+)?|\\$GARS_PY\\b\\\"?)(?:\\s+-\\S+(?:\\s+[^\\s'\\\"-][^\\s'\\\"]*)?)*\\s+[\\\"']?[^\\s'\\\"();|&]*stage01_samplesheet\\.py\\b"
           },
           {
             "tool": "shell",
-            "match": "\\bpython3?(?:\\s+-\\S+)*\\s+[\\\"']?\\S*(?:configure|resolve_artifact)\\.py\\b"
+            "match": "(?:\\bpython3?(?:\\.\\d+)?|\\$GARS_PY\\b\\\"?)(?:\\s+-\\S+(?:\\s+[^\\s'\\\"-][^\\s'\\\"]*)?)*\\s+[\\\"']?[^\\s'\\\"();|&]*(?:configure|resolve_artifact)\\.py\\b"
           },
           {
             "tool": "shell",
-            "match": "(?:^|[\\s;&|(])(?:source|\\.)\\s+[\\\"']?\\S*gars-env\\.sh\\b"
+            "match": "(?:^|[;&|(]\\s*)(?:source|\\.)\\s+\\S*gars-env\\.sh\\b"
           },
           {
             "tool": "shell",
-            "match": "\\bpython3?(?:\\s+-\\S+)*\\s+[\\\"']?\\S*(?:\\$\\W?GARS_WRAPPERS\\W?|_system/wrappers)/\\S+\\.py\\b"
+            "match": "(?:\\bpython3?(?:\\.\\d+)?|\\$GARS_PY\\b\\\"?)(?:\\s+-\\S+(?:\\s+[^\\s'\\\"-][^\\s'\\\"]*)?)*\\s+[\\\"']?[^\\s'\\\"();|&]*(?:GARS_WRAPPERS\\W?|_system/wrappers)/\\S+\\.py\\b"
           }
         ]
       },
@@ -123,19 +123,19 @@
         "past": [
           {
             "tool": "shell",
-            "match": "stage01_samplesheet\\.py\\b(?![^\\n]*--(?:check|list-formats)\\b)[^\\n]*--project\\b"
+            "match": "(?:\\bpython3?(?:\\.\\d+)?|\\$GARS_PY\\b\\\"?)(?:\\s+-\\S+(?:\\s+[^\\s'\\\"-][^\\s'\\\"]*)?)*\\s+[\\\"']?[^\\s'\\\"();|&]*stage01_samplesheet\\.py\\b(?![^\\n]*--(?:check|list-formats)\\b)[^\\n]*--project\\b"
           },
           {
             "tool": "shell",
-            "match": "\\bpython3?(?:\\s+-\\S+)*\\s+[\\\"']?\\S*(?:configure|resolve_artifact)\\.py\\b"
+            "match": "(?:\\bpython3?(?:\\.\\d+)?|\\$GARS_PY\\b\\\"?)(?:\\s+-\\S+(?:\\s+[^\\s'\\\"-][^\\s'\\\"]*)?)*\\s+[\\\"']?[^\\s'\\\"();|&]*(?:configure|resolve_artifact)\\.py\\b"
           },
           {
             "tool": "shell",
-            "match": "(?:^|[\\s;&|(])(?:source|\\.)\\s+[\\\"']?\\S*gars-env\\.sh\\b"
+            "match": "(?:^|[;&|(]\\s*)(?:source|\\.)\\s+\\S*gars-env\\.sh\\b"
           },
           {
             "tool": "shell",
-            "match": "\\bpython3?(?:\\s+-\\S+)*\\s+[\\\"']?\\S*(?:\\$\\W?GARS_WRAPPERS\\W?|_system/wrappers)/\\S+\\.py\\b"
+            "match": "(?:\\bpython3?(?:\\.\\d+)?|\\$GARS_PY\\b\\\"?)(?:\\s+-\\S+(?:\\s+[^\\s'\\\"-][^\\s'\\\"]*)?)*\\s+[\\\"']?[^\\s'\\\"();|&]*(?:GARS_WRAPPERS\\W?|_system/wrappers)/\\S+\\.py\\b"
           }
         ]
       },
@@ -143,21 +143,21 @@
         "arrive": [
           {
             "tool": "shell",
-            "match": "stage01_samplesheet\\.py\\b(?![^\\n]*--(?:check|list-formats)\\b)[^\\n]*--project\\b"
+            "match": "(?:\\bpython3?(?:\\.\\d+)?|\\$GARS_PY\\b\\\"?)(?:\\s+-\\S+(?:\\s+[^\\s'\\\"-][^\\s'\\\"]*)?)*\\s+[\\\"']?[^\\s'\\\"();|&]*stage01_samplesheet\\.py\\b(?![^\\n]*--(?:check|list-formats)\\b)[^\\n]*--project\\b"
           }
         ],
         "past": [
           {
             "tool": "shell",
-            "match": "\\bpython3?(?:\\s+-\\S+)*\\s+[\\\"']?\\S*(?:configure|resolve_artifact)\\.py\\b"
+            "match": "(?:\\bpython3?(?:\\.\\d+)?|\\$GARS_PY\\b\\\"?)(?:\\s+-\\S+(?:\\s+[^\\s'\\\"-][^\\s'\\\"]*)?)*\\s+[\\\"']?[^\\s'\\\"();|&]*(?:configure|resolve_artifact)\\.py\\b"
           },
           {
             "tool": "shell",
-            "match": "(?:^|[\\s;&|(])(?:source|\\.)\\s+[\\\"']?\\S*gars-env\\.sh\\b"
+            "match": "(?:^|[;&|(]\\s*)(?:source|\\.)\\s+\\S*gars-env\\.sh\\b"
           },
           {
             "tool": "shell",
-            "match": "\\bpython3?(?:\\s+-\\S+)*\\s+[\\\"']?\\S*(?:\\$\\W?GARS_WRAPPERS\\W?|_system/wrappers)/\\S+\\.py\\b"
+            "match": "(?:\\bpython3?(?:\\.\\d+)?|\\$GARS_PY\\b\\\"?)(?:\\s+-\\S+(?:\\s+[^\\s'\\\"-][^\\s'\\\"]*)?)*\\s+[\\\"']?[^\\s'\\\"();|&]*(?:GARS_WRAPPERS\\W?|_system/wrappers)/\\S+\\.py\\b"
           }
         ]
       }
@@ -197,7 +197,7 @@
     {
       "id": "wait-points",
       "by": "lane",
-      "text": "Each wait point's arrive and past patterns are grounded in the helpers' own subcommands at 844a4ce: stage00_register.py assays (721), --select (722), create (725), inspect (730), link (737), finalize (743); stage01_samplesheet.py --project (737), --check (739), --list-formats (745), whose writer is a run with --project and without --check or --list-formats, whatever of --confirm-exclusions (741), --force (743) and --verify-integrity (750) it carries (contract step 9, sbatch included); and stage 02's entry points, which belong after stage 01's T4 and are past at T6, T8 and T4: configure.py (genomes 466, peaks 471, protocols 474, contrasts 479, apply 484), resolve_artifact.py (--project 125), sourcing _system/gars-env.sh and running a wrapper under $GARS_WRAPPERS or _system/wrappers (gars/02_bioinformatics/CONTEXT.md 90-96). The later wait points match a helper only when a Python runs it, so reading a helper's source moves no stage. The first two wait points are pause_adherence.ROUND3_WAIT_POINTS unchanged; their recorded limits: a stage 02 call there reads not past, and any text naming stage01_samplesheet.py reads past. The test types every command form the contracts name and reads it against every wait point, both ways (review round 2)."
+      "text": "Each wait point's arrive and past patterns are grounded in the helpers' own subcommands at 844a4ce: stage00_register.py assays (721), --select (722), create (725), inspect (730), link (737), finalize (743); stage01_samplesheet.py --project (737), --check (739), --list-formats (745), whose writer is a run with --project and without --check or --list-formats, whatever of --confirm-exclusions (741), --force (743) and --verify-integrity (750) it carries (contract step 9, sbatch included); and stage 02's entry points, which belong after stage 01's T4 and are past at T6, T8 and T4: configure.py (genomes 466, peaks 471, protocols 474, contrasts 479, apply 484), resolve_artifact.py (--project 125), sourcing _system/gars-env.sh at a command's start or after ; & | or (, and running a wrapper under $GARS_WRAPPERS (braced or not) or _system/wrappers (gars/02_bioinformatics/CONTEXT.md 85-96). The later wait points match a helper only when an interpreter runs it: python, python3 or python3.N, or $GARS_PY (gars-env.sh 47) quoted or not, with any one-token flags or a flag and its argument (-W ignore), the helper's path optionally quoted and after any prefix; so reading a helper's source (cat, sed, grep, python3 -c over its text) moves no stage. The test types every command form the contracts name, reads it against every wait point both ways, and drops each alternative, optional part and lookaround of every pattern in turn (review rounds 2 and 3). Named limits: the first two wait points are pause_adherence.ROUND3_WAIT_POINTS unchanged, so a stage 02 call there reads not past and any text naming stage01_samplesheet.py reads past; a quoted command text inside another command (a grep for the contract's own line) reads as the run; a command split across lines by a backslash is read on its first line only (the [^\\n] idiom of round 3's patterns; the contracts write one line); a helper's --help run reads as a run; a wrapper run from inside its own folder is not read; and stage00_register.py's global --workspace option before the subcommand is not read (no contract names it)."
     },
     {
       "id": "fixture-pin",
