@@ -87,6 +87,11 @@ def review_mutations():
             'state = c["state"]'),
         "duplicate-state-reason": source_mutant(completeness, "render",
             'if reason and reason in c["state"]:', 'if False:'),
+        "rehearsal-problem-count": source_mutant(cr, "check_frozen_content",
+            'f"on record, {len(problems)} unrecorded change(s)"',
+            'f"on record, {len(problems) + len(rehearsal)} unrecorded change(s)"'),
+        "rehearsal-problem-line": source_mutant(cr, "check_frozen_content",
+            'print(f"  rehearsal record: {len(rehearsal)} problem(s)")', 'pass'),
         "strict-close-state": source_mutant(completeness, "mechanical_states",
             'strict = batch.Batch(None, None, None, table=table, history=history).closed_cells',
             'strict = {}'),
@@ -1397,6 +1402,24 @@ class CostAccounting(unittest.TestCase):
 
 
 class FreezeCoverage(unittest.TestCase):
+    def test_rehearsal_problems_are_counted_separately_from_changes(self):
+        for changed in (False, True):
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                frozen = {"rehearsal_record": "rehearsal or preview"}
+                now = dict(frozen, synthetic_change=True) if changed else frozen
+                (root / "prereg.json").write_text(json.dumps(now))
+                with mock.patch.object(cr, "HERE", root), \
+                        mock.patch.object(cr, "frozen_bytes", return_value=(frozen, "")), \
+                        mock.patch.object(cr, "freeze_commit", return_value="synthetic"), \
+                        mock.patch.object(cr, "frozen_commit_problems", return_value=[]), \
+                        redirect_stdout(io.StringIO()) as output:
+                    problems = cr.check_frozen_content()
+                self.assertEqual(len(problems), 1 + int(changed))
+                lines = output.getvalue().splitlines()
+                self.assertIn(f"  rehearsal record: 1 problem(s)", lines)
+                self.assertTrue(any(f"{int(changed)} unrecorded change(s)" in line for line in lines))
+
     @contextmanager
     def rehearsal_clone(self):
         claims = {entry["path"]: entry for _lane, entry in cm.load_fragments()[0]}
