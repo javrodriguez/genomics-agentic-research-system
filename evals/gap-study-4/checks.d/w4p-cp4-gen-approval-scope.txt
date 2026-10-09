@@ -1,0 +1,4 @@
+# Lane w4p-cp4-gen-approval-scope: CP4 task approval-scope (tasks/, variants/, fixtures/gen_approval_scope.py).
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_task_approval_scope.py
+python3 -B -W ignore evals/gap-study-4/tasks/check_task.py approval-scope
