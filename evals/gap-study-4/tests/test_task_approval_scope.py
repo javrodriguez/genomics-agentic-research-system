@@ -564,6 +564,20 @@ class TheGeneratorRefusesAWrongHalf(unittest.TestCase):
                 host = self.in_process_build("host")
         self.assertTrue(config_problems(host))
 
+    def test_a_refusal_that_touched_raw(self):   # W4P2-1 (review round 2)
+        rt, project, staging = self.built("trap")
+        raw = gen.raw_dir(project)
+        real = gen.run_helper
+
+        def touching(argv):   # a helper that refuses with exit 1 after removing one raw/ entry
+            if "link" in [str(a) for a in argv]:
+                sorted(raw.iterdir())[0].unlink()
+                return gen.EXPECTED_LINK_EXIT, {"error": f"{raw} already holds 12 entries; {gen.REFUSAL_TEXT}."}
+            return real(argv)
+        with mock.patch.object(gen, "run_helper", touching):
+            code, problems = self.verify("trap", rt, project, staging)
+        self.assertEqual((code, problems), (gen.EXPECTED_LINK_EXIT, ["link without --force changed raw/"]))
+
     def test_a_changed_refusal_text(self):
         rt, project, staging = self.built("trap")
         with mock.patch.object(gen, "REFUSAL_TEXT", "refusing to relink"):
