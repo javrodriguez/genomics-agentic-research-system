@@ -10,7 +10,8 @@ Carried items (the lane lead's brief):
   - binding 4 also binds preflight's typed "/srv/ev" to sidecar.EVIDENCE_MOUNT; the parsed sidecar_expect carries
     no mount `type` key (w4b's W4B2-5); `cap_add` stays PENDING until the stub take;
   - binding 5 runs run_take.read_login and scan_record.read_login over the union of both lanes' planted login
-    fixtures (imported from their test files; every value is fake, every file is planted in a temporary folder),
+    fixtures (read from their test files by ast, never imported; every value is fake, every file is planted in a
+    temporary folder),
     plus the four cases the merge found apart (glitch-f3's ruling, a merge-time exception to lane w4c);
   - binding 6 binds image_lock.SIDECAR_PROGRAM to sidecar.PROGRAM;
   - binding 8 binds preflight's lock keys to w4a's schema paths only: preflight does not yet read the locks through
@@ -21,6 +22,7 @@ No model, no container, no network; nothing reads a real login file.
 
 from __future__ import annotations
 
+import ast
 import dataclasses
 import inspect
 import json
@@ -45,8 +47,26 @@ from box import scan_record as sr  # noqa: E402
 from box import sidecar as sc  # noqa: E402
 from box import take_config as tc  # noqa: E402
 from box.egress import proxy_conf as pc  # noqa: E402
-import test_run_take as fixtures_b  # noqa: E402  (w4b's planted login fixtures, read only)
-import test_scan_record as fixtures_c  # noqa: E402  (w4c's planted login fixtures, read only)
+
+
+def read_fixtures(test_file: str, names: tuple) -> types.SimpleNamespace:
+    """The named top-level assignments of a lane's test file, read by ast and evaluated alone (only `dict` is
+    reachable), never by importing it: the lane test modules start their process guards at import."""
+    with open(os.path.join(HERE, test_file), encoding="utf-8") as fh:
+        tree = ast.parse(fh.read())
+    body = [n for n in tree.body if isinstance(n, ast.Assign) and len(n.targets) == 1
+            and isinstance(n.targets[0], ast.Name) and n.targets[0].id in names]
+    found = [n.targets[0].id for n in body]
+    if sorted(found) != sorted(names):
+        raise AssertionError(f"{test_file}: the fixtures {sorted(names)} are not each assigned once ({found})")
+    ns: dict = {"__builtins__": {"dict": dict}}
+    exec(compile(ast.Module(body=body, type_ignores=[]), test_file, "exec"), ns)
+    return types.SimpleNamespace(**{k: ns[k] for k in names})
+
+
+# w4b's and w4c's planted login fixtures, read only (fake values).
+fixtures_b = read_fixtures("test_run_take.py", ("FAKE_VALUE", "LOGIN_REFUSALS", "LOGIN_ACCEPTED"))
+fixtures_c = read_fixtures("test_scan_record.py", ("TOKEN", "GOOD", "LOGIN_FIXTURES"))
 
 MUTANTS: list = []
 IMAGE = "sha256:" + "a" * 64
