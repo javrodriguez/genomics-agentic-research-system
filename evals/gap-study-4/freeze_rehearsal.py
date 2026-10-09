@@ -75,6 +75,18 @@ def git(clone, *args):
                f"{scratch_git.MAINTENANCE_KEY}={scratch_git.MAINTENANCE_VALUE}", *args], clone)
 
 
+def step_environment():
+    """A fixed fake identity for subprocesses committing disposable records."""
+    return dict(os.environ, PYTHONDONTWRITEBYTECODE="1", OMP_NUM_THREADS="1",
+                OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1",
+                GIT_AUTHOR_NAME="rehearsal", GIT_AUTHOR_EMAIL="rehearsal@example.invalid",
+                GIT_COMMITTER_NAME="rehearsal", GIT_COMMITTER_EMAIL="rehearsal@example.invalid")
+
+
+def run_step(command, clone):
+    return sh(command, clone, env=step_environment())
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--keep", action="store_true")
@@ -101,12 +113,11 @@ def main(argv=None):
     scratch = Path(tempfile.mkdtemp(prefix="rehearsal-"))
     clone = scratch / "repo"
     report = scratch / "freeze-rehearsal-1.txt"
-    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", OMP_NUM_THREADS="1",
-               OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    env = step_environment()
     steps = []
 
     def step(name, command):
-        code, output = sh(command, clone, env=env)
+        code, output = run_step(command, clone)
         tail = " | ".join(output.strip().splitlines()[-3:])
         steps.append((name, code, tail))
         print(f"[{code}] {name}: {tail}", flush=True)
