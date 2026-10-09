@@ -207,3 +207,27 @@ Correction to the report above, from the review: the page says org and workspace
 - test_pause_adherence: Ran 30, OK.
 - `routing.py --check`: "22 rows, 3 annotations, sound".
 - `copy_manifest.py --check`: "ok: 107 files from 8 fragment(s)".
+
+## Fold 2 (lane review round 2: PASS, no MAJOR)
+
+Written Thu 8 Oct 2026, about 20:55 EDT, while the Mac hold was on. **Gates are pending the lift:** none of this fold's commits has been run.
+The decisions are the lane lead's.
+Commits: 2217cada (red tests), 163ea719 (the fix and the prose), then this section.
+
+| Finding | Severity | Decision | Fix | Test and mutants |
+|---|---|---|---|---|
+| W4H2-1 | MINOR | fold: an allow-list | `batch.is_pending` returns True unless the status, stripped and upper-cased, starts with `RULED` or `FILLED` (`RULED_WORDS`) and holds no `PENDING` anywhere. All four start_problems status lines use it (glitch-f3's W4H1-1 ruling). | `TestNextTouchFold2Gate`. On each of the four keys, the reviewer's cases are pending: a zero-width space before PENDING, a BOM before it, `'PENDING'`, `Status: PENDING`, `RULED for codex; PENDING for claude-code`, `TBD`, `not yet ruled`. Pending too: `FILLED, pending a re-read`, the empty string, and `TEST-ONLY: ...`. Ruled: `RULED ...`, `FILLED ...`, `  ruled (test-only)`, `Filled`. Two committed mutants, one per rule half: the prefix alone (the composite D8 string starts the loop) and PENDING-anywhere alone (`TBD` and `not yet ruled` start it). |
+| W4H2-3 | NIT | fold | The batch.py START GATE prose and the is_pending docstring say the new rule, with no double negative. In routing.json, line 17's sentence and the spend source and status sentences (lines 23 and 26) are rewritten. No test pins those sentences. | text only |
+| W4H2-2 | NIT | left | spend_cap_holds still reads `when` at run time. check_table refuses such a table. | none |
+| W4H2-4 | NIT | left | Each line's own guard is shown by the per-line whole-file swaps (w4h_swaps2.py). | none |
+
+**One change that is not prose.** `rate_limit_markers_status` had said "batch.py refuses to start while this status starts with PENDING". Under the new rule, a status holding PENDING anywhere is not ruled, so that sentence would have kept the loop from starting on the ruled rate-limit markers. It is reworded without the word PENDING.
+
+**Fixture change, test_batch.py `test_table()`.** `pin_profiles_status` and `spend_cap_markers_status` change from "TEST-ONLY: ..." (now pending) to "RULED (TEST-ONLY): ...". Every test that starts the loop through `test_table()` needs this: TestTerminalStates, TestPins, TestCaps, TestRestart and the rest, and `test_check_cli_exits_1_while_pending`'s "ready" half. No assertion changed.
+
+**Still to run after the lift:**
+- the four lane test files, each alone;
+- test_pause_adherence;
+- `routing.py --check`;
+- `copy_manifest.py --check`;
+- one whole-file swap per new mutant: the RULED-prefix half dropped, and the no-PENDING half dropped.
