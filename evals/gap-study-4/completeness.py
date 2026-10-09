@@ -1,75 +1,106 @@
 #!/usr/bin/env python3
-"""Every planned cell is complete, or published unmeasured with its reason. There is no third state.
+"""Account for every planned half-cell, reading committed mechanical states.
 
-    python3 evals/gap-study-3/completeness.py            what state each planned cell is in
-    python3 evals/gap-study-3/completeness.py --check    exit 1 if any cell is neither
-
-WHY THIS IS A FILE AND NOT A SENTENCE IN THE RESULT. The pressure at the end of a round is to publish the
-cells that came out and say nothing about the ones that did not, and the result of that reads as a smaller
-study that went well. Every cell the frozen design PLANNED is enumerated here from the frozen file, not
-from what is on disk, so a cell cannot go missing by not being written: the plan is the denominator.
-
-A cell is complete when it holds its full complement of graded takes. Otherwise it is unmeasured, and
-unmeasured is only a legal state WITH a reason that names what happened -- capped with its rehearsal
-reasons, a partial count, or never run. A cell that is neither is this check's whole point.
-
-No model, no network, stdlib only. Read-only.
+The pre-registration's tasks list supplies the task-pair count. Its rows list
+supplies planned identities (arm, task, half, model, agent, wording, repeat or
+pressure, slot and half_cell). A registered subset never shrinks that plan.
+Neither this reader nor result.py re-derives a mechanical cap from take counts.
+No model, network or earlier-round data. Standard library only.
 """
-
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE))
+import check_results
+import stats
+import takes
 
-import prereg  # noqa: E402
-import result  # noqa: E402
+
+def pair_count(pre: dict) -> int:
+    tasks = [t["id"] for t in pre["tasks"]]
+    if not tasks or len(tasks) != len(set(tasks)):
+        raise ValueError("the pre-registered task list must be nonempty and unique")
+    return len(tasks)
 
 
-def main() -> int:
+def committed_state(cell, states):
+    return states.get(cell)
+
+
+def summarize(pre: dict, records: list, states: dict, registered: list) -> dict:
+    """All planned rows, with state from publication's committed outcomes/rulings."""
+    count = pair_count(pre)
+    planned = pre["rows"]
+    if not isinstance(planned, list) or not planned:
+        raise ValueError("the pre-registration must name its planned rows")
+    check_results.validate_ledger([dict(r, attempt=1) for r in planned])
+    check_results.validate_ledger(registered)
+    stats.check_records(records)
+    tasks = {t["id"] for t in pre["tasks"]}
+    if {r["task"] for r in planned} != tasks:
+        raise ValueError("planned rows must cover exactly the pre-registered task list")
+    by_cell, plan_keys = collections.defaultdict(list), set()
+    for r in planned:
+        key = takes.try_key(r)
+        if key in plan_keys:
+            raise ValueError("a planned try occurs twice")
+        plan_keys.add(key)
+        by_cell[takes.half_cell_key(r)].append(r)
+    if any(takes.try_key(r) not in plan_keys for r in records + registered):
+        raise ValueError("a recorded or registered try is outside the plan")
+    actual = collections.defaultdict(list)
+    for r in records:
+        actual[takes.half_cell_key(r)].append(r)
+    cells = []
+    for key, rows in sorted(by_cell.items()):
+        r = rows[0]
+        mechanical = committed_state(r["half_cell"], states)
+        measured = actual[key]
+        if mechanical is not None:
+            state, reason = mechanical["state"], mechanical["reason"]
+        elif len(measured) == len(rows):
+            state, reason = "complete", None
+        else:
+            state = stats.NO_TAKES if not measured else "incomplete"
+            reason = "no committed graded take" if not measured else "planned takes remain unmeasured"
+        cells.append({k: r[k] for k in ("arm", "task", "half", "model", "agent")} |
+                     {"state": state, "reason": reason, "recorded": len(measured), "planned": len(rows)})
+    return {"task_pairs": count, "cells": cells}
+
+
+def render(summary: dict) -> str:
+    lines = [f"Task pairs in the pre-registered task list: {summary['task_pairs']}", "",
+             "| Arm | Task | Half | Model | Harness | Version | Recorded | Planned | State | Reason |",
+             "|---|---|---|---|---|---|---|---|---|---|"]
+    for c in summary["cells"]:
+        agent = c["agent"]
+        n = str(c["recorded"]) if c["recorded"] else stats.NO_TAKES
+        reason = (c["reason"] or "").replace("|", "\\|").replace("\n", " ")
+        lines.append(f"| {c['arm']} | {c['task']} | {c['half']} | {c['model']} | {agent['harness']} | "
+                     f"{agent['version']} | {n} | {c['planned']} | {c['state']} | {reason} |")
+    return "\n".join(lines) + "\n"
+
+
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--json", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
+    import result
 
-    rec = result.derive()
-    if args.json:
-        print(json.dumps(rec["cells"], indent=2))
-    else:
-        for c in rec["cells"]:
-            mark = "complete" if c["state"] == "complete" else f"unmeasured — {c['reason']}"
-            print(f"  {c['task']:20} {c['half']:9} {c['model']:30} {c['graded']} of {c['n']}   {mark}")
-
-    planned = rec["planned_cells"]
-    complete = rec["complete_cells"]
-    nameless = [c for c in rec["cells"] if c["state"] != "complete" and not c["reason"]]
-    unmeasured = [c for c in rec["cells"] if c["state"] != "complete"]
-
-    print(f"\ncomplete cells {complete} of {planned}; "
-          f"{len(unmeasured)} unmeasured, every one of them named with a reason"
-          if not nameless else
-          f"\ncomplete cells {complete} of {planned}; {len(nameless)} unmeasured cell(s) name no reason")
-
-    if planned == 0:
-        # An empty gate is said out loud: the frozen design plans no cell, so this has graded nothing.
-        print("ok, having graded 0 cells: the design plans none, so this check is evidence about nothing.")
-        return 1 if args.check else 0
-
-    if not prereg.is_frozen():
-        print("not applicable — not frozen. The denominator is the frozen plan, and there is not one yet, "
-              "so this green claims nothing about any cell.")
+    got = result.derive()
+    if got is None:
+        print("completeness: no takes; no cells measured")
         return 0
-
-    if nameless:
-        for c in nameless:
-            print(f"FAIL {c['task']}/{c['half']}/{c['model']} is neither complete nor published unmeasured "
-                  f"with a reason")
-        return 1
+    summary = got["completeness"]
+    print(json.dumps(summary, indent=2) if args.json else render(summary))
+    print(f"completeness: {len(summary['cells'])} planned half-cells accounted for")
     return 0
 
 

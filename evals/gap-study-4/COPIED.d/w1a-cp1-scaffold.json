@@ -52,11 +52,6 @@
       "source": "evals/gap-study-3/commit_msg.py"
     },
     {
-      "path": "completeness.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/completeness.py"
-    },
-    {
       "path": "contract_quotes.json",
       "status": "identical",
       "source": "evals/gap-study-3/contract_quotes.json"
@@ -168,11 +163,6 @@
       "path": "prereg.py",
       "status": "identical",
       "source": "evals/gap-study-3/prereg.py"
-    },
-    {
-      "path": "result.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/result.py"
     },
     {
       "path": "review_kit/BRIEF.md",

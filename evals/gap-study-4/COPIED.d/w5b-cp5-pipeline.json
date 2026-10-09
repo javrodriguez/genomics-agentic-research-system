@@ -39,6 +39,18 @@
       "status": "edited",
       "source": "evals/gap-study-3/run.py",
       "reason": "R2-R4, R9, R12-R14, R17, R23-R28, R31: v4 regrading and interface 11 lists"
+    },
+    {
+      "path": "result.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/result.py",
+      "reason": "R8, R12, R15-R16, R23-R24, R28, R30-R32: tables solely from stats and committed completeness"
+    },
+    {
+      "path": "completeness.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/completeness.py",
+      "reason": "R2, R23, R28, R30: every planned half-cell and task-list denominator"
     }
   ]
 }

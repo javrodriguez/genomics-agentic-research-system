@@ -1,380 +1,85 @@
 #!/usr/bin/env python3
-"""Write RESULT.md from the committed takes, by code, and re-derive it on demand.
+"""Render the round's result from stats and committed completeness, without pooling.
 
-    python3 evals/gap-study-3/result.py --write    write RESULT.md from what is committed
-    python3 evals/gap-study-3/result.py --check    re-derive it; exit 1 on any difference
-
-WHAT IT PUBLISHES. One count per planned cell, and nothing else about a model. No rate, no percentage, no
-verb that characterises. A cell that was not measured is NAMED, with the reason it was not, rather than
-left out: a table that quietly drops its empty cells reads as a smaller study that went well.
-
-ROUND 2'S COUNTS PRINT BESIDE, NEVER JOINED. The same three tasks were measured in round 2 under a
-different permission condition, and the single most attractive wrong sentence anyone could write about this
-round is one that adds the two together. So round 2's counts are a SEPARATE table under a caption this file
-writes -- naming, per column, the permission condition, the run date and the instrument -- and round 2's
-incomplete cell is marked incomplete with its graded-take count rather than printed as a zero.
-
-EVERY `k of n` HAS n = 3 AND BELONGS TO EXACTLY ONE ROUND'S TABLE. That is checked structurally here, over
-the tables' own fields, because a text pattern cannot tell a cell count from `slice 4 of 20`. The words
-that join two instruments in a sentence are lint_pooling.py's job; this is the other half of that rule.
-
-IT REFUSES AGAINST A DRAFT. A number graded against a design that can still change was not pre-registered,
-whatever the design says about itself. Before the freeze this file reports what it has graded -- zero -- and
-says so in those words rather than printing a pass.
-
-No model, no network, stdlib only.
+Every statistical table, including the excluded view's three possible shapes,
+is emitted by stats.render_md through render_block. This module never recomputes
+one. Empty records print no takes, never a measured zero. The frozen task list
+and planned rows are the denominator; committed outcomes and rulings carry the
+mechanical states. No model, network or earlier-round table is read.
 """
-
 from __future__ import annotations
 
 import argparse
-import json
-import subprocess
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parent.parent
-RESULT = HERE / "RESULT.md"
-RESULTS = HERE / "results"
 sys.path.insert(0, str(HERE))
+import check_results
+import completeness
+import prereg
+import stats
+import study
+import takes
 
-import mode_binding  # noqa: E402
-import denials  # noqa: E402
-import prereg  # noqa: E402
-import round2  # noqa: E402
-import study  # noqa: E402
-
-N = 3
-
-
-def planned_cells() -> list[tuple[str, str, str]]:
-    """Every (task, half, model) the frozen design plans, in a fixed canonical order."""
-    pre = prereg.load()
-    out = []
-    for t in pre["tasks"]:
-        for half in round2.HALVES:
-            if half in t:
-                for m in pre["models"]:
-                    out.append((t["id"], half, m))
-    return sorted(out)
+RECORDS = HERE / "records"
+PAGE = HERE / "RESULT.md"
 
 
-def graded() -> dict[tuple[str, str, str], dict]:
-    """Per cell: the graded takes on disk, their labels, and the mode their sessions recorded."""
-    out: dict[tuple[str, str, str], dict] = {}
-    base = HERE / "transcripts"
-    rows = {r["attempt"]: r for r in mode_binding.rows()}
-    for t in sorted(base.glob("*/*/*/*/transcript.jsonl")) if base.is_dir() else []:
-        task, half, model, take = t.parts[-5], t.parts[-4], t.parts[-3], t.parts[-2]
-        cell = out.setdefault((task, half, model), {"takes": [], "modes": set()})
-        cell["takes"].append(take)
-        r = rows.get(str(t.parent.relative_to(HERE)))
-        if r:
-            cell["modes"].add(r["recorded"])
-    return out
+def empty_line() -> str:
+    return stats.NO_TAKES
 
 
-def attempts_by_kind(kind: str) -> dict[tuple[str, str, str], list[dict]]:
-    """Rehearsals or pauses per cell, with the reasons each carries."""
-    out: dict[tuple[str, str, str], list[dict]] = {}
-    base = HERE / kind
-    for led in sorted(base.rglob("driver-ledger.json")) if base.is_dir() else []:
-        d = json.loads(led.read_text())
-        key = (d.get("task"), d.get("half"), d.get("model_requested"))
-        out.setdefault(key, []).append({
-            "row": d.get("row"), "reasons": (d.get("attempt") or {}).get("reasons") or [],
-            "outcome": d.get("outcome"),
-        })
-    return out
+def prior_sections() -> str:
+    """The not_poolable rule: no comparative section from any earlier round."""
+    return ""
 
 
-def held_counts() -> dict[tuple[str, str, str], dict]:
-    """The HELD count per cell, read from the graders' own output, never from the takes on disk.
-
-    REVIEW 1, BLOCKER 1. This file used to put the number of take folders under the column headed `held`
-    and never opened results/. Every complete cell would have published `3 of 3` whatever the models did,
-    the earlier round's column beside it prints a real held count, and the study's own question -- how many
-    of three takes each cell holds -- would not have been answered by its own publication. Nothing went
-    red, because the battery checked n, reasons and captions and never what the number meant.
-
-    `k` is written by run.py from the graders' verdicts. It is read here and nowhere else in this file.
-    """
-    out: dict[tuple[str, str, str], dict] = {}
-    for f in sorted(RESULTS.glob("*.json")) if RESULTS.is_dir() else []:
-        rec = json.loads(f.read_text())
-        task = rec.get("task") or f.stem
-        for model, halves in (rec.get("cells") or {}).items():
-            for half, c in halves.items():
-                out[(task, half, model)] = {"k": c.get("k"), "n": c.get("n"),
-                                            "state": c.get("state"),
-                                            "labels": [l.get("label") for l in (c.get("labels") or [])]}
-    return out
+def stats_block(derived: dict) -> str:
+    return stats.render_block(derived)
 
 
-def cell_state(key, g, rehearsals, pauses, pre, held, denied=None) -> dict:
-    """Complete, or unmeasured with a reason. There is no third state and no silent one.
-
-    REVIEW 2, BLOCKER 2. `denied` is denials.per_cell(): the count of calls the harness refused over the
-    cell's graded takes, with the commands. It prints beside the count, so a `did-not-reach` that followed
-    a denial is never read as the model's alone.
-    """
-    task, half, model = key
-    takes = g.get(key, {}).get("takes", [])
-    reh = rehearsals.get(key, [])
-    pau = pauses.get(key, [])
-    modes = sorted(g.get(key, {}).get("modes", set()))
-    cap = int(pre["rehearsal_cap"])
-    if len(takes) >= N:
-        state, reason = "complete", None
-    elif len(reh) >= cap:
-        reasons = sorted({r for a in reh for r in a["reasons"]})
-        state = "unmeasured"
-        reason = (f"capped: {len(reh)} rehearsal(s) at the cap of {cap}, reason(s) {reasons}")
-    elif not takes and not reh and not pau:
-        state, reason = "unmeasured", "not run"
-    else:
-        state = "unmeasured"
-        reason = (f"incomplete: {len(takes)} graded take(s) of {N}, {len(reh)} rehearsal(s), "
-                  f"{len(pau)} pause(s)")
-    h = held.get(key) or {}
-    den = (denied or {}).get(key) or {"denied": 0, "commands": []}
-    return {"task": task, "half": half, "model": model,
-            "held": h.get("k"), "labels": h.get("labels") or [],
-            "graded": len(takes), "n": N,
-            "denied": int(den["denied"]), "denied_commands": list(den["commands"]),
-            "state": state, "reason": reason, "recorded_permission_mode": modes,
-            "expected_permission_mode": (pre["driver_constants"].get("permission_mode_expected") or {})
-                                        .get(model)}
+def from_records(records: list, pre: dict, rows: list, history: list, table=None) -> dict:
+    published = check_results.publication(history, table)
+    return {"stats": stats.derive(records, pre[stats.DESIGN_KEY]),
+            "completeness": completeness.summarize(pre, records, published["cells"], rows)}
 
 
-def round_two_table() -> dict:
-    """Round 2's counts for the same three tasks, with its incomplete cell marked as incomplete."""
-    cells = round2.cells()
-    modes = round2.cell_modes()
-    rows = []
-    for task in round2.TASKS:
-        for model, halves in sorted(cells[task]["cells"].items()):
-            for half, c in sorted(halves.items()):
-                state = str(c.get("state") or "")
-                rows.append({
-                    "task": task, "half": half, "model": model,
-                    "graded": int(c.get("k") or 0) if "incomplete" not in state.lower() else None,
-                    "n": int(cells[task].get("n") or N),
-                    "incomplete": "incomplete" in state.lower(),
-                    "state": state,
-                    "recorded_permission_mode": modes.get(task, {}).get(model, {}).get(half),
-                })
-    return {"rows": rows, "n": N}
-
-
-def run_dates() -> str:
-    """The span of the graded takes, from their own ledgers: the earliest `started` to the latest `finished`.
-
-    REVIEW 2, SHOULD. This used to print the day the page was written, so `--check` went red the next day
-    and the only way back to green was to rewrite the page with a later date. The takes' ledgers are the
-    record of when the round ran, and they do not move.
-    """
-    starts, ends = [], []
-    base = HERE / "transcripts"
-    for led in sorted(base.glob("*/*/*/*/driver-ledger.json")) if base.is_dir() else []:
-        try:
-            d = json.loads(led.read_text())
-        except (OSError, json.JSONDecodeError):
-            continue
-        if isinstance(d.get("started"), str):
-            starts.append(d["started"][:10])
-        if isinstance(d.get("finished"), str):
-            ends.append(d["finished"][:10])
-    if not starts:
-        return "no graded take yet"
-    first, last = min(starts), max(ends or starts)
-    return first if first == last else f"{first} to {last}"
-
-
-def round2_run_dates() -> str:
-    """The span of the earlier round's graded takes, read from its own ledgers beside its transcripts.
-
-    REVIEW 4, NIT 3. The cell printed round 2's freeze timestamp under the heading `run date`; the date was
-    not wrong, the label was. Read the same way this round's own is read.
-    """
-    starts, ends = [], []
-    for t in round2.transcripts():
-        led = t.parent / "driver-ledger.json"
-        try:
-            d = json.loads(led.read_text())
-        except (OSError, json.JSONDecodeError):
-            continue
-        if isinstance(d.get("started"), str):
-            starts.append(d["started"][:10])
-        if isinstance(d.get("finished"), str):
-            ends.append(d["finished"][:10])
-    if not starts:
-        return "no ledger found"
-    first, last = min(starts), max(ends or starts)
-    return first if first == last else f"{first} to {last}"
-
-
-def caption() -> str:
-    """Written here, not typed: per column, the condition, the run date and the instrument."""
-    pre = prereg.load()
-    r2 = round2.frozen()
-    entries = len(pre["driver_change"]["allowed_tools"])
-    return (
-        "| | this round | the earlier round |\n|---|---|---|\n"
-        f"| permission condition | `--permission-mode {pre['driver_constants']['permission_mode']}` "
-        f"and a pre-registered list of {entries} admitted commands on every turn | "
-        f"`--permission-mode {r2['driver_constants']['permission_mode']}` alone |\n"
-        f"| mode the sessions recorded | per model, as each cell prints it | "
-        f"per model, as the earlier round's own transcripts record it |\n"
-        f"| run date | {run_dates()}, from the graded takes' own ledgers | "
-        f"{round2_run_dates()}, from the earlier round's own ledgers |\n"
-        f"| instrument | copied byte for byte from the earlier round's done commit "
-        f"{pre['source_commit'][:12]}; the take checker, every grader and the label "
-        f"reader are byte-identical | its own, at that commit |\n\n"
-        "The two tables are read separately. The instrument is the same and the permission condition is "
-        "not, so a figure spanning them would describe neither.")
-
-
-def derive() -> dict:
-    pre = prereg.load()
-    g, reh, pau, held = graded(), attempts_by_kind("rehearsals"), attempts_by_kind("pauses"), held_counts()
-    den = denials.per_cell()
-    cells = [cell_state(k, g, reh, pau, pre, held, den) for k in planned_cells()]
-    return {
-        "planned_cells": len(cells),
-        "planned_takes": len(cells) * N,
-        "graded_takes": sum(c["graded"] for c in cells),
-        "complete_cells": sum(1 for c in cells if c["state"] == "complete"),
-        "cells": cells,
-        "denials": denials.per_take(),
-        "round_two": round_two_table(),
-        "amendments": pre.get("amendments") or [],
-    }
-
-
-def structural_problems(rec: dict) -> list[str]:
-    """Every k of n has n = 3 and belongs to exactly one round's table."""
-    out = []
-    for c in rec["cells"]:
-        if c["n"] != N:
-            out.append(f"{c['task']}/{c['half']}/{c['model']} publishes n = {c['n']}, not {N}")
-        if c["graded"] > c["n"]:
-            out.append(f"{c['task']}/{c['half']}/{c['model']} has {c['graded']} graded takes of {c['n']}")
-        if c["state"] != "complete" and not c["reason"]:
-            out.append(f"{c['task']}/{c['half']}/{c['model']} is not complete and names no reason")
-        # REVIEW 1, BLOCKER 1. A complete cell must publish a HELD count read from the graders, and that
-        # count is never the number of takes that ran -- that is the denominator, not the answer.
-        if c["state"] == "complete":
-            if c["held"] is None:
-                out.append(f"{c['task']}/{c['half']}/{c['model']} is complete and publishes no held count "
-                           f"read from the graders")
-            elif not 0 <= c["held"] <= c["n"]:
-                out.append(f"{c['task']}/{c['half']}/{c['model']} publishes a held count of {c['held']} "
-                           f"outside 0..{c['n']}")
-            elif len(c["labels"]) != c["graded"]:
-                out.append(f"{c['task']}/{c['half']}/{c['model']} publishes {len(c['labels'])} grader "
-                           f"label(s) for {c['graded']} graded take(s)")
-        # REVIEW 2, BLOCKER 2. Every cell prints its denial count beside its count, and the commands it
-        # quotes are exactly as many as the calls it counts.
-        if not isinstance(c.get("denied"), int) or c["denied"] < 0:
-            out.append(f"{c['task']}/{c['half']}/{c['model']} publishes no denial count")
-        elif len(c.get("denied_commands") or []) != c["denied"]:
-            out.append(f"{c['task']}/{c['half']}/{c['model']} counts {c['denied']} denied call(s) and quotes "
-                       f"{len(c.get('denied_commands') or [])} command(s)")
-    for r in rec["round_two"]["rows"]:
-        if r["n"] != N:
-            out.append(f"the earlier round's {r['task']}/{r['half']}/{r['model']} publishes n = {r['n']}")
-        if r["incomplete"] and r["graded"] is not None:
-            out.append(f"the earlier round's {r['task']}/{r['half']}/{r['model']} is incomplete and "
-                       f"publishes a count")
-    return out
+def derive() -> dict | None:
+    records = stats.load_results(RECORDS)
+    rows, history = takes.load_rows(), takes.read_history()
+    if not records and not rows and not history:
+        return None
+    pre = prereg.require_frozen("publishing the result")
+    return from_records(records, pre, rows, history)
 
 
 def render(rec: dict) -> str:
-    L = [f"# {study.STUDY_TITLE} — result", "",
-         f"{rec['graded_takes']} graded take(s) of {rec['planned_takes']} planned; "
-         f"{rec['complete_cells']} complete cell(s) of {rec['planned_cells']} planned.", "",
-         "Every count below is a count of three takes. The `held` column is what the graders read from the "
-         "transcripts; `takes graded` is how many takes the cell has, which is the denominator and never "
-         "the answer. `denied` is how many tool calls the harness refused over the cell's graded takes, "
-         "read from their transcripts; each refused command is quoted under Denials below, and a count "
-         "beside a denial is a condition of the harness before it is a reading of the model. No cell is "
-         "left out: a cell that was not measured is named with the reason.", "",
-         "## This round", "",
-         "| task | half | model | held | takes graded | denied | recorded mode | state |",
-         "|---|---|---|---|---|---|---|---|"]
-    for c in rec["cells"]:
-        h = f"{c['held']} of {c['n']}" if c["state"] == "complete" and c["held"] is not None else "—"
-        modes = ", ".join(c["recorded_permission_mode"]) or "—"
-        L.append(f"| `{c['task']}` | {c['half']} | `{c['model']}` | {h} | {c['graded']} of {c['n']} | "
-                 f"{c.get('denied', 0)} | {modes} | {c['state']}"
-                 f"{'' if not c['reason'] else ' — ' + c['reason']} |")
-    L += ["", "## Denials, per graded take", ""]
-    if not rec.get("denials"):
-        L.append("No graded take yet, so no denial has been read.")
-    for r in rec.get("denials") or []:
-        where = f"`{r['task']}`/{r['half']}/`{r['model']}`/take {r['take']}"
-        if r["denied"]:
-            L.append(f"- {where}: {r['denied']} denied call(s): " + "; ".join(f"`{c}`" for c in r["commands"]))
-        else:
-            L.append(f"- {where}: no denial")
-    L += ["", "## The earlier round, beside — never joined", "", caption(), "",
-          "| task | half | model | held | recorded mode |", "|---|---|---|---|---|"]
-    for r in rec["round_two"]["rows"]:
-        held = "incomplete" if r["incomplete"] else f"{r['graded']} of {r['n']}"
-        L.append(f"| `{r['task']}` | {r['half']} | `{r['model']}` | {held} | "
-                 f"{r['recorded_permission_mode'] or '—'} |")
-    if rec["amendments"]:
-        L += ["", "## Amendments", ""]
-        for a in rec["amendments"]:
-            L.append(f"- {json.dumps(a)}")
-    return "\n".join(L) + "\n"
+    lines = [f"# {study.STUDY_TITLE} — result", ""]
+    if rec["stats"]["takes"] == 0:
+        lines += [empty_line(), ""]
+    lines += [completeness.render(rec["completeness"]), stats_block(rec["stats"]), prior_sections()]
+    return "\n".join(lines).rstrip() + "\n"
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--write", action="store_true")
-    g.add_argument("--check", action="store_true")
-    args = ap.parse_args()
-
-    if not prereg.is_frozen():
-        rec = derive()
-        print(f"not applicable — not frozen. graded {rec['graded_takes']} of {rec['planned_takes']}, "
-              f"complete cells {rec['complete_cells']} of {rec['planned_cells']}. A number graded against "
-              f"a design that can still change was not pre-registered, so nothing is published and this "
-              f"green claims nothing.")
+    group = ap.add_mutually_exclusive_group(required=True)
+    group.add_argument("--check", action="store_true")
+    group.add_argument("--write", action="store_true")
+    args = ap.parse_args(argv)
+    got = derive()
+    if got is None:
+        print("result: no takes; no table measured or written")
         return 0
-
-    rec = derive()
-    bad = structural_problems(rec)
-    print(f"graded {rec['graded_takes']} of {rec['planned_takes']}")
-    print(f"complete cells {rec['complete_cells']} of {rec['planned_cells']}")
+    wanted = render(got)
     if args.write:
-        if bad:
-            print("refusing to write:\n  - " + "\n  - ".join(bad))
-            return 1
-        RESULT.write_text(render(rec))
-        print(f"wrote {RESULT.name}")
-        return 0
-    if not RESULT.is_file():
-        # FROZEN BUT NOTHING GRADED YET. Found by the third freeze rehearsal: the freeze succeeds, and
-        # this check then demanded a published result before a single take had run. There is nothing to
-        # publish from zero takes, and saying so is not the same as passing -- the counts print either
-        # way, and the moment a take is graded the file is required again.
-        if rec["graded_takes"] == 0:
-            print("no RESULT.md, and nothing to write one from: 0 graded takes. This is not a pass over "
-                  "a published result; it is the state before any take has run.")
-            return 0
-        bad.append(f"no RESULT.md, and {rec['graded_takes']} graded take(s) to write it from")
-    elif RESULT.read_text() != render(rec):
-        bad.append("RESULT.md is not what this file writes from the committed takes")
-    for b in bad:
-        print(f"FAIL {b}")
-    if not bad:
-        print("ok: the result re-derives from the committed takes")
-    return 1 if bad else 0
+        PAGE.write_text(wanted, encoding="utf-8")
+    elif not PAGE.is_file() or PAGE.read_text(encoding="utf-8") != wanted:
+        print("result: FAIL RESULT.md differs from the records and committed states")
+        return 1
+    print(f"result: {got['stats']['takes']} records; every stats table and planned half-cell rendered")
+    return 0
 
 
 if __name__ == "__main__":
