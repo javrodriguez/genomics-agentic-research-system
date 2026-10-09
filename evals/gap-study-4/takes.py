@@ -49,6 +49,7 @@ import argparse
 import json
 import subprocess
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -63,6 +64,76 @@ import batch  # noqa: E402
 from graders import labels4  # noqa: E402
 
 OPEN_LIMIT = batch.BLOCK
+HISTORY_FILES = ("outcomes.json", "rulings.json")
+
+
+def _git_at(repo: Path, *args: str, missing=False) -> str:
+    got = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+    if got.returncode and not missing:
+        raise ValueError(f"git {args[0]} failed: {got.stderr.strip()}")
+    return got.stdout.strip() if got.returncode == 0 else ""
+
+
+def read_history(*, root=HERE, repo=REPO) -> list[dict]:
+    """CP2 history(): outcomes.json and rulings.json, one append per commit, in commit order.
+
+    Both files are JSON lists of batch's closed records. Reading commits rather
+    than concatenating the two files preserves the ruling's position. Rewrites,
+    deletions and a commit introducing more than one record are refused.
+    """
+    root, repo = Path(root).resolve(), Path(repo).resolve()
+    paths = [(root / p).relative_to(repo).as_posix() for p in HISTORY_FILES]
+    shas = _git_at(repo, "log", "--reverse", "--format=%H", "--", *paths).split()
+    previous, history = {p: [] for p in paths}, []
+    for sha in shas:
+        added = []
+        for path in paths:
+            text = _git_at(repo, "show", f"{sha}:{path}", missing=True)
+            now = json.loads(text) if text else []
+            old = previous[path]
+            if not isinstance(now, list) or now[:len(old)] != old:
+                raise ValueError(f"{path} rewrote committed history")
+            added.extend(now[len(old):])
+            previous[path] = now
+        if len(added) != 1:
+            raise ValueError("one commit introduces exactly one outcome or ruling")
+        history.extend(added)
+    bad = batch.Batch.history_problems(history)
+    if bad:
+        raise ValueError("; ".join(bad))
+    return history
+
+
+def validate_ruling(record: dict, history: list) -> None:
+    if not batch.is_ruling(record) or set(record) != set(batch.RULING_KEYS):
+        raise ValueError("a ruling must hold exactly batch.RULING_KEYS")
+    bad = batch.Batch.history_problems(history + [record])
+    if bad:
+        raise ValueError("; ".join(bad))
+
+
+def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, root=HERE, repo=REPO) -> dict:
+    """The human door: append the caller's closed ruling to rulings.json, one commit.
+
+    by is a required argument. It is never read from git, an environment variable
+    or a default. The door uses the same committed history CP2 reads. A failed
+    commit leaves the file for a human to reconcile; nothing retries a ruling.
+    """
+    root, repo = Path(root).resolve(), Path(repo).resolve()
+    record = dict(kind=labels4.RULING, slot=slot, attempt=attempt, ruling=word, route=route, by=by)
+    history = read_history(root=root, repo=repo)
+    validate_ruling(record, history)
+    if _git_at(repo, "status", "--porcelain"):
+        raise ValueError("commit the existing changes before a ruling; one ruling per commit")
+    path = root / HISTORY_FILES[1]
+    existing = json.loads(path.read_text()) if path.exists() else []
+    path.write_text(json.dumps(existing + [record], indent=2) + "\n", encoding="utf-8")
+    _git_at(repo, "add", "--", path.relative_to(repo).as_posix())
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as msg:
+        msg.write("Record a human ruling\n\nCo-Authored-By: Codex (gpt-6-astra) <noreply@openai.com>\n")
+        msg.flush()
+        _git_at(repo, "commit", "-F", msg.name)
+    return record
 
 
 def agent_problems(row: dict) -> list[str]:
@@ -495,6 +566,11 @@ def main() -> int:
     ap.add_argument("--add", action="store_true")
     ap.add_argument("--audit", action="store_true")
     ap.add_argument("--session-id", type=int, metavar="ROW")
+    ap.add_argument("--ruling", choices=labels4.RULINGS)
+    ap.add_argument("--slot")
+    ap.add_argument("--attempt", type=int)
+    ap.add_argument("--route", choices=labels4.ROUTES)
+    ap.add_argument("--by")
     ap.add_argument("--task"); ap.add_argument("--half", choices=("positive", "control"))
     ap.add_argument("--model"); ap.add_argument("--take", type=int)
     ap.add_argument("--order-index", type=int, default=-1)
@@ -503,6 +579,13 @@ def main() -> int:
                     default="claude-subscription-headless")
     ap.add_argument("--allow-draft", action="store_true")
     args = ap.parse_args()
+
+    if args.ruling is not None:
+        if args.slot is None or args.attempt is None or args.by is None:
+            ap.error("--ruling requires --slot, --attempt and --by")
+        commit_ruling(slot=args.slot, attempt=args.attempt, word=args.ruling, route=args.route, by=args.by)
+        print("one human ruling committed")
+        return 0
 
     if args.plan:
         return cmd_plan()
