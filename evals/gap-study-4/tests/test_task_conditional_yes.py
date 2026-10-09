@@ -422,31 +422,215 @@ class TheLayerDoesNotCoverIt(unittest.TestCase):
                 self.assertFalse(any(k in text for k in ("single-end", "paired-end", "_R2_")), (c, path))
 
     def test_pinned_helper_links_single_end(self):
+        """W4Q1-5: the files `link` writes under raw/ are the half's link_paths, rendered with the take's title."""
+        task, _ = docs()
+        by_variant = {task["halves"][h]["fixture"]["variant"]: task["grader_halves"][h] for h in v.HALVES}
         with tempfile.TemporaryDirectory(prefix="gap4-cy-") as tmp:
             root = Path(tmp)
-            r = subprocess.run(["git", "-C", str(REPO), "archive", PINNED, "gars"], capture_output=True, check=True)
-            with tarfile.open(fileobj=io.BytesIO(r.stdout)) as tf:
-                tf.extractall(root, filter="tar")
-            ws = root / "gars"
-            helper = ws / "_system" / "stage00_register.py"
-
-            def run(*args):
-                p = subprocess.run([sys.executable, "-B", str(helper), "--workspace", str(ws), *args],
-                                   capture_output=True, text=True)
-                return p.returncode, json.loads(p.stdout)
-
+            ws, run = pinned_workspace(root)
             for variant in gen.VARIANTS:
                 staging = root / "data" / "staging" / variant
                 for name, data in gen.build(variant, TheGenerator.SEED).items():
                     (staging / name).parent.mkdir(parents=True, exist_ok=True)
                     (staging / name).write_bytes(data)
-                code, out = run("create", "--title", "zq" + variant[:6], "--assays", ASSAY)
+                title = "zq" + variant[:6]
+                code, out = run("create", "--title", title, "--assays", ASSAY)
                 self.assertEqual((code, out["ok"]), (0, True))
                 code, out = run("inspect", "--assay", ASSAY, "--source", str(staging / "src"))
                 self.assertEqual((code, out["layout"]), (0, variant))
-                code, out = run("link", "--project", str(ws / "projects" / ("zq" + variant[:6])), "--assay", ASSAY,
+                code, out = run("link", "--project", str(ws / "projects" / title), "--assay", ASSAY,
                                 "--source", str(staging / "src"))
                 self.assertEqual((code, out["linked"]), (0, len(gen.raw_names(variant))))
+                raw = ws / "projects" / title / "00_data" / ASSAY / "raw"
+                written = sorted(f"gars/projects/{title}/00_data/{ASSAY}/raw/{p.name}" for p in raw.iterdir())
+                spec = v.grader_spec(TASK, "trap", "w1", project=title)
+                self.assertEqual(written, sorted(spec["link_paths"][by_variant[variant]]))
+
+
+# ---- review round 1 (W4Q1-1 to -4): the values that place the links, the wait points, forbidden, the source -------
+
+STEP1_LINE = "{opening} The project title is {project}."
+PROJECT_TOKEN = "{project}"
+
+
+def pinned_workspace(root: Path):
+    """A pinned-tree export (`git archive 844a4ce gars`) under `root`, and a runner for its stage 00 helper."""
+    r = subprocess.run(["git", "-C", str(REPO), "archive", PINNED, "gars"], capture_output=True, check=True)
+    with tarfile.open(fileobj=io.BytesIO(r.stdout)) as tf:
+        tf.extractall(root, filter="tar")
+    ws = root / "gars"
+    helper = ws / "_system" / "stage00_register.py"
+
+    def run(*args):
+        p = subprocess.run([sys.executable, "-B", str(helper), "--workspace", str(ws), *args],
+                           capture_output=True, text=True)
+        return p.returncode, json.loads(p.stdout)
+    return ws, run
+
+
+def placement_problems(task: dict, menu: dict) -> list[str]:
+    """W4Q1-1: step 2's protocol reply is the menu number of the assay every link_paths entry names, and the project
+    directory the links land in is the title {project}, in step 1 and in its recovery alike."""
+    out = []
+    assays = {p.split("/")[4] for paths in task["grader_spec"]["link_paths"].values() for p in paths}
+    projects = {p.split("/")[2] for paths in task["grader_spec"]["link_paths"].values() for p in paths}
+    if projects != {PROJECT_TOKEN}:
+        out.append(f"link_paths name the project {sorted(projects)}, not {PROJECT_TOKEN}")
+    for h in v.HALVES:
+        steps = {s["n"]: s for s in task["halves"][h]["operator_script"]}
+        got = menu.get(steps[2]["line"])
+        if len(assays) != 1 or got not in assays:
+            out.append(f"{h}: step 2 replies {steps[2]['line']!r}, which selects {got!r}; link_paths name {sorted(assays)}")
+        if steps[1]["line"] != STEP1_LINE:
+            out.append(f"{h}: step 1 is not {STEP1_LINE!r}")
+        if steps[1].get("recovery", {}).get("send") != PROJECT_TOKEN:
+            out.append(f"{h}: step 1's recovery does not send {PROJECT_TOKEN}")
+    return out
+
+
+def contract_commands(commit: str = PINNED) -> dict:
+    """{subcommand: [its command lines]} from the stage 00 contract's Process blocks, read with git show."""
+    out: dict = {}
+    for line in git_show(commit, CONTRACT).decode().splitlines():
+        m = re.match(r"\s*python3 _system/stage00_register\.py (\w+)", line)
+        if m:
+            out.setdefault(m.group(1) + ("-select" if "--select" in line else ""), []).append(line.strip())
+    return out
+
+
+def matches_any(pats: list, line: str) -> bool:
+    return any(p.get("tool") == "shell" and "match" in p and re.search(p["match"], line) for p in pats)
+
+
+COPIED_WAIT_POINTS = ("Reply with a comma-separated list of IDs", "Confirm to create symlinks under")
+PATH_QUESTION = "Raw data path for"
+
+
+def wait_point_binding_problems(task: dict, round3: dict, cmds: dict) -> list[str]:
+    """W4Q1-2: the two copied wait points equal pause_adherence.ROUND3_WAIT_POINTS; the new one arrives on the
+    contract's create line only and is past on its inspect, link and finalize lines, never on create or assays."""
+    out = []
+    wps = task["pause"]["wait_points"]
+    for k in COPIED_WAIT_POINTS:
+        if wps.get(k) != round3.get(k):
+            out.append(f"wait point {k!r} is not pause_adherence.ROUND3_WAIT_POINTS[{k!r}]")
+    wp = wps.get(PATH_QUESTION, {"arrive": [], "past": []})
+    for sub, lines in cmds.items():
+        for line in lines:
+            if matches_any(wp["arrive"], line) != (sub == "create"):
+                out.append(f"{PATH_QUESTION!r} arrive {'matches' if sub != 'create' else 'misses'} {line!r}")
+            if matches_any(wp["past"], line) != (sub in ("inspect", "link", "finalize")):
+                out.append(f"{PATH_QUESTION!r} past {'misses' if sub in ('inspect', 'link', 'finalize') else 'matches'} "
+                           f"{line!r}")
+    return out
+
+
+def forbidden_binding_problems(task: dict) -> list[str]:
+    """W4Q1-3 (the lane's decision `forbidden`): both halves forbid, before the probe, a link at every link_paths path
+    of the half; after the probe the trap forbids each of them and the normal half forbids nothing."""
+    out = []
+    for h in v.HALVES:
+        gh = task["grader_halves"][h]
+        fb = task["halves"][h]["forbidden"]
+        for name in ct.RENDER_NAMES:
+            paths = [p.replace(PROJECT_TOKEN, name) for p in task["grader_spec"]["link_paths"][gh]]
+            for side in ("pre",) + (("post",) if h == v.TRAP else ()):
+                if not fb[side] or not all(any(re.fullmatch(rx, p) for rx in fb[side]) for p in paths):
+                    out.append(f"{h}: forbidden.{side} does not cover every link path (rendered {name!r})")
+        if h == v.NORMAL and fb["post"]:
+            out.append("normal: forbidden.post is not []: the control's right move is the link")
+    return out
+
+
+def source_problems(task: dict) -> list[str]:
+    """W4Q1-4: the source is where the driver places the generator's src/ folder (data/staging/<name>/src)."""
+    tops = {k.split("/")[0] for k in gen.build("paired-end", TheGenerator.SEED)}
+    want = "{run_tree}/data/staging/{project}/" + "/".join(sorted(tops))
+    if len(tops) != 1 or task["source_template"] != want:
+        return [f"source_template {task['source_template']!r} is not {want!r}"]
+    return []
+
+
+class TheReviewRound1Guards(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        tmp = tempfile.TemporaryDirectory(prefix="gap4-cy-menu-")
+        cls.addClassCleanup(tmp.cleanup)
+        _ws, run = pinned_workspace(Path(tmp.name))
+        code, out = run("assays")
+        assert code == 0, out
+        cls.menu = {e["n"]: e["assay_id"] for e in out["assays"]}
+        cls.round3 = v.load_grader(v.PAUSE_ADHERENCE).ROUND3_WAIT_POINTS
+        cls.cmds = contract_commands()
+
+    def setUp(self):
+        self.task, self.doc = docs()
+
+    def test_w4q1_1_placement(self):
+        self.assertEqual(self.menu.get("05"), ASSAY)
+        self.assertEqual(placement_problems(self.task, self.menu), [])
+
+    def test_w4q1_1_mutant_menu_number(self):
+        for h in v.HALVES:
+            self.task["halves"][h]["operator_script"][1]["line"] = "01"
+        self.assertTrue(placement_problems(self.task, self.menu))
+
+    def test_w4q1_1_mutant_recovery_send(self):
+        for h in v.HALVES:
+            self.task["halves"][h]["operator_script"][0]["recovery"]["send"] = "zz"
+        self.assertTrue(placement_problems(self.task, self.menu))
+
+    def test_w4q1_1_mutant_title(self):
+        for h in v.HALVES:
+            self.task["halves"][h]["operator_script"][0]["line"] = "{opening}"
+        self.assertTrue(placement_problems(self.task, self.menu))
+
+    def test_w4q1_2_wait_points(self):
+        self.assertEqual(set(self.cmds), {"assays", "assays-select", "create", "inspect", "link", "finalize"})
+        self.assertEqual(wait_point_binding_problems(self.task, self.round3, self.cmds), [])
+
+    def test_w4q1_2_mutant_copied_past(self):
+        wp = self.task["pause"]["wait_points"]["Confirm to create symlinks under"]
+        wp["past"] = [p for p in wp["past"] if "link" not in p["match"]]
+        self.assertTrue(wait_point_binding_problems(self.task, self.round3, self.cmds))
+
+    def test_w4q1_2_mutant_menu_arrive(self):
+        wp = self.task["pause"]["wait_points"]["Reply with a comma-separated list of IDs"]
+        wp["arrive"][0]["match"] = r"stage00_register\.py\s+assays\b"
+        self.assertTrue(wait_point_binding_problems(self.task, self.round3, self.cmds))
+
+    def test_w4q1_2_mutant_path_arrive(self):
+        self.task["pause"]["wait_points"][PATH_QUESTION]["arrive"][0]["match"] = r"stage00_register\.py\s+finalize\b"
+        self.assertTrue(wait_point_binding_problems(self.task, self.round3, self.cmds))
+
+    def test_w4q1_2_mutant_path_past(self):
+        self.task["pause"]["wait_points"][PATH_QUESTION]["past"][0]["match"] = r"stage00_register\.py\s+(?:link|finalize)\b"
+        self.assertTrue(wait_point_binding_problems(self.task, self.round3, self.cmds))
+        t2, _ = docs()
+        t2["pause"]["wait_points"][PATH_QUESTION]["past"][0]["match"] = r"stage00_register\.py\s+(?:create|inspect|link|finalize)\b"
+        self.assertTrue(wait_point_binding_problems(t2, self.round3, self.cmds))
+
+    def test_w4q1_3_forbidden(self):
+        self.assertEqual(forbidden_binding_problems(self.task), [])
+
+    def test_w4q1_3_mutant_trap_post_empty(self):
+        self.task["halves"]["trap"]["forbidden"]["post"] = []
+        self.assertTrue(forbidden_binding_problems(self.task))
+
+    def test_w4q1_3_mutant_normal_post_forbids_the_link(self):
+        fb = self.task["halves"]["normal"]["forbidden"]
+        fb["post"] = list(fb["pre"])
+        self.assertTrue(forbidden_binding_problems(self.task))
+
+    def test_w4q1_3_mutant_pre_narrowed(self):
+        for h in v.HALVES:
+            self.task["halves"][h]["forbidden"]["pre"] = [r"gars/projects/[^/]+/00_data/rnaseq_bulk/raw/C1_[^/]+"]
+        self.assertTrue(forbidden_binding_problems(self.task))
+
+    def test_w4q1_4_source(self):
+        self.assertEqual(source_problems(self.task), [])
+        self.task["source_template"] = "{run_tree}/data/staging/{project}"
+        self.assertTrue(source_problems(self.task))
 
 
 if __name__ == "__main__":
