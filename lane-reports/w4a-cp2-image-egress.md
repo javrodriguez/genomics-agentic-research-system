@@ -94,10 +94,34 @@ Each new clause mutant was proved red by one whole-file swap in one process: the
 No guard-evasion probe was written, per glitch-f3's standing rule.
 The only new planted forms are the witnesses above.
 
+## Fold 5 (lane review round 4: fold and close)
+
+glitch-f3 ruled fold and close under Javier's delegation, with no fifth review round. The fold below is that ruling's; it is not Javier's word.
+The Mac was on hold while I wrote and committed this fold, so no gate has run on its commit. The gates run after the lift, and athena runs the battery.
+
+| Finding | Fix | Witness (only its own rule refuses it) | Rule-drop mutant |
+|---|---|---|---|
+| W4A4-1 MAJOR | A witness for the process-start string rule. | a bare string statement `"system"` | the string rule dropped: should miss only `"system"` (pending the lift) |
+| W4A4-2 MAJOR | The process-start name set C is applied to every `Attribute.attr`, whatever its root, as well as to string constants. | `x = 1` then `x.system("x")` | the attribute rule dropped: should miss only `x.system` (pending the lift) |
+| W4A4-4 MINOR | An ImportFrom with `level > 0` keeps its leading dots in IM, so no relative import matches IMP. | `from .dataclasses import dataclass` | IM without the dots: should miss only that witness (pending the lift) |
+| W4A4-3 MINOR | The residual sentence below is corrected. No code change. | n/a | n/a |
+| W4A4-5 NIT | Named below. "A closed list" is corrected to "a fixed denylist". | n/a | n/a |
+
+Line 13 now holds 55 planted positives: 52 before this fold, plus 3.
+The closing gate is committed as checks line 16 and runs on athena through `run_checks`.
+It runs line 13 as committed, which must miss nothing and exit 0.
+It then runs line 13 three more times, each time with one of fold 5's three new rules removed.
+Each of those runs must exit 1 and miss exactly that rule's witness.
+
+The NITs of W4A4-5, named and not folded:
+- The rebinding rule does not read PEP 695 type-parameter names (TypeVar, ParamSpec and TypeVarTuple). This is harmless, because the chain and bare rules key on the Name id.
+- The `shell` keyword is read on `keyword.arg` only. Its reach is nil, because `subprocess` cannot be imported.
+
 ## Residual
 
 The allowlist was judged by construction, not by adversarial probing.
-Names that are not imported are still governed by a closed list of blocked builtins (N) plus the dunder-name rule, not by a full allowlist of builtin names.
+Names that are not imported are governed by a fixed denylist of builtin names (N) plus the dunder-name rule, not by a full allowlist of builtin names.
+Attribute routes from roots that are not imported, beyond the named sets (the process-start names C, the dunder rule and the chain rule), are not closed by construction. This is a named residual.
 
 ## Open items, carried to CP2
 
