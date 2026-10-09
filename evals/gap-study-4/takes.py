@@ -16,6 +16,8 @@ Neither door drives a take. A failed commit remains for human reconciliation.
 from __future__ import annotations
 
 import argparse
+import collections
+import copy
 import json
 import subprocess
 import sys
@@ -33,6 +35,7 @@ import study  # noqa: E402
 import batch  # noqa: E402
 from graders import labels4  # noqa: E402
 import stats  # noqa: E402
+import routing  # noqa: E402
 
 OPEN_LIMIT = batch.BLOCK
 
@@ -135,11 +138,55 @@ def cell_closed(history: list, cell) -> bool:
 
 
 def registration_outcomes(history: list) -> list:
-    """The committed fates, including the publication reader's ruled fates."""
-    if any(batch.is_ruling(o) for o in history):
-        import check_results
-        return check_results.publication(history)["attempts"]
-    return history
+    """Replay batch's strict own-event count; publication ambiguity cannot block registration.
+
+    Only rulings need new fates. Ordinary outcomes keep their committed state.
+    This reader neither verifies drive records nor applies publication's PL-3
+    deduplication: batch counts each ruled pause as its own event.
+    """
+    table = routing.load_table()
+    effective, closed = {}, {}
+    events = collections.defaultdict(set)
+    spent_cell, spent_slot = collections.Counter(), collections.Counter()
+    for entry in history:
+        key = (entry["slot"], entry["attempt"])
+        if batch.is_ruling(entry):
+            taken = effective[key]
+            if entry["ruling"] == labels4.RULE_RERUN:
+                effective[key] = dict(taken, **batch.Batch._fate(rerun=True))
+                continue
+            o = dict(taken, state=entry["route"], window_event=None)
+            cell, state = o["half_cell"], o["state"]
+            if state in batch.CELL_CAPPED_ROUTES:
+                count = len(events[(cell, state)] | {batch.cell_event(o)})
+                closes = count >= batch.half_cell_cap(table, state)
+                fate = batch.Batch._fate(final=closes, rerun=not closes, beyond_cap=closes,
+                    cell_state=labels4.INCOMPLETE_MECHANICAL if closes else None,
+                    cell_reason="committed ruling reaches the cell cap" if closes else None)
+            elif state == labels4.HARNESS_ERROR:
+                cap = table["caps"][state]
+                free = (spent_cell[(cell, state)] < cap["reruns_per_half_cell"] and
+                        spent_slot[(o["slot"], state)] < cap["reruns_per_slot"])
+                fate = batch.Batch._fate(final=not free, rerun=free, beyond_cap=not free)
+            else:
+                fate = batch.Batch._fate(final=True)
+            if cell in closed:
+                fate.update(cell_state=labels4.INCOMPLETE_MECHANICAL, cell_reason=closed[cell])
+                if state in batch.RERUN_ROUTES:
+                    fate.update(final=True, rerun=False, beyond_cap=True)
+            o.update(fate)
+        else:
+            o = copy.deepcopy(entry)
+        cell, state = o["half_cell"], o["state"]
+        if state in batch.CELL_CAPPED_ROUTES:
+            events[(cell, state)].add(batch.cell_event(o))
+        if o["rerun"] and state in batch.RERUN_ROUTES:
+            spent_cell[(cell, state)] += 1
+            spent_slot[(o["slot"], state)] += 1
+        if o["cell_state"] is not None:
+            closed[cell] = o["cell_reason"]
+        effective[key] = o
+    return list(effective.values())
 
 
 def guard_registration(row: dict, attempt: int, rows: list, history: list, *, live=()) -> None:

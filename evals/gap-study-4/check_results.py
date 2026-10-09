@@ -5,7 +5,7 @@ Default, --check and --ledger all check the complete publication. No recorded
 route is repaired. Before the freeze an empty tree says no takes, never zeros.
 After the freeze the pinned bytes and frozen content are checked before records
 are regraded with local v4 files. Publication reads committed cell states and
-closed rulings; a ruled pause must belong to one uniquely recoverable block.
+closed rulings; candidate blocks for a ruled pause must agree on its event count.
 Under w5b-4, runtime outputs have no copy fragment. Their commit history must
 start strictly after the freeze, including outputs later removed from the tree.
 """
@@ -91,13 +91,14 @@ def window_problems(history: list) -> list[str]:
 
 
 def pause_event(history: list, taken: dict) -> tuple:
-    """Derive the ruled take's unique block; no seventh ruling field (PL-3).
+    """Derive the ruled take's event; no seventh ruling field (narrowed PL-3).
 
     Enumerate admissible block edges, not exponentially many partitions. An edge
     spans one to BLOCK outcomes, has no repeated slot and cannot split one
     recorded window event or join two. Forward/backward reachability keeps only
-    edges in a complete partition. More than one block for the named take is an
-    ambiguity and refuses publication, rather than assuming fixed blocks of 3.
+    edges in a complete partition. Different edges are allowed when they give
+    the same event. An event-free candidate counts the ruled take on its own;
+    disagreement about sharing an existing event refuses publication.
     """
     outcomes = [o for o in history if not batch.is_ruling(o)]
     key = (taken["slot"], taken["attempt"])
@@ -129,14 +130,15 @@ def pause_event(history: list, taken: dict) -> tuple:
             backward.add(left)
     candidates = [(left, right) for left in forward for right in edges[left]
                   if right in backward and left <= at < right]
-    if len(candidates) != 1:
+    if not candidates:
         raise ValueError("the ruled pause's block cannot be derived uniquely from committed history")
-    left, right = candidates[0]
-    events = {o["window_event"] for o in outcomes[left:right] if o["window_event"] is not None}
-    if events:
-        return ("window", next(iter(events)))
-    first = outcomes[left]
-    return ("block", first["slot"], first["attempt"])
+    choices = set()
+    for left, right in candidates:
+        events = {o["window_event"] for o in outcomes[left:right] if o["window_event"] is not None}
+        choices.add(("window", next(iter(events))) if events else ("take", *key))
+    if len(choices) != 1:
+        raise ValueError("the ruled pause's event count cannot be derived uniquely from committed history")
+    return choices.pop()
 
 
 def ruling_closes(count: int, cap: int) -> bool:
