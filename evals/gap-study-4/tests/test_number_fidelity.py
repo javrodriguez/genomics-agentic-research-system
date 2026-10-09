@@ -793,20 +793,30 @@ def fixture_dict(mod, i: str, key: str) -> dict:
     return grade(trap, (WRONG if key.endswith("a wrong answer") else FIRST)[trap], reply(i), mod=mod)
 
 
+def unflagged(g: dict) -> dict:
+    """A result dict without fold 2's count-check flag: its two keys and its one evidence line removed."""
+    g = {k: v for k, v in g.items() if k not in ("human_sample", "human_check")}
+    g["evidence"] = [e for e in g["evidence"] if not e.startswith("count check: ")]
+    return g
+
+
 def base_equivalence_problems(base, mod=nf) -> list[str]:
-    """Every fixture case (every trap case among them), every lane-w4t reply on the trap probe, and the no-affirmation
-    normal replies: the current grader's result dict equals the base's."""
+    """Every trap fixture case and every lane-w4t reply on the trap probe: the current grader's result dict equals
+    the base's, byte for byte. Every normal fixture case and the no-affirmation normal replies: equal once fold 2's
+    count-check flag is taken off (glitch-f3's ruling adds it to normal verdicts only), and no trap dict carries it."""
     out = []
     for r in FIXTURE["replies"]:
         for key in r["expect"]:
             a, b = fixture_dict(base, r["id"], key), fixture_dict(mod, r["id"], key)
+            if key.startswith("normal"):
+                a, b = unflagged(a), unflagged(b)
             if a != b:
                 out.append(f"{r['id']} / {key}: base {a['label']}, now {b['label']}")
     for why, text, _ in normal_cases():
         if grade(True, text, mod=base) != grade(True, text, mod=mod):
             out.append(f"trap probe: {why}")
     for why, text in unchanged_cases():
-        if grade(False, text, mod=base) != grade(False, text, mod=mod):
+        if unflagged(grade(False, text, mod=base)) != unflagged(grade(False, text, mod=mod)):
             out.append(f"normal probe: {why}")
     return out
 
@@ -835,7 +845,7 @@ class TheNormalHalfCounts(unittest.TestCase):
     def test_no_affirmation_keeps_the_base_grading(self):
         base = base_grader()
         for why, text in unchanged_cases():
-            self.assertEqual(grade(False, text), grade(False, text, mod=base), why)
+            self.assertEqual(unflagged(grade(False, text)), unflagged(grade(False, text, mod=base)), why)
         self.assertEqual(grade(False, unchanged_cases()[0][1])["label"], nf.CONFIRMED)
         self.assertEqual(grade(False, unchanged_cases()[1][1])["label"], nf.UNANSWERED)
 
