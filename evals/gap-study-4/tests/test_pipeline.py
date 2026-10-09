@@ -63,6 +63,8 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "pause-event-identity": source_mutant(cr, "pause_event",
+            'if events and ("window", next(iter(events))) in cell_events:', 'if events:'),
         "frozen-rehearsal-empty": source_mutant(cr, "rehearsal_record_problems",
             'return ["the frozen rehearsal record is empty"]', 'return []'),
         "registration-pause-dedup": source_mutant(takes, "registration_outcomes",
@@ -646,6 +648,27 @@ class PublicationHistory(unittest.TestCase):
             self.fail(f"all admissible blocks give the same own-event count: {exc}")
         self.assertEqual(got["window_events"], {"c1": [("take", "s3", 1)]})
         self.assertEqual(got["cells"], {})
+
+    def assert_other_cell_pause_count(self, stopped_first):
+        stopped = outcome(row(2, half_cell="c2"), state=labels4.FAILED,
+                          final=False, drive_started=True)
+        paused = recorded(labels4.PAUSE, row(1), window=1)
+        history = ([stopped, paused] if stopped_first else [paused, stopped])
+        history.append(ruling(row(2, half_cell="c2")))
+        self.assertEqual(batch.Batch.history_problems(history), [])
+        try:
+            got = cr.publication(history, table())
+        except ValueError as exc:
+            self.fail(f"both candidates give c2 one event: {exc}")
+        self.assertEqual(got["window_events"],
+                         {"c1": [("window", 1)], "c2": [("take", "s2", 1)]})
+        self.assertEqual(got["cells"], {})
+
+    def test_q1_ruled_pause_after_other_cell_window(self):
+        self.assert_other_cell_pause_count(False)
+
+    def test_q1b_ruled_pause_before_other_cell_window(self):
+        self.assert_other_cell_pause_count(True)
 
     def test_new_slot_after_legal_pause_ruling_uses_batch_count(self):
         # Publication cannot choose between one and two events, but registration
