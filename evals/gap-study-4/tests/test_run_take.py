@@ -631,9 +631,11 @@ class TestExecArgv(MutantCase):
         if rt.agent_exec_argv(ID["take"], ["x"], config_home={"CODEX_HOME": "/opt/cfg"})[6:8] != [
                 "-e", "CODEX_HOME=/opt/cfg"]:
             out.append("a config home was not carried")
-        for name, home in (("login name", {"CODEX_API_KEY": FAKE_VALUE}),
-                           ("not a config home", {"HTTPS_PROXY": "http://proxy:3128"}),
-                           ("wrong value", {"CODEX_HOME": "/tmp"})):
+        # W4B3-1: the name cases carry the right value, so only the name clause can refuse them.
+        for name, home in (("login name", {"CODEX_API_KEY": rt.CONFIG_MOUNT}),
+                           ("not a config home", {"PATH": rt.CONFIG_MOUNT}),
+                           ("wrong value", {"CODEX_HOME": "/tmp"}),
+                           ("two entries", {"CODEX_HOME": rt.CONFIG_MOUNT, "CLAUDE_CONFIG_DIR": rt.CONFIG_MOUNT})):
             try:
                 argv = rt.agent_exec_argv(ID["take"], ["x"], config_home=home)
                 out.append(f"{name} accepted: {[a for a in argv if '=' in a]}"
@@ -646,6 +648,8 @@ class TestExecArgv(MutantCase):
     def test_config_home_refusals(self):
         self.assert_green_then_red(self.check_config_home, [
             ("guard-dropped", patched(rt, "_config_home_allowed", lambda name, value: True)),
+            ("name-unchecked", patched(rt, "_config_home_allowed", lambda name, value: value == rt.CONFIG_MOUNT)),
+            ("many-entries", patched(rt, "CONFIG_HOME_MAX", 2)),
         ])
 
     def test_agent_exec_argv(self):
@@ -1736,6 +1740,15 @@ class TestAuditAllowlists(MutantCase):
             ("subprocess-uses-widened", patched(me, "SUBPROCESS_USES", SUBPROCESS_USES | {("run", "value")})),
             ("subprocess-uses-emptied", patched(me, "SUBPROCESS_USES", frozenset())),
         ])
+
+    def test_subprocess_rule_fires_on_the_real_call(self):
+        """W4B3-2: with ("run", "call") removed from SUBPROCESS_USES, the rule itself flags the one real call."""
+        me = sys.modules[__name__]
+        self.assertEqual(process_audit(), [])
+        with mock.patch.object(me, "SUBPROCESS_USES", SUBPROCESS_USES - {("run", "call")}):
+            got = process_audit()
+        print(f"  mutant run-call-removed: {'red' if got else 'GREEN (survived)'}")
+        self.assertTrue([p for p in got if p.startswith("box/run_take.py: subprocess.run used as a call")], got)
 
 
 class TestProcessAudit(MutantCase):
