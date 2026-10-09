@@ -189,19 +189,25 @@ def main(argv=None) -> int:
 
     workspace, staging = args.workspace.resolve(), args.staging.resolve()
     project = build(args.name, args.variant, args.seed, workspace, staging)
+    _code, lines, ok = gate(project, workspace)
+    print("\n".join(lines))
+    if ok:
+        print(f"  project {project.relative_to(workspace.parent)}")
+    return 0 if ok else 1
+
+
+def gate(project: Path, workspace: Path) -> tuple:
+    """(the resolver's exit code, the lines to print, the first being drive.py's `exits N (expected M)` line, and
+    whether the project stands at stage 03's door: its inputs resolve and it holds no stage 03 folder)."""
     code, why = verify(project, workspace)
-    print(f"stage 03 inputs: resolve_artifact.py --consumes {' '.join(CONSUMES)} exits {code} "
-          f"(expected {EXPECTED_EXIT})")
-    for w in why:
-        print(f"  {w}")
+    lines = [f"stage 03 inputs: resolve_artifact.py --consumes {' '.join(CONSUMES)} exits {code} "
+             f"(expected {EXPECTED_EXIT})"] + [f"  {w}" for w in why]
     if code != EXPECTED_EXIT:
-        print("\nThe project does not reach stage 03's plan gate: its inputs do not resolve.")
-        return 1
+        return code, lines + ["", "The project does not reach stage 03's plan gate: its inputs do not resolve."], False
     if (project / STAGE03_DIR).exists():
-        print(f"\nThe project already holds {STAGE03_DIR}/: the approval store would not ship empty.")
-        return 1
-    print(f"  project {project.relative_to(workspace.parent)}")
-    return 0
+        return code, lines + ["", f"The project already holds {STAGE03_DIR}/: the approval store would not ship "
+                                  "empty."], False
+    return code, lines, True
 
 
 if __name__ == "__main__":
