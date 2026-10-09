@@ -598,6 +598,14 @@ class TheGateMutants(unittest.TestCase):
         task, doc = docs()
         self.assertEqual(ct.check_8_exclusions(task, doc), [])
         self.assertTrue(v.task_graded_paths(task, doc, ct.BUILD_NAME))
+        # Review W4I2-4: the red side. An exclusion over the staging folder hides the planted path under every
+        # harness in the table (a test table, never the shared one), and no graded path at all is a finding.
+        import dataclasses
+        import harness_bookkeeping as hb
+        tbl = {k: dataclasses.replace(e, run_tree_paths=("data/staging/**",)) for k, e in hb.TABLE.items()}
+        self.hit(ct.check_8_exclusions(task, doc, table=tbl), "a pre-registered exclusion hides")
+        with mock.patch.object(ct.v, "task_graded_paths", lambda *a, **k: set()):
+            self.hit(ct.check_8_exclusions(task, doc), "graded_paths is empty")
 
 
 if __name__ == "__main__":
