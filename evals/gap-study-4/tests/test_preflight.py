@@ -151,16 +151,22 @@ def filled(harness=rt.CLAUDE_CODE):
 
 
 class World:
-    """A passing take: spec, lock, sidecar expectation and the raw records a FakeRuntime gave run()."""
+    """A passing take: spec, lock, sidecar expectation and the raw records a FakeRuntime gave run().
+
+    The run tree and the config folder are the test's own fixed fake paths, never under the host's temp root: their
+    path is agent-visible and judged for leak words, and a host's temp root may carry one (athena's did). Only the
+    evidence folder is a real temp folder, for the host-side health read; its path is never judged."""
+    FAKE_TREE = True
+    FAKE_ROOT = "/srv/w0/t1"
 
     def __init__(self, harness=rt.CLAUDE_CODE):
         self.tmp = tempfile.mkdtemp(prefix="w-")
         self.harness = harness
-        self.tree = os.path.join(self.tmp, "tree")
-        self.cfg = os.path.join(self.tmp, "cfg")
+        root = self.FAKE_ROOT if self.FAKE_TREE else self.tmp
+        self.tree = os.path.join(root, "tree")
+        self.cfg = os.path.join(root, "cfg")
         self.ev = os.path.join(self.tmp, "rec", "ev")
-        for d in (self.tree, self.cfg, self.ev):
-            os.makedirs(d)
+        os.makedirs(self.ev)
         with open(os.path.join(self.ev, "health.jsonl"), "w") as fh:
             fh.write(json.dumps({"kind": "watcher-start", "at": 1.0}) + "\n")
         self.spec = rt.TakeSpec(image=IMAGE, run_tree=self.tree, config_dir=self.cfg, network=ID["net"],
@@ -222,7 +228,9 @@ class World:
 
     def raw(self):
         fake = FakeRuntime(self.script())
-        with mock.patch.object(pf, "STUDY_PATHS", STUDY):   # the host-side read looks for the filled list
+        # The host-side study-folder read looks for the filled list in the fake run tree: answered by the fixture
+        # (absent), never by whatever the host holds at that path.
+        with mock.patch.object(pf, "STUDY_PATHS", STUDY), mock.patch.object(pf.os.path, "lexists", lambda p: False):
             raw = pf.run(fake, self.probes(), begin_reply=self.begin, caller_env={"PATH": "/bin"})
         assert not fake.unexpected and not fake.script, (fake.unexpected, fake.script)
         return raw
