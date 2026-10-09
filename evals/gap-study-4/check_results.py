@@ -487,19 +487,21 @@ def check_frozen_content(rehearsal_plan=False) -> list[str]:
         return [f"the frozen file could not be compared with its freeze: {why}"]
     now = json.loads((HERE / "prereg.json").read_text())
     problems = frozen_content_problems(frozen, now)
+    rehearsal = []
     if rehearsal_plan:
         if frozen.get("rehearsal_record") != "rehearsal or preview":
-            problems.append("disposable rehearsal requires the exact rehearsal placeholder")
+            rehearsal.append("disposable rehearsal requires the exact rehearsal placeholder")
         else:
             print("  NOT CHECKED: rehearsal record (disposable rehearsal)")
     else:
-        problems += rehearsal_record_problems(frozen)
+        rehearsal += rehearsal_record_problems(frozen)
     print(f"  the frozen file compared with its freeze: {len(now.get('amendments') or [])} amendment(s) "
           f"on record, {len(problems)} unrecorded change(s)")
+    print(f"  rehearsal record: {len(rehearsal)} problem(s)")
     commit = freeze_commit()
     held = frozen_commit_problems(frozen, commit) if commit else ["the freeze commit could not be found"]
     print(f"  the freeze commit held to its rehearsal and each pin to its committed blob: {len(held)} problem(s)")
-    return problems + held
+    return problems + rehearsal + held
 
 
 # ---------------------------------------------------------------- the ledger

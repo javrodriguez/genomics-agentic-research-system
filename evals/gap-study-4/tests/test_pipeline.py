@@ -151,7 +151,7 @@ def review_mutations():
         "frozen-rehearsal-green": source_mutant(cr, "rehearsal_record_problems",
             'if lines[-1] != freeze.REHEARSAL_LAST_LINE:', 'if False:'),
         "frozen-rehearsal-placeholder": source_mutant(cr, "check_frozen_content",
-            'problems += rehearsal_record_problems(frozen)', 'pass'),
+            'rehearsal += rehearsal_record_problems(frozen)', 'pass'),
         "ledger-cell-bijection": source_mutant(cr, "validate_ledger",
             'if cell_ids.setdefault(cell, row["half_cell"]) != row["half_cell"]:', 'if False:'),
         "publication-cell-states": source_mutant(cr, "publication",
