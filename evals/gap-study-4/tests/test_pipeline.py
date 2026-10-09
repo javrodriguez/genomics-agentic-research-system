@@ -384,6 +384,8 @@ class ScratchIdentity(unittest.TestCase):
                 self.assertEqual(takes._git_at(repo.root, "config", "--local", "--get", "user.name", missing=True),
                                  "synthetic")
                 r = row()
+                (repo.root / "prereg.json").write_text(json.dumps({"rows": [r]}))
+                commit(repo.root, ["prereg.json"], "Record synthetic design")
                 takes.commit_registration(r, 1, root=repo.root, repo=repo.root, pre={"rows": [r]})
                 repo.commit_records(r, 1, outcome(r, state=labels4.FAILED, final=False))
                 takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
