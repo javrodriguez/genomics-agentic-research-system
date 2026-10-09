@@ -1472,7 +1472,8 @@ class TestPending(unittest.TestCase):
         with self.assertRaises(sidecar.NotReady):
             sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
         for f in EXPECTED_PENDING:   # each one alone still refuses
-            others = {x.upper(): ["filled-in-memory"] for x in EXPECTED_PENDING - {f}}
+            others = {x.upper(): (FORMAT if x == "inotifywait_format" else ["filled-in-memory"])
+                      for x in EXPECTED_PENDING - {f}}
             with mock.patch.multiple(sidecar, **others):
                 self.assertEqual(set(sidecar.pending()), {f})
                 with self.assertRaises(sidecar.NotReady):
@@ -1848,6 +1849,7 @@ class TestFold3(TakeCase):
         self.assertIsNone(r["rearmed_at"])
         self.assertEqual(t.health(), [])               # no watcher-start
         self.assertLess(elapsed, 1.0)
+        self.assertEqual(t.factory.made[-1].rc, -signal.SIGKILL)   # W4C3-3: the abandoned watcher is killed
 
     def test_mutant_setup_failure_unseen_goes_red(self):
         with mock.patch.object(sidecar.Sidecar, "_arm_gave_up",
@@ -1954,6 +1956,83 @@ class TestFold3Ast(unittest.TestCase):
         red("the Popen keyword shape widened (cwd accepted)")
 
 
+# ------------------------------------------------------------------------------------------------- fold 4 (lane review 3)
+class TestFold4(TakeCase):
+    """Lane review round 3's findings, folded on the lane lead's decisions (W4C3-1 to W4C3-5). No guard-evasion
+    form is written (glitch-f3's standing rule); the ast mutants only widen or empty this lane's own lists."""
+
+    REL = "box/sidecar.py"
+
+    # W4C3-1: free names are default-deny
+    def test_each_names_set_is_exactly_the_modules_own(self):
+        for rel, spec in BOX_MODULES.items():
+            with self.subTest(rel):
+                self.assertEqual(spec["names"], free_names(ast.parse(_source(rel))))
+
+    def test_mutant_names_widened_goes_red(self):
+        spec = dict(BOX_MODULES[self.REL], names=BOX_MODULES[self.REL]["names"] | {"eval"})
+        with mock.patch.object(sys.modules[__name__], "REFUSED_BUILTINS", REFUSED_BUILTINS - {"eval"}):
+            got = process_problems(PLANTED["eval"](_source(self.REL)), self.REL, spec, SUBPROCESS_SITES[self.REL])
+        self.assertEqual(got, [])
+        red("the free-name set widened (with the builtin denylist narrowed, eval through)")
+
+    def test_a_free_name_outside_the_set_is_refused(self):
+        with mock.patch.object(sys.modules[__name__], "REFUSED_BUILTINS", REFUSED_BUILTINS - {"eval"}):
+            got = process_problems(PLANTED["eval"](_source(self.REL)), self.REL, BOX_MODULES[self.REL],
+                                   SUBPROCESS_SITES[self.REL])
+        self.assertIn("box/sidecar.py: the free name eval, outside its closed set", got)
+
+    def test_mutant_names_emptied_goes_red(self):
+        spec = dict(BOX_MODULES[self.REL], names=set())
+        self.assertNotEqual(process_problems(_source(self.REL), self.REL, spec, SUBPROCESS_SITES[self.REL]), [])
+        red("the free-name set emptied (the real module refused)")
+
+    # W4C3-2: a filled format's shape
+    def test_a_badly_filled_format_still_reads_pending(self):
+        for bad in (dict(FORMAT, setup_lines="PENDING"), dict(FORMAT, setup_lines="Setting up watches."),
+                    {k: v for k, v in FORMAT.items() if k != "setup_lines"}, dict(FORMAT, setup_lines=[""]),
+                    dict(FORMAT, setup_lines=["PENDING"]), dict(FORMAT, extra=1), dict(FORMAT, established="PENDING")):
+            with self.subTest(bad):
+                with mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", bad):
+                    self.assertIn("inotifywait_format", sidecar.pending())
+        with mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", FORMAT):
+            self.assertNotIn("inotifywait_format", sidecar.pending())
+
+    def test_mutant_format_shape_unchecked_goes_red(self):
+        with mock.patch.object(sidecar, "_format_ok", lambda fmt: True), \
+                mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", dict(FORMAT, setup_lines="PENDING")):
+            self.assertNotIn("inotifywait_format", sidecar.pending())
+        red("a filled format with setup_lines still PENDING read as ready")
+
+    # W4C3-3: an abandoned watcher is killed
+    def test_mutant_abandoned_watcher_left_running_goes_red(self):
+        with mock.patch.object(sidecar.Sidecar, "_abandon", lambda self, w: None):
+            t, r, _ = TestFold3.setup_failing_take(self)
+        self.assertIsNone(t.factory.made[-1].rc)
+        red("a watcher given up on while arming left running")
+
+    # W4C3-5: a fault in the last drain after a self-exit is a fault
+    def died_with_a_fault(self):
+        t = self.take()
+        t.sc.handle("begin")
+        t.w.die(1)
+        t.w.queue.append(sidecar.WatchEvent(t.clock.time(), PLAN, ("ACCESS",)))
+        t.sc.pump()
+        return t
+
+    def test_a_fault_in_the_last_drain_is_named(self):
+        t = self.died_with_a_fault()
+        self.assertTrue(any("faulted" in p for p in t.sc.problems), t.sc.problems)
+        self.assertEqual(t.health()[-1]["exit_code"], 1)
+
+    def test_mutant_last_drain_fault_dropped_goes_red(self):
+        real = sidecar.Sidecar._drain
+        with mock.patch.object(sidecar.Sidecar, "_drain", lambda self, log=True: real(self, log=log) or True):
+            t = self.died_with_a_fault()
+        self.assertFalse(any("faulted" in p for p in t.sc.problems))
+        red("a fault in the last drain after a self-exit dropped")
+
+
 # ------------------------------------------------------------------------------------------------- interface 10's ast check
 # Default-deny by construction (fold 2, W4C1-1, the lane lead's decision). For each of this lane's non-test box
 # modules: the closed set of modules it may import, and for each, the closed set of attribute chains it may use
@@ -1981,9 +2060,15 @@ BOX_MODULES = {
             "time": {"sleep", "time"},
         },
         "from": {("__future__", "annotations"), ("dataclasses", "dataclass")},
+        # every free (unbound) Load name the module uses, derived once from its source (fold 4, W4C3-1)
+        "names": {
+            'BaseException', 'BlockingIOError', 'Exception', 'FileExistsError', 'FileNotFoundError', 'OSError',
+            'RecursionError', 'RuntimeError', 'ValueError', '__name__', 'all', 'any', 'bool', 'bytes', 'dict',
+            'float', 'int', 'isinstance', 'len', 'list', 'max', 'min', 'open', 'range', 'repr', 'set', 'sorted',
+            'str', 'tuple', 'type', 'zip'},
         # every Attribute.attr the module uses, derived once from its source (fold 3, W4C2-1)
         "attrs": {
-            'AF_UNIX', 'ArgumentParser', 'DefaultSelector', 'EACCES', 'ENOENT', 'EVENT_READ', 'O_CLOEXEC', 'O_CREAT',
+            '_abandon', 'AF_UNIX', 'ArgumentParser', 'DefaultSelector', 'EACCES', 'ENOENT', 'EVENT_READ', 'O_CLOEXEC', 'O_CREAT',
             'O_EXCL', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'O_WRONLY', 'PIPE', 'Popen', 'SIGKILL', 'SIGTERM',
             'SOCK_STREAM', 'S_ISDIR', 'S_ISLNK', 'S_ISREG', '_access', '_arm', '_arm_gave_up', '_begin', '_beneath',
             '_break', '_drain', '_drain_stderr', '_err', '_established', '_ev', '_event', '_finish', '_floor',
@@ -2014,6 +2099,10 @@ BOX_MODULES = {
             "sys": {"path", "path.insert"},
         },
         "from": {("__future__", "annotations")},
+        "names": {
+            'OSError', 'RuntimeError', 'UnicodeDecodeError', 'ValueError', '__file__', 'all', 'any', 'bool', 'bytes',
+            'callable', 'dict', 'enumerate', 'int', 'isinstance', 'len', 'list', 'open', 'set', 'sorted', 'str',
+            'tuple', 'zip'},
         "attrs": {
             'NOTE', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'S_IMODE', 'S_ISREG', 'abspath', 'add', 'append',
             'close', 'compile', 'count', 'decode', 'dirname', 'encode', 'endswith', 'fileno', 'find', 'flush',
@@ -2066,6 +2155,10 @@ def process_problems(src: str, rel: str, spec: dict, sites: list) -> list:
                 if node.level or (node.module, a.name) not in froms:
                     out.append(f"{rel}: from {node.module or '.'} import {a.name}, outside its allowlist")
     calls = []
+    names = spec["names"]
+    for name in sorted(free_names(tree)):
+        if name not in names:
+            out.append(f"{rel}: the free name {name}, outside its closed set")
     attrs = spec["attrs"]
     for node in ast.walk(tree):
         if isinstance(node, ast.Attribute):
@@ -2103,6 +2196,26 @@ def process_problems(src: str, rel: str, spec: dict, sites: list) -> list:
     if sorted(calls) != sorted(sites):
         out.append(f"{rel}: subprocess calls {sorted(calls)}, expected exactly {sorted(sites)}")
     return out
+
+
+def free_names(tree) -> set:
+    """The free Load names of a module: every Name read that no def, class, parameter, assignment, import or
+    except-as in the module binds (fold 4, W4C3-1). A dunder bare name is free unless the module binds it, so it
+    must be pinned in the module's closed set like any other."""
+    bound = set()
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Name) and not isinstance(n.ctx, ast.Load):
+            bound.add(n.id)
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            bound.add(n.name)
+        elif isinstance(n, ast.arg):
+            bound.add(n.arg)
+        elif isinstance(n, (ast.Import, ast.ImportFrom)):
+            for a in n.names:
+                bound.add(a.asname or a.name.split(".")[0])
+        elif isinstance(n, ast.ExceptHandler) and n.name:
+            bound.add(n.name)
+    return {n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)} - bound
 
 
 def popen_shape_problems(call, aliases, rel) -> list:
@@ -2231,7 +2344,8 @@ class TestProcessCheck(unittest.TestCase):
                                               SUBPROCESS_SITES[rel]), [])
         red("an attribute allowlist widened (os.popen through)")
         with mock.patch.object(sys.modules[__name__], "REFUSED_BUILTINS", set()):
-            self.assertEqual(process_problems(PLANTED["eval"](src), rel, spec, SUBPROCESS_SITES[rel]), [])
+            wide = dict(spec, names=spec["names"] | {"eval"})   # the free-name layer widened too (fold 4)
+            self.assertEqual(process_problems(PLANTED["eval"](src), rel, wide, SUBPROCESS_SITES[rel]), [])
         red("the refused builtins dropped (eval through)")
 
 
