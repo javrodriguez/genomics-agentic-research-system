@@ -439,6 +439,7 @@ def _marker_problems(table: dict) -> list[str]:
             for k in API_ERROR_KEYS:
                 if k in e:
                     p += _marker_list_problems(where, k, e[k], nonempty=key == "rate_limit_markers")
+            # A backstop (W4H1-7, the lane lead's decision): each rate-limit list is already refused when empty above.
             if key == "rate_limit_markers" and all(isinstance(e.get(k), list) for k in API_ERROR_KEYS) \
                     and not any(e[k] for k in API_ERROR_KEYS):
                 p.append(f"{where} names no marker")
@@ -786,8 +787,9 @@ def route(records: dict, table: dict | None = None) -> dict:
     winners = [row for row in matched if level[row["route"]] == top]
     routes = sorted({row["route"] for row in winners})
     spend = table["spend_cap_refusal"]
-    if spend_cap_holds(records, table) and not set(routes) & set(spend["outranked_by"]):
-        # item 1 (glitch-f3's ruling 4): outranked by nothing, so above pause; a human rules, never a re-run or a wait
+    if spend_cap_holds(records, table):
+        # item 1 (glitch-f3's ruling 4): outranked by nothing, so above pause; a human rules, never a re-run or a wait.
+        # Lane review round 1, W4H1-2: checked whatever the table's outranked_by says (check_table fixes it to []).
         raise RoutingRefused(f"{spend['id']}: an API error carries a spend-cap marker of harness "
                              f"{records['pin']['harness']!r}: a spend cap, not a rate limit; refused for a human ruling "
                              f"whatever else matches (matched {[m['id'] for m in matched]}): it never re-runs and never "

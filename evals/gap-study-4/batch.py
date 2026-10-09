@@ -312,6 +312,13 @@ def pending_caps(table: dict) -> list[str]:
     return out
 
 
+def is_pending(status) -> bool:
+    """Lane review round 1, W4H1-1 (the lane lead's decision, the spend-cap line only): a status is pending unless,
+    stripped and upper-cased, it does not start with PENDING, so "pending (x)" or " PENDING" never starts the loop.
+    The three sibling status lines below keep the base's prefix test (carried by the lane lead to glitch-f3)."""
+    return str(status).strip().upper().startswith(PENDING)
+
+
 def start_problems(table: dict) -> list[str]:
     """Everything that keeps the loop from starting on this table (empty when it may start)."""
     p = [f"cap {r} is still pending in routing.json" for r in pending_caps(table)]
@@ -325,7 +332,7 @@ def start_problems(table: dict) -> list[str]:
         p.append("pin_profiles_status is PENDING in routing.json")
     if str(table.get("rate_limit_markers_status", PENDING)).startswith(PENDING):
         p.append("rate_limit_markers_status is PENDING in routing.json")
-    if str(table.get("spend_cap_markers_status", PENDING)).startswith(PENDING):
+    if is_pending(table.get("spend_cap_markers_status", PENDING)):
         # item 1 (ruling 3 of 17:42): an unruled spend-cap list never lets the loop start
         p.append("spend_cap_markers_status is PENDING in routing.json (a spend cap stops for a human ruling)")
     return p

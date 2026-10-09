@@ -2575,9 +2575,8 @@ class TestNextTouchSpendCap(unittest.TestCase):
     def test_spend_check_can_fail(self):
         def paused(found):
             return [x for x in found if "as a 429: want refused" in x and x.endswith("got pause")]
-        t = spend_table()
-        t["spend_cap_refusal"]["outranked_by"] = [labels4.PAUSE]          # the refusal put below pause
-        self.assertEqual(len(paused(spend_problems(t))), 2 * len(FAKE_SPEND["type"]))
+        # (the refusal put below pause in the table: since fold 1, W4H1-2, route() ignores outranked_by and
+        # check_table refuses it; TestNextTouchFold1 holds both, with the run-time gate as its mutant)
         t = spend_table()
         t["spend_cap_refusal"]["when"] = labels4.BEFORE_FIRST_TURN         # the refusal in one phase only
         self.assertTrue(any(x.startswith(f"{A}: spend type") and x.endswith("got pause") for x in spend_problems(t)))
