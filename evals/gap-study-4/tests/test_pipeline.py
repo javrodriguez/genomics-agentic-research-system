@@ -68,6 +68,10 @@ def review_mutations():
     return {
         "case-folded-cost-arm": source_mutant(costs, "month_turn_allowed",
             'if arm not in study.ARMS:', 'if arm.upper() not in study.ARMS:'),
+        "publication-after-final": source_mutant(cr, "publication",
+            'if o["slot"] in final_slots:', 'if False:'),
+        "mechanical-error-type": source_mutant(completeness, "mechanical_states",
+            'except batch.BatchConfigError as exc:', 'except ValueError as exc:'),
         "strict-close-state": source_mutant(completeness, "mechanical_states",
             'strict = batch.Batch(None, None, None, table=table, history=history).closed_cells',
             'strict = {}'),
@@ -613,6 +617,16 @@ def ruling(r, attempt=1, route=labels4.PAUSE, word=labels4.RULE_ROUTE, by="synth
             "ruling": word, "route": route, "by": by}
 
 
+def after_ruled_final_history():
+    cap = batch.half_cell_cap(table(), labels4.PAUSE)
+    history = [recorded(labels4.PAUSE, attempt=i, window=i) for i in range(1, cap)]
+    history += [outcome(row(), cap, labels4.FAILED, final=False, drive_started=True),
+                ruling(row(), cap)]
+    later = recorded(labels4.GRADED, attempt=cap + 1)
+    later.update(cell_state=labels4.INCOMPLETE_MECHANICAL, cell_reason="synthetic closed cell")
+    return history + [later]
+
+
 class PublicationHistory(unittest.TestCase):
     def setUp(self):
         self.assertTrue(callable(getattr(cr, "publication", None)), "publication reads committed outcomes and rulings")
@@ -648,6 +662,15 @@ class PublicationHistory(unittest.TestCase):
             o["final"] = False
             with self.subTest(route=route), self.assertRaisesRegex(ValueError, "final"):
                 cr.publication([o], table())
+
+    def test_publication_refuses_outcome_after_ruled_or_committed_final(self):
+        ruled = after_ruled_final_history()
+        self.assertEqual(batch.Batch.history_problems(ruled), [])
+        self.assertEqual(batch.Batch.cell_history_problems(types.SimpleNamespace(table=table()), ruled), [])
+        committed = [recorded(labels4.GRADED), recorded(labels4.GRADED, attempt=2)]
+        for history in (ruled, committed):
+            with self.subTest(history=history), self.assertRaisesRegex(ValueError, "after.*final"):
+                cr.publication(history, table())
 
     def test_ruled_pause_counts_its_existing_block_once(self):
         stopped = outcome(row(2), state=labels4.FAILED, final=False)
@@ -985,6 +1008,38 @@ def pre_registration(tasks=("synthetic-task",)):
 class Reporting(unittest.TestCase):
     def setUp(self):
         self.assertTrue(callable(getattr(result_page, "from_records", None)), "result renders stats tables")
+
+    def test_mechanical_replay_error_is_value_error_and_cli_refusal(self):
+        history = after_ruled_final_history()
+        def replay(*args, **kwargs):
+            return completeness.mechanical_states(history, {}, table())
+        try:
+            replay()
+        except Exception as exc:
+            self.assertIsInstance(exc, ValueError)
+            self.assertIn("after its final attempt", str(exc))
+        else:
+            self.fail("invalid replay must refuse")
+        with ExitStack() as stack:
+            for module, name, value in (
+                (cr, "is_shallow", False), (cr, "runtime_timing_problems", []),
+                (takes, "load_rows", [dict(row(), attempt=1)]), (takes, "read_history", history),
+                (stats, "load_results", []), (cr.prereg, "is_frozen", True),
+                (cr.prereg, "require_frozen", {}), (cr, "check_pins", []),
+                (cr, "check_frozen_content", []),
+                (cr, "pipeline", types.SimpleNamespace(grade_committed=None))):
+                stack.enter_context(mock.patch.object(module, name, return_value=value))
+            stack.enter_context(mock.patch.object(cr, "HERE", Path("/synthetic/publication")))
+            stack.enter_context(mock.patch.object(cr, "check_publication", side_effect=replay))
+            output = stack.enter_context(redirect_stdout(io.StringIO()))
+            try:
+                code = cr.main(["--check"])
+            except Exception as exc:
+                self.fail(f"checker must print REFUSE instead of raising: {exc}")
+            self.assertEqual(code, 1)
+            self.assertIn("check_results: REFUSE:", output.getvalue())
+            self.assertIn("after its final attempt", output.getvalue())
+            self.assertNotIn("Traceback", output.getvalue())
 
     def test_strict_batch_close_is_named_in_completeness_and_result(self):
         native = table()
