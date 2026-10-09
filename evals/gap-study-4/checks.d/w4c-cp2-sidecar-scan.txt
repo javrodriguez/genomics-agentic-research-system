@@ -1,0 +1,11 @@
+# Lane w4c-cp2-sidecar-scan: CP2's sidecar (snapshots, watcher, health) and the commit scan, as code on fakes.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_sidecar.py
+python3 -B -W ignore evals/gap-study-4/tests/test_scan_record.py
+# Interface 10's default-deny, by ast, over this lane's two non-test box modules: planted positives first (each
+# must be refused), then a closed import allowlist per module, subprocess only in sidecar.py and called only as
+# the one Popen inside inotifywait_factory, and no os.kill/killpg/system/exec*/spawn*/posix_spawn*/fork*,
+# pty.spawn, asyncio.create_subprocess_* or shell=True.
+python3 -B -W ignore evals/gap-study-4/tests/test_sidecar.py --process-check
+# Neither module types a harness name (only the seam's three modules may).
+! grep -nE "claude-code|fake-second|\bcodex\b|\bgemini\b" evals/gap-study-4/box/sidecar.py evals/gap-study-4/box/scan_record.py
