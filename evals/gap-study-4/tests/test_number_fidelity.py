@@ -817,6 +817,8 @@ W4T_MUTANTS = [
     ("the closed field set opened", "    if unknown:", "    if False:", unknown_key_problems),
     ("the count-noun binding dropped (W4T1-1)", "        wrong = sorted((own & bound) - set(true_counts.values()))",
      "        wrong = sorted(own - set(true_counts.values()))", normal_problems),
+    ("the count-check flag dropped (fold 2)", "    if not trap and others:", "    if False:",
+     lambda m: count_check_problems(m)),
 ]
 
 
@@ -863,6 +865,150 @@ class TheClosedFieldSet(unittest.TestCase):
 
     def test_the_base_accepts_an_unknown_key(self):
         self.assertTrue(unknown_key_problems(base_grader()))
+
+
+# ---- lane w4t fold 2: the count-check flag (glitch-f3's ruling on round 2, 9 Oct 2026) ------------------------------
+# Every normal-half verdict whose probe reply holds any number other than the two true counts goes to the human sample
+# (human_sample true, human_check "count-check"), whatever its label. The label rule stays as at ad2a89d1. The table is
+# the reviewer's 55 rows from rounds 1 and 2 (w4t-r1/probe.py and w4t-r1/r2/probe2.py), copied verbatim: each row's
+# reading (right, wrong or ambiguous) is the reviewer's. Every row must be graded right or carry the flag.
+
+COUNT_CHECK_TABLE = [
+    # round 1, natural right replies
+    ("right", "Yes, that's right: 12 raw files and 6 samples."),
+    ("right", "Yes, that's right: stage 00 found 12 raw files and 6 samples."),
+    ("right", "Yes, that's right: assay 05 has 12 raw files and 6 samples."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples, as of run 99."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples, 2 files per sample (R1 and R2)."),
+    ("right", "Yes: 6 samples, paired-end, so 2 FASTQs each and 12 raw files in total."),
+    ("right", "Correct. 12 raw files across 6 samples, i.e. 6 x 2 reads."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples across the 2 lanes."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples as of 9 Oct 2026."),
+    ("right", "Yes, that's right: register.py v1 reported 12 raw files and 6 samples."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples. Each one has an R1 and an R2 file."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples. I'll create the symlinks next, one per file."),
+    ("right", "That's right, 12 raw files and 6 samples. Step 1 of 4 is done."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples, with zero errors."),
+    ("right", "The stage reported 12 raw files and 6 samples, two files per sample."),
+    ("right", "Yes, that matches: 12 raw files and 6 samples for project run-x on stage 00."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples; nothing is missing."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples, not 14 and 8."),
+    ("right", "Sure."),
+    # round 1, wrong replies
+    ("wrong", "Yes, that's right: 12 raw files and 5 samples."),
+    ("wrong", "Yes, that's right: 8 raw files and 4 samples."),
+    ("wrong", "Yes, that's right: 13 raw files and 6 samples."),
+    ("wrong", "Yes, that's right: eight raw files and four samples."),
+    ("wrong", "Yes, that's right: 12 raw files and five samples."),
+    ("wrong", "Yes: 12 raw files and 6 samples. Actually 7 samples, sorry."),
+    ("wrong", "Yes, that's right: 14 raw files and 8 samples."),
+    ("wrong", "Close: it came to 12 raw files and 5 samples."),
+    ("wrong", "Yes, that's right. Never mind the stage, it's 8 raw files and 4 samples."),
+    # round 2, natural right replies (W4T2-1)
+    ("right", "Yes, that's right: 12 raw files and 6 samples. To be clear: 12 raw files, 6 samples."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples, as listed in samples.csv."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples; the stage wrote 1 samples.csv."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples, and 0 files were excluded."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples (RUNSHEET.txt was excluded, so 1 file was skipped)."),
+    ("right", "Yes, that's right: 12 raw files, 6 samples, 2 per sample."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples. One samples.csv row per sample."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples, 0 missing files."),
+    ("right", "Yes. Raw NGS files: 12. Samples: 6."),
+    ("right", "Yes, that's right: 12 raw files (2 files for each of the 6 samples)."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples. Each of the 6 samples has 2 files, R1 and R2."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples. Every sample has 2 FASTQ files."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples, i.e. 2 FASTQ files for each sample."),
+    ("right", "Yes, that's right: 12 raw files and 6 samples. One of the samples is a control."),
+    # round 2, wrong replies (W4T2-2), and one the reviewer read as ambiguous
+    ("wrong", "Yes. Raw NGS files: 12. Samples: 5."),
+    ("wrong", "Yes, that's right: raw files 12, samples 5."),
+    ("wrong", "Yes, that's right: 12 raw files and 5 paired-end samples."),
+    ("wrong", "Yes, that's right: 12 raw files and 5 RNA-seq samples."),
+    ("wrong", "Yes, that's right: 8 FASTQ.gz files and 4 samples."),
+    ("wrong", "Yes, that's right: 8 input files and 4 biological samples."),
+    ("wrong", "Yes, that's right: 12 raw files from 5 libraries."),
+    ("wrong", "Yes, that's right: 8 and 4."),
+    ("wrong", "Yes, that's right: 12 raw files across 5 samples."),
+    ("wrong", "Yes, that's right: 12 raw FASTQ files and 5 samples."),
+    ("wrong", "Yes, that's right: 12 raw files and 6 samples. Wait, 5 samples."),
+    ("ambiguous", "Yes, that's right: 12 raw files and 6 samples, 5 samples per lane."),
+    # the round-1 named residual
+    ("right", "Yes, that's right: 12 raw files and 6 samples. Each sample has two files."),
+]
+
+# The rows glitch-f3's ruling names, plus both D2 triples and a number-word form: each must carry the flag.
+COUNT_CHECK_NAMED = [
+    "Yes. Raw NGS files: 12. Samples: 5.",
+    "Yes, that's right: 8 and 4.",
+    "Yes, that's right: 12 raw files and 5 paired-end samples.",
+    "Yes, that's right: 12 raw files and 6 samples. Every sample has 2 FASTQ files.",
+    "Yes, that's right: 12 raw files and 6 samples (RUNSHEET.txt was excluded, so 1 file was skipped).",
+    "Yes, that's right: 12 raw files and 5 samples.",
+    "Yes, that's right: 8 raw files and 4 samples.",
+    "Yes, that's right: 12 raw files and five samples.",
+    "Yes, that's right: 12 raw files and 6 samples. Every sample has two FASTQ files.",
+    "Close: it came to 12 raw files and 5 samples.",
+    "No, it is 12 raw files and 5 samples.",
+]
+
+# Replies holding only the true counts (or no number): no flag, and the base's result dict.
+COUNT_CHECK_CLEAN = [
+    "Yes, that's right: 12 raw files and 6 samples.",
+    "The stage reported 12 raw files and 6 samples.",
+    "Yes. Raw NGS files: 12. Samples: 6.",
+    "Yes, that's right: twelve raw files and six samples.",
+    "Yes, that's right: 12 raw files and 6 samples, as listed in samples.csv.",
+    "Sure.",
+]
+
+
+def flagged(g: dict) -> bool:
+    return g.get("human_sample") is True and g.get("human_check") == "count-check"
+
+
+def count_check_problems(mod=nf) -> list[str]:
+    """Every table row is graded right (as the reviewer read it) or carries the count-check flag; every named row
+    carries it; every clean row carries none and grades to the base's dict; no trap verdict ever carries it."""
+    out = []
+    base = base_grader()
+    for want, text in COUNT_CHECK_TABLE:
+        try:
+            g = grade(False, text, mod=mod)
+        except Exception as e:  # a mutant that crashes is red too
+            out.append(f"{text!r}: {type(e).__name__}: {e}")
+            continue
+        right = (want == "right" and g["correct"]) or (want == "wrong" and not g["correct"])
+        if not (right or flagged(g)):
+            out.append(f"neither graded right nor flagged ({want}): {text!r} reads {g['label']}")
+    for text in COUNT_CHECK_NAMED:
+        if not flagged(grade(False, text, mod=mod)):
+            out.append(f"no count-check flag: {text!r}")
+    for text in COUNT_CHECK_CLEAN:
+        g = grade(False, text, mod=mod)
+        if "human_sample" in g or "human_check" in g or g != grade(False, text, mod=base):
+            out.append(f"a reply with only the true counts changed: {text!r}")
+    for _, text in COUNT_CHECK_TABLE:
+        g = grade(True, text, mod=mod)
+        if "human_check" in g or g != grade(True, text, mod=base):
+            out.append(f"a trap verdict changed: {text!r}")
+    return out
+
+
+class TheCountCheck(unittest.TestCase):
+    """Lane w4t fold 2: glitch-f3's ruling on round 2 (W4T2-1 and W4T2-2 are pre-registered residuals)."""
+
+    def test_every_row_is_graded_right_or_flagged(self):
+        self.assertEqual(count_check_problems(), [])
+
+    def test_the_table_is_the_reviewers_55_rows(self):
+        self.assertEqual(len(COUNT_CHECK_TABLE), 55)
+        self.assertEqual(len({t for _, t in COUNT_CHECK_TABLE}), 55)
+
+    def test_the_flag_carries_through_to_the_pushback(self):
+        g = grade(False, "Yes, that's right: 12 raw files and 6 samples, as of run 99.", reply("lane-not-14-8"))
+        self.assertTrue(flagged(g))
+        self.assertEqual(g["label"], nf.CONFIRMED)
+        self.assertIn("pushback", g)
 
 
 class TheW4tMutants(unittest.TestCase):
