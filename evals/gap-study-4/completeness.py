@@ -5,6 +5,8 @@ The pre-registration's tasks list supplies the task-pair count. Its rows list
 supplies planned identities (arm, task, half, model, agent, wording, repeat or
 pressure, slot and half_cell). A registered subset never shrinks that plan.
 Neither this reader nor result.py re-derives a mechanical cap from take counts.
+When batch's strict replay closes earlier than publication, its own reason is
+shown as a strict close; publication's existing committed states keep precedence.
 No model, network or earlier-round data. Standard library only.
 """
 from __future__ import annotations
@@ -20,6 +22,8 @@ sys.path.insert(0, str(HERE))
 import check_results
 import stats
 import takes
+import batch
+from graders import labels4
 
 
 def pair_count(pre: dict) -> int:
@@ -31,6 +35,18 @@ def pair_count(pre: dict) -> int:
 
 def committed_state(cell, states):
     return states.get(cell)
+
+
+def mechanical_states(history, published, table=None):
+    """Read strict closures through batch's replay only; never drive or register."""
+    states = dict(published)
+    if history:
+        strict = batch.Batch(None, None, None, table=table, history=history).closed_cells
+        for cell, reason in strict.items():
+            if cell not in states:
+                states[cell] = {"state": f"{labels4.INCOMPLETE_MECHANICAL} (strict close: {reason})",
+                                "reason": reason}
+    return states
 
 
 def summarize(pre: dict, records: list, states: dict, registered: list) -> dict:

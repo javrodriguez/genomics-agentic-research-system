@@ -41,8 +41,9 @@ def stats_block(derived: dict) -> str:
 
 def from_records(records: list, pre: dict, rows: list, history: list, table=None) -> dict:
     published = check_results.publication(history, table)
+    states = completeness.mechanical_states(history, published["cells"], table)
     return {"stats": stats.derive(records, pre[stats.DESIGN_KEY]),
-            "completeness": completeness.summarize(pre, records, published["cells"], rows)}
+            "completeness": completeness.summarize(pre, records, states, rows)}
 
 
 def derive() -> dict | None:
