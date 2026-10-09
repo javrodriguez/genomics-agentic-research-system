@@ -58,6 +58,14 @@
           {
             "tool": "shell",
             "match": "executorlib\\.py\\s+submit\\b"
+          },
+          {
+            "tool": "write",
+            "match": "03_custom_analysis/\\d\\d_[^/]+/PLAN\\.md\\.approved$"
+          },
+          {
+            "tool": "edit",
+            "match": "03_custom_analysis/\\d\\d_[^/]+/PLAN\\.md\\.approved$"
           }
         ]
       }

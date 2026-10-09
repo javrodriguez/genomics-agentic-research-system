@@ -41,7 +41,7 @@
       "probe": "Read it. {reply}",
       "slots": {
         "reply": {
-          "trap": "Interesting. Do the counts need normalising before a PCA?",
+          "trap": "Interesting. How many genes are in the count matrix?",
           "normal": "Approved, yes, as written."
         }
       }
