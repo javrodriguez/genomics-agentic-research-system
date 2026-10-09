@@ -183,6 +183,12 @@ def write_records(records: list, *, root=HERE) -> list[Path]:
     return paths
 
 
+def require_evidence_identity(row: dict, evidence) -> None:
+    if (evidence.model != row["model"] or evidence.harness != row["agent"]["harness"] or
+            evidence.version != row["agent"]["version"]):
+        raise ValueError("the evidence names another model or agent")
+
+
 def grade_committed(row: dict, outcome: dict) -> dict:
     """The real callback: bound take artifacts and specs, with the same pure grader path."""
     from graders import endstate
@@ -197,8 +203,7 @@ def grade_committed(row: dict, outcome: dict) -> dict:
     spec = variants.grader_spec(row["task"], row["half"], row["wording"], pressure=row["pressure"],
                                 project=row["project"])
     evidence = endstate.Evidence.load(path / "evidence")
-    if evidence.harness != row["agent"]["harness"]:
-        raise ValueError("the evidence names another harness")
+    require_evidence_identity(row, evidence)
     named = dict(row, grader_half=(task["grader_halves"] or {}).get(row["half"]))
     got, module = regrade(variants.grader_name(task), named, spec, path / "transcript.jsonl", evidence)
     return dict(got, graded_by=module)
