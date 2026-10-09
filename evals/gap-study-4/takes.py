@@ -33,6 +33,14 @@ row was meant to run. Round 2 has one class: the local tier was removed at CP0. 
 ran under is not this field's to say; the driver's environment.json beside each take records it.
 
 No model, no network, stdlib only.
+
+Round 4's repo seam calls guard_registration before committing a row. A
+RegistrationGuard holds only the registrations this process just committed in
+its live block; a new instance holds none. A missing committed outcome therefore
+refuses registration on every restart, including a lost commit after a pause.
+CP2 calls registered only after its registration commit succeeds. After all of a
+block's outcomes are committed, the next check starts a new block. The limit is
+batch.BLOCK, and the committed final/cell state decides whether a slot is free.
 """
 
 from __future__ import annotations
@@ -51,6 +59,97 @@ LEDGER = HERE / "takes.json"
 sys.path.insert(0, str(HERE))
 import prereg  # noqa: E402
 import study  # noqa: E402
+import batch  # noqa: E402
+from graders import labels4  # noqa: E402
+
+OPEN_LIMIT = batch.BLOCK
+
+
+def agent_problems(row: dict) -> list[str]:
+    return batch.agent_problems(row)
+
+
+def outside_live_block(waiting: list, live) -> list:
+    return [key for key in waiting if key not in live]
+
+
+def slot_final(outcome: dict) -> bool:
+    return outcome["final"]
+
+
+def cell_closed(history: list, cell) -> bool:
+    return any(not batch.is_ruling(o) and o["half_cell"] == cell and
+               o["cell_state"] == labels4.INCOMPLETE_MECHANICAL for o in history)
+
+
+def guard_registration(row: dict, attempt: int, rows: list, history: list, *, live=()) -> None:
+    """CP2 register(row, attempt)'s required guard; all inputs describe committed bytes.
+
+    rows holds registered rows with their attempt; history is batch's closed
+    outcomes/rulings in commit order. live contains only (slot, attempt) pairs
+    registered by this instance in its current block, never restored on restart.
+    An exception precedes every write and every launch.
+    """
+    bad = agent_problems(row)
+    if bad:
+        raise ValueError("; ".join(bad))
+    if type(attempt) is not int or attempt < 1:
+        raise ValueError("attempt must be a positive int")
+    if any(not isinstance(row.get(k), str) or not row[k] for k in ("slot", "half_cell")):
+        raise ValueError("slot and half_cell must be non-empty ids")
+    bad = batch.Batch.history_problems(history)
+    if bad:
+        raise ValueError("; ".join(bad))
+    key = (row["slot"], attempt)
+    registered = [(r["slot"], r["attempt"]) for r in rows]
+    if len(registered) != len(set(registered)):
+        raise ValueError("a registration occurs twice")
+    done = {(o["slot"], o["attempt"]): o for o in history if not batch.is_ruling(o)}
+    waiting = [k for k in registered if k not in done]
+    if outside_live_block(waiting, live):
+        raise ValueError("an earlier row is registered with no committed outcome; human reconciliation required")
+    if key in registered:
+        raise ValueError("this slot and attempt are already registered; no re-registration")
+    if len(waiting) >= OPEN_LIMIT:
+        raise ValueError(f"at most {OPEN_LIMIT} open rows (three in one live block)")
+    if cell_closed(history, row["half_cell"]):
+        raise ValueError("the half-cell is closed by its committed state")
+    prior = [o for o in done.values() if o["slot"] == row["slot"]]
+    if not prior:
+        if attempt != 1:
+            raise ValueError("the first attempt is 1")
+        return
+    last = prior[-1]
+    if attempt != last["attempt"] + 1:
+        raise ValueError("the next attempt follows the last committed attempt")
+    if slot_final(last):
+        raise ValueError("the slot has a final committed outcome")
+    if batch.needs_ruling(last):
+        ruled = [r for r in history if batch.is_ruling(r) and
+                 (r["slot"], r["attempt"]) == (last["slot"], last["attempt"])]
+        if not ruled or ruled[-1]["ruling"] != labels4.RULE_RERUN:
+            raise ValueError("the stopped take needs a committed re-run ruling")
+    elif last["state"] not in batch.RERUN_ROUTES and not (
+            last["state"] == labels4.FAILED and last["drive_started"] is False):
+        raise ValueError("the slot has no committed permission to re-run")
+
+
+class RegistrationGuard:
+    """One live block in one repo instance; never persist or restore this object."""
+    def __init__(self):
+        self.live = set()
+
+    def check(self, row: dict, attempt: int, rows: list, history: list) -> None:
+        done = {(o["slot"], o["attempt"]) for o in history if not batch.is_ruling(o)}
+        if self.live <= done:
+            self.live.clear()
+        elif self.live & done:
+            raise ValueError("a row is registered with no committed outcome in the finishing block")
+        guard_registration(row, attempt, rows, history, live=self.live)
+
+    def registered(self, row: dict, attempt: int) -> None:
+        """Called only after a successful registration commit, before any drive."""
+        self.live.add((row["slot"], attempt))
 
 # ROUND 2, CP3: the two ollama classes are gone with the local tier (CP0, amendment A5). Their only reader is
 # --environment-class below, so a row can no longer be registered under a tier this study does not have.

@@ -251,11 +251,6 @@
       "reason": "The binding for round 4: the study's name, folder and title (gap-study-4), its published-section markers, the prior round it reads as data (ROUND1 now points at evals/gap-study-3, with PRIOR_STUDY and PRIOR_REL naming it honestly) and the arms it runs (ARMS = A and C). Every copied file builds its paths and markers from this file, so no other copied file needs to name this study."
     },
     {
-      "path": "takes.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/takes.py"
-    },
-    {
       "path": "test_round4.py",
       "status": "new",
       "reason": "Round 4's battery: discovers tests/test_*.py with unittest and refuses to pass on zero tests."
