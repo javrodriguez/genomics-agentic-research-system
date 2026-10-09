@@ -1,0 +1,68 @@
+{
+  "lane": "w5b-cp5-pipeline",
+  "files": [
+    {
+      "path": "tests/test_pipeline.py",
+      "status": "new",
+      "reason": "R1-R33: pipeline contracts and in-memory mutants"
+    },
+    {
+      "path": "COPIED.d/w5b-cp5-pipeline.json",
+      "status": "new",
+      "reason": "R1, R18: pipeline ownership"
+    },
+    {
+      "path": "checks.d/w5b-cp5-pipeline.txt",
+      "status": "new",
+      "reason": "R10: pipeline checks"
+    },
+    {
+      "path": "freeze.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/freeze.py",
+      "reason": "R7, R18 and ruling w5b-3: freeze pins and one-time generated record claims"
+    },
+    {
+      "path": "takes.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/takes.py",
+      "reason": "R2, R5, R21-R25, R28, R33: committed registration guard and human ruling door"
+    },
+    {
+      "path": "check_results.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/check_results.py",
+      "reason": "R3, R14, R24, R26-R28, R31: re-verify recorded routes, rulings, windows and records"
+    },
+    {
+      "path": "run.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/run.py",
+      "reason": "R2-R4, R9, R12-R14, R17, R23-R28, R31: v4 regrading and interface 11 lists"
+    },
+    {
+      "path": "result.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/result.py",
+      "reason": "R8, R12, R15-R16, R23-R24, R28, R30-R32: tables solely from stats and committed completeness"
+    },
+    {
+      "path": "completeness.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/completeness.py",
+      "reason": "R2, R23, R28, R30: every planned half-cell and task-list denominator"
+    },
+    {
+      "path": "costs.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/costs.py",
+      "reason": "R6 R11 R29: per-call costs, dated prices and round spending predicates."
+    },
+    {
+      "path": "freeze_rehearsal.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/freeze_rehearsal.py",
+      "reason": "R19 R20: local imports and complete frozen-state round 4 gate."
+    }
+  ]
+}

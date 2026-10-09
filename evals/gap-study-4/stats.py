@@ -118,7 +118,7 @@ def _load(name: str, path: Path):
 intervals = _load("gap4_intervals", HERE / "intervals.py")
 labels4 = _load("gap4_labels4", HERE / "graders" / "labels4.py")
 
-RESULTS_DIR = HERE / "results"
+RESULTS_DIR = HERE / "records"
 PREREG = HERE / "prereg.json"          # the frozen pre-registration only; never the draft
 RESULT_PAGE = HERE / "RESULT.md"        # result.py's page; stats only reads its stats block
 DESIGN_KEY = "stats_design"

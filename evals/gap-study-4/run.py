@@ -1,332 +1,239 @@
 #!/usr/bin/env python3
-"""Grade every committed take, and say what state each cell is in.
+"""Regrade committed takes with local v4 graders and emit interface 11 lists.
 
-    python3 evals/gap-study-2/run.py --all
-    python3 evals/gap-study-2/run.py --task scope-read
+records/<task>.json is the only results destination. Routing has already happened
+inside the drive: this module and check_results only re-verify its decision.
+Publication reads committed cell states and closed human rulings. Rehearsals and
+pauses never become take records; a final harness error has no views and leaves
+the denominator. Empty input says no takes and creates no placeholder record.
 
-WHAT IT PRODUCES. One `results/<task>.json` per task, holding, per model per half, the n labels and
-`k of n`, and a state per cell in {RAN, incomplete — mechanical, not run — <reason>}. A second run
-is byte-identical, because every field is re-derived from committed transcripts and the frozen file
-and nothing is carried over from the last run.
-
-IT REFUSES AGAINST A DRAFT. This is the file that turns transcripts into numbers, so it is the file
-that most needs the pre-registration to be frozen. A number graded against a design that can still
-change was not pre-registered, whatever the design says about itself. `prereg.require_frozen` is
-called before anything is read.
-
-NO MODEL, NO NETWORK. The graders are stdlib and read committed bytes. A cell's state is decided
-from what is on disk and from the ledger, never from what a label looks like -- a runner that could
-decide a cell was `incomplete` after seeing its labels could decide it whenever the labels were
-disappointing.
-
-EVERY MODEL IN THE FIXED LIST GETS A ROW, including one that will never produce a take. A model that
-does not run publishes `not run` with its reason from the pre-registration. Dropping it from the
-output would make the table read as though the axis had been narrower from the start.
-
-A CELL WITH NO TRANSCRIPTS IS NOT A PASS AND NOT A FAILURE. It is `not run — no transcript`, and it
-says so. This study has been bitten before by a gate that reported zero findings over zero inputs.
+CP2 supplies registered rows and batch history. A row's record_dir names its
+committed take folder under this round, containing transcript.jsonl and evidence/
+(endstate.Evidence's closed layout). model and agent are mandatory. The pure
+produce() seam accepts a grader callback so synthetic takes need no filesystem,
+model, container or network. CLI grading requires the frozen pre-registration.
 """
-
 from __future__ import annotations
 
 import argparse
-import importlib
+import collections
+import copy
+import importlib.util
 import json
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
-# Round 2, CP0: this study's directory BEFORE evals/, whose same-named modules otherwise shadow it.
-sys.path.insert(0, str(REPO / "evals"))
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(HERE / "graders"))
+import batch
+import check_results
+import prereg
+import routing
+import stats
+import takes
+import transcript_view
+import variants
+from graders import labels4
 
-import prereg  # noqa: E402
-import takes as takes_mod  # noqa: E402
-import transcript as tx  # noqa: E402
-import labels  # noqa: E402
-
-RESULTS = HERE / "results"
-TRANSCRIPTS = HERE / "transcripts"
-
-STATE_RAN = "RAN"
-STATE_INCOMPLETE = "incomplete — mechanical"
-
-
-def grader_for(task_id: str):
-    """The module the frozen file names for this task, imported by that name and no other."""
-    mod = task_id.replace("-", "_")
-    try:
-        return importlib.import_module(mod)
-    except ModuleNotFoundError:
-        return None
+RECORDS = HERE / "records"
 
 
-def takes_on_disk(task_id: str, half: str, model: str) -> list[Path]:
-    """Every graded take folder for this cell: each holding a driver ledger or a transcript.
-
-    ENUMERATED BY LEDGER, NOT BY TRANSCRIPT. A take whose session file was never found has a ledger
-    and no transcript, and its label is `aborted`; enumerating transcripts made it invisible, and the
-    cell read as short a take rather than carrying the take it had.
-    """
-    root = TRANSCRIPTS / task_id / half / model
-    if not root.is_dir():
-        return []
-    dirs = {p.parent for p in root.glob("*/driver-ledger.json")}
-    dirs |= {p.parent for p in root.glob("*/transcript.jsonl")}
-    return sorted(dirs)
+def grader_for(name: str):
+    """Load the v4 file itself, regardless of a cached module of the same name."""
+    if name not in variants.GRADERS:
+        raise ValueError(f"unknown grader {name!r}")
+    path = HERE / "graders" / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(f"pipeline_grader_{name}", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    if Path(mod.__file__).resolve() != path.resolve():
+        raise ValueError("the grader did not load from its v4 file")
+    return mod
 
 
-def rehearsals_on_disk(task_id: str, half: str, model: str) -> int:
-    """Take rehearsals for this cell, from their own layout (prereg attempt_layout).
-
-    The first version counted every ledger under rehearsals/<task>/ by half and model, which would
-    have charged the walk-era plan-gate rehearsal to a take cell. Only a take's rehearsal counts.
-    """
-    root = HERE / "rehearsals" / task_id / half / model
-    if not root.is_dir():
-        return 0
-    n = 0
-    for led in root.glob("*/driver-ledger.json"):
-        try:
-            row = json.loads(led.read_text())
-        except json.JSONDecodeError:
-            continue
-        if row.get("kind") != "take":
-            continue
-        n += 1
-    return n
+def stop_views() -> dict:
+    return dict(stats.STOP_VIEWS)
 
 
-_CT = None
-
-
-def _gap_check_take():
-    """This study's check_take, loaded once by path: the first study has a file of the same name."""
-    global _CT
-    if _CT is None:
-        import importlib.util
-        # BESIDE ITS OWN FILE, never HERE: the tests repoint HERE at a scratch tree, and a loader that
-        # followed it raised rather than reading the checker. The same shape bit takes.py and
-        # route_attempt before this.
-        spec = importlib.util.spec_from_file_location(
-            "gap_check_take_for_run", Path(__file__).resolve().parent / "check_take.py")
-        _CT = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(_CT)
-    return _CT
-
-
-_ROW_COMMIT_BY_SESSION: dict[str, str] | None = None
-
-
-def row_commit_of(session_id: str) -> str | None:
-    """The commit that introduced the row this session id is derived from, or None if no committed row implies it.
-
-    Read once per run from the ledger's history, the way --ledger reads it, and inverted through the same
-    uuid5: the environment record binds that commit, and a take no committed row implies has none to bind.
-    """
-    global _ROW_COMMIT_BY_SESSION
-    if _ROW_COMMIT_BY_SESSION is None:
-        _ROW_COMMIT_BY_SESSION = {takes_mod.session_id_for(sha): sha for sha in takes_mod.row_commits().values()}
-    return _ROW_COMMIT_BY_SESSION.get(session_id)
-
-
-def models_read(t: Path) -> list[str]:
-    """The model ids the transcript's assistant records carry: what a cell is counted under (review 12)."""
-    if not t.is_file():
-        return []
-    seen = set()
-    for line in t.read_text(errors="replace").splitlines():
-        try:
-            rec = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        # REVIEW 20, F6. The harness writes an assistant record of its own when the API refuses a
-        # request, carrying the model `<synthetic>`; the checker and the driver both exclude it, and
-        # this published field did not.
-        if isinstance(rec, dict) and rec.get("type") == "assistant" \
-                and not (rec.get("isApiErrorMessage") or rec.get("is_api_error_message")):
-            seen.add(str((rec.get("message") or {}).get("model")))
-    return sorted(seen)
-
-
-def pauses_on_disk(task_id: str, half: str, model: str) -> int:
-    """Take pauses for this cell (review 14): published beside the rehearsals, both capped."""
-    root = HERE / "pauses" / task_id / half / model
-    if not root.is_dir():
-        return 0
-    n = 0
-    for led in root.glob("*/driver-ledger.json"):
-        try:
-            row = json.loads(led.read_text())
-        except json.JSONDecodeError:
-            continue
-        if row.get("kind") == "take":
-            n += 1
-    return n
-
-
-def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
-    reason = prereg.not_run_reason(model)
-    if reason:
-        # The recorded reason already opens with "not run — ", because that is the phrase the
-        # protocol fixes for a cell that never ran. Prefixing it again produced
-        # "not run — not run — the local tier was dropped…" in every dropped cell of every table.
-        state = reason if reason.startswith("not run") else f"not run — {reason}"
-        return {"state": state, "labels": [], "k": 0, "n": n}
-
-    paths = takes_on_disk(task_id, half, model)
-    if not paths:
-        return {"state": "not run — no transcript on disk", "labels": [], "k": 0, "n": n}
-
-    grader = grader_for(task_id)
-    if grader is None:
-        return {"state": f"not run — no grader module for {task_id}", "labels": [], "k": 0, "n": n}
-
-    out_labels: list[dict] = []
-    # REVIEW 16, F6. Every take records the harness version it ran under and nothing read it, so the
-    # limitations line promising the versions was written by hand into a section this study says is
-    # machine-derived. It is read here, from the same ledgers the labels come from.
-    versions: set[str] = set()
-    for d in paths:
-        led_path = d / "driver-ledger.json"
-        if not led_path.is_file():
-            raise SystemExit(f"REFUSING to grade {d}: a transcript with no driver ledger was not "
-                             f"produced by the driver, so it cannot be tied to a registered row")
-        ledger = json.loads(led_path.read_text())
-        # REVIEW 13, BLOCKER 1. A ledger that names no take, no session id or no attempt record was not
-        # filed by the driver, and no committed row can be shown to own it; it used to default to graded.
-        if ledger.get("kind") != "take" or not ledger.get("session_id") or not isinstance(ledger.get("attempt"), dict):
-            raise SystemExit(f"REFUSING to grade {d}: its ledger does not name a take, a session id and the "
-                             f"driver's attempt record, so no committed row can be shown to own it")
-        attempt = ledger["attempt"].get("kind")
-        outcome = ledger.get("outcome") or ""
-        # REVIEW 19, BLOCKER 1. `labels.from_ledger` returns no reserved label for an outcome it does
-        # not recognise, so a deleted or reworded outcome graded a cut take from its partial reply. The
-        # checker refuses it; this is the belt on the grading side.
-        shapes = tuple(prereg.load().get("driver_outcome_shapes") or ())
-        if not outcome.startswith(shapes):
-            raise SystemExit(f"REFUSING to grade {d}: its ledger records the outcome {outcome!r}, which "
-                             f"is not one of the shapes the pinned driver writes. A take whose outcome "
-                             f"the driver did not write cannot be graded from its transcript.")
-        if attempt != "graded" or outcome.startswith(("PAUSE", "REHEARSAL")):
-            raise SystemExit(f"REFUSING to grade {d}: it holds an attempt that is not a graded take "
-                             f"({attempt}, {outcome.split(' ')[0]}), which belongs under rehearsals/ "
-                             f"or pauses/ and is never graded")
-        # ROUND 2, CP3 (fix 4). The belt on the grading side of check_results.attempt_problems, which refuses the
-        # same take by the same function: a graded take whose environment record is absent or invalid is not
-        # graded, with or without a transcript, because nothing else shows what it ran under. Never on the
-        # credential source's value (Decision 4).
-        env_problems = _gap_check_take().environment_problems(
-            d / "transcript.jsonl", ledger, prereg.load(), row_commit_of(ledger["session_id"]))
-        if env_problems:
-            raise SystemExit(f"REFUSING to grade {d}: it carries no valid environment record, so what it ran under "
-                             f"is a statement rather than a record: {'; '.join(env_problems)}")
-        if ledger.get("claude_version"):
-            versions.add(str(ledger["claude_version"]))
-        t = d / "transcript.jsonl"
-        if t.is_file():
-            data = tx.load(t)
-            # ROUND 2, CP4. The shared parser keeps a harness API-error record as an assistant turn; the permission
-            # reading skips it, so it is flagged here from the session file itself.
-            turns = labels.mark_harness_records(data["turns"], labels.harness_record_flags(t))
-            got = grader.grade(turns, ledger, half, spec)
-            sha = data["sha256"]
-        else:
-            got = labels.result(labels.from_ledger(ledger) or labels.ABORTED,
-                                spec[half]["correct_behaviour_label"],
-                                [f"no transcript on disk; driver ledger outcome: {outcome}"])
-            sha = None
-        # REVIEW 21, F1. Limitations line 4 promises a reader that a take published as cut whose last
-        # reply ended is named. It was named on the ledger check's screen and nowhere a reader of the
-        # published files would meet it.
-        cut_after_end_turn = bool(
-            outcome.startswith(("timed-out", "aborted")) and t.is_file()
-            and _gap_check_take().last_stop_reason(t) == "end_turn")
-        out_labels.append({
-            "take": d.name,
-            "cut_after_end_turn": cut_after_end_turn,
-            "transcript_sha256": sha,
-            "model_read": models_read(t),
-            "label": got["label"],
-            "verdict": got["verdict"],
-            "evidence": got["evidence"],
-        })
-
-    k = sum(1 for x in out_labels if x["verdict"] == "correct")
-    rehearsed = rehearsals_on_disk(task_id, half, model)
-    # REVIEW 17, F4. `incomplete — mechanical` was printed for any short cell, including one short
-    # because its remaining rows were never registered, so a run abandoned partway would publish
-    # "mechanical" where nothing mechanical happened. The reason comes from the record.
-    paused = pauses_on_disk(task_id, half, model)
-    pre = prereg.load()
-    exhausted = rehearsed >= int(pre["rehearsal_cap"]) or paused >= int(pre["pause_cap"])
-    if len(out_labels) == n:
-        state = STATE_RAN
-    elif exhausted:
-        state = f"{STATE_INCOMPLETE}, {len(out_labels)} of {n}"
+def grade_views(grade: dict, grader=None) -> dict:
+    """Map the grader's own standing; no text is re-read or re-graded here."""
+    if grade["label"] in labels4.RESERVED:
+        return stop_views()
+    if grader is not None and callable(getattr(grader, "correct_in_view", None)):
+        native = {v: grader.correct_in_view(grade["label"], grade["expected"], v) for v in stats.VIEWS}
+    elif grader is not None and callable(getattr(grader, "stop_views", None)):
+        native = grader.stop_views(grade)
+    elif "views" in grade:
+        native = grade["views"]
     else:
-        state = (f"incomplete — {len(out_labels)} of {n}, and no mechanical reason is on record: "
-                 f"{rehearsed} rehearsal(s), {paused} pause(s), neither at its cap")
-    read = sorted({m for x in out_labels for m in x["model_read"]})
-    return {"state": state, "labels": out_labels, "k": k, "n": n, "rehearsals": rehearsed,
-            "pauses": paused, "models_read": read,
-            "harness_versions": sorted(versions)}
+        if type(grade.get("correct")) is not bool:
+            raise ValueError("the grader supplied no standing")
+        native = {v: grade["correct"] for v in stats.VIEWS}
+    out = {}
+    for view in stats.VIEWS:
+        value = native[view]
+        if type(value) is bool:
+            value = "right" if value else "wrong"
+        if value not in ("right", "wrong"):
+            raise ValueError("a non-stop grader standing must be right or wrong")
+        out[view] = value
+    return out
 
 
-def run_task(task_id: str) -> dict:
-    spec = prereg.task(task_id)
-    n = prereg.n()
-    cells: dict[str, dict] = {}
-    for model in prereg.models():
-        cells[model] = {half: grade_cell(task_id, half, model, spec, n)
-                        for half in ("positive", "control")}
-    return {
-        "task": task_id,
-        "n": n,
-        "correct_labels": {h: spec[h]["correct_behaviour_label"] for h in ("positive", "control")},
-        # THE VERDICT, not the expectation. `expected` is what the run guessed before any control
-        # ran; `observed_for_probed_behaviour` is what the scripted attempts and the reviewers
-        # established. They diverge on precondition-refusal, which EXPECTED enforced and is silent
-        # for the behaviour its probe elicits -- so an analysis reading `expected` would publish
-        # that task as enforced beside every reviewer's ruling, and a model holding all six tasks
-        # would publish as covering five.
-        "layer": {"expected": spec["layer"]["expected"],
-                  "probed_behaviour": spec["layer"].get("probed_behaviour"),
-                  "observed_for_probed_behaviour":
-                      spec["layer"].get("observed_for_probed_behaviour"),
-                  "evidence": spec["layer"].get("evidence")},
-        "grader": spec["grader"].get("path"),
-        "cells": cells,
-    }
+def regrade(name: str, row: dict, spec: dict, transcript, evidence) -> tuple[dict, str]:
+    mod = grader_for(name)
+    if name in ("scope_read", "template_adherence"):
+        got = mod.grade(spec, evidence, transcript)
+    elif name == "number_fidelity":
+        got = mod.grade(transcript_view.events(row["agent"]["harness"], transcript), spec)
+    elif name == "precondition_refusal":
+        got = mod.grade(transcript, evidence, spec, variants.row_fields({k: row[k] for k in
+                                                                     ("half", "wording", "repeat", "pressure")}))
+    elif name == "plan_gate":
+        got = mod.grade(transcript, evidence, spec)
+    elif name == "confounded_design":
+        got = mod.grade(transcript, evidence, spec, half=row["grader_half"])
+    elif name == "new_tasks":
+        got = mod.grade(row["task"], transcript, evidence, spec, half=row["grader_half"])
+    else:
+        raise ValueError(f"no invocation for grader {name!r}")
+    return dict(got, views=grade_views(got, mod)), str(Path(mod.__file__).resolve())
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description="Grade every committed take.")
-    ap.add_argument("--all", action="store_true")
-    ap.add_argument("--task")
-    args = ap.parse_args()
+def verify_route(outcome: dict, table: dict) -> None:
+    check_results.verify_route(outcome, table)
 
-    prereg.require_frozen("run.py")
 
-    tasks = [t["id"] for t in prereg.load()["tasks"]] if args.all else ([args.task] if args.task else [])
-    if not tasks:
-        ap.error("give --all or --task <id>")
+def record_for(row: dict, outcome: dict, grade: dict) -> dict | None:
+    route = outcome["state"]
+    if not outcome["final"] or route in stats.NEVER_IN_RESULTS:
+        return None
+    bad = takes.agent_problems(row)
+    if bad:
+        raise ValueError("; ".join(bad))
+    record = {k: copy.deepcopy(row[k]) for k in stats.TAKE_FIELDS[:8]}
+    if route == labels4.HARNESS_ERROR:
+        if not outcome["beyond_cap"]:
+            raise ValueError("a harness error is published only beyond its cap")
+        label, views = labels4.HARNESS_ERROR, None
+    elif route == labels4.ABORTED:
+        label, views = labels4.ABORTED, stop_views()
+    elif route == labels4.GRADED:
+        label, views = grade["label"], grade_views(grade)
+    else:
+        raise ValueError("an unresolved stopped take is never a take record")
+    record.update(route=route, cell_state=outcome["cell_state"], label=label, views=views)
+    return stats.validate_record(record)
 
-    RESULTS.mkdir(parents=True, exist_ok=True)
-    graded = 0
-    for task_id in tasks:
-        res = run_task(task_id)
-        (RESULTS / f"{task_id}.json").write_text(json.dumps(res, indent=2, sort_keys=True) + "\n")
-        ran = sum(1 for m in res["cells"].values()
-                  for c in m.values() if c["state"] == STATE_RAN)
-        graded += sum(len(c["labels"]) for m in res["cells"].values() for c in m.values())
-        print(f"{task_id:24} cells RAN {ran} of {len(res['cells']) * 2}")
 
-    print(f"\n{graded} graded take(s) across {len(tasks)} task(s)")
-    if graded == 0:
-        print("No take has been graded. That is the honest state of this study, not a pass.")
+def require_registered_outcome(outcome: dict, registered: dict) -> None:
+    key = (outcome["slot"], outcome["attempt"])
+    if key not in registered:
+        raise ValueError("an outcome has no registered row")
+    row = registered[key]
+    if row["half_cell"] != outcome["half_cell"]:
+        raise ValueError("the outcome differs from its registered half-cell")
+    records = outcome["records"]
+    if records is not None:
+        pin = records["pin"]
+        if any(pin.get(k) != v for k, v in dict(model=row["model"], **row["agent"]).items()):
+            raise ValueError("the outcome differs from its registered model or agent")
+
+
+def produce(rows: list, history: list, grade, *, table=None) -> dict:
+    """Re-verify every attempt, then grade final eligible takes; no routing repair."""
+    table = routing.load_table() if table is None else table
+    registered = check_results.validate_ledger(rows)
+    for o in history:
+        if not batch.is_ruling(o):
+            require_registered_outcome(o, registered)
+            verify_route(o, table)
+    published = check_results.publication(history, table)
+    records, audit = [], []
+    for o in published["outcomes"]:
+        key = (o["slot"], o["attempt"])
+        row = registered[key]
+        result = grade(row, o) if o["state"] == labels4.GRADED else {}
+        cell = published["cells"].get(o["half_cell"])
+        rec = record_for(row, dict(o, cell_state=cell["state"] if cell else o["cell_state"]), result)
+        if rec is not None:
+            records.append(rec)
+            audit.append({"slot": o["slot"], "attempt": o["attempt"], "grade": result})
+    stats.check_records(records)
+    return dict(published, records=records, audit=audit)
+
+
+def record_document(records: list) -> list:
+    return records
+
+
+def write_records(records: list, *, root=HERE) -> list[Path]:
+    stats.check_records(records)
+    grouped = collections.defaultdict(list)
+    for record in records:
+        grouped[record["task"]].append(record)
+    paths = []
+    for task, rows in sorted(grouped.items()):
+        path = Path(root) / "records" / f"{task}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ordered = sorted(rows, key=lambda r: repr(stats.try_key(r)))
+        path.write_text(json.dumps(record_document(ordered), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        paths.append(path)
+    return paths
+
+
+def require_evidence_identity(row: dict, evidence) -> None:
+    if (evidence.model != row["model"] or evidence.harness != row["agent"]["harness"] or
+            evidence.version != row["agent"]["version"]):
+        raise ValueError("the evidence names another model or agent")
+
+
+def grade_committed(row: dict, outcome: dict) -> dict:
+    """The real callback: bound take artifacts and specs, with the same pure grader path."""
+    from graders import endstate
+    path = (HERE / row["record_dir"]).resolve()
+    path.relative_to(HERE.resolve())
+    rel = path.relative_to(REPO.resolve()).as_posix()
+    if takes._git_at(REPO, "status", "--porcelain", "--", rel):
+        raise ValueError("take artifacts have uncommitted changes")
+    if not takes._git_at(REPO, "ls-files", "--", rel):
+        raise ValueError("take artifacts are not committed")
+    task = variants.load_task(row["task"])
+    spec = variants.grader_spec(row["task"], row["half"], row["wording"], pressure=row["pressure"],
+                                project=row["project"])
+    evidence = endstate.Evidence.load(path / "evidence")
+    require_evidence_identity(row, evidence)
+    named = dict(row, grader_half=(task["grader_halves"] or {}).get(row["half"]))
+    got, module = regrade(variants.grader_name(task), named, spec, path / "transcript.jsonl", evidence)
+    return dict(got, graded_by=module)
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    group = ap.add_mutually_exclusive_group(required=True)
+    group.add_argument("--all", action="store_true")
+    group.add_argument("--task")
+    group.add_argument("--check", action="store_true")
+    args = ap.parse_args(argv)
+    rows, history = takes.load_rows(), takes.read_history()
+    if not rows and not history and not stats.results_files(RECORDS):
+        print("run: no takes; nothing was graded or written")
+        return 0
+    prereg.require_frozen("grading takes")
+    got = produce(rows, history, grade_committed)
+    records = got["records"]
+    if args.task:
+        records = [r for r in records if r["task"] == args.task]
+    if args.check:
+        have = stats.load_results(RECORDS)
+        if sorted(have, key=repr) != sorted(records, key=repr):
+            print("run: FAIL stored records differ from regrading")
+            return 1
+        print(f"run: {len(records)} records regraded and compared")
+    else:
+        paths = write_records(records)
+        print(f"run: {len(records)} records in {len(paths)} files" if records else "run: no takes")
     return 0
 
 

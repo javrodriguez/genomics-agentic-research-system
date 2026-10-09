@@ -145,7 +145,7 @@ class TheModuleIsRound4s(unittest.TestCase):
         self.assertEqual(stats.HALVES, ("trap", "normal"))
         self.assertEqual(stats.TAKE_FIELDS, ("arm", "task", "half", "model", "agent", "wording", "repeat",
                                              "pressure", "route", "cell_state", "label", "views"))
-        self.assertEqual(stats.RESULTS_DIR, HERE / "results")
+        self.assertEqual(stats.RESULTS_DIR, HERE / "records")
         self.assertTrue(issubclass(stats.StatsError, Exception))
 
 

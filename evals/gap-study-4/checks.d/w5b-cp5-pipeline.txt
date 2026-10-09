@@ -1,0 +1,16 @@
+# Synthetic contracts and scratch repositories only; no measured take is implied.
+python3 -B -W ignore evals/gap-study-4/tests/test_pipeline.py
+# Empty ledger: no takes, no registration or outcome measured.
+python3 -B -W ignore evals/gap-study-4/takes.py --check
+# Empty records: no takes, no grading or file write.
+python3 -B -W ignore evals/gap-study-4/run.py --check
+# Empty records: no takes, no table measured or written.
+python3 -B -W ignore evals/gap-study-4/result.py --check
+# Empty records: no takes, no completeness count measured.
+python3 -B -W ignore evals/gap-study-4/completeness.py --check
+# Empty build: no takes, no frozen pins or publication measured.
+python3 -B -W ignore evals/gap-study-4/check_results.py --check
+# Empty calls: no takes, no cost measured or written.
+python3 -B -W ignore evals/gap-study-4/costs.py --check
+# Checks build ownership only; no takes or freeze performed.
+python3 -B -W ignore evals/gap-study-4/freeze.py --check

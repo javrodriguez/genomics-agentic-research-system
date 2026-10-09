@@ -38,7 +38,6 @@ OWN_FRAGMENT = cm.FRAGMENTS / f"{LANE}.json"
 # checkpoint's file; when that file lands this test goes red and the entry must go.
 BLOCKED = {
     "drive.py": "SystemExit: no pre-registration: neither prereg.json nor prereg-draft.json exists.",
-    "run.py": "ModuleNotFoundError: No module named 'labels'",
 }
 
 # Run in a fresh interpreter, from a folder outside the study, as `python3 <path>` would: the file's own folder is
@@ -147,20 +146,20 @@ class TheManifest(unittest.TestCase):
         present = cm.files_here()
         bad = cm.problems(pinned=False, present=present | {"stray.py"})
         self.assertTrue(any(b.startswith("stray.py is under") for b in bad), bad)
-        bad = cm.problems(pinned=False, present=present - {"takes.py"})
-        self.assertTrue(any("takes.py" in b and "does not exist" in b for b in bad), bad)
+        bad = cm.problems(pinned=False, present=present - {"prereg.py"})
+        self.assertTrue(any("prereg.py" in b and "does not exist" in b for b in bad), bad)
 
     def test_a_copy_recorded_as_new_is_refused(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             rec = json.loads(OWN_FRAGMENT.read_text())["files"]
             for e in rec:
-                if e["path"] == "takes.py":
+                if e["path"] == "prereg.py":
                     e.pop("source")
                     e["status"], e["reason"] = "new", "claimed new"
             own_fragment_in(d, rec)
             bad = cm.problems(d, pinned=False)
-            self.assertTrue(any("takes.py" in b and "it is a copy and must say so" in b for b in bad), bad)
+            self.assertTrue(any("prereg.py" in b and "it is a copy and must say so" in b for b in bad), bad)
 
     def test_a_fragment_must_carry_its_own_lane_and_shape(self):
         with tempfile.TemporaryDirectory() as d:
@@ -370,17 +369,17 @@ class TheManifest(unittest.TestCase):
     def test_every_entry_refusal_fires(self):
         # review W1A-5: each refusal branch of problems(), driven once
         study_src = "evals/gap-study-3/study.py"
-        takes = cm.source_bytes("evals/gap-study-3/takes.py")
+        takes = cm.source_bytes("evals/gap-study-3/prereg.py")
         cases = [
-            ({"path": "takes.py", "status": "identical", "source": "evals/gap-study-3/takes.py", "reason": "x"},
+            ({"path": "prereg.py", "status": "identical", "source": "evals/gap-study-3/prereg.py", "reason": "x"},
              "is identical and carries a reason"),
-            ({"path": "takes.py", "status": "identical"}, "names no source"),
+            ({"path": "prereg.py", "status": "identical"}, "names no source"),
             ({"path": "fresh.txt", "status": "new", "source": study_src, "reason": "x"}, "is new and names a source"),
             ({"path": "fresh.txt", "status": "new"}, "is new and carries no reason"),
             ({"path": "study.py", "status": "edited", "source": study_src}, "no reason is recorded"),
             ({"path": "study.py", "status": "edited", "source": study_src, "reason": "  "},
              "its reason is not a non-empty string"),
-            ({"path": "takes.py", "status": "identical", "source": "evals/gap-study-3/no-such-file.py"},
+            ({"path": "prereg.py", "status": "identical", "source": "evals/gap-study-3/no-such-file.py"},
              "does not exist at"),
         ]
         for entry, want in cases:

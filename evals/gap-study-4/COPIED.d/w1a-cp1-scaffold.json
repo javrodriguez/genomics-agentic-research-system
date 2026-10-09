@@ -32,11 +32,6 @@
       "source": "evals/gap-study-3/check_checklist_names.py"
     },
     {
-      "path": "check_results.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/check_results.py"
-    },
-    {
       "path": "check_take.py",
       "status": "identical",
       "source": "evals/gap-study-3/check_take.py"
@@ -57,11 +52,6 @@
       "source": "evals/gap-study-3/commit_msg.py"
     },
     {
-      "path": "completeness.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/completeness.py"
-    },
-    {
       "path": "contract_quotes.json",
       "status": "identical",
       "source": "evals/gap-study-3/contract_quotes.json"
@@ -76,11 +66,6 @@
       "status": "edited",
       "source": "evals/gap-study-3/copy_manifest.py",
       "reason": "Rewritten for round 4 as the plan's CP1 task says: sources read from round 3's done commit e2979b31; each lane records its files in COPIED.d/<lane>.json and --check assembles the fragments, refuses a path claimed twice and compares with nothing committed (the freeze writes COPIED.json once, from derive()); only the copied fixture builders are uneditable, since round 3's list (check_take.py, the graders) would refuse round 4's checker edit; and the frozen rounds and shared files are bound unchanged since round 4's base commit."
-    },
-    {
-      "path": "costs.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/costs.py"
     },
     {
       "path": "denials.py",
@@ -121,16 +106,6 @@
       "path": "fixtures/symbol_rulings.json",
       "status": "identical",
       "source": "evals/gap-study-3/fixtures/symbol_rulings.json"
-    },
-    {
-      "path": "freeze.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/freeze.py"
-    },
-    {
-      "path": "freeze_rehearsal.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/freeze_rehearsal.py"
     },
     {
       "path": "language-allowlist.json",
@@ -180,11 +155,6 @@
       "source": "evals/gap-study-3/prereg.py"
     },
     {
-      "path": "result.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/result.py"
-    },
-    {
       "path": "review_kit/BRIEF.md",
       "status": "identical",
       "source": "evals/gap-study-3/review_kit/BRIEF.md"
@@ -225,11 +195,6 @@
       "source": "evals/gap-study-3/round2.py"
     },
     {
-      "path": "run.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/run.py"
-    },
-    {
       "path": "run_checks.py",
       "status": "new",
       "reason": "The local stand-in for CI until publication: runs test_round4.py and every checks.d/*.txt line and prints the fixed summary line athena reads."
@@ -254,11 +219,6 @@
       "status": "edited",
       "source": "evals/gap-study-3/study.py",
       "reason": "The binding for round 4: the study's name, folder and title (gap-study-4), its published-section markers, the prior round it reads as data (ROUND1 now points at evals/gap-study-3, with PRIOR_STUDY and PRIOR_REL naming it honestly) and the arms it runs (ARMS = A and C). Every copied file builds its paths and markers from this file, so no other copied file needs to name this study."
-    },
-    {
-      "path": "takes.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/takes.py"
     },
     {
       "path": "test_round4.py",
