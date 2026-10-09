@@ -1,0 +1,2 @@
+# Exercises synthetic takes and scratch repositories; no result is a measured take.
+python3 -B -W ignore evals/gap-study-4/tests/test_pipeline.py

@@ -1,0 +1,8 @@
+{
+  "lane": "w5b-cp5-pipeline",
+  "files": [
+    {"path": "tests/test_pipeline.py", "status": "new", "reason": "R1-R33: pipeline contracts and in-memory mutants"},
+    {"path": "COPIED.d/w5b-cp5-pipeline.json", "status": "new", "reason": "R1, R18: pipeline ownership"},
+    {"path": "checks.d/w5b-cp5-pipeline.txt", "status": "new", "reason": "R10: pipeline checks"}
+  ]
+}
