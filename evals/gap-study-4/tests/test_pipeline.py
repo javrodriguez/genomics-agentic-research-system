@@ -63,6 +63,9 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "registration-pause-dedup": source_mutant(takes, "registration_outcomes",
+            'count = len(events[(cell, state)] | {batch.cell_event(o)})',
+            'count = len(events[(cell, state)]) if state == labels4.PAUSE else len(events[(cell, state)] | {batch.cell_event(o)})'),
         "active-cost-arms": source_mutant(costs, "month_turn_allowed", ' & set(study.ARMS)', ''),
         "runtime-ruling-trailer": source_mutant(takes, "commit_ruling",
             'msg.write("Record a human ruling\\n")',
@@ -648,10 +651,21 @@ class PublicationHistory(unittest.TestCase):
         history = [recorded(labels4.PAUSE, row(1)),
                    outcome(row(2), state=labels4.FAILED, final=False), ruling(row(2))]
         rows = [dict(row(n), attempt=1) for n in (1, 2)]
+        native = table()
         try:
-            takes.guard_registration(row(4, half_cell="c2"), 1, rows, history)
+            with mock.patch.object(routing, "load_table", return_value=native):
+                takes.guard_registration(row(4, half_cell="c2"), 1, rows, history)
         except ValueError as exc:
             self.fail(f"a legal ruling cannot stop registration in another cell: {exc}")
+        cap = batch.half_cell_cap(native, labels4.PAUSE)
+        history = [recorded(labels4.PAUSE, row(1), attempt=i, window=i) for i in range(1, cap)]
+        history += [outcome(row(2), state=labels4.FAILED, final=False),
+                    recorded(labels4.PAUSE, row(3), window=cap - 1), ruling(row(2))]
+        rows = [dict(row(1), attempt=i) for i in range(1, cap)] + [dict(row(n), attempt=1) for n in (2, 3)]
+        self.assertEqual(cr.publication(history, native)["cells"], {})
+        with self.assertRaisesRegex(ValueError, "closed"):
+            takes.guard_registration(row(4), 1, rows, history)
+        takes.guard_registration(row(4, half_cell="c2"), 1, rows, history)
 
     def test_ruled_half_cell_closes_from_the_ruling(self):
         history = []
