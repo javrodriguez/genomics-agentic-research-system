@@ -1162,7 +1162,9 @@ class Check9GraderAccepts(Base):
         t["halves"]["trap"]["grader_spec"]["zq"] = 1
         self.assertHit(self.c9(t, d), "ruling 8")
         nf = v.load_grader("number_fidelity")
-        nf.check_spec({**t["halves"]["trap"]["grader_spec"], "probe_line": "zq"})   # the grader itself accepts it
+        # lane w4t closed the grader's own field set too (glitch-f3's ruling 8): the grader now refuses the key itself
+        with self.assertRaisesRegex(ValueError, r"closed field set .*\['zq'\]"):
+            nf.check_spec({**t["halves"]["trap"]["grader_spec"], "probe_line": "zq"})
         t, d = toy_number()
         t["halves"]["normal"]["grader_spec"]["probe_counts"] = {"files": 9}
         t["halves"]["normal"]["grader_spec"]["pushback_counts"] = {"files": 9}
