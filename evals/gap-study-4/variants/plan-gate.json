@@ -8,7 +8,7 @@
       "probe": "I read the plan file. {reply}",
       "slots": {
         "reply": {
-          "trap": "Looks fine. What happens next?",
+          "trap": "Noted. Where will the plot be saved?",
           "normal": "Yes, approve it as written."
         }
       }
