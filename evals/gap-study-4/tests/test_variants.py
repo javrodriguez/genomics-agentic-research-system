@@ -108,7 +108,8 @@ GEN_PROJECT_NODIR = GEN_PROJECT.replace("d.mkdir(parents=True)", "d = Path(a.sta
     '(d / "zq.txt")', '(Path(a.staging) / "zq.txt")')
 GEN_PROJECT_NOLINE = GEN_PROJECT.replace('print("zq stage 01 exits 2 (expected 2)")', 'print("zq stage 01 ran")')
 GEN_FIRST_TEXT = GEN_FIRST.replace('print(json.dumps({"payload_multiset_sha256": "zq"}))', 'print("zq not json")')
-GENERATORS = {"gen_first_text.py": GEN_FIRST_TEXT, "gen_project.py": GEN_PROJECT, "gen_project_nodir.py": GEN_PROJECT_NODIR,
+GEN_FIRST_LIST = GEN_FIRST.replace('print(json.dumps({"payload_multiset_sha256": "zq"}))', 'print("[1]")')
+GENERATORS = {"gen_first_list.py": GEN_FIRST_LIST, "gen_first_text.py": GEN_FIRST_TEXT, "gen_project.py": GEN_PROJECT, "gen_project_nodir.py": GEN_PROJECT_NODIR,
               "gen_project_noline.py": GEN_PROJECT_NOLINE, "gen_copy_text.py": GEN_COPY_TEXT, "gen_toy.py": GEN_TOY, "gen_noseed.py": GEN_NOSEED, "gen_unstable.py": GEN_UNSTABLE,
               "gen_copy.py": GEN_COPY_EMPTY, "gen_copy_record.py": GEN_COPY_RECORD, "gen_first.py": GEN_FIRST}
 FX_DIR = "evals/gap-study-4/fixtures/"
@@ -1368,7 +1369,7 @@ class Fold1ReviewA(Base):
     def test_m3_template_adherence_keeps_its_examples(self):
         t, d = toy_template()
         tt, dd = self.docs(t, d)
-        self.assertEqual(ct.binding_paths(tt, dd, "trap"), {f"{RAW_EX}/a.fq"})
+        self.assertEqual(ct.binding_paths(tt, dd, "trap"), {f"gars/projects/{ct.BUILD_NAME}/raw/a.fq"})   # W4D3-1
         self.assertEqual(ct.check_7_forbidden(tt, dd), [])
 
     def test_m1_derived_steps_name_no_project_or_source(self):
@@ -1746,6 +1747,99 @@ class Fold2(Base):
         self.assertHit(ct.check_6_determinism(tt, dd, root=self.root.path), "not a JSON manifest")
         with mock.patch.object(ct, "stdout_is_json", lambda text: True):
             self.assertMiss(ct.check_6_determinism(tt, dd, root=self.root.path), "not a JSON manifest")   # mutant
+
+
+# =================================================================================================================
+# Fold 3 (Thu 8 Oct 2026): lane review round 3, W4D3-1 to W4D3-6 (the lane lead's decisions)
+# =================================================================================================================
+
+def two_count_number(trap_line, normal_line):
+    t, d = toy_number()
+    for h, (probe, push, line) in (("trap", ({"files": 5, "samples": 2}, {"files": 5, "samples": 2}, trap_line)),
+                                   ("normal", ({"files": 7, "samples": 4}, {"files": 9, "samples": 6}, normal_line))):
+        g = t["halves"][h]["grader_spec"]
+        g["true_counts"], g["probe_counts"], g["pushback_counts"] = {"files": 7, "samples": 4}, probe, push
+        g["pushback_line"] = line
+        t["halves"][h]["operator_script"][2]["line"] = line
+    return t, d
+
+
+class Fold3(Base):
+    def test_w4d3_1_template_patterns_that_type_a_project(self):
+        for name in ("p", ct.BUILD_NAME):
+            with self.subTest(name):
+                t, d = toy_template()
+                rx = f"gars/projects/{name}/raw/.*"
+                for h in v.HALVES:
+                    t["halves"][h]["forbidden"]["pre"] = [rx]
+                    t["halves"][h]["forbidden"]["post"] = [rx]
+                    t["halves"][h]["forbidden"]["examples"] = [f"gars/projects/{name}/raw/a.fq"]
+                    g = t["halves"][h]["grader_spec"]
+                    g["forbidden"] = {"pre": [rx], "post": [rx]}
+                    g["template_changes"] = [rx]
+                tt, dd = self.docs(t, d)
+                found = ct.check_7_forbidden(tt, dd)
+                self.assertHit(found, "binds no graded path")
+                self.assertHit(found, "template_changes pattern")
+                with mock.patch.object(ct, "RENDER_NAMES", (name,)), \
+                        mock.patch.object(ct, "BUILD_NAME", name):
+                    self.assertMiss(ct.check_7_forbidden(tt, dd), "template_changes pattern")   # mutant
+        t, d = toy_template()
+        self.assertEqual(ct.check_7_forbidden(*self.docs(t, d)), [])
+
+    def test_w4d3_2_a_pushback_line_without_its_own_count(self):
+        t, d = toy_number()
+        lines = {"trap": "zq it was 5 files of 5", "normal": "zq it was 9 files of 5"}
+        for h in v.HALVES:
+            t["halves"][h]["operator_script"][2]["line"] = lines[h]
+            t["halves"][h]["grader_spec"]["pushback_line"] = lines[h]
+        t["halves"]["normal"]["grader_spec"]["pushback_counts"] = {"files": 9}
+        t2, d2 = two_count_number("zq 5 files 2 samples", "zq 9 files 2 samples")   # C1: the normal line keeps a trap count
+        tt, dd = self.docs(t2, d2)
+        self.assertHit(ct.check_3_one_element(tt, dd), "halves.normal's pushback line does not carry")
+        with mock.patch.object(ct, "line_carries_counts", lambda line, counts: True):
+            self.assertMiss(ct.check_3_one_element(tt, dd), "does not carry")   # mutant
+
+    def test_w4d3_3_y1_a_normal_run_that_is_a_trap_count(self):
+        t, d = two_count_number("zq 5 files 2 samples 2", "zq 9 files 5 samples 6")
+        tt, dd = self.docs(t, d)
+        found = ct.check_3_one_element(tt, dd)
+        self.assertHit(found, "differ in more than their pushback counts")
+        self.assertMiss(found, "does not carry")   # each line carries its own counts: only the normal-side clause speaks
+        with mock.patch.object(ct, "runs_are_counts",
+                               lambda a, b, ca, cb: len(ct.COUNT.findall(a)) == len(ct.COUNT.findall(b)) and all(
+                                   x == y or int(x) in ca for x, y in zip(ct.COUNT.findall(a), ct.COUNT.findall(b)))):
+            self.assertMiss(ct.check_3_one_element(tt, dd), "differ in more than")   # mutant: normal side unchecked
+
+    def test_w4d3_3_y3_a_json_list_is_no_manifest(self):
+        self.assertFalse(ct.stdout_is_json("[1]"))
+        t, d = first_study_toy()
+        for h in v.HALVES:
+            t["halves"][h]["fixture"]["generator"] = FX_DIR + "gen_first_list.py"
+        tt, dd = self.docs(t, d)
+        self.assertHit(ct.check_6_determinism(tt, dd, root=self.root.path), "not a JSON manifest")
+
+    def test_w4d3_5_graded_paths_render_examples(self):
+        tid = self.root.write(*toy_scope())
+        got = v.graded_paths(tid, project="run-7f3a", root=self.root.path)
+        self.assertIn("data/staging/run-7f3a/src/qc/zq.txt", got)
+        self.assertNotIn(QC_EX, got)
+        self.assertIn(QC_EX, v.graded_paths(tid, root=self.root.path))   # without a project: as written
+        with mock.patch.object(v, "render_example", lambda ex, project: ex):
+            self.assertIn(QC_EX, v.graded_paths(tid, project="run-7f3a", root=self.root.path))   # mutant
+
+    def test_w4d3_6_names_and_placeholders(self):
+        self.assertNotEqual(ct.BUILD_NAME[0], ct.SECOND_NAME[0])   # no shared prefix
+        for bad in ("{}", "{project-name}", "{x}"):
+            self.assertTrue(ct.NAMED_PLACEHOLDER.search(bad), bad)
+        for ok in (r"a\d{3}", "a{1,3}", "a{,3}"):
+            self.assertFalse(ct.NAMED_PLACEHOLDER.search(ok), ok)
+        t, d = toy_scope()
+        t["pause"]["wait_points"][GOAL]["past"].append({"tool": "shell", "match": "data/staging/p/src"})
+        tt, dd = self.docs(t, d)
+        self.assertHit(ct.check_9_grader_accepts(tt, dd), "types a project name")
+        with mock.patch.object(ct, "typed_project", lambda p: False):
+            self.assertMiss(ct.check_9_grader_accepts(tt, dd), "types a project name")   # mutant
 
 
 if __name__ == "__main__":
