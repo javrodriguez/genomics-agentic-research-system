@@ -431,6 +431,26 @@ def frozen_commit_problems(frozen: dict, commit: str) -> list[str]:
     return out
 
 
+def rehearsal_record_problems(frozen: dict) -> list[str]:
+    """Re-check the stored rehearsal evidence, including in disposable clones."""
+    import freeze
+    record = frozen.get("rehearsal_record")
+    if not isinstance(record, dict) or not isinstance(record.get("text"), str):
+        return ["the frozen rehearsal record must carry its evidence, never a placeholder"]
+    lines = record["text"].rstrip().splitlines()
+    if not lines:
+        return ["the frozen rehearsal record is empty"]
+    problems = []
+    if lines[0] != frozen.get("draft_sha256_at_freeze"):
+        problems.append("the frozen rehearsal record names different draft bytes")
+    trees = [line for line in lines if line.startswith(freeze.REHEARSAL_TREE_PREFIX)]
+    if trees != [freeze.REHEARSAL_TREE_PREFIX + str(frozen.get("rehearsed_study_tree_sha256"))]:
+        problems.append("the frozen rehearsal record names a different committed tree")
+    if lines[-1] != freeze.REHEARSAL_LAST_LINE:
+        problems.append("the frozen rehearsal record did not end all green")
+    return problems
+
+
 def check_frozen_content() -> list[str]:
     frozen, why = frozen_bytes()
     if frozen is None and why == "NOT A GIT REPOSITORY":
@@ -442,6 +462,7 @@ def check_frozen_content() -> list[str]:
         return [f"the frozen file could not be compared with its freeze: {why}"]
     now = json.loads((HERE / "prereg.json").read_text())
     problems = frozen_content_problems(frozen, now)
+    problems += rehearsal_record_problems(frozen)
     print(f"  the frozen file compared with its freeze: {len(now.get('amendments') or [])} amendment(s) "
           f"on record, {len(problems)} unrecorded change(s)")
     commit = freeze_commit()
