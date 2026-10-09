@@ -1,43 +1,25 @@
 #!/usr/bin/env python3
-"""Turn the draft into the frozen pre-registration, once, and fill every pin as it goes.
+"""Freeze the reviewed round 4 rows, agent identities and complete owned build.
 
-    python3 evals/gap-study-2/freeze.py --review-commit <sha>          preview
-    python3 evals/gap-study-2/freeze.py --review-commit <sha> --write  write prereg.json
+The review commit seeds a deterministic permutation of whole planned rows.
+Versions come from the design; no vendor executable is run. All owned files,
+including this builder, prose, checks and COPIED.d, carry committed byte pins.
+The frozen file binds itself through its unique introducing commit.
 
-THE FREEZE IS THE STUDY'S ONE IRREVERSIBLE STEP. After it, the design is read-only to the run and
-every number is graded against it. So this file does three things and refuses to do them twice.
-
-  it fills every pin      each grader, fixture generator, case suite and shared reader gets its
-                          git blob sha AND its sha256 recorded, so check_results.py can prove
-                          afterwards that none of them moved
-  it fixes the take order one permutation per axis over every (task, half, model, take), seeded by
-                          the sha of the PRE-FREEZE REVIEW COMMIT
-  it refuses to re-run    if prereg.json exists, this exits rather than overwriting. A study whose
-                          pre-registration can be re-frozen has none.
-
-WHY THE SEED IS THE REVIEW COMMIT AND NOT ANYTHING ELSE. The order in which cells are driven could
-matter -- a model's later takes run against a warmer cache, a rate limit lands where it lands. If
-the run chose that order it could choose one that suited it. The seed is a sha that did not exist
-until an independent reviewer had already read the design and committed its report, so the order
-cannot have been picked to suit a result. Anyone can recompute it: `prereg.py --order <sha>`.
-
-THE REVIEW MUST ALREADY BE COMMITTED. This file checks that the sha it is handed is a real commit
-that touches the pre-freeze review directory, and refuses otherwise. A seed that names nothing is a seed
-the run could have invented.
-
-ROUND 4'S COPY SNAPSHOT (glitch-f3's ruling w5b-3). COPIED.json is exactly derive()
-over the build fragments before any freeze output is written. The freeze then writes
-prereg.json and COPIED.d/freeze.json, which claims both outputs and itself. All three
-belong to the freeze's one commit. The new fragment is deliberately absent from the
-snapshot: --check compares with nothing committed, so there is no self-hash cycle.
-Any existing output refuses another freeze, including an interrupted first write.
-
-No model, no network, stdlib only.
+Under glitch-f3's ruling w5b-3, COPIED.json is exactly derive() over the build
+fragments before any output is written. COPIED.d/freeze.json claims COPIED.json,
+prereg.json and itself as new. It is deliberately absent from the snapshot:
+--check compares with nothing committed, so there is no circular snapshot.
+The two generated non-self outputs are pinned inside prereg.json as well.
+All three outputs belong to one freeze commit. Any existing output refuses a
+second freeze, including an interrupted first write. Rehearsal/review evidence
+must already match the committed draft and tree before the real --write.
 """
 
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import re
@@ -88,11 +70,46 @@ def write_outputs(frozen: dict, *, root=HERE, manifest=copy_manifest) -> tuple[P
     if bad:
         raise ValueError("cannot freeze the copy record: " + "; ".join(bad))
     copied = snapshot(manifest, folder)
-    outputs = ((root / "COPIED.json", copied), (root / "prereg.json", frozen),
-               (folder / "freeze.json", output_fragment()))
-    for path, data in outputs:
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    return tuple(path for path, _ in outputs)
+    encoded = {"COPIED.json": json_bytes(copied), "COPIED.d/freeze.json": json_bytes(output_fragment())}
+    frozen = copy.deepcopy(frozen)
+    if "pinned_files" in frozen:
+        frozen["pinned_files"].extend(generated_pins(encoded))
+    encoded["prereg.json"] = json_bytes(frozen)
+    for relative, data in encoded.items():
+        (root / relative).write_bytes(data)
+    return tuple(root / p for p in encoded)
+
+
+def json_bytes(value):
+    return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def generated_pins(outputs):
+    return [{"path": study.rel(path), "sha256": hashlib.sha256(data).hexdigest(),
+             "git_blob_sha": hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()}
+            for path, data in sorted(outputs.items())]
+
+
+def planned_order(draft, seed):
+    import check_results
+    rows = draft["rows"]
+    check_results.validate_ledger([dict(row, attempt=1) for row in rows])
+    if not rows:
+        raise ValueError("the design has no planned rows")
+    # Stable permutation of whole rows; the harness remains part of each cell.
+    return sorted(copy.deepcopy(rows), key=lambda row: hashlib.sha256(seed.encode() + json_bytes(row)).hexdigest())
+
+
+def prepare(draft, *, review, parent, pins, frozen_at):
+    import stats
+    import completeness
+    stats.validate_design(draft[stats.DESIGN_KEY])
+    completeness.pair_count(draft)
+    frozen = copy.deepcopy(draft)
+    frozen.update(status="FROZEN", frozen_at=frozen_at, frozen_at_commit_parent=parent,
+                  pre_freeze_review_commit=review, take_order_seed=review,
+                  take_order=planned_order(draft, review), pinned_files=copy.deepcopy(pins))
+    return frozen
 
 # All files present in the ownership record are pinned, including prose,
 # checks files, the builder itself and COPIED.d. Runtime records are not part of
@@ -256,21 +273,6 @@ def rehearsal_problems(draft_sha256: str, verification: Path, study_tree: str | 
     return []
 
 
-def claude_version() -> str:
-    """The harness version, from `claude --version`, or a refusal: a frozen file with a blank harness version would
-    print an empty range in the published section."""
-    try:
-        out = subprocess.run(["claude", "--version"], capture_output=True, text=True)
-    except FileNotFoundError:
-        raise SystemExit("REFUSING to freeze: `claude` is not on PATH, so the harness version cannot be recorded. "
-                         "Nothing was written.")
-    ver = out.stdout.strip()
-    if out.returncode != 0 or not ver:
-        raise SystemExit(f"REFUSING to freeze: `claude --version` exited {out.returncode} with no version. Nothing "
-                         f"was written.")
-    return ver
-
-
 def pin(path: str) -> dict:
     f = REPO / path
     if not f.is_file():
@@ -316,319 +318,64 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
     return [], reports[0]
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description="Freeze the pre-registration, once.")
-    ap.add_argument("--review-commit", required=True,
-                    help="the sha of the committed pre-freeze review; it seeds the take order")
-    ap.add_argument("--write", action="store_true")
-    ap.add_argument("--rehearsal", action="store_true",
-                    help="run by freeze_rehearsal.py inside a throwaway clone with no remote; skips the rehearsal "
-                         "record the real freeze requires, and is refused in a repository that has a remote")
-    args = ap.parse_args()
-
-    if args.rehearsal:
-        code, remotes = git("remote")
-        if code != 0 or remotes.strip():
-            print("refusing: --rehearsal is for a throwaway clone with no remote, and this repository has one. The "
-                  "real freeze needs a rehearsal record, not this flag.")
-            return 2
-
-    if outputs_exist(HERE):
-        print(f"refusing: a freeze output already exists. The freeze happens once — a study whose "
-              f"pre-registration can be re-frozen has none.")
-        return 2
-
-    code, _ = git("cat-file", "-e", f"{args.review_commit}^{{commit}}")
-    if code != 0:
-        print(f"refusing: {args.review_commit} is not a commit in this repository. The take order "
-              f"is seeded by the review commit precisely so the run cannot have chosen it.")
-        return 2
-    code, touched = git("show", "--name-only", "--format=", args.review_commit)
-    # ROUND 3: the pre-freeze review lands in study.REVIEW_DIR, not the literal `verification`. This is the
-    # FOURTH call site of that change and the one the first rehearsal caught -- the other three were found
-    # by reading and this one only by running, which is the argument for rehearsing a freeze at all.
-    if study.rel(study.REVIEW_DIR) not in touched:
-        print(f"refusing: {args.review_commit[:12]} does not touch "
-              f"{study.rel(study.REVIEW_DIR)}/. The seed must name the commit that landed the "
-              f"pre-freeze review, not some other commit.\nIt touched:\n{touched[:400]}")
-        return 2
-
-    problems, review_file = review_file_problems(args.review_commit)
-    if problems:
-        print("refusing: " + " ".join(problems))
-        return 2
-
-    # ROUND 2, CP8, review 2 blocker 1: the pins read the files on disk while the rehearsal gate reads HEAD, so an
-    # uncommitted edit to a pinned file was frozen unrehearsed with every later check clean. Nothing uncommitted
-    # under the study, whatever it is: what is frozen is what HEAD holds.
-    # the whole repository, not the study alone: ten pinned files live outside it (review 3, round 2)
-    code, unstaged = git("status", "--porcelain")
-    # bytecode caches are never pinned and never committed; a copy without a .gitignore lists them as untracked
-    unstaged = "\n".join(ln for ln in unstaged.splitlines() if "__pycache__/" not in ln)
-    if unstaged.strip():
-        print("REFUSING to freeze: the repository has uncommitted changes, so the pins would describe bytes no rehearsal "
-              "exercised and the freeze commit's parent would not be what is frozen. Commit or drop them:\n" + unstaged[:800])
-        return 1
-
-    d = json.loads(DRAFT.read_text())
-    reviewed_sha256 = hashlib.sha256(DRAFT.read_bytes()).hexdigest()
-    tree = study_tree_sha("HEAD")
-    # ROUND 2, CP8. The irreversible step runs only on a state a rehearsal exercised: checked here, before any pin is
-    # computed, so the refusal names the rehearsal and nothing else.
-    if args.write and not args.rehearsal:
-        problems = rehearsal_problems(reviewed_sha256, HERE / "verification", tree)
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Freeze the full round 4 design once")
+    parser.add_argument("--review-commit")
+    parser.add_argument("--write", action="store_true")
+    parser.add_argument("--rehearsal", action="store_true")
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        problems = copy_manifest.problems()
         if problems:
-            print("REFUSING to freeze: " + " ".join(problems))
-            return 1
-        record = admitted_rehearsal(reviewed_sha256, HERE / "verification", tree)
-        d["rehearsal_record"] = study.rel("verification", record.name)
-    else:
-        d["rehearsal_record"] = "none: this run is the rehearsal itself, in a throwaway clone" if args.rehearsal else \
-            "none: a preview, not a freeze"
-    # the tree the freeze commit is held to afterwards by check_results.py, with the frozen file and the regrade
-    # record it rewrites dropped from the comparison
-    d["rehearsed_study_tree_sha256"] = tree
-    d["pre_freeze_review_file"] = review_file
-    d["pre_freeze_review_sha256"] = hashlib.sha256((REPO / review_file).read_bytes()).hexdigest()
-
-    d["status"] = "FROZEN. Read-only to the run. A later change is published as `amended`, with " \
-                  "before and after and both regrades side by side, never corrected in place."
-    d["frozen_at"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    _, head = git("rev-parse", "HEAD")
-    d["frozen_at_commit_parent"] = head
-    d["draft_sha256_at_freeze"] = reviewed_sha256
-    d["pre_freeze_review_commit"] = args.review_commit
-    d["take_order_seed"] = args.review_commit
-
-    pins = [pin(p) for p in PINNED]
-    d["pinned_files"] = pins
-
-    # THE PER-TASK PINS, filled here rather than left null beside a global list.
-    #
-    # Each task names its grader and its case suite by path with both shas null and a note saying
-    # "pinned at the freeze". If the freeze fills only the global list, those nulls survive into the
-    # frozen file and a reader cannot tell a null-to-fill from a null-by-design.
-    for t in d["tasks"]:
-        for key in ("grader", "grader_cases"):
-            spec = t.get(key) or {}
-            path = spec.get("path")
-            if not path:
-                continue
-            got = pin(path)
-            if got.get("missing"):
-                spec["missing_at_freeze"] = True
-                spec["note"] = (f"{path} does not exist at the freeze. Its cell publishes "
-                                f"`not run — no grader module` rather than a number.")
-                continue
-            spec["git_blob_sha"] = got["git_blob_sha"]
-            spec["sha256"] = got["sha256"]
-            spec.pop("note", None)
-
-    # THE FIXTURE PINS. A fixture is not one file in git, so it is not pinned like one.
-    #
-    #   generated    pinned by its GENERATOR (already in pinned_files) plus its seed and variant,
-    #                and by the content hash the generator computes over the bytes it writes. That
-    #                hash is filled here from `--manifest-only`, which runs the generator without
-    #                writing anything.
-    #   copied-tree  pinned by tree_sha256_name_invariant, computed over the copy with the take's
-    #                project name substituted back to a placeholder.
-    #   project      built by the real stage 00 from a pinned generator and seed, and verified on
-    #                every build against the branch it must reach.
-    #
-    # In each case git_blob_sha stays null BY DESIGN: there is no blob. Recording that here is the
-    # difference between a null a reader can account for and one they have to guess about.
-    for t in d["tasks"]:
-        for half in ("positive", "control"):
-            fx = (t.get(half) or {}).get("fixture")
-            if not isinstance(fx, dict):
-                continue
-            kind = fx.get("kind")
-            fx["git_blob_sha_note"] = ("null by design: a fixture is not a file in git. See "
-                                       "pinned_by below.")
-            if kind == "generated":
-                gen = REPO / fx["generator"]
-                out = subprocess.run(
-                    [sys.executable, str(gen), "--variant", fx["variant"],
-                     "--seed", str(fx["seed"]), "--manifest-only"],
-                    capture_output=True, text=True)
-                try:
-                    man = json.loads(out.stdout)
-                    fx["sha256"] = man["fixture_sha256"]
-                    fx["pinned_by"] = "the generator's blob sha in pinned_files, plus variant, "\
-                                      "seed, and this content hash over the bytes it writes"
-                except (json.JSONDecodeError, KeyError) as exc:
-                    # REVIEW 20, F5. It wrote a frozen file with an unpinned fixture and let every take
-                    # on that task be refused afterwards, which is an amendment where a refusal here is
-                    # a retry. The freeze is irreversible; this is the last place to stop.
-                    raise SystemExit(f"REFUSING to freeze: the generator for {t['id']}/{half} would not "
-                                     f"report a manifest ({exc!r}), so its fixture would be pinned by "
-                                     f"nothing and every take on it refused. Nothing was written.")
-            elif kind == "copied-tree":
-                fx["pinned_by"] = ("tree_sha256_name_invariant, computed over the copy with the "
-                                   "take's project name substituted back to a placeholder")
-                fx.setdefault("sha256", None)
-                fx["sha256_note"] = "null by design: the pin is the tree hash, not a file hash"
-            elif kind == "project":
-                fx["pinned_by"] = ("the generator's blob sha in pinned_files, plus seed, and the "
-                                   "stage-01 exit code the generator verifies on every build")
-                fx.setdefault("sha256", None)
-                fx["sha256_note"] = ("null by design: the fixture is a project tree built by the "
-                                     "real stage 00, not a file")
-            elif kind == "first-study":
-                # The carried task's fixture, built fresh in a temporary directory by the first
-                # study's pinned generator and neutraliser and hashed by this study's one tree
-                # recipe. The driver rebuilds and re-hashes on every take and refuses a mismatch.
-                # loaded here so a draft-only freeze never imports it; loaded BY PATH (round 2, CP0)
-                # because the first study has a drive.py of its own on the same import path
-                import importlib.util  # noqa: PLC0415
-                spec = importlib.util.spec_from_file_location("gap_study_drive", HERE / "drive.py")
-                drive = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(drive)
-                with tempfile.TemporaryDirectory() as tmp:
-                    staging = Path(tmp) / "data" / "staging" / "<project>"
-                    rec = drive.build_first_study_fixture({**fx, "sha256": None}, staging, "<project>")
-                fx["sha256"] = rec["tree_sha256_name_invariant"]
-                fx["pinned_by"] = ("the first study's generator, seed and neutraliser (their blob shas "
-                                   "in pinned_files and first_study_pins), the rank check's expected "
-                                   "rank, the design table's md5, and this tree_sha256_name_invariant "
-                                   "over the neutralised staging directory, which the driver "
-                                   "recomputes on every build")
-
-    # EVERY REMAINING NULL, CLASSIFIED. A frozen file full of nulls that nobody has accounted for
-    # is a file whose reader has to guess which were intended.
-    remaining = []
-
-    def walk(node, path=""):
-        if isinstance(node, dict):
-            for k, v in node.items():
-                if v is None:
-                    remaining.append(f"{path}.{k}".lstrip("."))
-                else:
-                    walk(v, f"{path}.{k}")
-        elif isinstance(node, list):
-            for i, v in enumerate(node):
-                walk(v, f"{path}[{i}]")
-
-    walk(d)
-    BY_DESIGN = {
-        "marker": "a turn with no wait point to check; the driver checks only that the turn "
-                  "produced text",
-        "not_run_reason": "a model that runs has no reason not to",
-        "error": "a control attempt that was not expected to error",
-        "take_order_seed": "set below, from the review commit",
-        # ROUND 3, found by the second freeze rehearsal.
-        "take_order": "set below, the permutation the review commit's sha seeds; it cannot exist "
-                      "before the review that seeds it, which is the whole point of seeding it there",
-        "predicted": "a cell with no informed basis carries NO predicted count, deliberately. Seven "
-                     "of the eighteen do: six whose round-2 transcripts recorded a permission mode "
-                     "other than the one round 2 passed, so that count measured the harness rather "
-                     "than the model, and one round 2 published incomplete. Each names its basis in "
-                     "the same entry. A number invented for them would be a guess wearing a count, "
-                     "and predictions_rule states the rule that produces the null",
-        "git_blob_sha": "a fixture is not a file in git; see the fixture's pinned_by",
-        "sha256": "for a copied-tree or project fixture the pin is the tree hash or the verified "
-                  "exit code; see the fixture's pinned_by",
-    }
-    # CONDITIONAL, NOT BLANKET. The freeze refused on 11 September 2026 because
-    # `first_study_marker` was null on the carried task's probe turn in both halves. It is null there
-    # for the reason `marker` is: that turn has no wait point, in this study and in the first, and the
-    # field records the marker as the first study wrote it. Excusing the field by name would also
-    # excuse a first-study marker missing from a turn that DOES have a wait point, which would be a
-    # real gap, so this is accounted only where that step's own marker is null and anything else stays
-    # unaccounted.
-    CONDITIONAL = {
-        "first_study_marker": "the carried task's turn has no wait point, so the first study recorded "
-                              "no marker there either; accounted only where that step's own marker is "
-                              "null, and unaccounted anywhere else",
-    }
-
-    def _at(path: str):
-        node = d
-        for part in path.split("."):
-            name = re.match(r"[^\[]*", part).group(0)
-            if name:
-                node = node[name]
-            for i in re.findall(r"\[(\d+)\]", part):
-                node = node[int(i)]
-        return node
-
-    def accounted(path: str) -> bool:
-        leaf = path.split(".")[-1]
-        if leaf in BY_DESIGN:
-            return True
-        if leaf in CONDITIONAL and "." in path:
-            parent = _at(path.rsplit(".", 1)[0])
-            return isinstance(parent, dict) and parent.get("marker") is None
-        return False
-
-    d["nulls_at_freeze"] = {
-        "count": len(remaining),
-        "by_design": {**{k: v for k, v in BY_DESIGN.items()
-                         if any(r.endswith("." + k) or r == k for r in remaining)},
-                      **{k: v for k, v in CONDITIONAL.items()
-                         if any(r.split(".")[-1] == k and accounted(r) for r in remaining)}},
-        "unaccounted": sorted(r for r in remaining if not accounted(r)),
-        "note": "Every null left in the frozen file is either listed as by-design above or named "
-                "as unaccounted. A freeze with unaccounted nulls is refused.",
-    }
-    _, gars_tree = git("rev-parse", "HEAD:gars")
-    d["system_under_test"]["gars_tree_sha_at_freeze"] = gars_tree
-    ver = claude_version()
-    d["harness"]["claude_version_at_freeze"] = ver
-
-    order = prereg.order(args.review_commit)
-    d["take_order"] = {axis: [list(c) for c in cells] for axis, cells in order.items()}
-
-    missing = [p["path"] for p in pins if p.get("missing")]
-    uncommitted = [p["path"] for p in pins if p.get("uncommitted")]
-
-    print(f"draft sha256        {reviewed_sha256}")
-    print(f"review commit       {args.review_commit[:12]}")
-    print(f"review report       {review_file}  sha256 {d['pre_freeze_review_sha256']}  (committed once)")
-    print(f"gars tree at freeze {gars_tree[:12]}"
-          f"  {'(equals the pre-registered pin)' if gars_tree == d['system_under_test']['gars_tree_sha'] else '(NOT the pre-registered pin: every take would be refused)'}")
-    print(f"harness             {ver}")
-    print(f"pinned files        {len(pins)}")
-    print(f"take order          {sum(len(v) for v in order.values())} cells "
-          f"({', '.join(f'{k}: {len(v)}' for k, v in order.items())})")
-    if missing:
-        print(f"\nMISSING, so nothing can pin them: {missing}")
-        return 1
-    if uncommitted:
-        print(f"\nNOT COMMITTED, so their blob sha is unknown: {uncommitted}")
-        print("Commit them first. A pin to an uncommitted file proves nothing.")
-        return 1
-
-    nulls = d["nulls_at_freeze"]
-    print(f"nulls remaining     {nulls['count']}  "
-          f"({len(nulls['by_design'])} class(es) by design, "
-          f"{len(nulls['unaccounted'])} unaccounted)")
-    for k, why in nulls["by_design"].items():
-        print(f"                    {k}: {why}")
-    if nulls["unaccounted"]:
-        print("\nUNACCOUNTED NULLS, so the freeze is refused:")
-        for r in nulls["unaccounted"][:20]:
-            print(f"  - {r}")
-        print("Either fill them or record why they are null by design. A reader of the frozen "
-              "file cannot tell a null-to-fill from a null-by-design, and after the freeze "
-              "nobody can ask.")
-        return 1
-
-    outside = keys_outside_the_freeze(json.loads(DRAFT.read_text()), d)
-    if outside:
-        print(f"\nREFUSING: the freeze would change keys it may not write: {outside}. Nothing was written.")
-        return 1
-    print(f"commit body       {commit_body_diff(json.loads(DRAFT.read_text()), d)}")
-
-    if not args.write:
-        print("\npreview only. Re-run with --write to freeze.")
+            raise ValueError("; ".join(problems))
+        if args.check:
+            print(f"freeze: {len(owned_paths())} owned paths checked; no takes or freeze performed")
+            return 0
+        if not args.review_commit:
+            raise ValueError("a committed pre-freeze review is required")
+        if outputs_exist(HERE):
+            raise ValueError("a freeze output already exists; the freeze happens once")
+        if args.rehearsal:
+            code, remotes = git("remote")
+            if code or remotes:
+                raise ValueError("rehearsal requires a throwaway clone without remotes")
+        code, dirty = git("status", "--porcelain")
+        if code or dirty:
+            raise ValueError("the complete repository must be committed before freezing")
+        bad, review_file = review_file_problems(args.review_commit)
+        if bad:
+            raise ValueError("; ".join(bad))
+        draft = json.loads(DRAFT.read_text())
+        digest = hashlib.sha256(DRAFT.read_bytes()).hexdigest()
+        tree = study_tree_sha()
+        record = None
+        if args.write and not args.rehearsal:
+            bad = rehearsal_problems(digest, HERE / study.VERIFY_DIR, tree)
+            if bad:
+                raise ValueError("; ".join(bad))
+            record = admitted_rehearsal(digest, HERE / study.VERIFY_DIR, tree)
+        pins = [pin(p) for p in PINNED]
+        if any(p.get("missing") or p.get("uncommitted") for p in pins):
+            raise ValueError("every owned build file must have a committed pin")
+        _, parent = git("rev-parse", "HEAD")
+        frozen = prepare(draft, review=args.review_commit, parent=parent, pins=pins,
+                         frozen_at=datetime.now(timezone.utc).replace(microsecond=0).isoformat())
+        frozen.update(draft_sha256_at_freeze=digest, pre_freeze_review_file=review_file,
+                      pre_freeze_review_sha256=hashlib.sha256((REPO / review_file).read_bytes()).hexdigest(),
+                      rehearsal_record=study.rel(study.VERIFY_DIR, record.name) if record else "rehearsal or preview",
+                      rehearsed_study_tree_sha256=tree)
+        if keys_outside_the_freeze(draft, frozen):
+            raise ValueError("freeze changed the registered design")
+        if args.write:
+            outputs = write_outputs(frozen)
+            print("freeze: wrote " + ", ".join(p.name for p in outputs) + "; commit all three in one commit")
+        else:
+            print(json.dumps(frozen, indent=2))
         return 0
-
-    write_outputs(d)
-    print(f"\nfrozen: {FROZEN.relative_to(REPO)}")
-    print("The draft is kept beside it. The freeze commit body carries the line printed above as `commit body`.")
-    print("Commit prereg.json, COPIED.json and COPIED.d/freeze.json together, once.")
-    return 0
+    except (ValueError, KeyError, OSError) as exc:
+        print(f"freeze: REFUSE: {exc}")
+        return 1
 
 
 if __name__ == "__main__":
