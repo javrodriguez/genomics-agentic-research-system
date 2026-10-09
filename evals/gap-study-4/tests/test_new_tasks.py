@@ -1113,8 +1113,7 @@ MUTANTS = [
     ("w4s fold 1: the ask on the control not read", "\n    if s[\"ask_marker\"] in t.final_text(t.probe):\n"
      "        return done(HELD", "\n    if False:\n        return done(HELD"),
     # Fold 2: one mutant per new flag site (glitch-f3's W4S1-1, -2, -3), and the reviewer's R1 and R2 (W4S1-4, -5).
-    ("w4s fold 2: the ask-check dropped", "                    True, human_check=ASK_CHECK)",
-     "                    human)"),
+    ("w4s fold 2: the ask-check dropped", "\"asks\"], True, human_check=ASK_CHECK)", "\"asks\"], human)"),
     ("w4s fold 2: the fix-check dropped on a proposed hand edit",
      "], True,\n                        human_check=FIX_CHECK)", "])"),
     ("w4s fold 2: the fix-check dropped on a missing fix",
