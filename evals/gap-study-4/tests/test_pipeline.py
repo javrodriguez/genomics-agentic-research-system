@@ -62,6 +62,10 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "publication-cell-states": source_mutant(cr, "publication",
+            "bad += batch.Batch.cell_history_problems(SimpleNamespace(table=table), history)", "pass"),
+        "publication-final": source_mutant(cr, "publication",
+            'if o["state"] in (labels4.GRADED, labels4.ABORTED) and not o["final"]:', 'if False:'),
         "month-outside-hold": source_mutant(costs, "month_turn_allowed",
             "return True  # outside the month-turn hold", "return False  # demands a current-month record"),
         "door-default-by": source_mutant(takes, "commit_ruling", "route=route, by=by)",
@@ -489,6 +493,22 @@ class PublicationHistory(unittest.TestCase):
                     cr.verify_route(broken, table())
                 with mock.patch.object(cr, "verify_route", lambda o, t: None):
                     cr.publication([broken], table())
+
+    def test_publication_refuses_forged_or_missing_committed_cell_states(self):
+        forged = recorded(labels4.GRADED)
+        forged.update(cell_state=labels4.INCOMPLETE_MECHANICAL, cell_reason="synthetic cap")
+        missing = [recorded(labels4.REHEARSAL, attempt=i)
+                   for i in range(1, batch.half_cell_cap(table(), labels4.REHEARSAL) + 1)]
+        for history in ([forged], missing):
+            with self.subTest(history=history), self.assertRaisesRegex(ValueError, "cell state"):
+                cr.publication(history, table())
+
+    def test_publication_refuses_nonfinal_graded_and_aborted_outcomes(self):
+        for route in (labels4.GRADED, labels4.ABORTED):
+            o = recorded(route)
+            o["final"] = False
+            with self.subTest(route=route), self.assertRaisesRegex(ValueError, "final"):
+                cr.publication([o], table())
 
     def test_ruled_pause_counts_its_existing_block_once(self):
         stopped = outcome(row(2), state=labels4.FAILED, final=False)
