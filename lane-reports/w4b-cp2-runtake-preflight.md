@@ -36,7 +36,10 @@ All files are new, under `evals/gap-study-4/`, and claimed in `COPIED.d/w4b-cp2-
 | 44ff12ec | fold 3, red tests first |
 | 932f84ad | fold 3, config home isolated, one entry at most, ratified signatures named |
 | 4486bc8b | fold 3, the audit's from-imports, module attributes and getattr by construction |
-| (this commit) | the lane report's Fold 3 section |
+| 355a2031 | the lane report's Fold 3 section |
+| 47d653d9 | fold 4, red tests first (gates pending the lift) |
+| ddf9e22f | fold 4, the audit binds import-bound names and dynamic builtins (gates pending the lift) |
+| (this commit) | the lane report's Fold 4 section (gates pending the lift) |
 
 ## The lane's own decisions
 
@@ -69,7 +72,8 @@ Both are named in the functions' docstrings too.
 - `preflight.run(...)` adds `begin_reply` and `caller_env`.
 - `agent_exec_argv(...)` adds `config_home` (only a harness's config-home variable at the config mount).
 
-A caller written to interface 12 or task 3 verbatim breaks on the required ones; the lane lead ratifies them at the merge or asks for a change.
+The two required additions, `login_file` and `record_dir`, were ratified by glitch-f3, Thu 8 Oct (see the interface section).
+The remaining departures are the optional ones above (`caller_env`, `Launched.spec`, `begin_reply`, `config_home`).
 
 ## Fold 1
 
@@ -137,7 +141,7 @@ glitch-f3's standing rule holds: no guard-evasion probes; guards are built and j
 |---|---|---|---|---|---|
 | W4B3-1 config-home name clause not isolated | MAJOR | fold | none needed in the guard; the tests now isolate it | the login-name and non-config-home cases carry `/opt/cfg` (`CODEX_API_KEY=/opt/cfg`, `PATH=/opt/cfg`); the wrong-value case stays | "name unchecked" (helper returns `value == CONFIG_MOUNT`): `FAILED (failures=1)` |
 | W4B3-2 SUBPROCESS_USES rule bound only by its literal | MINOR | fold | none needed in the rule | `test_subprocess_rule_fires_on_the_real_call`: with ("run", "call") removed, process_audit() on the real run_take.py flags the one real call | the in-test list mutant `run-call-removed` red |
-| W4B3-3 audit not default-deny over from-imports, module attributes and getattr | MINOR | extend by construction | `IMPORT_FROM_ALLOWED`, `MODULE_ATTRS` and `GETATTR_ALLOWED`, derived once from the box modules and committed | `TestAuditAllowlists`: each list is exactly what the modules use | emptied: import-from `FAILED (failures=3)`, module-attrs `FAILED (failures=3)`, getattr `FAILED (failures=3)`; widened: red in the committed in-memory mutants (their whole-file swaps are unrun, see below) |
+| W4B3-3 audit not default-deny over from-imports, module attributes and getattr | MINOR | extend by construction | `IMPORT_FROM_ALLOWED`, `MODULE_ATTRS` and `GETATTR_ALLOWED`, derived once from the box modules and committed | `TestAuditAllowlists`: each list is exactly what the modules use | emptied: import-from `FAILED (failures=3)` (the whole set replaced by an empty one), module-attrs `FAILED (failures=3)` (the swap emptied one module's list, `secrets`, while the committed in-memory mutant empties every list), getattr `FAILED (failures=3)` (the whole set emptied); widened: red in the committed in-memory mutants (their whole-file swaps are unrun, see below) |
 | W4B3-4 more than one config_home entry accepted | NIT | refuse it | `CONFIG_HOME_MAX = 1` in agent_exec_argv | the two-entry case in `test_config_home_refusals` | `CONFIG_HOME_MAX = 2`: `FAILED (failures=1)` |
 
 The residual, in words: the process audit is judged by construction, not by adversarial probing.
@@ -145,6 +149,27 @@ The residual, in words: the process audit is judged by construction, not by adve
 Unrun at the 20:45 EDT hold:
 - the whole-file swaps of the three widen mutants (import-from, module-attrs, getattr) and of `run-call-removed`;
 - every gate on the report-only head. The code is unchanged since 4486bc8b, whose gates all passed.
+
+## Fold 4
+
+Round 4 on `355a2031` returned VERDICT: PASS (no MAJOR), so the review loop stops.
+Under the stop rule only the two MINORs that loosen a check are fixed; the lane lead also folds the prose NIT.
+The decisions are the lane lead's.
+glitch-f3's standing rule holds: no evasion form is written, and the reviewer's alias chain stays in words only.
+
+| finding | severity | the lane lead's decision | fix | test | mutant |
+|---|---|---|---|---|---|
+| W4B4-1 MODULE_ATTRS keys not bound to the imports | MINOR | fold, by construction | the audit refuses an attribute on an import-bound name with no entry in MODULE_ATTRS (os and subprocess keep their own lists), refuses `asname` on every plain import, and refuses every import-bound module name used as a value | `test_module_keys_bound_to_imports`: the keys equal the import-bound names derived from the box modules, less os and subprocess; with `shutil` dropped, the real `shutil.rmtree` is refused | `module-attrs-key-dropped` |
+| W4B4-2 dynamic builtins reachable through another name | MINOR | fold, by construction | each of `DYNAMIC_BUILTINS` (getattr, eval, exec, compile, vars, globals, locals, setattr, delattr, `__import__`) is refused when loaded other than as the func of a direct call | `test_dynamic_builtins`: the list is bound by its literal, and the real modules' own direct calls still pass | `dynamic-builtins-dropped-getattr`, `dynamic-builtins-emptied` |
+| W4B4-3 stale ratification prose; the swapped form unstated | NIT | fold | the departures line and open question 2 point at the ratified interface section; the Fold 3 table states which emptied form each swap used | - | - |
+
+The residual, in words: the process audit is judged by construction, not by adversarial probing.
+For W4B4-2, the list is bound by its literal and by the real modules passing; no alias form is written, so the rule itself has no planted witness.
+
+Gates pending the lift (the Mac hold was on for all of fold 4; nothing was run):
+- the three lane test files alone, `--process-audit`, the checks file and `copy_manifest.py --check`;
+- the fold 3 swaps never run (import-from-widened, module-attrs-widened, getattr-widened, run-call-removed);
+- one swap per new mutant (module-attrs-key-dropped, dynamic-builtins-dropped-getattr, dynamic-builtins-emptied).
 
 ## PENDING values, with reasons
 
@@ -186,7 +211,7 @@ A named gap: until the billing-route lists are filled, arms O and G refuse only 
 ## Open questions for the lane lead
 
 1. Round 3's leak words still occur in prose and repository paths in the lane's files: "round 3's", "pre-registered", the round 3 path the leak-word helper reads, and `literal_eval` in a test. No test data names one. Should prose be swept too?
-2. The signature departures above need a ruling at the merge.
+2. The required `login_file` and `record_dir` were ratified by glitch-f3, Thu 8 Oct (see the interface section); the optional additions remain departures for the merge to note.
 3. `kill_agent` needs a `kill` binary in the take image (w4a).
 4. The C3 constants for merge binding 7: run_take holds `QUIESCENCE_CAP_SURVIVORS_KEY` and `QUIESCENCE_CAP_ROW`; preflight holds `UNREADABLE_CONSEQUENTIAL_KEY` and `UNREADABLE_CONSEQUENTIAL_ROW`.
 5. Merge binding 4: `sidecar_expect` now also pins `security_opt` as `["no-new-privileges"]` and the evidence mount at `/srv/ev`.
