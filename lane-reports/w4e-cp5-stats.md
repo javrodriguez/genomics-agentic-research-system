@@ -192,3 +192,21 @@ Open items the lane lead carries to glitch-f3 (no change in this lane):
 - VERSION_ID needs the adapters to return a bare version (CP2).
 - Alpha's shortest form binds build_draft.py's writer.
 - The excluded view has three shapes (a dict, `no takes`, "k stops excluded, none counted"), which matters for result.py.
+
+## Fold 3 (the round 3 lane review: VERDICT PASS, no MAJOR; the loop stops here under the stop rule)
+
+Start: 114cdc69, clean tree.
+Commits:
+- bdfb7d9f: red test (97 run: 1 failure, 1 error);
+- 82bd268f: the fix;
+- this section.
+
+| Finding | Fold (decision: the lane lead's) | Whole-file mutants |
+|---|---|---|
+| W4E3-1 MINOR: `_ignored` skipped dot-named folders, and its .json test was case-sensitive | `_ignored(p)` now ignores only dot-named regular files that are not .json in any case. A test asserts that `.d/x.json` (a dot-named folder) and `.t.JSON` each make `--check` exit 1, with a mutant. | f3_dot_folders_skipped RED; f3_json_case_sensitive RED; f3_all_dot_skipped RED |
+| W4E3-2 NIT | Left, by the lane lead's decision. | n/a |
+
+Gates on 82bd268f, finished at 20:40 EDT, before the hold:
+- `tests/test_stats.py` alone: `Ran 97 tests` / `OK`.
+- `stats.py --check`: the no-takes line, exit 0.
+- `copy_manifest.py --check`: `ok: 110 files from 8 fragment(s) ...`.
