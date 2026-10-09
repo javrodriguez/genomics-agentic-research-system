@@ -313,9 +313,10 @@ def pending_caps(table: dict) -> list[str]:
 
 
 def is_pending(status) -> bool:
-    """Lane review round 1, W4H1-1 (the lane lead's decision, the spend-cap line only): a status is pending unless,
+    """Lane review round 1, W4H1-1 (the lane lead's decision for the spend-cap line; glitch-f3's ruling for all four): a status is pending unless,
     stripped and upper-cased, it does not start with PENDING, so "pending (x)" or " PENDING" never starts the loop.
-    The three sibling status lines below keep the base's prefix test (carried by the lane lead to glitch-f3)."""
+    glitch-f3's ruling (under Javier's delegation, relayed by the lane lead) extends it to the three sibling status
+    lines, so all four read a status the same way."""
     return str(status).strip().upper().startswith(PENDING)
 
 
@@ -324,13 +325,13 @@ def start_problems(table: dict) -> list[str]:
     p = [f"cap {r} is still pending in routing.json" for r in pending_caps(table)]
     if not table.get("operator_reasons"):
         p.append("operator_reasons is empty in routing.json (round 3's operator-side reasons)")
-    if str(table.get("operator_reasons_status", PENDING)).startswith(PENDING):
+    if is_pending(table.get("operator_reasons_status", PENDING)):
         p.append("operator_reasons_status is PENDING in routing.json")
     if not table.get("pin_profiles"):
         p.append("pin_profiles is empty in routing.json (CP5 pre-registers them)")
-    if str(table.get("pin_profiles_status", PENDING)).startswith(PENDING):
+    if is_pending(table.get("pin_profiles_status", PENDING)):
         p.append("pin_profiles_status is PENDING in routing.json")
-    if str(table.get("rate_limit_markers_status", PENDING)).startswith(PENDING):
+    if is_pending(table.get("rate_limit_markers_status", PENDING)):
         p.append("rate_limit_markers_status is PENDING in routing.json")
     if is_pending(table.get("spend_cap_markers_status", PENDING)):
         # item 1 (ruling 3 of 17:42): an unruled spend-cap list never lets the loop start
