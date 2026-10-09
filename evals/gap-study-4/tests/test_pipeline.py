@@ -62,6 +62,8 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "ledger-cell-bijection": source_mutant(cr, "validate_ledger",
+            'if cell_ids.setdefault(cell, row["half_cell"]) != row["half_cell"]:', 'if False:'),
         "publication-cell-states": source_mutant(cr, "publication",
             "bad += batch.Batch.cell_history_problems(SimpleNamespace(table=table), history)", "pass"),
         "publication-final": source_mutant(cr, "publication",
@@ -692,6 +694,17 @@ class InterfaceRecords(unittest.TestCase):
         self.assertNotEqual(takes.try_key(r), takes.try_key(dict(r, repeat=None, pressure=True)))
         with mock.patch.object(takes, "half_cell_key", lambda r: (r["arm"], r["task"], r["half"], r["model"])):
             self.assertEqual(takes.try_key(r), takes.try_key(dict(r, agent={"harness": "another", "version": "0.0.1"})))
+
+    def test_half_cell_ids_and_identities_are_one_to_one(self):
+        first = dict(row(), attempt=1)
+        same_cell = dict(row(), slot="s2", wording="w2", attempt=1)
+        self.assertEqual(len(cr.validate_ledger([first, same_cell])), 2)
+        split = dict(same_cell, half_cell="c2")
+        with self.assertRaisesRegex(ValueError, "identity.*ids"):
+            cr.validate_ledger([first, split])
+        merged = dict(same_cell, model="synthetic-other")
+        with self.assertRaisesRegex(ValueError, "id.*identities"):
+            cr.validate_ledger([first, merged])
 
     def test_every_stop_has_three_views_and_aborted_counts_against_holding(self):
         self.assertEqual(self.run.stop_views(), stats.STOP_VIEWS)
