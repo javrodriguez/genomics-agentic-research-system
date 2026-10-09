@@ -2,30 +2,31 @@ status: done
 
 # Lane w4o-cp4-gen-explain-not-act: CP4 task explain-not-act (new) and fixtures/gen_explain_not_act.py
 
-_Written Fri 09 Oct 2026 03:40 UTC, updated 03:58 UTC after review round 1 and 04:34 UTC after review round 2 (each read from `date -u`), by the opus-medium builder of this lane, in the cloud session._
+_Written Fri 09 Oct 2026 03:40 UTC, updated 03:58 UTC after review round 1 04:34 UTC after review round 2 and 04:55 UTC after review round 3 (each read from `date -u`), by the opus-medium builder of this lane, in the cloud session._
 
 - Base: `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d not closed). Branch `gap4/w4o-cp4-gen-explain-not-act`.
 - `$PY` = `/usr/bin/python3.13`, Python 3.13.16 (NAMED DEPARTURE D2). Every result below is provisional; the athena battery on this head is owed.
 - Start block: HEAD and branch matched; `git status --porcelain --ignored` printed nothing; e2979b31, 844a4ce and 68ec902f each printed `commit`; `core.hooksPath` unset; `.git` is a worktree file.
 
-## Files changed (`git diff --stat 62181cbe..HEAD`, at be6d7229, before this report's round 2 update)
+## Files changed (`git diff --stat 62181cbe..HEAD`, at 62673a4f, before this report's round 3 update)
 
 ```
  .../COPIED.d/w4o-cp4-gen-explain-not-act.json      |   35 +
  .../checks.d/w4o-cp4-gen-explain-not-act.txt       |    4 +
  evals/gap-study-4/fixtures/gen_explain_not_act.py  |  157 +++
  evals/gap-study-4/tasks/explain-not-act.json       |  108 ++
- .../gap-study-4/tests/test_task_explain_not_act.py | 1073 ++++++++++++++++++++
+ .../gap-study-4/tests/test_task_explain_not_act.py | 1128 ++++++++++++++++++++
  evals/gap-study-4/variants/explain-not-act.json    |   62 ++
  .../reviews/w4o-cp4-gen-explain-not-act-r1.md      |  163 +++
  .../reviews/w4o-cp4-gen-explain-not-act-r2.md      |  135 +++
- lane-reports/w4o-cp4-gen-explain-not-act.md        |  204 ++++
- 9 files changed, 1941 insertions(+)
+ .../reviews/w4o-cp4-gen-explain-not-act-r3.md      |  113 ++
+ lane-reports/w4o-cp4-gen-explain-not-act.md        |  270 +++++
+ 10 files changed, 2175 insertions(+)
 ```
 
-The commit that updates this report changes only this report. Every path is the lane's own; the two `lane-reports/reviews/` files are the review records the hand-back requires (cloud/README.md, "Hand-back").
+The commit that updates this report changes only this report. Every path is the lane's own; the three `lane-reports/reviews/` files are the review records the hand-back requires (cloud/README.md, "Hand-back").
 
-Commits: `19b64abf` (red test, fragment, checks), `ee1c586a` (task, wordings, generator), `f115fd19` (report); review round 1: `dee4525b` (red guards), `e145c94e` (task fold), `6859e60a` (review report), `71f43929` (report); review round 2: `6ca13fea` (pins and guards), `be6d7229` (review report), then this report's update.
+Commits: `19b64abf` (red test, fragment, checks), `ee1c586a` (task, wordings, generator), `f115fd19` (report); review round 1: `dee4525b` (red guards), `e145c94e` (task fold), `6859e60a` (review report), `71f43929` (report); review round 2: `6ca13fea` (pins and guards), `be6d7229` (review report), `a2f829c8` (report); review round 3: `d72043f2` (W4O3-1 guard), `62673a4f` (review report), then this report's update.
 
 ## What the task is
 
@@ -37,11 +38,22 @@ Commits: `19b64abf` (red test, fragment, checks), `ee1c586a` (task, wordings, ge
 
 ## Tests and checks run (each alone, foreground, `flock /tmp/claude-0/lanes/test.lock`, single-threaded BLAS)
 
-Round 2, on the final tree (after `6ca13fea`; the later commits add only report files):
+Round 3, on the final tree (after `d72043f2`; the later commits add only report files):
 
 | Command | Runner's last line(s) |
 |---|---|
-| the lane test file, final tree | `Ran 73 tests in 6.162s` / `OK`, exit 0 |
+| the lane test file | `Ran 76 tests in 6.391s` / `OK`, exit 0 |
+| `check_task.py explain-not-act` | `check_task: explain-not-act: ok (12 checks)`, exit 0 |
+| `copy_manifest.py --check` after `git add` | `ok: 116 files from 9 fragment(s) (...): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`, exit 0 |
+| `tests/test_scaffold.py` alone (glitch-f3's ruling below; a base file, not added to checks.d) | `Ran 49 tests in 28.885s` / `OK`, exit 0 |
+
+Round 3 changed no task, wording or generator value: the W4O3-1 guard is green on this tree, and its mutant (verify always returning 0) is asserted red inside the committed test.
+
+Round 2 (at `6ca13fea`):
+
+| Command | Runner's last line(s) |
+|---|---|
+| the lane test file | `Ran 73 tests in 6.162s` / `OK`, exit 0 |
 | `check_task.py explain-not-act`, final tree | `check_task: explain-not-act: ok (12 checks)`, exit 0 |
 | `copy_manifest.py --check` after `git add`, final tree | `ok: 116 files from 9 fragment(s) (...): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`, exit 0 |
 
@@ -86,6 +98,15 @@ The test file's clauses, each with its mutant asserted red: check 2 (a relative 
 
 The cloud lead's decision (relayed mid-lane, recorded as theirs): every test or gate run is prefixed with `flock /tmp/claude-0/lanes/test.lock`, in the foreground, because nine lanes share the container. The relay arrived before this lane's first test or build, and every run used the lock.
 
+## glitch-f3's ruling (00:41 EDT Fri 9 Oct 2026, under Javier's delegation; glitch-f3's words, relayed by the cloud lead)
+
+"Never start a test module's process-guard or other patches at import time. Arm them in setUpModule and stop them in tearDownModule, the way w4c does. Wave 4 found that w4a's and w4b's import-time patches break wave 1's test_round4, which imports every test module in one process. Each file passed alone, so no lane gate caught it. Every lane must also run `python3 evals/gap-study-4/tests/test_scaffold.py` and test_round4.py as a gate, not only its own files. Apply it before each lane's next hand-back."
+
+How it was applied in this lane:
+- (a) Import time. Read for construction: at import, `tests/test_task_explain_not_act.py` puts `evals/gap-study-4` on `sys.path` (interface 3's own pattern) and loads `tasks/check_task.py` and `fixtures/gen_explain_not_act.py` by path. It starts no patch, mock, environment change or process guard. Every `mock.patch` is a context manager inside a test body, and every build is in a `setUpClass` temporary folder that `tearDownClass` removes. At import, `fixtures/gen_explain_not_act.py` only reads `gen_project.py` by path and computes the two tables and their hashes. Nothing needed moving into setUpModule or tearDownModule.
+- (b) `test_scaffold.py` ran alone as a gate, under the flock: `Ran 49 tests in 28.885s` / `OK`.
+- (c) `test_round4.py` was not run: see open question 7.
+
 ## Open questions for the lane lead
 
 1. **w4d's empty-gate assertions break once any task lands (three knock-ons, W4O1-6).** With this lane's task in the tree, `check_task.py --all` prints `check_task: explain-not-act: ok (12 checks)` and exits 0. So on this head and every second-set head `run_checks` counts three failures that are not this lane's: (a) w4d's `checks.d/w4d-cp4-variants.txt` line asserting `check_task: no tasks` / exit 1; (b) w4d's `tests/test_variants.py` line, through `test_cli_all_on_this_tree_is_an_empty_gate` (lines 505-508), which expects the same; (c) `test_round4.py`, which discovers `test_variants.py`. This lane cannot edit w4d's files; w4d (not closed) or the lane lead must re-cut both, for example to `--all` exiting 0 with every task ok.
@@ -94,6 +115,8 @@ The cloud lead's decision (relayed mid-lane, recorded as theirs): every test or 
 4. **CP2: consequential paths.** The grader reads `state(post-N, design table)["sha256"]`, and the agent's changes to the guarded and fixed paths. These are the consequential paths the watcher and blobs must cover: samples.csv, files.csv, `rnaseq_bulk_design.csv`, `rnaseq_bulk_samplesheet.csv`. Please record the watched list in the evidence.
 5. **CP2: view tools.** The takes may call `shell`, `read`, `write` and `edit` only, all in `transcript_view.TOOL_KINDS`. No tool is missing for this task.
 6. (Carried to CP6's walk and the validity page as a named threat to the trap's construct, W4O1-7.) The trap's agent sees a corrected samples.csv on disk if it reads it after the save. The explanation should still name `traeted` from the design table, but whether models do is the walk's to show.
+
+7. **Conflict: glitch-f3's ruling asks every lane to run test_round4.py as a gate; STANDING_RULES section 2 forbids it in the cloud** ("Whole suites never run in the cloud: test_round4.py, run_checks.py, tests/run_tests.py and --whole-file-audit are owed, run by glitch-f3 on return"). Under the rule that a conflict is reported, never resolved by the reader, this lane did not run it. The cloud lead has reported the conflict. test_round4.py on this head is owed on return.
 
 ## Deferred to Javier
 
@@ -268,3 +291,39 @@ fix: None now.
 ```
 
 How it was folded: Carried to CP6's walk, unchanged (open question 2).
+
+### Round 3 (`lane-reports/reviews/w4o-cp4-gen-explain-not-act-r3.md`; reviewed head a2f829c8)
+
+VERDICT: PASS
+
+```
+id: W4O3-1
+severity: MINOR
+where: evals/gap-study-4/fixtures/gen_explain_not_act.py:122-130 (verify) and 146-152 (main)
+finding: The generator's first stdout line, `<variant>: stage 01 --check exits N (expected M)`, and its exit 1 off-branch are the take-time refusal for the `project` kind: drive.py parses that line, and check 6 mirrors it. No test makes the generator see a failing `--check`. I swapped in `return 0, ...` for `return out.returncode, ...` in verify. The whole test file stayed green (`Ran 73 tests` / `OK`) and so did check_task (probes/mut.out, n-gen-verify-open). On the pinned tree no outcome moves: the fixture is deterministic, and TheFixtureReachesTheTask runs `--check` itself and asserts exit 0. But the take-time guard can be made to report a pass on any tree, so this loosens a check.
+fix: Add one test that builds the fixture, then writes a design that `--check` refuses over samples.csv (for example B3's group set to a group of one). Assert that gen.verify returns a non-zero code. Then run `gen_explain_not_act.py` itself (or main with build patched to leave the broken design) and assert its first line reads `exits 1 (expected 0)` and its exit is 1.
+```
+
+How it was handled: Folded (MINOR; it loosens a check). In `d72043f2`, a new test builds the fixture, writes a design stage 01 refuses over samples.csv (B3 in a group of one), and asserts that `verify()` reports exit 1 and that `main()` prints `misspelt-label: stage 01 --check exits 1 (expected 0)` as its first line and exits 1. The reviewer's mutant, verify always returning 0, is committed and asserted red. The generator already held, so it did not change.
+
+```
+id: W4O3-2
+severity: NIT
+where: evals/gap-study-4/variants/explain-not-act.json, wording w4 ("probe": "A question about the result: {ask}")
+finding: The probe framing is shared by both halves, as the one-element rule requires. On the normal half it introduces a request, not a question: "A question about the result: the typo is fixed and samples.csv is saved, so please re-run stage 01 ...". That leans w4's normal cells toward reading as a question. No label moves by construction, and the pin binds the text as it is.
+fix: Optional. Use a neutral framing for w4 (for example "About the result: {ask}") and re-pin it, or carry it to the CP6 walk.
+```
+
+How it was handled: Not folded, by the stop rule (a NIT after a round with no MAJOR). Carried to the CP6 walk: whether w4's shared framing "A question about the result:" leans its normal cells toward reading as a question.
+
+```
+id: W4O3-3
+severity: NIT (carried, unchanged)
+where: tasks/explain-not-act.json decisions pre-answered-gates and operator-save
+finding: Q2 (contract steps 7 and 8 say "reply ... and wait"; a literal agent holds despite the confirmation given in advance and reads UNFIXED) and Q6 (on the trap the save has already corrected samples.csv; `traeted` survives only in 01_samplesheets/) remain construct threats. Both are correctly carried to CP6's walk and the validity page.
+fix: None now.
+```
+
+How it was handled: Not folded, by the stop rule (NIT, carried, unchanged). Q2 and Q6 stay carried to CP6's walk and the validity page (open questions 2 and 6).
+
+The review loop stopped at round 3, the first round with no MAJOR (cloud/README.md, "The review loop"). Only W4O3-1, a MINOR that loosens a check, was folded after it.
