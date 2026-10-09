@@ -1,0 +1,20 @@
+{
+  "lane": "w4n-cp4-gen-confounded-seed2",
+  "files": [
+    {
+      "path": "COPIED.d/w4n-cp4-gen-confounded-seed2.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4n-cp4-gen-confounded-seed2.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, check_task.py on its task, and its generator's own --check."
+    },
+    {
+      "path": "tests/test_task_confounded_design.py",
+      "status": "new",
+      "reason": "Tests of the confounded-design task (seed 2): check_task passes it, one in-memory mutant per clause its values carry, the generator's clauses with their mutants, the identical copies of the first study's builders, and drift tests binding every marker and cited helper line to the pinned tree 844a4ce."
+    }
+  ]
+}
