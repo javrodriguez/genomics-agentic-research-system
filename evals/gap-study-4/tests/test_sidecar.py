@@ -17,6 +17,7 @@ any task.
 from __future__ import annotations
 
 import ast
+import builtins
 import errno
 import hashlib
 import json
@@ -1991,7 +1992,14 @@ class TestFold4(TakeCase):
     def test_a_badly_filled_format_still_reads_pending(self):
         for bad in (dict(FORMAT, setup_lines="PENDING"), dict(FORMAT, setup_lines="Setting up watches."),
                     {k: v for k, v in FORMAT.items() if k != "setup_lines"}, dict(FORMAT, setup_lines=[""]),
-                    dict(FORMAT, setup_lines=["PENDING"]), dict(FORMAT, extra=1), dict(FORMAT, established="PENDING")):
+                    dict(FORMAT, setup_lines=["PENDING"]), dict(FORMAT, extra=1), dict(FORMAT, established="PENDING"),
+                    # fold 5, W4C4-2: the other three keys type-checked
+                    dict(FORMAT, fields="PENDING"), dict(FORMAT, fields="x"), dict(FORMAT, fields=[]),
+                    dict(FORMAT, fields=[""]), dict(FORMAT, fields={"path": 1, "events": 2}), dict(FORMAT, fields=None),
+                    dict(FORMAT, fields=["at", "path"]), dict(FORMAT, fields=["path", "events", "path"]),
+                    dict(FORMAT, fields=["path", "events", "PENDING"]),
+                    dict(FORMAT, separator=""), dict(FORMAT, separator=None), dict(FORMAT, separator="PENDING"),
+                    dict(FORMAT, established=""), dict(FORMAT, established=None)):
             with self.subTest(bad):
                 with mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", bad):
                     self.assertIn("inotifywait_format", sidecar.pending())
@@ -2039,6 +2047,52 @@ class TestFold4(TakeCase):
         red("a fault in the last drain after a self-exit dropped")
 
 
+# ------------------------------------------------------------------------------------------------- fold 5 (lane review 4)
+# A planted positive for W4C4-1 (the guarded case itself, on a two-line source of its own, never on a real module):
+# a parameter named after a builtin, read elsewhere.
+REBIND_POSITIVE = "def f(len):\n    return 1\n\ndef g(x):\n    return len(x)\n"
+REBIND_SPEC = {"imports": {}, "from": set(), "attrs": set(), "rebinds": set(), "names": {"len"}}
+
+
+class TestFold5(unittest.TestCase):
+    """Lane review round 4's two MINORs, folded on the lane lead's decisions (W4C4-1, W4C4-2)."""
+
+    def test_each_rebinds_set_is_exactly_the_modules_own(self):
+        for rel, spec in BOX_MODULES.items():
+            with self.subTest(rel):
+                self.assertEqual(spec["rebinds"], set())
+                self.assertEqual(shielded_bindings(ast.parse(_source(rel))), spec["rebinds"])
+
+    def test_a_builtin_binding_is_refused_and_never_exempts_a_read(self):
+        got = process_problems(REBIND_POSITIVE, "m", REBIND_SPEC, [])
+        self.assertEqual(got, ["m: binds the builtin or dunder name len, outside its closed rebinds set"])
+        self.assertIn("len", free_names(ast.parse(REBIND_POSITIVE)))
+
+    def test_mutant_rebinds_widened_goes_red(self):
+        self.assertEqual(process_problems(REBIND_POSITIVE, "m", dict(REBIND_SPEC, rebinds={"len"}), []), [])
+        red("the rebinds set widened (a builtin binding accepted)")
+
+    def test_mutant_rebind_rule_dropped_goes_red(self):
+        with mock.patch.object(sys.modules[__name__], "shielded_bindings", lambda tree: set()), \
+                mock.patch.object(sys.modules[__name__], "free_names", _old_free_names):
+            got = process_problems(REBIND_POSITIVE, "m", dict(REBIND_SPEC, names=set()), [])
+        self.assertEqual(got, [])
+        red("a builtin binding exempting its reads (the module-wide exemption back)")
+
+    def test_mutant_format_types_unchecked_goes_red(self):
+        def old(fmt):   # fold 4's _format_ok: setup_lines typed, the rest compared as list(str)
+            if not isinstance(fmt, dict) or sorted(fmt) != sorted(sidecar.FORMAT_KEYS):
+                return False
+            lines = fmt["setup_lines"]
+            if not isinstance(lines, (list, tuple)) or not all(isinstance(x, str) and x for x in lines):
+                return False
+            return "PENDING" not in [fmt["separator"], fmt["established"]] + list(fmt["fields"]) + list(lines)
+        with mock.patch.object(sidecar, "_format_ok", old), \
+                mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", dict(FORMAT, fields="PENDING")):
+            self.assertNotIn("inotifywait_format", sidecar.pending())
+        red("a format whose fields is the string PENDING read as ready")
+
+
 # ------------------------------------------------------------------------------------------------- interface 10's ast check
 # Default-deny by construction (fold 2, W4C1-1, the lane lead's decision). For each of this lane's non-test box
 # modules: the closed set of modules it may import, and for each, the closed set of attribute chains it may use
@@ -2067,6 +2121,8 @@ BOX_MODULES = {
         },
         "from": {("__future__", "annotations"), ("dataclasses", "dataclass")},
         # every free (unbound) Load name the module uses, derived once from its source (fold 4, W4C3-1)
+        # builtin or dunder names the module may bind: closed and pinned, empty today (fold 5, W4C4-1)
+        "rebinds": set(),
         "names": {
             'BaseException', 'BlockingIOError', 'Exception', 'FileExistsError', 'FileNotFoundError', 'OSError',
             'RecursionError', 'RuntimeError', 'ValueError', '__name__', 'all', 'any', 'bool', 'bytes', 'dict',
@@ -2105,6 +2161,8 @@ BOX_MODULES = {
             "sys": {"path", "path.insert"},
         },
         "from": {("__future__", "annotations")},
+        # builtin or dunder names the module may bind: closed and pinned, empty today (fold 5, W4C4-1)
+        "rebinds": set(),
         "names": {
             'OSError', 'RuntimeError', 'UnicodeDecodeError', 'ValueError', '__file__', 'all', 'any', 'bool', 'bytes',
             'callable', 'dict', 'enumerate', 'int', 'isinstance', 'len', 'list', 'open', 'set', 'sorted', 'str',
@@ -2161,6 +2219,8 @@ def process_problems(src: str, rel: str, spec: dict, sites: list) -> list:
                 if node.level or (node.module, a.name) not in froms:
                     out.append(f"{rel}: from {node.module or '.'} import {a.name}, outside its allowlist")
     calls = []
+    for name in sorted(shielded_bindings(tree) - spec["rebinds"]):
+        out.append(f"{rel}: binds the builtin or dunder name {name}, outside its closed rebinds set")
     names = spec["names"]
     for name in sorted(free_names(tree)):
         if name not in names:
@@ -2204,10 +2264,49 @@ def process_problems(src: str, rel: str, spec: dict, sites: list) -> list:
     return out
 
 
+BUILTIN_NAMES = frozenset(dir(builtins))
+
+
+def _shielded(name: str) -> bool:
+    """A builtin's name or a dunder bare name: binding one never exempts its reads (fold 5, W4C4-1)."""
+    return name in BUILTIN_NAMES or name.startswith("__")
+
+
+def bindings(tree) -> set:
+    """Every name the module binds anywhere: Store or Del names, def and class names (methods directly in a class
+    body excepted: they bind an attribute, not a bare name), parameters, import aliases and except-as names."""
+    methods = {id(f) for c in ast.walk(tree) if isinstance(c, ast.ClassDef) for f in c.body
+               if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    bound = set()
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Name) and not isinstance(n.ctx, ast.Load):
+            bound.add(n.id)
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and id(n) not in methods:
+            bound.add(n.name)
+        elif isinstance(n, ast.arg):
+            bound.add(n.arg)
+        elif isinstance(n, (ast.Import, ast.ImportFrom)):
+            for a in n.names:
+                bound.add(a.asname or a.name.split(".")[0])
+        elif isinstance(n, ast.ExceptHandler) and n.name:
+            bound.add(n.name)
+    return bound
+
+
+def shielded_bindings(tree) -> set:
+    """The builtin or dunder names the module binds; each must be in its closed `rebinds` set."""
+    return {b for b in bindings(tree) if _shielded(b)}
+
+
 def free_names(tree) -> set:
-    """The free Load names of a module: every Name read that no def, class, parameter, assignment, import or
-    except-as in the module binds (fold 4, W4C3-1). A dunder bare name is free unless the module binds it, so it
-    must be pinned in the module's closed set like any other."""
+    """The free Load names of a module: every Name read that the module does not bind (fold 4, W4C3-1). A binding of
+    a builtin's name or a dunder name never exempts a read (fold 5, W4C4-1): such a read stays free, so it must be
+    pinned in the module's closed `names` set, and the binding itself must be in its closed `rebinds` set."""
+    bound = {b for b in bindings(tree) if not _shielded(b)}
+    return {n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)} - bound
+
+
+def _old_free_names(tree) -> set:   # kept only as the mutant below (the module-wide exemption of fold 4)
     bound = set()
     for n in ast.walk(tree):
         if isinstance(n, ast.Name) and not isinstance(n.ctx, ast.Load):
