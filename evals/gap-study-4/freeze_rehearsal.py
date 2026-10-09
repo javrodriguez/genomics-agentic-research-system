@@ -56,7 +56,7 @@ def rehearsal_plan(pre, row_file):
         ("takes.py", "--add", "--row", str(row_file), "--attempt", "1"),
         ("takes.py", "--session-id", "0"),
         ("run.py", "--all"), ("result.py", "--write"),
-        ("check_results.py", "--ledger"), ("completeness.py", "--check"),
+        ("check_results.py", "--ledger", "--rehearsal-plan"), ("completeness.py", "--check"),
     )
 
 

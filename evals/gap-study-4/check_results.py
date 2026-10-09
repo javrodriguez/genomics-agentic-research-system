@@ -8,6 +8,8 @@ are regraded with local v4 files. Publication reads committed cell states and
 closed rulings; candidate blocks for a ruled pause must agree on its event count.
 Under w5b-4, runtime outputs have no copy fragment. Their commit history must
 start strictly after the freeze, including outputs later removed from the tree.
+Only the disposable rehearsal plan passes --rehearsal-plan: its exact placeholder
+is reported NOT CHECKED. Ordinary checks still require the real rehearsal record.
 """
 
 from __future__ import annotations
@@ -458,7 +460,7 @@ def rehearsal_record_problems(frozen: dict) -> list[str]:
     return problems
 
 
-def check_frozen_content() -> list[str]:
+def check_frozen_content(rehearsal_plan=False) -> list[str]:
     frozen, why = frozen_bytes()
     if frozen is None and why == "NOT A GIT REPOSITORY":
         # A throwaway copy with no history, as the mutation battery builds. Printed, never silent, and
@@ -469,7 +471,13 @@ def check_frozen_content() -> list[str]:
         return [f"the frozen file could not be compared with its freeze: {why}"]
     now = json.loads((HERE / "prereg.json").read_text())
     problems = frozen_content_problems(frozen, now)
-    problems += rehearsal_record_problems(frozen)
+    if rehearsal_plan:
+        if frozen.get("rehearsal_record") != "rehearsal or preview":
+            problems.append("disposable rehearsal requires the exact rehearsal placeholder")
+        else:
+            print("  NOT CHECKED: rehearsal record (disposable rehearsal)")
+    else:
+        problems += rehearsal_record_problems(frozen)
     print(f"  the frozen file compared with its freeze: {len(now.get('amendments') or [])} amendment(s) "
           f"on record, {len(problems)} unrecorded change(s)")
     commit = freeze_commit()
@@ -515,7 +523,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--ledger", action="store_true")
-    parser.parse_args(argv)
+    parser.add_argument("--rehearsal-plan", action="store_true",
+                        help="disposable rehearsal only; rehearsal evidence is NOT CHECKED")
+    args = parser.parse_args(argv)
     try:
         if is_shallow():
             raise ValueError("the committed ledger cannot be checked in a shallow clone")
@@ -530,7 +540,7 @@ def main(argv=None):
             print("check_results: no takes; no frozen pins or publication measured")
             return 0
         pre = prereg.require_frozen("checking publication")
-        problems = check_pins() + check_frozen_content()
+        problems = check_pins() + check_frozen_content(rehearsal_plan=args.rehearsal_plan)
         if rows or history or records:
             page = HERE / "RESULT.md"
             problems += check_publication(rows, history, records, pre,
