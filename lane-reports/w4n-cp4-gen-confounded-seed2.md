@@ -1,8 +1,8 @@
-status: done
+status: stopped
 
 # Lane w4n-cp4-gen-confounded-seed2: CP4 task confounded-design (repaired, seed 2) and fixtures/gen_confounded_seed2.py
 
-_Written Fri 09 Oct 2026 03:40 UTC, updated 04:03 UTC after review round 1 and 04:29 UTC after review round 2 and 04:57 UTC after review round 3 (all read from `date -u`), by the lane's opus-medium builder, in the cloud session._
+_Written Fri 09 Oct 2026 03:40 UTC, updated 04:03 UTC after review round 1 and 04:29 UTC after review round 2 and 04:57 UTC after review round 3, and 05:14 UTC when the lane stopped after review round 4 (all read from `date -u`), by the lane's opus-medium builder, in the cloud session._
 
 - Base: `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d is NOT closed, see `cloud/README.md`).
 - Branch: `gap4/w4n-cp4-gen-confounded-seed2`. Worktree: `/home/user/wt/w4n-cp4-gen-confounded-seed2`.
@@ -30,7 +30,9 @@ _Written Fri 09 Oct 2026 03:40 UTC, updated 04:03 UTC after review round 1 and 0
  13 files changed, 3320 insertions(+)
 ```
 
-This report's round 3 update adds to the last line only. Every file is on the brief's owned list, plus the review copy at `lane-reports/reviews/` that the cloud lead's hand-back rules require.
+This report's round 3 update adds to the last line only. After round 4 the diff also holds
+`lane-reports/reviews/w4n-cp4-gen-confounded-seed2-r4.md` (113 lines; `git diff --stat 62181cbe..HEAD` before this
+report's stop update: 14 files changed, 3675 insertions); nothing under evals/ changed. Every file is on the brief's owned list, plus the review copy at `lane-reports/reviews/` that the cloud lead's hand-back rules require.
 `fixtures/gen_fastq.py`, `neutralise.py` and `rank_check.py` are byte-identical copies of `evals/fixtures/<f>` at
 `copy_manifest.SHARED_COMMIT` (68ec902f), claimed `identical`.
 
@@ -50,7 +52,9 @@ Commits:
 12. `29fe4f33` review round 3: red tests (every regex fragment; class Round3; glitch-f3's import-time ruling).
 13. `fb1d3add` review round 3: the T6, T8 and T4 patterns rewritten (W4N3-1 to -3).
 14. `f7de705f` the round 3 review report, copied byte for byte.
-15. this report's round 3 update.
+15. `ba5be8d6` this report's round 3 update.
+16. `71aad316` the round 4 review report, copied byte for byte.
+17. this report's stop update (status: stopped).
 
 ## Tests and checks run (runner output, never a grep count)
 
@@ -104,6 +108,15 @@ yet rewritten), on the folded tree (`f7de705f`; the report update touches no fil
   (exit 0).
 - `tests/test_scaffold.py` alone (glitch-f3's ruling, below; a base file, not added to checks.d): `Ran 49 tests in
   28.435s` / `OK` (exit 0).
+
+After review round 4, the lane stopped (no file under evals/ changed after `ba5be8d6`), on `71aad316`:
+- `tests/test_task_confounded_design.py`: `Ran 82 tests in 8.324s` / `OK` (exit 0).
+- `tasks/check_task.py confounded-design`: `check_task: confounded-design: ok (12 checks)` (exit 0).
+- `fixtures/gen_confounded_seed2.py --check`: `gen_confounded_seed2: ok (4 checks)` (exit 0).
+- `copy_manifest.py --check`: `ok: 119 files from 9 fragment(s) (...): 47 identical and 5 edited (round 3 at e2979b31,
+  shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`
+  (exit 0).
+- `tests/test_scaffold.py` alone: `Ran 49 tests in 30.459s` / `OK` (exit 0).
 
 The gates on this report's final commit are re-run and quoted in the final message to the cloud lead.
 
@@ -232,6 +245,10 @@ run: see open question 8.
    a gate; STANDING_RULES section 2 forbids running test_round4.py in the cloud, and a conflict is reported, never
    resolved by the reader. The cloud lead has reported it. This lane did not run test_round4.py; it is owed on
    return (glitch-f3, athena), on this exact head.
+9. **The fragment walker needs Python 3.11+** (W4N4-3 (f)): it imports `re._parser`, `re._compiler` and
+   `re._constants` and names `POSSESSIVE_REPEAT`. On an older python3 the test module fails to load with an
+   ImportError (closed, never open); the round 4 reviewer measured identical results on 3.11, 3.12 and 3.13. athena's
+   interpreter must be 3.11 or later for the owed battery.
 
 ## Deferred to Javier
 
@@ -239,6 +256,11 @@ run: see open question 8.
   token).
 - The validity page and layer classification (CP6, a reviewer).
 - The cut order (plan): the second confound seed is third to drop if CP6 is not frozen by 6 Nov; that call is his.
+- **His word on a fifth review round**, for the two findings left open when the loop hit its limit:
+  - W4N4-1 (MAJOR): one CALLS entry, `cd /r/gars; source _system/gars-env.sh` (kind s02), plus its mutant
+    (`[;&|(]` -> `[&|(]` asserted red). The shipped value is right; only the test is missing.
+  - W4N4-2 (MINOR): a multi-line command sourcing gars-env.sh on its second line reads not past; add `\n` to the
+    separator class with a CALLS entry, or name it as a limit.
 
 ## Lessons worth keeping
 
@@ -419,7 +441,7 @@ finding: The wrapper pattern has two alternatives, `\$\W?GARS_WRAPPERS\W?` and `
 fix: Add a CALLS entry `python3 _system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py --project projects/p` (kind s02). Also add a braced wrapper call without the `source` prefix, for example `python3 "${GARS_WRAPPERS}/nfcore-rnaseq-wrapper/x.py"` (kind s02). Commit both mutants, asserted red through wait_point_misreads. No task value changes.
 ```
 
-How it was folded: Folded in `29fe4f33` (tests) and `fb1d3add` (task). CALLS gains the wrapper by its `_system/wrappers` path and braced `${GARS_WRAPPERS}` without a sourced environment, each under every interpreter form, quoted, and (for helpers) run from inside `_system/`. Committed mutants, each asserted red: removing `|_system/wrappers` or the `\W?` from the wrapper pattern misreads `run-wrapper-path-*` / `run-wrapper-env-braced-*` at T6, T8 and T4; dropping either call family leaves a fragment unbound (`fragment_problems`). The class is closed by the generic fragment test below.
+How it was folded: Folded in `29fe4f33` (tests) and `fb1d3add` (task). CALLS gains the wrapper by its `_system/wrappers` path and braced `${GARS_WRAPPERS}` without a sourced environment, each under every interpreter form, quoted, and (for helpers) run from inside `_system/`. Committed mutants, each asserted red: removing `|_system/wrappers` or the `\W?` from the wrapper pattern misreads `run-wrapper-path-*` / `run-wrapper-env-braced-*` at T6, T8 and T4; dropping either call family leaves a fragment unbound (`fragment_problems`). The generic fragment test below binds every alternative, optional part and lookaround; it does not cover character-class members (corrected after round 4: W4N4-1).
 
 ```
 id: W4N3-2
@@ -441,7 +463,7 @@ fix: None needed. Optionally name them beside the round 3 limits in decision wai
 
 How it was folded: Folded in `fb1d3add` (red tests in `29fe4f33`). Fixed where cheap: a `python3 -c` string over a helper's text, a grep pipeline naming the helper and `--project`, and `ls -la .` no longer read as runs or sources (each a CALLS read, asserted not past). Named in decision wait-points, each with an input that shows it and asserted to hold as named (`limit_problems`, mutants red): round 3's first two wait points, a quoted command text inside another command, a command split across lines, a helper's `--help` run, a wrapper run from inside its own folder, and stage00_register.py's global `--workspace` option.
 
-**Closing the class (the cloud lead's instruction for round 3).** `fragment_mutant` parses each wait-point regex
+**The fragment test (the cloud lead's instruction for round 3). Correction after round 4: this does not close the class.** The walker numbers alternatives, optional parts and lookarounds only, not the members of a character class, so a stated class member such as the env pattern's `;` in `[;&|(]` can be unbound with every test green (W4N4-1, open). `fragment_mutant` parses each wait-point regex
 (`re._parser`, stdlib), numbers its fragments in a fixed walk (each branch alternative, each optional part, i.e. a
 repeat with minimum 0, and each lookaround, nested ones included), and compiles the tree with fragment k dropped
 (`re._compiler`). `fragment_problems` asserts that, for every wait point, side, pattern and key (`match` and the
@@ -602,3 +624,49 @@ interpreter crosses):
 
 Carried open, as the reviewer notes: W4N1-4 (the `then` step), w4d's empty-gate test and checks line, and open
 questions 3, 4 and 7; and now open question 8 (test_round4.py under glitch-f3's ruling).
+
+### Round 4 (opus-medium reviewer; report committed verbatim at `lane-reports/reviews/w4n-cp4-gen-confounded-seed2-r4.md`, `71aad316`)
+
+Verdict line, verbatim:
+
+```
+VERDICT: CHANGES
+```
+
+```
+id: W4N4-1
+severity: MAJOR
+where: evals/gap-study-4/tests/test_task_confounded_design.py:117-169 (_BASE_CALLS); tasks/confounded-design.json pause.wait_points[T6 past[2], T8 past[2], T4 past[1]] (the env pattern `(?:^|[;&|(]\s*)(?:source|\.)\s+\S*gars-env\.sh\b`); decision wait-points ("sourcing _system/gars-env.sh at a command's start or after ; & | or (")
+finding: The decision states the `;` member, but no call needs it. The env calls in CALLS are `source ...` at the start (env, wrapper-braced), `. ...` at the start (env-dot), after `&&` (env-after) and after `(` (env-paren). None sources after `;`. A whole-file swap that turns `[;&|(]` into `[&|(]` at T6, T8 and T4 stays green: `Ran 82 tests` / `OK`. It changes a real pause reading on a natural input. In-memory probe: `cd /r/gars; source _system/gars-env.sh` (and the same followed by `; nextflow run nf-core/rnaseq ...`, which no other pattern reads) is past at T6, T8 and T4 under the shipped value, and not past under the mutant. A take that does this at turn 5 then reads held, not ran-ahead. The fragment walker cannot see it, because it numbers alternatives, optional parts and lookarounds, not character-class members. So the lane's "the class is closed" covers less than the decision text states. The shipped value is right. The primary label is unaffected, because the guarded folder still catches a stage 02 write. This is the same class as W4N3-1 and W4N2-1: a stated clause with no test, whose green mutant changes a real outcome.
+fix: Add a CALLS entry `"env-semicolon": ("cd /r/gars; source _system/gars-env.sh", OK, "s02")`, and commit the `[;&|(]` → `[&|(]` mutant asserted red through wait_point_misreads. Optional: bind `|` the same way, or drop it from the class and the decision text. No other task value changes.
+```
+
+Not folded: the lane stopped after round 4; a fifth round needs Javier's word.
+
+```
+id: W4N4-2
+severity: MINOR
+where: tasks/confounded-design.json pause.wait_points[T6, T8, T4] past (the env pattern's `^`, compiled without MULTILINE)
+finding: `^` matches only at the start of the whole command. A multi-line Bash call `cd /r/gars` + newline + `source _system/gars-env.sh` reads not past at T6, T8 and T4 (in-memory probe), even though line 2 is "a command's start" in the decision's own words. Multi-line commands are a common shape for an agent's shell call. When the next line runs a wrapper, the wrapper pattern catches it; env plus nextflow, or env alone, goes unread. This loosens the secondary pause reading only.
+fix: Add `\n` to the separator class (`(?:^|[\n;&|(]\s*)`) with a CALLS entry for the two-line form. That also closes W4N4-1 if both entries land. Or name it as a limit in decision wait-points.
+```
+
+Not folded: the lane stopped after round 4; a fifth round needs Javier's word.
+
+```
+id: W4N4-3
+severity: NIT
+where: tasks/confounded-design.json pause.wait_points[T6, T8, T4] (the run prefix and the writer lookahead); tests CALLS
+finding: All from an in-memory probe; each input is contrived or not the contracts' form.
+(a) Round 3's flag-with-argument group takes `-m <module>` as a flag and its argument. So `python3 -m py_compile _system/configure.py` and `python3 -m pydoc ...` read past at T6, T8 and T4. That breaks the lane's rule that reading a helper moves no stage. Round 2's prefix read both not past, and round 3's review listed py_compile as a no-move case, so this is a small regression of the fold with no CALLS entry.
+(b) `"${GARS_PY}"` braced is not read as an interpreter. The contracts and gars-env.sh write `"$GARS_PY"`.
+(c) `bash -lc 'source _system/gars-env.sh ...'` is not read: a quote before `source` is not in the separator class.
+(d) `<writer> && python3 ... --check` reads neither T8 past nor T4 arrive, because the writer's lookahead scans to the end of the line, past the `&&`.
+(e) The `|` separator member is unbound (green mutant above), and no natural input needs it.
+(f) The walker needs Python 3.11+ (`re._parser`, `re._compiler`, `POSSESSIVE_REPEAT`). It fails closed (an ImportError at load) on an older python3, and gives identical results on 3.11, 3.12 and 3.13.
+fix: Optional. For (a), restrict the argument-taking flags to `-W`/`-X` (`(?:\s+-[WX]\s*\S+|\s+-\S+)*`) and add `python3 -m py_compile _system/configure.py` as a `read` call. Name (b)-(d) beside the other limits in decision wait-points. For (f), the lane report could record the floor.
+```
+
+Not folded: the lane stopped after round 4; a fifth round needs Javier's word.
+
+The review loop reached its 4-round limit with a MAJOR open (W4N4-1); the lane stopped at `ba5be8d6`'s code.
