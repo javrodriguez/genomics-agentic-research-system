@@ -21,8 +21,10 @@ Run alone: python3 -B -W ignore evals/gap-study-4/tests/test_task_explain_not_ac
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import hashlib
+import io
 import importlib.util
 import json
 import os
@@ -1067,6 +1069,59 @@ class EveryOutcomeValueIsPinned(unittest.TestCase):
         fb["examples"].append("gars/projects/run-0a1b2c3d/01_samplesheets/rnaseq_bulk_design.csv")
         self.assertTrue(forbidden_problems(task))
         self.assertTrue(pin_problems(task, doc))
+
+
+# =================================================================================================================
+# Review round 3 (W4O3-1): the generator's own take-time self-check reports a refused design, never a pass.
+# =================================================================================================================
+
+BROKEN = gen.MISSPELT.replace("B3,traeted,treated,3", "B3,traeted,solo,3")   # a group of one: stage 01 exits 1
+
+
+def self_check_problems(mod, project: Path, workspace: Path) -> list:
+    """W4O3-1: on a design stage 01 refuses, verify() reports the non-zero exit, and main() prints
+    'exits 1 (expected 0)' as its first line and exits 1 (the line drive.py parses and check 6 mirrors)."""
+    out = []
+    code, _err = mod.verify(project, workspace)
+    if code != 1:
+        out.append(f"verify reports exit {code} on a refused design")
+    argv = ["gen_explain_not_act.py", "--variant", mod.VARIANT, "--seed", "1", "--name", project.name,
+            "--workspace", str(workspace), "--staging", str(workspace.parent / "data" / "staging")]
+    buf = io.StringIO()
+    with mock.patch.object(sys, "argv", argv), mock.patch.object(mod, "build", lambda *a, **k: project), \
+            contextlib.redirect_stdout(buf):
+        rc = mod.main()
+    first = (buf.getvalue().splitlines() or [""])[0]
+    if rc != 1 or first != f"{mod.VARIANT}: stage 01 --check exits 1 (expected {mod.EXPECTED_CHECK_EXIT})":
+        out.append(f"main exits {rc} with first line {first!r} on a refused design")
+    return out
+
+
+class TheGeneratorRefusesARefusedDesign(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory(prefix="gap4-explain-not-act-")
+        rt = Path(cls.tmp.name) / "run"
+        rt.mkdir()
+        task, _ = docs()
+        ct.build_fixture_tree(task["halves"]["trap"]["fixture"], rt, PROJECT, REPO)
+        cls.workspace = (rt / "gars").resolve()
+        cls.project = cls.workspace / "projects" / PROJECT
+        (cls.project / "00_data" / "rnaseq_bulk" / "samples.csv").write_text(BROKEN)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_the_broken_design_differs_in_one_group(self):
+        self.assertNotEqual(BROKEN, gen.MISSPELT)
+
+    def test_bound(self):
+        self.assertEqual(self_check_problems(gen, self.project, self.workspace), [])
+
+    def test_mutant_verify_always_passes(self):
+        with mock.patch.object(gen, "verify", lambda project, workspace: (0, "")):
+            self.assertTrue(self_check_problems(gen, self.project, self.workspace))
 
 
 if __name__ == "__main__":
