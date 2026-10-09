@@ -15,8 +15,10 @@ I ship no task, wording or fixture.
 ## API signatures
 `HALVES, KINDS, N_WORDINGS=5, REPEATS=2, TRIES_PER_HALF=10, TASK_SCHEMA, VARIANTS_SCHEMA, TASKS_DIR, VARIANTS_DIR, PINNED_TREE="844a4ce0d89437ca043363981a86096f6383a141", PRESSURE_SEPARATOR=" ", GRADED_PATH_FIELDS`;
 `class TaskError(ValueError)`; `load_task(task_id, *, root=None)`; `load_variants(task_id, *, root=None)`; `cells(task_id, *, root=None)`;
-`operator_steps(task_id, half, wording, *, pressure=None, root=None)`; `probe_line(...)`; `grader_spec(...)` (same arguments);
-`row_fields(cell)`; `render_source(template, run_tree, project)`; `graded_paths(task_id, *, root=None)`.
+`operator_steps(task_id, half, wording, *, pressure=None, root=None)`; `probe_line(task_id, half, wording, *, pressure=None, root=None)`;
+`grader_spec(task_id, half, wording, *, pressure=None, project=None, root=None)` (project added in fold 1);
+`row_fields(cell)`; `render_source(template, run_tree, project)`; `graded_paths(task_id, *, project=None, root=None)` (project added in fold 1).
+Also, from folds 1-4: `task_cells(task, variants_doc)`, `render_project(spec, task, project)`, `render_example(ex, project)`, `HOLD_HALF`, `ACT_HOLD_DECISION`. The Fold 1-4 interface lists below extend this section (W4D4-3).
 check_task: `problems(task_id, *, root=None, table=None)`, and `main(argv)`.
 
 ## Tests and checks run (counts from the runner)
@@ -247,3 +249,27 @@ mutant W4D3-6 wait-point typed: Ran 127 tests, failures=1 errors=0 -> RED
     - a set `sha256` equals `copy_project.tree_sha` of the staging tree.
   - **project:** `gars/projects/<name>` is a folder, and the generator's first stdout line reads `exits N (expected M)`. This is stricter than drive.py, by the lane lead's W4D1-3 decision.
   - **copied-tree:** stdout is a JSON object, and its `tree_sha256_name_invariant` equals a set `sha256` pin.
+
+## Fold 4 (Thu 8 Oct 2026): fold and close
+
+glitch-f3 ruled, under Javier's delegation, that w4d is fold and close, not a fifth review round. The ruling is glitch-f3's, never Javier's word. Start: `df5170ba`.
+Commits:
+- the red tests (the closing gate);
+- the fixes;
+- this section.
+
+Each commit is marked "(gates pending the lift)". The Mac hold was on, so nothing here has been run yet; the gates and swaps run after the lane lead relays a lift.
+
+| id | fix | test (class Fold4ClosingGate) | mutant (asserted in the test) |
+|---|---|---|---|
+| W4D4-1 (a) | `normal_post_spares_template`: on the half whose right label is template_adherence's TEMPLATE, no forbidden.post pattern may fully match a rendered example (either half's) that a template_changes pattern also matches | `test_c1t_the_normal_half_forbids_its_template_change_after_the_probe` (C1t refused) | the clause dropped |
+| W4D4-1 (b) | `template_changes_bound` binds the rendered examples of both halves, and the problem is worded "names no example". This lane's reading: a pattern that names no example passes when its project segment matches both render names, so that C4t (which the closing gate requires to pass) is not refused | `test_w4d4_1b_template_changes_bind_both_halves`, `test_w4d4_1b_a_typed_template_change_names_no_example` | the own half only; `segment_types_project` returning False |
+| W4D4-1 (c) | toy_template's normal post is `[]`. C2t, C3t and C4t pass without the false "types a project" message | `test_c2t_c3t_c4t_correct_documents_pass`, `test_every_toy_passes_under_the_corrected_rule` | (a)'s mutant |
+| W4D4-2 | `segment_types_project` on non-literal wait-point patterns: the project segment's regex must fully match both BUILD_NAME and SECOND_NAME | `test_w4d4_2_a_wait_point_regex_that_types_a_project`, `test_project_segment` | `segment_types_project` returning False |
+| W4D4-3 | the API signatures section above, with `project` | (documentation) | none |
+| W4D4-4 | named limits in variants.py's docstring: `{0}` reads as a quantifier; a pushback count left equal by copy-paste passes when the line also carries the half's value elsewhere | (documentation) | none |
+
+### Interface 10 additions in fold 4
+- template_adherence: on the normal half, forbid the template change before the probe only. A forbidden.post pattern that matches the change the template reports is refused.
+- template_changes is bound to the rendered examples of both halves. A pattern that names no example must have a project segment matching both render names.
+- A wait-point regex whose project segment types a name is refused, as a literal match already is.
