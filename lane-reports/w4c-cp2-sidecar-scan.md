@@ -186,6 +186,29 @@ Interface changes, stated exactly:
 
 Named residual: the ast check is judged by construction, not by adversarial probing.
 
+## Fold 4 (lane review round 3)
+
+The source is the lane review, round 3 (`w4c_r3_findings.md`, verdict CHANGES, on `87594602`).
+Every decision below is the lane lead's (the gap4 lane lead, Thu 8 Oct 2026); glitch-f3's standing rule (no guard-evasion probes; build and judge by construction) binds, and this fold plants no new form: its ast mutants only widen or empty this lane's own lists.
+Red tests `64be688e` (sidecar 144 tests against the `87594602` source: 8 failures, 2 errors), fixes `cd0af616`, a test binding `433ba85b`.
+On `433ba85b`: `test_sidecar.py` "Ran 144 tests ... OK", 81 mutants red; `test_scan_record.py` "Ran 49 tests ... OK", 20 mutants red; `--process-check` "process check: ok"; `copy_manifest.py --check` ok.
+Each new mutant was proved red by a whole-file swap in a `git archive` copy of the head, one process each; the copy diffed equal to the head afterwards.
+
+| Finding | Fix | Test | Mutant (whole-file swap, closing line) |
+|---|---|---|---|
+| W4C3-1 (MAJOR) free bare names were default-allow | Each BOX_MODULES entry gains a closed `names` set: the free (unbound) Load names its source uses, derived once (sidecar.py 31, scan_record.py 22). Any other free Name is refused; a dunder bare name is refused unless pinned (`__name__` in sidecar.py, `__file__` in scan_record.py). Names bound in the module (defs, classes, parameters, assignments, imports, except-as) are exempt. The 12-name builtin denylist stays as a second layer. | each set equals its module's own free names; a free name outside the set is refused | widened (`eval` added): "FAILED (failures=2)"; emptied: "process check: 1 problem(s)"; the free-name rule dropped: "FAILED (failures=2)" |
+| W4C3-2 (MINOR) a filled format's shape was unchecked | `_format_ok`: a filled INOTIFYWAIT_FORMAT must have exactly FORMAT_KEYS (`fields`, `separator`, `established`, `setup_lines`), `setup_lines` a list or tuple of non-empty strings, and no PENDING anywhere; otherwise `pending()` still names `inotifywait_format`. | seven bad fills read PENDING (setup_lines "PENDING", a str, missing, [""], ["PENDING"], an extra key, established "PENDING"); a good fill reads ready | shape unchecked: "FAILED (failures=7)" |
+| W4C3-3 (NIT) the kill on a failed arm had no mutant | Factored as `_abandon(w)`. | the abandoned fake is force-stopped (rc -SIGKILL) | kill dropped: "FAILED (failures=1)" |
+| W4C3-4 (NIT) two equivalent mutants | The non-empty-segment clause of `ctl_dir_ok` is dropped (normpath already refuses `/tmp/` and `/run/`). The fault latch in `established()` stays and is named equivalent here: without it the bad line stays in the buffer and the fault recurs. | the fold 3 `ctl_dir_ok` cases still hold | none (the clause is gone; the latch is equivalent) |
+| W4C3-5 (NIT) the last drain's fault was dropped | `pump` passes `fault = not self._drain()` to `stop_exit_code`, and the problem text says "and faulted". The test has the watcher exit between the first drain and the poll, so only the second drain sees the faulting line (a first version let the first drain catch it, and its swap stayed green; `433ba85b` binds it). | the problem names the fault; the stop is non-zero | last-drain fault dropped: "FAILED (failures=1)" |
+
+Interface changes, stated exactly:
+- `box/sidecar.py`: new names `FORMAT_KEYS`, `_format_ok(fmt)` and `Sidecar._abandon(w)`. `pending()` names `inotifywait_format` while a filled format fails `_format_ok`. `ctl_dir_ok()` drops a redundant clause, with the same accepted set. No signature changed; no PENDING field was added or removed.
+- `box/scan_record.py`: unchanged.
+- The ast check (`tests/test_sidecar.py`): BOX_MODULES entries gain `names`.
+
+Named residual (carried): the ast check is judged by construction, not by adversarial probing.
+
 ## Lessons
 
 - A rename between a container's `/tmp` and a bind mount crosses mounts and fails; tests on one host filesystem hide it. A fake rename that fails between folders made it visible on the Mac.
