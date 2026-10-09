@@ -25,6 +25,7 @@ HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE))
 import copy_manifest as cm
 import freeze
+import freeze_rehearsal
 import study
 import takes
 import batch
@@ -49,6 +50,8 @@ def mutations():
     validate_ruling = getattr(takes, "validate_ruling", None)
     runner = get_run()
     return {
+        "pin-all": (freeze, "owned_paths", lambda manifest, folder: [p for p in manifest.read_fragments(folder)[0] if p.endswith(".py")]),
+        "rehearsal-commands": (freeze_rehearsal, "COMMANDS", ()),
         "freeze-claims": (freeze, "output_fragment", lambda: {"lane": "freeze", "files": []}),
         "freeze-once": (freeze, "outputs_exist", lambda root: False),
         "freeze-snapshot": (freeze, "snapshot", lambda manifest, folder: {"files": []}),
@@ -796,6 +799,33 @@ class CostAccounting(unittest.TestCase):
         self.assertFalse(costs.month_turn_allowed("O", at, bad))
         with mock.patch.object(costs, "month_turn_allowed", lambda arm, now, trimmed: True):
             self.assertTrue(costs.month_turn_allowed("O", at, None))
+
+
+class FreezeCoverage(unittest.TestCase):
+    def test_every_owned_path_is_pinned_including_fragments_and_prose(self):
+        self.assertTrue(callable(getattr(freeze, "owned_paths", None)), "pins must use the complete ownership record")
+        with manifest_repository() as (repo, root, folder):
+            paths = freeze.owned_paths(cm, folder)
+            self.assertIn("COPIED.d/synthetic.json", paths)
+            self.assertIn("instrument.txt", paths)
+            self.assertIn("prereg-draft.json", paths)
+            expected = {entry["path"] for entry in cm.derive(folder)["files"]}
+            self.assertEqual(set(paths), expected)
+            with mock.patch.object(freeze, "owned_paths", lambda m, f: []):
+                self.assertNotEqual(set(freeze.owned_paths(cm, folder)), expected)
+
+    def test_rehearsal_keeps_every_required_command_even_when_missing(self):
+        self.assertTrue(hasattr(freeze_rehearsal, "COMMANDS"), "rehearsal needs an explicit round 4 gate")
+        expected = (("test_round4.py",), ("copy_manifest.py", "--check"),
+                    ("tests/test_box_integration.py",), ("tests/test_pipeline.py",),
+                    ("probes4.py", "--check"), ("build_draft.py", "--check"),
+                    ("leak_grep.py", "--check"), ("holdout.py", "--check"),
+                    ("review_kit/rounds.py", "--check"))
+        self.assertEqual(freeze_rehearsal.COMMANDS, expected)
+        with mock.patch.object(freeze_rehearsal, "COMMANDS", ()):
+            self.assertNotEqual(freeze_rehearsal.COMMANDS, expected)
+        for name in ("freeze", "scratch_git", "study"):
+            self.assertEqual(Path(getattr(freeze_rehearsal, name).__file__).resolve().parent, HERE.resolve())
 
 if __name__ == "__main__":
     if "--mutant" in sys.argv:
