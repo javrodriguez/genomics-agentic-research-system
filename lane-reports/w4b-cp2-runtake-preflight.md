@@ -32,7 +32,11 @@ All files are new, under `evals/gap-study-4/`, and claimed in `COPIED.d/w4b-cp2-
 | fb88e7f3 | the lane report |
 | 137ad327 | fold 2, red tests first |
 | c46b61fe | fold 2, the fixes |
-| (this commit) | the lane report's Fold 2 section |
+| 3368cd37 | the lane report's Fold 2 section |
+| 44ff12ec | fold 3, red tests first |
+| 932f84ad | fold 3, config home isolated, one entry at most, ratified signatures named |
+| 4486bc8b | fold 3, the audit's from-imports, module attributes and getattr by construction |
+| (this commit) | the lane report's Fold 3 section |
 
 ## The lane's own decisions
 
@@ -48,6 +52,14 @@ All files are new, under `evals/gap-study-4/`, and claimed in `COPIED.d/w4b-cp2-
 10. The keep-alive is pinned as `--entrypoint sleep` with command `infinity`, and both are inspected (fold 1).
 11. Postflight also fails on any credential-like name (`CREDENTIAL_LIKE`, which now includes `account`).
 12. `memory.low` is checked against the reservation and `cpu.max` against `cpus * 100000 100000`, both derived, not measured.
+
+## Interface: the ratified signatures
+
+glitch-f3 ratified both required additions on Thu 8 Oct, under Javier's delegation (glitch-f3's ruling, not Javier's words), so the merge binds them as interface:
+- `exec_argv(container_id, inner, *, user, workdir, harness, run_tree, login_file, caller_env=None)`: the required `login_file` is the file the login is read from at exec time (`read_login`); its value reaches only the client environment.
+- `launch(runtime, spec, *, sidecar, proxy, record_dir, caller_env=None)`: the required `record_dir` is the take's record folder, where the launch record and, at teardown, the proxy log are written, beside the evidence folder.
+
+Both are named in the functions' docstrings too.
 
 ## Departures from the pinned signatures (W4B1-10; Review A)
 
@@ -113,6 +125,26 @@ Open items for the CP2 drive step and the merge (carried by the lane lead):
 - W4B2-5: merge binding 4 binds preflight's `SIDECAR_EVIDENCE_MOUNT = "/srv/ev"` to `sidecar.EVIDENCE_MOUNT`, and the parsed `sidecar_expect` must leave out the mount `type` key (preflight refuses it, fail-closed).
 
 No interface changed in fold 2.
+
+## Fold 3
+
+The lane review's round 3 found 1 MAJOR, 2 MINOR and 1 NIT at `3368cd37`.
+The decisions below are the lane lead's.
+glitch-f3's ratification of `login_file` and `record_dir` is in the interface section above.
+glitch-f3's standing rule holds: no guard-evasion probes; guards are built and judged by construction; this fold planted no new form.
+
+| finding | severity | the lane lead's decision | fix | test | mutant (whole-file swap, closing line) |
+|---|---|---|---|---|---|
+| W4B3-1 config-home name clause not isolated | MAJOR | fold | none needed in the guard; the tests now isolate it | the login-name and non-config-home cases carry `/opt/cfg` (`CODEX_API_KEY=/opt/cfg`, `PATH=/opt/cfg`); the wrong-value case stays | "name unchecked" (helper returns `value == CONFIG_MOUNT`): `FAILED (failures=1)` |
+| W4B3-2 SUBPROCESS_USES rule bound only by its literal | MINOR | fold | none needed in the rule | `test_subprocess_rule_fires_on_the_real_call`: with ("run", "call") removed, process_audit() on the real run_take.py flags the one real call | the in-test list mutant `run-call-removed` red |
+| W4B3-3 audit not default-deny over from-imports, module attributes and getattr | MINOR | extend by construction | `IMPORT_FROM_ALLOWED`, `MODULE_ATTRS` and `GETATTR_ALLOWED`, derived once from the box modules and committed | `TestAuditAllowlists`: each list is exactly what the modules use | emptied: import-from `FAILED (failures=3)`, module-attrs `FAILED (failures=3)`, getattr `FAILED (failures=3)`; widened: red in the committed in-memory mutants (their whole-file swaps are unrun, see below) |
+| W4B3-4 more than one config_home entry accepted | NIT | refuse it | `CONFIG_HOME_MAX = 1` in agent_exec_argv | the two-entry case in `test_config_home_refusals` | `CONFIG_HOME_MAX = 2`: `FAILED (failures=1)` |
+
+The residual, in words: the process audit is judged by construction, not by adversarial probing.
+
+Unrun at the 20:45 EDT hold:
+- the whole-file swaps of the three widen mutants (import-from, module-attrs, getattr) and of `run-call-removed`;
+- every gate on the report-only head. The code is unchanged since 4486bc8b, whose gates all passed.
 
 ## PENDING values, with reasons
 
