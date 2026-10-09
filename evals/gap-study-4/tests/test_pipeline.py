@@ -34,6 +34,8 @@ import check_results as cr
 import agent_adapter as aa
 import harness_bookkeeping as hb
 import stats
+import result as result_page
+import completeness
 from graders import labels4
 
 MUTANT = None
@@ -65,6 +67,12 @@ def mutations():
         "runner-route": (runner, "verify_route", lambda o, t: None),
         "records-shape": (runner, "record_document", lambda records: {"cells": records}),
         "key-harness": (takes, "half_cell_key", lambda r: (r["arm"], r["task"], r["half"], r["model"])),
+        "stats-default": (stats, "RESULTS_DIR", HERE / "results"),
+        "task-count": (completeness, "pair_count", lambda pre: 10),
+        "committed-state": (completeness, "committed_state", lambda cell, states: None),
+        "result-tables": (result_page, "stats_block", lambda derived: stats.STATS_START + stats.STATS_END),
+        "empty-result": (result_page, "empty_line", lambda: "0 right of 0"),
+        "prior-round": (result_page, "prior_sections", lambda: "\nEarlier round table\n"),
     }
 
 
@@ -600,6 +608,98 @@ class InterfaceRecords(unittest.TestCase):
         del rec["agent"]
         with self.assertRaises(stats.StatsError):
             stats.validate_record(rec)
+
+
+def pre_registration(tasks=("synthetic-task",)):
+    rows = [row(task=task, slot=f"s{i}", half_cell=f"c{i}") for i, task in enumerate(tasks, 1)]
+    return {"tasks": [{"id": task} for task in tasks], "rows": rows, stats.DESIGN_KEY: design(tasks)}
+
+
+class Reporting(unittest.TestCase):
+    def setUp(self):
+        self.assertTrue(callable(getattr(result_page, "from_records", None)), "result renders stats tables")
+
+    def test_empty_records_print_no_takes_never_zeros(self):
+        got = result_page.from_records([], pre_registration(), [], [], table())
+        text = result_page.render(got)
+        self.assertIn("no takes", text)
+        self.assertNotIn("0 of 0", text)
+        self.assertEqual(result_page.empty_line(), stats.NO_TAKES)
+        for name in stats.TABLES:
+            self.assertIn(stats.TABLE_HEADINGS[name], text)
+        with mock.patch.object(result_page, "empty_line", lambda: "0 right of 0"):
+            self.assertIn("0 right of 0", result_page.render(got))
+
+    def test_every_table_comes_from_stats_and_no_prior_round(self):
+        records, pre = [take_record()], pre_registration()
+        got = result_page.from_records(records, pre, [], [], table())
+        rendered = result_page.render(got)
+        self.assertIn(stats.render_block(stats.derive(records, pre[stats.DESIGN_KEY])), rendered)
+        self.assertEqual(result_page.prior_sections(), "")
+        self.assertNotIn("Earlier round", rendered)
+        with mock.patch.object(stats, "render_md", return_value="synthetic stats output\n"):
+            self.assertIn("synthetic stats output", result_page.render(got))
+        with mock.patch.object(result_page, "stats_block", lambda d: "missing tables"):
+            self.assertNotIn(stats.TABLE_HEADINGS[stats.TABLES[0]], result_page.render(got))
+        self.assertIn("0.0.1", rendered)
+        self.assertIn("synthetic-harness", rendered)
+
+    def test_excluded_dict_no_takes_and_only_stops_all_render(self):
+        pre = pre_registration()
+        for records in ([], [take_record()], [take_record(label=labels4.DID_NOT_REACH, views=stats.STOP_VIEWS)]):
+            with self.subTest(records=records):
+                got = result_page.from_records(records, pre, [], [], table())
+                text = result_page.render(got)
+                self.assertIn(stats.render_block(stats.derive(records, pre[stats.DESIGN_KEY])), text)
+        only = result_page.render(result_page.from_records(
+            [take_record(label=labels4.DID_NOT_REACH, views=stats.STOP_VIEWS)], pre, [], [], table()))
+        self.assertIn("1 stops excluded, none counted", only)
+
+    def test_pair_count_comes_from_nine_task_design(self):
+        pre = pre_registration(tuple(f"synthetic-{i}" for i in range(9)))
+        got = completeness.summarize(pre, [], {}, [])
+        self.assertEqual(got["task_pairs"], 9)
+        with mock.patch.object(completeness, "pair_count", lambda pre: 10):
+            self.assertEqual(completeness.summarize(pre, [], {}, [])["task_pairs"], 10)
+
+    def test_mechanical_state_read_even_without_a_graded_record(self):
+        pre = pre_registration()
+        states = {"c1": {"state": labels4.INCOMPLETE_MECHANICAL, "reason": "synthetic committed state"}}
+        got = completeness.summarize(pre, [], states, [])
+        self.assertEqual(got["cells"][0]["state"], labels4.INCOMPLETE_MECHANICAL)
+        with mock.patch.object(completeness, "committed_state", lambda cell, states: None):
+            self.assertNotEqual(completeness.summarize(pre, [], states, [])["cells"][0]["state"],
+                                labels4.INCOMPLETE_MECHANICAL)
+
+
+class StatsDestination(unittest.TestCase):
+    def test_no_argument_cli_reads_records_and_legacy_shape_is_refused(self):
+        self.assertEqual(stats.RESULTS_DIR, HERE / "records")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / study.STUDY_REL
+            (root / "graders").mkdir(parents=True)
+            for rel in ("stats.py", "intervals.py", "graders/labels4.py"):
+                shutil.copyfile(HERE / rel, root / rel)
+            (root / "records").mkdir()
+            (root / "records/r.json").write_text(json.dumps([take_record()]))
+            (root / "prereg.json").write_text(json.dumps({stats.DESIGN_KEY: design()}))
+            (root / "RESULT.md").write_text(stats.render_block(stats.derive([take_record()], design())))
+            code = ('import sys; p=sys.argv[1]; s=open(p).read(); '
+                    's=s.replace(\'HERE / "records"\', \'HERE / "results"\') if sys.argv[2] == "mutant" else s; '
+                    'sys.argv=[p,"--check"]; exec(compile(s,p,"exec"), {"__name__":"__main__","__file__":p})')
+            def cli(which):
+                return subprocess.run([sys.executable, "-B", "-W", "ignore", "-c", code, str(root / "stats.py"), which],
+                                      capture_output=True, text=True)
+            got = cli("actual")
+            self.assertEqual(got.returncode, 0, got.stdout + got.stderr)
+            self.assertIn("PASS (1 records from 1 results files", got.stdout)
+            wrong = cli("mutant")
+            self.assertIn("no takes", wrong.stdout)
+            self.assertNotIn("PASS", wrong.stdout)
+            (root / "records/r.json").write_text(json.dumps({"cells": []}))
+            refused = cli("actual")
+            self.assertEqual(refused.returncode, 1)
+            self.assertIn("a results file is a JSON list", refused.stdout)
 
 
 if __name__ == "__main__":
