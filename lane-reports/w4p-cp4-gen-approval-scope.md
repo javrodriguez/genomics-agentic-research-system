@@ -1,28 +1,31 @@
 status: done
 
+(Done in this lane's files. Escalation W4P1-E2, the control's A13 against new_tasks' `proceeded`, stays open for glitch-f3's ruling; E1 stays open for a w4d fold.)
+
 # Lane w4p-cp4-gen-approval-scope: CP4 task approval-scope (new) and fixtures/gen_approval_scope.py
 
-- Builder: opus-medium, cloud session. Written Fri 9 Oct 2026, 03:37 UTC; review round 1 folded 03:51 UTC (`date` read first each time).
+- Builder: opus-medium, cloud session. Written Fri 9 Oct 2026, 03:37 UTC; review round 1 folded 03:51 UTC; review round 2 folded 04:13 UTC (`date` read first each time).
 - Worktree `/home/user/wt/w4p-cp4-gen-approval-scope`, branch `gap4/w4p-cp4-gen-approval-scope`.
 - Base `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d is not closed). No w4d change was relayed while I worked.
 - `$PY` = `/usr/bin/python3.13`, Python 3.13.16 (NAMED DEPARTURE D2). Every run used `PYTHONDONTWRITEBYTECODE=1 -B -W ignore` and single-threaded BLAS, one process at a time, in the foreground.
 - Start block: HEAD and branch matched. `status --porcelain --ignored` printed nothing. e2979b31, 844a4ce and 68ec902f all resolve. core.hooksPath is unset.
 
-## Files changed (`git diff --stat 62181cbe..546b9d77`, the head before this report's round 1 update)
+## Files changed (`git diff --stat 62181cbe..8627ec44`, the head before this report's round 2 update)
 
 ```
  .../COPIED.d/w4p-cp4-gen-approval-scope.json       |  35 ++
  .../checks.d/w4p-cp4-gen-approval-scope.txt        |   4 +
- evals/gap-study-4/fixtures/gen_approval_scope.py   | 202 ++++++++
+ evals/gap-study-4/fixtures/gen_approval_scope.py   | 202 +++++++
  evals/gap-study-4/tasks/approval-scope.json        | 250 +++++++++
- .../gap-study-4/tests/test_task_approval_scope.py  | 574 +++++++++++++++++++++
+ .../gap-study-4/tests/test_task_approval_scope.py  | 588 +++++++++++++++++++++
  evals/gap-study-4/variants/approval-scope.json     |  37 ++
  .../reviews/w4p-cp4-gen-approval-scope-r1.md       | 130 +++++
- lane-reports/w4p-cp4-gen-approval-scope.md         | 153 ++++++
- 8 files changed, 1385 insertions(+)
+ .../reviews/w4p-cp4-gen-approval-scope-r2.md       | 121 +++++
+ lane-reports/w4p-cp4-gen-approval-scope.md         | 229 ++++++++
+ 9 files changed, 1596 insertions(+)
 ```
 
-This report's own update is the next commit. Every file is on the owned list, plus `lane-reports/reviews/`, which the cloud lead's hand-back names.
+This report's round 2 update is the next commit. Every file is on the owned list, plus `lane-reports/reviews/`, which the cloud lead's hand-back names.
 
 Commits, in order:
 1. `0536ad7c`: the red test and the fragment. On the base, the test fails to load, because `fixtures/gen_approval_scope.py` does not exist (`FileNotFoundError`). I showed this by moving the three task files aside and running the test.
@@ -30,17 +33,21 @@ Commits, in order:
 3. `a27c5512`: this report (round 0).
 4. `e9e4881f`: review round 1 guards (W4P1-1, -2, -3, -4 b), each with its in-memory mutant asserted red. The task already held every guarded value, so no task change followed.
 5. `546b9d77`: the round 1 reviewer report, copied byte for byte (`cmp` clean).
-6. The round 1 update of this report.
+6. `5d83d1de`: the round 1 update of this report.
+7. `6650b08c`: the review round 2 guard (W4P2-1) with its mutant. No generator or task change.
+8. `8627ec44`: the round 2 reviewer report, copied byte for byte (`cmp` clean).
+9. The round 2 update of this report.
 
-## Gates (runner output, verbatim last lines, on the folded tree at 546b9d77)
+## Gates (runner output, verbatim last lines, on the final code tree at 8627ec44)
 
 - `flock /tmp/claude-0/lanes/test.lock env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tests/test_task_approval_scope.py`
-  `Ran 40 tests in 7.056s` / `OK` (round 0: `Ran 35 tests in 6.594s` / `OK`)
+  `Ran 41 tests in 7.236s` / `OK` (round 1: `Ran 40 tests in 7.056s` / `OK`; round 0: `Ran 35 tests in 6.594s` / `OK`)
 - `flock ... /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tasks/check_task.py approval-scope`
   `check_task: approval-scope: ok (12 checks)` (exit 0)
 - `flock /tmp/claude-0/lanes/test.lock env PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/copy_manifest.py --check`, run after `git add`:
-  `ok: 116 files from 9 fragment(s) (... w4p-cp4-gen-approval-scope): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`
+  `ok: 116 files from 9 fragment(s) (... w4p-cp4-gen-approval-scope): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf` (exit 0)
 - At the red commit, the same `--check` printed `ok: 112 files from 9 fragment(s) ...`.
+- W4P2-1's mutant: with the "changed raw/" clause deleted from the generator in the worktree (restored, never committed), the test file printed `FAIL: test_a_refusal_that_touched_raw` and `FAILED (failures=1)` (41 tests).
 - Evidence for open question 1: `check_task.py --all` prints `check_task: approval-scope: ok (12 checks)` and exits 0.
 
 Not run here (owed, run by glitch-f3 on return): `test_round4.py`, `run_checks.py`, the whole-file audits, and the walks (CP6).
@@ -227,3 +234,47 @@ fix: glitch-f3 rules on one of these: (a) a CP5 change to new_tasks' control rul
 ```
 
 How it was folded: Escalation, not this lane's to fix: kept as open question 2. The cloud lead routes it to glitch-f3, and no ruling has come back. The task's control label (`proceeded`) and the OPEN decision `control-a13-vs-grader` are unchanged until a ruling arrives.
+
+### Round 2
+
+The full report, byte for byte: `lane-reports/reviews/w4p-cp4-gen-approval-scope-r2.md` (commit 8627ec44).
+
+Verdict line:
+
+```
+VERDICT: PASS
+```
+
+```
+id: W4P2-1
+severity: MINOR
+where: evals/gap-study-4/fixtures/gen_approval_scope.py:172-173; evals/gap-study-4/tests/test_task_approval_scope.py (TheGeneratorRefusesAWrongHalf)
+finding: The test file's docstring says each verify clause is "shown red on a tampered build", and decision helper-refuses-both-halves says the generator "requires exit 1 with raw/ unchanged". But the "link without --force changed raw/" clause has no mutant. A whole-file swap that deletes the two lines stays green: Ran 40 tests, OK, and check_task is ok. At 844a4ce the helper writes nothing when it refuses, so no current outcome changes. The clause would matter only if a helper refused with exit 1 after touching raw/. It loosens the proof the generator gives that the layer is silent.
+fix: Add one test. Patch gen.run_helper inside mock.patch so that, for "link", it unlinks one raw/ entry and returns (1, {"error": "... refusing to re-link"}). Assert gen.verify(...) reports "changed raw/".
+```
+
+How it was handled: Folded in 6650b08c: test_a_refusal_that_touched_raw replaces gen.run_helper inside mock.patch with a helper that refuses link (exit 1, the refusal text) after removing one raw/ entry; gen.verify must report exactly "link without --force changed raw/". With the clause deleted from the generator the test fails (failures=1); on the real generator, 41 tests OK.
+
+```
+id: W4P2-2
+severity: NIT
+where: evals/gap-study-4/tests/test_task_approval_scope.py:213-217 (config_problems)
+finding: config_problems builds its expected work_dir from gen.FIXED_ENV["USER"] itself. So changing the fixed user to another value (N23, "zz") stays green, and the literal round 1 mutant M12 (USER dropped) goes red only by a KeyError, not by an assertion. Determinism still holds, and the meaningful forms (DROPPED_ENV emptied, or FIXED_ENV not applied) are red by assertion. The fold of W4P1-4 (b) holds in substance.
+fix: Type the expected user ("analyst") in the test, or read FIXED_ENV.get("USER") and fail with an assertion when it is missing.
+```
+
+How it was handled: Not folded, per the stop rule (after the first round with no MAJOR, only MINORs that loosen a check are fixed). Recorded here.
+
+```
+id: W4P2-3
+severity: NIT
+where: evals/gap-study-4/tasks/approval-scope.json:20 (run_tree)
+finding: Decision run-tree fixes run_tree = /work/run as the path CP2's box must use, but no test pins the value. Changing it to /work/other (N3) stays green, and check 12 stays consistent because run_tree_abs follows it. No grading outcome changes as long as the box follows the task file. The named value is what CP2 is told, though, so a silent edit would only surface at CP2.
+fix: Assert t["run_tree"] == "/work/run" beside the run-tree decision, or have the decision's text name the value and test that the two agree.
+```
+
+How it was handled: Not folded, per the stop rule. Recorded here; the value /work/run stays named in decision run-tree and open question 3 for CP2.
+
+Escalations E1 and E2 were re-read by the round 2 reviewer as recorded accurately; they stay open questions 1 and 2, the control label and the OPEN decision unchanged.
+
+The review loop stopped at round 2: the first round with no MAJOR (README, "The review loop").
