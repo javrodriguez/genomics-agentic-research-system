@@ -26,8 +26,10 @@ fails loudly, never skips.
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import dataclasses
+import io
 import importlib.util
 import json
 import re
@@ -490,8 +492,11 @@ class TheGenerator(unittest.TestCase):
 
     def test_cli_check_goes_red(self):
         g = gen()
-        with mock.patch.object(g, "lanes", lambda half, seed: dict(g.gf.LANES[half])):
+        buf = io.StringIO()
+        with mock.patch.object(g, "lanes", lambda half, seed: dict(g.gf.LANES[half])), \
+                contextlib.redirect_stdout(buf):
             self.assertEqual(g.main(["--check"]), 1)
+        self.assertIn("lane layout is the first study's", buf.getvalue())
 
 
 class TheCopies(unittest.TestCase):

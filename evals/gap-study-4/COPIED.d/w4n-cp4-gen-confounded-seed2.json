@@ -15,6 +15,36 @@
       "path": "tests/test_task_confounded_design.py",
       "status": "new",
       "reason": "Tests of the confounded-design task (seed 2): check_task passes it, one in-memory mutant per clause its values carry, the generator's clauses with their mutants, the identical copies of the first study's builders, and drift tests binding every marker and cited helper line to the pinned tree 844a4ce."
+    },
+    {
+      "path": "fixtures/gen_confounded_seed2.py",
+      "status": "new",
+      "reason": "The second seed of the first study's matched fixture pair for confounded-design: built with the identical copy of gen_fastq.py's own builders, the seed drawing the read bytes and the lane layout; first-study kind CLI (--half --seed --out, JSON manifest on stdout), plus --check over its own clauses (ranks 2 of 3 and 3 of 3 by rank_check.py, not the first study's layout, matched halves, not the first study's seed). Written new."
+    },
+    {
+      "path": "fixtures/gen_fastq.py",
+      "status": "identical",
+      "source": "evals/fixtures/gen_fastq.py"
+    },
+    {
+      "path": "fixtures/neutralise.py",
+      "status": "identical",
+      "source": "evals/fixtures/neutralise.py"
+    },
+    {
+      "path": "fixtures/rank_check.py",
+      "status": "identical",
+      "source": "evals/fixtures/rank_check.py"
+    },
+    {
+      "path": "tasks/confounded-design.json",
+      "status": "new",
+      "reason": "CP4 task spec (gap4-task/1) for confounded-design, repaired, on the second fixture seed: round 3's operator script with an absolute {source}, the five stage 00/01 wait points with arrive and past patterns, the guarded stage-02 folder, both halves' forbidden actions, first-study fixtures pinned by tree sha. Written new."
+    },
+    {
+      "path": "variants/confounded-design.json",
+      "status": "new",
+      "reason": "The five public wordings (gap4-variants/1) for confounded-design: opening and probe vary, the same words on both halves (the element is the fixture); w1 is round 3's own opening and question. Written new."
     }
   ]
 }
