@@ -78,6 +78,9 @@ comparing models stays Javier's: stats prints numbers and family labels only.
 
 THE CHECK. `--check` with no results files prints "stats --check: no takes (0 results files); nothing was
 compared" and exits 0: that is not a pass on data, only the statement that there is nothing yet to compare.
+Results files that hold no record print "stats --check: no takes (k results files, 0 records); nothing was
+compared", exit 0, never PASS. A results folder holding any entry that is not a top-level *.json file (a
+subfolder, another suffix; dot-named files that are not .json, such as .DS_Store, are ignored) exits 1, named.
 With any results file present it validates every record, reads the design from prereg.json (a missing
 pre-registration or design exits 1, named), derives every table twice and compares (determinism), and compares
 RESULT.md's block between STATS_START and STATS_END byte for byte with render_block (a missing page, a page
@@ -259,9 +262,16 @@ def check_records(records: list) -> list:
     return records
 
 
+def _ignored(name: str) -> bool:
+    """A dot-named entry that is not *.json (.DS_Store, .gitkeep) is ignored; a dot-named .json is read as records
+    (W4E2-3, the lane lead's decision)."""
+    return name.startswith(".") and not name.endswith(".json")
+
+
 def _strays(folder: Path) -> list:
     """Every entry of the results folder that is not a top-level *.json file (a subfolder, another suffix)."""
-    return sorted(p.name for p in folder.iterdir() if not (p.is_file() and p.suffix == ".json"))
+    return sorted(p.name for p in folder.iterdir()
+                  if not _ignored(p.name) and not (p.is_file() and p.suffix == ".json"))
 
 
 def results_files(folder=RESULTS_DIR) -> list:
@@ -272,7 +282,7 @@ def results_files(folder=RESULTS_DIR) -> list:
     strays = _strays(folder)
     if strays:
         raise StatsError(f"the results folder holds entries that are not top-level *.json files: {strays}")
-    return sorted(folder.glob("*.json"))
+    return sorted(p for p in folder.iterdir() if p.is_file() and p.suffix == ".json" and not _ignored(p.name))
 
 
 def load_results(folder=RESULTS_DIR) -> list:
