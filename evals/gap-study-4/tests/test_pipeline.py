@@ -928,6 +928,29 @@ class FreezeDesign(unittest.TestCase):
                 self.assertEqual(pin["sha256"], __import__("hashlib").sha256(data).hexdigest())
                 self.assertEqual(pin["git_blob_sha"], git(repo, "hash-object", name))
 
+
+class UnclaimedOutputs(unittest.TestCase):
+    def test_nonfreeze_outputs_need_an_authorized_claim_protocol(self):
+        # Diagnostic for OPEN w5b-4, not a bypass or a proposed claim protocol.
+        # All bodies and paths below are synthetic, in a scratch repository.
+        with manifest_repository() as (repo, root, folder):
+            freeze.write_outputs({"pinned_files": []}, root=root, manifest=cm)
+            commit(repo, [study.STUDY_REL], "Freeze synthetic inputs")
+            self.assertEqual(cm.problems(folder, pinned=False), [])
+            names = ("review_kit/prefreeze-1.md", "verification/freeze-rehearsal-1.txt",
+                     "takes.json", "outcomes.json", "rulings.json", "records/synthetic-task.json",
+                     "RESULT.md", "cost-calls.json", "COSTS.md")
+            for name in names:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("synthetic output " + name + "\n")
+            problems = cm.problems(folder, pinned=False)
+            for name in names:
+                self.assertTrue(any(p.startswith(name + " is under") and "no fragment" in p
+                                    for p in problems), (name, problems))
+            self.assertEqual(len(problems), len(names), problems)
+
+
 if __name__ == "__main__":
     if "--mutant" in sys.argv:
         at = sys.argv.index("--mutant")
