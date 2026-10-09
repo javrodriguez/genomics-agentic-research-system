@@ -2,7 +2,7 @@ status: done
 
 # Lane w4k-cp4-task-number-fidelity: CP4 task number-fidelity (repaired + pushback)
 
-- Builder: opus-medium, cloud session. Written Fri 9 Oct 2026, 03:34 UTC; review round 1 folded at 03:45 UTC; review round 2 folded at 04:03 UTC (read from `date`).
+- Builder: opus-medium, cloud session. Written Fri 9 Oct 2026, 03:34 UTC; review round 1 folded at 03:45 UTC; review round 2 folded at 04:03 UTC; review round 3 (PASS) recorded at 04:13 UTC (read from `date`).
 - Branch `gap4/w4k-cp4-task-number-fidelity`, base `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d not closed).
 - `$PY` = `/usr/bin/python3.13`, Python 3.13.16 (NAMED DEPARTURE D2). Every gate ran with `PYTHONDONTWRITEBYTECODE=1 -B -W ignore` and single-threaded BLAS, in the foreground, one at a time, under `flock /tmp/claude-0/lanes/test.lock`.
 - Start block: HEAD and branch matched; `git status --porcelain --ignored` printed nothing; e2979b31, 844a4ce and 68ec902f are commits; `core.hooksPath` unset; `.git` is a file (a worktree).
@@ -17,6 +17,7 @@ status: done
 - `lane-reports/w4k-cp4-task-number-fidelity.md` (this file)
 - `lane-reports/reviews/w4k-cp4-task-number-fidelity-r1.md` (review round 1, copied verbatim)
 - `lane-reports/reviews/w4k-cp4-task-number-fidelity-r2.md` (review round 2, copied verbatim)
+- `lane-reports/reviews/w4k-cp4-task-number-fidelity-r3.md` (review round 3, copied verbatim)
 
 Only owned files. No generator added (the task uses the base's copied `fixtures/gen_source.py`).
 
@@ -30,7 +31,9 @@ Only owned files. No generator added (the task uses the base's copied `fixtures/
 6. `97cb845a` this report's round 1 update.
 7. `424a3b9a` review round 2: guards W4K2-1 to -4, plus pins on every task and wording value a driver or grader reads, each with in-memory mutants asserted red. No task value changed.
 8. `dabf5d42` review round 2's report, copied byte for byte.
-9. This report's round 2 update.
+9. `a36e5d16` this report's round 2 update.
+10. `24a164b4` review round 3's report, copied byte for byte.
+11. This report's round 3 update. No test or task file changed after `424a3b9a`.
 
 ## The task, in short
 
@@ -43,7 +46,13 @@ Only owned files. No generator added (the task uses the base's copied `fixtures/
 
 ## Tests and checks run, with the runner's output
 
-Round 2 fold, on the final tree (commit `dabf5d42`; the report commit after it touches only this file):
+Final tree, after round 3 (commit `24a164b4`; the report commit after it touches only this file):
+
+- test file: `Ran 74 tests in 2.867s` / `OK`, exit 0.
+- `check_task.py number-fidelity`: `check_task: number-fidelity: ok (12 checks)`, exit 0.
+- `copy_manifest.py --check`: `ok: 115 files from 9 fragment(s) (...): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 66 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`, exit 0.
+
+Round 2 fold, on the tree at commit `dabf5d42`:
 
 - test file: `Ran 74 tests in 2.846s` / `OK`, exit 0.
 - `check_task.py number-fidelity`: `check_task: number-fidelity: ok (12 checks)`, exit 0.
@@ -87,6 +96,7 @@ Not run here (owed, run by glitch-f3 on return): `test_round4.py`, `run_checks.p
 2. **For CP2's driver:** `drive.py` still sends `{source}` relative in the recovery (`source.relative_to(RUN_TREE)`, line 1350 at the base). This task's recovery sends `{source}` and needs `render_source(...)` there (w4d's open question, carried).
 3. **The tools the takes may call:** the wait points read shell calls only (`stage00_register.py`, `stage01_samplesheet.py`). The grader reads `operator` and `agent-text` events only. I know of no tool the view's table lacks for this task.
 4. `check_fixture.py` runs the worktree's `gars/` helper, not the pinned one. This lane also binds the pinned helper in its own test. Should the copied checker take the pinned tree in CP2?
+5. **w4d internal names this lane's tests rely on (W4K3-1).** The test file calls w4d names outside interface 10's published list: `v._PLACEHOLDER`, `v.render_probe`, `v.load_grader`, `v.variants_shape_problems`, `v.task_shape_problems`, `ct.sent_texts`, `ct.task_markers`, `ct.build_and_hash`, `ct.export_pinned_gars` and `ct.BUILD_NAME`. All resolve at 62181cbe. w4d is not closed, so its close should keep these names or route any rename to this lane, and this file should be re-run on the merged tree.
 
 ## Deferred to Javier
 
@@ -221,3 +231,19 @@ Beyond the named findings (the cloud lead's ask: walk every value). Each value i
 - **grader_spec:** true_counts is bound to the manifest and its field order pinned. The trap's probe_counts is pinned to the plant (8, 4). The normal probe_counts and both pushback_counts are fixed by check_spec, given the plant and the true counts. probe_line: schema. pushback_line: W4K2-3.
 - **Variants:** openings and probes are pinned exactly; slots by W4K2-2; the slot's place by W4K1-1; the wording count and ids: check 1; factor_text: checks 1 and 5.
 - **Free prose, not pinned:** each right_move.why, each forbidden.why, and the decision texts other than act-hold and wait-points. No driver or grader reads them.
+
+### Round 3 (`lane-reports/reviews/w4k-cp4-task-number-fidelity-r3.md`, head reviewed `a36e5d16`)
+
+VERDICT: PASS
+
+```
+id: W4K3-1
+severity: NIT
+where: evals/gap-study-4/tests/test_task_number_fidelity.py:183, 333, 191/271, 512/517, 113-114, 182, 730, 902
+finding: The test file calls w4d names that are outside interface 10's published API list. They are v._PLACEHOLDER, v.render_probe, v.load_grader, v.variants_shape_problems, v.task_shape_problems, ct.sent_texts, ct.task_markers, ct.build_and_hash, ct.export_pinned_gars and ct.BUILD_NAME. All of them resolve at 62181cbe, and the file is green (74 OK). But w4d is not closed, so a w4d fold that renames any of them would turn this lane red in the battery owed on return, and nothing in interface 10 promises they will stay. No outcome is affected today.
+fix: No change needed now. If w4d folds again, re-run this file on the merged tree. Optionally, the lane report could name these internal dependencies under its open questions, so w4d's close keeps them or routes the rename.
+```
+
+W4K3-1 fold: Not folded, under the stop rule: round 3 has no MAJOR and no MINOR. The w4d internal names it cites are listed as open question 5.
+
+The review loop stopped at round 3, with no MAJOR and no MINOR finding.
