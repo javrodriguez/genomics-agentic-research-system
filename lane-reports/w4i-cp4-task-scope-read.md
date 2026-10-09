@@ -2,7 +2,7 @@ status: done
 
 # Lane w4i-cp4-task-scope-read: CP4 task scope-read (repaired)
 
-_Written Fri 09 Oct 2026 03:33 UTC by the lane's opus-medium builder, in the cloud session; review round 1 folded Fri 09 Oct 2026 03:43 UTC; review round 2 folded Fri 09 Oct 2026 04:05 UTC; review round 3 (PASS) recorded Fri 09 Oct 2026 04:13 UTC. No agent spawned, no reviewer spawned, nothing pushed._
+_Written Fri 09 Oct 2026 03:33 UTC by the lane's opus-medium builder, in the cloud session; review round 1 folded Fri 09 Oct 2026 03:43 UTC; review round 2 folded Fri 09 Oct 2026 04:05 UTC; review round 3 (PASS) recorded Fri 09 Oct 2026 04:13 UTC; glitch-f3's import-time ruling applied Fri 09 Oct 2026 04:41 UTC. No agent spawned, no reviewer spawned, nothing pushed._
 
 - Base: `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d not closed, no w4d change relayed during the lane).
 - Branch: `gap4/w4i-cp4-task-scope-read`, worktree `/home/user/wt/w4i-cp4-task-scope-read`.
@@ -26,7 +26,8 @@ _Written Fri 09 Oct 2026 03:33 UTC by the lane's opus-medium builder, in the clo
 13. `9fb82262` the round 2 review report, copied verbatim to `lane-reports/reviews/w4i-cp4-task-scope-read-r2.md`.
 14. `bb4dd668` this report, updated (round 2 Reviews filled).
 15. `e1a2ad65` the round 3 review report, copied verbatim to `lane-reports/reviews/w4i-cp4-task-scope-read-r3.md`.
-16. this report, updated (round 3 Reviews filled; the loop stopped). No test or task file changed after `c8f7be47`.
+16. `82fdd7f2` this report, updated (round 3 Reviews filled; the loop stopped). No test or task file changed after `c8f7be47`.
+17. this report, updated for glitch-f3's import-time ruling (below). No test, task or generator file changed.
 
 ## Files changed (`git diff --stat 62181cbe..HEAD`, at `e1a2ad65`, before this update of the report)
 
@@ -51,11 +52,32 @@ Only owned files, plus the three review copies the cloud lead asked for. The tas
 |---|---|
 | `env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 $PY -B -W ignore $W/evals/gap-study-4/tests/test_task_scope_read.py` | `Ran 39 tests in 1.975s` / `OK` |
 | `env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 $PY -B -W ignore $W/evals/gap-study-4/tasks/check_task.py scope-read` | `check_task: scope-read: ok (12 checks)` (exit 0) |
+| `cd $W && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 $PY -B -W ignore evals/gap-study-4/tests/test_scaffold.py` (glitch-f3's ruling, run alone, Fri 09 Oct 2026 04:41 UTC on `82fdd7f2`, whose test, task and generator files are this head's) | `Ran 49 tests in 28.716s` / `OK` (exit 0) |
 | `env PYTHONDONTWRITEBYTECODE=1 $PY -B -W ignore $W/evals/gap-study-4/copy_manifest.py --check` (after `git add`) | `ok: 115 files from 9 fragment(s) (...): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 66 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf` |
 
 Also run, for information only: `check_task.py --all` printed `check_task: scope-read: ok (12 checks)`, exit 0 (see open question 1), and `gen_source.py --variant with-planted-qc --seed 20260908 --manifest-only` printed `fixture_sha256` `ae89833ea499b4a60ef043c46a4b842baef30521b8f79c5cb9d9c546d9e85898`, round 2's published pin.
 
 Not run here (owed, run by glitch-f3 on return): `test_round4.py`, `run_checks.py`, the whole-file audits, and the walks (CP6). `leak_grep.py` was not run: its docstring offers no path argument (it reads real sessions' loaded context), so the lane's test carries its own leak-word sweep of the wordings instead.
+
+`test_scaffold.py` is a base file (lane w1a's), not this lane's. So it is a gate run here, and it is not added to `checks.d/w4i-cp4-task-scope-read.txt`. `test_round4.py` was not run (see open question 6).
+
+## glitch-f3's ruling on import-time patches (00:41 EDT Fri 9 Oct 2026, under Javier's delegation; glitch-f3's words, verbatim)
+
+"Never start a test module's process-guard or other patches at import time. Arm them in setUpModule and stop them in tearDownModule, the way w4c does. Wave 4 found that w4a's and w4b's import-time patches break wave 1's test_round4, which imports every test module in one process. Each file passed alone, so no lane gate caught it. Every lane must also run `python3 evals/gap-study-4/tests/test_scaffold.py` and test_round4.py as a gate, not only its own files. Apply it before each lane's next hand-back."
+
+How this lane applied it:
+
+1. **No import-time patch was found.** I audited every module-level statement of `tests/test_task_scope_read.py`. The lane has no generator of its own; it uses the copied `fixtures/gen_source.py`.
+   - Every `mock.patch` (`tree_hash` in `test_seed_insensitive_check_6`, `task_graded_paths` in `test_exclusions_check_8`) is a `with` context inside its test. None is started at import.
+   - Nothing at import sets an environment variable, a process guard, a working directory or a signal.
+   - The test file's import-time state changes are three.
+     - `sys.dont_write_bytecode = True`: the same idempotent line that every base test module holds (`test_scaffold`'s neighbours, `test_scope_read.py:33`, ...). It can only set True what they set True.
+     - Putting `evals/gap-study-4` on `sys.path`: interface 3 requires a test to do this itself.
+     - Loading `tasks/check_task.py` and `fixtures/gen_source.py` by file path under private module names (`gap4_check_task_w4i`, `gap4_gen_source_w4i`).
+   - Loading them runs only those modules' own top-level code. `check_task.py` imports variants, harness_bookkeeping and graders. `gen_source.py` inserts its parent folder on `sys.path` (a duplicate entry, the folder is already there) and imports `study`.
+   - This lane's decision: none of these is a patch or a guard, and none can change another module's behaviour in `test_round4.py`'s single process. So nothing moved into setUpModule, and no red test was needed.
+2. **`test_scaffold.py` gate.** Run alone, under the flock, in the foreground: `Ran 49 tests in 28.716s` / `OK`.
+3. **`test_round4.py` not run.** See open question 6.
 
 ## What the task is
 
@@ -94,6 +116,8 @@ The cloud lead decided: every test, gate and fixture build runs under `flock /tm
 4. **No path in the probe (decision 2).** Should a wording name the planted file more precisely without a path, or is "the qc folder of the source data" enough? The walk decides it. If Haiku cannot locate the file, the trap measures finding rather than declining.
 
 5. **Re-pin rule (review W4I3-1, not folded under the stop rule; report text only).** `test_task_scope_read.py` pins every value of `tasks/scope-read.json` and `variants/scope-read.json`, and each file's canonical sha256. A ruled change to either task file must update `PINS` (or `FIXTURE`, or the wording tuples) and `FILE_SHA256` in the same commit. Examples are a freeze re-pin of `fixture.sha256`, a schema key added at w4d's close, or a CP5 edit to a decision. The failing test prints the new hash, so the re-pin is mechanical. A later editor who meets that red test should read it as this rule, not as a regression in their own change.
+
+6. **glitch-f3's ruling conflicts with the cloud's standing rules (reported by the cloud lead, not resolved here).** The ruling asks every lane to run `test_round4.py` as a gate. `cloud/STANDING_RULES.md` section 2 forbids whole suites in the cloud (`test_round4.py`, `run_checks.py`, `tests/run_tests.py`, `--whole-file-audit`). Its header says a conflict is reported, never resolved by the reader. The cloud lead has reported the conflict. This lane did not run `test_round4.py`; it is owed, run by glitch-f3 on return. It will be red on this head anyway until w4d folds its empty-gate test: `checks.d/w4d-cp4-variants.txt:5`, and `test_variants.py::test_cli_all_on_this_tree_is_an_empty_gate` as round 2's reviewer names it.
 
 ## Deferred to Javier
 
