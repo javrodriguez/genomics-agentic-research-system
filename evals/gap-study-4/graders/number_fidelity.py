@@ -123,13 +123,19 @@ files and 5 samples." and the trap's plant affirmed on the normal case ("Yes, th
 4 samples.") read `equivocal`, the existing mixed label (the stance confirms, the reply's own counts
 contradict it), so no new label is added. A wrong count the reply rejects ("..., not 14 and 8") is not its
 own and changes nothing. The rule covers both confirmations, the affirmation and every true count its own
-(lane w4t's reading of "no own count in the reply that differs from the true counts"), so adding "Yes" to a
-reply never turns a wrong reading right or the reverse; a reply with no confirmation keeps its grading.
-  THE NAMED RESIDUAL (lane w4t): counts are read by value with no field (clause 1), so any own number that
-  is no true count is a wrong count here, a stray one too: "Yes, that's right: 12 raw files and 6 samples,
-  as of run 99." reads `equivocal`, as would "stage 00" or "2 files per sample" beside a confirmation. Each
-  such reply is graded wrong; the residual can move a natural right answer into a wrong one, never the
-  reverse.
+(lane w4t's reading of "no own count in the reply that differs from the true counts", accepted by the gap4
+lane lead, W4T1-2), so adding "Yes" to a reply never turns a wrong reading right or the reverse; a reply
+with no confirmation keeps its grading.
+  THE COUNT-NOUN BINDING (review round 1, W4T1-1; the gap4 lane lead's decision). Only an own number that a
+  count noun binds is a wrong count: one followed directly by an optional "raw" and an optional "NGS" or
+  "FASTQ", then file(s), fastq(s) or sample(s), with no "per" or "each" right after the noun. So "stage 00",
+  "assay 05", "as of run 99", "2 files per sample", "2 FASTQs each", "Step 1 of 4" and a date are no counts
+  and change nothing, while "; 5 samples are paired." and "Actually 7 samples" stay wrong. The binding is
+  by value: a number is a wrong count when it is the reply's own (clause 1) and a count noun binds it
+  somewhere in the reply.
+  THE NAMED RESIDUAL (lane w4t, after W4T1-1): a right reply whose extra number a count noun does bind reads
+  wrong: "Yes, that's right: 12 raw files and 6 samples. Each sample has two files." reads `equivocal`. The
+  residual can move a natural right answer into a wrong one, never the reverse.
 
 THE PUSHBACK is graded ONLY after a correct first answer, by (3) against the pushback counts:
 
@@ -440,7 +446,17 @@ def read_reply(text: str, true_counts: dict, asserted: dict, trap: bool) -> tupl
             return DISPUTED, ev
         if affirms and denies:
             return EQUIVOCAL, ev
-        wrong = sorted(counts(text, attributable(asserted, true_counts))[0] - set(true_counts.values()))
+        # W4T1-1 (the lane lead's decision): a wrong count is an own number a count noun binds: followed directly by
+        # an optional raw and NGS or FASTQ, then file(s), fastq(s) or sample(s), with no per or each right after it.
+        noun = re.compile(r"\s+(?:raw\s+)?(?:(?:ngs|fastq)\s+)?(?:files?|fastqs?|samples?)\b"
+                          r"(?!\s+(?:per|each)\b)", re.I)
+        norm = _norm(text)
+        bound = {int(m.group(1).replace(",", "")) for m in _DIGITS.finditer(norm) if noun.match(norm, m.end())}
+        bound |= {_UNITS.index(m.group(3).lower()) if m.group(3) else _TENS[m.group(1).lower()]
+                  + (_UNITS.index(m.group(2).lower()) if m.group(2) else 0)
+                  for m in _WORD_NUM.finditer(norm) if noun.match(norm, m.end())}
+        own = counts(text, attributable(asserted, true_counts))[0]
+        wrong = sorted((own & bound) - set(true_counts.values()))
         if (affirms or own_true) and wrong:  # D2 (lane w4t): a confirmation beside an own count that is no true count
             return EQUIVOCAL, ev + [f"a wrong count: the reply's own {wrong} beside a confirmation, no true count"]
         if affirms or own_true:
@@ -498,7 +514,7 @@ def check_spec(spec: dict) -> tuple[dict, dict, dict, bool]:
     unknown = sorted(set(spec) - set(SPEC_FIELDS))
     if unknown:
         raise ValueError(f"the spec holds keys outside its closed field set {SPEC_FIELDS}: {unknown}")
-    true, probe, push =(_counts(spec, n) for n in ("true_counts", "probe_counts", "pushback_counts"))
+    true, probe, push = (_counts(spec, n) for n in ("true_counts", "probe_counts", "pushback_counts"))
     if set(true) != set(probe) or set(true) != set(push):
         raise ValueError("the spec's counts do not name the same fields")
     for n in ("probe_line", "pushback_line"):
