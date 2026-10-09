@@ -149,7 +149,6 @@ FREEZE_FILLED_INSIDE = (
     "system_under_test.gars_tree_sha_at_freeze", "harness.claude_version_at_freeze",
     "tasks[].grader", "tasks[].grader_cases", "tasks[].positive.fixture", "tasks[].control.fixture",
 )
-REHEARSAL_GLOB = "freeze-rehearsal-*.txt"
 # ROUND 2, CP8, review 1 blocker 2. A record bound the draft's bytes and nothing else, and the commit it named in
 # prose had been rewritten away, so any code edit between the rehearsal and the freeze passed the gate. The record
 # now carries the study tree it rehearsed as data (study_tree_sha), and the freeze requires HEAD's to be the same.
@@ -229,22 +228,6 @@ def study_tree_sha(rev: str = "HEAD", also_excluded: tuple[str, ...] = ()) -> st
     return hashlib.sha256("\n".join(kept).encode("utf-8")).hexdigest()
 
 
-def admitted_rehearsal(draft_sha256: str, verification: Path, study_tree: str) -> Path | None:
-    """The latest green record naming these draft bytes and this study tree, or None."""
-    files = [f for f in sorted(verification.glob(REHEARSAL_GLOB), key=lambda f: int(re.search(r"(\d+)", f.name).group(1)))
-             if f.read_text().splitlines()[:1] == [draft_sha256]
-             and f.read_text().rstrip().splitlines()[-1].strip() == REHEARSAL_LAST_LINE
-             and recorded_tree(f) == study_tree]
-    return files[-1] if files else None
-
-
-def recorded_tree(record: Path) -> str | None:
-    for ln in record.read_text().splitlines():
-        if ln.startswith(REHEARSAL_TREE_PREFIX):
-            return ln[len(REHEARSAL_TREE_PREFIX):].strip()
-    return None
-
-
 def rehearsal_evidence(record, digest: str, tree: str) -> dict:
     """Bind an external rehearsal output without changing the rehearsed tree."""
     if record is None:
@@ -258,36 +241,6 @@ def rehearsal_evidence(record, digest: str, tree: str) -> dict:
             [REHEARSAL_TREE_PREFIX + tree]):
         raise ValueError("the rehearsal must be green for this draft and committed tree")
     return {"name": record.name, "sha256": hashlib.sha256(data).hexdigest(), "text": text}
-
-
-def rehearsal_problems(draft_sha256: str, verification: Path, study_tree: str | None = None) -> list[str]:
-    """Why the freeze may not be written yet: no rehearsal record for THESE draft bytes that ended all green.
-
-    A rehearsal file is `verification/freeze-rehearsal-<n>.txt`, written by freeze_rehearsal.py; its first line is
-    the sha256 of the draft it rehearsed, and its last line reads `all green` only when every step of the gate
-    passed on the frozen state in the throwaway clone. A draft edited after its rehearsal has a new sha256 and needs
-    a new rehearsal, so the freeze cannot run on a state that was never exercised.
-    """
-    files = sorted(verification.glob(REHEARSAL_GLOB))
-    if not files:
-        return [f"no {REHEARSAL_GLOB} under {verification.name}/: the freeze has not been rehearsed. Run "
-                f"freeze_rehearsal.py first."]
-    matching = [f for f in files if f.read_text().splitlines()[:1] == [draft_sha256]]
-    if not matching:
-        return [f"no rehearsal record names these draft bytes ({draft_sha256[:12]}): the draft changed since the last "
-                f"rehearsal. Run freeze_rehearsal.py again."]
-    green = [f for f in matching if f.read_text().rstrip().splitlines()[-1].strip() == REHEARSAL_LAST_LINE]
-    if not green:
-        return [f"the rehearsal of these draft bytes did not end `{REHEARSAL_LAST_LINE}` ({matching[-1].name}); "
-                f"fix what it found and rehearse again."]
-    if study_tree is not None:
-        bound = [f for f in green if recorded_tree(f) == study_tree]
-        if not bound:
-            was = recorded_tree(green[-1])
-            return [f"the green rehearsal of these draft bytes ({green[-1].name}) ran on another study tree "
-                    f"({was[:12] if was else 'no study tree line in the record'}), not this one ({study_tree[:12]}): "
-                    f"a code edit after the rehearsal is a state never exercised. Run freeze_rehearsal.py again."]
-    return []
 
 
 def pin(path: str) -> dict:

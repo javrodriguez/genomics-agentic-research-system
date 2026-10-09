@@ -4,6 +4,7 @@
 The round's per-call correction supersedes the copied reader's refusal to read
 harness dollar figures. Repeated fragments of one call count once; conflicting
 fragments refuse. Prices are supplied in a dated table, never embedded here.
+wall_seconds is the first-start to last-end span, including overlap and gaps.
 The normalized call list is cost-calls.json; build_draft supplies price_table in
 the pre-registration. Drivers must supply call IDs, usage and timestamps from
 their vendor records. Missing measurements remain unmeasured, never zero.
