@@ -502,10 +502,33 @@ class EveryToyPasses(Base):
             self.assertEqual(ct.main(["--all"], root=empty.path), 1)
         self.assertEqual(buf.getvalue().strip(), "check_task: no tasks")
 
-    def test_cli_all_on_this_tree_is_an_empty_gate(self):
+    @staticmethod
+    def all_gate_problems(returncode, stdout, stems):
+        """What `check_task.py --all` owes this tree: exit 0 and exactly one `check_task: <stem>: ok (` line per task."""
+        problems = []
+        if not stems:
+            problems.append("no tasks/*.json in the tree")
+        if returncode != 0:
+            problems.append(f"exit {returncode}, not 0")
+        lines = stdout.strip().splitlines()
+        for stem in stems:
+            n = sum(1 for line in lines if line.startswith(f"check_task: {stem}: ok ("))
+            if n != 1:
+                problems.append(f"{stem}: {n} ok lines, not 1")
+        if len(lines) != len(stems):
+            problems.append(f"{len(lines)} output lines for {len(stems)} tasks")
+        return problems
+
+    def test_cli_all_on_this_tree_names_every_task(self):
+        # glitch-f3's merge-time ruling (second set, under Javier's delegation): tasks now exist, so --all on this
+        # tree must pass and name each one; the empty gate stays covered on a scratch root just above.
+        stems = sorted(f.stem for f in (ROUND / "tasks").glob("*.json"))
         r = subprocess.run([sys.executable, "-B", "-W", "ignore", str(ROUND / "tasks" / "check_task.py"), "--all"],
                            capture_output=True, text=True)
-        self.assertEqual((r.returncode, r.stdout.strip()), (1, "check_task: no tasks"))
+        self.assertEqual(self.all_gate_problems(r.returncode, r.stdout, stems), [], r.stdout + r.stderr)
+        # in-memory mutant: one task's ok line dropped goes red
+        kept = [line for line in r.stdout.strip().splitlines() if not line.startswith(f"check_task: {stems[0]}: ok (")]
+        self.assertIn(f"{stems[0]}: 0 ok lines, not 1", self.all_gate_problems(0, "\n".join(kept), stems))
 
     def test_a_check_that_raises_is_a_finding(self):
         def boom(task, doc):
