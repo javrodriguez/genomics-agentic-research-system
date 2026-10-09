@@ -2509,6 +2509,8 @@ class TestNextTouchSpendCap(unittest.TestCase):
             "no source": lambda r: r.update(source=""),
             "an extra key": lambda r: r.update(route=labels4.PAUSE),
             "an id a row has": lambda r: r.update(id="rate-limit"),
+            # fold 1, W4H1-8: a spend condition on a record outside the API-error fields
+            "a spend condition on ledger.end": lambda r: r["any_of"].append({"path": "ledger.end", "op": "in_spend_cap_markers"}),
         }
         for name, edit in bad.items():
             t = spend_table()
@@ -2541,6 +2543,12 @@ class TestNextTouchSpendCap(unittest.TestCase):
             "a NaN reset_wait": lambda t: t["rate_limit_markers"][NT_FAKE].update(reset_wait=float("nan")),
             "an empty harness name": lambda t: t["rate_limit_markers"].update({"": copy.deepcopy(FAKE_RATE)}),
             "spend_cap_markers_status empty": lambda t: t.update(spend_cap_markers_status=""),
+            # fold 1 (lane review round 1; the lane lead's decisions): W4H1-5, W4H1-6, W4H1-7, W4H1-8
+            "a spend status that is no int": lambda t: t["spend_cap_markers"][NT_FAKE]["status"].append("402"),
+            "a rate-limit status that is no int": lambda t: t["rate_limit_markers"][NT_FAKE]["status"].append("429"),
+            "an infinite reset_wait": lambda t: t["rate_limit_markers"][NT_FAKE].update(reset_wait=float("inf")),
+            "an empty rate-limit status list": lambda t: t["rate_limit_markers"][NT_FAKE]["status"].clear(),
+            "a markers entry with an empty source": lambda t: t["rate_limit_markers"][NT_FAKE].update(source=""),
         }
         for name, edit in bad.items():
             t = spend_table()
@@ -2775,6 +2783,27 @@ class TestNextTouchC3(unittest.TestCase):
             del box[key]
             with self.assertRaises(aa.BoxRecordError):
                 aa.harness_records([a_turn()], pin=PIN, box=box)
+
+
+
+class TestNextTouchFold1(unittest.TestCase):
+    """Lane review round 1, W4H1-2 (the lane lead's decision: fold): route() checks the spend-cap refusal whatever the
+    table's outranked_by says, so even a hand-built table that skips check_table can never pause a spend cap."""
+
+    def test_the_spend_refusal_ignores_outranked_by(self):
+        t = spend_table()
+        t["spend_cap_refusal"]["outranked_by"] = [labels4.PAUSE]   # a table check_table refuses, handed in directly
+        self.assertEqual(spend_problems(t), [])
+
+    def test_ignores_outranked_by_check_can_fail(self):
+        real = routing.spend_cap_holds
+
+        def honours_outranked_by(records, table):   # the mutant: the base's gate, outranked_by read at run time
+            return real(records, table) and labels4.PAUSE not in table["spend_cap_refusal"]["outranked_by"]
+        t = spend_table()
+        t["spend_cap_refusal"]["outranked_by"] = [labels4.PAUSE]
+        with mock.patch.object(routing, "spend_cap_holds", honours_outranked_by):
+            self.assertTrue(any(x.endswith("got pause") for x in spend_problems(t)))
 
 
 if __name__ == "__main__":

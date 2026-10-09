@@ -2913,5 +2913,30 @@ class TestNextTouchSpendGate(unittest.TestCase):
         self.assertIn("spend_cap_markers_status missing: the loop would start", found)
 
 
+
+class TestNextTouchFold1Gate(unittest.TestCase):
+    """Lane review round 1, W4H1-1 (the lane lead's decision: fold for the spend line only): the spend-cap status is
+    refused unless, stripped and upper-cased, it does not start with PENDING."""
+
+    LOOSE = ("pending (glitch-f3): x", " PENDING (glitch-f3): x", "Pending", "\tPENDING")
+
+    def loose_problems(self):
+        p = []
+        for status in self.LOOSE:
+            t = test_table()
+            t["spend_cap_markers_status"] = status
+            if not any(x.startswith("spend_cap_markers_status") for x in batch.start_problems(t)):
+                p.append(f"{status!r}: the loop would start")
+        return p
+
+    def test_a_loosely_written_pending_spend_status_refuses_to_start(self):
+        self.assertEqual(self.loose_problems(), [])
+        self.assertFalse(any("spend_cap_markers_status" in x for x in batch.start_problems(test_table())))
+
+    def test_loose_pending_check_can_fail(self):
+        with mock.patch.object(batch, "is_pending", lambda status: str(status).startswith(batch.PENDING)):  # the base's
+            self.assertEqual(len(self.loose_problems()), len(self.LOOSE))                                   # prefix rule
+
+
 if __name__ == "__main__":
     unittest.main()
