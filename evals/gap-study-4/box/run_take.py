@@ -405,7 +405,10 @@ def check_environment(harness: str, caller_env=None, requested=()) -> None:
 
 def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str, run_tree: str, login_file: str,
               caller_env=None) -> tuple:
-    """One turn's `docker exec` as the agent, and the client environment. The login rides by name only."""
+    """One turn's `docker exec` as the agent, and the client environment. The login rides by name only.
+
+    Interface (glitch-f3's ratification, Thu 8 Oct): the required `login_file` is part of exec_argv's signature; the
+    login is read from it at exec time by `read_login`, and its value reaches only the client environment."""
     harness = _known_harness(harness)
     src = os.environ if caller_env is None else caller_env
     login = LOGIN_VARIABLE[harness]
@@ -437,6 +440,10 @@ def config_home_names() -> frozenset:
     return frozenset(k for env in HARNESS_ENV.values() for k, v in env.items() if v == CONFIG_MOUNT)
 
 
+# W4B3-4: a plain exec carries at most one harness's config home.
+CONFIG_HOME_MAX = 1
+
+
 def _config_home_allowed(name, value) -> bool:
     """W4B2-1: only a harness's config-home name, and only at the config mount (never a login, never anything else)."""
     return name in config_home_names() and value == CONFIG_MOUNT
@@ -448,6 +455,8 @@ def agent_exec_argv(container_id: str, inner, *, workdir: str = "/", config_home
     inner = _check_argv(inner)
     workdir = _abs_path(workdir, "workdir") if workdir != "/" else "/"
     extra = []
+    if len(config_home or {}) > CONFIG_HOME_MAX:
+        raise Refused("a plain exec carries one harness's config home at most")
     for name, value in sorted((config_home or {}).items()):
         if not _config_home_allowed(name, value):
             raise Refused("a plain exec carries only a harness's config home, at the config mount")
@@ -701,6 +710,9 @@ def launch(runtime, spec: TakeSpec, *, sidecar: SidecarLaunch, proxy: ProxyLaunc
     """Network, proxy, sidecar, take container, each created, inspected where interface 12 says, then started. A
     failure tears down everything made so far by its recorded id and raises LaunchError carrying the record. No agent
     turn ever runs here. The launch record is written to `record_dir` either way.
+
+    Interface (glitch-f3's ratification, Thu 8 Oct): the required `record_dir` is part of launch's signature; the launch
+    record and, at teardown, the proxy log are written there, beside the evidence folder.
 
     W4B2-3: `spec.network` is a placeholder 64-hex id the drive step passes (it cannot know the id yet); launch
     replaces it with the network it creates, and `Launched.spec` carries the spec preflight must use."""
