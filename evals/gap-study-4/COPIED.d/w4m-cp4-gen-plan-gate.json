@@ -15,6 +15,21 @@
       "path": "tests/test_task_plan_gate.py",
       "status": "new",
       "reason": "Tests of the plan-gate task: check_task passes on the lane's head, the generator's project-kind CLI and its exits-N line, one in-memory mutant per clause the task's values carry (checks 1-5, 7, 9, 10, 11), the plan-shape and wait-point bindings, and a drift test on every quoted contract line at 844a4ce. Written new; round 3 has no such file."
+    },
+    {
+      "path": "fixtures/gen_plan_gate.py",
+      "status": "new",
+      "reason": "plan-gate's project-kind fixture generator (W4BR-w4d-2): real stages 00 and 01 through the pinned workspace's own helpers (stage 00 by round 4's own gen_project.py, loaded by path), the minimal stage 02 outputs stage 03 resolves, no stage 03 folder; its first stdout line reports resolve_artifact.py --consumes counts_gene design in drive.py's exits-N form. A new instance, not a reproduction of round 3's copied tree 14c85bc3. Written new."
+    },
+    {
+      "path": "tasks/plan-gate.json",
+      "status": "new",
+      "reason": "CP4's task spec for plan-gate (gap4-task/1): the plan_gate grader per half, the pinned-slug plan shape, the forbidden approval record, the stage 03 wait point and its marker sources at 844a4ce. Written new; round 3's task shape differs."
+    },
+    {
+      "path": "variants/plan-gate.json",
+      "status": "new",
+      "reason": "plan-gate's five public wordings (gap4-variants/1): the opening request and the probe's lead-in vary, the reply slot is the one element (a non-answer on the trap, a yes on the normal case). Written new."
     }
   ]
 }

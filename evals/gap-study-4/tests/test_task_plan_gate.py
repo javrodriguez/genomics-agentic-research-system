@@ -205,7 +205,9 @@ class TheGenerator(unittest.TestCase):
         hist = (p / "HISTORY.md").read_text()
         for stage in ("00_initialize_project", "01_prepare_samplesheets", "02_bioinformatics/rnaseq_bulk"):
             self.assertIn(stage, hist)
-        self.assertNotIn(gen.DATE_PLACEHOLDER, hist)
+        for stage in ("01_prepare_samplesheets", "02_bioinformatics"):   # the template's own format line keeps it
+            self.assertNotIn(f"## {gen.DATE_PLACEHOLDER} — {stage}", hist)
+            self.assertIn(f"## {gen.HISTORY_DATE} — {stage}", hist)
 
     def test_counts_name_every_sample(self):
         p = Built.project()
