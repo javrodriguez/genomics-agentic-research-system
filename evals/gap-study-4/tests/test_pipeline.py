@@ -50,6 +50,7 @@ def mutations():
     validate_ruling = getattr(takes, "validate_ruling", None)
     runner = get_run()
     return {
+        "runtime-timing": (cr, "runtime_timing_problems", lambda: []),
         "freeze-identity": (freeze, "planned_order", lambda draft, seed: []),
         "output-pins": (freeze, "generated_pins", lambda outputs: []),
         "pin-all": (freeze, "owned_paths", lambda manifest, folder: [e["path"] for lane, e in manifest.load_fragments(folder)[0] if e["path"].endswith(".py")]),
@@ -929,26 +930,46 @@ class FreezeDesign(unittest.TestCase):
                 self.assertEqual(pin["git_blob_sha"], git(repo, "hash-object", name))
 
 
-class UnclaimedOutputs(unittest.TestCase):
-    def test_nonfreeze_outputs_need_an_authorized_claim_protocol(self):
-        # Diagnostic for OPEN w5b-4, not a bypass or a proposed claim protocol.
-        # All bodies and paths below are synthetic, in a scratch repository.
-        with manifest_repository() as (repo, root, folder):
-            freeze.write_outputs({"pinned_files": []}, root=root, manifest=cm)
-            commit(repo, [study.STUDY_REL], "Freeze synthetic inputs")
-            self.assertEqual(cm.problems(folder, pinned=False), [])
-            names = ("review_kit/prefreeze-1.md", "verification/freeze-rehearsal-1.txt",
-                     "takes.json", "outcomes.json", "rulings.json", "records/synthetic-task.json",
-                     "RESULT.md", "cost-calls.json", "COSTS.md")
-            for name in names:
+class RuntimeTiming(unittest.TestCase):
+    def test_pre_freeze_outputs_refused_even_when_removed_before_freeze(self):
+        self.assertTrue(callable(getattr(cr, "runtime_timing_problems", None)),
+                        "the publication checker must inspect output commit timing")
+        names = ("takes.json", "outcomes.json", "rulings.json", "records/synthetic-task.json",
+                 "RESULT.md", "cost-calls.json", "COSTS.md")
+        for name in names:
+            with self.subTest(name=name), repository() as repo:
+                root = repo.root / study.STUDY_REL
                 path = root / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("synthetic output " + name + "\n")
-            problems = cm.problems(folder, pinned=False)
-            for name in names:
-                self.assertTrue(any(p.startswith(name + " is under") and "no fragment" in p
-                                    for p in problems), (name, problems))
-            self.assertEqual(len(problems), len(names), problems)
+                path.parent.mkdir(parents=True)
+                path.write_text("synthetic output\n")
+                commit(repo.root, [study.rel(name)], "Record synthetic early output")
+                with mock.patch.object(cr, "REPO", repo.root):
+                    self.assertTrue(cr.runtime_timing_problems())
+                    path.unlink()
+                    commit(repo.root, [study.rel(name)], "Remove synthetic early output")
+                    (root / "prereg.json").write_text("{}\n")
+                    commit(repo.root, [study.rel("prereg.json")], "Freeze synthetic design")
+                    self.assertTrue(cr.runtime_timing_problems())
+                    with mock.patch.object(cr, "runtime_timing_problems", lambda: []):
+                        self.assertEqual(cr.runtime_timing_problems(), [])
+
+    def test_only_post_freeze_outputs_are_allowed_and_cli_enforces_timing(self):
+        self.assertTrue(callable(getattr(cr, "runtime_timing_problems", None)))
+        with repository() as repo:
+            root = repo.root / study.STUDY_REL
+            root.mkdir(parents=True)
+            (root / "prereg.json").write_text("{}\n")
+            commit(repo.root, [study.rel("prereg.json")], "Freeze synthetic design")
+            with mock.patch.object(cr, "REPO", repo.root):
+                self.assertEqual(cr.runtime_timing_problems(), [])
+                (root / "cost-calls.json").write_text("[]\n")
+                commit(repo.root, [study.rel("cost-calls.json")], "Record synthetic later output")
+                self.assertEqual(cr.runtime_timing_problems(), [])
+        with mock.patch.object(cr, "is_shallow", return_value=False), \
+                mock.patch.object(cr, "runtime_timing_problems", return_value=["synthetic early output"]), \
+                redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(cr.main(["--check"]), 1)
+            self.assertIn("synthetic early output", output.getvalue())
 
 
 if __name__ == "__main__":
