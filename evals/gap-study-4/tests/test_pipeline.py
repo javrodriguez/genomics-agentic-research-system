@@ -7,10 +7,12 @@ runs this entire file with that production clause removed in memory.
 from __future__ import annotations
 
 import copy
+import base64
 import importlib.util
 import io
 import inspect
 import json
+import marshal
 import os
 import shutil
 import types
@@ -19,7 +21,8 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from contextlib import contextmanager, redirect_stdout
+import uuid
+from contextlib import ExitStack, contextmanager, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -63,6 +66,14 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "rehearsal-plan-mode": source_mutant(cr, "main",
+            'check_frozen_content(rehearsal_plan=args.rehearsal_plan)', 'check_frozen_content()'),
+        "rehearsal-default-mode": source_mutant(cr, "check_frozen_content",
+            'if rehearsal_plan:', 'if True:'),
+        "rehearsal-exact-placeholder": source_mutant(cr, "check_frozen_content",
+            'if frozen.get("rehearsal_record") != "rehearsal or preview":', 'if False:'),
+        "rehearsal-not-checked": source_mutant(cr, "check_frozen_content",
+            'NOT CHECKED: rehearsal record (disposable rehearsal)', 'PASS: rehearsal record'),
         "pause-event-identity": source_mutant(cr, "pause_event",
             'if events and ("window", next(iter(events))) in cell_events:', 'if events:'),
         "frozen-rehearsal-empty": source_mutant(cr, "rehearsal_record_problems",
@@ -1195,6 +1206,104 @@ class CostAccounting(unittest.TestCase):
 
 
 class FreezeCoverage(unittest.TestCase):
+    @contextmanager
+    def rehearsal_clone(self):
+        claims = {entry["path"]: entry for _lane, entry in cm.load_fragments()[0]}
+        names = ("takes.py", "run.py", "result.py", "completeness.py", "check_results.py",
+                 "freeze.py", "copy_manifest.py", "prereg.py", "study.py", "stats.py",
+                 "batch.py", "routing.py", "routing.json", "variants.py", "intervals.py",
+                 "transcript_view.py", "agent_adapter.py", "harness_bookkeeping.py", "graders/labels4.py")
+        with manifest_repository() as (repo, root, folder), tempfile.TemporaryDirectory() as tmp:
+            fragment = json.loads((folder / "synthetic.json").read_text())
+            entries = {e["path"]: e for e in fragment["files"]}
+            for name in names:
+                dest = root / name
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes((HERE / name).read_bytes())
+                entries[name] = claims[name]
+            review_name = study.REVIEW_DIR + "/prefreeze-1.md"
+            review = root / review_name
+            review.parent.mkdir(parents=True, exist_ok=True)
+            review.write_text(freeze.RULING_LINE + "\n")
+            entries[review_name] = {"path": review_name, "status": "new", "reason": "synthetic ruling"}
+            fragment["files"] = list(entries.values())
+            (folder / "synthetic.json").write_text(json.dumps(fragment))
+            draft = dict(pre_registration(), session_namespace={"derived_from": "synthetic",
+                "uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, "synthetic"))})
+            (root / "prereg-draft.json").write_text(json.dumps(draft))
+            review_commit = commit(repo, [study.STUDY_REL], "Record synthetic reviewed design")
+            problems, writer = cm.problems, freeze.write_outputs
+            with ExitStack() as stack:
+                for module, name, value in ((freeze, "HERE", root), (freeze, "REPO", repo),
+                    (freeze, "DRAFT", root / "prereg-draft.json"),
+                    (freeze, "PINNED", [study.rel(p) for p in entries])):
+                    stack.enter_context(mock.patch.object(module, name, value))
+                stack.enter_context(mock.patch.object(cm, "problems", lambda *a, **k: problems(folder, **k)))
+                stack.enter_context(mock.patch.object(freeze, "write_outputs", lambda pre: writer(pre, root=root)))
+                output = stack.enter_context(redirect_stdout(io.StringIO()))
+                self.assertEqual(freeze.main(["--review-commit", review_commit, "--rehearsal", "--write"]),
+                                 0, output.getvalue())
+            commit(repo, [study.STUDY_REL], "Freeze disposable synthetic design")
+            clone = Path(tmp) / "repo"
+            git(repo, "clone", "-q", "--no-local", str(repo), str(clone))
+            git(clone, "remote", "remove", "origin")
+            scratch_identity(clone)
+            yield clone, clone / study.STUDY_REL
+
+    def rehearsal_command(self, clone, command, env=None):
+        script = clone / study.rel(command[0])
+        if command[0] == "check_results.py":
+            # Propagate the whole-file run's in-memory checker mutant into the
+            # child interpreter without changing any pinned source on disk.
+            functions = {name: base64.b64encode(marshal.dumps(getattr(cr, name).__code__)).decode()
+                         for name in ("main", "check_frozen_content", "rehearsal_record_problems")}
+            launcher = ('import sys,json,marshal,base64,types; sys.path.insert(0,sys.argv[1]); '
+                        'import check_results as m; '
+                        '[(setattr(m,n,types.FunctionType(marshal.loads(base64.b64decode(c)), '
+                        'm.__dict__,n,getattr(m,n).__defaults__))) for n,c in json.loads(sys.argv[2]).items()]; '
+                        'sys.exit(m.main(sys.argv[3:]))')
+            argv = [sys.executable, "-B", "-W", "ignore", "-c", launcher, str(script.parent),
+                    json.dumps(functions), *command[1:]]
+        else:
+            argv = [sys.executable, "-B", "-W", "ignore", str(script), *command[1:]]
+        return subprocess.run(argv, cwd=clone, env=env, capture_output=True, text=True)
+
+    def test_rehearsal_plan_runtime_commands_accept_only_disposable_placeholder(self):
+        with self.rehearsal_clone() as (clone, root):
+            pre = json.loads((root / "prereg.json").read_text())
+            self.assertEqual(pre["rehearsal_record"], "rehearsal or preview")
+            row_file = clone.parent / "row.json"
+            first, commands = freeze_rehearsal.rehearsal_plan(pre, row_file)
+            row_file.write_text(json.dumps(first))
+            for command in commands:
+                got = self.rehearsal_command(clone, command)
+                self.assertEqual(got.returncode, 0, (command, got.stdout, got.stderr))
+                if command[0] == "check_results.py":
+                    self.assertIn("NOT CHECKED: rehearsal record (disposable rehearsal)", got.stdout)
+                    self.assertNotIn("PASS", got.stdout)
+
+    def test_default_checker_refuses_disposable_frozen_state(self):
+        with self.rehearsal_clone() as (clone, _root):
+            for flags in ((), ("--check",), ("--ledger",)):
+                got = self.rehearsal_command(clone, ("check_results.py", *flags))
+                self.assertEqual(got.returncode, 1, got.stdout + got.stderr)
+                self.assertIn("never a placeholder", got.stdout)
+
+    def test_rehearsal_mode_refuses_any_other_record(self):
+        self.assertIn("rehearsal_plan", inspect.signature(cr.check_frozen_content).parameters)
+        frozen = {"rehearsal_record": "rehearsal or preview"}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for record in ("rehearsal", None, {}, {"text": "all green"}):
+                bad = dict(frozen, rehearsal_record=record)
+                (root / "prereg.json").write_text(json.dumps(bad))
+                with mock.patch.object(cr, "HERE", root), \
+                        mock.patch.object(cr, "frozen_bytes", return_value=(bad, "")), \
+                        mock.patch.object(cr, "freeze_commit", return_value="synthetic"), \
+                        mock.patch.object(cr, "frozen_commit_problems", return_value=[]), \
+                        redirect_stdout(io.StringIO()):
+                    self.assertTrue(cr.check_frozen_content(rehearsal_plan=True))
+
     def frozen_rehearsal_check(self, record):
         frozen = {"draft_sha256_at_freeze": "a" * 64, "rehearsed_study_tree_sha256": "b" * 64,
                   "rehearsal_record": record}
@@ -1250,7 +1359,7 @@ class FreezeCoverage(unittest.TestCase):
         self.assertEqual(commands[0], ("takes.py", "--add", "--row", "/synthetic/input.json", "--attempt", "1"))
         self.assertIn(("run.py", "--all"), commands)
         self.assertIn(("result.py", "--write"), commands)
-        self.assertIn(("check_results.py", "--ledger"), commands)
+        self.assertIn(("check_results.py", "--ledger", "--rehearsal-plan"), commands)
         self.assertFalse(any(c[0] in ("copy_manifest.py", "test_round4.py") for c in commands))
         self.assertIn(("copy_manifest.py", "--check"), freeze_rehearsal.COMMANDS)
         with mock.patch.object(freeze_rehearsal, "rehearsal_plan", lambda pre, row_file: ({}, ())):
