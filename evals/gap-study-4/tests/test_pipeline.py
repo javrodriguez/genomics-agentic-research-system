@@ -63,6 +63,7 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "active-cost-arms": source_mutant(costs, "month_turn_allowed", ' & set(study.ARMS)', ''),
         "runtime-ruling-trailer": source_mutant(takes, "commit_ruling",
             'msg.write("Record a human ruling\\n")',
             'msg.write("Record a human ruling\\n\\nCo-Authored-By: synthetic\\n")'),
@@ -1003,6 +1004,22 @@ class StatsDestination(unittest.TestCase):
 
 
 class CostAccounting(unittest.TestCase):
+    def setUp(self):
+        # The design lane adds the vendor arms to study; exercise that future
+        # design here without editing study.py from this lane.
+        patch = mock.patch.object(study, "ARMS", tuple(dict.fromkeys((*study.ARMS, "O", "G"))))
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def test_month_turn_uses_active_study_arms(self):
+        at = datetime(2026, 10, 31, 23, 31, tzinfo=timezone.utc)
+        with mock.patch.object(study, "ARMS", ("A", "G")):
+            self.assertTrue(costs.month_turn_allowed("O", at, None))
+            self.assertFalse(costs.month_turn_allowed("G", at, None))
+        with mock.patch.object(study, "ARMS", ("A", "O")):
+            self.assertFalse(costs.month_turn_allowed("O", at, None))
+            self.assertTrue(costs.month_turn_allowed("G", at, None))
+
     def test_future_dated_trim_record_cannot_release_hold(self):
         at = datetime(2026, 10, 31, 23, 31, tzinfo=timezone.utc)
         trimmed = {"kind": "caps trimmed", "by": "Javier", "month": "2026-11",
