@@ -745,6 +745,8 @@ class PublicationHistory(unittest.TestCase):
         self.assertEqual(got["window_events"],
                          {"c1": [("window", 1)], "c2": [("take", "s2", 1)]})
         self.assertEqual(got["cells"], {})
+        self.assertTrue(all("note" not in o for o in got["attempts"]),
+                        "equal candidate counts must not acquire a strict-count note")
 
     def test_q1_ruled_pause_after_other_cell_window(self):
         self.assert_other_cell_pause_count(False)
