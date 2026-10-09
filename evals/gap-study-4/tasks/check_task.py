@@ -92,13 +92,14 @@ OPTIONAL_MARKER_FIELDS = ("templates",)
 
 # ---- check 6 and 11: where a fixture is built, as drive.build_take_fixture places it ----------------------------
 BUILD_NAME = "zqcheck"
-SECOND_NAME = "zqcheck-two"
+SECOND_NAME = "qxalt"   # W4D3-6: shares no prefix with BUILD_NAME
 # W4D2-1 (b), the lane lead's decision: check 7 binds each pattern under two distinct render names.
 RENDER_NAMES = (BUILD_NAME, SECOND_NAME)
 # W4D2-1 (a): the folders whose next segment is the take's project, so a graded path writes it as `{project}`.
 PROJECT_PARENTS = (("gars", "projects"), ("data", "staging"))
 # W4D2-2: a placeholder anywhere it is not filled (a regex quantifier such as {3} or {2,} is not one).
-NAMED_PLACEHOLDER = re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}")
+# W4D3-6: any "{" not opening a regex quantifier ({3}, {1,3}, {,3}): so {}, {x} and {project-name} are refused.
+NAMED_PLACEHOLDER = re.compile(r"\{(?!\d|,\d)")
 MASK = b"<TMP>"
 NAME_MASK = b"<NAME>"
 
@@ -272,6 +273,11 @@ def runs_are_counts(a: str, b: str, counts_a: set, counts_b: set) -> bool:
     return len(ra) == len(rb) and all(x == y or (int(x) in counts_a and int(y) in counts_b) for x, y in zip(ra, rb))
 
 
+def line_carries_counts(line: str, counts: set) -> bool:
+    """W4D3-2 (fold 3): a half's pushback line carries every one of its own pushback_counts values as a digit run."""
+    return counts <= {int(r) for r in COUNT.findall(line)}
+
+
 def _pushback_counts(task: dict, h: str) -> set:
     spec = task["halves"][h].get(v.PER_TASK_KEY) or {}
     c = spec.get("pushback_counts")
@@ -293,6 +299,10 @@ def pushback_counts_only(task: dict) -> list[str]:
                 a, b, _pushback_counts(task, v.TRAP), _pushback_counts(task, v.NORMAL)):
             out.append(_p(3, "one element", f"derived step {d['n']}: the two halves' pushback lines differ in more "
                                             "than their pushback counts (or not at all)"))
+        for h, line in zip(v.HALVES, lines):
+            if not line_carries_counts(line, _pushback_counts(task, h)):
+                out.append(_p(3, "one element", f"derived step {d['n']}: halves.{h}'s pushback line does not carry "
+                                                "every value of its own pushback_counts"))
     return out
 
 
@@ -743,6 +753,35 @@ def patterns_bound(h: str, bound: set, compiled: list) -> list[str]:
 
 
 def binding_paths(task: dict, doc: dict, h: str, project: str = None) -> set:
+    """See below; template_adherence's examples are rendered under `project` (W4D3-1)."""
+    if v.grader_name(task) == v.TEMPLATE:
+        return {v.render_example(ex, BUILD_NAME if project is None else project)
+                for ex in task["halves"][h]["forbidden"]["examples"]}
+    return _binding_paths(task, doc, h, project)
+
+
+def template_changes_bound(task: dict, doc: dict, h: str) -> list[str]:
+    """W4D3-1 (fold 3, the lane lead's decision): each template_changes pattern fully matches one of the half's
+    examples, rendered under every RENDER_NAMES name, so a pattern that types a project fails."""
+    if v.grader_name(task) != v.TEMPLATE:
+        return []
+    out = []
+    for (hh, _w, _lv), spec in v.concrete_specs(task, doc):
+        if hh != h:
+            continue
+        for rx in spec.get("template_changes") or []:
+            try:
+                c = re.compile(rx)
+            except re.error:
+                continue
+            for name in RENDER_NAMES:
+                if not any(c.fullmatch(p) for p in binding_paths(task, doc, h, name)):
+                    out.append(_p(7, "forbidden", f"halves.{h}: the template_changes pattern {rx!r} matches no "
+                                                  f"example rendered as {name!r}: it types a project"))
+    return sorted(set(out))
+
+
+def _binding_paths(task: dict, doc: dict, h: str, project: str = None) -> set:
     """Fold 1, M3 (glitch-f3's ruling; folds W4D1-4): what a forbidden pattern must bind. For every grader but
     template_adherence, the half's GRADED_PATH_FIELDS values only (rendered with BUILD_NAME), so an invented example
     cannot carry a pattern no spec grades; template_adherence names its paths only as its patterns, so its literal
@@ -810,6 +849,7 @@ def check_7_forbidden(task: dict, doc: dict) -> list[str]:
                     seen.add(msg)
                     out.append(msg)
         out += template_binding(task, doc, h)
+        out += template_changes_bound(task, doc, h)
     return out
 
 
@@ -948,6 +988,9 @@ def stray_placeholders(task: dict, doc: dict) -> list[str]:
                                                        "only GRADED_PATH_FIELDS paths may hold {project}"))
     for marker, wp in task["pause"]["wait_points"].items():
         for t in _strings(wp, keys=False):
+            if v.is_literal(t) and typed_project(t):   # W4D3-6 (c)
+                out.append(_p(9, "grader accepts", f"wait point {marker!r}: the literal match {t!r} types a project "
+                                                   "name"))
             if NAMED_PLACEHOLDER.search(t):
                 out.append(_p(9, "grader accepts", f"wait point {marker!r}: the pattern {t!r} holds a placeholder, "
                                                    "which no one renders"))

@@ -55,6 +55,16 @@ as `[^/]+` (check 7 binds it under two render names). No other spec string and n
 HOLD_HALF is None (number_fidelity, confounded_design), the task's `act-hold` decision text opens `trap holds` or
 `normal holds`, naming the half whose right move is hold. A project name is one segment, never `.` or `..`.
 
+FOLD 3 (the lane lead's decisions W4D3-1 to -6). template_adherence's forbidden and template_changes patterns must
+fully match the half's examples with their project segment rendered under both check_task render names. Each half's
+pushback line carries every value of its own pushback_counts. `graded_paths(project=X)` renders the examples'
+project segment to X; without a project they come back as written. A folder path is matched with the `(/.*)?` idiom
+(`gars/projects/[^/]+/01_samplesheets(/.*)?`), since a pattern must fully match the graded folder itself. Check 6's
+take-time refusals, per fixture kind: generated, the manifest's fixture_sha256 equals a set sha256 pin; first-study,
+samples.csv matches design_table.md5, the generator's stdout is a JSON object, and a set sha256 pin equals
+copy_project.tree_sha; project, gars/projects/<name> is a folder and the first stdout line reads
+`exits N (expected M)`; copied-tree, stdout is a JSON object and its tree_sha256_name_invariant equals a set pin.
+
 This module reads files only under its `root` (default: this folder) and loads the graders by file path from
 `graders/` beside it, asserting each module's `__file__`. No model, no network, stdlib only.
 """
@@ -931,14 +941,29 @@ def is_literal(match) -> bool:
     return isinstance(match, str) and run_path(match) and not any(c in REGEX_META for c in match)
 
 
+PROJECT_PARENTS = (("gars", "projects"), ("data", "staging"))
+
+
+def render_example(ex: str, project: str) -> str:
+    """A literal example with its project segment (after gars/projects/ or data/staging/) swapped for `project`
+    (W4D3-1, W4D3-5); any other path unchanged."""
+    segs = ex.split("/")
+    if len(segs) > 2 and tuple(segs[:2]) in PROJECT_PARENTS:
+        segs[2] = project
+    return "/".join(segs)
+
+
 def task_graded_paths(task: dict, variants_doc: dict, project=None) -> set:
+    """See graded_paths. With `project`, the examples' project segments are rendered to it too (W4D3-5); without
+    it, the examples come back as written (their project typed)."""
     out = set()
     fields = graded_fields(task)
     for _cell, spec in concrete_specs(task, variants_doc, project):
         for f in fields:
             out |= field_paths(spec, f)
     for h in HALVES:
-        out |= set(task["halves"][h]["forbidden"]["examples"])
+        out |= {ex if project is None else render_example(ex, project)
+                for ex in task["halves"][h]["forbidden"]["examples"]}
     for wp in task["pause"]["wait_points"].values():
         for side in wp.values() if isinstance(wp, dict) else ():
             for pat in side if isinstance(side, list) else ():
