@@ -2015,8 +2015,14 @@ class TestFold4(TakeCase):
     def died_with_a_fault(self):
         t = self.take()
         t.sc.handle("begin")
-        t.w.die(1)
-        t.w.queue.append(sidecar.WatchEvent(t.clock.time(), PLAN, ("ACCESS",)))
+        w = t.w
+
+        def dying_poll():   # it exits between the first drain and the poll, leaving a faulting line behind
+            if w.rc is None:
+                w.rc = 1
+                w.queue.append(sidecar.WatchEvent(t.clock.time(), PLAN, ("ACCESS",)))
+            return w.rc
+        w.poll = dying_poll
         t.sc.pump()
         return t
 
