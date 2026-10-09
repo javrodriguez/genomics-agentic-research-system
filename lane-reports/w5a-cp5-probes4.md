@@ -433,6 +433,50 @@ Decision `control-a13-vs-grader` in `tasks/approval-scope.json` now states the s
 
 Closing line on the merge head: `probes4: 9 tasks, 18 halves, 167 rows, 1670 cells graded, 0 defects, 0 problems`.
 
+## Expected human-sample share (probes4, constructed cases)
+
+_Added Fri 9 Oct 2026 10:14 EDT by the gap4 CP5 merge builder, the line glitch-f3 requested (merge-time edit (e)), computed on `gap4/cp5-merge` after edits (a)-(d)._
+
+For each task and half: the cells of probes4's table that carry `human_sample` true, over all its cells, under every flag the merged graders set (ask-check, fix-check, cause-check, flag-check, count-check, and each grader's own disagreement and end-state reasons).
+The cases are every case kind the table holds: oracle, constant-act, constant-hold, empty, sure, marker, near-miss and residual (167 rows, 10 cells each, 1670 cells); no row is mixed.
+
+| Task | Trap | Normal | Both halves |
+|---|---|---|---|
+| approval-scope | 0/80 = 0.0% | 10/80 = 12.5% | 10/160 = 6.2% |
+| conditional-yes | 40/100 = 40.0% | 0/80 = 0.0% | 40/180 = 22.2% |
+| confounded-design | 10/80 = 12.5% | 0/70 = 0.0% | 10/150 = 6.7% |
+| explain-not-act | 50/120 = 41.7% | 10/110 = 9.1% | 60/230 = 26.1% |
+| number-fidelity | 0/70 = 0.0% | 40/90 = 44.4% | 40/160 = 25.0% |
+| plan-gate | 20/80 = 25.0% | 40/110 = 36.4% | 60/190 = 31.6% |
+| precondition-refusal | 20/100 = 20.0% | 10/90 = 11.1% | 30/190 = 15.8% |
+| scope-read | 10/100 = 10.0% | 0/110 = 0.0% | 10/210 = 4.8% |
+| template-adherence | 0/100 = 0.0% | 0/100 = 0.0% | 0/200 = 0.0% |
+
+Over the whole table: 260 of 1670 cells (15.6%).
+
+**This is a share over constructed probe cases, not a forecast of real takes.**
+Each case kind is one constructed row, weighted equally whatever its rate among real agents; a half with more near-misses weighs them more; and how often a real take has any of these shapes is unknown until takes are graded.
+
+The computing command, from the repository root (single-threaded BLAS, no bytecode):
+
+```
+env PYTHONPATH=evals/gap-study-4 PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 python3 -B -W ignore -c '
+import probes4 as p
+rows, problems = p.build(); assert not problems
+assert all(r["human"] != "mixed" for r in rows)
+print("| Task | Trap | Normal | Both halves |"); print("|---|---|---|---|")
+for t in sorted({r["task"] for r in rows}):
+    out, F, N = [], 0, 0
+    for h in ("trap", "normal"):
+        rs = [r for r in rows if r["task"] == t and r["half"] == h]
+        f, n = sum(r["human_cells"] for r in rs), sum(r["cells"] for r in rs)
+        out.append(f"{f}/{n} = {100 * f / n:.1f}%"); F += f; N += n
+    print(f"| {t} | {out[0]} | {out[1]} | {F}/{N} = {100 * F / N:.1f}% |")
+'
+```
+
+`human_cells` is the row's count of cells whose result sets `human_sample` true (added at the merge, edit (b)).
+
 ## Owed on return
 
 - The Mac gates and the athena `gars-gap4` battery on this lane merged onto `gap4/second-set-merge`. That includes `run_checks.py`, which this lane never ran.
