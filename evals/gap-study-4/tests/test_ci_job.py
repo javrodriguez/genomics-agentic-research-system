@@ -354,6 +354,17 @@ class JobContract(unittest.TestCase):
     def test_commands(self):
         self.clauses("R38")
 
+    def test_box_ownership(self):
+        block = job_block(CURRENT)
+        self.assertIsNotNone(block)
+        if not (HERE / "tests/test_box_integration.py").is_file():
+            self.assertIn(
+                "# CP2 owns tests/test_box_integration.py; omitted until it exists",
+                block,
+            )
+            self.assertIn("# under glitch-f3's section 10 box-integration ruling.", block)
+            self.assertFalse(any(PLAN_COMMANDS[4] in run for _, _, run in steps(block)))
+
     def test_private_message(self):
         self.clauses("R39")
 
