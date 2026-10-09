@@ -116,7 +116,7 @@ How it was applied in this lane:
 5. **CP2: view tools.** The takes may call `shell`, `read`, `write` and `edit` only, all in `transcript_view.TOOL_KINDS`. No tool is missing for this task.
 6. (Carried to CP6's walk and the validity page as a named threat to the trap's construct, W4O1-7.) The trap's agent sees a corrected samples.csv on disk if it reads it after the save. The explanation should still name `traeted` from the design table, but whether models do is the walk's to show.
 
-7. **Conflict: glitch-f3's ruling asks every lane to run test_round4.py as a gate; STANDING_RULES section 2 forbids it in the cloud** ("Whole suites never run in the cloud: test_round4.py, run_checks.py, tests/run_tests.py and --whole-file-audit are owed, run by glitch-f3 on return"). Under the rule that a conflict is reported, never resolved by the reader, this lane did not run it. The cloud lead has reported the conflict. test_round4.py on this head is owed on return.
+7. **Conflict: glitch-f3's ruling asks every lane to run test_round4.py as a gate; STANDING_RULES section 2 forbids it in the cloud** ("**Whole suites never run in the cloud:** `test_round4.py`, `run_checks.py`, `tests/run_tests.py` and `--whole-file-audit` are owed, run by glitch-f3 on return (README, "Owed on return")."). Under the rule that a conflict is reported, never resolved by the reader, this lane did not run it. The cloud lead has reported the conflict. test_round4.py on this head is owed on return.
 
 ## Deferred to Javier
 
