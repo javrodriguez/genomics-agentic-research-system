@@ -2938,5 +2938,36 @@ class TestNextTouchFold1Gate(unittest.TestCase):
             self.assertEqual(len(self.loose_problems()), len(self.LOOSE))                                   # prefix rule
 
 
+
+def loose_status_problems(key: str) -> list[str]:
+    """W4H1-1 as glitch-f3 ruled it (under Javier's delegation): every status line of start_problems refuses a loosely
+    written PENDING (case, leading whitespace)."""
+    p = []
+    for status in TestNextTouchFold1Gate.LOOSE:
+        t = test_table()
+        t[key] = status
+        if not any(x.startswith(key) for x in batch.start_problems(t)):
+            p.append(f"{key} {status!r}: the loop would start")
+    return p
+
+
+class TestNextTouchFold1Siblings(unittest.TestCase):
+    """glitch-f3's ruling on W4H1-1: the three sibling status lines are read the same way as the spend line."""
+
+    def test_operator_reasons_status(self):
+        self.assertEqual(loose_status_problems("operator_reasons_status"), [])
+
+    def test_pin_profiles_status(self):
+        self.assertEqual(loose_status_problems("pin_profiles_status"), [])
+
+    def test_rate_limit_markers_status(self):
+        self.assertEqual(loose_status_problems("rate_limit_markers_status"), [])
+
+    def test_sibling_check_can_fail(self):
+        with mock.patch.object(batch, "is_pending", lambda status: str(status).startswith(batch.PENDING)):
+            for key in ("operator_reasons_status", "pin_profiles_status", "rate_limit_markers_status"):
+                self.assertEqual(len(loose_status_problems(key)), len(TestNextTouchFold1Gate.LOOSE), key)
+
+
 if __name__ == "__main__":
     unittest.main()
