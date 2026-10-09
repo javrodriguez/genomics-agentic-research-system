@@ -587,6 +587,83 @@ class TestLoginBinding5(unittest.TestCase):
         red("a relative login path accepted")
 
 
+# W4 merge, binding 5 review round 1 (glitch-f3's ruling under Javier's delegation; the merge-time exception to
+# lane w4c, extended): B5R1-1 the repository walk reads the real path, B5R1-3 the owner is the real uid, B5R1-4 the
+# 0x1c-0x1f bytes are refused. One test per point, then one in-memory mutant per point, each turning its check red.
+class TestLoginBinding5Round1(unittest.TestCase):
+    def setUp(self):
+        self.d = tempfile.TemporaryDirectory()
+        self.addCleanup(self.d.cleanup)
+        self.root = self.d.name
+
+    def plant(self, folder, body=None):
+        os.makedirs(folder, exist_ok=True)
+        p = os.path.join(folder, "f.line")
+        with open(p, "wb") as fh:
+            fh.write((body if body is not None else f"{GOOD}={TOKEN}\n").encode("utf-8"))
+        os.chmod(p, 0o600)
+        return p
+
+    def repo_through_links(self):
+        """A login file inside a repository, and two paths to it that never name the repository lexically."""
+        repo = os.path.join(self.root, "repo")
+        os.makedirs(os.path.join(repo, ".git"))
+        self.plant(os.path.join(repo, "sub"))
+        link = os.path.join(self.root, "lnk")
+        os.symlink(os.path.join(repo, "sub"), link)
+        return os.path.join(link, "f.line"), os.path.join(link, "..", "sub", "f.line")
+
+    # B5R1-1: the real path, as run_take.outside_every_repository reads it
+    def test_a_repo_file_reached_through_a_symlinked_folder_is_refused(self):
+        via_link, via_dotdot = self.repo_through_links()
+        for p in (via_link, via_dotdot):
+            with self.subTest(p=p), self.assertRaises(sr.LoginError):
+                sr.read_login(p, GOOD, allowed=(GOOD,))
+
+    def test_a_plain_file_reached_through_a_link_inside_a_repo_is_read(self):
+        out = self.plant(os.path.join(self.root, "out"))
+        repo = os.path.join(self.root, "repo2")
+        os.makedirs(os.path.join(repo, ".git"))
+        os.symlink(os.path.dirname(out), os.path.join(repo, "l"))
+        self.assertEqual(sr.read_login(os.path.join(repo, "l", "f.line"), GOOD, allowed=(GOOD,)), TOKEN)
+
+    # B5R1-3: the real uid, as run_take.read_login reads it
+    def test_the_owner_is_the_real_uid(self):
+        p = self.plant(os.path.join(self.root, "o"))
+        real = os.getuid()
+        with mock.patch.object(sr.os, "getuid", lambda: real + 1), self.assertRaises(sr.LoginError):
+            sr.read_login(p, GOOD, allowed=(GOOD,))
+        with mock.patch.object(sr.os, "geteuid", lambda: real + 1):
+            self.assertEqual(sr.read_login(p, GOOD, allowed=(GOOD,)), TOKEN)
+
+    # B5R1-4: the bytes a str regex reads as whitespace
+    def test_the_0x1c_to_0x1f_bytes_are_refused(self):
+        for b in ("\x1c", "\x1d", "\x1e", "\x1f"):
+            p = self.plant(os.path.join(self.root, f"c{ord(b)}"), f"{GOOD}={TOKEN}{b}\n")
+            with self.subTest(byte=hex(ord(b))), self.assertRaises(sr.LoginError):
+                sr.read_login(p, GOOD, allowed=(GOOD,))
+
+    def test_mutant_lexical_repository_walk_goes_red(self):
+        via_link, _ = self.repo_through_links()
+        with mock.patch.object(sr, "_real_path", os.path.abspath):
+            self.assertEqual(sr.read_login(via_link, GOOD, allowed=(GOOD,)), TOKEN)
+        red("a repo login file reached through a symlinked folder accepted (lexical walk)")
+
+    def test_mutant_effective_uid_goes_red(self):
+        p = self.plant(os.path.join(self.root, "o"))
+        real = os.getuid()
+        with mock.patch.object(sr.os, "getuid", lambda: real + 1), \
+                mock.patch.object(sr, "_owned", lambda st: st.st_uid == os.geteuid()):
+            self.assertEqual(sr.read_login(p, GOOD, allowed=(GOOD,)), TOKEN)
+        red("a login file accepted on the effective uid while the real uid differs")
+
+    def test_mutant_without_0x1c_to_0x1f_goes_red(self):
+        p = self.plant(os.path.join(self.root, "c"), f"{GOOD}={TOKEN}\x1f\n")
+        with mock.patch.object(sr, "_LOGIN_LINE", re.compile(rb"([A-Z_][A-Z0-9_]*)=([^\s\"\x80-\xff]{20,})\n")):
+            self.assertEqual(sr.read_login(p, GOOD, allowed=(GOOD,)), TOKEN + "\x1f")
+        red("a login value with 0x1f accepted")
+
+
 # ------------------------------------------------------------------------------------------------- PENDING values
 class TestPending(unittest.TestCase):
     def test_the_pending_set(self):
@@ -670,15 +747,15 @@ class TestFold2(Case):
 
     def test_a_login_file_owned_by_another_is_refused(self):
         p = self.login()
-        real = os.geteuid()
-        with mock.patch.object(sr.os, "geteuid", lambda: real + 1):
+        real = os.getuid()
+        with mock.patch.object(sr.os, "getuid", lambda: real + 1):
             with self.assertRaisesRegex(sr.LoginError, "not owned by its reader"):
                 sr.read_login(p, GOOD, allowed=(GOOD,))
 
     def test_mutant_owner_unchecked_goes_red(self):
         p = self.login()
-        real = os.geteuid()
-        with mock.patch.object(sr.os, "geteuid", lambda: real + 1), \
+        real = os.getuid()
+        with mock.patch.object(sr.os, "getuid", lambda: real + 1), \
                 mock.patch.object(sr, "_owned", lambda st: True):
             self.assertEqual(sr.read_login(p, GOOD, allowed=(GOOD,)), TOKEN)
         red("a login file owned by another accepted")

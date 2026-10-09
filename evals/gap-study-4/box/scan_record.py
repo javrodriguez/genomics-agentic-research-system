@@ -130,8 +130,15 @@ def furniture_positions(harness: str):
 
 
 # ------------------------------------------------------------------------------------------------- login files
+# Wave 4 merge, binding 5 review round 1 (glitch-f3's ruling under Javier's delegation; the merge-time exception to
+# this lane, extended): the repository walk reads the real path (B5R1-1) and the owner is the real uid (B5R1-3), as
+# run_take.read_login reads them.
+def _real_path(path: str) -> str:
+    return os.path.realpath(path)
+
+
 def _in_git_repository(path: str) -> bool:
-    d = os.path.dirname(os.path.abspath(path))
+    d = os.path.dirname(_real_path(path))
     while True:
         if os.path.lexists(os.path.join(d, ".git")):
             return True
@@ -142,7 +149,7 @@ def _in_git_repository(path: str) -> bool:
 
 
 def _owned(st) -> bool:
-    return st.st_uid == os.geteuid()
+    return st.st_uid == os.getuid()
 
 
 def _name_allowed(name, allowed) -> bool:

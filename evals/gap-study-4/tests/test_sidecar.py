@@ -2153,8 +2153,9 @@ BOX_MODULES = {
         "imports": {
             "hashlib": {"sha256"},
             "json": {"loads"},
-            "os": {"O_NOFOLLOW", "O_NONBLOCK", "O_RDONLY", "close", "fsync", "geteuid", "lstat", "open",
-                   "path.abspath", "path.dirname", "path.isabs", "path.join", "path.lexists", "read"},
+            "os": {"O_NOFOLLOW", "O_NONBLOCK", "O_RDONLY", "close", "fsync", "getuid", "lstat", "open",
+                   "path.abspath", "path.dirname", "path.isabs", "path.join", "path.lexists", "path.realpath",
+                   "read"},
             "re": {"compile"},
             "scrub": {"NOTE"},
             "stat": {"S_IMODE", "S_ISREG"},
@@ -2170,7 +2171,8 @@ BOX_MODULES = {
         "attrs": {
             'NOTE', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'S_IMODE', 'S_ISREG', 'abspath', 'add', 'append',
             'close', 'compile', 'count', 'decode', 'dirname', 'encode', 'endswith', 'fileno', 'find', 'flush',
-            'fsync', 'fullmatch', 'geteuid', 'group', 'hexdigest', 'insert', 'isabs', 'items', 'join', 'lexists',
+            'fsync', 'fullmatch', 'getuid', 'group', 'hexdigest', 'insert', 'isabs', 'items', 'join', 'lexists',
+            'realpath',
             'loads', 'lstat', 'open', 'path', 'read', 'setdefault', 'sha256', 'split', 'st_mode', 'st_uid',
             'truncate', 'write'},
     },
