@@ -129,7 +129,7 @@ def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, root=HE
     path.write_text(json.dumps(existing + [record], indent=2) + "\n", encoding="utf-8")
     _git_at(repo, "add", "--", path.relative_to(repo).as_posix())
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as msg:
-        msg.write("Record a human ruling\n\nCo-Authored-By: Codex (gpt-6-astra) <noreply@openai.com>\n")
+        msg.write("Record a human ruling\n")
         msg.flush()
         _git_at(repo, "commit", "-F", msg.name)
     return record
@@ -351,7 +351,7 @@ def commit_registration(row, attempt, *, guard=None, root=HERE, repo=REPO, pre=N
     path.write_text(json.dumps({"rows": rows + [registered]}, indent=2) + "\n")
     _git_at(repo, "add", "--", path.relative_to(repo).as_posix())
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as message:
-        message.write("Register one planned take\n\nCo-Authored-By: Codex (gpt-6-astra) <noreply@openai.com>\n")
+        message.write("Register one planned take\n")
         message.flush()
         _git_at(repo, "commit", "-F", message.name)
     guard.registered(row, attempt)
