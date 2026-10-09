@@ -188,7 +188,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     workspace, staging = args.workspace.resolve(), args.staging.resolve()
-    project = build(args.name, args.variant, args.seed, workspace, staging)
+    project = build(args.name, args.variant, args.seed, workspace, staging).resolve()
     _code, lines, ok = gate(project, workspace)
     print("\n".join(lines))
     if ok:
