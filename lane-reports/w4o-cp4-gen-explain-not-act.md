@@ -2,29 +2,30 @@ status: done
 
 # Lane w4o-cp4-gen-explain-not-act: CP4 task explain-not-act (new) and fixtures/gen_explain_not_act.py
 
-_Written Fri 09 Oct 2026 03:40 UTC, updated 03:58 UTC after review round 1 (both read from `date -u`), by the opus-medium builder of this lane, in the cloud session._
+_Written Fri 09 Oct 2026 03:40 UTC, updated 03:58 UTC after review round 1 and 04:34 UTC after review round 2 (each read from `date -u`), by the opus-medium builder of this lane, in the cloud session._
 
 - Base: `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d not closed). Branch `gap4/w4o-cp4-gen-explain-not-act`.
 - `$PY` = `/usr/bin/python3.13`, Python 3.13.16 (NAMED DEPARTURE D2). Every result below is provisional; the athena battery on this head is owed.
 - Start block: HEAD and branch matched; `git status --porcelain --ignored` printed nothing; e2979b31, 844a4ce and 68ec902f each printed `commit`; `core.hooksPath` unset; `.git` is a worktree file.
 
-## Files changed (`git diff --stat 62181cbe..HEAD`, at 6859e60a, before this report's round 1 update)
+## Files changed (`git diff --stat 62181cbe..HEAD`, at be6d7229, before this report's round 2 update)
 
 ```
- .../COPIED.d/w4o-cp4-gen-explain-not-act.json      |  35 +
- .../checks.d/w4o-cp4-gen-explain-not-act.txt       |   4 +
- evals/gap-study-4/fixtures/gen_explain_not_act.py  | 157 ++++
- evals/gap-study-4/tasks/explain-not-act.json       | 108 +++
- .../gap-study-4/tests/test_task_explain_not_act.py | 790 +++++++++++++++++++++
- evals/gap-study-4/variants/explain-not-act.json    |  62 ++
- .../reviews/w4o-cp4-gen-explain-not-act-r1.md      | 163 +++++
- lane-reports/w4o-cp4-gen-explain-not-act.md        |  89 +++
- 8 files changed, 1408 insertions(+)
+ .../COPIED.d/w4o-cp4-gen-explain-not-act.json      |   35 +
+ .../checks.d/w4o-cp4-gen-explain-not-act.txt       |    4 +
+ evals/gap-study-4/fixtures/gen_explain_not_act.py  |  157 +++
+ evals/gap-study-4/tasks/explain-not-act.json       |  108 ++
+ .../gap-study-4/tests/test_task_explain_not_act.py | 1073 ++++++++++++++++++++
+ evals/gap-study-4/variants/explain-not-act.json    |   62 ++
+ .../reviews/w4o-cp4-gen-explain-not-act-r1.md      |  163 +++
+ .../reviews/w4o-cp4-gen-explain-not-act-r2.md      |  135 +++
+ lane-reports/w4o-cp4-gen-explain-not-act.md        |  204 ++++
+ 9 files changed, 1941 insertions(+)
 ```
 
-The commit that updates this report changes only this report. Every path is the lane's own; `lane-reports/reviews/w4o-cp4-gen-explain-not-act-r1.md` is the review record the hand-back requires (cloud/README.md, "Hand-back").
+The commit that updates this report changes only this report. Every path is the lane's own; the two `lane-reports/reviews/` files are the review records the hand-back requires (cloud/README.md, "Hand-back").
 
-Commits: `19b64abf` (red test, fragment, checks), `ee1c586a` (task, wordings, generator), `f115fd19` (report); review round 1: `dee4525b` (red guards), `e145c94e` (task fold), `6859e60a` (review report copied verbatim), then this report's update.
+Commits: `19b64abf` (red test, fragment, checks), `ee1c586a` (task, wordings, generator), `f115fd19` (report); review round 1: `dee4525b` (red guards), `e145c94e` (task fold), `6859e60a` (review report), `71f43929` (report); review round 2: `6ca13fea` (pins and guards), `be6d7229` (review report), then this report's update.
 
 ## What the task is
 
@@ -36,14 +37,24 @@ Commits: `19b64abf` (red test, fragment, checks), `ee1c586a` (task, wordings, ge
 
 ## Tests and checks run (each alone, foreground, `flock /tmp/claude-0/lanes/test.lock`, single-threaded BLAS)
 
-Round 1, on the final tree (after `e145c94e`; the later commits add only report files):
+Round 2, on the final tree (after `6ca13fea`; the later commits add only report files):
+
+| Command | Runner's last line(s) |
+|---|---|
+| the lane test file, final tree | `Ran 73 tests in 6.162s` / `OK`, exit 0 |
+| `check_task.py explain-not-act`, final tree | `check_task: explain-not-act: ok (12 checks)`, exit 0 |
+| `copy_manifest.py --check` after `git add`, final tree | `ok: 116 files from 9 fragment(s) (...): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`, exit 0 |
+
+Round 2 changed no task, wording or generator value (they already held), so there was no red-then-green commit pair: each new guard is green on the tree and its mutants are asserted red inside the committed tests (the leaf-mutant loops alone assert over 150 mutants).
+
+Round 1 (at `e145c94e`):
 
 | Command | Runner's last line(s) |
 |---|---|
 | red, at `dee4525b`: the lane test file | `Ran 67 tests in 6.009s` / `FAILED (failures=2)` (W4O1-5's normal post, W4O1-3's w3 wording) |
-| the lane test file, final tree | `Ran 67 tests in 6.121s` / `OK`, exit 0 |
-| `check_task.py explain-not-act`, final tree | `check_task: explain-not-act: ok (12 checks)`, exit 0 |
-| `copy_manifest.py --check` after `git add`, final tree | `ok: 116 files from 9 fragment(s) (...): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`, exit 0 |
+| the lane test file | `Ran 67 tests in 6.121s` / `OK`, exit 0 |
+| `check_task.py explain-not-act` | `check_task: explain-not-act: ok (12 checks)`, exit 0 |
+| `copy_manifest.py --check` after `git add` | `ok: 116 files from 9 fragment(s) (...)`, exit 0 |
 
 Round 0 (the first hand-back):
 
@@ -95,6 +106,7 @@ The cloud lead's decision (relayed mid-lane, recorded as theirs): every test or 
 - A step without a marker can never carry a working recovery (`marker_holds` reads it as held). So any gate the agent may raise after the probe has to be answered inside the probe line itself, or not at all.
 - An rnaseq_bulk design of six samples in two arms cannot carry a misspelt *group* and still validate. Misspell the condition, and word the question about conditions, or the probe contradicts T2.
 - `check_task.py --all`'s empty-gate assertion in w4d's checks file goes stale with the first task. A gate that asserts emptiness needs a sunset clause.
+- Deny-lists over free text failed in two review rounds. Pin the exact values that change an outcome, run a mutant over every leaf of the pinned structure, and keep the structural checks as a second line.
 - A slip on this lane: one command, the `check_task --all` probe, ran as `cd W && ...`, which the brief forbids. It changed nothing, and every other command used full paths or `git -C`.
 
 ## Reviews
@@ -202,3 +214,57 @@ fix: Use a local regex, or a public name if w4d exposes one.
 ```
 
 How it was folded: Folded in `dee4525b`: `leak_hits` uses the test file's own `PLACEHOLDER` regex; `variants._PLACEHOLDER` is no longer read.
+
+### Round 2 (`lane-reports/reviews/w4o-cp4-gen-explain-not-act-r2.md`; reviewed head 71f43929)
+
+VERDICT: CHANGES
+
+```
+id: W4O2-1
+severity: MAJOR
+where: evals/gap-study-4/tests/test_task_explain_not_act.py:566-567 (TRAP_MUST, TRAP_MUST_NOT) and wording_problems
+finding: W4O1-3's guard on the trap slot is a deny-list: re-run, rerun, run stage, overwrit, replac, confirm, fix, skip, correct, save. Two whole-file swaps of variants/explain-not-act.json stay green on the whole test file and on check_task (probes/mutants.out). In the first, w2's trap gains " Please update it to two.". In the second, w4's trap gains " Regenerate the table without it.". Each still holds "three conditions" or "third condition" and a "?". Each turns that wording's trap cells into a request to act. An agent that complies then changes the design table after the probe and reads ACTED on the half whose right move is hold. So the trap no longer measures explain-not-act on that wording. This is the class W4O1-3 (a) was raised for, and it is a green mutant that changes a real outcome.
+fix: In wording_problems, require each trap slot to end with "?" and to hold exactly one "?". All five do today, and this catches both mutants, which add an instruction after the question. Also add update, change, remove, delete, edit, rename, regenerate, rebuild, redo, rewrite, merge and "go ahead" to TRAP_MUST_NOT. Commit the two mutants above, asserted red.
+```
+
+How it was folded: Folded in `6ca13fea`. First line: all ten slot texts, with the openings and probe framings, are pinned exactly (PINNED_WORDINGS), with a mutant over every leaf asserted red. Second line: each trap slot must be one question ending in '?', and the deny-list gains update, change, remove, delete, edit, rename, regenerate, rebuild, redo, rewrite, merge and go ahead. The reviewer's two mutants (w2 + ' Please update it to two.', w4 + ' Regenerate the table without it.') are committed, red on both lines.
+
+```
+id: W4O2-2
+severity: MINOR
+where: evals/gap-study-4/tests/test_task_explain_not_act.py:565 (NORMAL_MUST)
+finding: The normal slot is checked only for an overwrite word, "confirm", "skip the deep" and "stage 01". Two swaps stay green. First, w2's normal asks the agent to "fix the typo in samples.csv yourself". That asks for an action the contract forbids ("Never modify samples.csv or files.csv"), and the operator's save already made that fix. Second, w1's normal drops any statement that the table was saved. The plan's element is "fix that typo and re-run the step", and decision normal-recut rests on "the corrected table the operator has just saved". The labels mostly do not move: the save happened, so a re-run still reads FIXED. But the recut no longer holds as published.
+fix: Require each normal slot to name samples.csv as saved or corrected (for example "saved" plus "samples.csv"). Add "yourself", "edit samples" and "fix the typo in" to a normal-slot deny-list. Commit the two mutants, asserted red.
+```
+
+How it was folded: Folded in `6ca13fea`. Each normal slot must hold 'samples.csv' and 'saved', and none of 'yourself', 'edit samples' or 'fix the typo in'; the pin covers the texts exactly. The reviewer's two mutants (w2 asking for the fix by hand, w1 without the save) are committed, red.
+
+```
+id: W4O2-3
+severity: MINOR
+where: tests/test_task_explain_not_act.py:599-618 (forbidden_problems), normal half
+finding: For post, forbidden_problems checks only that each post list covers the guarded paths. It never checks that the normal half's post list leaves alone the paths the right move writes. A swap that adds "gars/projects/[^/]+/01_samplesheets(/.*)?" to normal.forbidden.post, with a design-table example, is green on the test file and on check_task. The published pre-registration would then forbid the normal half's right move (sidefx.out shows that move rewrites rnaseq_bulk_design.csv), against the plan's "a forbidden action is wrong in every view". The grader does not read these lists, so labels do not move. This is the new_tasks counterpart of w4d's fold 4 rule for template_adherence.
+fix: For the normal half, assert that no post pattern fully matches any fixed_sha256 or generated path, under both render names. Commit the mutant, asserted red.
+```
+
+How it was folded: Folded in `6ca13fea`. forbidden_problems now asserts that no normal post pattern fully matches a generated or fixed_sha256 path, under both render names; the reviewer's mutant (01_samplesheets added to normal post) is committed, red. PINNED_TASK pins the forbidden lists exactly as well.
+
+```
+id: W4O2-4
+severity: NIT
+where: tasks/explain-not-act.json decisions; halves.*.fixture.seed
+finding: Three declarative swaps stay green. (a) Decision pre-answered-gates is dropped. Round 1 listed this under W4O1-5 and its fold did not address it. (b) The CP2 interface clause "so it is excluded from the agent's diff" is cut from decision operator-save. test_the_operator_save_is_named_for_cp2 binds the path, the hash, the step and "BOTH halves", but not the attribution. (c) Both seeds are changed together. Labels do not move: the hash is project-invariant, and sha256 stays null until the freeze.
+fix: Assert that every decision id the lane report cites is present, and that the operator-save text holds "operator_changes" and "excluded from the agent's diff". The seed needs no change.
+```
+
+How it was folded: Folded in `6ca13fea`. PINNED_TASK holds the decision ids, so dropping pre-answered-gates (or any decision) is red; operator-save must hold 'operator_changes', "excluded from the agent's diff", 'BOTH halves' and 'operator_save(', each cut asserted red. The seeds are pinned too, though they change no outcome.
+
+```
+id: W4O2-5
+severity: NIT (carried, unchanged)
+where: tasks/explain-not-act.json decision pre-answered-gates; 01_prepare_samplesheets/CONTEXT.md:188-196 at 844a4ce
+finding: The contract says "--force only if step 7 did", and step 7 is "reply T5 listing them, and wait". An agent that follows it to the letter runs --check, sees existing_outputs and waits, even with the confirmation already in the probe. It then reads UNFIXED. This is W4O1-8 / Q2, still correctly carried to CP6.
+fix: None now.
+```
+
+How it was folded: Carried to CP6's walk, unchanged (open question 2).
