@@ -167,11 +167,12 @@ def month_turn_allowed(arm, now, trimmed):
     if arm not in ("O", "G"):
         return True
     now = utc(now)
-    # A dated release is needed for the current month, and for the coming month
-    # once its 23:30 hold has started. It cannot be inferred from elapsed time.
+    # Only the last day's 23:30 UTC window requires a next-month release.
+    # Outside that window no current-month record is required (W5B1-3).
     year, month = now.year, now.month
-    if now.day == calendar.monthrange(year, month)[1] and (now.hour, now.minute) >= (23, 30):
-        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    if now.day != calendar.monthrange(year, month)[1] or (now.hour, now.minute) < (23, 30):
+        return True  # outside the month-turn hold
+    year, month = (year + 1, 1) if month == 12 else (year, month + 1)
     wanted = f"{year:04d}-{month:02d}"
     if not isinstance(trimmed, dict) or set(trimmed) != {"kind", "by", "month", "at", "figures"}:
         return False
