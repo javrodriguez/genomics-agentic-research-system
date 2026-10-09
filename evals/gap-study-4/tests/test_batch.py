@@ -67,8 +67,8 @@ WAIT_S = 10.0   # a hang detector for the barrier and ordering events, never a t
 def test_table() -> dict:
     t = copy.deepcopy(routing.load_table())
     t["pin_profiles"] = copy.deepcopy(PROFILES)
-    t["pin_profiles_status"] = "TEST-ONLY: two injected profiles"
-    t["spend_cap_markers_status"] = f"TEST-ONLY: {HARNESS}'s spend-cap list, not yet ruled, gated off (item 1)"
+    t["pin_profiles_status"] = "RULED (TEST-ONLY): two injected profiles"
+    t["spend_cap_markers_status"] = f"RULED (TEST-ONLY): {HARNESS}'s spend-cap list, opened for the tests (item 1)"
     return t
 
 

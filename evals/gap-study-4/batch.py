@@ -148,10 +148,11 @@ window before its first launch.
 
 THE START GATE. The loop refuses to start (`BatchConfigError`, and `batch.py --check` exits 1)
 while routing.json still lacks what only the owner or a later checkpoint can supply: round 3's
-pause cap, round 3's operator-side reasons (an empty list, or a status starting PENDING), the
-rate-limit markers' ruling (a status starting PENDING, W1B2-6), the spend-cap lists' ruling (a
-status starting PENDING: Claude Code's list is open, ruling 3 of 17:42), or the pre-registered pin
-profiles (CP5). Every row must name its agent ({harness, version}: interface 8, never defaulted)
+pause cap, round 3's operator-side reasons (an empty list, or a status not ruled), the rate-limit
+markers' ruling (W1B2-6), the spend-cap lists' ruling (Claude Code's list is open, ruling 3 of
+17:42), or the pre-registered pin profiles (CP5). A status is ruled only when, stripped and
+upper-cased, it starts with RULED or FILLED and holds no PENDING anywhere (`is_pending`; lane
+review round 2, W4H2-1); every other status keeps the loop from starting. Every row must name its agent ({harness, version}: interface 8, never defaulted)
 and a model that has a profile under that harness, and its agent's version must be that profile's
 (a row that fails any of these is refused before it is registered).
 
@@ -312,12 +313,18 @@ def pending_caps(table: dict) -> list[str]:
     return out
 
 
+# The words a ruled status starts with (lane review round 2, W4H2-1, the lane lead's decision): an allow-list.
+RULED_WORDS = ("RULED", "FILLED")
+
+
 def is_pending(status) -> bool:
-    """Lane review round 1, W4H1-1 (the lane lead's decision for the spend-cap line; glitch-f3's ruling for all four): a status is pending unless,
-    stripped and upper-cased, it does not start with PENDING, so "pending (x)" or " PENDING" never starts the loop.
-    glitch-f3's ruling (under Javier's delegation, relayed by the lane lead) extends it to the three sibling status
-    lines, so all four read a status the same way."""
-    return str(status).strip().upper().startswith(PENDING)
+    """True unless the status is ruled. A status is ruled only when, stripped and upper-cased, it starts with one of
+    RULED_WORDS and holds no PENDING anywhere (lane review round 2, W4H2-1, the lane lead's decision). Everything else
+    is pending: "PENDING (x)", "pending", a zero-width space before PENDING, "Status: PENDING", "RULED for codex;
+    PENDING for claude-code", "TBD", "not yet ruled". All four start_problems status lines read a status this way
+    (glitch-f3's ruling on W4H1-1, under Javier's delegation, relayed by the lane lead)."""
+    s = str(status).strip().upper()
+    return not (s.startswith(RULED_WORDS) and PENDING not in s)
 
 
 def start_problems(table: dict) -> list[str]:
@@ -326,16 +333,17 @@ def start_problems(table: dict) -> list[str]:
     if not table.get("operator_reasons"):
         p.append("operator_reasons is empty in routing.json (round 3's operator-side reasons)")
     if is_pending(table.get("operator_reasons_status", PENDING)):
-        p.append("operator_reasons_status is PENDING in routing.json")
+        p.append("operator_reasons_status is not ruled in routing.json (RULED or FILLED, with no PENDING)")
     if not table.get("pin_profiles"):
         p.append("pin_profiles is empty in routing.json (CP5 pre-registers them)")
     if is_pending(table.get("pin_profiles_status", PENDING)):
-        p.append("pin_profiles_status is PENDING in routing.json")
+        p.append("pin_profiles_status is not ruled in routing.json (RULED or FILLED, with no PENDING)")
     if is_pending(table.get("rate_limit_markers_status", PENDING)):
-        p.append("rate_limit_markers_status is PENDING in routing.json")
+        p.append("rate_limit_markers_status is not ruled in routing.json (RULED or FILLED, with no PENDING)")
     if is_pending(table.get("spend_cap_markers_status", PENDING)):
         # item 1 (ruling 3 of 17:42): an unruled spend-cap list never lets the loop start
-        p.append("spend_cap_markers_status is PENDING in routing.json (a spend cap stops for a human ruling)")
+        p.append("spend_cap_markers_status is not ruled in routing.json (RULED or FILLED, with no PENDING): a spend "
+                 "cap stops for a human ruling")
     return p
 
 
