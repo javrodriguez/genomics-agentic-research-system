@@ -42,6 +42,7 @@ import ast
 import copy
 import importlib.util
 import io
+import os
 import re
 import shutil
 import subprocess
@@ -304,6 +305,36 @@ class TheGenerator(unittest.TestCase):
         mutant.__file__ = gen.__file__
         exec(compile(src.replace("return 0 if ok else 1", "return 0"), gen.__file__, "exec"), mutant.__dict__)
         self.assertTrue(self.main_problems(mutant))
+
+    @staticmethod
+    def symlinked_main_problems(mod) -> list:
+        """Cross-OS merge-time fix of w4m (the lane lead's decision, 9 Oct 2026): main must print the project line
+        when the workspace it is handed sits behind a symlink (macOS's /var -> /private/var, made here with
+        os.symlink so the case fails on Linux too). `build` is patched to hand back the project through the link,
+        unresolved, as the main_problems cases do."""
+        out = []
+        tmp, _ws, _p = Built.copy()
+        with tmp:
+            link = Path(tmp.name) / "link"
+            os.symlink(Path(tmp.name) / "run", link)
+            ws, p = link / "gars", link / "gars" / "projects" / Built.NAME
+            argv = ["--variant", "at-plan-gate", "--seed", "1", "--name", Built.NAME, "--workspace", str(ws),
+                    "--staging", str(link / "data" / "staging")]
+            buf = io.StringIO()
+            try:
+                with mock.patch.object(mod, "build", return_value=p), mock.patch("sys.stdout", buf):
+                    got = mod.main(argv)
+            except ValueError as e:
+                return [f"main raises ValueError through a symlinked workspace: {e}"]
+            if got != 0:
+                out.append(f"main returns {got} through a symlinked workspace, not 0")
+            want = f"  project gars/projects/{Built.NAME}"
+            if want not in buf.getvalue().splitlines():
+                out.append(f"no line {want!r} in main's output")
+        return out
+
+    def test_main_through_a_symlinked_workspace(self):
+        self.assertEqual(self.symlinked_main_problems(gen), [])
 
     def test_a_second_build_into_the_same_tree_is_refused(self):
         tmp, ws, p = Built.copy()
