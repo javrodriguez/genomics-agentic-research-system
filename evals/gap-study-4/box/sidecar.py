@@ -199,15 +199,26 @@ def pending() -> dict:
 FORMAT_KEYS = ("fields", "separator", "established", "setup_lines")
 
 
+def _str_list(v) -> bool:
+    return isinstance(v, (list, tuple)) and all(isinstance(x, str) and x for x in v)
+
+
 def _format_ok(fmt) -> bool:
-    """A filled INOTIFYWAIT_FORMAT has exactly FORMAT_KEYS, setup_lines a list or tuple of non-empty strings, and
-    no PENDING anywhere (fold 4, W4C3-2): anything else still reads as PENDING."""
+    """A filled INOTIFYWAIT_FORMAT has exactly FORMAT_KEYS; `fields` a list or tuple of distinct non-empty strings
+    holding "path" and "events" (what read_ready reads); `separator` and `established` non-empty strings;
+    `setup_lines` a list or tuple of non-empty strings; and no element equal to PENDING (fold 4, W4C3-2; fold 5,
+    W4C4-2: every key typed, the PENDING test over elements, never over a string's letters). Anything else still
+    reads as PENDING."""
     if not isinstance(fmt, dict) or sorted(fmt) != sorted(FORMAT_KEYS):
         return False
-    lines = fmt["setup_lines"]
-    if not isinstance(lines, (list, tuple)) or not all(isinstance(x, str) and x for x in lines):
+    fields, lines = fmt["fields"], fmt["setup_lines"]
+    if not (_str_list(fields) and len(set(fields)) == len(fields) and "path" in fields and "events" in fields):
         return False
-    return PENDING not in [fmt["separator"], fmt["established"]] + list(fmt["fields"]) + list(lines)
+    if not _str_list(lines):
+        return False
+    if not all(isinstance(fmt[k], str) and fmt[k] for k in ("separator", "established")):
+        return False
+    return PENDING not in [fmt["separator"], fmt["established"]] + list(fields) + list(lines)
 
 
 def require_ready():
