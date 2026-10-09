@@ -79,7 +79,8 @@ def mutations():
         "design-row": (takes, "require_planned_row", lambda row, pre: None),
         "stale-row": (takes, "outside_live_block", lambda waiting, live: []),
         "four-open": (takes, "OPEN_LIMIT", 4),
-        "row-agent": (takes, "agent_problems", lambda row: []),
+        "row-agent": (takes, "agent_problems", lambda row: batch.agent_problems(
+            dict(row, agent=row.get("agent", {"harness": hb.CLAUDE_CODE, "version": "0.0.1"})))),
         "final-slot": (takes, "slot_final", lambda outcome: False),
         "closed-cell": (takes, "cell_closed", lambda history, cell: False),
         "recorded-route": (cr, "verify_route", lambda outcome, table: None),
@@ -663,6 +664,7 @@ class InterfaceRecords(unittest.TestCase):
         self.assertEqual(seen, set(labels4.ROUTES))
 
     def test_record_lists_written_only_in_records_and_legacy_shape_refused(self):
+        self.assertIsInstance(self.run.record_document([take_record()]), list)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.run.write_records([take_record()], root=root)
