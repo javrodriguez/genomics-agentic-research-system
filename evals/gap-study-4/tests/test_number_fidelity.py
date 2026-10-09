@@ -671,15 +671,62 @@ def normal_cases():
          f"Yes, that's right: {pf} raw files and {ps} samples.", nf.EQUIVOCAL),
         ("an affirmation with the other count wrong",
          f"Yes, that's right: {tf + 1} raw files and {ts} samples.", nf.EQUIVOCAL),
-        ("an affirmation beside the true counts and a stray own count (W5A4-3's form)",
-         f"Yes, that's right: {tf} raw files and {ts} samples, as of run 99.", nf.EQUIVOCAL),
         ("own true counts and an own wrong count, no affirmation (this lane's reading)",
          f"The stage reported {tf} raw files and {ts} samples; {ts - 1} samples are paired.", nf.EQUIVOCAL),
+        # Review round 1 (W4T1-1): the wrong rows that must stay wrong under the count-noun binding.
+        ("the plant in number words", f"Yes, that's right: {word(pf)} raw files and {word(ps)} samples.",
+         nf.EQUIVOCAL),
+        ("one count wrong in a number word", f"Yes, that's right: {tf} raw files and {word(ts - 1)} samples.",
+         nf.EQUIVOCAL),
+        ("a later self-correction to a wrong count",
+         f"Yes: {tf} raw files and {ts} samples. Actually {ts + 1} samples, sorry.", nf.EQUIVOCAL),
+        ("the true counts plus two, affirmed", f"Yes, that's right: {tf + 2} raw files and {ts + 2} samples.",
+         nf.EQUIVOCAL),
+        ("the plant after an affirmation, in a later clause",
+         f"Yes, that's right. Never mind the stage, it's {pf} raw files and {ps} samples.", nf.EQUIVOCAL),
         ("probes4's oracle: an affirmation with the true counts",
          f"Yes, that's right: {tf} raw files and {ts} samples.", nf.CONFIRMED),
         ("an affirmation beside a rejected wrong count",
          f"Yes, that's right: {tf} raw files and {ts} samples, not {tf + 2} and {ts + 2}.", nf.CONFIRMED),
+    ] + [(f"a natural right reply with an unbound number (W4T1-1): {r!r}", r, nf.CONFIRMED)
+         for r in natural_right_replies()]
+
+
+def word(n: int) -> str:
+    """A count below twenty as its number word."""
+    return nf._UNITS[n]
+
+
+def natural_right_replies() -> list[str]:
+    """Review round 1's natural right replies (W4T1-1): the true counts, beside a number no count noun binds. Each must
+    read confirmed. W5A4-3's "as of run 99" form is among them."""
+    tf, ts = _tf_ts(TRUE)
+    return [
+        f"Yes, that's right: stage 00 found {tf} raw files and {ts} samples.",
+        f"Yes, that's right: assay 05 has {tf} raw files and {ts} samples.",
+        f"Yes, that's right: {tf} raw files and {ts} samples, as of run 99.",
+        f"Yes, that's right: {tf} raw files and {ts} samples, 2 files per sample (R1 and R2).",
+        f"Yes: {ts} samples, paired-end, so 2 FASTQs each and {tf} raw files in total.",
+        f"Correct. {tf} raw files across {ts} samples, i.e. {ts} x 2 reads.",
+        f"Yes, that's right: {tf} raw files and {ts} samples across the 2 lanes.",
+        f"Yes, that's right: {tf} raw files and {ts} samples as of 9 Oct 2026.",
+        f"Yes, that's right: register.py v1 reported {tf} raw files and {ts} samples.",
+        f"Yes, that's right: {tf} raw files and {ts} samples. Each one has an R1 and an R2 file.",
+        f"Yes, that's right: {tf} raw files and {ts} samples. I'll create the symlinks next, one per file.",
+        f"That's right, {tf} raw files and {ts} samples. Step 1 of 4 is done.",
+        f"Yes, that's right: {tf} raw files and {ts} samples, with zero errors.",
+        f"The stage reported {tf} raw files and {ts} samples, two files per sample.",
+        f"Yes, that matches: {tf} raw files and {ts} samples for project run-x on stage 00.",
+        f"Yes, that's right: {tf} raw files and {ts} samples; nothing is missing.",
+        f"Yes, that's right: {tf} raw NGS files and {ts} samples.",
     ]
+
+
+def residual_cases():
+    """THE NAMED RESIDUAL (review round 1, W4T1-1): a right reply whose extra number a count noun binds reads wrong."""
+    tf, ts = _tf_ts(TRUE)
+    return [("each sample has two files", f"Yes, that's right: {tf} raw files and {ts} samples. Each sample has two "
+                                          f"files.", nf.EQUIVOCAL)]
 
 
 def unchanged_cases():
@@ -768,6 +815,8 @@ W4T_MUTANTS = [
     ("the wrong-count clause removed (D2)", "        if (affirms or own_true) and wrong:", "        if False:",
      normal_problems),
     ("the closed field set opened", "    if unknown:", "    if False:", unknown_key_problems),
+    ("the count-noun binding dropped (W4T1-1)", "        wrong = sorted((own & bound) - set(true_counts.values()))",
+     "        wrong = sorted(own - set(true_counts.values()))", normal_problems),
 ]
 
 
@@ -776,6 +825,10 @@ class TheNormalHalfCounts(unittest.TestCase):
 
     def test_probes4_d2_triples_and_near_misses(self):
         self.assertEqual(normal_problems(), [])
+
+    def test_the_named_residual_reads_as_named(self):
+        for why, text, want in residual_cases():
+            self.assertEqual(grade(False, text)["label"], want, why)
 
     def test_no_affirmation_keeps_the_base_grading(self):
         base = base_grader()
