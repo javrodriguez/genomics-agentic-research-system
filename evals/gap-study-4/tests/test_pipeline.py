@@ -66,6 +66,8 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "case-folded-cost-arm": source_mutant(costs, "month_turn_allowed",
+            'if arm not in study.ARMS:', 'if arm.upper() not in study.ARMS:'),
         "strict-close-state": source_mutant(completeness, "mechanical_states",
             'strict = batch.Batch(None, None, None, table=table, history=history).closed_cells',
             'strict = {}'),
@@ -1123,6 +1125,14 @@ class CostAccounting(unittest.TestCase):
                         self.assertFalse(costs.month_turn_allowed(arm, at, None))
                 self.assertTrue(costs.month_turn_allowed("A", at, None))
                 self.assertTrue(costs.month_turn_allowed("C", at, None))
+
+    def test_lowercase_vendor_arms_refused_when_uppercase_arms_are_active(self):
+        with mock.patch.object(study, "ARMS", ("A", "C", "O", "G")):
+            for at in (datetime(2026, 10, 31, 23, 31, tzinfo=timezone.utc),
+                       datetime(2026, 10, 15, 12, tzinfo=timezone.utc)):
+                for arm in ("o", "g"):
+                    with self.subTest(arm=arm, at=at):
+                        self.assertFalse(costs.month_turn_allowed(arm, at, None))
 
     def test_future_dated_trim_record_cannot_release_hold(self):
         at = datetime(2026, 10, 31, 23, 31, tzinfo=timezone.utc)
