@@ -17,6 +17,7 @@ import types
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from contextlib import contextmanager, redirect_stdout
 from pathlib import Path
@@ -50,18 +51,30 @@ _patches = []
 def source_mutant(module, name, old, new):
     """Replace one production clause in memory, retaining its module globals."""
     original = getattr(module, name)
-    source = inspect.getsource(original)
+    source = textwrap.dedent(inspect.getsource(original))
     assert old in source, (name, old)
-    namespace = dict(module.__dict__)
+    namespace = dict(original.__globals__)
     exec(compile(source.replace(old, new, 1), original.__code__.co_filename, "exec"), namespace)
     altered = namespace[name]
-    replacement = types.FunctionType(altered.__code__, module.__dict__, name, altered.__defaults__)
+    replacement = types.FunctionType(altered.__code__, original.__globals__, name, altered.__defaults__)
     replacement.__kwdefaults__ = altered.__kwdefaults__
     return module, name, replacement
 
 
 def review_mutations():
     return {
+        "finishing-block": source_mutant(takes.RegistrationGuard, "check",
+            'elif self.live & done:', 'elif False:'),
+        "one-history-record": source_mutant(takes, "read_history",
+            'if len(added) != 1:', 'if len(added) < 1:'),
+        "ruling-clean-tree": source_mutant(takes, "commit_ruling",
+            'if _git_at(repo, "status", "--porcelain"):', 'if False:'),
+        "ledger-committed": source_mutant(takes, "load_rows",
+            'if _git_at(repo, "status", "--porcelain", "--", rel):', 'if False:'),
+        "freeze-runtime-output": source_mutant(cr, "runtime_timing_problems",
+            'frozen is not None and commit != frozen', 'frozen is not None'),
+        "future-trim": source_mutant(costs, "month_turn_allowed",
+            'utc(trimmed["at"]) > now or ', ''),
         "frozen-rehearsal-draft": source_mutant(cr, "rehearsal_record_problems",
             'if lines[0] != frozen.get("draft_sha256_at_freeze"):', 'if False:'),
         "frozen-rehearsal-tree": source_mutant(cr, "rehearsal_record_problems",
@@ -342,6 +355,17 @@ class Registration(unittest.TestCase):
     def setUp(self):
         self.assertTrue(callable(getattr(takes, "guard_registration", None)), "repo-callable registration guard")
 
+    def test_partly_finished_live_block_refuses_another_registration(self):
+        with repository() as repo:
+            for n in (1, 2, 3):
+                repo.register(row(n), 1)
+            repo.commit_records(row(1), 1, outcome(row(1)))
+            before = git(repo.root, "rev-parse", "HEAD")
+            with self.assertRaisesRegex(ValueError, "finishing block"):
+                repo.register(row(4), 1)
+            self.assertEqual(git(repo.root, "rev-parse", "HEAD"), before)
+            self.assertEqual(len(repo.rows()), 3)
+
     def test_live_block_three_restart_requires_reconciliation(self):
         with repository() as repo:
             for n in range(1, 4):
@@ -597,6 +621,26 @@ class PublicationHistory(unittest.TestCase):
 class RulingDoor(unittest.TestCase):
     def setUp(self):
         self.assertTrue(callable(getattr(takes, "commit_ruling", None)), "one human door commits a closed ruling")
+
+    def test_history_refuses_two_records_introduced_in_one_commit(self):
+        with repository() as repo:
+            (repo.root / "outcomes.json").write_text(json.dumps([outcome(row(1)), outcome(row(2))]))
+            commit(repo.root, ["outcomes.json"], "Record synthetic doubled history")
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                takes.read_history(root=repo.root, repo=repo.root)
+
+    def test_door_refuses_a_dirty_tree_without_committing(self):
+        with repository() as repo:
+            r = row()
+            repo.register(r, 1)
+            repo.commit_records(r, 1, outcome(r, state=labels4.FAILED, final=False))
+            before = git(repo.root, "rev-parse", "HEAD")
+            (repo.root / "pending.txt").write_text("synthetic pending work\n")
+            with self.assertRaisesRegex(ValueError, "existing changes"):
+                takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
+                    route=labels4.ABORTED, by="synthetic-person", root=repo.root, repo=repo.root)
+            self.assertEqual(git(repo.root, "rev-parse", "HEAD"), before)
+            self.assertFalse((repo.root / "rulings.json").exists())
 
     def test_door_commits_one_closed_record_with_callers_by(self):
         with repository() as repo:
@@ -890,6 +934,13 @@ class StatsDestination(unittest.TestCase):
 
 
 class CostAccounting(unittest.TestCase):
+    def test_future_dated_trim_record_cannot_release_hold(self):
+        at = datetime(2026, 10, 31, 23, 31, tzinfo=timezone.utc)
+        trimmed = {"kind": "caps trimmed", "by": "Javier", "month": "2026-11",
+                   "at": "2026-10-31T23:32:00Z", "figures": {"openai": "10", "google": "1"}}
+        self.assertFalse(costs.month_turn_allowed("O", at, trimmed))
+        self.assertTrue(costs.month_turn_allowed("O", at, dict(trimmed, at="2026-10-31T23:31:00Z")))
+
     def api(self):
         self.assertTrue(callable(getattr(costs, "account", None)), "cost accounting must operate per call")
         return costs.account
@@ -1105,6 +1156,20 @@ class FreezeCoverage(unittest.TestCase):
 
 
 class LedgerDoor(unittest.TestCase):
+    def test_ledger_reader_refuses_uncommitted_rows(self):
+        with repository() as repo:
+            r = dict(row(), attempt=1)
+            path = repo.root / "takes.json"
+            path.write_text(json.dumps({"rows": [r]}))
+            commit(repo.root, ["takes.json"], "Record synthetic ledger")
+            self.assertEqual(takes.load_rows(root=repo.root, repo=repo.root), [r])
+            path.write_text(json.dumps({"rows": [r, dict(r, slot="s2", wording="w2")]}))
+            for staged in (False, True):
+                if staged:
+                    git(repo.root, "add", "takes.json")
+                with self.subTest(staged=staged), self.assertRaisesRegex(ValueError, "uncommitted"):
+                    takes.load_rows(root=repo.root, repo=repo.root)
+
     def test_registration_commits_the_full_planned_identity_and_audits_it(self):
         self.assertTrue(callable(getattr(takes, "commit_registration", None)), "the ledger door must use the live guard")
         with repository() as repo:
@@ -1299,6 +1364,16 @@ class FreezeDesign(unittest.TestCase):
 
 
 class RuntimeTiming(unittest.TestCase):
+    def test_runtime_output_inside_freeze_commit_is_refused(self):
+        with repository() as repo:
+            root = repo.root / study.STUDY_REL
+            root.mkdir(parents=True)
+            (root / "prereg.json").write_text("{}\n")
+            (root / "takes.json").write_text('{"rows": []}\n')
+            commit(repo.root, [study.rel("prereg.json"), study.rel("takes.json")], "Freeze synthetic outputs")
+            with mock.patch.object(cr, "REPO", repo.root):
+                self.assertTrue(cr.runtime_timing_problems())
+
     def test_pre_freeze_outputs_refused_even_when_removed_before_freeze(self):
         self.assertTrue(callable(getattr(cr, "runtime_timing_problems", None)),
                         "the publication checker must inspect output commit timing")
