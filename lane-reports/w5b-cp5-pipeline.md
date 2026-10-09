@@ -1,3 +1,11 @@
+status: done
+RESUME HERE: glitch-f3 should run full test_round4.py and run_checks.py on athena at the hand-back head, then request review round 2.
+
+head: df50934997e829d1e1a74a073f1d3cd7bf319853 (last code/test commit; the final report commit follows it).
+
+The earlier checkpoints below are retained as history. The current review-round-1 fold, mutant proofs, and final gates are appended at the end.
+
+Original checkpoint header (retained):
 status: blocked
 RESUME HERE: glitch-f3 must rule on OPEN w5b-3, the copy-manifest policy for freeze-generated records, before this lane resumes implementation.
 
@@ -1120,3 +1128,340 @@ ok: 218 files from 27 fragment(s) (w1a-cp1-scaffold, w1b-cp1-routing-batch, w2a-
 ```
 
 Only the append-only lane report is staged for the final commit. The round's files and index entries are the same bytes as at the successful final gates. No hook or check is skipped.
+
+## Review round 1 fold (sections 12–14)
+
+status: done
+RESUME HERE: glitch-f3 should run full test_round4.py and run_checks.py on athena at the hand-back head, then request review round 2.
+
+head: df50934997e829d1e1a74a073f1d3cd7bf319853 (last code/test commit; this report's own commit follows it).
+
+The supplied findings were saved verbatim to lane-reports/w5b-review-r1.md in the first commit, 53421778. Startup accepted the instructed 0304c56d59d4f129243b1bd814d43357b0aeda94 rather than the base; the branch, clean status including ignored paths, both historical commits, unchanged hooks configuration, light-ok, and Python 3.13.2 were checked. No agent was spawned.
+
+### Applied rulings and lane decisions
+
+- W5B1-1: publication now compares the event yielded by admissible block candidates. Multiple event-free candidates give the ruled take its own event; candidates that disagree between an existing window event and an own event still refuse. P1 is bound directly. Registration no longer calls publication: takes.registration_outcomes replays batch's strict own-event count, and a separate assertion proves that its half-cell can close while publication counts the shared window once. A new slot in another half-cell remains registerable. The ruling record still has exactly batch.RULING_KEYS.
+- W5B1-2: commit_ruling is exercised with by=None and by="", with refusal, unchanged HEAD, no rulings.json, and no dirty tree asserted. The existing production validator already refused these values; the missing door-level coverage and door-level defaulting mutant are now committed.
+- W5B1-3: the UTC hold begins at 23:30 on the month's last day and accepts only a valid next-month trim record during that window. Mid-month, 23:29, and the next month's ordinary moments require no current-month record, as glitch-f3 ruled. A future-dated record still cannot release the hold.
+- W5B1-4: each of the six named refusals has its own test and committed in-memory source mutant: finishing a live block, multiple history additions in one commit, dirty ruling door, uncommitted ledger (staged and unstaged), a runtime output in the freeze commit, and a future trim timestamp.
+- W5B1-5: publication calls batch.Batch.cell_history_problems with the supplied routing table, and separately refuses non-final graded and aborted outcomes. Forged below-cap states and missing at-cap states now refuse.
+- W5B1-6: validate_ledger maintains both half_cell-id-to-identity and identity-to-half_cell-id maps. One identity cannot split its cap across two ids.
+- W5B1-7: check_frozen_content re-checks the stored rehearsal record's draft line, single tree line, and final all-green line against the frozen file. It refuses the preview placeholder, an empty record, and missing text. The test uses committed scratch frozen files, including the no-parent copy where the separate tree-history check reports itself not checked.
+- W5B1-8: runtime registration and ruling commit messages carry no AI trailer. The two dead rehearsal readers, their otherwise-unused helper, and their unused glob were removed. wall_seconds remains the first-start-to-last-end span, with its meaning documented.
+- Lane implementation decision for W5B1-8: costs reads active arms from study.ARMS and intersects them with the initials of its existing capped vendor names. study.py remains untouched; the design lane still owns adding its vendor arms. Cost tests inject that future active-arm list, then remove each arm in turn to prove the predicate reads study rather than a typed pair.
+- Section 12: both scratch-repository factories configure the fixed fake local identity synthetic / synthetic@example.invalid. An isolated empty HOME and disabled system/global Git configuration exercise the production registration and ruling doors. Runtime callers must supply repository-local user.name/user.email or explicit GIT_AUTHOR_*/GIT_COMMITTER_* identity; require_commit_identity refuses before any record write and names the missing fields.
+- Existing interfaces remain: CP2 calls takes.guard_registration or its process-local RegistrationGuard; the human door is takes.commit_ruling and writes rulings.json; takes.read_history merges it with outcomes.json in commit order; round 4 interface-11 records live in records/. No runtime copy fragment was added.
+- The R1–R33 completion matrix in the earlier completion append remains the requirement inventory. The table below adds the review bindings to those requirements. No earlier requirement was dropped and no new owner judgment is requested. Historical w5b-3 and w5b-4 questions remain in the append-only body as history and are CLOSED by the supplied rulings.
+
+### Red-first stages
+
+| Clause | Red-test commit | Observed red runner line | Green implementation / coverage |
+|---|---|---|---|
+| W5B1-1 | a481d0d3 | `test_pipeline: 54 run, 2 failures, 0 errors, 0 skipped` | 95714f4a |
+| W5B1-2 | 748d8745 | `test_pipeline: 55 run, 2 failures, 0 errors, 0 skipped (door-default-by mutant)` | production already refused; door-level coverage added |
+| W5B1-3 | ac480dc0 | `test_pipeline: 56 run, 5 failures, 0 errors, 0 skipped` | cd023611 |
+| W5B1-5 | 6a19046b | `test_pipeline: 58 run, 4 failures, 0 errors, 0 skipped` | b2c1de94 |
+| W5B1-6 | f42f61c7 | `test_pipeline: 59 run, 1 failures, 0 errors, 0 skipped` | 792bc189 |
+| W5B1-7 | 2ae5320e | `test_pipeline: 60 run, 4 failures, 0 errors, 0 skipped` | d2924aab |
+| W5B1-4 | 9e97ddcd | Six separate red mutant runner lines below; normal: `test_pipeline: 66 run, 0 failures, 0 errors, 0 skipped` | production refusals already existed |
+| Section 12 | e07698d2 | `test_pipeline: 68 run, 3 failures, 0 errors, 0 skipped` | b0f471af + fixture correction 42fc476b |
+| W5B1-8 runtime trailers | c5704bc7 | `test_pipeline: 68 run, 2 failures, 0 errors, 0 skipped` | 7d40a1bc |
+| W5B1-8 active arms | 984eab61 | `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` | 53eede90 |
+
+The strict-count follow-up (5f3e981c) and empty-evidence follow-up (df509349) each first ran their committed mutant red and then the unmodified whole file green. The dead-code/doc cleanup is ad42d907. No made commit was amended or rewritten.
+
+### Whole-file mutant proof for this fold
+
+24 new committed mutants and two existing mutants were exercised. Each swap changes the production function or its input accessor in memory, is armed in setUpModule, and runs the entire test_pipeline.py. The six W5B1-4 runs had 66 tests at their committed stage; the later runs had 69. Test additions after an earlier proof retain its guarded clause and assertions.
+
+The exact command for each NAME in the table was:
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_pipeline.py --mutant NAME
+```
+
+| Clause / requirement | Test | Mutant NAME | Whole-file runner line |
+|---|---|---|---|
+| W5B1-4 / R21, R33 | `Registration.test_partly_finished_live_block_refuses_another_registration` | `finishing-block` | RED: `test_pipeline: 66 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-4 / R24 | `RulingDoor.test_history_refuses_two_records_introduced_in_one_commit` | `one-history-record` | RED: `test_pipeline: 66 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-4 / R24 | `RulingDoor.test_door_refuses_a_dirty_tree_without_committing` | `ruling-clean-tree` | RED: `test_pipeline: 66 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-4 / R19, R28 | `LedgerDoor.test_ledger_reader_refuses_uncommitted_rows` | `ledger-committed` | RED: `test_pipeline: 66 run, 2 failures, 0 errors, 0 skipped` |
+| W5B1-4 / ruling w5b-4 | `RuntimeTiming.test_runtime_output_inside_freeze_commit_is_refused` | `freeze-runtime-output` | RED: `test_pipeline: 66 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-4 / R29 | `CostAccounting.test_future_dated_trim_record_cannot_release_hold` | `future-trim` | RED: `test_pipeline: 66 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-1 / R26 | `PublicationHistory.test_ruled_pause_without_any_window_has_own_event` | `pause-candidate-edges` | RED: `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-1 / R21, R25, R33 | `PublicationHistory.test_new_slot_after_legal_pause_ruling_uses_batch_count` | `registration-publication` | RED: `test_pipeline: 69 run, 2 failures, 4 errors, 0 skipped` |
+| W5B1-2 / R24 | `RulingDoor.test_door_refuses_missing_caller_by_without_a_commit` | `door-default-by` | RED: `test_pipeline: 69 run, 2 failures, 0 errors, 0 skipped` |
+| W5B1-3 / R29 | `CostAccounting.test_month_turn_boundary_and_next_month_record` | `month-outside-hold` | RED: `test_pipeline: 69 run, 5 failures, 0 errors, 0 skipped` |
+| W5B1-5 / R23, R24 | `PublicationHistory.test_publication_refuses_forged_or_missing_committed_cell_states` | `publication-cell-states` | RED: `test_pipeline: 69 run, 2 failures, 0 errors, 0 skipped` |
+| W5B1-5 / R3, R14 | `PublicationHistory.test_publication_refuses_nonfinal_graded_and_aborted_outcomes` | `publication-final` | RED: `test_pipeline: 69 run, 2 failures, 0 errors, 0 skipped` |
+| W5B1-6 / R2, R28 | `InterfaceRecords.test_half_cell_ids_and_identities_are_one_to_one` | `ledger-cell-bijection` | RED: `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-7 / R7, R20 | `FreezeCoverage.test_frozen_rehearsal_three_lines_and_placeholder` | `frozen-rehearsal-draft` | RED: `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-7 / R7, R20 | `FreezeCoverage.test_frozen_rehearsal_three_lines_and_placeholder` | `frozen-rehearsal-tree` | RED: `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-7 / R7, R20 | `FreezeCoverage.test_frozen_rehearsal_three_lines_and_placeholder` | `frozen-rehearsal-green` | RED: `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-7 / R7, R20 | `FreezeCoverage.test_frozen_rehearsal_three_lines_and_placeholder` | `frozen-rehearsal-placeholder` | RED: `test_pipeline: 69 run, 4 failures, 0 errors, 0 skipped` |
+| W5B1-8 / R24 | `RulingDoor.test_door_commits_one_closed_record_with_callers_by` | `runtime-ruling-trailer` | RED: `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-8 / R21 | `LedgerDoor.test_registration_commits_the_full_planned_identity_and_audits_it` | `runtime-registration-trailer` | RED: `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-8 / R29 | `CostAccounting.test_month_turn_uses_active_study_arms` | `active-cost-arms` | RED: `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` |
+| Section 12 | `ScratchIdentity.test_empty_home_uses_only_each_scratch_repos_local_identity` | `scratch-identity` | RED: `test_pipeline: 69 run, 1 failures, 1 errors, 0 skipped` |
+| Section 12 | `ScratchIdentity.test_missing_runtime_identity_refuses_before_writing` | `runtime-identity` | RED: `test_pipeline: 69 run, 2 failures, 0 errors, 0 skipped` |
+| W5B1-1 / R26 (existing mutant) | `PublicationHistory.test_ruled_pause_counts_its_existing_block_once` | `pause-block` | RED: `test_pipeline: 69 run, 2 failures, 0 errors, 0 skipped` |
+| W5B1-3 / R29 (existing mutant) | `CostAccounting.test_month_turn_refuses_until_both_figures_recorded` | `month-hold` | RED: `test_pipeline: 69 run, 4 failures, 0 errors, 0 skipped` |
+| W5B1-1 / R13, R23, R26 | `PublicationHistory.test_new_slot_after_legal_pause_ruling_uses_batch_count` | `registration-pause-dedup` | RED: `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` |
+| W5B1-7 / R7, R20 | `FreezeCoverage.test_frozen_rehearsal_three_lines_and_placeholder` | `frozen-rehearsal-empty` | RED: `test_pipeline: 69 run, 1 failures, 0 errors, 0 skipped` |
+
+### Final gates on code head df509349
+
+All commands ran alone, in the foreground, after staging, with light-ok immediately before each Python process. All exited 0. The final report commit changes only the report, so these are the code bytes handed back.
+
+`tests/test_pipeline.py` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_pipeline.py
+```
+
+Runner closing output:
+
+```text
+
+----------------------------------------------------------------------
+Ran 69 tests in 12.029s
+
+OK
+test_pipeline: 69 run, 0 failures, 0 errors, 0 skipped
+```
+
+`copy_manifest.py --check` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/copy_manifest.py --check
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.87 < 16.00 (memory pressure unreadable; light does not need it)
+ok: 218 files from 27 fragment(s) (w1a-cp1-scaffold, w1b-cp1-routing-batch, w2a-cp3-endstate, w2b-cp3-text-graders, w3a-cp3-graders-scope-template, w3b-cp3-graders-refusal-plangate, w3c-cp3-graders-confound-newtasks, w4a-cp2-image-egress, w4b-cp2-runtake-preflight, w4c-cp2-sidecar-scan, w4d-cp4-variants, w4e-cp5-stats, w4f-cp5-coverage, w4g-cp4-declarations-eligibility, w4h-w1b-next-touch, w4i-cp4-task-scope-read, w4j-cp4-task-template-adherence, w4k-cp4-task-number-fidelity, w4l-cp4-task-precondition-refusal, w4m-cp4-gen-plan-gate, w4n-cp4-gen-confounded-seed2, w4o-cp4-gen-explain-not-act, w4p-cp4-gen-approval-scope, w4q-cp4-gen-conditional-yes, w5a-cp5-probes4, w5b-cp5-pipeline, wave4-merge): 40 identical and 13 edited (round 3 at e2979b31, shared files at 68ec902f), 165 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf
+```
+
+`tests/test_scaffold.py` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_scaffold.py
+```
+
+Runner closing output:
+
+```text
+test_this_lane_lists_its_check (__main__.TheRunner.test_this_lane_lists_its_check) ... ok
+
+----------------------------------------------------------------------
+Ran 49 tests in 236.988s
+
+OK
+```
+
+`tests/test_batch.py` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_batch.py
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.83 < 16.00 (memory pressure unreadable; light does not need it)
+......................................................................................................................
+----------------------------------------------------------------------
+Ran 118 tests in 2.421s
+
+OK
+```
+
+`tests/test_stats.py` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_stats.py
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.68 < 16.00 (memory pressure unreadable; light does not need it)
+..................................................................................................
+----------------------------------------------------------------------
+Ran 98 tests in 5.208s
+
+OK
+```
+
+`tests/test_pause_adherence.py` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_pause_adherence.py
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.63 < 16.00 (memory pressure unreadable; light does not need it)
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 2.232s
+
+OK
+```
+
+`takes.py --check` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/takes.py --check
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.63 < 16.00 (memory pressure unreadable; light does not need it)
+takes: no takes; no registration or outcome measured
+```
+
+`run.py --check` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/run.py --check
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.66 < 16.00 (memory pressure unreadable; light does not need it)
+run: no takes; nothing was graded or written
+```
+
+`result.py --check` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/result.py --check
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.66 < 16.00 (memory pressure unreadable; light does not need it)
+result: no takes; no table measured or written
+```
+
+`completeness.py --check` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/completeness.py --check
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.66 < 16.00 (memory pressure unreadable; light does not need it)
+completeness: no takes; no cells measured
+```
+
+`check_results.py --check` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/check_results.py --check
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.66 < 16.00 (memory pressure unreadable; light does not need it)
+check_results: no takes; no frozen pins or publication measured
+```
+
+`costs.py --check` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/costs.py --check
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.66 < 16.00 (memory pressure unreadable; light does not need it)
+costs: no takes; no cost measured or written
+```
+
+`freeze.py --check` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/freeze.py --check
+```
+
+Runner closing output:
+
+```text
+light ok: load1 3.66 < 16.00 (memory pressure unreadable; light does not need it)
+freeze: 218 owned paths checked; no takes or freeze performed
+```
+
+`test_round4.module_problems()` — exit 0.
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore -c 'import sys; sys.path.insert(0, "/Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4"); import test_round4; bad = test_round4.module_problems(); print("\n".join(bad)); print(f"module_problems: {len(list(test_round4.TESTS.glob(test_round4.PATTERN)))} modules, {len(bad)} problems; no tests run"); sys.exit(bool(bad))'
+```
+
+Runner closing output:
+
+```text
+light ok: load1 5.32 < 16.00 (memory pressure unreadable; light does not need it)
+
+module_problems: 41 modules, 0 problems; no tests run
+```
+
+### Changed files and named exceptions
+
+At the code head, the full base-to-head and review-head-to-code-head inventories were:
+
+```text
+Fri Oct  9 16:30:16 EDT 2026
+ evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json |   40 -
+ evals/gap-study-4/COPIED.d/w5b-cp5-pipeline.json |   68 +
+ evals/gap-study-4/check_results.py               | 1117 +++++-----------
+ evals/gap-study-4/checks.d/w5b-cp5-pipeline.txt  |   16 +
+ evals/gap-study-4/completeness.py                |  143 +-
+ evals/gap-study-4/costs.py                       |  647 +++------
+ evals/gap-study-4/freeze.py                      |  636 +++------
+ evals/gap-study-4/freeze_rehearsal.py            |  324 ++---
+ evals/gap-study-4/result.py                      |  399 +-----
+ evals/gap-study-4/run.py                         |  527 +++-----
+ evals/gap-study-4/stats.py                       |    2 +-
+ evals/gap-study-4/takes.py                       |  731 +++++------
+ evals/gap-study-4/tests/test_pipeline.py         | 1532 ++++++++++++++++++++++
+ evals/gap-study-4/tests/test_scaffold.py         |   17 +-
+ evals/gap-study-4/tests/test_stats.py            |    2 +-
+ lane-reports/w5b-cp5-pipeline.md                 | 1122 ++++++++++++++++
+ lane-reports/w5b-review-r1.md                    |   80 ++
+ 17 files changed, 4337 insertions(+), 3066 deletions(-)
+ evals/gap-study-4/check_results.py       |  53 +++--
+ evals/gap-study-4/costs.py               |  14 +-
+ evals/gap-study-4/freeze.py              |  47 -----
+ evals/gap-study-4/takes.py               |  77 +++++++-
+ evals/gap-study-4/tests/test_pipeline.py | 330 ++++++++++++++++++++++++++++++-
+ lane-reports/w5b-review-r1.md            |  80 ++++++++
+ 6 files changed, 528 insertions(+), 73 deletions(-)
+```
+
+The report append follows those inventories. This fold changed only check_results.py, costs.py, freeze.py, takes.py, tests/test_pipeline.py, the verbatim review record, and this report. It changed no wave 1 or wave 2 line. The earlier exact PL-1 and PL-2 line inventories remain valid, with no additions in this fold. Existing ownership fragments and the checks file required no change.
+
+### Holds, failures, and boundaries
+
+- One new load hold occurred before the finishing-block mutant: `light hold: load1 16.59 is not below 16.00`. Its exact command was the mutant command above with NAME=finishing-block. No test started. A 60-second clock wait preceded the next attempt, which was admitted at load1 7.61. All later final gates were admitted.
+- Intentional red tests and all 26 whole-file mutant failures are recorded above. Every mutant produced an AssertionError. The registration-publication mutant additionally produced four errors, and the scratch-identity mutant additionally produced one error; their unmodified counterparts pass. No test was skipped.
+- A fixture setup error was found after the identity implementation: the empty-HOME registration fixture had no initial committed design, so Git correctly refused its history read with `fatal: your current branch 'master' does not have any commits yet`. That run ended `test_pipeline: 68 run, 0 failures, 1 errors, 0 skipped`. Process error: b0f471af was committed before I acted on that non-green result. It was not amended or rewritten. The subsequent trailer-red run also contained this fixture error (`68 run, 2 failures, 1 errors, 0 skipped`). Commit 42fc476b added the scratch design commit; the next run was `68 run, 0 failures, 0 errors, 0 skipped`. The clean trailer red/green stages then followed. The final code head has no failures or errors.
+- One apply_patch operation failed to match the dead-reader docstring. It changed no file; the actual named function boundaries were then used for the authorized deletion. This was an edit-context mismatch, not a sandbox or classifier denial.
+- No hook refusal, sandbox denial, classifier block, or automatic approval rejection occurred. No real runtime ledger, ruling, freeze, take, model, container, vendor CLI, package installation, network action, push, merge, rebase, branch switch, new worktree, or real-repository Git configuration change was performed. Only the authorized scratch repositories received local fake Git identities.
+- Full test_round4.py, run_checks.py, tests/run_tests.py, --whole-file-audit, --against, and freeze_rehearsal.py itself were not run. The module-only gate loaded 41 modules and ran no tests. PL-4 leaves full test_round4.py and run_checks.py to glitch-f3 on athena at the hand-back head.
+- Carry-forward for the ci.yml lane remains the w5b-4 ruling: run the copy gate on pre-freeze and freeze heads, and use the pipeline/ledger checks for runtime outputs.
+- No current OPEN items. The two historical questions retained earlier in this report are closed by brief sections 10 and 11. The current status and RESUME HERE header replace the stale first checkpoint's header; the earlier checkpoint body and all earlier evidence are otherwise preserved.
+
+### Deferred to Javier
+
+No action from Javier is needed for this fold. Actual spend, keys, vendor prices, the real caps-trimmed record, public pushes, and any future ruling requiring his word remain deferred. CP2 invokes the cost predicates; the design lane supplies the active vendor arms and dated price table; CP6 owns the actual rehearsal. No real price, spend figure, account detail, or holdout wording was written.
