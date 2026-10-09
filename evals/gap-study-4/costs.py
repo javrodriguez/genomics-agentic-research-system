@@ -166,8 +166,11 @@ def walk_gate(walks, spend, start):
 
 
 def month_turn_allowed(arm, now, trimmed):
-    # Vendor initials identify their arms; only arms in the active study can spend.
-    if arm not in ({vendor[0].upper() for vendor in CAPS} & set(study.ARMS)):
+    # W5B2-3: unknown arms fail closed. O and G are the ruled vendor arms,
+    # independent of which arms the active design has admitted so far.
+    if arm not in study.ARMS:
+        return False
+    if arm not in ("O", "G"):
         return True
     now = utc(now)
     # Only the last day's 23:30 UTC window requires a next-month release.
