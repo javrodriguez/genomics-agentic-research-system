@@ -72,6 +72,16 @@ def review_mutations():
             'if o["slot"] in final_slots:', 'if False:'),
         "mechanical-error-type": source_mutant(completeness, "mechanical_states",
             'except batch.BatchConfigError as exc:', 'except ValueError as exc:'),
+        "pause-count-refusal": source_mutant(cr, "pause_event",
+            'return {"event": ("take", *key), "note": STRICT_PAUSE_NOTE}',
+            'raise ValueError("the ruled pause event count is ambiguous")'),
+        "strict-pause-note": (cr, "STRICT_PAUSE_NOTE", "missing note"),
+        "strict-pause-cell-note": source_mutant(completeness, "mechanical_states",
+            'if state.get("note"):', 'if False:'),
+        "strict-pause-row-note": source_mutant(result_page, "from_records",
+            '"pause_notes": pause_notes(rows, published["attempts"])', '"pause_notes": []'),
+        "strict-pause-row-render": source_mutant(result_page, "render",
+            'render_pause_notes(rec["pause_notes"])', '""'),
         "strict-close-state": source_mutant(completeness, "mechanical_states",
             'strict = batch.Batch(None, None, None, table=table, history=history).closed_cells',
             'strict = {}'),
@@ -681,13 +691,22 @@ class PublicationHistory(unittest.TestCase):
         with mock.patch.object(cr, "pause_event", lambda h, o: ("take", o["slot"], o["attempt"])):
             self.assertEqual(len(cr.publication(history, table())["window_events"]["c1"]), 2)
 
-    def test_ruled_pause_requires_unique_block_and_existing_take(self):
+    def test_ruled_pause_requires_existing_take(self):
         absent = [ruling(row())]
         with self.assertRaises(ValueError):
             cr.publication(absent, table())
-        ambiguous = [recorded(labels4.PAUSE), outcome(row(2), state=labels4.FAILED, final=False), ruling(row(2))]
-        with self.assertRaisesRegex(ValueError, "uniquely"):
-            cr.publication(ambiguous, table())
+
+    def test_q2_ambiguous_count_publishes_strict_with_note(self):
+        history = [recorded(labels4.PAUSE), outcome(row(2), state=labels4.FAILED, final=False), ruling(row(2))]
+        try:
+            published = cr.publication(history, table())
+        except ValueError as exc:
+            self.fail(f"ambiguous count must publish strictly: {exc}")
+        self.assertEqual(set(published["window_events"]["c1"]), {("window", 1), ("take", "s2", 1)})
+        strict = batch.Batch(None, None, None, table=table(), history=history)
+        self.assertEqual(set(published["window_events"]["c1"]), strict.cell_events[("c1", labels4.PAUSE)])
+        self.assertEqual(published["cells"], {})
+        self.assertEqual(published["attempts"][-1].get("note"), "ruled pause counted strictly")
 
     def test_ruled_pause_without_any_window_has_own_event(self):
         history = [recorded(labels4.GRADED, row(1)), recorded(labels4.GRADED, row(2)),
@@ -722,8 +741,8 @@ class PublicationHistory(unittest.TestCase):
         self.assert_other_cell_pause_count(True)
 
     def test_new_slot_after_legal_pause_ruling_uses_batch_count(self):
-        # Publication cannot choose between one and two events, but registration
-        # uses batch's strict two-event count and must allow this different cell.
+        # Both readers use the strict count when candidates disagree; a legal
+        # ruling must still allow registration in a different cell.
         history = [recorded(labels4.PAUSE, row(1)),
                    outcome(row(2), state=labels4.FAILED, final=False), ruling(row(2))]
         rows = [dict(row(n), attempt=1) for n in (1, 2)]
@@ -1059,6 +1078,39 @@ class Reporting(unittest.TestCase):
         self.assertEqual(got["completeness"]["cells"][0]["state"], expected)
         self.assertIn(expected, completeness.render(got["completeness"]))
         self.assertIn(expected, result_page.render(got))
+
+    def test_q2_strict_pause_note_on_take_row_until_it_closes_cell(self):
+        cap = batch.half_cell_cap(table(), labels4.PAUSE)
+        for count in (1, cap - 1):
+            with self.subTest(prior_events=count):
+                history = [recorded(labels4.PAUSE, attempt=i, window=i) for i in range(1, count + 1)]
+                history += [outcome(row(2), state=labels4.FAILED, final=False, drive_started=True), ruling(row(2))]
+                rows = [dict(row(), attempt=i) for i in range(1, count + 1)] + [dict(row(2), attempt=1)]
+                pre = pre_registration(); pre["rows"] = [row(), row(2)]
+                try:
+                    got = result_page.from_records([], pre, rows, history, table())
+                except ValueError as exc:
+                    self.fail(f"strict count must be publishable: {exc}")
+                text = result_page.render(got)
+                self.assertIn("ruled pause counted strictly", text)
+                if count + 1 == cap:
+                    expected = f"{labels4.INCOMPLETE_MECHANICAL} (ruled pause counted strictly)"
+                    self.assertEqual(got["completeness"]["cells"][0]["state"], expected)
+                    self.assertIn(expected, text)
+                    self.assertEqual(got.get("pause_notes"), [])
+                    published = cr.publication(history, table())
+                    self.assertEqual(published["cells"]["c1"]["state"], labels4.INCOMPLETE_MECHANICAL)
+                    with self.assertRaisesRegex(ValueError, "closed"):
+                        takes.guard_registration(row(3), 1, rows, history)
+                else:
+                    notes = got.get("pause_notes")
+                    self.assertIsInstance(notes, list)
+                    self.assertEqual(len(notes), 1)
+                    self.assertEqual(notes[0]["slot"], "s2")
+                    self.assertEqual(notes[0]["attempt"], 1)
+                    self.assertEqual(notes[0]["agent"], row(2)["agent"])
+                    self.assertIn("| s2 | 1 |", text)
+                    self.assertIn(row(2)["model"], text)
 
     def test_publication_close_keeps_its_committed_reason(self):
         self.assertTrue(callable(getattr(completeness, "mechanical_states", None)))
