@@ -817,6 +817,54 @@ class TestProcessesProgram(MutantCase):
         ])
 
 
+@contextlib.contextmanager
+def host_temp(kind):
+    """A fake host temp root. "study-word": a folder whose name carries a lane lead word, as athena's battery folder
+    did on Linux (gap4-wave4-merge-...); "neutral": a plain folder, as on the Mac. Nothing else of the host is read."""
+    parent = tempfile.mkdtemp(prefix="w-")
+    root = os.path.join(parent, "gap4-host" if kind == "study-word" else "plain-host")
+    os.makedirs(root)
+    with mock.patch.object(tempfile, "tempdir", root):
+        yield root
+
+
+class TestHostIndependence(MutantCase):
+    """The athena red (Linux only): the World's run tree sat under the host's temp root, whose path carried a study
+    word there, so run-tree-path-neutral failed in every world and the missing-probe mutant survived. The fixtures'
+    agent-visible paths must come from the test's own fakes, whatever the host's temp root is called."""
+
+    def check(self):
+        out = []
+        ev = TestEvaluate()
+        for kind in ("study-word", "neutral"):
+            with host_temp(kind):
+                for h in ARMS:
+                    with filled():
+                        rec = World(h).evaluate()
+                    if failing(rec):
+                        out.append(f"{kind} host, {h}: a passing world fails {failing(rec)}")
+                with mock.patch.dict(pf.CHECKS, {k: _assume_missing(f) for k, f in pf.CHECKS.items()}):
+                    if not ev.missing_or_failed():
+                        out.append(f"{kind} host: the missing-assumed-to-pass mutant survives")
+        return out
+
+    def test_host_temp_root_is_never_read(self):
+        self.assert_green_then_red(self.check, [
+            ("tree-under-host-temp", patched(World, "FAKE_TREE", False)),
+        ])
+
+
+def _assume_missing(fn):
+    def wrapped(*a):
+        try:
+            return fn(*a)
+        except pf._Fail as e:
+            if "missing" in str(e) or "failed" in str(e) or "exited" in str(e) or "no " in str(e):
+                return "assumed"
+            raise
+    return wrapped
+
+
 class TestRecordAndPostflight(MutantCase):
     def test_write_beside_evidence(self):
         w = World()
