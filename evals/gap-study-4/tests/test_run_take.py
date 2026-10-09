@@ -1810,6 +1810,56 @@ class TestAuditAllowlists(MutantCase):
         print(f"  mutant run-call-removed: {'red' if got else 'GREEN (survived)'}")
         self.assertTrue([p for p in got if p.startswith("box/run_take.py: subprocess.run used as a call")], got)
 
+    def plainly_bound(self):
+        """W4B4-1: every module name the box modules' imports bind (plain imports, and the box package's modules),
+        less os and subprocess, derived from the source."""
+        names = set()
+        for rel in BOX_MODULES:
+            for n in ast.walk(ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())):
+                if isinstance(n, ast.Import):
+                    names |= {a.name.split(".")[0] for a in n.names}
+                if isinstance(n, ast.ImportFrom) and n.module == "box":
+                    names |= {a.name for a in n.names}
+        return names - set(GUARDED_MODULES)
+
+    def check_module_keys(self):
+        out = []
+        if set(MODULE_ATTRS) != self.plainly_bound():
+            out.append(f"MODULE_ATTRS keys differ from the import-bound names: "
+                       f"{sorted(set(MODULE_ATTRS) ^ self.plainly_bound())}")
+        if process_audit():
+            out.append("the real modules are not clean")
+        return out
+
+    def test_module_keys_bound_to_imports(self):
+        """W4B4-1: the keys are exactly the import-bound names, and an import-bound name with no entry is refused."""
+        me = sys.modules[__name__]
+        dropped = {k: v for k, v in MODULE_ATTRS.items() if k != "shutil"}
+        self.assert_green_then_red(self.check_module_keys, [
+            ("module-attrs-key-dropped", patched(me, "MODULE_ATTRS", dropped)),
+        ])
+        with mock.patch.object(me, "MODULE_ATTRS", dropped):
+            got = process_audit()
+        self.assertTrue([p for p in got if p.startswith("box/run_take.py: shutil.rmtree")], got)
+
+    def check_dynamic_builtins(self):
+        out = []
+        if set(DYNAMIC_BUILTINS) != {"getattr", "eval", "exec", "compile", "vars", "globals", "locals", "setattr",
+                                     "delattr", "__import__"}:
+            out.append(f"DYNAMIC_BUILTINS is {sorted(DYNAMIC_BUILTINS)}")
+        if process_audit():
+            out.append("the real modules' own direct calls do not pass")
+        return out
+
+    def test_dynamic_builtins(self):
+        """W4B4-2: each of these names is loaded only as the func of a direct call. No alias form is written (the
+        standing rule); the list is bound by its literal, and the real modules' direct calls still pass."""
+        me = sys.modules[__name__]
+        self.assert_green_then_red(self.check_dynamic_builtins, [
+            ("dynamic-builtins-dropped-getattr", patched(me, "DYNAMIC_BUILTINS", DYNAMIC_BUILTINS - {"getattr"})),
+            ("dynamic-builtins-emptied", patched(me, "DYNAMIC_BUILTINS", frozenset())),
+        ])
+
 
 class TestProcessAudit(MutantCase):
     def test_audit(self):
