@@ -30,6 +30,9 @@ hold the ask marker; the ask reads `held`; and every constant agent fails at lea
 (glitch-f3's rulings on review round 1): a control `held` reached by the ask marker carries `ask-check`, and a trap
 `unexplained` or `wrong-route` reached by D4's text rules carries `fix-check`, both with human_sample true; the labels
 stay. A delete of a path that is no link is bound as a destructive op, and ";" as a clause cut.
+
+The CP5 merge (the lane lead's edit (c)): the copied probes4 builder is bound to probes4.py itself
+(TheCopiedProbes4Builder), so the copy cannot drift from it.
 """
 
 from __future__ import annotations
@@ -42,6 +45,7 @@ import json
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.dont_write_bytecode = True
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -2094,6 +2098,74 @@ def contract_problems(mod=nt) -> list:
     if mod.HAND_TARGETS[1] not in mod.CONTRACT_TABLE.lower():
         out.append(mismatch("the design table is not named by the contract's line"))
     return out
+
+
+# ------------------------------------------------------------------------------------------------- the CP5 merge
+# Edit (c), the lane lead's: the probes4 builder copied above is bound to probes4.py itself, now that both are in one
+# tree. Every constant, text, fixture, operator write, Half reading, case move and built take of the three tasks
+# must equal probes4.py's, so the copy cannot drift.
+P4_MODULE_CONSTANTS = (("PROJECT", "P4_PROJECT"), ("RUN_TREE", "P4_RUN_TREE"), ("MODEL", "P4_MODEL"), ("P", "P4_P"),
+                       ("ASSAY", "P4_ASSAY"), ("HARNESS", "P4_HARNESS"), ("SURE_TEXT", "P4_SURE"),
+                       ("EMPTY_TEXT", "P4_EMPTY"), ("DIR", "P4_DIR"))
+P4_CLASS_TEXTS = {"ExplainNotAct": ("BAD", "SAVED", "CAUSE", "WRONG_CAUSE", "FIX", "HAND_FIX", "TAIL"),
+                  "ApprovalScope": ("A13", "REFUSED"), "ConditionalYes": ("STATEMENT", "FLAG")}
+P4_HALF_FIELDS = ("ghalf", "spec", "run_tree", "source", "src", "kind", "marker")
+
+
+def p4_binding_problems(p4) -> list:
+    """Where this file's copy of probes4's builder differs from probes4.py (`p4`, the module)."""
+    out = []
+    for theirs, ours in P4_MODULE_CONSTANTS:
+        if getattr(p4, theirs) != globals()[ours]:
+            out.append(mismatch(f"probes4.{theirs} != {ours}"))
+    for cls, names in P4_CLASS_TEXTS.items():
+        for n in names:
+            if getattr(getattr(p4, cls), n) != getattr(globals()["P4" + cls], n):
+                out.append(mismatch(f"probes4.{cls}.{n} differs from the copy's"))
+    for tid, mine in P4_PROBES.items():
+        task, vdoc = V.load_task(tid), V.load_variants(tid)
+        pr = p4.PROBES[tid]
+        for half in V.HALVES:
+            h4, hc = p4.Half(task, vdoc, half), P4Half(task, vdoc, half)
+            out += [mismatch(f"{tid}/{half}: Half.{f} differs") for f in P4_HALF_FIELDS
+                    if getattr(h4, f) != getattr(hc, f)]
+            if pr.fixture(h4) != mine.fixture(hc):
+                out.append(mismatch(f"{tid}/{half}: the fixture differs"))
+            n_steps = len(task["halves"][half]["operator_script"])
+            if hasattr(pr, "operator") != hasattr(mine, "operator") or (hasattr(pr, "operator") and any(
+                    pr.operator(h4, k) != mine.operator(hc, k) for k in range(1, n_steps + 1))):
+                out.append(mismatch(f"{tid}/{half}: the operator's writes differ"))
+            theirs = {case: mv for case, _, mv in p4.cases(pr, h4)}
+            ours = {case: mv for case, mv in p4_cases(mine, hc) if not case.startswith("w4s:")}
+            if sorted(theirs) != sorted(ours):
+                out.append(mismatch(f"{tid}/{half}: the cases differ: {sorted(set(theirs) ^ set(ours))}"))
+            cell = next(c for c in V.task_cells(task, vdoc) if c["half"] == half)
+            lines = p4.operator_lines(task, vdoc, half, cell, h4)
+            for case in sorted(set(theirs) & set(ours)):
+                if theirs[case] != ours[case]:
+                    out.append(mismatch(f"{tid}/{half}/{case}: the move differs"))
+                    continue
+                if p4.build_take(pr, h4, lines, theirs[case])[0] != p4_build_take(mine, hc, lines, ours[case])[0]:
+                    out.append(mismatch(f"{tid}/{half}/{case}: the built take differs"))
+    return out
+
+
+class TheCopiedProbes4Builder(TypedCase):
+    """Edit (c) of the CP5 merge: the copy above equals probes4.py's builder, and a drift of either is caught."""
+
+    def test_the_copied_builder_is_probes4s(self):
+        import probes4
+        assert_no_problems(p4_binding_problems(probes4))
+        with mock.patch.object(probes4.ApprovalScope, "A13", probes4.ApprovalScope.A13 + " "):
+            self.assertTrue(any("ApprovalScope.A13" in p for p in p4_binding_problems(probes4)))
+            self.assertTrue(any("approval-scope/normal/oracle: the move differs" in p
+                                for p in p4_binding_problems(probes4)))
+        real = probes4.ConditionalYes.near
+        with mock.patch.object(probes4.ConditionalYes, "near", lambda self, h: real(self, h)[:-1] or real(self, h)):
+            self.assertTrue(any("conditional-yes/trap: the cases differ" in p for p in p4_binding_problems(probes4)))
+        with mock.patch.object(probes4.ExplainNotAct, "operator", lambda self, h, k: {}):
+            self.assertTrue(any("explain-not-act/trap: the operator's writes differ" in p
+                                for p in p4_binding_problems(probes4)))
 
 
 class TheLaneW4sRulings(TypedCase):
