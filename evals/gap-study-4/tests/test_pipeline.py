@@ -66,6 +66,13 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "strict-close-state": source_mutant(completeness, "mechanical_states",
+            'strict = batch.Batch(None, None, None, table=table, history=history).closed_cells',
+            'strict = {}'),
+        "strict-close-label": source_mutant(completeness, "mechanical_states",
+            'f"{labels4.INCOMPLETE_MECHANICAL} (strict close: {reason})"', 'labels4.INCOMPLETE_MECHANICAL'),
+        "strict-close-precedence": source_mutant(completeness, "mechanical_states",
+            'if cell not in states:', 'if True:'),
         "rehearsal-step-identity": (freeze_rehearsal, "step_environment", lambda: dict(os.environ)),
         "rehearsal-env-forwarding": source_mutant(freeze_rehearsal, "run_step",
             'env=step_environment()', 'env=None'),
@@ -971,6 +978,35 @@ def pre_registration(tasks=("synthetic-task",)):
 class Reporting(unittest.TestCase):
     def setUp(self):
         self.assertTrue(callable(getattr(result_page, "from_records", None)), "result renders stats tables")
+
+    def test_strict_batch_close_is_named_in_completeness_and_result(self):
+        native = table()
+        cap = batch.half_cell_cap(native, labels4.PAUSE)
+        history = [recorded(labels4.PAUSE, row(1), attempt=i, window=i) for i in range(1, cap)]
+        history += [outcome(row(2), state=labels4.FAILED, final=False, drive_started=True),
+                    recorded(labels4.PAUSE, row(3), window=cap - 1), ruling(row(2))]
+        published = cr.publication(history, native)
+        self.assertEqual(published["cells"], {})
+        strict = batch.Batch(None, None, None, table=native, history=history)
+        reason = strict.closed_cells["c1"]
+        expected = f"{labels4.INCOMPLETE_MECHANICAL} (strict close: {reason})"
+        pre = pre_registration()
+        pre["rows"] = [row(i) for i in (1, 2, 3, 4)]
+        rows = [dict(row(1), attempt=i) for i in range(1, cap)] + [dict(row(i), attempt=1) for i in (2, 3)]
+        got = result_page.from_records([], pre, rows, history, native)
+        self.assertEqual(got["completeness"]["cells"][0]["state"], expected)
+        self.assertIn(expected, completeness.render(got["completeness"]))
+        self.assertIn(expected, result_page.render(got))
+
+    def test_publication_close_keeps_its_committed_reason(self):
+        self.assertTrue(callable(getattr(completeness, "mechanical_states", None)))
+        native = table()
+        history = []
+        for i in range(1, batch.half_cell_cap(native, labels4.REHEARSAL) + 1):
+            history += [outcome(row(), i, labels4.FAILED, final=False),
+                        ruling(row(), i, route=labels4.REHEARSAL)]
+        states = cr.publication(history, native)["cells"]
+        self.assertEqual(completeness.mechanical_states(history, states, native), states)
 
     def test_empty_records_print_no_takes_never_zeros(self):
         got = result_page.from_records([], pre_registration(), [], [], table())
