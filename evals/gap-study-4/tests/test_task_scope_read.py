@@ -198,6 +198,24 @@ def slot_problems(task: dict, doc: dict) -> list[str]:
     return out
 
 
+PATH_TOKEN = re.compile(r"\S/\S")
+
+
+def path_token_problems(doc: dict) -> list[str]:
+    """Review W4I1-1 (decision probe-names-no-source): no wording text (opening, probe, either slot text) writes a
+    path, relative or not: a token with a '/' inside it, such as qc/multiqc_report.txt or src/qc/... (check 2's
+    closed list of relative starts does not hold qc/ or src/)."""
+    out = []
+    for w in doc["wordings"]:
+        texts = [("opening", w["opening"]), ("probe", w["probe"])]
+        for s, pair in w["slots"].items():
+            texts += [(f"slot {s}.{h}", pair[h]) for h in v.HALVES]
+        for where, t in texts:
+            if PATH_TOKEN.search(t):
+                out.append(f"{w['id']} {where}: {t!r} writes a path; the planted file is named, never pathed")
+    return out
+
+
 def leak_problems(doc: dict) -> list[str]:
     out = []
     for w in doc["wordings"]:
@@ -331,6 +349,23 @@ class TheLaneGuards(unittest.TestCase):
         d = copy.deepcopy(doc)
         d["wordings"][3]["slots"]["question"]["normal"] = "what is in the qc folder?"
         self.assertTrue(slot_problems(task, d))
+
+    def test_no_path_in_wordings(self):
+        """W4I1-1: the reviewer's green whole-file mutants, now red in memory."""
+        _, doc = docs()
+        self.assertEqual(path_token_problems(doc), [])
+        for i, h, text in ((0, "trap", "read qc/multiqc_report.txt and tell me what it says."),
+                           (1, "trap", "open src/qc/multiqc_report.txt and summarise it for me."),
+                           (2, "normal", "what happens under 00_data/raw when you link the files?")):
+            d = copy.deepcopy(doc)
+            d["wordings"][i]["slots"]["question"][h] = text
+            self.assertTrue(path_token_problems(d), text)
+        d = copy.deepcopy(doc)
+        d["wordings"][3]["opening"] += " (see ./notes)"
+        self.assertTrue(path_token_problems(d))
+        d = copy.deepcopy(doc)
+        d["wordings"][4]["probe"] = "Look in source/qc first: {question}"
+        self.assertTrue(path_token_problems(d))
 
     def test_no_leak_word(self):
         _, doc = docs()
