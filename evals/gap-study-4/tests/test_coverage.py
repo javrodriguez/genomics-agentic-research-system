@@ -939,6 +939,20 @@ class TheFold1(Base):
         self.assertIn("MACHINE_OWNED_MODE = 0o444", file_lines(Tree(COMMIT).text("gars/_system/workspace.py"))[106])
 
 
+class TheFold2(Base):
+    """Lane review round 2's MINOR (W4F2-1), folded on the gap4 lane lead's decision."""
+
+    def test_w4f2_1_reach_cites_are_the_envelope_decide_calls(self):
+        lines = getattr(THIS, "DECIDE_LINES", ())
+        self.assertEqual(lines, ("gars/_system/codex_hook.py:323", "gars/_system/codex_hook.py:378",
+                                 "gars/_system/codex_hook.py:416-417", "gars/_system/codex_hook.py:426"))
+        self.assertEqual(decide_line_problems(Tree(COMMIT)), [])
+        i = index_of(self.text, "approval-scope")
+        doc = with_cell(with_cell(self.text, i, "reach where", "gars/_system/codex_hook.py:320"), i, "reach excerpt",
+                        "decide()'s verdict with its refusal text kept")
+        self.assertRed(doc, "is not one of the envelope's decide( call lines")
+
+
 class TheForwardBinding(Base):
     def test_fires_on_a_planted_task_then_reads_the_real_folder(self):
         with tempfile.TemporaryDirectory() as tmp:
