@@ -19,6 +19,7 @@ import inspect
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -411,7 +412,7 @@ class TestNoValueInAnyOutput(Case):
                     fh.write(body)
                 os.chmod(p, 0o600)
                 try:
-                    sr.read_login(p, "CODEX_API_KEY")
+                    sr.read_login(p, "CODEX_API_KEY", allowed=("CODEX_API_KEY",))
                 except sr.LoginError as e:
                     outputs.append(f"{e} {e.args!r}")
                 os.unlink(p)
@@ -463,40 +464,127 @@ class TestReadLogin(unittest.TestCase):
             with self.subTest(label):
                 p = self.write(body, mode, name=f"{label.replace(' ', '-')}.env")
                 if ok:
-                    self.assertEqual(sr.read_login(p, GOOD), TOKEN)
+                    self.assertEqual(sr.read_login(p, GOOD, allowed=(GOOD,)), TOKEN)
                 else:
                     with self.assertRaises(sr.LoginError):
-                        sr.read_login(p, GOOD)
+                        sr.read_login(p, GOOD, allowed=(GOOD,))
 
     def test_a_link_and_a_repository_are_refused(self):
         p = self.write(LOGIN_FIXTURES["good"][0], 0o600)
         link = os.path.join(self.d.name, "link.env")
         os.symlink(p, link)
         with self.assertRaises(sr.LoginError):
-            sr.read_login(link, GOOD)
+            sr.read_login(link, GOOD, allowed=(GOOD,))
         repo = os.path.join(self.d.name, "repo")
         os.makedirs(os.path.join(repo, ".git"))
         os.makedirs(os.path.join(repo, "deep"))
         with self.assertRaises(sr.LoginError):
-            sr.read_login(self.write(LOGIN_FIXTURES["good"][0], 0o600, folder=os.path.join(repo, "deep")), GOOD)
+            sr.read_login(self.write(LOGIN_FIXTURES["good"][0], 0o600, folder=os.path.join(repo, "deep")), GOOD, allowed=(GOOD,))
 
     def test_a_long_file_is_refused(self):
         p = self.write(LOGIN_FIXTURES["good"][0] + "#" * 70000 + "\n", 0o600)
         with self.assertRaises(sr.LoginError):
-            sr.read_login(p, GOOD)
+            sr.read_login(p, GOOD, allowed=(GOOD,))
 
     def test_mutant_without_the_mode_check_goes_red(self):
         p = self.write(LOGIN_FIXTURES["mode 644"][0], 0o644)
         with mock.patch.object(sr.stat, "S_IMODE", lambda m: 0o600):
-            self.assertEqual(sr.read_login(p, GOOD), TOKEN)
+            self.assertEqual(sr.read_login(p, GOOD, allowed=(GOOD,)), TOKEN)
         red("a login file of mode 644 accepted")
 
     def test_mutant_loose_line_rule_goes_red(self):
         import re
         p = self.write(LOGIN_FIXTURES["a trailing space"][0], 0o600)
         with mock.patch.object(sr, "_LOGIN_LINE", re.compile(rb"([A-Z_][A-Z0-9_]*)=(\S{20,})\s*")):
-            self.assertEqual(sr.read_login(p, GOOD), TOKEN)
+            self.assertEqual(sr.read_login(p, GOOD, allowed=(GOOD,)), TOKEN)
         red("a login line with trailing whitespace accepted")
+
+
+# W4 merge, binding 5 (glitch-f3's ruling under Javier's delegation; a merge-time exception to lane w4c): read_login
+# keeps run_take.read_login's rule on the four points the merge found apart. One red test per point, then one
+# in-memory mutant per point, each turning its check red.
+def _login(path, name, allowed):
+    if "allowed" in inspect.signature(sr.read_login).parameters:
+        return sr.read_login(path, name, allowed=allowed)
+    return sr.read_login(path, name)
+
+
+class TestLoginBinding5(unittest.TestCase):
+    def setUp(self):
+        self.d = tempfile.TemporaryDirectory()
+        self.addCleanup(self.d.cleanup)
+
+    def write(self, body, name="b5.line"):
+        p = os.path.join(self.d.name, name)
+        with open(p, "wb") as fh:
+            fh.write(body.encode("utf-8"))
+        os.chmod(p, 0o600)
+        return p
+
+    # (i) ASCII only
+    def test_a_non_ascii_value_is_refused(self):
+        p = self.write(f"{GOOD}={TOKEN}é\n")
+        with self.assertRaises(sr.LoginError):
+            _login(p, GOOD, (GOOD,))
+
+    # (ii) the allowed names come from the caller
+    def test_a_name_outside_the_allowed_names_is_refused(self):
+        p = self.write(f"OTHER_NAME={TOKEN}\n")
+        with self.assertRaises(sr.LoginError):
+            _login(p, "OTHER_NAME", (GOOD,))
+        self.assertEqual(_login(p, "OTHER_NAME", ("OTHER_NAME",)), TOKEN)
+
+    def test_the_allowed_names_are_required(self):
+        p = self.write(f"{GOOD}={TOKEN}\n")
+        with self.assertRaises(TypeError):
+            sr.read_login(p, GOOD)
+        for bad in (None, "A_LOGIN_NAME", (), {GOOD: 1}, (GOOD, 3)):
+            with self.subTest(bad=bad), self.assertRaises(sr.LoginError):
+                sr.read_login(p, GOOD, allowed=bad)
+
+    # (iii) the 4096-byte cap
+    def test_a_file_over_4096_bytes_is_refused(self):
+        head = f"{GOOD}="
+        at_cap = self.write(head + "F" * (4096 - len(head) - 1) + "\n", "cap.line")
+        self.assertEqual(os.path.getsize(at_cap), 4096)
+        self.assertEqual(_login(at_cap, GOOD, (GOOD,)), "F" * (4096 - len(head) - 1))
+        over = self.write(head + "F" * (4096 - len(head)) + "\n", "over.line")
+        self.assertEqual(os.path.getsize(over), 4097)
+        with self.assertRaises(sr.LoginError):
+            _login(over, GOOD, (GOOD,))
+
+    # (iv) a relative path is refused
+    def test_a_relative_path_is_refused(self):
+        p = self.write(f"{GOOD}={TOKEN}\n")
+        self.assertEqual(_login(p, GOOD, (GOOD,)), TOKEN)
+        with self.assertRaises(sr.LoginError):
+            _login(os.path.relpath(p), GOOD, (GOOD,))
+
+    def test_mutant_utf8_value_goes_red(self):
+        p = self.write(f"{GOOD}={TOKEN}é\n")
+        with mock.patch.object(sr, "_LOGIN_LINE", re.compile(rb"([A-Z_][A-Z0-9_]*)=([^\s\"]{20,})\n")), \
+                mock.patch.object(sr, "_value_text", lambda b: b.decode("utf-8")):
+            self.assertEqual(sr.read_login(p, GOOD, allowed=(GOOD,)), TOKEN + "é")
+        red("a non-ASCII login value accepted")
+
+    def test_mutant_any_name_goes_red(self):
+        p = self.write(f"OTHER_NAME={TOKEN}\n")
+        with mock.patch.object(sr, "_name_allowed", lambda name, allowed: True):
+            self.assertEqual(sr.read_login(p, "OTHER_NAME", allowed=(GOOD,)), TOKEN)
+        red("a login name outside the caller's allowed names accepted")
+
+    def test_mutant_64k_cap_goes_red(self):
+        head = f"{GOOD}="
+        over = self.write(head + "F" * (4096 - len(head)) + "\n", "over.line")
+        with mock.patch.object(sr, "LOGIN_MAX_BYTES", 1 << 16):
+            self.assertEqual(sr.read_login(over, GOOD, allowed=(GOOD,)), "F" * (4096 - len(head)))
+        red("a login file over 4096 bytes accepted")
+
+    def test_mutant_relative_path_goes_red(self):
+        p = self.write(f"{GOOD}={TOKEN}\n")
+        with mock.patch.object(sr.os.path, "isabs", lambda q: True):
+            self.assertEqual(sr.read_login(os.path.relpath(p), GOOD, allowed=(GOOD,)), TOKEN)
+        red("a relative login path accepted")
 
 
 # ------------------------------------------------------------------------------------------------- PENDING values
@@ -585,14 +673,14 @@ class TestFold2(Case):
         real = os.geteuid()
         with mock.patch.object(sr.os, "geteuid", lambda: real + 1):
             with self.assertRaisesRegex(sr.LoginError, "not owned by its reader"):
-                sr.read_login(p, GOOD)
+                sr.read_login(p, GOOD, allowed=(GOOD,))
 
     def test_mutant_owner_unchecked_goes_red(self):
         p = self.login()
         real = os.geteuid()
         with mock.patch.object(sr.os, "geteuid", lambda: real + 1), \
                 mock.patch.object(sr, "_owned", lambda st: True):
-            self.assertEqual(sr.read_login(p, GOOD), TOKEN)
+            self.assertEqual(sr.read_login(p, GOOD, allowed=(GOOD,)), TOKEN)
         red("a login file owned by another accepted")
 
     # W4C1-10: the email's minimum length, a value surviving its mask, the rules finding's shape

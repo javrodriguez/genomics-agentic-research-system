@@ -76,8 +76,14 @@ RESULT_FIELDS = ("masked", "events", "refused", "files", "holdout")
 # The login-file rule (interface 11; the card's Part 3 step 7): one newline-terminated line NAME=<value>, the value
 # at least 20 characters with no whitespace and no double quote; mode 600, owned by the reader, outside every git
 # repository. run_take.read_login (lane w4b) holds the same rule; the merge binds the two on one fixture set.
-_LOGIN_LINE = re.compile(rb"([A-Z_][A-Z0-9_]*)=([^\s\"]{20,})\n")
+# Wave 4 merge, binding 5 (glitch-f3's ruling under Javier's delegation; a merge-time exception to this lane): the
+# two readers agree on four further points. (i) ASCII only: the value excludes every byte above 0x7f and every byte
+# a str regex reads as whitespace (bytes' \s plus 0x1c-0x1f). (ii) The name is one of the caller's `allowed` names
+# (the caller passes run_take.LOGIN_VARIABLE's values; this module never imports run_take). (iii) At most
+# LOGIN_MAX_BYTES. (iv) An absolute path only.
+_LOGIN_LINE = re.compile(rb"([A-Z_][A-Z0-9_]*)=([^\s\"\x1c-\x1f\x80-\xff]{20,})\n")
 _NAME = re.compile(r"[A-Z_][A-Z0-9_]*")
+LOGIN_MAX_BYTES = 4096
 
 # ------------------------------------------------------------------------------------------------- PENDING values
 PENDING = "PENDING"
@@ -139,11 +145,26 @@ def _owned(st) -> bool:
     return st.st_uid == os.geteuid()
 
 
-def read_login(path: str, name: str) -> str:
+def _name_allowed(name, allowed) -> bool:
+    if not isinstance(allowed, (tuple, list, set)) or not allowed or not all(isinstance(a, str) for a in allowed):
+        raise LoginError("the allowed login names are a non-empty tuple, list or set of names")
+    return name in allowed
+
+
+def _value_text(value: bytes) -> str:
+    return value.decode("ascii")
+
+
+def read_login(path: str, name: str, *, allowed) -> str:
     """The value of a login file `NAME=<value>`, read at run time and never written down. Refused (LoginError, whose
-    message names the rule broken and never the content) unless the file keeps the rule."""
+    message names the rule broken and never the content) unless the file keeps the rule. `allowed` is the caller's
+    closed set of login names (binding 5: run_take.LOGIN_VARIABLE's values)."""
     if not isinstance(name, str) or not _NAME.fullmatch(name):
         raise LoginError("the variable name is upper-case letters, digits and underscores")
+    if not _name_allowed(name, allowed):
+        raise LoginError("the variable name is not one of the allowed login names")
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise LoginError("the login file is named by an absolute path")
     try:
         st = os.lstat(path)
     except OSError:
@@ -161,17 +182,17 @@ def read_login(path: str, name: str) -> str:
     except OSError:
         raise LoginError("the login file cannot be opened") from None
     try:
-        data = os.read(fd, (1 << 16) + 1)
+        data = os.read(fd, LOGIN_MAX_BYTES + 1)
     finally:
         os.close(fd)
-    m = _LOGIN_LINE.fullmatch(data) if len(data) <= 1 << 16 else None
+    m = _LOGIN_LINE.fullmatch(data) if len(data) <= LOGIN_MAX_BYTES else None
     if not m or m.group(1).decode() != name:
-        raise LoginError("the login file is not exactly one line NAME=<at least 20 characters, no whitespace, no "
-                         "double quote>")
+        raise LoginError("the login file is not exactly one line NAME=<at least 20 ASCII characters, no whitespace, "
+                         f"no double quote>, at most {LOGIN_MAX_BYTES} bytes")
     try:
-        return m.group(2).decode("utf-8")
+        return _value_text(m.group(2))
     except UnicodeDecodeError:
-        raise LoginError("the login file's value is not UTF-8") from None
+        raise LoginError("the login file's value is not ASCII") from None
 
 
 # ------------------------------------------------------------------------------------------------- the scan
