@@ -130,8 +130,16 @@ def slot_final(outcome: dict) -> bool:
 
 
 def cell_closed(history: list, cell) -> bool:
-    return any(not batch.is_ruling(o) and o["half_cell"] == cell and
-               o["cell_state"] == labels4.INCOMPLETE_MECHANICAL for o in history)
+    return any(o["half_cell"] == cell and o["cell_state"] == labels4.INCOMPLETE_MECHANICAL
+               for o in registration_outcomes(history))
+
+
+def registration_outcomes(history: list) -> list:
+    """The committed fates, including the publication reader's ruled fates."""
+    if any(batch.is_ruling(o) for o in history):
+        import check_results
+        return check_results.publication(history)["attempts"]
+    return history
 
 
 def guard_registration(row: dict, attempt: int, rows: list, history: list, *, live=()) -> None:
@@ -166,7 +174,7 @@ def guard_registration(row: dict, attempt: int, rows: list, history: list, *, li
         raise ValueError(f"at most {OPEN_LIMIT} open rows (three in one live block)")
     if cell_closed(history, row["half_cell"]):
         raise ValueError("the half-cell is closed by its committed state")
-    prior = [o for o in done.values() if o["slot"] == row["slot"]]
+    prior = [o for o in registration_outcomes(history) if o["slot"] == row["slot"]]
     if not prior:
         if attempt != 1:
             raise ValueError("the first attempt is 1")
@@ -179,7 +187,7 @@ def guard_registration(row: dict, attempt: int, rows: list, history: list, *, li
     if batch.needs_ruling(last):
         ruled = [r for r in history if batch.is_ruling(r) and
                  (r["slot"], r["attempt"]) == (last["slot"], last["attempt"])]
-        if not ruled or ruled[-1]["ruling"] != labels4.RULE_RERUN:
+        if not ruled or not last["rerun"]:
             raise ValueError("the stopped take needs a committed re-run ruling")
     elif last["state"] not in batch.RERUN_ROUTES and not (
             last["state"] == labels4.FAILED and last["drive_started"] is False):
