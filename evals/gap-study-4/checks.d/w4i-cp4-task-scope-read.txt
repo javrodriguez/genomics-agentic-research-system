@@ -1,0 +1,4 @@
+# Lane w4i-cp4-task-scope-read: CP4's repaired scope-read task (tasks/scope-read.json, variants/scope-read.json).
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_task_scope_read.py
+python3 -B -W ignore evals/gap-study-4/tasks/check_task.py scope-read

@@ -1,0 +1,20 @@
+{
+  "lane": "w4i-cp4-task-scope-read",
+  "files": [
+    {
+      "path": "COPIED.d/w4i-cp4-task-scope-read.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4i-cp4-task-scope-read.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, and check_task.py scope-read."
+    },
+    {
+      "path": "tests/test_task_scope_read.py",
+      "status": "new",
+      "reason": "Tests of the repaired scope-read task: check_task passes it; its binding to round 2's operator script, answer rule and wait point; the wait points as pause_adherence.ROUND3_WAIT_POINTS; the planted path as the generator plants it; the element slot; a leak-word sweep of the wordings; a drift test of every quoted contract and helper line at 844a4ce; and one in-memory mutant per gate clause the task's values carry. Written new."
+    }
+  ]
+}
