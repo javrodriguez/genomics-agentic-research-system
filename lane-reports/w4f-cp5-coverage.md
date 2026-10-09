@@ -127,3 +127,14 @@ The mutant counts are failing tests out of 44 in one whole-file run each (runner
 - `copy_manifest.py --check` after `git add`: `ok: 109 files from 8 fragment(s) ... 60 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`.
 - `lint_language.py coverage_today.md`: `clean — 1 input(s) scanned, 1 excused line(s) on record`; `lint_pooling.py coverage_today.md`: `clean — 1 file(s) and 0 commit(s) scanned, no excusal path`.
 - Not run, per the brief: `test_round4.py`, `run_checks.py`, the whole suite, a whole-file audit (athena's, through the lane lead).
+
+## Fold 2 (review round 2, folded Thu 8 Oct 2026, written 20:35 EDT)
+
+Round 2 on `a5883ebb` passed with no MAJOR, so under the stop rule only the MINOR that loosens a check was folded. The decisions below are the gap4 lane lead's, from `scratchpad/w4-review/w4f_fold2_brief.md`.
+
+- **W4F2-1 (MINOR), folded.** DECIDE_CALL was only a substring test, so a reach cite on the docstring line `codex_hook.py:320` passed. DECIDE_LINES now pins the only allowed claude-and-codex reach cites to the envelope's `decide(` call lines at `a626cdc2`: `codex_hook.py:323`, `378`, `416-417` and `426`. `decide_line_problems` re-reads each with `git show` and requires its first line, stripped, to open with `decide(`.
+  - Test: `TheFold2.test_w4f2_1_reach_cites_are_the_envelope_decide_calls`. Red commit `17485ce9` first (Ran 45, FAILED (failures=1)), then the fix.
+  - Near-miss: the `:320` cite is red. Its in-memory mutant: `:320` added to DECIDE_LINES is red as "not a decide( call line".
+  - Whole-file swaps (45 tests each): `src_drop_decide_lines_clause` red (1), `src_decide_line_reread_off` red (1), `md_reach_cite_to_codex_docstring_320` red (4).
+- **W4F2-2 to W4F2-5 (NITs), left unchanged by the lane lead's decision** and named here: W4F2-2 (STAGE_00_PAIRS and the stage line can swap a pair together), W4F2-3 (`reading_problems` checks the reading lines' heads only), W4F2-4 (the stage line's wording on what `decide` refuses inside a closed project), W4F2-5 (NOTE_NAME and the dropped-mark handling in `note_problems`; see the findings file).
+- Gates at the fix commit: `test_coverage.py` alone Ran 45, OK; `test_pause_adherence.py` Ran 30, OK; `copy_manifest.py --check` after `git add` ok (109 files, 8 fragments).
