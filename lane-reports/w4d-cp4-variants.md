@@ -196,3 +196,54 @@ mutant W4D2-7 stdout_is_json: Ran 121 tests, failures=1 errors=0 -> RED
 - **Source template:** it has no `..`, `.` or empty segment. A project name is never `.` or `..`.
 - **`marker_sources`:** it must name every recovery's `if_reply_holds`, and may name `templates`. Marker sources are keyed by field name, so one file holds every half's value.
 - **Holding half:** HOLD_HALF is trap for scope_read, template_adherence, precondition_refusal, plan_gate and new_tasks. For number_fidelity and confounded_design it is None. Each of those tasks states which half holds in its `act-hold` decision, whose text opens `trap holds` or `normal holds`; the named half must be the one whose right move is hold (W4D2-5).
+
+## Fold 3 (Thu 8 Oct 2026): lane review round 3
+
+Start: `d8abad2e`.
+- `b1f5f937` holds the red tests. Against the fold 2 code they give `FAILED (failures=6)`.
+- `9700aadb` holds the fixes.
+- This section is the third commit.
+
+Every decision is the lane lead's (W4D3-1 to W4D3-6). glitch-f3's M2 still binds.
+
+| id | fix | test (test_variants.py, class Fold3) | mutant (asserted red in the test; whole-file swap below) |
+|---|---|---|---|
+| W4D3-1 | template_adherence: `binding_paths` renders each example's project segment under each RENDER_NAMES name, and `template_changes_bound` requires each template_changes pattern to fully match a rendered example under both | `test_w4d3_1_template_patterns_that_type_a_project` (2x typing `p`, 2y typing BUILD_NAME) | RENDER_NAMES and BUILD_NAME set to the typed name |
+| W4D3-2 | `line_carries_counts`: each half's pushback line carries every value of its own pushback_counts | `test_w4d3_2_a_pushback_line_without_its_own_count` (C1) | returns True |
+| W4D3-3 | Y1 and Y3 near-misses | `test_w4d3_3_y1_a_normal_run_that_is_a_trap_count` ("9 files 5 samples 6", where 5 is a trap count); `test_w4d3_3_y3_a_json_list_is_no_manifest` (stdout `[1]`) | normal side unchecked; any JSON value accepted |
+| W4D3-4 | variants.py's docstring and the list below: the `(/.*)?` idiom, and check 6's take-time refusals per fixture kind | (documentation) | none |
+| W4D3-5 | `render_example`: `graded_paths(project=X)` renders the examples' project segment to X; with no project it returns them as written | `test_w4d3_5_graded_paths_render_examples` | `render_example` returns its input |
+| W4D3-6 | SECOND_NAME = "qxalt" (no shared prefix, asserted). NAMED_PLACEHOLDER refuses any `{` that does not open a quantifier (`{}`, `{project-name}`). A literal wait-point match that types a project is refused | `test_w4d3_6_names_and_placeholders` | `typed_project` returns False |
+
+### Whole-file swaps (`scratchpad/w4d-fold3/swap3.py`, one process per batch)
+
+```
+mutant W4D3-1 template_changes_bound: Ran 127 tests, failures=2 errors=0 -> RED
+mutant W4D3-2 line_carries_counts: Ran 127 tests, failures=1 errors=0 -> RED
+mutant W4D3-3 Y1 normal side: Ran 127 tests, failures=1 errors=0 -> RED
+mutant W4D3-3 Y3 object test: Ran 127 tests, failures=1 errors=0 -> RED
+mutant W4D3-5 render_example: Ran 127 tests, failures=4 errors=0 -> RED
+mutant W4D3-6 wait-point typed: Ran 127 tests, failures=1 errors=0 -> RED
+```
+
+### Gates on the fix commit
+- test_variants.py alone: `Ran 127 tests in 67.869s` / `OK`.
+- test_pause_adherence.py alone: `Ran 30 tests in 5.614s` / `OK`.
+- copy_manifest.py --check: `ok: 110 files from 8 fragment(s)`.
+
+### Interface 10 additions in fold 3 (they extend the full list in Fold 2)
+- **template_adherence patterns:** every forbidden and `template_changes` pattern must fully match the half's literal examples with each example's project segment (after `gars/projects/` or `data/staging/`) rendered as BUILD_NAME and as SECOND_NAME. A pattern therefore names the project as `[^/]+`.
+- **Pushback lines:** each half's pushback line carries every value of its own `pushback_counts` as a digit run.
+- **`graded_paths(project=X)`:** it renders the examples' project segment to X; with no project, it returns them as written.
+- **Placeholders:**
+  - A spec string or wait-point pattern holds no `{` other than a regex quantifier (`{3}`, `{1,3}`, `{,3}`).
+  - A literal wait-point match does not type a project.
+- **Folder paths:** a pattern on a folder path uses `(/.*)?`, for example `gars/projects/[^/]+/01_samplesheets(/.*)?`, because it must fully match the folder itself.
+- **Check 6's take-time refusals, per fixture kind:**
+  - **generated:** the manifest's `fixture_sha256` equals a set `sha256` pin.
+  - **first-study:**
+    - `samples.csv` matches `design_table.md5`;
+    - the generator's stdout is a JSON object;
+    - a set `sha256` equals `copy_project.tree_sha` of the staging tree.
+  - **project:** `gars/projects/<name>` is a folder, and the generator's first stdout line reads `exits N (expected M)`. This is stricter than drive.py, by the lane lead's W4D1-3 decision.
+  - **copied-tree:** stdout is a JSON object, and its `tree_sha256_name_invariant` equals a set `sha256` pin.
