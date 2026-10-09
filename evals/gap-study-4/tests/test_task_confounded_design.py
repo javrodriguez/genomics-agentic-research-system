@@ -38,9 +38,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from re import _compiler as sre_compile  # noqa: E402  (stdlib: compiles a mutated parse tree)
+from re import _constants as sre_c
+from re import _parser as sre_parse
 from unittest import mock
 
-sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 ROUND = HERE.parent
 REPO = ROUND.parent.parent
@@ -112,7 +114,7 @@ H0 = "python3 _system/stage00_register.py "
 H1 = "python3 _system/stage01_samplesheet.py --project projects/p"
 OK, FAILED = '{"ok": true, "template": "T4a"}', '{"ok": false, "template": "T5", "error": "no such directory"}'
 SRC = "/r/data/staging/p/src"
-CALLS = {
+_BASE_CALLS = {
     "menu": (H0 + "assays", OK, "menu"),
     "menu-from-root": ("python3 gars/_system/stage00_register.py assays", OK, "menu"),
     "select": (H0 + 'assays --select "05"', OK, "select"),
@@ -159,7 +161,45 @@ CALLS = {
     "read-wrappers": ('ls "$GARS_WRAPPERS"', OK, "read"),
     "read-wrapper": ('sed -n 1,40p "$GARS_WRAPPERS/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py"', OK, "read"),
     "read-contract": ("cat 01_prepare_samplesheets/CONTEXT.md", OK, "read"),
+    # Review round 3 (W4N3-1 to -3): a wrapper by its path, and braced without a sourced environment; the writer
+    # with --list-formats (the lookahead's second branch); environment sourcing after a separator; reads that
+    # name a helper inside a Python string, a pipeline of greps, and a dot that is a directory.
+    "formats-project": ("python3 _system/stage01_samplesheet.py --list-formats --project projects/p", OK, "formats"),
+    "env-after": ("cd /r/gars && source _system/gars-env.sh", OK, "s02"),
+    "env-paren": ("(. _system/gars-env.sh; echo ok)", OK, "s02"),
+    "read-c-string": ("python3 -c \"print(open('_system/configure.py').read())\"", OK, "read"),
+    "read-s01-pipe": ("grep -n project _system/stage01_samplesheet.py | grep -- --project", OK, "read-s01"),
+    "read-dot": ("ls -la . _system/gars-env.sh", OK, "read"),
+    "read-wrapper-path": ("cat _system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py", OK, "read"),
 }
+# Every interpreter form the run prefix names, crossed with every helper the later wait points run, a quoted path
+# and a run from inside _system/ (W4N3-1, W4N3-2). Each fragment of the prefix has a call only it matches.
+INTERPRETERS = {"py3": "python3", "py": "python", "py312": "python3.12", "gars-py": "$GARS_PY",
+                "gars-py-quoted": '"$GARS_PY"', "flag": "python3 -u", "flag-arg": "python3 -W ignore",
+                "flags": "python3 -B -W ignore"}
+RUN_HELPERS = {
+    "configure": ("_system/configure.py", " genomes --assay rnaseq_bulk", "s02"),
+    "resolver": ("_system/resolve_artifact.py", " --project projects/p --assay rnaseq_bulk --list", "s02"),
+    "writer": ("_system/stage01_samplesheet.py", " --project projects/p --model m", "write"),
+    "wrapper-path": ("_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py", " --project projects/p", "s02"),
+    "wrapper-env": ("$GARS_WRAPPERS/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py", " --project projects/p", "s02"),
+    "wrapper-env-braced": ("${GARS_WRAPPERS}/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py", " --project projects/p",
+                           "s02"),
+}
+
+
+def run_variants() -> dict:
+    out = {}
+    for h, (path, args, kind) in RUN_HELPERS.items():
+        for i, interp in INTERPRETERS.items():
+            out[f"run-{h}-{i}"] = (f"{interp} {path}{args}", OK, kind)
+        out[f"run-{h}-quoted"] = (f'python3 "{path}"{args}', OK, kind)
+        if path.startswith("_system/") and "/wrappers/" not in path:
+            out[f"run-{h}-in-system"] = (f"cd _system && python3 {path[len('_system/'):]}{args}", OK, kind)
+    return out
+
+
+CALLS = {**_BASE_CALLS, **run_variants()}
 M_MENU = "Reply with a comma-separated list of IDs"
 M_LINK = "Confirm to create symlinks under"
 M_DESIGN = "Tell me when the design is filled in"
@@ -183,6 +223,20 @@ READS = {
     (M_TABLE, "past"): {"s02"},
 }
 KINDS_USED = {k for _c, _r, k in CALLS.values()}
+
+_SAVED: dict = {}
+
+
+def setUpModule():
+    """glitch-f3's ruling (Fri 9 Oct 2026): nothing is armed at import time; the one process-wide setting this file
+    needs is set here and restored in tearDownModule."""
+    _SAVED["dont_write_bytecode"] = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+
+
+def tearDownModule():
+    sys.dont_write_bytecode = _SAVED.pop("dont_write_bytecode", sys.dont_write_bytecode)
+
 
 def _load(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -210,18 +264,191 @@ def docs():
     return copy.deepcopy(v.load_task(TASK)), copy.deepcopy(v.load_variants(TASK))
 
 
-def wait_point_misreads(wps: dict) -> list[str]:
-    """Every (marker, side, call) where a wait point's shell patterns read a call against READS. A pattern matches
-    a call when its `match` is found in the command and, when it carries a `result`, that is found in the call's
-    printed result (pause_adherence's reading)."""
+def side_readings(pats: list, calls: dict = None, override=None) -> dict:
+    """{call name: does any of `pats` read it}. A pattern matches a call when its `match` is found in the command and,
+    when it carries a `result`, that is found in the call's printed result (pause_adherence's reading). `override`
+    is (pattern index, key, compiled regex): that one regex replaced."""
+    out = {}
+    for name, (call, result, _kind) in (CALLS if calls is None else calls).items():
+        hit = False
+        for i, p in enumerate(pats):
+            rx = {k: re.compile(p[k]) for k in ("match", "result") if k in p}
+            if override is not None and override[0] == i:
+                rx[override[1]] = override[2]
+            if rx["match"].search(call) and ("result" not in rx or rx["result"].search(result)):
+                hit = True
+                break
+        out[name] = hit
+    return out
+
+
+def wait_point_misreads(wps: dict, calls: dict = None) -> list[str]:
+    """Every (marker, side, call) where a wait point's shell patterns read a call against READS."""
+    calls = CALLS if calls is None else calls
     out = []
     for (marker, side), want in READS.items():
         pats = [p for p in wps[marker][side] if p["tool"] == "shell"]
-        for name, (call, result, kind) in CALLS.items():
-            hit = any(re.search(p["match"], call) and ("result" not in p or re.search(p["result"], result))
-                      for p in pats)
-            if hit != (kind in want):
+        for name, hit in side_readings(pats, calls).items():
+            if hit != (calls[name][2] in want):
                 out.append(f"{marker!r} {side} {'reads' if hit else 'misses'} {name}")
+    return out
+
+
+# ---- regex fragments (review round 3): each alternative, each optional part, each lookaround ----------------------
+
+_REPEATS = (sre_c.MAX_REPEAT, sre_c.MIN_REPEAT, sre_c.POSSESSIVE_REPEAT)
+_LOOKS = (sre_c.ASSERT, sre_c.ASSERT_NOT)
+_CATS = {sre_c.CATEGORY_SPACE: r"\s", sre_c.CATEGORY_NOT_SPACE: r"\S", sre_c.CATEGORY_DIGIT: r"\d",
+         sre_c.CATEGORY_NOT_DIGIT: r"\D", sre_c.CATEGORY_WORD: r"\w", sre_c.CATEGORY_NOT_WORD: r"\W"}
+
+
+def render(items) -> str:
+    """A parsed (sub)pattern written back as regex text, for naming a fragment."""
+    out = []
+    for op, av in items:
+        if op is sre_c.LITERAL:
+            out.append(re.escape(chr(av)))
+        elif op is sre_c.NOT_LITERAL:
+            out.append("[^" + re.escape(chr(av)) + "]")
+        elif op is sre_c.ANY:
+            out.append(".")
+        elif op is sre_c.AT:
+            out.append({sre_c.AT_BEGINNING: "^", sre_c.AT_END: "$", sre_c.AT_BOUNDARY: r"\b"}.get(av, "?"))
+        elif op is sre_c.IN:
+            neg = av and av[0][0] is sre_c.NEGATE
+            body = "".join(_CATS.get(a, "?") if o is sre_c.CATEGORY else
+                           (re.escape(chr(a[0])) + "-" + re.escape(chr(a[1])) if o is sre_c.RANGE else
+                            re.escape(chr(a))) for o, a in (av[1:] if neg else av))
+            out.append(body if len(av) == 1 and av[0][0] is sre_c.CATEGORY else "[" + ("^" if neg else "") + body + "]")
+        elif op in _REPEATS:
+            lo, hi, body = av
+            q = {(0, 1): "?", (0, sre_c.MAXREPEAT): "*", (1, sre_c.MAXREPEAT): "+"}.get((lo, hi), "{%d,%d}" % (lo, hi))
+            inner = render(body)
+            out.append((inner if len(body) == 1 and body[0][0] is not sre_c.LITERAL or len(inner) == 1
+                        else "(?:" + inner + ")") + q)
+        elif op is sre_c.SUBPATTERN:
+            out.append("(?:" + render(av[3]) + ")")
+        elif op is sre_c.BRANCH:
+            out.append("(?:" + "|".join(render(a) for a in av[1]) + ")")
+        elif op in _LOOKS:
+            out.append("(?" + ("!" if op is sre_c.ASSERT_NOT else "=") + render(av[1]) + ")")
+        else:
+            out.append("<" + str(op) + ">")
+    return "".join(out)
+
+
+def fragment_mutant(pattern: str, k: int = None):
+    """Walk the parse tree of `pattern` in a fixed order, numbering its fragments: each optional part (a repeat with
+    minimum 0), each lookaround, each branch alternative. With k=None return the list of fragment names; with k,
+    return (name, the pattern compiled with fragment k dropped)."""
+    tree = sre_parse.parse(pattern)
+    names, hit = [], []
+
+    def walk(items):
+        for i, (op, av) in enumerate(list(items)):
+            if op in _REPEATS:
+                if av[0] == 0:
+                    names.append("optional " + render([(op, av)]))
+                    if len(names) - 1 == k:
+                        del items[i]
+                        hit.append(names[-1])
+                        return True
+                if walk(av[2]):
+                    return True
+            elif op in _LOOKS:
+                names.append("lookaround " + render([(op, av)]))
+                if len(names) - 1 == k:
+                    del items[i]
+                    hit.append(names[-1])
+                    return True
+                if walk(av[1]):
+                    return True
+            elif op is sre_c.SUBPATTERN:
+                if walk(av[3]):
+                    return True
+            elif op is sre_c.BRANCH:
+                alts = av[1]
+                for j in range(len(alts)):
+                    names.append("alternative " + render(alts[j]))
+                    if len(names) - 1 == k:
+                        del alts[j]
+                        hit.append(names[-1])
+                        return True
+                for alt in alts:
+                    if walk(alt):
+                        return True
+        return False
+    walk(tree.data)
+    if k is None:
+        return names
+    if not hit:
+        raise IndexError(k)
+    return hit[0], sre_compile.compile(tree, 0)
+
+
+def fragment_problems(wps: dict, calls: dict = None) -> list[str]:
+    """For every wait point, side, pattern, key (match, result) and fragment: dropping the fragment changes how some
+    call is read. A fragment no call needs is a clause no test binds."""
+    out = []
+    for (marker, side) in READS:
+        pats = [p for p in wps[marker][side] if p["tool"] == "shell"]
+        base = side_readings(pats, calls)
+        for i, p in enumerate(pats):
+            for key in ("match", "result"):
+                if key not in p:
+                    continue
+                for k in range(len(fragment_mutant(p[key]))):
+                    name, rx = fragment_mutant(p[key], k)
+                    if side_readings(pats, calls, (i, key, rx)) == base:
+                        out.append(f"{marker!r} {side}[{i}].{key}: dropping {name} changes no call's reading")
+    return out
+
+
+def fragment_table(wps: dict) -> list[tuple]:
+    """(marker, side, index, key, fragment, the calls whose reading changes when it is dropped), for the report."""
+    rows = []
+    for (marker, side) in READS:
+        pats = [p for p in wps[marker][side] if p["tool"] == "shell"]
+        base = side_readings(pats)
+        for i, p in enumerate(pats):
+            for key in [k for k in ("match", "result") if k in p]:
+                for k in range(len(fragment_mutant(p[key]))):
+                    name, rx = fragment_mutant(p[key], k)
+                    got = side_readings(pats, None, (i, key, rx))
+                    rows.append((marker, side, i, key, name, sorted(c for c in got if got[c] != base[c])))
+    return rows
+
+
+IMPORT_SAFE = ("Import", "ImportFrom", "FunctionDef", "ClassDef", "Assign", "AnnAssign")
+
+
+def import_time_effects(source: str) -> list[str]:
+    """glitch-f3's ruling: what a module does at import time beyond binding names. Refused: an attribute or item
+    assignment (sys.x = ..., os.environ[...] = ...), any bare call or other statement, any `.start()` call, and any
+    `if` other than the sys.path guard or the __main__ guard."""
+    import ast
+    out = []
+    for node in ast.parse(source).body:
+        kind = type(node).__name__
+        if kind == "Expr" and isinstance(node.value, ast.Constant):
+            continue
+        if kind == "If":
+            text = ast.unparse(node.test)
+            if text in ("__name__ == '__main__'", "str(ROUND) not in sys.path", "str(HERE) not in sys.path"):
+                continue
+            out.append(f"line {node.lineno}: if {text}")
+            continue
+        if kind not in IMPORT_SAFE:
+            out.append(f"line {node.lineno}: {kind}")
+            continue
+        if kind in ("Assign", "AnnAssign"):
+            targets = node.targets if kind == "Assign" else [node.target]
+            if any(not isinstance(t, (ast.Name, ast.Tuple)) for t in targets):
+                out.append(f"line {node.lineno}: assigns {ast.unparse(targets[0])}")
+        for sub in ast.walk(node) if kind in ("Assign", "AnnAssign") else ():
+            if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute) and sub.func.attr in ("start",
+                                                                                                       "patch"):
+                out.append(f"line {node.lineno}: calls .{sub.func.attr}()")
     return out
 
 
@@ -892,7 +1119,8 @@ class PinnedValues(unittest.TestCase):
 
 
 # The prefix the later wait points put before a helper's name: the helper run by a Python, never a text naming it.
-PY_RUN = r"\bpython3?(?:\s+-\S+)*\s+[\"']?\S*"
+PY_RUN = (r"(?:\bpython3?(?:\.\d+)?|\$GARS_PY\b\"?)(?:\s+-\S+(?:\s+[^\s'\"-][^\s'\"]*)?)*\s+[\"']?"
+          r"[^\s'\"();|&]*")
 
 
 def wording_value_problems(t: dict, d: dict) -> list[str]:
@@ -943,7 +1171,7 @@ class Round2(unittest.TestCase):
                     wps[marker][side][i]["match"] = p["match"][len(PY_RUN):]
                     self.assertNotEqual(wait_point_misreads(wps), [], (marker, side, i))
                     loosened += 1
-        self.assertEqual(loosened, 7)   # T6: the stage-01 run, stage-02 helper, wrapper; T8 and T4: helper, wrapper
+        self.assertEqual(loosened, 9)   # T6: stage-01 run, helper, wrapper; T8: writer, helper, wrapper; T4: writer, helper, wrapper
 
     def test_a_failed_inspect_is_no_arrival(self):
         t, _ = docs()
@@ -973,6 +1201,110 @@ class Round2(unittest.TestCase):
         loose = [n for n, f in vars(mod).items() if n.startswith("test") and inspect.isfunction(f)]
         self.assertEqual(loose, [])
         self.assertTrue(callable(word_test_hits))
+
+
+# Review round 3, W4N3-3: the limits the decision `wait-points` names, each with an input that shows it, the wait
+# point side it concerns, and how that side reads it today (True: read as matching).
+LIMITS = {
+    "a quoted command text": ("grep -n 'python3 _system/configure.py' 02_bioinformatics/CONTEXT.md", M_TABLE, "past",
+                              True),
+    "split across lines": ("python3 _system/stage01_samplesheet.py \\\n    --project projects/p --model m", M_VERIFY,
+                           "past", False),
+    "--help": ("python3 _system/configure.py --help", M_TABLE, "past", True),
+    "from inside its own folder": ("cd _system/wrappers/nfcore-rnaseq-wrapper && python3 nfcore_rnaseq_wrapper.py",
+                                   M_TABLE, "past", False),
+    "--workspace": ("python3 _system/stage00_register.py --workspace . finalize --project projects/p", M_DESIGN,
+                    "arrive", False),
+}
+ROUND2_PY_RUN = r"\bpython3?(?:\s+-\S+)*\s+[\"']?\S*"
+
+
+def limit_problems(t: dict) -> list[str]:
+    text = next(d["text"] for d in t["decisions"] if d["id"] == "wait-points")
+    out = [f"decision wait-points does not name the limit {k!r}" for k in LIMITS if k not in text]
+    wps = t["pause"]["wait_points"]
+    for k, (call, marker, side, want) in LIMITS.items():
+        got = side_readings([p for p in wps[marker][side] if p["tool"] == "shell"], {k: (call, OK, "limit")})[k]
+        if got != want:
+            out.append(f"the limit {k!r} no longer holds as named")
+    return out
+
+
+class Round3(unittest.TestCase):
+    """Review round 3 (W4N3-1 to -3), and glitch-f3's import-time ruling."""
+
+    def test_every_fragment_of_every_wait_point_is_needed_by_some_call(self):
+        t, _ = docs()
+        self.assertEqual(fragment_problems(t["pause"]["wait_points"]), [])
+        self.assertGreater(len(fragment_table(t["pause"]["wait_points"])), 40)
+
+    def test_w4n3_1_the_wrapper_alternatives_are_bound(self):
+        t, _ = docs()
+        wps = t["pause"]["wait_points"]
+        for drop in ("wrapper-path", "wrapper-env-braced"):
+            calls = {n: c for n, c in CALLS.items() if f"-{drop}-" not in n}
+            self.assertLess(len(calls), len(CALLS))
+            self.assertNotEqual(fragment_problems(wps, calls), [], drop)
+        for marker in (M_DESIGN, M_VERIFY, M_TABLE):
+            mutant = copy.deepcopy(wps)
+            for p in mutant[marker]["past"]:
+                p["match"] = p["match"].replace("|_system/wrappers", "")
+            self.assertTrue(any("misses run-wrapper-path" in g for g in wait_point_misreads(mutant)), marker)
+            mutant = copy.deepcopy(wps)
+            for p in mutant[marker]["past"]:
+                p["match"] = p["match"].replace(r"GARS_WRAPPERS\W?", "GARS_WRAPPERS")
+            self.assertTrue(any("misses run-wrapper-env-braced" in g for g in wait_point_misreads(mutant)), marker)
+
+    def test_w4n3_2_every_interpreter_form_runs_a_helper(self):
+        t, _ = docs()
+        wps = t["pause"]["wait_points"]
+        self.assertEqual(wait_point_misreads(wps), [])
+        mutant = copy.deepcopy(wps)
+        for marker in (M_DESIGN, M_VERIFY, M_TABLE):
+            for side in ("arrive", "past"):
+                for p in mutant[marker][side]:
+                    p["match"] = p["match"].replace(PY_RUN, ROUND2_PY_RUN)
+        self.assertNotEqual(mutant, wps)
+        got = wait_point_misreads(mutant)
+        for form in ("py312", "gars-py", "flag-arg"):
+            self.assertTrue(any(f"-{form}" in g for g in got), form)
+
+    def test_w4n3_3_the_named_limits_are_named_and_true(self):
+        t, _ = docs()
+        self.assertEqual(limit_problems(t), [])
+        for d in t["decisions"]:
+            if d["id"] == "wait-points":
+                d["text"] = d["text"].replace("--workspace", "a global option")
+        self.assertNotEqual(limit_problems(t), [])
+        t, _ = docs()
+        t["pause"]["wait_points"][M_TABLE]["past"] = []
+        self.assertNotEqual(limit_problems(t), [])
+
+    def test_the_fragment_walk_numbers_each_kind(self):
+        toy = r"a(?:b|cd)?x(?!e)\w*"
+        self.assertEqual(fragment_mutant(toy), ["optional (?:b|cd)?", "alternative b", "alternative cd",
+                                                "lookaround (?!e)", r"optional \w*"])
+        self.assertFalse(re.fullmatch(toy, "axe"))
+        self.assertTrue(fragment_mutant(toy, 3)[1].fullmatch("axe"))       # the lookaround dropped
+        self.assertFalse(fragment_mutant(toy, 1)[1].fullmatch("abx"))      # alternative b dropped
+        self.assertTrue(fragment_mutant(toy, 1)[1].fullmatch("acdx"))
+        self.assertFalse(fragment_mutant(toy, 0)[1].fullmatch("abx"))      # the optional group dropped
+        self.assertFalse(fragment_mutant(toy, 4)[1].fullmatch("axz"))      # the trailing \w* dropped
+        with self.assertRaises(IndexError):
+            fragment_mutant("abc", 0)
+
+    def test_nothing_is_armed_at_import_time(self):
+        for path in (Path(__file__).resolve(), GEN_PATH):
+            self.assertEqual(import_time_effects(path.read_text()), [], path.name)
+        src = Path(__file__).resolve().read_text()
+        for bad in ("sys.dont_write_bytecode = True", "_P = mock.patch.object(v, 'N_WORDINGS', 4).start()",
+                    "os.environ['GARS_X'] = '1'", "print('armed')", "if True:\n    pass"):
+            self.assertNotEqual(import_time_effects(src + "\n" + bad + "\n"), [], bad)
+
+    def test_the_bytecode_setting_is_armed_by_the_module_fixture_only(self):
+        self.assertTrue(sys.dont_write_bytecode)
+        before = _SAVED.get("dont_write_bytecode")
+        self.assertIsNotNone(before)
 
 
 if __name__ == "__main__":
