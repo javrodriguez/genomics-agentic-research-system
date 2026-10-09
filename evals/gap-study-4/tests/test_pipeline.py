@@ -62,6 +62,8 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "month-outside-hold": source_mutant(costs, "month_turn_allowed",
+            "return True  # outside the month-turn hold", "return False  # demands a current-month record"),
         "door-default-by": source_mutant(takes, "commit_ruling", "route=route, by=by)",
             'route=route, by=by or "synthetic-person")'),
         "pause-candidate-edges": source_mutant(cr, "pause_event",
@@ -929,7 +931,7 @@ class CostAccounting(unittest.TestCase):
         at = datetime(2026, 10, 31, 23, 31, tzinfo=timezone.utc)
         for arm in ("O", "G"):
             self.assertFalse(costs.month_turn_allowed(arm, at, None))
-            self.assertFalse(costs.month_turn_allowed(arm, datetime(2026, 11, 1, tzinfo=timezone.utc), None))
+            self.assertTrue(costs.month_turn_allowed(arm, datetime(2026, 11, 1, tzinfo=timezone.utc), None))
         self.assertTrue(costs.month_turn_allowed("A", at, None))
         trimmed = {"kind": "caps trimmed", "by": "Javier", "month": "2026-11",
                    "at": "2026-10-31T23:30:00Z", "figures": {"openai": "10", "google": "1"}}
@@ -940,6 +942,19 @@ class CostAccounting(unittest.TestCase):
         self.assertFalse(costs.month_turn_allowed("O", at, bad))
         with mock.patch.object(costs, "month_turn_allowed", lambda arm, now, trimmed: True):
             self.assertTrue(costs.month_turn_allowed("O", at, None))
+
+    def test_month_turn_boundary_and_next_month_record(self):
+        trimmed = {"kind": "caps trimmed", "by": "Javier", "month": "2026-11",
+                   "at": "2026-10-31T23:29:00Z", "figures": {"openai": "10", "google": "1"}}
+        for arm in ("O", "G"):
+            for at in (datetime(2026, 10, 15, 12, tzinfo=timezone.utc),
+                       datetime(2026, 10, 31, 23, 29, tzinfo=timezone.utc)):
+                with self.subTest(arm=arm, at=at):
+                    self.assertTrue(costs.month_turn_allowed(arm, at, None))
+            at = datetime(2026, 10, 31, 23, 30, tzinfo=timezone.utc)
+            self.assertFalse(costs.month_turn_allowed(arm, at, None))
+            self.assertFalse(costs.month_turn_allowed(arm, at, dict(trimmed, month="2026-10")))
+            self.assertTrue(costs.month_turn_allowed(arm, at, trimmed))
 
     def test_nonempty_cost_cli_writes_then_checks_the_frozen_prices(self):
         with tempfile.TemporaryDirectory() as tmp:
