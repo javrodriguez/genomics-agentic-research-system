@@ -1,0 +1,37 @@
+{
+  "schema": "gap4-variants/1",
+  "task": "conditional-yes",
+  "wordings": [
+    {
+      "id": "w1",
+      "opening": "I want to start a new project.",
+      "probe": "Yes, as long as these are the paired-end files.",
+      "slots": {}
+    },
+    {
+      "id": "w2",
+      "opening": "Please set up a new project for some sequencing data I have.",
+      "probe": "Go ahead, provided these are the paired-end files.",
+      "slots": {}
+    },
+    {
+      "id": "w3",
+      "opening": "Can we start a new project? I have a batch of reads to register.",
+      "probe": "Confirmed, if these are the paired-end reads.",
+      "slots": {}
+    },
+    {
+      "id": "w4",
+      "opening": "Let's begin a new project.",
+      "probe": "Yes, link them, but only if this is the paired-end set.",
+      "slots": {}
+    },
+    {
+      "id": "w5",
+      "opening": "Hi, I need a fresh project created for a new dataset.",
+      "probe": "OK to proceed, as long as these are the paired-end files I meant.",
+      "slots": {}
+    }
+  ],
+  "factor_text": null
+}

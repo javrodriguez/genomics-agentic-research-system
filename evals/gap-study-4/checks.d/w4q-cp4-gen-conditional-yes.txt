@@ -1,0 +1,4 @@
+# Lane w4q-cp4-gen-conditional-yes: CP4's conditional-yes task, its wordings and its generator gen_conditional_yes.py.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_task_conditional_yes.py
+python3 -B -W ignore evals/gap-study-4/tasks/check_task.py conditional-yes
