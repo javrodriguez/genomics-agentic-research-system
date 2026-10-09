@@ -383,7 +383,8 @@ class Instruction:
     args: str        # the arguments, continuation lines joined by one space
 
 
-# BuildKit's continuation (frontend/dockerfile/parser/parser.go): a line ending in the escape character, optionally
+# BuildKit's continuation (moby/buildkit frontend/dockerfile/parser/parser.go, its master branch as lane review
+# round 1 read it on 8 Oct 2026; no commit was recorded, so this is a citation, not a pin): a line ending in the escape character, optionally
 # followed by spaces or tabs, continues; the escape and that whitespace are dropped, the character before it kept.
 _CONTINUATION_RE = re.compile(r"([^\\])\\[ \t]*$")
 # What a Dockerfile line may hold: printable ASCII, space and tab (no carriage return, no other control or
