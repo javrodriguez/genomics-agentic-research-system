@@ -62,6 +62,8 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "door-default-by": source_mutant(takes, "commit_ruling", "route=route, by=by)",
+            'route=route, by=by or "synthetic-person")'),
         "pause-candidate-edges": source_mutant(cr, "pause_event",
             "if not candidates:", "if len(candidates) != 1:"),
         "registration-publication": (takes, "registration_outcomes",
@@ -598,6 +600,20 @@ class RulingDoor(unittest.TestCase):
             takes.validate_ruling(dict(good, block=1), history)
         with self.assertRaises(ValueError):
             takes.validate_ruling(good, [])
+
+    def test_door_refuses_missing_caller_by_without_a_commit(self):
+        for by in (None, ""):
+            with self.subTest(by=by), repository() as repo:
+                r = row()
+                repo.register(r, 1)
+                repo.commit_records(r, 1, outcome(r, state=labels4.FAILED, final=False))
+                before = git(repo.root, "rev-parse", "HEAD")
+                with self.assertRaisesRegex(ValueError, "by"):
+                    takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
+                        route=labels4.ABORTED, by=by, root=repo.root, repo=repo.root)
+                self.assertEqual(git(repo.root, "rev-parse", "HEAD"), before)
+                self.assertEqual(git(repo.root, "status", "--porcelain"), "")
+                self.assertFalse((repo.root / "rulings.json").exists())
 
 
 _RUN = None
