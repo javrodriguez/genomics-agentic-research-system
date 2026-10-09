@@ -2,7 +2,7 @@ status: done
 
 # Lane w4k-cp4-task-number-fidelity: CP4 task number-fidelity (repaired + pushback)
 
-- Builder: opus-medium, cloud session. Written Fri 9 Oct 2026, 03:34 UTC; review round 1 folded at 03:45 UTC; review round 2 folded at 04:03 UTC; review round 3 (PASS) recorded at 04:13 UTC (read from `date`).
+- Builder: opus-medium, cloud session. Written Fri 9 Oct 2026, 03:34 UTC; review round 1 folded at 03:45 UTC; review round 2 folded at 04:03 UTC; review round 3 (PASS) recorded at 04:13 UTC; glitch-f3's import-time ruling applied at 04:42 UTC (read from `date`).
 - Branch `gap4/w4k-cp4-task-number-fidelity`, base `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d not closed).
 - `$PY` = `/usr/bin/python3.13`, Python 3.13.16 (NAMED DEPARTURE D2). Every gate ran with `PYTHONDONTWRITEBYTECODE=1 -B -W ignore` and single-threaded BLAS, in the foreground, one at a time, under `flock /tmp/claude-0/lanes/test.lock`.
 - Start block: HEAD and branch matched; `git status --porcelain --ignored` printed nothing; e2979b31, 844a4ce and 68ec902f are commits; `core.hooksPath` unset; `.git` is a file (a worktree).
@@ -46,7 +46,12 @@ Only owned files. No generator added (the task uses the base's copied `fixtures/
 
 ## Tests and checks run, with the runner's output
 
-Final tree, after round 3 (commit `24a164b4`; the report commit after it touches only this file):
+glitch-f3's ruling of 00:41 EDT, Fri 9 Oct 2026 (see the decisions), on the tree at commit `855eb298`. The report commit after it touches only this file:
+
+- `flock /tmp/claude-0/lanes/test.lock env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/bin/python3.13 -B -W ignore evals/gap-study-4/tests/test_scaffold.py`, run alone from the worktree root, in the foreground: `Ran 49 tests in 26.691s` / `OK`, exit 0. It is a base file, not this lane's, so it is not in `checks.d/w4k-cp4-task-number-fidelity.txt`.
+- `test_round4.py` was not run (open question 6).
+
+Final tree, after round 3 (commit `24a164b4`):
 
 - test file: `Ran 74 tests in 2.867s` / `OK`, exit 0.
 - `check_task.py number-fidelity`: `check_task: number-fidelity: ok (12 checks)`, exit 0.
@@ -89,6 +94,13 @@ Not run here (owed, run by glitch-f3 on return): `test_round4.py`, `run_checks.p
 7. **Wait points equal `ROUND3_WAIT_POINTS`,** bound by a test, not retyped by hand. The helper-line citations live in a `wait-points` decision, since the wait-point shape is closed. A test binds each cited line at 844a4ce.
 8. **Leak words.** The copied `leak_grep.py` takes no path argument (only `--check` and `--json`, and it reads sessions under its own roots), so it cannot be pointed at a task file. The test file holds its own short word list and checks every sent text with placeholders removed (study, test, testing, evaluation, evaluate, eval, grader, graded, benchmark, experiment, probe, pushback, trap, fixture, gap).
 9. **Test lock (the cloud lead's decision, relayed mid-lane):** every test, gate and fixture build ran under `flock /tmp/claude-0/lanes/test.lock`, in the foreground.
+10. **glitch-f3's ruling, 00:41 EDT Fri 9 Oct 2026, under Javier's delegation, quoted verbatim:** "Never start a test module's process-guard or other patches at import time. Arm them in setUpModule and stop them in tearDownModule, the way w4c does. Wave 4 found that w4a's and w4b's import-time patches break wave 1's test_round4, which imports every test module in one process. Each file passed alone, so no lane gate caught it. Every lane must also run `python3 evals/gap-study-4/tests/test_scaffold.py` and test_round4.py as a gate, not only its own files. Apply it before each lane's next hand-back."
+    How this lane applied it: I checked every module-level statement of `tests/test_task_number_fidelity.py` (this lane has no generator). It starts no patch, mock, environment change, process guard or other side effect at import. At import it only:
+    - puts `evals/gap-study-4` on `sys.path`, once and guarded, as interface 3 requires;
+    - loads `tasks/check_task.py` and `fixtures/check_fixture.py` by file path under private module names;
+    - loads the number_fidelity grader through `variants.load_grader`;
+    - defines constants.
+    Every mutant runs in memory on a per-test copy, and every fixture build and git export runs inside a test. Nothing needed to move, so no code changed. `test_scaffold.py` was run as a gate (above). `test_round4.py` was not run: see open question 6.
 
 ## Open questions for the lane lead
 
@@ -97,6 +109,7 @@ Not run here (owed, run by glitch-f3 on return): `test_round4.py`, `run_checks.p
 3. **The tools the takes may call:** the wait points read shell calls only (`stage00_register.py`, `stage01_samplesheet.py`). The grader reads `operator` and `agent-text` events only. I know of no tool the view's table lacks for this task.
 4. `check_fixture.py` runs the worktree's `gars/` helper, not the pinned one. This lane also binds the pinned helper in its own test. Should the copied checker take the pinned tree in CP2?
 5. **w4d internal names this lane's tests rely on (W4K3-1).** The test file calls w4d names outside interface 10's published list: `v._PLACEHOLDER`, `v.render_probe`, `v.load_grader`, `v.variants_shape_problems`, `v.task_shape_problems`, `ct.sent_texts`, `ct.task_markers`, `ct.build_and_hash`, `ct.export_pinned_gars` and `ct.BUILD_NAME`. All resolve at 62181cbe. w4d is not closed, so its close should keep these names or route any rename to this lane, and this file should be re-run on the merged tree.
+6. **glitch-f3's ruling conflicts with the standing rules on test_round4.py.** The ruling makes `test_round4.py` a lane gate. `cloud/STANDING_RULES.md` section 2 forbids whole suites in the cloud, and its header says a conflict is reported, never resolved by the reader. So I did not run it, and the cloud lead has reported the conflict. `test_round4.py` is owed on return, and it will be red there anyway on w4d's empty-gate test until w4d folds (open question 1).
 
 ## Deferred to Javier
 
