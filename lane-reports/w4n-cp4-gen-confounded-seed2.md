@@ -1,8 +1,13 @@
-status: stopped
+status: done (fold and close)
 
 # Lane w4n-cp4-gen-confounded-seed2: CP4 task confounded-design (repaired, seed 2) and fixtures/gen_confounded_seed2.py
 
-_Written Fri 09 Oct 2026 03:40 UTC, updated 04:03 UTC after review round 1 and 04:29 UTC after review round 2 and 04:57 UTC after review round 3, and 05:14 UTC when the lane stopped after review round 4 (all read from `date -u`), by the lane's opus-medium builder, in the cloud session._
+_Written Fri 09 Oct 2026 03:40 UTC, updated 04:03 UTC after review round 1 and 04:29 UTC after review round 2 and 04:57 UTC after review round 3, 05:14 UTC when the lane stopped after review round 4, and 05:25 UTC after glitch-f3's fold and close (all read from `date -u`), by the lane's opus-medium builder, in the cloud session._
+
+**Fold and close.** The review loop reached its 4-round limit with a MAJOR open (W4N4-1). glitch-f3's fold-and-close
+ruling (section "Fold and close") settles it: W4N4-1 is folded exactly as the round 4 reviewer wrote it, behind a
+committed closing gate, with no fifth review round. No task, variants or generator file changed after `ba5be8d6`;
+only the test file did.
 
 - Base: `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d is NOT closed, see `cloud/README.md`).
 - Branch: `gap4/w4n-cp4-gen-confounded-seed2`. Worktree: `/home/user/wt/w4n-cp4-gen-confounded-seed2`.
@@ -31,8 +36,9 @@ _Written Fri 09 Oct 2026 03:40 UTC, updated 04:03 UTC after review round 1 and 0
 ```
 
 This report's round 3 update adds to the last line only. After round 4 the diff also holds
-`lane-reports/reviews/w4n-cp4-gen-confounded-seed2-r4.md` (113 lines; `git diff --stat 62181cbe..HEAD` before this
-report's stop update: 14 files changed, 3675 insertions); nothing under evals/ changed. Every file is on the brief's owned list, plus the review copy at `lane-reports/reviews/` that the cloud lead's hand-back rules require.
+`lane-reports/reviews/w4n-cp4-gen-confounded-seed2-r4.md` (113 lines). After the fold and close
+(`git diff --stat 62181cbe..HEAD` before this report's fold-and-close update): 14 files changed, 3779 insertions;
+`tests/test_task_confounded_design.py` is 1347 lines, the only file under evals/ changed since `ba5be8d6`. Every file is on the brief's owned list, plus the review copy at `lane-reports/reviews/` that the cloud lead's hand-back rules require.
 `fixtures/gen_fastq.py`, `neutralise.py` and `rank_check.py` are byte-identical copies of `evals/fixtures/<f>` at
 `copy_manifest.SHARED_COMMIT` (68ec902f), claimed `identical`.
 
@@ -54,7 +60,10 @@ Commits:
 14. `f7de705f` the round 3 review report, copied byte for byte.
 15. `ba5be8d6` this report's round 3 update.
 16. `71aad316` the round 4 review report, copied byte for byte.
-17. this report's stop update (status: stopped).
+17. `4c0cee84` this report's stop update (status: stopped).
+18. `4f34d713` fold and close: the red closing gate for W4N4-1 (class ClosingGate).
+19. `1b3dcb4c` fold and close: the env-semicolon CALLS entry (W4N4-1 folded).
+20. this report's fold-and-close update.
 
 ## Tests and checks run (runner output, never a grep count)
 
@@ -117,6 +126,20 @@ After review round 4, the lane stopped (no file under evals/ changed after `ba5b
   shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`
   (exit 0).
 - `tests/test_scaffold.py` alone: `Ran 49 tests in 30.459s` / `OK` (exit 0).
+
+After glitch-f3's fold and close (red on `4f34d713`: `Ran 84 tests in 8.338s` / `FAILED (failures=1, errors=1)`), on
+`1b3dcb4c` (the report update touches no file under evals/), each alone under the flock, in the foreground:
+- `tests/test_task_confounded_design.py`: `Ran 84 tests in 7.467s` / `OK` (exit 0).
+- `tasks/check_task.py confounded-design`: `check_task: confounded-design: ok (12 checks)` (exit 0).
+- `fixtures/gen_confounded_seed2.py --check`: `gen_confounded_seed2: ok (4 checks)` (exit 0).
+- `copy_manifest.py --check` (after git add): `ok: 119 files from 9 fragment(s) (...): 47 identical and 5 edited
+  (round 3 at e2979b31, shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged
+  since 68ec902f63bf` (exit 0).
+- `tests/test_scaffold.py` alone: `Ran 49 tests in 29.125s` / `OK` (exit 0).
+- `test_round4.py`: NOT run. glitch-f3's 00:41 and 01:26 rulings ask for it, but cloud/STANDING_RULES.md section 2
+  forbids whole suites in the cloud, and its header says no message relaxes a rule and a conflict is reported, never
+  resolved by the reader. The cloud lead has reported the conflict again. It is owed on return (athena), on this
+  exact head.
 
 The gates on this report's final commit are re-run and quoted in the final message to the cloud lead.
 
@@ -256,11 +279,35 @@ run: see open question 8.
   token).
 - The validity page and layer classification (CP6, a reviewer).
 - The cut order (plan): the second confound seed is third to drop if CP6 is not frozen by 6 Nov; that call is his.
-- **His word on a fifth review round**, for the two findings left open when the loop hit its limit:
-  - W4N4-1 (MAJOR): one CALLS entry, `cd /r/gars; source _system/gars-env.sh` (kind s02), plus its mutant
-    (`[;&|(]` -> `[&|(]` asserted red). The shipped value is right; only the test is missing.
-  - W4N4-2 (MINOR): a multi-line command sourcing gars-env.sh on its second line reads not past; add `\n` to the
-    separator class with a CALLS entry, or name it as a limit.
+
+## Fold and close (glitch-f3's ruling)
+
+glitch-f3's ruling, quoted verbatim (01:26 EDT Fri 9 Oct 2026, under Javier's delegation; glitch-f3's words, never
+Javier's), relayed by the cloud lead:
+
+> "w4j and w4n are "fold and close", not a 5th review round. For each lane, fold exactly round 4's MAJOR fixes as the
+> round 4 reviewer wrote them (w4j: W4J4-1 and W4J4-2; w4n: the env-semicolon CALLS entry), red tests first. Add a
+> committed closing gate: one red test per MAJOR, built from the reviewer's own cases, and a mutant per new clause,
+> asserted red. For w4j the gate also pins every wording text by outcome: the trap text asks for a recommendation and
+> is never an action or "Confirmed"; each opening matches the scripted assay; and no on_path pattern fires on the
+> reviewer's listed right replies. Run every gate in the container, including test_scaffold and test_round4 per the
+> 00:41 rule. Then set the lane report's status to `done (fold and close)` and push. No further review round. Record
+> it as glitch-f3's ruling, never as Javier's words."
+
+The fold:
+- `4f34d713` (red first): class `ClosingGate` in `tests/test_task_confounded_design.py`, built from the round 4
+  reviewer's own cases.
+  - `test_w4n4_1_sourcing_after_a_semicolon_reads_past`: `CALLS["env-semicolon"]` is exactly
+    `("cd /r/gars; source _system/gars-env.sh", OK, "s02")`. Both reviewer cases (that call, and the same followed by
+    `; nextflow run ...`) read past at T6, T8 and T4, and `wait_point_misreads` and `fragment_problems` stay empty.
+    On `4f34d713` this test was red, with a KeyError because the entry did not exist yet.
+  - `test_w4n4_1_the_reviewers_mutant_is_red`: the reviewer's mutant (`[;&|(]` -> `[&|(]` at T6, T8 and T4) is
+    asserted red through `wait_point_misreads`, which names `env-semicolon` as missed at all three. This test was
+    also red on `4f34d713`.
+- `1b3dcb4c`: the CALLS entry `"env-semicolon": ("cd /r/gars; source _system/gars-env.sh", OK, "s02")`. No task value
+  changed. Every earlier test stays green, the fragment walker included.
+- Not folded, as recorded: W4N4-2 and W4N4-3 stay open (see Reviews, round 4). test_round4.py was not run (see the
+  gates above).
 
 ## Lessons worth keeping
 
@@ -670,3 +717,5 @@ fix: Optional. For (a), restrict the argument-taking flags to `-W`/`-X` (`(?:\s+
 Not folded: the lane stopped after round 4; a fifth round needs Javier's word.
 
 The review loop reached its 4-round limit with a MAJOR open (W4N4-1); the lane stopped at `ba5be8d6`'s code.
+
+After round 4, W4N4-1 was folded under glitch-f3's fold-and-close ruling (`4f34d713`, `1b3dcb4c`; see section "Fold and close"). W4N4-2 and W4N4-3 stay not folded.
