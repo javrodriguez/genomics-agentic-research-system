@@ -62,6 +62,15 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "frozen-rehearsal-draft": source_mutant(cr, "rehearsal_record_problems",
+            'if lines[0] != frozen.get("draft_sha256_at_freeze"):', 'if False:'),
+        "frozen-rehearsal-tree": source_mutant(cr, "rehearsal_record_problems",
+            'if trees != [freeze.REHEARSAL_TREE_PREFIX + str(frozen.get("rehearsed_study_tree_sha256"))]:',
+            'if False:'),
+        "frozen-rehearsal-green": source_mutant(cr, "rehearsal_record_problems",
+            'if lines[-1] != freeze.REHEARSAL_LAST_LINE:', 'if False:'),
+        "frozen-rehearsal-placeholder": source_mutant(cr, "check_frozen_content",
+            'problems += rehearsal_record_problems(frozen)', 'pass'),
         "ledger-cell-bijection": source_mutant(cr, "validate_ledger",
             'if cell_ids.setdefault(cell, row["half_cell"]) != row["half_cell"]:', 'if False:'),
         "publication-cell-states": source_mutant(cr, "publication",
@@ -1010,6 +1019,31 @@ class CostAccounting(unittest.TestCase):
 
 
 class FreezeCoverage(unittest.TestCase):
+    def frozen_rehearsal_check(self, record):
+        frozen = {"draft_sha256_at_freeze": "a" * 64, "rehearsed_study_tree_sha256": "b" * 64,
+                  "rehearsal_record": record}
+        with repository() as repo:
+            (repo.root / "prereg.json").write_text(json.dumps(frozen))
+            commit(repo.root, ["prereg.json"], "Freeze synthetic evidence")
+            with mock.patch.object(cr, "HERE", repo.root), \
+                    mock.patch.object(cr, "REPO", repo.root), \
+                    mock.patch.object(study, "rel", lambda name: name), redirect_stdout(io.StringIO()):
+                return cr.check_frozen_content()
+
+    def test_frozen_rehearsal_three_lines_and_placeholder(self):
+        lines = ["a" * 64, freeze.REHEARSAL_TREE_PREFIX + "b" * 64, freeze.REHEARSAL_LAST_LINE]
+        def record(content):
+            text = "\n".join(content) + "\n"
+            return {"name": "synthetic.txt", "text": text,
+                    "sha256": __import__("hashlib").sha256(text.encode()).hexdigest()}
+        self.assertEqual(self.frozen_rehearsal_check(record(lines)), [])
+        for index, replacement in ((0, "c" * 64), (1, freeze.REHEARSAL_TREE_PREFIX + "d" * 64),
+                                   (2, "failed")):
+            changed = list(lines); changed[index] = replacement
+            with self.subTest(index=index):
+                self.assertTrue(self.frozen_rehearsal_check(record(changed)))
+        self.assertTrue(self.frozen_rehearsal_check("rehearsal or preview"))
+
     def test_external_rehearsal_record_binds_draft_tree_and_green_result(self):
         self.assertTrue(callable(getattr(freeze, "rehearsal_evidence", None)))
         with tempfile.TemporaryDirectory() as tmp:
