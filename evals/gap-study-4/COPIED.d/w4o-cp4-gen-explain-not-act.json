@@ -1,0 +1,20 @@
+{
+  "lane": "w4o-cp4-gen-explain-not-act",
+  "files": [
+    {
+      "path": "COPIED.d/w4o-cp4-gen-explain-not-act.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4o-cp4-gen-explain-not-act.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, and check_task.py on explain-not-act."
+    },
+    {
+      "path": "tests/test_task_explain_not_act.py",
+      "status": "new",
+      "reason": "Tests of the explain-not-act task: check_task passes it; an in-memory mutant per clause its values carry, each asserted red; its fixture built from a pinned-tree export reaches the branch the task needs (stage 01 validates, writes three conditions, refuses a re-run without --force, and the corrected re-run leaves the spec's fixed_sha256); the wait-point patterns read the pinned contracts' own commands; and every quoted contract and helper line is still a byte substring at 844a4ce. Written new."
+    }
+  ]
+}
