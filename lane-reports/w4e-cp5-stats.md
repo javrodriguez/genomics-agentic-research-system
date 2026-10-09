@@ -210,3 +210,22 @@ Gates on 82bd268f, finished at 20:40 EDT, before the hold:
 - `tests/test_stats.py` alone: `Ran 97 tests` / `OK`.
 - `stats.py --check`: the no-takes line, exit 0.
 - `copy_manifest.py --check`: `ok: 110 files from 8 fragment(s) ...`.
+
+## Fold 4 (athena's test_scaffold collision; glitch-f3's named exception)
+
+athena run `gap4-w4e-f3-d851079-20261009T022328Z` on d851079b failed `test_round4.py` in one test: wave 1's `tests/test_scaffold.py` `test_a_source_outside_the_allowed_ones_is_refused`. Its hypothetical lane `zz-later` targeted `intervals.py`, which this lane really claims.
+
+Named exception, glitch-f3's ruling under Javier's delegation (glitch-f3's, not Javier's words):
+- The hypothetical lane's target path at test_scaffold.py:217-219 changes from `intervals.py` to `zz_intervals_probe.py`. The source and `allowed == []` are unchanged.
+- This is the only wave 1 edit.
+
+Guard: `NoFixtureTargetIsARealClaim` in `tests/test_stats.py`.
+- It derives the fixture's later-lane target paths from test_scaffold.py's own source (ast), and the claims from every COPIED.d fragment.
+- It asserts that the two sets do not overlap.
+- Mutant: `intervals.py` put back as the target makes the overlap `["intervals.py"]`.
+
+Commits:
+- 06ed8098: the guard (red by construction before the fix);
+- the next commit: the test_scaffold exception and this section.
+
+Both are written under the Mac hold, and every gate is pending the lift.
