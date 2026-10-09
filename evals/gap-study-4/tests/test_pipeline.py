@@ -63,6 +63,12 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "runtime-ruling-trailer": source_mutant(takes, "commit_ruling",
+            'msg.write("Record a human ruling\\n")',
+            'msg.write("Record a human ruling\\n\\nCo-Authored-By: synthetic\\n")'),
+        "runtime-registration-trailer": source_mutant(takes, "commit_registration",
+            'message.write("Register one planned take\\n")',
+            'message.write("Register one planned take\\n\\nCo-Authored-By: synthetic\\n")'),
         "scratch-identity": (sys.modules[__name__], "scratch_identity", lambda root: None),
         "runtime-identity": (takes, "require_commit_identity", lambda repo: None),
         "finishing-block": source_mutant(takes.RegistrationGuard, "check",
@@ -722,6 +728,7 @@ class RulingDoor(unittest.TestCase):
             self.assertEqual(takes.read_history(root=repo.root, repo=repo.root), [o, got])
             self.assertEqual(git(repo.root, "show", "--format=", "--name-only", "HEAD"), "rulings.json")
             self.assertEqual(json.loads((repo.root / "rulings.json").read_text()), [got])
+            self.assertNotIn("Co-Authored-By:", git(repo.root, "show", "-s", "--format=%B"))
 
     def test_door_refuses_unknown_word_and_empty_by_with_mutants(self):
         history = [outcome(row(), state=labels4.FAILED, final=False)]
@@ -1241,6 +1248,7 @@ class LedgerDoor(unittest.TestCase):
             commit(repo.root, ["prereg.json"], "Record synthetic design")
             guard = takes.RegistrationGuard()
             got = takes.commit_registration(r, 1, guard=guard, root=repo.root, repo=repo.root, pre=pre)
+            self.assertNotIn("Co-Authored-By:", git(repo.root, "show", "-s", "--format=%B"))
             rows = takes.load_rows(root=repo.root, repo=repo.root)
             self.assertEqual(rows, [dict(r, attempt=1)])
             self.assertEqual(rows[0]["agent"], r["agent"])
