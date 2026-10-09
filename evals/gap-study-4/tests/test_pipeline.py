@@ -832,6 +832,25 @@ class CostAccounting(unittest.TestCase):
         with mock.patch.object(costs, "month_turn_allowed", lambda arm, now, trimmed: True):
             self.assertTrue(costs.month_turn_allowed("O", at, None))
 
+    def test_nonempty_cost_cli_writes_then_checks_the_frozen_prices(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            calls, page = root / "cost-calls.json", root / "COSTS.md"
+            calls.write_text(json.dumps([self.call(), self.call()]))
+            def frozen(what):
+                self.assertTrue(what)
+                return {"price_table": self.fake_prices()}
+            with mock.patch.object(costs, "CALLS", calls), mock.patch.object(costs, "PAGE", page), \
+                    mock.patch.object(costs.prereg, "require_frozen", frozen), redirect_stdout(io.StringIO()):
+                try:
+                    self.assertEqual(costs.main(["--write"]), 0)
+                    self.assertEqual(costs.main(["--check"]), 0)
+                except TypeError as exc:
+                    self.fail(f"the nonempty cost path must request the frozen design: {exc}")
+                self.assertEqual(page.read_text(), costs.render(costs.account([self.call()], self.fake_prices())))
+                page.write_text("synthetic stale costs\n")
+                self.assertEqual(costs.main(["--check"]), 1)
+
 
 class FreezeCoverage(unittest.TestCase):
     def test_every_owned_path_is_pinned_including_fragments_and_prose(self):
