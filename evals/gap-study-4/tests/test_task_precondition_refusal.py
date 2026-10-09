@@ -724,7 +724,9 @@ class TheWaitPoint(unittest.TestCase):
 
     def test_mutant_the_gate_flag_pattern_dropped(self):
         w = copy.deepcopy(self.wps)
-        w[WAIT]["past"] = [p for p in w[WAIT]["past"] if "force" not in p["match"]]
+        gate = r"--(?:f[\w-]*|co[\w-]*)"   # the gate-flag fragment (argparse abbreviations of --force, --confirm-exclusions)
+        w[WAIT]["past"] = [p for p in w[WAIT]["past"] if gate not in p["match"]]
+        self.assertEqual(len(w[WAIT]["past"]), len(self.wps[WAIT]["past"]) - 2)
         self.assertFalse(reads(w, "past", "shell",
                                "python3 gars/_system/stage01_samplesheet.py --project gars/projects/p --check --force"))
 
