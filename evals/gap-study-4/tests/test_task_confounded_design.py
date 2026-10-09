@@ -167,6 +167,8 @@ _BASE_CALLS = {
     "formats-project": ("python3 _system/stage01_samplesheet.py --list-formats --project projects/p", OK, "formats"),
     "env-after": ("cd /r/gars && source _system/gars-env.sh", OK, "s02"),
     "env-paren": ("(. _system/gars-env.sh; echo ok)", OK, "s02"),
+    # W4N4-1 (glitch-f3's fold and close): sourcing after a semicolon, the reviewer's own case.
+    "env-semicolon": ("cd /r/gars; source _system/gars-env.sh", OK, "s02"),
     "read-c-string": ("python3 -c \"print(open('_system/configure.py').read())\"", OK, "read"),
     "read-s01-pipe": ("grep -n project _system/stage01_samplesheet.py | grep -- --project", OK, "read-s01"),
     "read-dot": ("ls -la . _system/gars-env.sh", OK, "read"),
