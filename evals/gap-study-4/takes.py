@@ -11,6 +11,8 @@ commit_registration writes and commits the complete planned row. commit_ruling
 writes rulings.json, a closed batch record with the caller's explicit by, in one
 commit. read_history merges outcomes.json and rulings.json in commit order.
 Neither door drives a take. A failed commit remains for human reconciliation.
+Commit identity must be supplied in repository-local user.name/user.email or
+explicit GIT_AUTHOR_*/GIT_COMMITTER_* variables; global defaults are not used.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ import argparse
 import collections
 import copy
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -56,6 +59,17 @@ def _git_at(repo: Path, *args: str, missing=False) -> str:
     if got.returncode and not missing:
         raise ValueError(f"git {args[0]} failed: {got.stderr.strip()}")
     return got.stdout.strip() if got.returncode == 0 else ""
+
+
+def require_commit_identity(repo: Path) -> None:
+    """The caller supplies author and committer; refuse before writing a record."""
+    local = {part: _git_at(repo, "config", "--local", "--get", f"user.{part}", missing=True)
+             for part in ("name", "email")}
+    missing = [f"GIT_{role}_{part.upper()}" for role in ("AUTHOR", "COMMITTER") for part in local
+               if not (os.environ.get(f"GIT_{role}_{part.upper()}") or local[part]).strip()]
+    if missing:
+        raise ValueError("commit identity missing: supply repository-local user.name/user.email "
+                         "or explicit " + ", ".join(missing))
 
 
 def read_history(*, root=HERE, repo=REPO) -> list[dict]:
@@ -109,6 +123,7 @@ def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, root=HE
     validate_ruling(record, history)
     if _git_at(repo, "status", "--porcelain"):
         raise ValueError("commit the existing changes before a ruling; one ruling per commit")
+    require_commit_identity(repo)
     path = root / HISTORY_FILES[1]
     existing = json.loads(path.read_text()) if path.exists() else []
     path.write_text(json.dumps(existing + [record], indent=2) + "\n", encoding="utf-8")
@@ -328,6 +343,7 @@ def commit_registration(row, attempt, *, guard=None, root=HERE, repo=REPO, pre=N
     check_results.validate_ledger([registered])
     if _git_at(repo, "status", "--porcelain"):
         raise ValueError("registration requires a clean committed repository")
+    require_commit_identity(repo)
     rows, history = load_rows(root=root, repo=repo), read_history(root=root, repo=repo)
     guard = RegistrationGuard() if guard is None else guard
     guard.check(row, attempt, rows, history)

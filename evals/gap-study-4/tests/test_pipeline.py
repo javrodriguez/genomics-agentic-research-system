@@ -202,7 +202,8 @@ def commit(root, paths, message):
 
 
 def scratch_identity(root):
-    pass
+    git(root, "config", "user.name", "synthetic")
+    git(root, "config", "user.email", "synthetic@example.invalid")
 
 
 @contextmanager
