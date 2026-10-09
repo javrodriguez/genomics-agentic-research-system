@@ -51,6 +51,7 @@ def mutations():
     runner = get_run()
     return {
         "runtime-timing": (cr, "runtime_timing_problems", lambda: []),
+        "attempt-identity": (runner, "require_registered_outcome", lambda o, registered: None),
         "registration-ruling": (takes, "registration_outcomes", lambda history: [o for o in history if not batch.is_ruling(o)]),
         "freeze-identity": (freeze, "planned_order", lambda draft, seed: []),
         "output-pins": (freeze, "generated_pins", lambda outputs: []),
@@ -209,7 +210,7 @@ class FreezeOutputs(unittest.TestCase):
 def row(n=1, **kw):
     cell = variants.task_cells({"factor": None}, {"wordings": [{"id": "w1"}, {"id": "w2"}]})
     r = {"arm": "A", "task": "synthetic-task", "model": "synthetic-model",
-         "agent": {"harness": "synthetic-harness", "version": "0.0.1"}, **cell[(n - 1) % len(cell)],
+         "agent": {"harness": hb.CLAUDE_CODE, "version": "0.0.1"}, **cell[(n - 1) % len(cell)],
          "slot": f"s{n}", "half_cell": "c1"}
     r.update(kw)
     return r
@@ -546,7 +547,7 @@ def take_record(**kw):
 
 
 def design(tasks=("synthetic-task",)):
-    return {"tasks_that_run": list(tasks), "harness_models": {"synthetic-harness": ["synthetic-model"]},
+    return {"tasks_that_run": list(tasks), "harness_models": {hb.CLAUDE_CODE: ["synthetic-model"]},
             "stronger_weaker": {}, "cross_vendor": [], "alpha": "0.05",
             "bootstrap": {"seed": 1, "reps": 1},
             "power": {"seed": 2, "sims": 1, "bootstrap_reps": 1, "wordings": 1, "repeats": 1,
@@ -686,7 +687,7 @@ class Reporting(unittest.TestCase):
         with mock.patch.object(result_page, "stats_block", lambda d: "missing tables"):
             self.assertNotIn(stats.TABLE_HEADINGS[stats.TABLES[0]], result_page.render(got))
         self.assertIn("0.0.1", rendered)
-        self.assertIn("synthetic-harness", rendered)
+        self.assertIn(hb.CLAUDE_CODE, rendered)
 
     def test_excluded_dict_no_takes_and_only_stops_all_render(self):
         pre = pre_registration()
@@ -922,6 +923,38 @@ class LedgerDoor(unittest.TestCase):
 
 
 class PublishedArtifacts(unittest.TestCase):
+    def test_every_attempt_binds_its_registration_model_and_agent(self):
+        runner = get_run()
+        self.assertTrue(callable(getattr(runner, "require_registered_outcome", None)))
+        r = row(); rows = [dict(r, attempt=1)]
+        grader = lambda r, o: {"label": "synthetic-right", "correct": True}
+        for route in labels4.ROUTES:
+            o = recorded(route, r)
+            with self.subTest(route=route):
+                with self.assertRaisesRegex(ValueError, "registered"):
+                    runner.produce([], [o], grader, table=table())
+                for broken in (dict(rows[0], model="synthetic-other"),
+                               dict(rows[0], agent={"harness": "synthetic-other", "version": "0.0.1"}),
+                               dict(rows[0], agent={"harness": hb.CLAUDE_CODE, "version": "0.0.2"}),
+                               dict(rows[0], half_cell="c2")):
+                    with self.assertRaisesRegex(ValueError, "registered"):
+                        runner.produce([broken], [o], grader, table=table())
+        with mock.patch.object(runner, "require_registered_outcome", lambda o, rows: None):
+            self.assertEqual(runner.produce([], [recorded(labels4.REHEARSAL)], grader, table=table())["records"], [])
+
+    def test_checker_binds_complete_identity_to_the_frozen_plan(self):
+        r = row(); rows = [dict(r, attempt=1)]
+        history = [recorded(labels4.GRADED, r)]
+        grade = lambda r, o: {"label": "synthetic-right", "correct": True}
+        records = get_run().produce(rows, history, grade, table=table())["records"]
+        pre = pre_registration()
+        pre["rows"][0]["agent"]["version"] = "0.0.2"
+        page = result_page.render(result_page.from_records(records, pre, rows, history, table()))
+        with self.assertRaisesRegex(ValueError, "pre-registered"):
+            cr.check_publication(rows, history, records, pre, page, grade, table())
+        with mock.patch.object(takes, "require_planned_row", lambda r, pre: None):
+            self.assertEqual(cr.check_publication(rows, history, records, pre, page, grade, table()), [])
+
     def test_checker_binds_records_page_agent_and_final_route(self):
         self.assertTrue(callable(getattr(cr, "check_publication", None)), "checker must read interface 11 records")
         runner = get_run()
@@ -936,7 +969,7 @@ class PublishedArtifacts(unittest.TestCase):
         self.assertTrue(cr.check_publication(rows, history, corrupt, pre, page, grader, table()))
         with mock.patch.object(cr, "records_equal", lambda actual, wanted: True):
             self.assertEqual(cr.check_publication(rows, history, corrupt, pre, page, grader, table()), [])
-        without_agent = page.replace("synthetic-harness", "missing")
+        without_agent = page.replace(hb.CLAUDE_CODE, "missing")
         self.assertTrue(cr.check_publication(rows, history, records, pre, without_agent, grader, table()))
         with mock.patch.object(cr, "page_equal", lambda actual, wanted: True):
             self.assertEqual(cr.check_publication(rows, history, records, pre, without_agent, grader, table()), [])
