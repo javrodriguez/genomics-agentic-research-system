@@ -760,9 +760,53 @@ def binding_paths(task: dict, doc: dict, h: str, project: str = None) -> set:
     return _binding_paths(task, doc, h, project)
 
 
+def project_segment(rx: str):
+    """The regex text of the segment after `gars/projects/` or `data/staging/` in a pattern (a `/` inside a
+    bracket expression does not end it), or None when the pattern names neither folder."""
+    for parent in ("gars/projects/", "data/staging/"):
+        i = rx.find(parent)
+        if i < 0:
+            continue
+        j, depth = i + len(parent), 0
+        k = j
+        while k < len(rx):
+            ch = rx[k]
+            if ch == "\\":
+                k += 2
+                continue
+            if ch == "[":
+                depth += 1
+            elif ch == "]" and depth:
+                depth -= 1
+            elif ch == "/" and not depth:
+                break
+            k += 1
+        return rx[j:k]
+    return None
+
+
+def segment_types_project(rx: str) -> bool:
+    """W4D4-1 (b) and W4D4-2 (fold 4): a pattern's project segment must fully match both render names; a segment
+    that types one name (or none) fails."""
+    seg = project_segment(rx)
+    if seg is None:
+        return False
+    try:
+        return not all(re.fullmatch(seg, name) for name in RENDER_NAMES)
+    except re.error:
+        return True
+
+
+def _all_rendered_examples(task: dict, name: str) -> set:
+    return {v.render_example(ex, name) for h in v.HALVES for ex in task["halves"][h]["forbidden"]["examples"]}
+
+
 def template_changes_bound(task: dict, doc: dict, h: str) -> list[str]:
-    """W4D3-1 (fold 3, the lane lead's decision): each template_changes pattern fully matches one of the half's
-    examples, rendered under every RENDER_NAMES name, so a pattern that types a project fails."""
+    """W4D3-1, corrected in fold 4 (W4D4-1 (b), glitch-f3's ruling to fold the reviewer's fix): each template_changes
+    pattern is bound against the rendered examples of BOTH halves (the normal half's reported change is naturally
+    the trap's forbidden example). A pattern that names no example passes only when its project segment fully
+    matches both render names (this lane's reading, so that a correct template outside every example, C4t, is not
+    refused): the problem is worded "names no example", never "types a project" alone."""
     if v.grader_name(task) != v.TEMPLATE:
         return []
     out = []
@@ -775,9 +819,43 @@ def template_changes_bound(task: dict, doc: dict, h: str) -> list[str]:
             except re.error:
                 continue
             for name in RENDER_NAMES:
-                if not any(c.fullmatch(p) for p in binding_paths(task, doc, h, name)):
-                    out.append(_p(7, "forbidden", f"halves.{h}: the template_changes pattern {rx!r} matches no "
-                                                  f"example rendered as {name!r}: it types a project"))
+                if not any(c.fullmatch(p) for p in _all_rendered_examples(task, name)) and segment_types_project(rx):
+                    out.append(_p(7, "forbidden", f"halves.{h}: the template_changes pattern {rx!r} names no example "
+                                                  f"rendered as {name!r}, and its project segment does not match "
+                                                  "both render names"))
+    return sorted(set(out))
+
+
+def normal_post_spares_template(task: dict, doc: dict, h: str) -> list[str]:
+    """W4D4-1 (a) (fold 4): on the half whose right label is template_adherence's TEMPLATE, no forbidden.post pattern
+    fully matches a rendered example (either half's) that a template_changes pattern also fully matches: the
+    grader reads `deviated` before `template`, so that half could never be graded right. Forbid the template change
+    before the probe only."""
+    if v.grader_name(task) != v.TEMPLATE:
+        return []
+    mod = v.load_grader(v.TEMPLATE)
+    if task["halves"][h]["right_move"]["label"] != mod.TEMPLATE:
+        return []
+    out = []
+    exs = _all_rendered_examples(task, BUILD_NAME)
+    posts = []
+    for rx in task["halves"][h]["forbidden"]["post"]:
+        try:
+            posts.append(re.compile(rx))
+        except re.error:
+            pass
+    for (hh, _w, _lv), spec in v.concrete_specs(task, doc):
+        if hh != h:
+            continue
+        for rx in spec.get("template_changes") or []:
+            try:
+                c = re.compile(rx)
+            except re.error:
+                continue
+            for ex in exs:
+                if c.fullmatch(ex) and any(pp.fullmatch(ex) for pp in posts):
+                    out.append(_p(7, "forbidden", f"halves.{h}: the normal half forbids after the probe the change "
+                                                  f"its template reports ({ex!r}); forbid it before the probe only"))
     return sorted(set(out))
 
 
@@ -850,6 +928,7 @@ def check_7_forbidden(task: dict, doc: dict) -> list[str]:
                     out.append(msg)
         out += template_binding(task, doc, h)
         out += template_changes_bound(task, doc, h)
+        out += normal_post_spares_template(task, doc, h)
     return out
 
 
@@ -991,6 +1070,9 @@ def stray_placeholders(task: dict, doc: dict) -> list[str]:
             if v.is_literal(t) and typed_project(t):   # W4D3-6 (c)
                 out.append(_p(9, "grader accepts", f"wait point {marker!r}: the literal match {t!r} types a project "
                                                    "name"))
+            elif not v.is_literal(t) and segment_types_project(t):   # W4D4-2 (fold 4)
+                out.append(_p(9, "grader accepts", f"wait point {marker!r}: the pattern {t!r} types a project "
+                                                   "name (its project segment does not match both render names)"))
             if NAMED_PLACEHOLDER.search(t):
                 out.append(_p(9, "grader accepts", f"wait point {marker!r}: the pattern {t!r} holds a placeholder, "
                                                    "which no one renders"))

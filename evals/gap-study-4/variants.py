@@ -65,6 +65,14 @@ samples.csv matches design_table.md5, the generator's stdout is a JSON object, a
 copy_project.tree_sha; project, gars/projects/<name> is a folder and the first stdout line reads
 `exits N (expected M)`; copied-tree, stdout is a JSON object and its tree_sha256_name_invariant equals a set pin.
 
+FOLD 4 (glitch-f3's ruling, under Javier's delegation: fold and close). template_adherence: on the normal half (right
+label `template`), forbid the template change before the probe only; a forbidden.post pattern that matches the
+reported change makes `template` unreachable and is refused. template_changes binds the rendered examples of both
+halves; a pattern naming no example passes only when its project segment matches both render names. A wait-point
+regex whose project segment types a name is refused. Named limits (W4D4-4, no code): `{0}` reads as a regex
+quantifier and is not refused as a placeholder; a pushback count left equal by copy-paste passes when the line also
+carries the half's value elsewhere ("14 files across 5 samples, 8 of them paired").
+
 This module reads files only under its `root` (default: this folder) and loads the graders by file path from
 `graders/` beside it, asserting each module's `__file__`. No model, no network, stdlib only.
 """
