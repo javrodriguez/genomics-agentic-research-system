@@ -32,11 +32,6 @@
       "source": "evals/gap-study-3/check_checklist_names.py"
     },
     {
-      "path": "check_results.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/check_results.py"
-    },
-    {
       "path": "check_take.py",
       "status": "identical",
       "source": "evals/gap-study-3/check_take.py"

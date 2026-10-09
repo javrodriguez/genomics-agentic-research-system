@@ -37,6 +37,8 @@ No model, no network, stdlib only.
 from __future__ import annotations
 
 import argparse
+import collections
+import copy
 import hashlib
 import json
 import subprocess
@@ -55,6 +57,164 @@ import prereg  # noqa: E402
 import study  # noqa: E402
 import takes as takes_mod  # noqa: E402
 import transcript as tx  # noqa: E402
+import batch  # noqa: E402
+import routing  # noqa: E402
+from graders import labels4  # noqa: E402
+
+
+def verify_route(outcome: dict, table: dict) -> None:
+    """Re-verify a drive's entire recorded decision; never replace or repair it.
+
+    A stopped take has no publishable decision until a closed human ruling is
+    read from committed history. Its original records are retained unchanged.
+    """
+    if outcome["state"] in labels4.BATCH_STATES:
+        return
+    try:
+        expected = routing.route(outcome["records"], table)
+    except (ValueError, TypeError, KeyError) as exc:
+        raise ValueError(f"recorded route cannot be re-verified: {exc}") from exc
+    if (outcome["decision"] != expected or outcome["state"] != expected["route"] or
+            outcome["events"] != expected["events"] or outcome["mask"] != expected["mask"]):
+        raise ValueError("recorded route or annotations differ from the drive's records")
+
+
+def window_problems(history: list) -> list[str]:
+    """A window event occupies at most one block's span, with no slot twice."""
+    outcomes = [o for o in history if not batch.is_ruling(o)]
+    positions = collections.defaultdict(list)
+    for i, o in enumerate(outcomes):
+        if o["state"] == labels4.PAUSE:
+            positions[o["window_event"]].append(i)
+    bad = []
+    for event, indices in positions.items():
+        stretch = outcomes[indices[0]:indices[-1] + 1]
+        slots = [o["slot"] for o in stretch]
+        events = {o["window_event"] for o in stretch if o["state"] == labels4.PAUSE}
+        if len(stretch) > batch.BLOCK or len(set(slots)) != len(slots) or events != {event}:
+            bad.append(f"window event {event} does not fit one block of at most {batch.BLOCK} consecutive outcomes")
+    return bad
+
+
+def pause_event(history: list, taken: dict) -> tuple:
+    """Derive the ruled take's unique block; no seventh ruling field (PL-3).
+
+    Enumerate admissible block edges, not exponentially many partitions. An edge
+    spans one to BLOCK outcomes, has no repeated slot and cannot split one
+    recorded window event or join two. Forward/backward reachability keeps only
+    edges in a complete partition. More than one block for the named take is an
+    ambiguity and refuses publication, rather than assuming fixed blocks of 3.
+    """
+    outcomes = [o for o in history if not batch.is_ruling(o)]
+    key = (taken["slot"], taken["attempt"])
+    indices = [i for i, o in enumerate(outcomes) if (o["slot"], o["attempt"]) == key]
+    if len(indices) != 1:
+        raise ValueError("the ruled pause's take cannot be found uniquely in history")
+    n, at = len(outcomes), indices[0]
+    event_indices = collections.defaultdict(set)
+    for i, o in enumerate(outcomes):
+        if o["window_event"] is not None:
+            event_indices[o["window_event"]].add(i)
+    edges = collections.defaultdict(list)
+    for left in range(n):
+        for right in range(left + 1, min(n, left + batch.BLOCK) + 1):
+            span = outcomes[left:right]
+            events = {o["window_event"] for o in span if o["window_event"] is not None}
+            if len({o["slot"] for o in span}) != len(span) or len(events) > 1:
+                continue
+            if any(not event_indices[e] <= set(range(left, right)) for e in events):
+                continue
+            edges[left].append(right)
+    forward = {0}
+    for left in range(n):
+        if left in forward:
+            forward.update(edges[left])
+    backward = {n}
+    for left in range(n - 1, -1, -1):
+        if any(right in backward for right in edges[left]):
+            backward.add(left)
+    candidates = [(left, right) for left in forward for right in edges[left]
+                  if right in backward and left <= at < right]
+    if len(candidates) != 1:
+        raise ValueError("the ruled pause's block cannot be derived uniquely from committed history")
+    left, right = candidates[0]
+    events = {o["window_event"] for o in outcomes[left:right] if o["window_event"] is not None}
+    if events:
+        return ("window", next(iter(events)))
+    first = outcomes[left]
+    return ("block", first["slot"], first["attempt"])
+
+
+def ruling_closes(count: int, cap: int) -> bool:
+    return count >= cap
+
+
+def ruled_route(ruling: dict) -> str:
+    return ruling["route"]
+
+
+def publication(history: list, table: dict | None = None) -> dict:
+    """Committed fates and cell states, including a ruling as its own state record.
+
+    Ordinary cell states are read, never regenerated from a cap. A route ruling
+    has no outcome carrying its fate, so its handler's fate is evaluated at the
+    ruling's position. Pauses reuse their uniquely derived block event (PL-3).
+    """
+    table = routing.load_table() if table is None else table
+    try:
+        bad = batch.Batch.history_problems(history)
+    except (KeyError, TypeError) as exc:
+        raise ValueError(f"unreadable committed history: {exc}") from exc
+    if bad:
+        raise ValueError("; ".join(bad))
+    bad = window_problems(history)
+    if bad:
+        raise ValueError("; ".join(bad))
+    effective, cells = {}, {}
+    events = collections.defaultdict(set)
+    spent_cell, spent_slot = collections.Counter(), collections.Counter()
+    for entry in history:
+        if not batch.is_ruling(entry):
+            o = copy.deepcopy(entry)
+            verify_route(o, table)
+        else:
+            key = (entry["slot"], entry["attempt"])
+            taken = effective[key]
+            if entry["ruling"] == labels4.RULE_RERUN:
+                effective[key] = dict(taken, final=False, rerun=True)
+                continue
+            state, cell = ruled_route(entry), taken["half_cell"]
+            o = dict(taken, state=state, ruling=copy.deepcopy(entry))
+            if state in batch.CELL_CAPPED_ROUTES:
+                event = pause_event(history, taken) if state == labels4.PAUSE else ("take", *key)
+                events[(cell, state)].add(event)
+                closes = ruling_closes(len(events[(cell, state)]), batch.half_cell_cap(table, state))
+                o.update(final=closes, rerun=not closes, beyond_cap=closes)
+                if closes:
+                    o.update(cell_state=labels4.INCOMPLETE_MECHANICAL,
+                             cell_reason=f"committed ruling by {entry['by']} reaches the {state} cap")
+            elif state == labels4.HARNESS_ERROR:
+                cap = table["caps"][state]
+                free = (spent_cell[(cell, state)] < cap["reruns_per_half_cell"] and
+                        spent_slot[(o["slot"], state)] < cap["reruns_per_slot"])
+                o.update(final=not free, rerun=free, beyond_cap=not free)
+            else:
+                o.update(final=True, rerun=False, beyond_cap=False)
+            if cell in cells and state in batch.RERUN_ROUTES:
+                o.update(final=True, rerun=False, beyond_cap=True)
+        cell, state = o["half_cell"], o["state"]
+        if not batch.is_ruling(entry) and state in batch.CELL_CAPPED_ROUTES:
+            events[(cell, state)].add(batch.cell_event(o))
+        if o["rerun"] and state in batch.RERUN_ROUTES:
+            spent_cell[(cell, state)] += 1
+            spent_slot[(o["slot"], state)] += 1
+        if o["cell_state"] is not None:
+            cells[cell] = {"state": o["cell_state"], "reason": o["cell_reason"]}
+        effective[(o["slot"], o["attempt"])] = o
+    return {"outcomes": [o for o in effective.values() if o["final"]], "cells": cells,
+            "window_events": {cell: sorted(es, key=repr) for (cell, route), es in events.items()
+                              if route == labels4.PAUSE},
+            "attempts": list(effective.values())}
 
 RESULTS = HERE / "results"
 RAN = "RAN"
