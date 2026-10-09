@@ -85,7 +85,12 @@ def review_mutations():
         "rehearsal-not-checked": source_mutant(cr, "check_frozen_content",
             'NOT CHECKED: rehearsal record (disposable rehearsal)', 'PASS: rehearsal record'),
         "pause-event-identity": source_mutant(cr, "pause_event",
-            'if events and ("window", next(iter(events))) in cell_events:', 'if events:'),
+            'if events and ("window", next(iter(events))) in cell_events:\n'
+            '            event = ("window", next(iter(events)))\n'
+            '        choices[len(cell_events | {event})] = event',
+            'if events:\n'
+            '            event = ("window", next(iter(events)))\n'
+            '        choices[event] = event'),
         "frozen-rehearsal-empty": source_mutant(cr, "rehearsal_record_problems",
             'return ["the frozen rehearsal record is empty"]', 'return []'),
         "registration-pause-dedup": source_mutant(takes, "registration_outcomes",
