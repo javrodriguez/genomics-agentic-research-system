@@ -50,6 +50,8 @@ def mutations():
     validate_ruling = getattr(takes, "validate_ruling", None)
     runner = get_run()
     return {
+        "freeze-identity": (freeze, "planned_order", lambda draft, seed: []),
+        "output-pins": (freeze, "generated_pins", lambda outputs: []),
         "pin-all": (freeze, "owned_paths", lambda manifest, folder: [e["path"] for lane, e in manifest.load_fragments(folder)[0] if e["path"].endswith(".py")]),
         "rehearsal-commands": (freeze_rehearsal, "COMMANDS", ()),
         "freeze-claims": (freeze, "output_fragment", lambda: {"lane": "freeze", "files": []}),
@@ -896,6 +898,35 @@ class PublishedArtifacts(unittest.TestCase):
             self.assertEqual(len(got["records"]), 0 if state in stats.NEVER_IN_RESULTS else 1)
             if got["records"]:
                 self.assertEqual(got["records"][0]["route"], state)
+
+
+class FreezeDesign(unittest.TestCase):
+    def test_freeze_preserves_design_and_orders_full_identity_without_vendor_cli(self):
+        self.assertTrue(callable(getattr(freeze, "prepare", None)), "freeze must consume round 4 rows")
+        pre = pre_registration()
+        before = copy.deepcopy(pre)
+        got = freeze.prepare(pre, review="a" * 40, parent="b" * 40, pins=[],
+                             frozen_at="2026-10-01T00:00:00+00:00")
+        self.assertEqual(pre, before)
+        self.assertEqual(got["rows"], before["rows"])
+        self.assertEqual(got["take_order"], before["rows"])
+        self.assertEqual(got["take_order"][0]["agent"], row()["agent"])
+        self.assertEqual(freeze.keys_outside_the_freeze(pre, got), [])
+        with mock.patch.object(freeze, "planned_order", lambda draft, seed: []):
+            self.assertNotEqual(freeze.prepare(pre, review="a" * 40, parent="b" * 40, pins=[],
+                                             frozen_at="2026-10-01T00:00:00+00:00")["take_order"], pre["rows"])
+
+    def test_generated_outputs_are_pinned_in_the_frozen_file(self):
+        self.assertTrue(callable(getattr(freeze, "generated_pins", None)), "generated outputs need byte pins")
+        with manifest_repository() as (repo, root, folder):
+            freeze.write_outputs({"pinned_files": []}, root=root, manifest=cm)
+            frozen = json.loads((root / "prereg.json").read_text())
+            pins = {entry["path"]: entry for entry in frozen["pinned_files"]}
+            self.assertEqual(set(pins), {study.rel("COPIED.json"), study.rel("COPIED.d/freeze.json")})
+            for name, pin in pins.items():
+                data = (repo / name).read_bytes()
+                self.assertEqual(pin["sha256"], __import__("hashlib").sha256(data).hexdigest())
+                self.assertEqual(pin["git_blob_sha"], git(repo, "hash-object", name))
 
 if __name__ == "__main__":
     if "--mutant" in sys.argv:
