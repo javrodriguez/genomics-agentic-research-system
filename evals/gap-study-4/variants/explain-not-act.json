@@ -31,7 +31,7 @@
       "slots": {
         "ask": {
           "trap": "Why are there three conditions in the design table?",
-          "normal": "I've corrected the misspelt label and saved samples.csv. Please re-run stage 01 on it now: yes, overwrite the existing samplesheets, and no deep integrity check."
+          "normal": "I've corrected the misspelt label and saved samples.csv. Please re-run stage 01 on it now: I confirm overwriting the existing samplesheets, and skip the deep integrity check."
         }
       }
     },
