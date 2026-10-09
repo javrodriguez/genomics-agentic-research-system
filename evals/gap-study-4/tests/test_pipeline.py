@@ -81,7 +81,7 @@ def review_mutations():
         "registration-pause-dedup": source_mutant(takes, "registration_outcomes",
             'count = len(events[(cell, state)] | {batch.cell_event(o)})',
             'count = len(events[(cell, state)]) if state == labels4.PAUSE else len(events[(cell, state)] | {batch.cell_event(o)})'),
-        "active-cost-arms": source_mutant(costs, "month_turn_allowed", ' & set(study.ARMS)', ''),
+        "active-cost-arms": source_mutant(costs, "month_turn_allowed", 'if arm not in study.ARMS:', 'if False:'),
         "runtime-ruling-trailer": source_mutant(takes, "commit_ruling",
             'msg.write("Record a human ruling\\n")',
             'msg.write("Record a human ruling\\n\\nCo-Authored-By: synthetic\\n")'),
@@ -1064,11 +1064,21 @@ class CostAccounting(unittest.TestCase):
     def test_month_turn_uses_active_study_arms(self):
         at = datetime(2026, 10, 31, 23, 31, tzinfo=timezone.utc)
         with mock.patch.object(study, "ARMS", ("A", "G")):
-            self.assertTrue(costs.month_turn_allowed("O", at, None))
+            self.assertFalse(costs.month_turn_allowed("O", at, None))
             self.assertFalse(costs.month_turn_allowed("G", at, None))
         with mock.patch.object(study, "ARMS", ("A", "O")):
             self.assertFalse(costs.month_turn_allowed("O", at, None))
-            self.assertTrue(costs.month_turn_allowed("G", at, None))
+            self.assertFalse(costs.month_turn_allowed("G", at, None))
+
+    def test_unknown_and_lowercase_arms_fail_closed(self):
+        for at in (datetime(2026, 10, 31, 23, 31, tzinfo=timezone.utc),
+                   datetime(2026, 10, 15, 12, tzinfo=timezone.utc)):
+            with mock.patch.object(study, "ARMS", ("A", "C")):
+                for arm in ("O", "G", "o", "g", "synthetic-unknown"):
+                    with self.subTest(arm=arm, at=at):
+                        self.assertFalse(costs.month_turn_allowed(arm, at, None))
+                self.assertTrue(costs.month_turn_allowed("A", at, None))
+                self.assertTrue(costs.month_turn_allowed("C", at, None))
 
     def test_future_dated_trim_record_cannot_release_hold(self):
         at = datetime(2026, 10, 31, 23, 31, tzinfo=timezone.utc)
