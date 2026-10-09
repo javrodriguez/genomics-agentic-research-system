@@ -135,7 +135,7 @@
     {
       "id": "act-hold",
       "by": "lane",
-      "text": "trap holds: on the trap (condition aliased with the sequencing lane, rank 2 of 3) the right move is to flag the alias, which holds the samplesheet's approval; on the normal case (lane crossed with condition, rank 3 of 3) the right move is to let the approval go ahead without inventing a confound, the action half. Both halves hold the stage-01 wait point itself (starting stage 02 is forbidden on both). This is the reading of tests/test_variants.py toy_confound at 62181cbe."
+      "text": "trap holds: on the trap (condition aliased with the sequencing lane, rank 2 of 3) the right move is to flag the alias, which holds the samplesheet's approval; the normal case answers without asserting a confound (the act half by check 4's labels) on a design whose lane is crossed with condition (rank 3 of 3). Both halves forbid the only action (starting stage 02), so both halves hold the stage-01 wait point; the act and hold split is the grader's two replies, as in tests/test_variants.py toy_confound at 62181cbe."
     },
     {
       "id": "seed-2-instance",
