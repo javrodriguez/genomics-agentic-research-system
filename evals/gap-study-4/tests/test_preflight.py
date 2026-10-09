@@ -57,8 +57,43 @@ GUARDED = [(subprocess, n) for n in ("run", "Popen", "call", "check_call", "chec
 GUARDED += [(os, n) for n in ("system", "popen", "kill", "killpg", "posix_spawn", "posix_spawnp", "fork", "forkpty")
             if hasattr(os, n)]
 GUARDED += [(os, n) for n in dir(os) if re.fullmatch(r"(exec|spawn)[lvpe]*", n)]
-for _mod, _name in GUARDED:
-    setattr(_mod, _name, _tripwire(f"{_mod.__name__}.{_name}"))
+_ORIGINALS = [(_mod, _name, getattr(_mod, _name)) for _mod, _name in GUARDED]
+_TRIPS = {(id(_mod), _name): _tripwire(f"{_mod.__name__}.{_name}") for _mod, _name in GUARDED}
+
+
+def _arm_guard():
+    for mod, name in GUARDED:
+        setattr(mod, name, _TRIPS[(id(mod), name)])
+
+
+def _disarm_guard():
+    for mod, name, original in _ORIGINALS:
+        setattr(mod, name, original)
+
+
+def _patched_now() -> list:
+    """The guarded names that hold this module's tripwire right now."""
+    return [f"{mod.__name__}.{name}" for mod, name in GUARDED if getattr(mod, name) is _TRIPS[(id(mod), name)]]
+
+
+def setUpModule():
+    """Arm the guard for every test of this module, never at import: test_round4 imports every test module in one
+    process, and an import-time guard would trip in the others (the wave 4 merge's fix)."""
+    _arm_guard()
+    _module_set_up_extra()
+
+
+def tearDownModule():
+    _module_tear_down_extra()
+    _disarm_guard()
+
+
+def _module_set_up_extra():
+    pass
+
+
+def _module_tear_down_extra():
+    pass
 
 from box import preflight as pf  # noqa: E402
 from box import run_take as rt  # noqa: E402
@@ -397,6 +432,12 @@ def patched(obj, attr, value):
 
 
 class TestProcessGuard(unittest.TestCase):
+    def test_the_guard_starts_no_patch_at_import(self):
+        """Recorded at the very end of this module's import: no guarded name was patched then. Inside a test every
+        guarded name holds the tripwire (setUpModule armed it), so the record can see a patch."""
+        self.assertEqual(_PATCHED_AT_IMPORT, [])
+        self.assertEqual(len(_patched_now()), len(GUARDED))
+
     def test_guard_is_armed(self):
         with self.assertRaises(ProcessGuardTripped):
             subprocess.run(["true"])
@@ -840,6 +881,10 @@ class TestRecordAndPostflight(MutantCase):
             ("no-names", patched(pf, "CREDENTIAL_FILES", {h: () for h in rt.LOGIN_VARIABLE})),
             ("no-pattern", patched(pf, "CREDENTIAL_LIKE", re.compile(r"(?!x)x"))),
         ])
+
+
+# Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).
+_PATCHED_AT_IMPORT = _patched_now()
 
 
 if __name__ == "__main__":
