@@ -56,6 +56,7 @@ def mutations():
         "output-pins": (freeze, "generated_pins", lambda outputs: []),
         "pin-all": (freeze, "owned_paths", lambda manifest, folder: [e["path"] for lane, e in manifest.load_fragments(folder)[0] if e["path"].endswith(".py")]),
         "rehearsal-commands": (freeze_rehearsal, "COMMANDS", ()),
+        "rehearsal-runtime": (freeze_rehearsal, "rehearsal_plan", lambda pre, row_file: ({}, ())),
         "freeze-claims": (freeze, "output_fragment", lambda: {"lane": "freeze", "files": []}),
         "freeze-once": (freeze, "outputs_exist", lambda root: False),
         "freeze-snapshot": (freeze, "snapshot", lambda manifest, folder: {"files": []}),
@@ -853,6 +854,21 @@ class CostAccounting(unittest.TestCase):
 
 
 class FreezeCoverage(unittest.TestCase):
+    def test_rehearsal_uses_full_rows_and_copy_gate_only_on_frozen_state(self):
+        self.assertTrue(callable(getattr(freeze_rehearsal, "rehearsal_plan", None)))
+        pre = pre_registration()
+        pre["take_order"] = copy.deepcopy(pre["rows"])
+        first, commands = freeze_rehearsal.rehearsal_plan(pre, "/synthetic/input.json")
+        self.assertEqual(first, pre["rows"][0])
+        self.assertEqual(commands[0], ("takes.py", "--add", "--row", "/synthetic/input.json", "--attempt", "1"))
+        self.assertIn(("run.py", "--all"), commands)
+        self.assertIn(("result.py", "--write"), commands)
+        self.assertIn(("check_results.py", "--ledger"), commands)
+        self.assertFalse(any(c[0] in ("copy_manifest.py", "test_round4.py") for c in commands))
+        self.assertIn(("copy_manifest.py", "--check"), freeze_rehearsal.COMMANDS)
+        with mock.patch.object(freeze_rehearsal, "rehearsal_plan", lambda pre, row_file: ({}, ())):
+            self.assertNotEqual(freeze_rehearsal.rehearsal_plan(pre, "/synthetic/input.json")[0], first)
+
     def test_every_owned_path_is_pinned_including_fragments_and_prose(self):
         self.assertTrue(callable(getattr(freeze, "owned_paths", None)), "pins must use the complete ownership record")
         with manifest_repository() as (repo, root, folder):
