@@ -63,6 +63,8 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "scratch-identity": (sys.modules[__name__], "scratch_identity", lambda root: None),
+        "runtime-identity": (takes, "require_commit_identity", lambda repo: None),
         "finishing-block": source_mutant(takes.RegistrationGuard, "check",
             'elif self.live & done:', 'elif False:'),
         "one-history-record": source_mutant(takes, "read_history",
@@ -199,6 +201,22 @@ def commit(root, paths, message):
     return git(root, "rev-parse", "HEAD")
 
 
+def scratch_identity(root):
+    pass
+
+
+@contextmanager
+def empty_identity_home():
+    """Only child git commands see this empty HOME; never read host login files."""
+    with tempfile.TemporaryDirectory() as home:
+        isolated = {k: v for k, v in os.environ.items()
+                    if not k.startswith(("GIT_AUTHOR_", "GIT_COMMITTER_", "GIT_CONFIG")) and k != "EMAIL"}
+        isolated.update(HOME=home, XDG_CONFIG_HOME=home, GIT_CONFIG_NOSYSTEM="1",
+                        GIT_CONFIG_GLOBAL=os.devnull)
+        with mock.patch.dict(os.environ, isolated, clear=True):
+            yield
+
+
 @contextmanager
 def manifest_repository():
     """Scratch index and files, with the checker's real historical source/blob readers.
@@ -210,6 +228,7 @@ def manifest_repository():
     with tempfile.TemporaryDirectory() as tmp:
         repo = Path(tmp).resolve()
         git(repo, "init", "-q")
+        scratch_identity(repo)
         root = repo / study.STUDY_REL
         folder = root / "COPIED.d"
         folder.mkdir(parents=True)
@@ -348,7 +367,47 @@ def repository():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp).resolve()
         git(root, "init", "-q")
+        scratch_identity(root)
         yield FakeRepo(root)
+
+
+class ScratchIdentity(unittest.TestCase):
+    def test_empty_home_uses_only_each_scratch_repos_local_identity(self):
+        with empty_identity_home():
+            with manifest_repository() as (repo, _root, _folder):
+                self.assertEqual(takes._git_at(repo, "config", "--local", "--get", "user.name", missing=True),
+                                 "synthetic")
+                self.assertEqual(takes._git_at(repo, "config", "--local", "--get", "user.email", missing=True),
+                                 "synthetic@example.invalid")
+            with repository() as repo:
+                self.assertEqual(takes._git_at(repo.root, "config", "--local", "--get", "user.name", missing=True),
+                                 "synthetic")
+                r = row()
+                takes.commit_registration(r, 1, root=repo.root, repo=repo.root, pre={"rows": [r]})
+                repo.commit_records(r, 1, outcome(r, state=labels4.FAILED, final=False))
+                takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
+                    route=labels4.ABORTED, by="synthetic-person", root=repo.root, repo=repo.root)
+                self.assertEqual(git(repo.root, "show", "-s", "--format=%an <%ae>"),
+                                 "synthetic <synthetic@example.invalid>")
+
+    def test_missing_runtime_identity_refuses_before_writing(self):
+        with empty_identity_home():
+            for door in ("registration", "ruling"):
+                with self.subTest(door=door), repository() as repo:
+                    r = row()
+                    repo.commit_records(r, 1, outcome(r, state=labels4.FAILED, final=False))
+                    for key in ("user.name", "user.email"):
+                        takes._git_at(repo.root, "config", "--local", "--unset-all", key, missing=True)
+                    before = git(repo.root, "rev-parse", "HEAD")
+                    with self.assertRaisesRegex(ValueError, "commit identity missing"):
+                        if door == "registration":
+                            other = row(2)
+                            takes.commit_registration(other, 1, root=repo.root, repo=repo.root, pre={"rows": [other]})
+                        else:
+                            takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
+                                route=labels4.ABORTED, by="synthetic-person", root=repo.root, repo=repo.root)
+                    self.assertEqual(git(repo.root, "rev-parse", "HEAD"), before)
+                    self.assertEqual(git(repo.root, "status", "--porcelain"), "")
 
 
 class Registration(unittest.TestCase):
