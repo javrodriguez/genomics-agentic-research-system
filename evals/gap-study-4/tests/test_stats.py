@@ -1094,5 +1094,43 @@ class ReviewRound1Equivalents(unittest.TestCase):
         self.assertTrue(stats._complete({"trap": rec(), "normal": rec(half="normal")}))
 
 
+class ReviewRound2Lane(unittest.TestCase):
+    """The lane lead's round 2 review, W4E2-1 to W4E2-5 (fold 2); the decisions are the lane lead's."""
+
+    def test_w4e2_1_heading_names_both_families_on_a_nine_task_design(self):
+        d = design(tasks=NINE)
+        text = stats.render_comparisons(stats.comparisons(rich_records(), d), d)
+        self.assertIn("over the 9 tasks that run", text)
+        self.assertIn("over the 3 stronger-against-weaker contrasts", text)
+
+    def test_w4e2_2_version_space_and_pipe_refused(self):
+        for v in ("1.0|x", "1.0 x"):
+            self.assertTrue(refuses(stats.validate_record, rec(agent={"harness": HX, "version": v})), v)
+
+    def test_w4e2_3_dotfiles_ignored_dot_json_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            res, pre, pg = TheCheck.fixture(TheCheck(), tmp)
+            for name in (".DS_Store", ".gitkeep"):
+                (res / name).write_text("")
+            self.assertEqual(stats.check(res, pre, pg)[0], 0)
+            with mock.patch.object(stats, "_ignored", lambda name: False):   # mutant: dotfiles are strays
+                self.assertEqual(stats.check(res, pre, pg)[0], 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / ".hidden.json").write_text(json.dumps(cell("right", "right")))
+            self.assertEqual(len(stats.load_results(Path(tmp))), 20)
+            with mock.patch.object(stats, "_ignored", lambda name: name.startswith(".")):   # mutant: .json skipped
+                self.assertEqual(stats.load_results(Path(tmp)), [])
+
+    def test_w4e2_4_levels_one_kind_per_task_across_models(self):
+        mixed = cell("right", "right", model="m1") + [
+            outcome("right", half=h, model="m2", wording=w, repeat=None, pressure=True)
+            for h in stats.HALVES for w in WORDINGS]
+        self.assertTrue(refuses(stats.check_records, mixed))
+
+    def test_w4e2_5_docstring_names_the_strays_and_empty_lines(self):
+        self.assertIn("not a top-level *.json", stats.__doc__)
+        self.assertIn("results files, 0 records", stats.__doc__)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
