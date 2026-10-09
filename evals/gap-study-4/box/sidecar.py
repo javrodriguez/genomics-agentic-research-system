@@ -189,10 +189,25 @@ class ReplyError(ValueError):
 
 def pending() -> dict:
     """field -> why, for every value still PENDING (interface 15)."""
-    values = {"inotifywait_argv": INOTIFYWAIT_ARGV, "inotifywait_format": INOTIFYWAIT_FORMAT,
+    values = {"inotifywait_argv": INOTIFYWAIT_ARGV,
+              "inotifywait_format": INOTIFYWAIT_FORMAT if _format_ok(INOTIFYWAIT_FORMAT) else PENDING,
               "inotifywait_subsecond": INOTIFYWAIT_SUBSECOND, "inotifywait_events": INOTIFYWAIT_EVENTS,
               "inotify_watch_count": INOTIFY_WATCH_COUNT, "watch_establish_s": WATCH_ESTABLISH_S}
     return {f: why for f, why in _PENDING_WHY.items() if values[f] == PENDING}
+
+
+FORMAT_KEYS = ("fields", "separator", "established", "setup_lines")
+
+
+def _format_ok(fmt) -> bool:
+    """A filled INOTIFYWAIT_FORMAT has exactly FORMAT_KEYS, setup_lines a list or tuple of non-empty strings, and
+    no PENDING anywhere (fold 4, W4C3-2): anything else still reads as PENDING."""
+    if not isinstance(fmt, dict) or sorted(fmt) != sorted(FORMAT_KEYS):
+        return False
+    lines = fmt["setup_lines"]
+    if not isinstance(lines, (list, tuple)) or not all(isinstance(x, str) and x for x in lines):
+        return False
+    return PENDING not in [fmt["separator"], fmt["established"]] + list(fmt["fields"]) + list(lines)
 
 
 def require_ready():
@@ -220,7 +235,7 @@ def ctl_dir_ok() -> bool:
     evidence mount (interface 12: never in the run tree or the evidence folder; create_argv refuses a run tree
     overlapping it). Fold 3, W4C2-5: the program-folder clause was unreachable while PROGRAM is under /opt/w, and
     is dropped."""
-    under = any(CTL_DIR.startswith(r) and len(CTL_DIR) > len(r) for r in ("/tmp/", "/run/"))
+    under = any(CTL_DIR.startswith(r) for r in ("/tmp/", "/run/"))   # "/tmp/" itself fails the normpath test
     return os.path.normpath(CTL_DIR) == CTL_DIR and under and not _overlap(CTL_DIR, EVIDENCE_MOUNT)
 
 
@@ -706,8 +721,7 @@ class Sidecar:
         t0 = self.clock()
         while not w.established():
             if self._arm_gave_up(w, t0):
-                if w.poll() is None:
-                    w.force_stop()
+                self._abandon(w)
                 self._break("the watcher never reported its watches established; no watcher-start was written")
                 return None
             self.sleep(POLL_S)
@@ -715,6 +729,11 @@ class Sidecar:
         self._health(WATCHER_START, at)
         self.watcher, self._floor = w, at
         return at
+
+    def _abandon(self, w):
+        """A watcher given up on while arming is killed, never left running with its pipes unread."""
+        if w.poll() is None:
+            w.force_stop()
 
     def _arm_gave_up(self, w, t0) -> bool:
         """Stop waiting for the watches: the watcher died while arming (seen at once), it printed a line that is
@@ -732,12 +751,13 @@ class Sidecar:
             return
         rc = self.watcher.poll()
         if rc is not None:
-            self._drain()
+            fault = not self._drain()   # fold 4, W4C3-5: a fault in the last drain is a fault
             at = self.clock()
-            code = stop_exit_code(rc, requested=False, fault=False)
+            code = stop_exit_code(rc, requested=False, fault=fault)
             self._health(WATCHER_STOP, at, exit_code=code)
             self.watcher = None
-            self._break(f"the watcher exited on its own (exit code {code}); it is not re-armed")
+            self._break(f"the watcher exited on its own (exit code {code}){' and faulted' if fault else ''}; "
+                        f"it is not re-armed")
 
     # --------------------------------------------------------------------------------------------- snapshots
     def _snapshot(self, label: str, taken_at: float) -> tuple:
