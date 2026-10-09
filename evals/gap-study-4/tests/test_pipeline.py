@@ -835,6 +835,8 @@ class LedgerDoor(unittest.TestCase):
         with repository() as repo:
             r = row()
             pre = {"rows": [r]}
+            (repo.root / "prereg.json").write_text(json.dumps(pre))
+            commit(repo.root, ["prereg.json"], "Record synthetic design")
             guard = takes.RegistrationGuard()
             got = takes.commit_registration(r, 1, guard=guard, root=repo.root, repo=repo.root, pre=pre)
             rows = takes.load_rows(root=repo.root, repo=repo.root)
@@ -844,6 +846,8 @@ class LedgerDoor(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "earlier row|already registered"):
                 takes.commit_registration(r, 1, root=repo.root, repo=repo.root, pre=pre)
         with repository() as repo:
+            (repo.root / "prereg.json").write_text(json.dumps(pre))
+            commit(repo.root, ["prereg.json"], "Record synthetic design")
             wrong = dict(r, model="synthetic-other")
             with self.assertRaisesRegex(ValueError, "pre-registered"):
                 takes.commit_registration(wrong, 1, root=repo.root, repo=repo.root, pre=pre)
