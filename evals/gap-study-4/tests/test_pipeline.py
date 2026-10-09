@@ -36,6 +36,9 @@ import harness_bookkeeping as hb
 import stats
 import result as result_page
 import completeness
+import costs
+from datetime import datetime, timezone
+from decimal import Decimal
 from graders import labels4
 
 MUTANT = None
@@ -72,6 +75,11 @@ def mutations():
         "committed-state": (completeness, "committed_state", lambda cell, states: None),
         "result-tables": (result_page, "stats_block", lambda derived: stats.STATS_START + stats.STATS_END),
         "empty-result": (result_page, "empty_line", lambda: "0 right of 0"),
+        "per-call": (costs, "unique_calls", lambda calls: calls),
+        "price-date": (costs, "require_price_date", lambda table: None),
+        "round-spend": (costs, "spent_since", lambda spend, start: {"openai": Decimal(0), "google": Decimal(0)}),
+        "walk-cap": (costs, "over_cap", lambda totals: False),
+        "month-hold": (costs, "month_turn_allowed", lambda arm, now, trimmed: True),
         "prior-round": (result_page, "prior_sections", lambda: "\nEarlier round table\n"),
     }
 
@@ -701,6 +709,93 @@ class StatsDestination(unittest.TestCase):
             self.assertEqual(refused.returncode, 1)
             self.assertIn("a results file is a JSON list", refused.stdout)
 
+
+
+class CostAccounting(unittest.TestCase):
+    def api(self):
+        self.assertTrue(callable(getattr(costs, "account", None)), "cost accounting must operate per call")
+        return costs.account
+
+    def fake_prices(self):
+        # Deliberately invented prices, never usable as vendor quotations.
+        return {"as_of": "2026-10-01", "fake": True, "vendors": {
+            v: {"synthetic-model": {"input_tokens": "2", "output_tokens": "3"}}
+            for v in ("openai", "google")}}
+
+    def call(self):
+        return {"call_id": "c1", "vendor": "openai", "model": "synthetic-model",
+                "agent": {"harness": "synthetic", "version": "0.0.1"},
+                "usage": {"input_tokens": 1000000, "output_tokens": 1000000},
+                "total_cost_usd": "4.25", "started_at": "2026-10-01T00:00:00Z",
+                "ended_at": "2026-10-01T00:00:03Z"}
+
+    def test_per_call_usage_printed_cost_and_wall_time(self):
+        account = self.api()
+        c = self.call()
+        got = account([c, copy.deepcopy(c)], self.fake_prices())
+        self.assertEqual(got["calls"], 1)
+        self.assertEqual(got["usage"]["input_tokens"], 1000000)
+        self.assertEqual(got["total_cost_usd"], Decimal("4.25"))
+        self.assertEqual(got["priced_cost_usd"], Decimal("5"))
+        self.assertEqual(got["wall_seconds"], 3)
+        with mock.patch.object(costs, "unique_calls", lambda calls: calls):
+            self.assertNotEqual(account([c, c], self.fake_prices())["calls"], 1)
+        bad = dict(c, total_cost_usd="9")
+        with self.assertRaisesRegex(ValueError, "conflicting"):
+            account([c, bad], self.fake_prices())
+        self.assertFalse(account([], self.fake_prices())["measured"])
+        c["usage"] = None
+        self.assertIsNone(account([c], self.fake_prices())["priced_cost_usd"])
+
+    def test_pricing_requires_dated_table_and_agent(self):
+        account = self.api()
+        prices = self.fake_prices()
+        del prices["as_of"]
+        with self.assertRaisesRegex(ValueError, "dated"):
+            account([self.call()], prices)
+        with mock.patch.object(costs, "require_price_date", lambda table: None):
+            self.assertEqual(account([self.call()], prices)["calls"], 1)
+        bad = self.call(); del bad["agent"]
+        with self.assertRaisesRegex(ValueError, "agent"):
+            account([bad], self.fake_prices())
+
+    def test_round_caps_use_all_months_and_all_models(self):
+        self.api()
+        self.assertEqual(costs.CAPS, {"openai": Decimal(260), "google": Decimal(140)})
+        self.assertEqual(costs.TOTAL_CAP, Decimal(400))
+        start = datetime(2026, 9, 1, tzinfo=timezone.utc)
+        spend = [{"vendor": "openai", "at": "2026-09-10T00:00:00Z", "usd": "100"},
+                 {"vendor": "openai", "at": "2026-10-01T00:00:00Z", "usd": "150"},
+                 {"vendor": "google", "at": "2026-10-01T00:00:00Z", "usd": "139"},
+                 {"vendor": "google", "at": "2026-08-01T00:00:00Z", "usd": "900"}]
+        walks = [{"vendor": "openai", "model": "synthetic-one", "agent": row()["agent"],
+                  "cost_per_try": "1", "tries_left": 11},
+                 {"vendor": "google", "model": "synthetic-two", "agent": row()["agent"],
+                  "cost_per_try": "1", "tries_left": 1}]
+        got = costs.walk_gate(walks, spend, start)
+        self.assertEqual(got["remaining"], {"openai": Decimal(10), "google": Decimal(1)})
+        self.assertEqual(got["decision"], costs.STOP_FOR_WORD)
+        with mock.patch.object(costs, "spent_since", lambda s, d: dict.fromkeys(costs.CAPS, Decimal(0))):
+            self.assertNotEqual(costs.walk_gate(walks, spend, start)["decision"], costs.STOP_FOR_WORD)
+        with mock.patch.object(costs, "over_cap", lambda totals: False):
+            self.assertNotEqual(costs.walk_gate(walks, spend, start)["decision"], costs.STOP_FOR_WORD)
+
+    def test_month_turn_refuses_until_both_figures_recorded(self):
+        self.api()
+        at = datetime(2026, 10, 31, 23, 31, tzinfo=timezone.utc)
+        for arm in ("O", "G"):
+            self.assertFalse(costs.month_turn_allowed(arm, at, None))
+            self.assertFalse(costs.month_turn_allowed(arm, datetime(2026, 11, 1, tzinfo=timezone.utc), None))
+        self.assertTrue(costs.month_turn_allowed("A", at, None))
+        trimmed = {"kind": "caps trimmed", "by": "Javier", "month": "2026-11",
+                   "at": "2026-10-31T23:30:00Z", "figures": {"openai": "10", "google": "1"}}
+        self.assertTrue(costs.month_turn_allowed("O", at, trimmed))
+        bad = copy.deepcopy(trimmed); del bad["figures"]["google"]
+        self.assertFalse(costs.month_turn_allowed("O", at, bad))
+        bad = dict(trimmed, by="synthetic-person")
+        self.assertFalse(costs.month_turn_allowed("O", at, bad))
+        with mock.patch.object(costs, "month_turn_allowed", lambda arm, now, trimmed: True):
+            self.assertTrue(costs.month_turn_allowed("O", at, None))
 
 if __name__ == "__main__":
     if "--mutant" in sys.argv:
