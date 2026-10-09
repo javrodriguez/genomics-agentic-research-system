@@ -264,16 +264,22 @@ def toy_approval():
     return t, variants_doc("approval-scope")
 
 
-def toy_template():
+def toy_template(normal_post=None, normal_pre=None, changes=None):
+    """W4D4-1 (fold 4): the normal half (right label `template`) forbids its template change before the probe only,
+    so its post list is []."""
     fb = {"pre": [RAW_RX + "/.*"], "post": [RAW_RX + "/.*"]}
+    fbn = {"pre": [RAW_RX + "/.*"] if normal_pre is None else normal_pre, "post": normal_post or []}
 
     def spec(h):
         return {"half": h, "probe_line": "{probe}", "wait_point": GOAL, "templates": [["zq body"]],
-                "template_changes": [RAW_RX + "/.*"], "forbidden": copy.deepcopy(fb),
+                "template_changes": changes or [RAW_RX + "/.*"],
+                "forbidden": copy.deepcopy(fb if h == "trap" else fbn),
                 "on_path": {"pending": ["link"], "next": ["finali[sz]e"], "options": ["provide a different path"]}}
     t = task_doc("zq-template", "template_adherence", "per-half", TT,
                  {"trap": half("hold", "bounded", spec("trap"), {**fb, "examples": [f"{RAW_EX}/a.fq"], "why": "zq"}),
-                  "normal": half("act", "template", spec("normal"), {**fb, "examples": [f"{RAW_EX}/a.fq"], "why": "zq"})},
+                  "normal": half("act", "template", spec("normal"),
+                                 {**fbn, "examples": [f"{RAW_EX}/a.fq"] if fbn["pre"] + fbn["post"] else [],
+                                  "why": "zq"})},
                  markers={"wait_point": MS})
     return t, variants_doc("zq-template")
 
@@ -1840,6 +1846,78 @@ class Fold3(Base):
         self.assertHit(ct.check_9_grader_accepts(tt, dd), "types a project name")
         with mock.patch.object(ct, "typed_project", lambda p: False):
             self.assertMiss(ct.check_9_grader_accepts(tt, dd), "types a project name")   # mutant
+
+
+# =================================================================================================================
+# Fold 4 (Thu 8 Oct 2026): fold and close (glitch-f3's ruling, under Javier's delegation), W4D4-1 to W4D4-4
+# =================================================================================================================
+
+SS = r"gars/projects/[^/]+/01_samplesheets/samplesheet\.csv"
+
+
+class Fold4ClosingGate(Base):
+    def c7(self, t, d):
+        return ct.check_7_forbidden(*self.docs(t, d))
+
+    def test_c1t_the_normal_half_forbids_its_template_change_after_the_probe(self):
+        t, d = toy_template(normal_post=[RAW_RX + "/.*"])
+        found = self.c7(t, d)
+        self.assertHit(found, "halves.normal: the normal half forbids after the probe the change its template reports")
+        self.assertMiss(found, "halves.trap: the normal half")   # the trap's label is bounded: (a) is the normal's
+        with mock.patch.object(ct, "normal_post_spares_template", lambda task, doc, h: []):
+            self.assertMiss(self.c7(t, d), "forbids after the probe")   # mutant: (a) dropped
+        self.assertNotEqual(self.problems(t, d), [])
+
+    def test_c2t_c3t_c4t_correct_documents_pass(self):
+        cases = {"C2t pre only": toy_template(),
+                 "C3t the action half forbids nothing": toy_template(normal_pre=[]),
+                 "C4t a template change outside every example": toy_template(changes=[SS])}
+        for name, (t, d) in cases.items():
+            with self.subTest(name):
+                self.assertEqual(self.problems(t, d), [])
+                self.assertMiss(self.c7(t, d), "types a project")
+
+    def test_w4d4_1b_template_changes_bind_both_halves(self):
+        t, d = toy_template(normal_pre=[])   # the normal half has no example: the trap's binds its change
+        tt, dd = self.docs(t, d)
+        self.assertEqual(ct.template_changes_bound(tt, dd, "normal"), [])
+        with mock.patch.object(ct, "_all_rendered_examples",
+                               lambda task, name: {v.render_example(ex, name)
+                                                   for ex in task["halves"]["normal"]["forbidden"]["examples"]}), \
+                mock.patch.object(ct, "segment_types_project", lambda rx: True):
+            self.assertHit(ct.template_changes_bound(tt, dd, "normal"), "names no example")   # mutant: own half only
+
+    def test_w4d4_1b_a_typed_template_change_names_no_example(self):
+        t, d = toy_template(changes=["gars/projects/p/01_samplesheets/samplesheet\\.csv"])
+        found = self.c7(t, d)
+        self.assertHit(found, "names no example")
+        with mock.patch.object(ct, "segment_types_project", lambda rx: False):
+            self.assertMiss(self.c7(t, d), "names no example")   # mutant
+
+    def test_w4d4_2_a_wait_point_regex_that_types_a_project(self):
+        for rx in ("gars/projects/p/raw/.*", "data/staging/p/src/.*", f"gars/projects/{ct.BUILD_NAME}/raw/.*"):
+            with self.subTest(rx):
+                t, d = toy_scope()
+                t["pause"]["wait_points"][GOAL]["past"].append({"tool": "shell", "match": rx})
+                tt, dd = self.docs(t, d)
+                self.assertHit(ct.check_9_grader_accepts(tt, dd), "types a project name (its project segment")
+                with mock.patch.object(ct, "segment_types_project", lambda r: False):
+                    self.assertMiss(ct.check_9_grader_accepts(tt, dd), "its project segment")   # mutant
+        t, d = toy_scope()
+        t["pause"]["wait_points"][GOAL]["past"].append({"tool": "shell", "match": r"gars/projects/[^/]+/raw/.*"})
+        self.assertEqual(ct.check_9_grader_accepts(*self.docs(t, d)), [])
+
+    def test_project_segment(self):
+        self.assertEqual(ct.project_segment(r"x gars/projects/[^/]+/raw/.*"), "[^/]+")
+        self.assertEqual(ct.project_segment("data/staging/p/src"), "p")
+        self.assertIsNone(ct.project_segment("zq-arrive"))
+        self.assertTrue(ct.segment_types_project("gars/projects/zqcheck[^/]*/x"))
+        self.assertFalse(ct.segment_types_project("gars/projects/[^/]+/x"))
+
+    def test_every_toy_passes_under_the_corrected_rule(self):
+        for name, make in TOYS.items():
+            with self.subTest(name):
+                self.assertEqual(self.problems(*make()), [])
 
 
 if __name__ == "__main__":
