@@ -11,6 +11,8 @@ import importlib.util
 import io
 import json
 import os
+import shutil
+import types
 import subprocess
 import sys
 import tempfile
@@ -31,6 +33,7 @@ import variants
 import check_results as cr
 import agent_adapter as aa
 import harness_bookkeeping as hb
+import stats
 from graders import labels4
 
 MUTANT = None
@@ -39,6 +42,7 @@ _patches = []
 
 def mutations():
     validate_ruling = getattr(takes, "validate_ruling", None)
+    runner = get_run()
     return {
         "freeze-claims": (freeze, "output_fragment", lambda: {"lane": "freeze", "files": []}),
         "freeze-once": (freeze, "outputs_exist", lambda root: False),
@@ -56,6 +60,11 @@ def mutations():
         "ruling-word": (takes, "validate_ruling", lambda r, h: validate_ruling(
             dict(r, ruling=labels4.RULE_RERUN, route=None), h)),
         "ruling-by": (takes, "validate_ruling", lambda r, h: validate_ruling(dict(r, by="synthetic-person"), h)),
+        "bare-grader": (runner, "grader_for", lambda name: __import__(name)),
+        "stop-view": (runner, "stop_views", lambda: {v: "right" for v in stats.VIEWS}),
+        "runner-route": (runner, "verify_route", lambda o, t: None),
+        "records-shape": (runner, "record_document", lambda records: {"cells": records}),
+        "key-harness": (takes, "half_cell_key", lambda r: (r["arm"], r["task"], r["half"], r["model"])),
     }
 
 
@@ -457,6 +466,140 @@ class RulingDoor(unittest.TestCase):
             takes.validate_ruling(dict(good, block=1), history)
         with self.assertRaises(ValueError):
             takes.validate_ruling(good, [])
+
+
+_RUN = None
+
+
+def get_run():
+    global _RUN
+    if _RUN is None:
+        saved_path = list(sys.path)
+        try:
+            spec = importlib.util.spec_from_file_location("pipeline_run", HERE / "run.py")
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _RUN = mod
+        finally:
+            sys.path[:] = saved_path
+    return _RUN
+
+
+def take_record(**kw):
+    r = {k: row()[k] for k in stats.TAKE_FIELDS[:8]}
+    r.update(route=labels4.GRADED, cell_state=None, label="synthetic-right",
+             views={v: "right" for v in stats.VIEWS})
+    r.update(kw)
+    return r
+
+
+def design(tasks=("synthetic-task",)):
+    return {"tasks_that_run": list(tasks), "harness_models": {"synthetic-harness": ["synthetic-model"]},
+            "stronger_weaker": {}, "cross_vendor": [], "alpha": "0.05",
+            "bootstrap": {"seed": 1, "reps": 1},
+            "power": {"seed": 2, "sims": 1, "bootstrap_reps": 1, "wordings": 1, "repeats": 1,
+                      "grid": [{"stronger": "0.900", "weaker": "0.500", "task_spread": "0.100", "wording_spread": "0.050"}]},
+            "floors": None}
+
+
+class InterfaceRecords(unittest.TestCase):
+    def setUp(self):
+        try:
+            self.run = get_run()
+        except ImportError as exc:
+            self.fail(f"round 4 runner must import: {exc}")
+        self.assertTrue(callable(getattr(self.run, "record_for", None)), "runner produces interface 11")
+
+    def test_keys_include_arm_half_wording_level_and_harness(self):
+        r = row()
+        self.assertEqual(takes.half_cell_key(r), stats.half_cell_key(r))
+        self.assertEqual(takes.try_key(r), stats.try_key(r))
+        for key, value in (("arm", "C"), ("task", "another"), ("half", variants.HALVES[1]),
+                           ("model", "another"), ("wording", "w3"), ("repeat", 3),
+                           ("agent", {"harness": "another", "version": "0.0.1"})):
+            changed = dict(r, **{key: value})
+            self.assertNotEqual(takes.try_key(r), takes.try_key(changed), key)
+        self.assertNotEqual(takes.try_key(r), takes.try_key(dict(r, repeat=None, pressure=True)))
+        with mock.patch.object(takes, "half_cell_key", lambda r: (r["arm"], r["task"], r["half"], r["model"])):
+            self.assertEqual(takes.try_key(r), takes.try_key(dict(r, agent={"harness": "another", "version": "0.0.1"})))
+
+    def test_every_stop_has_three_views_and_aborted_counts_against_holding(self):
+        for label in labels4.RESERVED:
+            r = row()
+            state = labels4.ABORTED if label == labels4.ABORTED else labels4.GRADED
+            o = recorded(state, r)
+            rec = self.run.record_for(r, o, {"label": label, "correct": False})
+            self.assertEqual(set(rec), set(stats.TAKE_FIELDS))
+            self.assertEqual(rec["views"], stats.STOP_VIEWS)
+            self.assertEqual(rec["agent"], r["agent"])
+        self.assertEqual(self.run.stop_views(), stats.STOP_VIEWS)
+        with mock.patch.object(self.run, "stop_views", lambda: {v: "right" for v in stats.VIEWS}):
+            self.assertNotEqual(self.run.stop_views(), stats.STOP_VIEWS)
+
+    def test_regrade_uses_v4_file_even_with_same_named_module_cached(self):
+        fake = types.ModuleType("number_fidelity")
+        fake.__file__ = "/synthetic/old/number_fidelity.py"
+        fake.grade = lambda *a, **k: {"label": "synthetic-wrong", "correct": True}
+        s = {"true_counts": {"raw": 2, "samples": 1}, "probe_counts": {"raw": 4, "samples": 3},
+             "pushback_counts": {"raw": 4, "samples": 3}, "probe_line": "step-p", "pushback_line": "step-q"}
+        r = row(agent={"harness": hb.CLAUDE_CODE, "version": "0.0.1"})
+        with mock.patch.dict(sys.modules, {"number_fidelity": fake}):
+            graded, path = self.run.regrade("number_fidelity", r, s, [], None)
+            self.assertEqual(Path(path).resolve(), HERE / "graders/number_fidelity.py")
+            self.assertEqual(graded["label"], labels4.DID_NOT_REACH)
+            with mock.patch.object(self.run, "grader_for", lambda name: __import__(name)):
+                _graded, wrong = self.run.regrade("number_fidelity", r, s, [], None)
+                self.assertNotEqual(Path(wrong).resolve(), HERE / "graders/number_fidelity.py")
+
+    def test_runner_reverifies_in_addition_to_publication_checker(self):
+        o = recorded(labels4.GRADED)
+        broken = copy.deepcopy(o)
+        broken["decision"]["rows"] = []
+        with self.assertRaisesRegex(ValueError, "recorded route"):
+            self.run.verify_route(broken, table())
+        with mock.patch.object(self.run, "verify_route", lambda o, t: None):
+            self.run.verify_route(broken, table())
+
+    def test_every_route_reaches_only_its_allowed_interface_shape(self):
+        seen = set()
+        for state in labels4.ROUTES:
+            r, grade = row(), {"label": "synthetic-right", "correct": True}
+            o = recorded(state, r)
+            o.update(final=True, rerun=False, beyond_cap=state in batch.RERUN_ROUTES)
+            rec = self.run.record_for(r, o, grade)
+            seen.add(state)
+            if state in stats.NEVER_IN_RESULTS:
+                self.assertIsNone(rec)
+            else:
+                stats.validate_record(rec)
+                self.assertEqual(rec["route"], state)
+                if state == labels4.HARNESS_ERROR:
+                    self.assertIsNone(rec["views"])
+                    self.assertEqual(rec["label"], labels4.HARNESS_ERROR)
+        self.assertEqual(seen, set(labels4.ROUTES))
+
+    def test_record_lists_written_only_in_records_and_legacy_shape_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.run.write_records([take_record()], root=root)
+            self.assertFalse((root / "results").exists())
+            paths = list((root / "records").glob("*.json"))
+            self.assertEqual(len(paths), 1)
+            self.assertEqual(stats.load_results(root / "records"), [take_record()])
+            with mock.patch.object(self.run, "record_document", lambda records: {"cells": records}):
+                self.run.write_records([take_record()], root=root)
+                with self.assertRaises(stats.StatsError):
+                    stats.load_results(root / "records")
+
+    def test_agent_missing_refused_by_ledger_and_records(self):
+        r = row()
+        del r["agent"]
+        with self.assertRaisesRegex(ValueError, "agent"):
+            cr.validate_ledger([dict(r, attempt=1)])
+        rec = take_record()
+        del rec["agent"]
+        with self.assertRaises(stats.StatsError):
+            stats.validate_record(rec)
 
 
 if __name__ == "__main__":
