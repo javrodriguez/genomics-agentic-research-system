@@ -1,0 +1,3 @@
+# The wave 4 merge: one check per merge binding (1-8) between lanes w4a, w4b, w4c and w4h, each with a mutant asserted red.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_wave4_bindings.py
