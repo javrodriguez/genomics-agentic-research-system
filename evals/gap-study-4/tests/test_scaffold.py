@@ -214,9 +214,9 @@ class TheManifest(unittest.TestCase):
         src = "evals/gap-study-2/takes.py"
         bad = self.later_lane([{"path": "x.py", "status": "identical", "source": src}], {"x.py": cm.source_bytes(src)})
         self.assertTrue(any("not an allowed copy source" in b for b in bad), bad)
-        allowed = self.later_lane([{"path": "intervals.py", "status": "identical",
+        allowed = self.later_lane([{"path": "zz_intervals_probe.py", "status": "identical",
                                     "source": "evals/gap-study-intervals/intervals.py"}],
-                                  {"intervals.py": cm.source_bytes("evals/gap-study-intervals/intervals.py")})
+                                  {"zz_intervals_probe.py": cm.source_bytes("evals/gap-study-intervals/intervals.py")})
         self.assertEqual(allowed, [])
 
     def test_a_record_recorded_as_new_at_another_path_is_refused(self):
