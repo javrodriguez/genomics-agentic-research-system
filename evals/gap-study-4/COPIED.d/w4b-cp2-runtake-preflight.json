@@ -1,0 +1,45 @@
+{
+  "lane": "w4b-cp2-runtake-preflight",
+  "files": [
+    {
+      "path": "box/run_take.py",
+      "status": "new",
+      "reason": "CP2's host side of one take's containers: the runtime protocol (Completed, DockerRuntime, the box's one subprocess call), the take container's create argv from a TakeSpec, the environment per harness with D8 B2's per-arm key refusal, the login read, launch and teardown by recorded id, leaked containers before a restart, the agent's leftover processes, the cgroup counters, the exit record and one turn's exec. New in round 4; round 3 ran no container."
+    },
+    {
+      "path": "box/take_config.py",
+      "status": "new",
+      "reason": "CP2's per-take config folder's files per harness (Claude Code settings, Codex config.toml, Gemini CLI settings), each hashed for the freeze; split from run_take (this lane's decision) so each file stays one owner and small. New in round 4."
+    },
+    {
+      "path": "box/preflight.py",
+      "status": "new",
+      "reason": "CP2's non-model checks before every take, as a closed ordered tuple of checks over probes the runtime collects, evaluated by a pure function, plus the after-take credential-file check. New in round 4."
+    },
+    {
+      "path": "tests/test_run_take.py",
+      "status": "new",
+      "reason": "Tests for box/run_take.py (interface 3) with fakes only: the process guard, every clause with its mutants, and interface 10's ast audit."
+    },
+    {
+      "path": "tests/test_preflight.py",
+      "status": "new",
+      "reason": "Tests for box/preflight.py (interface 3) with fakes only: every check green on a passing world and red on its own breaks, missing or failed probes, the PENDING refusals, the programs' 3.11 floor and neutrality, the record's place and the after-take credential check, with their mutants."
+    },
+    {
+      "path": "tests/test_take_config.py",
+      "status": "new",
+      "reason": "Tests for box/take_config.py (interface 3): D8's values read back with tomllib and json, the PENDING refusals, no key and no study word in any file, and the freeze hash, with their mutants."
+    },
+    {
+      "path": "COPIED.d/w4b-cp2-runtake-preflight.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w4b-cp2-runtake-preflight.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}

@@ -1,0 +1,787 @@
+#!/usr/bin/env python3
+"""The non-model checks before every take (CP2), and the credential-file check after it.
+
+Three parts, so the judgment is pure:
+  - `probes(...)` builds each probe: an exec as the agent with `--workdir /` (a short program run as
+    `python3 -I -B -c`, which never reads under the run tree: after `begin` the watcher is armed, and anything opened
+    there would be logged in turn 1's window), a host-side exec into the sidecar, an inspect, or a host-side read;
+  - `run(runtime, probes)` collects the raw records, and a probe that fails to run is recorded as failed;
+  - `evaluate(raw, *, spec, lock, sidecar_expect, harness, hosts)` turns them into the preflight record
+    `{"ok", "checks": [{"id", "ok", "detail"}], "recorded"}`, one entry per id of the closed ordered tuple
+    `PREFLIGHT_CHECKS`. `ok` is True only when every check ran and passed. A check whose probe is missing or failed
+    fails; a check whose expected value (from `spec`, `lock`, `sidecar_expect` or a constant here) is PENDING fails.
+    Any failure refuses the take before the first turn, as a rehearsal: the drive step passes `preflight_ok`.
+
+`write(record, path)` puts the record BESIDE the evidence folder, in the take's record folder (ruling C2), never in
+it. `postflight(config_dir, harness)` checks the per-take config folder after a take (D8 B2 item 7).
+
+The lock is a dict of exactly w4a's schema paths (`LOCK_KEYS`); after the wave 4 merge it is read through
+`image_lock.load` (merge binding 8). No model, no network from the host, standard library only.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Callable
+
+from box import run_take
+
+PENDING = run_take.PENDING
+NotReady = run_take.NotReady
+
+# Merge binding 1: equal to every image.lock's users.watcher.uid (w4a) and sidecar.create_argv's default user (w4c).
+WATCHER_UID = 10002
+AGENT_UID = int(run_take.AGENT_USER.split(":")[0])
+KEEPALIVE_UID = int(run_take.KEEPALIVE_USER.split(":")[0])
+# CAP_DAC_READ_SEARCH is capability 2: the one capability the watcher holds.
+WATCHER_CAP_EFF = 1 << 2
+
+LOCK_KEYS = ("image_id", "harness.version", "users.agent.uid", "users.watcher.uid", "users.keepalive.uid")
+SIDECAR_EXPECT_KEYS = ("user", "network_mode", "cap_drop", "cap_add", "security_opt", "privileged", "pid_mode",
+                       "mounts")
+# The take container's mount target for the sidecar's evidence folder; the agent must fail to list it.
+SIDECAR_EVIDENCE_MOUNT = "/srv/ev"
+# Names that must never resolve from the take, beside the other two harnesses' hosts (plan; D8 B2 item 8).
+BLOCKED_NAMES = ("github.com", "huggingface.co")
+OTHER_HOST_VIA_PROXY = "github.com"
+CGROUP_ROOT = "/sys/fs/cgroup"
+CPU_PERIOD = 100000            # the runtime's default CFS period; cpu.max reads "<cpus * period> <period>"
+HEALTH = "health.jsonl"
+
+PREFLIGHT_CHECKS = (
+    "agent-non-root",
+    "image-matches-lock",
+    "harness-version-matches-lock",
+    "take-inspect-matches-spec",
+    "limits-apply",
+    "evidence-out-of-reach",
+    "watcher-invisible",
+    "sidecar-isolated",
+    "watcher-started",
+    "watcher-capability",
+    "consequential-paths-readable",
+    "no-container-socket",
+    "egress-allowed-host",
+    "egress-other-host-refused",
+    "egress-direct-refused",
+    "names-do-not-resolve",
+    "study-folders-absent",
+    "run-tree-path-neutral",
+)
+POSTFLIGHT_CHECKS = ("no-credential-file",)
+
+# `<harness> --version`'s output form, per harness: a regex with one group (the version) once a walk measures it.
+VERSION_COMMANDS = {run_take.CLAUDE_CODE: ("claude", "--version"), run_take.CODEX: ("codex", "--version"),
+                    run_take.GEMINI: ("gemini", "--version")}
+VERSION_PATTERNS = {run_take.CLAUDE_CODE: PENDING, run_take.CODEX: PENDING, run_take.GEMINI: PENDING}
+# The pre-registered study folders that must be absent from the run tree (run-tree-relative; CP5's list).
+STUDY_PATHS = PENDING
+# The round's leak words (CP5's list; interface 16). Round 3's are never committed here.
+LEAK_WORDS = PENDING
+
+# Credential files a harness could leave in its config folder, each with the source that names it. A file whose
+# name merely looks like a credential (CREDENTIAL_LIKE) fails the check too: this lane's stricter reading.
+# Only a name a source gives is used as a real value; names recalled without a source wait in RECORDED_PENDING for
+# the walk (Review A, glitch-f3's ruling "fold all of it"), and CREDENTIAL_LIKE stays the backstop that catches them.
+CREDENTIAL_FILES = {
+    run_take.CLAUDE_CODE: (),
+    run_take.CODEX: (("auth.json", "D8 section 3: 'so no auth.json is written' (forced_login_method api, "
+                                   "cli_auth_credentials_store ephemeral)"),),
+    run_take.GEMINI: (),
+}
+CREDENTIAL_LIKE = re.compile(r"(cred|oauth|token|secret|auth|account|\.pem$|\.key$)", re.IGNORECASE)
+
+PENDING_WHY = {
+    "VERSION_PATTERNS": "every `--version` output form: a walk-only value; no parse pattern is invented.",
+    "STUDY_PATHS": "the pre-registered list of study folders absent from the run tree: CP5's.",
+    "LEAK_WORDS": "the round's own leak words: CP5's (it adds the box users' names, image.lock users.*.name).",
+}
+RECORDED_PENDING = {
+    "token_visible_to_children": "whether the login reaches the agent's child processes: measured at the first "
+                                 "walk, so the secret scan is sized to it.",
+    "google_project_tier": "arm G's Google project tier (D8 B2 item 9): it needs the key.",
+    "watcher_holds_capability": "whether a non-root watcher holds its added capability in its effective set: the "
+                                "watcher-capability check passes only when it does.",
+    "internal_resolver": "whether an --internal network's resolver refuses outside names: the names check measures "
+                         "it.",
+    "credential_file_names": "the credential files each harness could leave, recalled without a source and confirmed "
+                             "by a walk: Claude Code .credentials.json; Gemini CLI oauth_creds.json and "
+                             "google_accounts.json. Until then CREDENTIAL_LIKE catches them.",
+    "cap_add spelling": "the runtime's spelling of the sidecar's one added capability: sidecar_expect carries "
+                        "PENDING until the stub take.",
+}
+
+
+def _is_pending(v) -> bool:
+    return run_take._is_pending(v)
+
+
+def pending() -> dict:
+    """Every constant of this module still PENDING, with its reason."""
+    values = {"VERSION_PATTERNS": VERSION_PATTERNS, "STUDY_PATHS": STUDY_PATHS, "LEAK_WORDS": LEAK_WORDS}
+    return {k: why for k, why in PENDING_WHY.items() if _is_pending(values[k])}
+
+
+# -------------------------------------------------------------------------------------- the take's expected facts
+TAKE_FACT_KEYS = ("image", "user", "entrypoint", "cmd", "working_dir", "network_mode", "cap_drop", "cap_add", "security_opt",
+                  "privileged", "devices", "pid_mode", "pids_limit", "memory", "memory_reservation", "nano_cpus",
+                  "mounts")
+
+
+def expected_take_inspect(spec) -> dict:
+    """Every fact `docker container inspect` must show for the take container, derived from the same spec."""
+    run_take.check_spec(spec)
+    return {
+        "image": spec.image, "user": run_take.KEEPALIVE_USER, "entrypoint": list(run_take.KEEPALIVE_COMMAND[:1]),
+        "cmd": list(run_take.KEEPALIVE_COMMAND[1:]),
+        "working_dir": spec.run_tree, "network_mode": spec.network, "cap_drop": ["ALL"], "cap_add": [],
+        "security_opt": ["no-new-privileges"], "privileged": False, "devices": [], "pid_mode": "",
+        "pids_limit": spec.pids_limit, "memory": spec.memory, "memory_reservation": spec.memory_reservation,
+        "nano_cpus": spec.nano_cpus(),
+        "mounts": sorted([
+            {"type": "bind", "source": spec.run_tree, "destination": spec.run_tree, "rw": True},
+            {"type": "bind", "source": spec.config_dir, "destination": run_take.CONFIG_MOUNT, "rw": True}],
+            key=lambda m: m["destination"]),
+    }
+
+
+_LIST_FACTS = ("cap_drop", "cap_add", "security_opt", "devices", "cmd", "entrypoint")
+_MOUNT_FIELDS = {"type": "Type", "source": "Source", "destination": "Destination", "rw": "RW"}
+
+
+def _facts(obj: dict, keys) -> dict:
+    out = {}
+    for k in keys:
+        try:
+            v = run_take._path_get(obj, run_take.INSPECT_PATHS[k])
+        except (KeyError, TypeError):
+            out[k] = "<absent>"
+            continue
+        if k in _LIST_FACTS and v is None:
+            v = []
+        if k == "pid_mode" and v is None:
+            v = ""
+        out[k] = v
+    return out
+
+
+def inspect_mismatches(obj, expected: dict, *, kind: str) -> list:
+    """Every difference between an inspect object and the expected facts; refuses while anything is PENDING."""
+    if _is_pending(run_take.INSPECT_STATUS):
+        return [f"the inspect spellings are PENDING: {run_take.PENDING_WHY['INSPECT_STATUS']}"]
+    keys = TAKE_FACT_KEYS if kind == "take" else SIDECAR_EXPECT_KEYS if kind == "sidecar" else None
+    if keys is None:
+        return [f"unknown inspect kind {kind!r}"]
+    if not isinstance(expected, dict) or set(expected) != set(keys):
+        return [f"the {kind} expectation must name exactly {list(keys)}"]
+    still = sorted(k for k, v in expected.items() if _is_pending(v))
+    if still:
+        return [f"{kind} expectation PENDING: {', '.join(still)}"]
+    if not isinstance(obj, dict):
+        return [f"the {kind} inspect is not an object"]
+    got = _facts(obj, keys)
+    out = []
+    for k in keys:
+        want, have = expected[k], got[k]
+        if k == "mounts":
+            fields = sorted({f for m in want for f in m}) if want else ["destination"]
+            if not isinstance(have, list):
+                out.append("mounts: absent")
+                continue
+            proj = sorted(({f: m.get(_MOUNT_FIELDS[f]) for f in fields} for m in have if isinstance(m, dict)),
+                          key=lambda m: str(m.get("destination")))
+            if len(proj) != len(have) or proj != sorted(want, key=lambda m: str(m.get("destination"))):
+                out.append(f"mounts: {proj} != {want}")
+        elif k in _LIST_FACTS:
+            if not isinstance(have, list) or sorted(map(str, have)) != sorted(map(str, want)) \
+                    or len(have) != len(want):
+                out.append(f"{k}: {have!r} != {want!r}")
+        elif type(have) is not type(want) or have != want:
+            out.append(f"{k}: {have!r} != {want!r}")
+    return out
+
+
+# --------------------------------------------------------------------------------------------- the programs
+# Each runs as `python3 -I -B -c` in the take (as the agent, workdir /) or in the sidecar (host-side exec). None
+# opens anything under the run tree; none names the study (interface 16); each parses at feature_version (3, 11).
+IDENTITY_PROGRAM = """\
+import json, os
+fields = {}
+with open("/proc/self/status") as fh:
+    for line in fh:
+        name, _, value = line.partition(":")
+        if name in ("Uid", "Gid", "CapEff", "CapPrm", "CapBnd", "NoNewPrivs"):
+            fields[name] = value.split()
+print(json.dumps({"uid": os.getuid(), "gid": os.getgid(), "status": fields}))
+"""
+
+CGROUP_PROGRAM = """\
+import json, sys
+out = {}
+for name in sys.argv[2:]:
+    try:
+        with open(sys.argv[1] + "/" + name) as fh:
+            out[name] = fh.read().strip()
+    except OSError as e:
+        out[name] = {"error": type(e).__name__}
+print(json.dumps(out))
+"""
+
+LISTING_PROGRAM = """\
+import json, os, sys
+out = {}
+for path in sys.argv[1:]:
+    try:
+        os.listdir(path)
+        out[path] = "listed"
+    except OSError as e:
+        out[path] = type(e).__name__
+print(json.dumps(out))
+"""
+
+PROCESSES_PROGRAM = """\
+import json, os
+me = os.getpid()
+rows = []
+for name in os.listdir("/proc"):
+    if not name.isdigit() or int(name) == me:
+        continue
+    try:
+        with open("/proc/" + name + "/status") as fh:
+            fields = dict(line.split(":", 1) for line in fh if ":" in line)
+    except OSError as e:
+        rows.append({"pid": int(name), "unreadable": type(e).__name__})
+        continue
+    rows.append({"pid": int(name), "uid": int(fields["Uid"].split()[0]), "name": fields.get("Name", "").strip(),
+                 "cap_eff": int(fields.get("CapEff", "0").strip(), 16)})
+print(json.dumps(sorted(rows, key=lambda r: r["pid"])))
+"""
+
+SOCKETS_PROGRAM = """\
+import glob, json, os
+paths = ["/var/run/docker.sock", "/run/docker.sock", "/run/containerd/containerd.sock",
+         "/run/podman/podman.sock", "/var/run/podman/podman.sock"]
+paths += glob.glob("/run/user/*/docker.sock") + glob.glob("/run/user/*/podman/podman.sock")
+print(json.dumps({"present": sorted(p for p in paths if os.path.lexists(p)),
+                  "docker_host": "DOCKER_HOST" in os.environ}))
+"""
+
+EGRESS_PROGRAM = """\
+import json, socket, sys
+proxy, port, allowed, other = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
+names = sys.argv[5:]
+def via_proxy(host):
+    try:
+        s = socket.create_connection((proxy, port), timeout=10)
+    except OSError as e:
+        return {"error": type(e).__name__}
+    try:
+        s.sendall(("CONNECT %s:443 HTTP/1.1\\r\\nHost: %s:443\\r\\n\\r\\n" % (host, host)).encode("ascii"))
+        data = b""
+        while b"\\r\\n" not in data and len(data) < 4096:
+            chunk = s.recv(1024)
+            if not chunk:
+                break
+            data += chunk
+        parts = data.split(b"\\r\\n", 1)[0].decode("latin-1").split()
+        return {"status": int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None}
+    except OSError as e:
+        return {"error": type(e).__name__}
+    finally:
+        s.close()
+def direct(host):
+    try:
+        socket.create_connection((host, 443), timeout=10).close()
+        return {"connected": True}
+    except OSError as e:
+        return {"connected": False, "error": type(e).__name__}
+def resolves(name):
+    try:
+        socket.getaddrinfo(name, 443)
+        return True
+    except OSError:
+        return False
+print(json.dumps({"via_proxy": {allowed: via_proxy(allowed), other: via_proxy(other)}, "direct": direct(allowed),
+                  "resolves": {n: resolves(n) for n in names}}))
+"""
+
+PROGRAMS = {"identity": IDENTITY_PROGRAM, "cgroup": CGROUP_PROGRAM, "listing": LISTING_PROGRAM,
+            "processes": PROCESSES_PROGRAM, "sockets": SOCKETS_PROGRAM, "egress": EGRESS_PROGRAM,
+            "watcher-caps": PROCESSES_PROGRAM}
+
+
+def _proxy_port() -> str:
+    """The proxy's port, derived from run_take.PROXY_URL (never typed apart from it)."""
+    m = re.fullmatch(r"http://([a-z0-9-]+):([0-9]+)", run_take.PROXY_URL)
+    if m is None or m.group(1) != run_take.PROXY_ALIAS:
+        raise run_take.Refused("PROXY_URL is http://<alias>:<port>")
+    return m.group(2)
+
+
+def _config_home_values(harness: str) -> dict:
+    """The harness's non-secret config-home variable, so `--version` reads and writes only the config folder."""
+    return {k: v for k, v in run_take.HARNESS_ENV[harness].items() if k in run_take.config_home_names()}
+
+
+def _py(program: str, *args: str) -> list:
+    return ["python3", "-I", "-B", "-c", program, *args]
+
+
+# ------------------------------------------------------------------------------------------------- the probes
+@dataclass(frozen=True)
+class Probe:
+    id: str
+    argv: tuple | None = None
+    read: Callable | None = None
+
+
+PROBE_IDS = ("identity", "take-inspect", "harness-version", "cgroup", "listing", "processes", "sidecar-inspect",
+             "health", "watcher-caps", "sockets", "egress", "study-folders")
+PROBE_TIMEOUT_S = 60
+
+
+def _check_hosts(hosts) -> dict:
+    if not isinstance(hosts, dict) or set(hosts) != set(run_take.LOGIN_VARIABLE):
+        raise run_take.Refused(f"hosts must name exactly the harnesses {sorted(run_take.LOGIN_VARIABLE)}")
+    for h in hosts.values():
+        if not isinstance(h, str) or not re.fullmatch(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+", h):
+            raise run_take.Refused("every host is a lower-case DNS name")
+    if len(set(hosts.values())) != len(hosts):
+        raise run_take.Refused("each harness has its own host")
+    return hosts
+
+
+def refused_names(harness: str, hosts: dict) -> list:
+    """github.com, huggingface.co and the other harnesses' hosts: none may resolve from the take."""
+    run_take._known_harness(harness)
+    _check_hosts(hosts)
+    return list(BLOCKED_NAMES) + sorted(v for k, v in hosts.items() if k != harness)
+
+
+def _read_health(path: str):
+    with open(path, encoding="utf-8") as fh:
+        return [json.loads(line) for line in fh if line.strip()]
+
+
+def _study_folders(run_tree: str):
+    if _is_pending(STUDY_PATHS):
+        return {"pending": True}
+    return {p: os.path.lexists(os.path.join(run_tree, p)) for p in STUDY_PATHS}
+
+
+def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, evidence_dir: str) -> tuple:
+    """Every probe, in PROBE_IDS order."""
+    run_take.check_spec(spec)
+    run_take._known_harness(harness)
+    _check_hosts(hosts)
+    run_take._check_id(take_id, "take id")
+    run_take._check_id(sidecar_id, "sidecar id")
+    evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
+    agent = lambda inner, home=None: tuple(run_take.agent_exec_argv(take_id, inner, workdir="/",  # noqa: E731
+                                                                     config_home=home))
+    inspect = lambda cid: (run_take.RUNTIME_CLIENT, "container", "inspect", cid)  # noqa: E731
+    run_tree = spec.run_tree
+    return (
+        Probe("identity", agent(_py(IDENTITY_PROGRAM))),
+        Probe("take-inspect", inspect(take_id)),
+        Probe("harness-version", agent(list(VERSION_COMMANDS[harness]), _config_home_values(harness))),
+        Probe("cgroup", agent(_py(CGROUP_PROGRAM, CGROUP_ROOT, "cpu.max", "memory.max", "memory.low", "pids.max"))),
+        Probe("listing", agent(_py(LISTING_PROGRAM, SIDECAR_EVIDENCE_MOUNT, evidence_dir))),
+        Probe("processes", agent(_py(PROCESSES_PROGRAM))),
+        Probe("sidecar-inspect", inspect(sidecar_id)),
+        Probe("health", read=lambda: _read_health(os.path.join(evidence_dir, HEALTH))),
+        Probe("watcher-caps", (run_take.RUNTIME_CLIENT, "exec", sidecar_id, *_py(PROCESSES_PROGRAM))),
+        Probe("sockets", agent(_py(SOCKETS_PROGRAM))),
+        Probe("egress", agent(_py(EGRESS_PROGRAM, run_take.PROXY_ALIAS, _proxy_port(), hosts[harness],
+                                  OTHER_HOST_VIA_PROXY, *refused_names(harness, hosts)))),
+        Probe("study-folders", read=lambda: _study_folders(run_tree)),
+    )
+
+
+def run(runtime, probe_list, *, begin_reply=None, caller_env=None) -> dict:
+    """Collect every probe's raw record. A probe that cannot run is recorded with its error, never skipped.
+    `begin_reply` is the sidecar's parsed `begin` reply (its `unreadable_consequential` folds into preflight)."""
+    env = run_take.runtime_env(caller_env)
+    raw = {}
+    for p in probe_list:
+        try:
+            if p.read is not None:
+                raw[p.id] = {"value": p.read()}
+            else:
+                c = runtime.run(list(p.argv), env=env, timeout=PROBE_TIMEOUT_S)
+                raw[p.id] = {"returncode": c.returncode, "stdout": c.stdout, "stderr": c.stderr}
+        except Exception as exc:  # recorded as failed; the check that needs it fails
+            raw[p.id] = {"error": type(exc).__name__}
+    raw["sidecar-begin"] = {"value": begin_reply} if begin_reply is not None else {"error": "no begin reply"}
+    return raw
+
+
+# --------------------------------------------------------------------------------------------------- judging
+class _Fail(Exception):
+    pass
+
+
+def _json_out(raw: dict, pid: str):
+    r = raw.get(pid)
+    if not isinstance(r, dict):
+        raise _Fail(f"probe {pid} is missing")
+    if "error" in r:
+        raise _Fail(f"probe {pid} failed to run ({r['error']})")
+    if r.get("returncode") != 0:
+        raise _Fail(f"probe {pid} exited {r.get('returncode')}")
+    try:
+        return json.loads(r.get("stdout", ""))
+    except ValueError:
+        raise _Fail(f"probe {pid} printed no JSON") from None
+
+
+def _value(raw: dict, pid: str):
+    r = raw.get(pid)
+    if not isinstance(r, dict):
+        raise _Fail(f"probe {pid} is missing")
+    if "error" in r:
+        raise _Fail(f"probe {pid} failed to run ({r['error']})")
+    if "value" not in r:
+        raise _Fail(f"probe {pid} recorded no value")
+    return r["value"]
+
+
+def _inspect_obj(raw: dict, pid: str) -> dict:
+    doc = _json_out(raw, pid)
+    if not (isinstance(doc, list) and len(doc) == 1 and isinstance(doc[0], dict)):
+        raise _Fail(f"probe {pid} is not exactly one inspect object")
+    return doc[0]
+
+
+def _lock(lock: dict, key: str):
+    v = lock[key]
+    if _is_pending(v):
+        raise _Fail(f"lock {key} is PENDING")
+    return v
+
+
+def _need(cond: bool, detail: str):
+    if not cond:
+        raise _Fail(detail)
+
+
+def _int(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _check_agent(raw, spec, lock, harness, hosts, sidecar_expect):
+    who = _json_out(raw, "identity")
+    _need(_lock(lock, "users.agent.uid") == AGENT_UID, "the lock's agent uid is not the agent user's")
+    _need(who.get("uid") == AGENT_UID and who.get("uid") != 0, f"the exec ran as uid {who.get('uid')}")
+    st = who.get("status") or {}
+    for cap in ("CapEff", "CapPrm", "CapBnd"):
+        vals = st.get(cap)
+        _need(isinstance(vals, list) and len(vals) == 1 and re.fullmatch(r"[0-9a-fA-F]+", vals[0]) is not None
+              and int(vals[0], 16) == 0, f"{cap} is not zero")
+    _need(st.get("NoNewPrivs") == ["1"], "NoNewPrivs is not 1")
+    return f"uid {AGENT_UID}, no capability, no new privileges"
+
+
+def _check_image(raw, spec, lock, *_):
+    obj = _inspect_obj(raw, "take-inspect")
+    if _is_pending(run_take.INSPECT_STATUS):
+        raise _Fail("the inspect spellings are PENDING")
+    image = _lock(lock, "image_id")
+    got = _facts(obj, ("image",))["image"]
+    _need(got == image and spec.image == image, f"the take's image {got} is not the lock's {image}")
+    return "the take's image is the lock's"
+
+
+def _check_version(raw, spec, lock, harness, *_):
+    want = _lock(lock, "harness.version")
+    pattern = VERSION_PATTERNS[harness]
+    if _is_pending(pattern):
+        raise _Fail(f"the {harness} --version output form is PENDING")
+    out = _plain(raw, "harness-version")
+    m = re.fullmatch(pattern, out.strip())
+    _need(m is not None and m.group(1) == want, f"{harness} --version does not read the lock's {want}")
+    return f"{harness} {want}"
+
+
+def _plain(raw, pid):
+    r = raw.get(pid)
+    if not isinstance(r, dict) or "error" in r or r.get("returncode") != 0:
+        raise _Fail(f"probe {pid} is missing or failed")
+    return r.get("stdout", "")
+
+
+def _check_take_inspect(raw, spec, *_):
+    bad = inspect_mismatches(_inspect_obj(raw, "take-inspect"), expected_take_inspect(spec), kind="take")
+    _need(not bad, "; ".join(bad))
+    return "exactly the two mounts, and every inspected fact equals the spec's"
+
+
+def _check_limits(raw, spec, *_):
+    got = _json_out(raw, "cgroup")
+    quota = int(Decimal(spec.cpus) * CPU_PERIOD)
+    want = {"cpu.max": f"{quota} {CPU_PERIOD}", "memory.max": str(spec.memory),
+            "memory.low": str(spec.memory_reservation), "pids.max": str(spec.pids_limit)}
+    bad = [f"{k} reads {got.get(k)!r}, not {v!r}" for k, v in want.items() if got.get(k) != v]
+    _need(not bad, "; ".join(bad))
+    return "cpu, memory and pids limits read back as set"
+
+
+def _check_evidence(raw, spec, *_):
+    got = _json_out(raw, "listing")
+    _need(isinstance(got, dict) and len(got) == 2 and SIDECAR_EVIDENCE_MOUNT in got,
+          "the listing did not try both paths")
+    listed = [p for p, v in got.items() if v == "listed"]
+    _need(not listed, f"the agent listed {listed}")
+    return "neither the sidecar mount nor the host path lists"
+
+
+def _check_watcher_invisible(raw, spec, lock, *_):
+    _need(_lock(lock, "users.watcher.uid") == WATCHER_UID, "the lock's watcher uid is not WATCHER_UID")
+    _need(_lock(lock, "users.keepalive.uid") == KEEPALIVE_UID, "the lock's keep-alive uid is not the keep-alive's")
+    rows = _json_out(raw, "processes")
+    _need(isinstance(rows, list), "the process table is not a list")
+    _need(not [r for r in rows if isinstance(r, dict) and "unreadable" in r],
+          "a process the agent could not read: a finding, never a skip")
+    _need(all(isinstance(r, dict) and _int(r.get("pid")) and _int(r.get("uid")) for r in rows),
+          "a process row is off its shape")
+    _need(not [r for r in rows if r["uid"] == WATCHER_UID], "a process of the watcher's uid is visible")
+    _need([(r["pid"], r["uid"]) for r in rows] == [(1, KEEPALIVE_UID)],
+          f"the only other process is not PID 1 of the keep-alive uid: {[(r['pid'], r['uid']) for r in rows]}")
+    return "only PID 1 (the keep-alive) is visible"
+
+
+def _check_sidecar(raw, spec, lock, harness, hosts, sidecar_expect):
+    exp = sidecar_expect
+    _need(isinstance(exp, dict) and set(exp) == set(SIDECAR_EXPECT_KEYS),
+          f"sidecar_expect must name exactly {list(SIDECAR_EXPECT_KEYS)}")
+    still = sorted(k for k, v in exp.items() if _is_pending(v))
+    _need(not still, f"sidecar_expect PENDING: {', '.join(still)}")
+    _need(exp["user"] == f"{WATCHER_UID}:{WATCHER_UID}", "the sidecar does not run as the watcher")
+    _need(exp["network_mode"] == "none", "the sidecar's expected network is not none")
+    _need(exp["security_opt"] == ["no-new-privileges"], "the sidecar's expected security option is not no-new-privileges")
+    _need([m.get("destination") for m in exp["mounts"] if isinstance(m, dict) and m.get("rw") is True]
+          == [SIDECAR_EVIDENCE_MOUNT], f"the sidecar's one read-write mount is not {SIDECAR_EVIDENCE_MOUNT}")
+    _need(exp["cap_drop"] == ["ALL"] and isinstance(exp["cap_add"], list) and len(exp["cap_add"]) == 1,
+          "the sidecar drops ALL and adds exactly one capability")
+    _need(exp["privileged"] is False and exp["pid_mode"] == "", "the sidecar is privileged or shares a pid space")
+    want_mounts = [{"source": spec.run_tree, "destination": spec.run_tree, "rw": False}]
+    _need(isinstance(exp["mounts"], list) and len(exp["mounts"]) == 2
+          and [m for m in exp["mounts"] if m.get("destination") == spec.run_tree] == want_mounts
+          and [m.get("rw") for m in exp["mounts"] if m.get("destination") != spec.run_tree] == [True],
+          "the sidecar's mounts are not the run tree read-only and one read-write evidence folder")
+    bad = inspect_mismatches(_inspect_obj(raw, "sidecar-inspect"), exp, kind="sidecar")
+    _need(not bad, "; ".join(bad))
+    return "no network, its own process space, the run tree read-only, ALL dropped and one added"
+
+
+def _check_watcher_started(raw, *_):
+    health = _value(raw, "health")
+    _need(isinstance(health, list) and health, "no health record")
+    _need(all(isinstance(h, dict) for h in health), "a health record is off its shape")
+    _need(health[-1].get("kind") == "watcher-start", "the last health record is not a watcher-start")
+    return "the watcher's start record is the last health record"
+
+
+def _check_watcher_cap(raw, *_):
+    rows = _json_out(raw, "watcher-caps")
+    _need(isinstance(rows, list) and not [r for r in rows if isinstance(r, dict) and "unreadable" in r],
+          "a process in the sidecar could not be read: a finding, never a skip")
+    _need(isinstance(rows, list) and all(isinstance(r, dict) and _int(r.get("pid")) and _int(r.get("cap_eff"))
+                                         and _int(r.get("uid")) for r in rows), "the sidecar's table is off its shape")
+    others = [r for r in rows if r["pid"] != 1]
+    _need(others, "no watcher process is running in the sidecar")
+    bad = [r for r in others if r["uid"] != WATCHER_UID or r["cap_eff"] != WATCHER_CAP_EFF]
+    _need(not bad, f"a watcher process does not hold exactly CAP_DAC_READ_SEARCH as {WATCHER_UID}: "
+                   f"{[(r['pid'], r['uid'], hex(r['cap_eff'])) for r in bad]}")
+    return "the watcher holds exactly CAP_DAC_READ_SEARCH"
+
+
+def _check_consequential(raw, *_):
+    reply = _value(raw, "sidecar-begin")
+    _need(isinstance(reply, dict) and reply.get("ok") is True and reply.get("command") == "begin",
+          "the sidecar's begin did not reply ok")
+    unread = reply.get(UNREADABLE_CONSEQUENTIAL_KEY)
+    _need(isinstance(unread, list), f"the begin reply carries no {UNREADABLE_CONSEQUENTIAL_KEY} list")
+    _need(not unread, f"consequential paths unreadable before the first turn: {unread}")
+    return "every consequential path is readable"
+
+
+def _check_socket(raw, spec, *_):
+    got = _json_out(raw, "sockets")
+    _need(isinstance(got, dict) and got.get("present") == [], f"runtime sockets present: {got.get('present')}")
+    _need(got.get("docker_host") is False, "DOCKER_HOST is set in the take")
+    obj = _inspect_obj(raw, "take-inspect")
+    if _is_pending(run_take.INSPECT_STATUS):
+        raise _Fail("the inspect spellings are PENDING")
+    env = _facts(obj, ("env",))["env"]
+    _need(isinstance(env, list) and not [e for e in env if str(e).split("=", 1)[0] == "DOCKER_HOST"],
+          "DOCKER_HOST is in the take's create-time environment")
+    names = {str(e).split("=", 1)[0] for e in env}
+    leaked = sorted(names & (set(run_take.LOGIN_VARIABLE.values()) | set(run_take.refused_variables(
+        run_take.CLAUDE_CODE))))
+    _need(not leaked, f"credential names in the take's create-time environment: {leaked}")
+    return "no runtime socket, no DOCKER_HOST, no credential name at create"
+
+
+def _egress(raw):
+    got = _json_out(raw, "egress")
+    _need(isinstance(got, dict), "the egress record is not an object")
+    return got
+
+
+def _check_allowed(raw, spec, lock, harness, hosts, *_):
+    host = _check_hosts(hosts)[harness]
+    st = (_egress(raw).get("via_proxy") or {}).get(host) or {}
+    _need(st.get("status") == 200, f"CONNECT {host}:443 through the proxy answered {st}")
+    return f"CONNECT {host}:443 answered 200"
+
+
+def _check_other(raw, *_):
+    st = (_egress(raw).get("via_proxy") or {}).get(OTHER_HOST_VIA_PROXY) or {}
+    _need(_int(st.get("status")) and st["status"] != 200,
+          f"CONNECT {OTHER_HOST_VIA_PROXY}:443 through the proxy was not refused: {st}")
+    return f"CONNECT {OTHER_HOST_VIA_PROXY}:443 refused ({st['status']})"
+
+
+def _check_direct(raw, *_):
+    d = _egress(raw).get("direct") or {}
+    _need(d.get("connected") is False, "a direct connection to the take's host was made")
+    return "no direct connection"
+
+
+def _check_names(raw, spec, lock, harness, hosts, *_):
+    want = refused_names(harness, hosts)
+    res = _egress(raw).get("resolves")
+    _need(isinstance(res, dict) and sorted(res) == sorted(want), f"the names tried are not {want}")
+    resolved = [n for n in want if res[n] is not False]
+    _need(not resolved, f"resolved from the take: {resolved}")
+    return f"none of {want} resolves"
+
+
+def _check_study(raw, *_):
+    if _is_pending(STUDY_PATHS):
+        raise _Fail("the study folders' list is PENDING (CP5)")
+    _need(isinstance(STUDY_PATHS, (list, tuple)) and STUDY_PATHS, "the study folders' list is empty")
+    got = _value(raw, "study-folders")
+    _need(isinstance(got, dict) and sorted(got) == sorted(STUDY_PATHS), "not every study folder was looked for")
+    present = [p for p in STUDY_PATHS if got[p] is not False]
+    _need(not present, f"study folders present in the run tree: {present}")
+    return f"{len(STUDY_PATHS)} study folders absent"
+
+
+def leak_hits(text: str, words) -> list:
+    return [w for w in words if re.search(r"(?<![A-Za-z0-9])" + re.escape(w) + r"(?![A-Za-z0-9])", text,
+                                          re.IGNORECASE)]
+
+
+def _check_path_neutral(raw, spec, *_):
+    if _is_pending(LEAK_WORDS):
+        raise _Fail("the round's leak words are PENDING (CP5)")
+    _need(isinstance(LEAK_WORDS, (list, tuple)) and LEAK_WORDS, "the leak words are empty")
+    hits = leak_hits(spec.run_tree, LEAK_WORDS)
+    _need(not hits, f"the run tree's path carries {hits}")
+    return "the run tree's path carries no leak word"
+
+
+CHECKS = {
+    "agent-non-root": _check_agent, "image-matches-lock": _check_image,
+    "harness-version-matches-lock": _check_version, "take-inspect-matches-spec": _check_take_inspect,
+    "limits-apply": _check_limits, "evidence-out-of-reach": _check_evidence,
+    "watcher-invisible": _check_watcher_invisible, "sidecar-isolated": _check_sidecar,
+    "watcher-started": _check_watcher_started, "watcher-capability": _check_watcher_cap,
+    "consequential-paths-readable": _check_consequential, "no-container-socket": _check_socket,
+    "egress-allowed-host": _check_allowed, "egress-other-host-refused": _check_other,
+    "egress-direct-refused": _check_direct, "names-do-not-resolve": _check_names,
+    "study-folders-absent": _check_study, "run-tree-path-neutral": _check_path_neutral,
+}
+# The C3 routing name (interface 11, fixed by lane w4h): the sidecar's reply field. Before the first turn a
+# non-empty list folds into preflight_ok false (consequential-paths-readable).
+UNREADABLE_CONSEQUENTIAL_KEY = "unreadable_consequential"
+UNREADABLE_CONSEQUENTIAL_ROW = "unreadable-consequential-path"
+
+
+def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str, hosts: dict) -> dict:
+    """The preflight record, pure: every check of PREFLIGHT_CHECKS in order, `ok` only when every one passed."""
+    if not isinstance(lock, dict) or set(lock) != set(LOCK_KEYS):
+        raise ValueError(f"lock must hold exactly {list(LOCK_KEYS)}")
+    run_take._known_harness(harness)
+    checks = []
+    for cid in PREFLIGHT_CHECKS:
+        fn = CHECKS.get(cid)
+        try:
+            if fn is None:
+                raise _Fail("no check is defined")
+            detail, passed = fn(raw, spec, lock, harness, hosts, sidecar_expect), True
+        except _Fail as e:
+            detail, passed = str(e), False
+        except Exception as e:  # a check that cannot read its records fails, never passes
+            detail, passed = f"the check could not read its records ({type(e).__name__})", False
+        checks.append({"id": cid, "ok": passed, "detail": detail})
+    recorded = {"harness": harness,
+                "harness_version_output": (raw.get("harness-version") or {}).get("stdout"),
+                "token_visible_to_children": PENDING,
+                "google_project_tier": PENDING if harness == run_take.GEMINI else "not-applicable",
+                "watcher_processes": _safe(lambda: _json_out(raw, "watcher-caps")),
+                "take_processes": _safe(lambda: _json_out(raw, "processes"))}
+    ok = len(checks) == len(PREFLIGHT_CHECKS) and all(c["ok"] for c in checks)
+    return {"ok": ok, "checks": checks, "recorded": recorded}
+
+
+def _safe(fn):
+    try:
+        return fn()
+    except Exception:
+        return None
+
+
+# ------------------------------------------------------------------------------------------------ the record
+RECORD_NAME = "preflight.json"
+EVIDENCE_FILES = ("ledger.jsonl", "access.jsonl", HEALTH, "snapshots", "blobs")
+
+
+def write(record: dict, path: str) -> str:
+    """Write the preflight record beside the evidence folder (ruling C2), never inside it, never over another."""
+    if not isinstance(record, dict) or set(record) != {"ok", "checks", "recorded"} \
+            or [c.get("id") for c in record["checks"]] != list(PREFLIGHT_CHECKS):
+        raise run_take.Refused("the record is not a preflight record of PREFLIGHT_CHECKS")
+    if record["ok"] is not all(c["ok"] is True for c in record["checks"]):
+        raise run_take.Refused("the record's ok disagrees with its checks")
+    path = run_take._abs_path(path, "preflight record path")
+    folder = os.path.dirname(path)
+    if os.path.basename(path) != RECORD_NAME:
+        raise run_take.Refused(f"the preflight record is named {RECORD_NAME}")
+    if os.path.basename(folder) == "evidence" or any(os.path.lexists(os.path.join(folder, f))
+                                                     for f in EVIDENCE_FILES):
+        raise run_take.Refused("the preflight record never goes inside the evidence folder")
+    if os.path.lexists(path):
+        raise run_take.Refused("a preflight record is never written over another")
+    run_take._write_json(path, record)
+    return path
+
+
+# ------------------------------------------------------------------------------------------- after the take
+def postflight(config_dir: str, harness: str) -> dict:
+    """The per-take config folder holds no credential file after a take; the full listing is recorded."""
+    run_take._known_harness(harness)
+    config_dir = run_take._abs_path(config_dir, "config_dir")
+    listing, problems = [], []
+    if os.path.islink(config_dir) or not os.path.isdir(config_dir):
+        problems.append("the config folder is not a folder")
+    else:
+        def onerror(e):
+            problems.append(f"unreadable: {os.path.relpath(getattr(e, 'filename', config_dir) or config_dir, config_dir)}")
+        for root, dirs, files in os.walk(config_dir, onerror=onerror, followlinks=False):
+            for name in sorted(dirs) + sorted(files):
+                listing.append(os.path.relpath(os.path.join(root, name), config_dir))
+    names = {n for n, _ in CREDENTIAL_FILES[harness]}
+    hits = sorted(p for p in listing if os.path.basename(p) in names or CREDENTIAL_LIKE.search(os.path.basename(p)))
+    if hits:
+        problems.append(f"credential-like files present: {hits}")
+    check = {"id": POSTFLIGHT_CHECKS[0], "ok": not problems, "detail": "; ".join(problems) or "no credential file"}
+    return {"ok": not problems, "checks": [check],
+            "recorded": {"listing": sorted(listing),
+                         "credential_files": [{"name": n, "source": s} for n, s in CREDENTIAL_FILES[harness]]}}

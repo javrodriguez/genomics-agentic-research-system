@@ -1,0 +1,7 @@
+# Lane w4b-cp2-runtake-preflight: CP2's run_take, take_config and preflight, as code driven by fakes.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_run_take.py
+python3 -B -W ignore evals/gap-study-4/tests/test_preflight.py
+python3 -B -W ignore evals/gap-study-4/tests/test_take_config.py
+# Interface 10's default-deny audit over this lane's three non-test box modules, by ast: planted positives first.
+python3 -B -W ignore evals/gap-study-4/tests/test_run_take.py --process-audit
