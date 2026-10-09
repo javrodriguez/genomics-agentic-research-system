@@ -66,6 +66,9 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "rehearsal-step-identity": (freeze_rehearsal, "step_environment", lambda: dict(os.environ)),
+        "rehearsal-env-forwarding": source_mutant(freeze_rehearsal, "run_step",
+            'env=step_environment()', 'env=None'),
         "rehearsal-plan-mode": source_mutant(cr, "main",
             'check_frozen_content(rehearsal_plan=args.rehearsal_plan)', 'check_frozen_content()'),
         "rehearsal-default-mode": source_mutant(cr, "check_frozen_content",
@@ -1260,7 +1263,8 @@ class FreezeCoverage(unittest.TestCase):
             scratch_identity(clone)
             yield clone, clone / study.STUDY_REL
 
-    def rehearsal_command(self, clone, command, env=None):
+    def rehearsal_command(self, clone, command):
+        self.assertTrue(callable(getattr(freeze_rehearsal, "run_step", None)))
         script = clone / study.rel(command[0])
         if command[0] == "check_results.py":
             # Propagate the whole-file run's in-memory checker mutant into the
@@ -1276,10 +1280,26 @@ class FreezeCoverage(unittest.TestCase):
                     json.dumps(functions), *command[1:]]
         else:
             argv = [sys.executable, "-B", "-W", "ignore", str(script), *command[1:]]
-        return subprocess.run(argv, cwd=clone, env=env, capture_output=True, text=True)
+        code, output = freeze_rehearsal.run_step(argv, clone)
+        return types.SimpleNamespace(returncode=code, stdout=output, stderr="")
+
+    def test_rehearsal_plan_commands_receive_fixed_fake_identity(self):
+        self.assertTrue(callable(getattr(freeze_rehearsal, "run_step", None)))
+        pre = pre_registration(); pre["take_order"] = copy.deepcopy(pre["rows"])
+        _first, commands = freeze_rehearsal.rehearsal_plan(pre, "/synthetic/row.json")
+        with empty_identity_home(), mock.patch.object(freeze_rehearsal, "sh", return_value=(0, "")) as sh:
+            for command in commands:
+                freeze_rehearsal.run_step(command, "/synthetic/repo")
+                env = sh.call_args.kwargs.get("env")
+                self.assertIsInstance(env, dict)
+                for role in ("AUTHOR", "COMMITTER"):
+                    self.assertEqual(env.get(f"GIT_{role}_NAME"), "rehearsal")
+                    self.assertEqual(env.get(f"GIT_{role}_EMAIL"), "rehearsal@example.invalid")
 
     def test_rehearsal_plan_runtime_commands_accept_only_disposable_placeholder(self):
-        with self.rehearsal_clone() as (clone, root):
+        with self.rehearsal_clone() as (clone, root), empty_identity_home():
+            for key in ("user.name", "user.email"):
+                takes._git_at(clone, "config", "--local", "--unset-all", key, missing=True)
             pre = json.loads((root / "prereg.json").read_text())
             self.assertEqual(pre["rehearsal_record"], "rehearsal or preview")
             row_file = clone.parent / "row.json"
