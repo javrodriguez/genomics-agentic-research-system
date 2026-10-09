@@ -2969,5 +2969,54 @@ class TestNextTouchFold1Siblings(unittest.TestCase):
                 self.assertEqual(len(loose_status_problems(key)), len(TestNextTouchFold1Gate.LOOSE), key)
 
 
+
+# Lane review round 2, W4H2-1 (the lane lead's decision): the start gate is an allow-list. A status is ruled only when,
+# stripped and upper-cased, it starts with RULED or FILLED and holds no PENDING anywhere; everything else is pending,
+# on all four status lines (glitch-f3's W4H1-1 ruling: the four lines gated the same way).
+STATUS_KEYS = ("operator_reasons_status", "pin_profiles_status", "rate_limit_markers_status", "spend_cap_markers_status")
+NOT_RULED = ("\u200bPENDING (glitch-f3): x", "\ufeffPENDING (glitch-f3): x", "'PENDING'", "Status: PENDING",
+             "RULED for codex; PENDING for claude-code", "TBD", "not yet ruled", "FILLED, pending a re-read", "",
+             "TEST-ONLY: two injected profiles")
+RULED_OK = ("RULED 6 Oct 2026 by glitch-f3", "FILLED 6 Oct 2026", "  ruled (test-only)", "Filled")
+
+
+def allow_list_problems() -> list[str]:
+    p = []
+    for key in STATUS_KEYS:
+        for status in NOT_RULED:
+            t = test_table()
+            t[key] = status
+            if not any(x.startswith(key) for x in batch.start_problems(t)):
+                p.append(f"{key} {status!r}: the loop would start")
+        for status in RULED_OK:
+            t = test_table()
+            t[key] = status
+            if any(x.startswith(key) for x in batch.start_problems(t)):
+                p.append(f"{key} {status!r}: a ruled status was refused")
+    return p
+
+
+class TestNextTouchFold2Gate(unittest.TestCase):
+    def test_the_gate_is_an_allow_list(self):
+        self.assertEqual(allow_list_problems(), [])
+        self.assertEqual(batch.start_problems(test_table()), [])   # the test table's statuses are ruled
+
+    def test_allow_list_check_can_fail(self):
+        def prefix_only(status):     # mutant: the "no PENDING anywhere" half dropped
+            return not str(status).strip().upper().startswith(batch.RULED_WORDS)
+        with mock.patch.object(batch, "is_pending", prefix_only):
+            found = allow_list_problems()
+        for key in STATUS_KEYS:
+            self.assertIn(f"{key} 'RULED for codex; PENDING for claude-code': the loop would start", found)
+
+        def deny_only(status):       # mutant: the allow-list half dropped (PENDING anywhere is the only refusal)
+            return batch.PENDING in str(status).upper()
+        with mock.patch.object(batch, "is_pending", deny_only):
+            found = allow_list_problems()
+        for key in STATUS_KEYS:
+            for status in ("TBD", "not yet ruled"):
+                self.assertIn(f"{key} {status!r}: the loop would start", found)
+
+
 if __name__ == "__main__":
     unittest.main()
