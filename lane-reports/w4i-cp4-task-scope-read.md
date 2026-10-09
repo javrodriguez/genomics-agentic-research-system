@@ -2,7 +2,7 @@ status: done
 
 # Lane w4i-cp4-task-scope-read: CP4 task scope-read (repaired)
 
-_Written Fri 09 Oct 2026 03:33 UTC by the lane's opus-medium builder, in the cloud session; review round 1 folded Fri 09 Oct 2026 03:43 UTC; review round 2 folded Fri 09 Oct 2026 04:05 UTC. No agent spawned, no reviewer spawned, nothing pushed._
+_Written Fri 09 Oct 2026 03:33 UTC by the lane's opus-medium builder, in the cloud session; review round 1 folded Fri 09 Oct 2026 03:43 UTC; review round 2 folded Fri 09 Oct 2026 04:05 UTC; review round 3 (PASS) recorded Fri 09 Oct 2026 04:13 UTC. No agent spawned, no reviewer spawned, nothing pushed._
 
 - Base: `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d not closed, no w4d change relayed during the lane).
 - Branch: `gap4/w4i-cp4-task-scope-read`, worktree `/home/user/wt/w4i-cp4-task-scope-read`.
@@ -24,9 +24,11 @@ _Written Fri 09 Oct 2026 03:33 UTC by the lane's opus-medium builder, in the clo
 11. `ebda5e0c` fold W4I2-4: check 8's red side.
 12. `c8f7be47` the value walk: every outcome-changing value of both files pinned, the rest held by each file's canonical sha256.
 13. `9fb82262` the round 2 review report, copied verbatim to `lane-reports/reviews/w4i-cp4-task-scope-read-r2.md`.
-14. this report, updated (round 2 Reviews filled).
+14. `bb4dd668` this report, updated (round 2 Reviews filled).
+15. `e1a2ad65` the round 3 review report, copied verbatim to `lane-reports/reviews/w4i-cp4-task-scope-read-r3.md`.
+16. this report, updated (round 3 Reviews filled; the loop stopped). No test or task file changed after `c8f7be47`.
 
-## Files changed (`git diff --stat 62181cbe..HEAD`, at `9fb82262`, before this update of the report)
+## Files changed (`git diff --stat 62181cbe..HEAD`, at `e1a2ad65`, before this update of the report)
 
 ```
  .../COPIED.d/w4i-cp4-task-scope-read.json          |  30 +
@@ -36,17 +38,18 @@ _Written Fri 09 Oct 2026 03:33 UTC by the lane's opus-medium builder, in the clo
  evals/gap-study-4/variants/scope-read.json         |  62 ++
  lane-reports/reviews/w4i-cp4-task-scope-read-r1.md | 157 +++++
  lane-reports/reviews/w4i-cp4-task-scope-read-r2.md | 149 ++++
- lane-reports/w4i-cp4-task-scope-read.md            | 169 +++++
- 8 files changed, 1609 insertions(+)
+ lane-reports/reviews/w4i-cp4-task-scope-read-r3.md | 140 ++++
+ lane-reports/w4i-cp4-task-scope-read.md            | 268 +++++++
+ 9 files changed, 1848 insertions(+)
 ```
 
-Only owned files, plus the two review copies the cloud lead asked for. The task and variants files are unchanged since `50334471`: the folds of rounds 1 and 2 are guards and pins only.
+Only owned files, plus the three review copies the cloud lead asked for. The task and variants files are unchanged since `50334471`: the folds of rounds 1 and 2 are guards and pins only.
 
-## Gates (each in the foreground, one process at a time, under `flock /tmp/claude-0/lanes/test.lock`; re-run on the folded tree at `9fb82262`, Fri 09 Oct 2026 04:04 UTC, each Bash call with a 600000 ms timeout)
+## Gates (each in the foreground, one process at a time, under `flock /tmp/claude-0/lanes/test.lock`; re-run on the final tree at `e1a2ad65` (test and task files as at `c8f7be47`), Fri 09 Oct 2026 04:13 UTC, each Bash call with a 600000 ms timeout)
 
 | Command | Runner's last line |
 |---|---|
-| `env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 $PY -B -W ignore $W/evals/gap-study-4/tests/test_task_scope_read.py` | `Ran 39 tests in 1.880s` / `OK` |
+| `env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 $PY -B -W ignore $W/evals/gap-study-4/tests/test_task_scope_read.py` | `Ran 39 tests in 1.975s` / `OK` |
 | `env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 $PY -B -W ignore $W/evals/gap-study-4/tasks/check_task.py scope-read` | `check_task: scope-read: ok (12 checks)` (exit 0) |
 | `env PYTHONDONTWRITEBYTECODE=1 $PY -B -W ignore $W/evals/gap-study-4/copy_manifest.py --check` (after `git add`) | `ok: 115 files from 9 fragment(s) (...): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 66 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf` |
 
@@ -89,6 +92,8 @@ The cloud lead decided: every test, gate and fixture build runs under `flock /tm
 2. **Tools CP2 should know about.** The trap invites a plain read, so the view's `read` kind covers the expected call. A take may also reach the file through a sub-agent, which the view refuses by design (scope_read's named exception), or through a shell glob, which the access log catches. I found no tool the table lacks for this task's right moves.
 3. **Planted path in the evidence.** The planted path is the one consequential path scope_read reads from the access log, which repeats the grader's own ask: CP2 should record the watched list in the evidence. It should also count opens of consequential paths after post-N in `operator_check`.
 4. **No path in the probe (decision 2).** Should a wording name the planted file more precisely without a path, or is "the qc folder of the source data" enough? The walk decides it. If Haiku cannot locate the file, the trap measures finding rather than declining.
+
+5. **Re-pin rule (review W4I3-1, not folded under the stop rule; report text only).** `test_task_scope_read.py` pins every value of `tasks/scope-read.json` and `variants/scope-read.json`, and each file's canonical sha256. A ruled change to either task file must update `PINS` (or `FIXTURE`, or the wording tuples) and `FILE_SHA256` in the same commit. Examples are a freeze re-pin of `fixture.sha256`, a schema key added at w4d's close, or a CP5 edit to a decision. The failing test prints the new hash, so the re-pin is mechanical. A later editor who meets that red test should read it as this rule, not as a regression in their own change.
 
 ## Deferred to Javier
 
@@ -266,3 +271,37 @@ Values that were already bound elsewhere stay bound there too:
 - the wait points, to `pause_adherence.ROUND3_WAIT_POINTS`;
 - the forbidden lists, by `forbidden_problems`;
 - the planted path, to the generator.
+
+### Round 3 (a fresh opus-medium reviewer; full report at `lane-reports/reviews/w4i-cp4-task-scope-read-r3.md`)
+
+VERDICT: PASS
+
+```
+id: W4I3-1
+severity: NIT
+where: evals/gap-study-4/tests/test_task_scope_read.py:27-28, 352-356 (FILE_SHA256 and its docstring line)
+finding: The whole-file pin makes every later content change to the two task files red until the test's constants
+  are updated. That includes a ruled one, such as a freeze re-pin of fixture.sha256 or a w4d schema change. This is
+  by design, and the failure message prints the new hash. But nothing in the file tells a later checkpoint that it
+  must re-pin here, or which constants move together (FIXTURE["sha256"], the PINS entry, FILE_SHA256). A later
+  editor who meets the red test could read it as a regression in its own change.
+fix: One docstring sentence: "A ruled change to either file updates PINS (or FIXTURE, or the wording tuples) and
+  FILE_SHA256 in the same commit; the failure prints the new hash."
+```
+
+How it was handled: Not folded: it is a NIT, and the review loop stops at the first round with no MAJOR (cloud/README.md, "The review loop"). The re-pin rule is recorded as open question 5. No test or task file changed.
+
+```
+id: W4I3-2
+severity: NIT
+where: evals/gap-study-4/tests/test_task_scope_read.py:763-768 (test_free_text_held_by_file_pin)
+finding: The test asserts value_pin_problems(t, doc) == [] after a decision edit, on the task as loaded from disk. So
+  any on-disk deviation of a value pin also fails this test. 12 of my 22 swaps failed it alongside test_pins_hold,
+  for example a trap-slot path. That gives a second, misleading failure name. It never makes anything green.
+fix: Optional. Compute the baseline value_pin_problems(task, doc) first, and assert the decision edit adds nothing
+  to it, instead of asserting it is empty.
+```
+
+How it was handled: Not folded, by the same stop rule. The extra failure name it describes never turns anything green. No test file changed.
+
+**The review loop stopped at round 3,** the first round with no MAJOR and no MINOR (three rounds of the four allowed). Only MINORs that loosen a check would be folded after this point, and there are none.
