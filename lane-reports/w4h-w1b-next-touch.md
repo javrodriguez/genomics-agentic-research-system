@@ -167,3 +167,43 @@ Source read: https://platform.claude.com/docs/en/api/errors (fetched 8 Oct 2026;
 - A second guard can hide a mutant. Item 1's markers check also refuses an unknown harness, so the item 5 profile mutant needed a table that has fake-second's markers and no profile before it could go red.
 - Adding a scenario dict after the per-scenario test loop still reaches the mutation sweep through `scenario_problems`, but it creates no per-scenario tests of its own.
 - An existing "count of leaves" pin turns every new record key into an assertion change. A future brief that adds a key should name that assertion.
+
+## Fold 1 (lane review round 1)
+
+Written Thu 8 Oct 2026, 20:40 EDT.
+Source: `scratchpad/w4-review/w4h_r1_findings.md`.
+The decisions are the lane lead's, except W4H1-1's extension to all four status lines, which is glitch-f3's ruling under Javier's delegation (relayed by the lane lead).
+Commits, in order: 00047846 (red), 397c7ce0 (fixes), eb6127e6 (red, the sibling status lines), 17873120 (the sibling fix), then this section.
+
+Every mutant below was proved red by one whole-file swap of the source file in the worktree.
+Each swap was gated by light-ok, ran the whole test file, and was restored byte for byte, checked by comparison.
+
+| Finding | Severity | Fix | Test | Mutant (whole-file run) |
+|---|---|---|---|---|
+| W4H1-5 | MAJOR | test entries only | `test_the_lists_are_checked`: a spend status that is no int ("402"), and a rate-limit status that is no int ("429") | M23 (the status-int clause off): test_routing, Ran 276, FAILED (failures=1), test_the_lists_are_checked |
+| W4H1-6 | MAJOR | test entry only | `test_the_lists_are_checked`: an infinite reset_wait | R35 (isfinite dropped): Ran 276, FAILED (failures=1), test_the_lists_are_checked |
+| W4H1-7 | MINOR | the "names no marker" clause kept, with a comment that it is a backstop | `test_the_lists_are_checked`: an empty rate-limit status list | R42 (nonempty=False): Ran 276, FAILED (failures=1), test_the_lists_are_checked |
+| W4H1-8 | NIT | test entries only | `test_the_lists_are_checked`: a markers entry with an empty source; `test_the_refusal_is_a_closed_rule`: a spend condition on ledger.end | R43: Ran 276, FAILED (failures=1), test_the_lists_are_checked. R38: Ran 276, FAILED (failures=1), test_the_refusal_is_a_closed_rule |
+| W4H1-2 | NIT | `route()` checks the spend refusal unconditionally | `TestNextTouchFold1`: a hand-built table whose refusal is outranked by pause still refuses every spend case; plus an in-memory mutant test | the outranked_by gate put back: Ran 276, FAILED (failures=1), test_the_spend_refusal_ignores_outranked_by |
+| W4H1-1 | MINOR | `batch.is_pending(status)` strips and upper-cases before the PENDING test, on all four status lines | `TestNextTouchFold1Gate` (spend); `TestNextTouchFold1Siblings` (one test per sibling line); plus an in-memory mutant test for each | prefix rule back on each line, test_batch, Ran 116, FAILED (failures=1) for each: the spend line (Ran 112 at the time), operator_reasons_status, pin_profiles_status and rate_limit_markers_status, each failing only its own test |
+| W4H1-3 | NIT | none; carried to CP2 | | |
+| W4H1-4 | NIT | none needed | | |
+| W4H1-9 | NIT | none; carried to CP2 | | |
+
+**W4H1-3, carried to CP2.** A Claude Code spend-cap 429 is `rate_limit_error` with no retry-after header, and it routes pause today. The PENDING gate keeps the batch from starting. The API-error record may need a retry-after-present signal before Claude Code's list is ruled.
+Correction to the report above, from the review: the page says org and workspace spend limits return 400 `invalid_request_error`, "except limits on the Claude Code workspace, which can return a 429 instead".
+
+**W4H1-9, carried to CP2.** The sidecar owns `unreadable_consequential`'s source, and with it whether an absolute path or a ".." segment is refused.
+
+**W4H1-4, no change needed.** test_routing holds the survivors=0 path; the review's M11 is red there.
+
+**Own-test change.** `test_spend_check_can_fail`'s first case, the refusal put below pause in a hand-built table, no longer pauses now that W4H1-2 is fixed. Its assertion was removed, and `TestNextTouchFold1` holds that case as a refusal.
+
+**Gates on head 17873120**, all run before 20:45 EDT:
+- test_routing: Ran 276, OK.
+- test_batch: Ran 116, OK.
+- test_agent_adapter: Ran 35, OK.
+- test_endstate: Ran 64, OK.
+- test_pause_adherence: Ran 30, OK.
+- `routing.py --check`: "22 rows, 3 annotations, sound".
+- `copy_manifest.py --check`: "ok: 107 files from 8 fragment(s)".
