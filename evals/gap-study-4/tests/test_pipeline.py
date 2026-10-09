@@ -9,6 +9,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import io
+import inspect
 import json
 import os
 import shutil
@@ -44,6 +45,28 @@ from graders import labels4
 
 MUTANT = None
 _patches = []
+
+
+def source_mutant(module, name, old, new):
+    """Replace one production clause in memory, retaining its module globals."""
+    original = getattr(module, name)
+    source = inspect.getsource(original)
+    assert old in source, (name, old)
+    namespace = dict(module.__dict__)
+    exec(compile(source.replace(old, new, 1), original.__code__.co_filename, "exec"), namespace)
+    altered = namespace[name]
+    replacement = types.FunctionType(altered.__code__, module.__dict__, name, altered.__defaults__)
+    replacement.__kwdefaults__ = altered.__kwdefaults__
+    return module, name, replacement
+
+
+def review_mutations():
+    return {
+        "pause-candidate-edges": source_mutant(cr, "pause_event",
+            "if not candidates:", "if len(candidates) != 1:"),
+        "registration-publication": (takes, "registration_outcomes",
+            lambda history: cr.publication(history)["attempts"]),
+    }
 
 
 def mutations():
@@ -112,7 +135,10 @@ def mutations():
 
 def setUpModule():
     if MUTANT:
-        target, name, replacement = mutations()[MUTANT]
+        available = mutations()
+        if MUTANT not in available:
+            available = review_mutations()
+        target, name, replacement = available[MUTANT]
         patch = mock.patch.object(target, name, replacement)
         patch.start()
         _patches.append(patch)
@@ -476,6 +502,28 @@ class PublicationHistory(unittest.TestCase):
         ambiguous = [recorded(labels4.PAUSE), outcome(row(2), state=labels4.FAILED, final=False), ruling(row(2))]
         with self.assertRaisesRegex(ValueError, "uniquely"):
             cr.publication(ambiguous, table())
+
+    def test_ruled_pause_without_any_window_has_own_event(self):
+        history = [recorded(labels4.GRADED, row(1)), recorded(labels4.GRADED, row(2)),
+                   outcome(row(3), state=labels4.FAILED, final=False), ruling(row(3))]
+        self.assertEqual(batch.Batch.history_problems(history), [])
+        try:
+            got = cr.publication(history, table())
+        except ValueError as exc:
+            self.fail(f"all admissible blocks give the same own-event count: {exc}")
+        self.assertEqual(got["window_events"], {"c1": [("take", "s3", 1)]})
+        self.assertEqual(got["cells"], {})
+
+    def test_new_slot_after_legal_pause_ruling_uses_batch_count(self):
+        # Publication cannot choose between one and two events, but registration
+        # uses batch's strict two-event count and must allow this different cell.
+        history = [recorded(labels4.PAUSE, row(1)),
+                   outcome(row(2), state=labels4.FAILED, final=False), ruling(row(2))]
+        rows = [dict(row(n), attempt=1) for n in (1, 2)]
+        try:
+            takes.guard_registration(row(4, half_cell="c2"), 1, rows, history)
+        except ValueError as exc:
+            self.fail(f"a legal ruling cannot stop registration in another cell: {exc}")
 
     def test_ruled_half_cell_closes_from_the_ruling(self):
         history = []
