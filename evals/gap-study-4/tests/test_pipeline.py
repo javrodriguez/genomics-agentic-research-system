@@ -53,6 +53,7 @@ def mutations():
         "runtime-timing": (cr, "runtime_timing_problems", lambda: []),
         "attempt-identity": (runner, "require_registered_outcome", lambda o, registered: None),
         "evidence-identity": (runner, "require_evidence_identity", lambda row, evidence: None),
+        "rehearsal-evidence": (freeze, "rehearsal_evidence", lambda record, digest, tree: {}),
         "registration-ruling": (takes, "registration_outcomes", lambda history: [o for o in history if not batch.is_ruling(o)]),
         "freeze-identity": (freeze, "planned_order", lambda draft, seed: []),
         "output-pins": (freeze, "generated_pins", lambda outputs: []),
@@ -856,6 +857,24 @@ class CostAccounting(unittest.TestCase):
 
 
 class FreezeCoverage(unittest.TestCase):
+    def test_external_rehearsal_record_binds_draft_tree_and_green_result(self):
+        self.assertTrue(callable(getattr(freeze, "rehearsal_evidence", None)))
+        with tempfile.TemporaryDirectory() as tmp:
+            record = Path(tmp) / "freeze-rehearsal-1.txt"
+            body = "a" * 64 + "\nDisposable rehearsal\n" + freeze.REHEARSAL_TREE_PREFIX + "b" * 64 + "\nall green\n"
+            record.write_text(body)
+            got = freeze.rehearsal_evidence(record, "a" * 64, "b" * 64)
+            self.assertEqual(got["text"], body)
+            self.assertEqual(got["sha256"], __import__("hashlib").sha256(body.encode()).hexdigest())
+            self.assertNotIn(str(Path(tmp)), json.dumps(got))
+            for bad in (body.replace("all green", "NOT all green"), body.replace("a" * 64, "c" * 64),
+                        body.replace("b" * 64, "c" * 64)):
+                record.write_text(bad)
+                with self.assertRaisesRegex(ValueError, "rehearsal"):
+                    freeze.rehearsal_evidence(record, "a" * 64, "b" * 64)
+                with mock.patch.object(freeze, "rehearsal_evidence", lambda r, d, t: {}):
+                    self.assertEqual(freeze.rehearsal_evidence(record, "a" * 64, "b" * 64), {})
+
     def test_rehearsal_uses_full_rows_and_copy_gate_only_on_frozen_state(self):
         self.assertTrue(callable(getattr(freeze_rehearsal, "rehearsal_plan", None)))
         pre = pre_registration()
