@@ -1149,5 +1149,61 @@ class ReviewRound3Lane(unittest.TestCase):
                     self.assertEqual(stats.check(res, pre, pg)[0], 0, stray)
 
 
+def later_lane_targets(source: str) -> set:
+    """Every target path a wave 1 fixture's hypothetical later lane claims, read from test_scaffold.py's own source:
+    each string "path" value in a dict passed to self.later_lane(...), and, where that value is a name, the first
+    string of every tuple in the same test (the `cases` lists those loops read)."""
+    import ast
+    out = set()
+    for fn in ast.walk(ast.parse(source)):
+        if not isinstance(fn, ast.FunctionDef):
+            continue
+        named = False
+        for call in ast.walk(fn):
+            if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
+                    and call.func.attr == "later_lane"):
+                continue
+            for d in ast.walk(call):
+                if isinstance(d, ast.Dict):
+                    for k, v in zip(d.keys, d.values):
+                        if isinstance(k, ast.Constant) and k.value == "path":
+                            if isinstance(v, ast.Constant) and isinstance(v.value, str):
+                                out.add(v.value)
+                            else:
+                                named = True
+        if named:
+            for tup in ast.walk(fn):
+                if (isinstance(tup, ast.Tuple) and tup.elts and isinstance(tup.elts[0], ast.Constant)
+                        and isinstance(tup.elts[0].value, str)):
+                    out.add(tup.elts[0].value)
+    return out
+
+
+def real_claims() -> dict:
+    """path -> lane, from every COPIED.d fragment."""
+    out = {}
+    for frag in sorted((HERE / "COPIED.d").glob("*.json")):
+        rec = json.loads(frag.read_text())
+        for e in rec["files"]:
+            out[e["path"]] = rec["lane"]
+    return out
+
+
+class NoFixtureTargetIsARealClaim(unittest.TestCase):
+    """glitch-f3's named exception (fold 4): wave 1's test_scaffold fixture once claimed intervals.py, which this lane
+    really owns. This guard keeps any hypothetical later-lane target from colliding with a real lane's claim."""
+
+    def test_no_collision(self):
+        source = (HERE / "tests" / "test_scaffold.py").read_text()
+        targets = later_lane_targets(source)
+        self.assertIn("zz_intervals_probe.py", targets)
+        self.assertIn("prior/labels.py", targets)          # a tuple-driven target is read too
+        self.assertEqual(sorted(targets & set(real_claims())), [])
+        # mutant: the old target back in the fixture
+        old = source.replace('"zz_intervals_probe.py"', '"intervals.py"')
+        self.assertNotEqual(old, source)
+        self.assertEqual(sorted(later_lane_targets(old) & set(real_claims())), ["intervals.py"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
