@@ -161,3 +161,34 @@ Checks on a0318fa7 (each behind light-ok, foreground, single-threaded BLAS):
 Mutant re-run: copies of the review's `swap.py` and `mutants.json`, run one at a time, each behind light-ok. `mutants.json` holds 49 entries; the review's prose says 50. All 49 are RED with 91 tests in the whole file (`grep -c ' -> RED'` gives 49; none GREEN or ERROR-ONLY). The first background pass died at 18:55 with the previous lead's session, after 35 mutants, all red. The full pass then ran again in the foreground, 19:07 to 19:15 EDT.
 
 `git diff c724881e --stat` touches only `evals/gap-study-4/stats.py`, `evals/gap-study-4/tests/test_stats.py` and this report.
+
+## Fold 2 (the round 2 lane review, folded under the lane lead's fold brief, Thu 8 Oct 2026)
+
+Start: 2f5ba871, clean tree.
+Commits:
+- 1fd9e6da: red tests (96 run, 2 failures);
+- 3912c6d9: the fixes;
+- this section.
+
+No reviewer was spawned. Every gate and mutant pass ran in the foreground, behind light-ok.
+
+| Finding | Fold (decision: the lane lead's) | Whole-file mutant |
+|---|---|---|
+| W4E2-1 MAJOR heading's contrast count unbound | The heading is asserted on a NINE-task design with three contrasts: "over the 9 tasks that run" and "over the 3 stronger-against-weaker contrasts". The code was already right. | f_heading_contrasts_wrong RED |
+| W4E2-2 MINOR VERSION_ID space and pipe unbound | `1.0\|x` and `1.0 x` are added to the refused versions. | f_version_allows_space RED, f_version_allows_pipe RED |
+| W4E2-3 NIT dotfiles | `_ignored`: a dot-named entry that is not .json (.DS_Store, .gitkeep) is ignored, and a dot-named .json is read as records. Both halves are bound. | f_dotfiles_are_strays RED, f_dot_json_skipped RED |
+| W4E2-4 NIT per-task level scope | A fixture with m1 on repeats and m2 on pressure in one task is refused. | f_mixed_level_per_model RED |
+| W4E2-5 NIT docstring | THE CHECK now names the strays refusal (and the ignored dotfiles) and the "k results files, 0 records" line, with a test. The fold 1 first mutant pass ran as a background job, against the brief; this fold ran every gate and mutant in the foreground. | n/a |
+
+Gates on 3912c6d9:
+- `tests/test_stats.py` alone: `Ran 96 tests` / `OK`.
+- `stats.py --check`: `stats --check: no takes (0 results files); nothing was compared`, exit 0.
+- `copy_manifest.py --check` after `git add`: `ok: 110 files from 8 fragment(s) ...`.
+
+The review's own strays mutants (`f_strays_*`) no longer apply as written, because the line they replace now carries `_ignored`. The fold's six mutants, run against the whole file, cover the new rule.
+
+Open items the lane lead carries to glitch-f3 (no change in this lane):
+- RESULTS_DIR is shared with base run.py's per-task dict files.
+- VERSION_ID needs the adapters to return a bare version (CP2).
+- Alpha's shortest form binds build_draft.py's writer.
+- The excluded view has three shapes (a dict, `no takes`, "k stops excluded, none counted"), which matters for result.py.
