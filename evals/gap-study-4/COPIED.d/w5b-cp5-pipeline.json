@@ -51,6 +51,12 @@
       "status": "edited",
       "source": "evals/gap-study-3/completeness.py",
       "reason": "R2, R23, R28, R30: every planned half-cell and task-list denominator"
+    },
+    {
+      "path": "costs.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/costs.py",
+      "reason": "R6 R11 R29: per-call costs, dated prices and round spending predicates."
     }
   ]
 }

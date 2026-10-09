@@ -68,11 +68,6 @@
       "reason": "Rewritten for round 4 as the plan's CP1 task says: sources read from round 3's done commit e2979b31; each lane records its files in COPIED.d/<lane>.json and --check assembles the fragments, refuses a path claimed twice and compares with nothing committed (the freeze writes COPIED.json once, from derive()); only the copied fixture builders are uneditable, since round 3's list (check_take.py, the graders) would refuse round 4's checker edit; and the frozen rounds and shared files are bound unchanged since round 4's base commit."
     },
     {
-      "path": "costs.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/costs.py"
-    },
-    {
       "path": "denials.py",
       "status": "identical",
       "source": "evals/gap-study-3/denials.py"
