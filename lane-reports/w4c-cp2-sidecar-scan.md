@@ -209,6 +209,28 @@ Interface changes, stated exactly:
 
 Named residual (carried): the ast check is judged by construction, not by adversarial probing.
 
+## Fold 5 (lane review round 4: the two MINORs)
+
+Round 4, on `d6cd1b2b`, returned PASS with no MAJOR, so the review loop is closed. Under the stop rule only the two MINORs that loosen a check are folded (the lane lead's decision); the NITs stay named below.
+Every decision below is the lane lead's; glitch-f3's standing rule (no guard-evasion probes) binds. The one positive this fold adds for W4C4-1 is the guarded case itself (a parameter named after a builtin), on a two-line source of its own, never on a real module.
+Red tests `810dafa1`, fixes `f6ab31dd`. **Both were committed under the Mac hold, with no test, swap or `copy_manifest --check` run.** Both edited files were only parsed at feature_version 3.11. The gates and one whole-file swap per new mutant run after the lift; athena runs the battery.
+
+| Finding | Fix | Test | Mutant |
+|---|---|---|---|
+| W4C4-1 (MINOR) a binding exempted a builtin's name module-wide | In the ast check, each BOX_MODULES entry gains a closed `rebinds` set, pinned empty for both modules (neither binds a builtin or dunder name today, read by `ast`). Any binding of a builtin's name or a dunder bare name outside it is refused. `free_names` no longer exempts such a name because the module binds it somewhere, so its reads stay free and must be pinned in `names`. Methods directly in a class body (`__init__`) bind an attribute, not a bare name, and are not counted. No module change. | each `rebinds` set equals the module's own (empty); the planted positive is refused with exactly the rebind message, and `len` stays free | rebinds widened; the rule dropped (the fold 4 module-wide exemption back) |
+| W4C4-2 (MINOR) `_format_ok` typed only `setup_lines` | `fields` a list or tuple of distinct non-empty strings holding `path` and `events`; `separator` and `established` non-empty strings; the PENDING test over elements, never over a string's letters. Absorbs W4C4-5. | the bad fills now also include `fields` "PENDING", "x", [], [""], a dict, None, without `events`, with a duplicate, with a PENDING element; `separator` "", None, "PENDING"; `established` "", None | fold 4's `_format_ok` put back (fields "PENDING" reads ready) |
+
+Named, not fixed (the lane lead's decision, under the stop rule):
+- **W4C4-3 (NIT):** the subprocess site is matched by the innermost enclosing def's bare name, so a nested def or a method with that name would count. The one-call rule and the pinned Popen shape still hold.
+- **W4C4-4 (NIT):** `INOTIFYWAIT_ARGV` and `INOTIFYWAIT_EVENTS` are compared with PENDING as whole values only. Each fails closed if a list carries "PENDING".
+- **W4C4-5 (NIT):** absorbed by the W4C4-2 fix (a `fields` of None or an int no longer raises in `pending()`).
+- **W4C4-6 (NIT):** `FORMAT_KEYS` has no mutant of its own; it is bound indirectly by the good-fill assertion.
+
+Interface changes, stated exactly:
+- `box/sidecar.py`: `_format_ok` is stricter, as above; new helper `_str_list(v)`. No signature changed; no PENDING field was added or removed.
+- The ast check in `tests/test_sidecar.py`: each BOX_MODULES entry gains `rebinds` (empty); new helpers `bindings`, `shielded_bindings` and `BUILTIN_NAMES`.
+- `box/scan_record.py`: unchanged.
+
 ## Lessons
 
 - A rename between a container's `/tmp` and a bind mount crosses mounts and fails; tests on one host filesystem hide it. A fake rename that fails between folders made it visible on the Mac.
