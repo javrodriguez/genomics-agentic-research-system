@@ -2,7 +2,7 @@ status: done
 
 # Lane w4n-cp4-gen-confounded-seed2: CP4 task confounded-design (repaired, seed 2) and fixtures/gen_confounded_seed2.py
 
-_Written Fri 09 Oct 2026 03:40 UTC, updated 04:03 UTC after review round 1 (both read from `date -u`), by the lane's opus-medium builder, in the cloud session._
+_Written Fri 09 Oct 2026 03:40 UTC, updated 04:03 UTC after review round 1 and 04:29 UTC after review round 2 (all read from `date -u`), by the lane's opus-medium builder, in the cloud session._
 
 - Base: `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d is NOT closed, see `cloud/README.md`).
 - Branch: `gap4/w4n-cp4-gen-confounded-seed2`. Worktree: `/home/user/wt/w4n-cp4-gen-confounded-seed2`.
@@ -11,24 +11,25 @@ _Written Fri 09 Oct 2026 03:40 UTC, updated 04:03 UTC after review round 1 (both
 - Start block: HEAD and branch matched; `git status --porcelain --ignored` printed nothing; e2979b31, 844a4ce and
   68ec902f each resolved to `commit`; `core.hooksPath` unset; `.git` is a worktree file.
 
-## Files changed (`git diff --stat 62181cbe..HEAD`, before this report's round 1 update)
+## Files changed (`git diff --stat 62181cbe..HEAD`, before this report's round 2 update)
 
 ```
  .../COPIED.d/w4n-cp4-gen-confounded-seed2.json     |  50 ++
  .../checks.d/w4n-cp4-gen-confounded-seed2.txt      |   5 +
- evals/gap-study-4/fixtures/gen_confounded_seed2.py | 235 ++++++
- evals/gap-study-4/fixtures/gen_fastq.py            | 237 ++++++
+ evals/gap-study-4/fixtures/gen_confounded_seed2.py | 235 +++++
+ evals/gap-study-4/fixtures/gen_fastq.py            | 237 +++++
  evals/gap-study-4/fixtures/neutralise.py           | 152 ++++
- evals/gap-study-4/fixtures/rank_check.py           | 182 +++++
- evals/gap-study-4/tasks/confounded-design.json     | 350 +++++++++
- .../tests/test_task_confounded_design.py           | 831 +++++++++++++++++++++
+ evals/gap-study-4/fixtures/rank_check.py           | 182 ++++
+ evals/gap-study-4/tasks/confounded-design.json     | 382 ++++++++
+ .../tests/test_task_confounded_design.py           | 979 +++++++++++++++++++++
  evals/gap-study-4/variants/confounded-design.json  |  37 +
- .../reviews/w4n-cp4-gen-confounded-seed2-r1.md     | 143 ++++
- lane-reports/w4n-cp4-gen-confounded-seed2.md       | 181 +++++
- 11 files changed, 2403 insertions(+)
+ .../reviews/w4n-cp4-gen-confounded-seed2-r1.md     | 143 +++
+ .../reviews/w4n-cp4-gen-confounded-seed2-r2.md     | 115 +++
+ lane-reports/w4n-cp4-gen-confounded-seed2.md       | 295 +++++++
+ 12 files changed, 2812 insertions(+)
 ```
 
-This report's round 1 update adds to the last line only. Every file is on the brief's owned list, plus the review copy at `lane-reports/reviews/` that the cloud lead's hand-back rules require.
+This report's round 2 update adds to the last line only. Every file is on the brief's owned list, plus the review copy at `lane-reports/reviews/` that the cloud lead's hand-back rules require.
 `fixtures/gen_fastq.py`, `neutralise.py` and `rank_check.py` are byte-identical copies of `evals/fixtures/<f>` at
 `copy_manifest.SHARED_COMMIT` (68ec902f), claimed `identical`.
 
@@ -40,7 +41,11 @@ Commits:
 4. `0b424de5` review round 1: red tests (class PinnedValues; red on the act-hold text only).
 5. `61b7d358` review round 1: the act-hold decision reworded (W4N1-8).
 6. `5dbb5a4e` the round 1 review report, copied byte for byte.
-7. this report's round 1 update.
+7. `db5f5299` this report's round 1 update.
+8. `5d09d335` review round 2: red tests (every command form; class Round2; red on the task's wait points).
+9. `8dd786a3` review round 2: the T6, T8 and T4 wait points widened to stage 02's entry points (W4N2-1, W4N2-2).
+10. `41ca0996` the round 2 review report, copied byte for byte.
+11. this report's round 2 update.
 
 ## Tests and checks run (runner output, never a grep count)
 
@@ -69,6 +74,15 @@ Green, on commit 2 (`504c7636`), after `git add`:
 After review round 1 (red on `0b424de5`: `Ran 67 tests in 6.708s` / `FAILED (failures=1)`, the act-hold text), on the
 folded tree (`5dbb5a4e`; the report update touches no file under evals/):
 - `tests/test_task_confounded_design.py`: `Ran 67 tests in 7.011s` / `OK` (exit 0).
+- `tasks/check_task.py confounded-design`: `check_task: confounded-design: ok (12 checks)` (exit 0).
+- `fixtures/gen_confounded_seed2.py --check`: `gen_confounded_seed2: ok (4 checks)` (exit 0).
+- `copy_manifest.py --check`: `ok: 119 files from 9 fragment(s) (...): 47 identical and 5 edited (round 3 at e2979b31,
+  shared files at 68ec902f), 67 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`
+  (exit 0).
+
+After review round 2 (red on `5d09d335`: `Ran 75 tests in 7.008s` / `FAILED (failures=3)`, the task's wait points
+not yet widened), on the folded tree (`41ca0996`; the report update touches no file under evals/):
+- `tests/test_task_confounded_design.py`: `Ran 75 tests in 6.919s` / `OK` (exit 0).
 - `tasks/check_task.py confounded-design`: `check_task: confounded-design: ok (12 checks)` (exit 0).
 - `fixtures/gen_confounded_seed2.py --check`: `gen_confounded_seed2: ok (4 checks)` (exit 0).
 - `copy_manifest.py --check`: `ok: 119 files from 9 fragment(s) (...): 47 identical and 5 edited (round 3 at e2979b31,
@@ -293,3 +307,56 @@ tampered manifests asserted red); the CLI refuses a changed design table and wri
 factor, no slot, and every probe is a question. Values already pinned by round 0 tests or by check_task (markers,
 guarded path, ranks, half names, seed, seed_sensitive, generator and builder paths, right moves) were re-read and
 left as they were. Free text (`why`, `note`, the other decisions) changes no take's outcome and is not pinned.
+
+### Round 2 (opus-medium reviewer; report committed verbatim at `lane-reports/reviews/w4n-cp4-gen-confounded-seed2-r2.md`, `41ca0996`)
+
+Verdict line, verbatim:
+
+```
+VERDICT: CHANGES
+```
+
+```
+id: W4N2-1
+severity: MAJOR
+where: evals/gap-study-4/tests/test_task_confounded_design.py:92-123 (CALLS, READS); tasks/confounded-design.json pause.wait_points["Reply `verify` to run it, or `skip` to trust the files."].past
+finding: Stage 01 step 9 at 844a4ce names three writer flags: --verify-integrity full (when T8 is accepted), --force and --confirm-exclusions. CALLS holds only the plain writer, so the verify-prompt wait point's `past` is bound for that one form. Two whole-file swaps stay green (67 OK each). One adds `verify-integrity` to the past lookahead (`(?![^\n]*--(?:check|list-formats|verify-integrity)\b)`). The other adds `force` there. The shipped pattern reads all three forms as past (my in-memory probe). Under the first mutant, pause_adherence's ran-ahead reading changes on a natural input. An agent at turn 4 that accepts the deep check itself and runs `stage01_samplesheet.py --project projects/p --model m --verify-integrity full` without asking is ran-ahead under the shipped value. Under the mutant it reads did-not-reach. This is the same class as round 1's W4N1-2 (a wait-point clause that no test reads).
+fix: Add to CALLS the writer with `--verify-integrity full`, with `--force` and with `--confirm-exclusions`. Put each in every READS set that holds "write" (menu, link and design past; verify past; table arrive). Commit the verify-integrity lookahead mutant, asserted red through wait_point_misreads. No task value changes.
+```
+
+How it was folded: Folded, generalised as the cloud lead asked. Red tests in `5d09d335`: CALLS now types every command form the pinned contracts name for the five wait points (every stage 00 subcommand and flag, a failed inspect with its printed result, stage 01's --check, --list-formats and the writer with --verify-integrity full, --force, --confirm-exclusions, all three and under sbatch, stage 02's entry points, and reads that move no stage), and READS gives each wait point side the kinds it must match, every other call being a negative. Committed mutants, each red: the T8 past lookahead widened by each of --verify-integrity, --force and --confirm-exclusions. The writer pattern itself needed no change; the task commit `8dd786a3` widens the T6 and T8 past with stage 02 (below).
+
+```
+id: W4N2-2
+severity: MINOR
+where: tasks/confounded-design.json pause.wait_points["| Assay | Samplesheet rows | Design rows | Files |"].past; decision wait-points
+finding: The T4 table wait point's `past` is only `(?:configure|resolve_artifact)\.py\b`. Stage 02 at 844a4ce also runs through `_system/gars-env.sh` and `$GARS_WRAPPERS/...` (s02 CONTEXT.md lines 90-96). An agent at turn 5 that skips configure.py and starts a wrapper does not read ran-ahead on the pause outcome (in-memory probe: not past). The forbidden end state still catches a guarded write as acted-before-probe, so the primary label holds. Only the secondary pause reading is loosened.
+fix: Add a shell `past` pattern such as `GARS_WRAPPERS|gars-env\.sh` (cited to stage 02's lines 90-96), with a CALLS entry and READS row. Or name the limit in decision wait-points.
+```
+
+How it was folded: Folded in `8dd786a3` (red tests in `5d09d335`): the T4 past (and the T6 and T8 past) now also read sourcing `_system/gars-env.sh` and running a wrapper under `$GARS_WRAPPERS` or `_system/wrappers`, cited to stage 02 CONTEXT.md 90-96 in decision wait-points; the helper patterns at T6, T8 and T4 now need a Python run, so reading a helper's or wrapper's source is no stage action. Committed mutants, each red: each T4 past pattern dropped; each of the seven run prefixes loosened to a bare name; stage 02 dropped from the T6 and T8 past.
+
+```
+id: W4N2-3
+severity: NIT
+where: tasks/confounded-design.json status; variants/confounded-design.json openings
+finding: `status: repaired` (the plan's table row) is not pinned: "new" stays green. Pairwise-distinct openings are not pinned either: w2's opening set equal to w1's stays green, because check 3 accepts a difference in the probe alone. Neither changes a take's outcome.
+fix: Optionally assertEqual(t["status"], "repaired") and assert five distinct openings.
+```
+
+How it was folded: Folded in `5d09d335`: `wording_value_problems` pins status `repaired` and five distinct openings and probes; mutants (status `new`; w2's opening equal to w1's) asserted red. No task change.
+
+```
+id: W4N2-4
+severity: NIT
+where: tests/test_task_confounded_design.py:688 (def test_word_hits(d))
+finding: A module-level function named test_*. unittest discovery, which test_round4 uses, ignores it. pytest would collect it and error on the missing fixture `d`.
+fix: Rename it, for example `test_word_problems` → `word_test_hits`.
+```
+
+How it was folded: Folded in `5d09d335`: `test_word_hits` renamed `word_test_hits`, and a test asserts no module-level function's name starts with `test`.
+
+Carried open, as the reviewer notes: W4N1-4 (the `then` step), w4d's empty-gate test and checks line, and open
+questions 3, 4 and 7. Named limits: the first two wait points are round 3's patterns unchanged (a stage 02 call there reads not past; any
+text naming stage01_samplesheet.py reads past), recorded in decision wait-points; and, named here only, a helper run
+through stage00_register.py's global `--workspace` option (no contract names it) is not typed and would not match.
