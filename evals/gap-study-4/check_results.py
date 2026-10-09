@@ -6,6 +6,8 @@ route is repaired. Before the freeze an empty tree says no takes, never zeros.
 After the freeze the pinned bytes and frozen content are checked before records
 are regraded with local v4 files. Publication reads committed cell states and
 closed rulings; a ruled pause must belong to one uniquely recoverable block.
+Under w5b-4, runtime outputs have no copy fragment. Their commit history must
+start strictly after the freeze, including outputs later removed from the tree.
 """
 
 from __future__ import annotations
@@ -345,6 +347,33 @@ def freeze_commit() -> str | None:
     return shas[0] if code == 0 and shas else None
 
 
+RUNTIME_PATHS = ("takes.json", "outcomes.json", "rulings.json", "records",
+                 "RESULT.md", "cost-calls.json", "COSTS.md")
+
+
+def runtime_timing_problems() -> list[str]:
+    """No runtime artifact in the build or freeze commit, even if later deleted.
+
+    Inspect every reachable change to these paths, not merely HEAD's files.
+    A runtime commit must be a strict descendant of the introducing freeze.
+    A merged side history without that ancestor also fails closed.
+    """
+    code, commits = git("log", "--format=%H", "--full-history", "--",
+                        *(study.rel(p) for p in RUNTIME_PATHS))
+    if code:
+        raise ValueError("runtime commit history cannot be read")
+    frozen = freeze_commit()
+    problems = []
+    for commit in commits.split():
+        later = frozen is not None and commit != frozen
+        if later:
+            code, _ = git("merge-base", "--is-ancestor", frozen, commit)
+            later = code == 0
+        if not later:
+            problems.append(f"run output committed before or with the freeze: {commit}")
+    return problems
+
+
 def frozen_commit_problems(frozen: dict, commit: str) -> list[str]:
     """ROUND 2, CP8, review 2 blocker 1: the freeze commit is what the rehearsal exercised, and every pin is a committed blob.
 
@@ -452,6 +481,9 @@ def main(argv=None):
     try:
         if is_shallow():
             raise ValueError("the committed ledger cannot be checked in a shallow clone")
+        early = runtime_timing_problems()
+        if early:
+            raise ValueError("; ".join(early))
         rows, history = takes_mod.load_rows(), takes_mod.read_history()
         records = stats.load_results(RESULTS)
         if not prereg.is_frozen():
