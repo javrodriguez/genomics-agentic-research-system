@@ -100,8 +100,9 @@ def pause_event(history: list, taken: dict) -> tuple:
     spans one to BLOCK outcomes, has no repeated slot and cannot split one
     recorded window event or join two. Forward/backward reachability keeps only
     edges in a complete partition. Different edges are allowed when they give
-    the same event. An event-free candidate counts the ruled take on its own;
-    disagreement about sharing an existing event refuses publication.
+    the same half-cell count. Sharing reduces the count only when that window
+    already belongs to this half-cell through another outcome. Otherwise the
+    ruled take has its own event, regardless of another cell's window identity.
     """
     outcomes = [o for o in history if not batch.is_ruling(o)]
     key = (taken["slot"], taken["attempt"])
@@ -135,13 +136,19 @@ def pause_event(history: list, taken: dict) -> tuple:
                   if right in backward and left <= at < right]
     if not candidates:
         raise ValueError("the ruled pause's block cannot be derived uniquely from committed history")
-    choices = set()
+    cell_events = {batch.cell_event(o) for o in outcomes
+                   if o["half_cell"] == taken["half_cell"] and o["state"] == labels4.PAUSE
+                   and (o["slot"], o["attempt"]) != key}
+    choices = {}
     for left, right in candidates:
         events = {o["window_event"] for o in outcomes[left:right] if o["window_event"] is not None}
-        choices.add(("window", next(iter(events))) if events else ("take", *key))
+        event = ("take", *key)
+        if events and ("window", next(iter(events))) in cell_events:
+            event = ("window", next(iter(events)))
+        choices[len(cell_events | {event})] = event
     if len(choices) != 1:
         raise ValueError("the ruled pause's event count cannot be derived uniquely from committed history")
-    return choices.pop()
+    return next(iter(choices.values()))
 
 
 def ruling_closes(count: int, cap: int) -> bool:
