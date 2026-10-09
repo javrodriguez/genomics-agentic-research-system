@@ -53,8 +53,19 @@ def _blocked(*_a, **_k):
 _GUARDED = [(subprocess, "run"), (subprocess, "Popen")]
 _GUARDED += [(os, n) for n in ("system", "kill", "killpg", "posix_spawn", "posix_spawnp", "fork") if hasattr(os, n)]
 _GUARDED += [(os, n) for n in sorted(dir(os)) if n.startswith(("exec", "spawn")) and callable(getattr(os, n))]
-for _mod, _name in _GUARDED:
-    mock.patch.object(_mod, _name, _blocked).start()
+_PATCHERS = [mock.patch.object(_mod, _name, _blocked) for _mod, _name in _GUARDED]
+
+
+def setUpModule():
+    """Arm the guard for every test of this module (the wave 4 merge's fix: never at import, because test_round4
+    imports every test module in one process and an import-time guard would trip in the others)."""
+    for patcher in _PATCHERS:
+        patcher.start()
+
+
+def tearDownModule():
+    for patcher in reversed(_PATCHERS):
+        patcher.stop()
 
 import harness_bookkeeping as hb  # noqa: E402
 from box import image_lock as il  # noqa: E402
@@ -137,7 +148,15 @@ def leak_hits(strings) -> list:
 
 
 class GuardTest(unittest.TestCase):
+    def test_the_guard_starts_no_patch_at_import(self):
+        # Recorded at the very end of this module's import: no guarded name was patched then.
+        self.assertEqual(_PATCHED_AT_IMPORT, [])
+        # And the same record, taken now inside a test, holds every guarded name (setUpModule armed them), so the
+        # record can see a patch. The mutant that starts the guard at import is a whole-file swap (lane report).
+        self.assertEqual(len(_patched_now()), len(_GUARDED))
+
     def test_the_process_guard_is_armed(self):
+        self.assertEqual(len(_patched_now()), len(_GUARDED))
         with self.assertRaises(AssertionError):
             subprocess.run(["true"])
         with self.assertRaises(AssertionError):
@@ -311,6 +330,15 @@ def print_mutants() -> None:
         harness, text = conf_mutated(name)
         found = pc.check(text, harness)
         print(f"mutant conf {name!r} ({harness}): {'red' if found else 'GREEN'} ({found[0] if found else '-'})")
+
+
+def _patched_now() -> list:
+    """The guarded names that are patched to the guard right now."""
+    return [f"{getattr(m, '__name__', m)}.{n}" for m, n in _GUARDED if getattr(m, n) is _blocked]
+
+
+# Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).
+_PATCHED_AT_IMPORT = _patched_now()
 
 
 if __name__ == "__main__":
