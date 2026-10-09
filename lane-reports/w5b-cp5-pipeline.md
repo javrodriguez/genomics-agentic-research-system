@@ -612,3 +612,511 @@ No sandbox denial, classifier block, automatic approval rejection or hook refusa
 ### Deferred to Javier
 
 No action is requested from Javier by this lane. Actual spend, keys, vendor price quotations, the real caps-trimmed record, public pushes and any ruling requiring his word remain deferred. No real price, spend figure or account detail was written. The pending technical ownership ruling goes to glitch-f3 under the supplied delegation.
+
+
+---
+
+status: done
+RESUME HERE: glitch-f3 should run the full test_round4.py and run_checks.py on athena at this hand-back head, then send it for review; carry w5b-4's copy-gate timing to the ci.yml lane.
+
+head: 3595662603fc0d65ca5fe45bb9aecd968f82fe5f (last code/test commit; this append-only report's own commit follows it).
+
+Date read before this append: Fri Oct 9 14:24:19 EDT 2026.
+
+This continuation supersedes the historical blocked statuses above. Those entries and their original first two lines remain unchanged, as sections 10 and 11 explicitly require. The supplied w5b-3 and w5b-4 rulings close both earlier questions. No active decision remains pending. The status here covers the lane's implementation and Mac gates; the remote battery and review remain the lead's next steps, not a claim of having run them here.
+
+### Ruling applied and completed behavior
+
+- w5b-4: runtime outputs have no fragment. check_results.runtime_timing_problems inspects reachable commit history for takes.json, outcomes.json, rulings.json, records/, RESULT.md, cost-calls.json and COSTS.md, including files later deleted. They must first occur strictly after the introducing freeze commit. The checker refuses before reading or grading publication when that history is early. Tests use scratch repositories, and the runtime-timing mutant fails by assertion.
+- The build and frozen state retain the unchanged copy_manifest.py gate. No runtime fragment was added, and no ownership exception was extended. The w5b-3 scratch tests still prove the build gate, frozen gate, snapshot before the freeze fragment, missing-claim refusal and second-freeze refusal.
+- Registration now consumes committed route-ruling fates, including closed cells. Every attempted outcome, including a nonfinal attempt, is bound to its registration and model/agent pin. Regrading also binds evidence.model, evidence.harness and evidence.version to the registered row. The nonempty cost CLI now supplies require_frozen's required purpose argument.
+- Rehearsal uses full round 4 rows, the existing committed pre-freeze review, and the required frozen-state command list. Runtime commands run only after that gate, without another copy check. No synthetic review changes the build tree. The clone, row input and report stay under a system temporary directory. The real freeze accepts the report through --rehearsal-record, verifies its draft hash, tree hash and green ending, and retains its text and hash in prereg.json without importing an output file into the build tree. The program itself was not run on the Mac.
+- A scratch artifact test reads real closed Evidence files, invokes the local v4 number_fidelity module, writes records, writes RESULT.md and checks the full publication. Synthetic variants data, rows/history and the frozen-design accessor are injected; it does not claim to exercise CP2's future real repo/driver or a real take.
+
+### Lane decisions and downstream contracts
+
+The choices below are this lane's implementation decisions, not new rulings attributed to glitch-f3 or Javier.
+
+- R33: CP2 calls takes.guard_registration(row, attempt, rows, history, live=...) or keeps one process-local takes.RegistrationGuard. Its live set belongs only to the current block. Restart never restores it. takes.commit_registration commits the full planned identity as one append to takes.json's closed rows container; failed commits remain for human reconciliation.
+- R24: the human door is takes.py --ruling (takes.commit_ruling). It appends one closed batch.RULING_KEYS record to evals/gap-study-4/rulings.json, one commit per ruling, taking by only from its caller. outcomes.json and rulings.json are lists. takes.read_history merges their one-record appends in commit order; this is the CP2-facing history contract. The door writes no seventh block field.
+- R26 / PL-3: publication derives a ruled pause's block from the stopped (slot, attempt) and committed outcome order/window events. It refuses absent or ambiguous membership and reuses an existing block event. This meets W1B4-3's count-once purpose by derivation, under the supplied ruling, rather than a recorded block field.
+- PL-2 fixes the destination at evals/gap-study-4/records/. run.py writes interface 11 lists only there. stats.RESULTS_DIR changes in exactly one line; its old-default test changes in exactly one line. stats' authoritative interface uses views=None for final harness errors; the inline graded-record example does not spell that case out. The producer follows stats.py and never publishes a rehearsal or pause as a record.
+- A full row includes the eight interface identity fields plus slot and half_cell, and binds any additional planned driver metadata. For actual artifact grading, record_dir is round-relative and holds transcript.jsonl and evidence/; project and any mapped grader_half come from the planned row/task. No earlier round's grader or table is read.
+- Rehearsal selects the latest valid committed review (or the explicit --review-commit), so its clone freezes the same owned build bytes. External rehearsal evidence is an explicit --rehearsal-record input; the frozen record retains its content, name and hash, without retaining an absolute host path. This keeps the copy gate at the two states w5b-4 names and avoids changing the rehearsed build merely to store its report.
+- Cost calls are cost-calls.json; the rendered page is COSTS.md. Per-vendor call IDs deduplicate identical fragments and refuse conflicts. Missing cost, token or timing measurements remain unmeasured. Prices are passed as a dated table, and all numeric prices in these tests are explicitly fake. The monthly release record has kind, by, month, at and both vendor figures; the predicate requires the current month's release, or the coming month's once the last-day 23:30 UTC hold begins. Elapsed time never supplies a missing release.
+- The runtime timing check also rejects outputs in the freeze commit itself and on merged history that lacks the freeze as ancestor. This is the fail-closed reading of outputs being written after the freeze.
+
+### Requirement accounting
+
+Every test below is in tests/test_pipeline.py unless a final gate is named. The red-proven column gives the primary named mutant's exact whole-file closing line; the complete mutant table gives every additional mutant and its own closing line. No R1-R33 implementation item is deferred to CP8. Code-free delivery instructions in R10/R19 are evidenced by commits and gates as well as their ownership/import regressions.
+
+| Requirement | Test name / evidence | Mutant(s) | Red proven (primary runner closing line) | Out-of-scope portion |
+|---|---|---|---|---|
+| R1 | PipelineOwnership.test_eight_edited_sources_and_local_module_files | `claims-eight` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R2 | InterfaceRecords.test_keys_include_arm_half_wording_level_and_harness; FreezeDesign.test_freeze_preserves_design_and_orders_full_identity_without_vendor_cli | `key-harness`, `freeze-identity` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R3 | PublicationHistory.test_every_route_is_reverified_without_replacement; InterfaceRecords.test_runner_reverifies_in_addition_to_publication_checker | `recorded-route`, `runner-route`, `stop-view` | `test_pipeline: 52 run, 6 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R4 | InterfaceRecords.test_regrade_uses_v4_file_even_with_same_named_module_cached | `bare-grader` | `test_pipeline: 52 run, 1 failures, 1 errors, 0 skipped` | Implemented in this lane. |
+| R5 | Registration.test_live_block_three_restart_requires_reconciliation; test_four_open_mutant; test_routes_free_slots_only_with_committed_rerun | `four-open`, `stale-row`, `final-slot` | `test_pipeline: 52 run, 2 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R6 | CostAccounting.test_per_call_usage_printed_cost_and_wall_time; test_each_vendor_prices_its_calls_from_the_supplied_fake_table | `per-call`, `token-sums` | `test_pipeline: 52 run, 3 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R7 | FreezeCoverage.test_every_owned_path_is_pinned_including_fragments_and_prose; FreezeDesign.test_generated_outputs_are_pinned_in_the_frozen_file | `pin-all`, `output-pins` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R8 | Reporting.test_every_table_comes_from_stats_and_no_prior_round | `result-tables` | `test_pipeline: 52 run, 6 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R9 | PublishedArtifacts.test_produce_drives_fake_takes_through_all_routes; Reporting.test_empty_records_print_no_takes_never_zeros | `records-shape`, `empty-result` | `test_pipeline: 52 run, 1 failures, 1 errors, 0 skipped` | Implemented in this lane. |
+| R10 | PipelineOwnership.test_eight_edited_sources_and_local_module_files; all final gates below; CP8 changes no code | `claims-eight` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R11 | CostAccounting.test_per_call_usage_printed_cost_and_wall_time; test_nonempty_cost_cli_writes_then_checks_the_frozen_prices | `printed-cost`, `token-sums`, `wall-time`, `per-call` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R12 | InterfaceRecords.test_every_stop_has_three_views_and_aborted_counts_against_holding; Reporting.test_excluded_dict_no_takes_and_only_stops_all_render | `stop-view`, `result-tables` | `test_pipeline: 52 run, 1 failures, 3 errors, 0 skipped` | Implemented in this lane. |
+| R13 | Registration.test_routes_free_slots_only_with_committed_rerun; PublishedArtifacts.test_produce_drives_fake_takes_through_all_routes; PublicationHistory.test_ruled_half_cell_closes_from_the_ruling | `final-slot`, `ruled-state` | `test_pipeline: 52 run, 5 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R14 | PublicationHistory.test_every_route_is_reverified_without_replacement; InterfaceRecords.test_runner_reverifies_in_addition_to_publication_checker | `recorded-route`, `runner-route` | `test_pipeline: 52 run, 6 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R15 | Reporting.test_every_table_comes_from_stats_and_no_prior_round | `prior-round` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R16 | Reporting.test_empty_records_print_no_takes_never_zeros; StatsDestination.test_no_argument_cli_reads_records_and_legacy_shape_is_refused | `empty-result`, `stats-default` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R17 | InterfaceRecords.test_regrade_uses_v4_file_even_with_same_named_module_cached; PublishedArtifacts.test_committed_artifacts_regrade_and_publish_through_cli | `bare-grader`, `evidence-identity` | `test_pipeline: 52 run, 1 failures, 1 errors, 0 skipped` | Implemented in this lane. |
+| R18 | FreezeOutputs.test_build_and_frozen_manifest_and_snapshot; test_missing_claim_mutant_is_refused; test_second_freeze_refused_before_any_write | `freeze-claims`, `freeze-snapshot`, `freeze-once` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R19 | PipelineOwnership.test_eight_edited_sources_and_local_module_files; FreezeCoverage.test_rehearsal_keeps_every_required_command_even_when_missing; explicit path staging before record gates | `foreign-module` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R20 | FreezeCoverage.test_rehearsal_keeps_every_required_command_even_when_missing; test_rehearsal_uses_full_rows_and_copy_gate_only_on_frozen_state; test_external_rehearsal_record_binds_draft_tree_and_green_result | `rehearsal-commands`, `rehearsal-runtime`, `rehearsal-evidence` | `test_pipeline: 52 run, 2 failures, 0 errors, 0 skipped` | Actual rehearsal run is CP6, plan 880-895. |
+| R21 | Registration.test_live_block_three_restart_requires_reconciliation; test_four_open_mutant | `stale-row`, `four-open` | `test_pipeline: 52 run, 3 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R22 | Registration.test_routes_free_slots_only_with_committed_rerun; test_route_rulings_release_or_close_registration | `final-slot`, `registration-ruling` | `test_pipeline: 52 run, 5 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R23 | Reporting.test_mechanical_state_read_even_without_a_graded_record; Registration.test_committed_cell_state_refuses_new_slot | `committed-state`, `closed-cell` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R24 | RulingDoor.test_door_commits_one_closed_record_with_callers_by; test_door_refuses_unknown_word_and_empty_by_with_mutants; PublicationHistory.test_ruled_half_cell_closes_from_the_ruling; test_ruled_take_publishes_under_the_ruled_route; Registration.test_route_rulings_release_or_close_registration | `ruling-word`, `ruling-by`, `ruled-state`, `ruled-route`, `registration-ruling` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R25 | Registration.test_lost_drive_and_lost_pause_never_launch_on_restart | `stale-row` | `test_pipeline: 52 run, 3 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R26 | PublicationHistory.test_ruled_pause_counts_its_existing_block_once; test_ruled_pause_requires_unique_block_and_existing_take | `pause-block` | `test_pipeline: 52 run, 2 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R27 | PublicationHistory.test_window_event_must_fit_one_block | `window-span` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R28 | InterfaceRecords.test_agent_missing_refused_by_ledger_and_records; Registration.test_row_agent_required_never_defaulted; LedgerDoor.test_registration_commits_the_full_planned_identity_and_audits_it; PublishedArtifacts.test_checker_binds_complete_identity_to_the_frozen_plan; test_every_attempt_binds_its_registration_model_and_agent; test_checker_binds_records_page_agent_and_final_route | `row-agent`, `design-row`, `attempt-identity`, `evidence-identity`, `published-page` | `test_pipeline: 52 run, 1 failures, 1 errors, 0 skipped` | Pre-registration writer: section 7, CP5-req 42. |
+| R29 | CostAccounting.test_each_vendor_prices_its_calls_from_the_supplied_fake_table; test_pricing_requires_dated_table_and_agent; test_round_caps_use_all_months_and_all_models; test_month_turn_refuses_until_both_figures_recorded | `vendor-prices`, `price-date`, `vendor-caps`, `total-cap`, `round-spend`, `walk-cap`, `month-hold` | `test_pipeline: 52 run, 2 failures, 0 errors, 0 skipped` | Driver invokes the predicates: section 7, CP5-req 57; no driver edited. |
+| R30 | Reporting.test_pair_count_comes_from_nine_task_design | `task-count` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R31 | StatsDestination.test_no_argument_cli_reads_records_and_legacy_shape_is_refused; InterfaceRecords.test_record_lists_written_only_in_records_and_legacy_shape_refused; PublishedArtifacts.test_checker_binds_records_page_agent_and_final_route; RuntimeTiming.test_pre_freeze_outputs_refused_even_when_removed_before_freeze | `stats-default`, `records-shape`, `stored-records`, `runtime-timing` | `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R32 | Reporting.test_excluded_dict_no_takes_and_only_stops_all_render | `result-tables` | `test_pipeline: 52 run, 6 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+| R33 | Registration.test_live_block_three_restart_requires_reconciliation; test_lost_drive_and_lost_pause_never_launch_on_restart; LedgerDoor.test_registration_commits_the_full_planned_identity_and_audits_it | `stale-row`, `registration-ruling` | `test_pipeline: 52 run, 3 failures, 0 errors, 0 skipped` | Implemented in this lane. |
+
+### Whole-file mutant proof
+
+All 52 mutants were armed only in setUpModule, undone in tearDownModule, and run against the whole 52-test module. Each exited 1 with at least one assertion failure. Additional downstream errors for some missing guards are shown honestly in the closing lines; an error alone was never accepted as proof. No mutant survived and no mutant run was skipped.
+
+Each row used this exact command prefix followed by the row's mutant name:
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_pipeline.py --mutant <name>
+```
+
+| Clause | Mutant name | Whole-file result and exact closing line | Binding test(s) |
+|---|---|---|---|
+| R1, R10 | claims-eight | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | PipelineOwnership.test_eight_edited_sources_and_local_module_files; PipelineOwnership.test_eight_edited_sources_and_local_module_files; all final gates below; CP8 changes no code |
+| R19 | foreign-module | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | PipelineOwnership.test_eight_edited_sources_and_local_module_files; FreezeCoverage.test_rehearsal_keeps_every_required_command_even_when_missing; explicit path staging before record gates |
+| R11 | printed-cost | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | CostAccounting.test_per_call_usage_printed_cost_and_wall_time; test_nonempty_cost_cli_writes_then_checks_the_frozen_prices |
+| R6, R11 | token-sums | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | CostAccounting.test_per_call_usage_printed_cost_and_wall_time; test_each_vendor_prices_its_calls_from_the_supplied_fake_table; CostAccounting.test_per_call_usage_printed_cost_and_wall_time; test_nonempty_cost_cli_writes_then_checks_the_frozen_prices |
+| R11 | wall-time | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | CostAccounting.test_per_call_usage_printed_cost_and_wall_time; test_nonempty_cost_cli_writes_then_checks_the_frozen_prices |
+| R29 | vendor-prices | RED (exit 1): `test_pipeline: 52 run, 2 failures, 0 errors, 0 skipped` | CostAccounting.test_each_vendor_prices_its_calls_from_the_supplied_fake_table; test_pricing_requires_dated_table_and_agent; test_round_caps_use_all_months_and_all_models; test_month_turn_refuses_until_both_figures_recorded |
+| R29 | vendor-caps | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | CostAccounting.test_each_vendor_prices_its_calls_from_the_supplied_fake_table; test_pricing_requires_dated_table_and_agent; test_round_caps_use_all_months_and_all_models; test_month_turn_refuses_until_both_figures_recorded |
+| R29 | total-cap | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | CostAccounting.test_each_vendor_prices_its_calls_from_the_supplied_fake_table; test_pricing_requires_dated_table_and_agent; test_round_caps_use_all_months_and_all_models; test_month_turn_refuses_until_both_figures_recorded |
+| R31; section 11 | runtime-timing | RED (exit 1): `test_pipeline: 52 run, 7 failures, 0 errors, 0 skipped` | StatsDestination.test_no_argument_cli_reads_records_and_legacy_shape_is_refused; InterfaceRecords.test_record_lists_written_only_in_records_and_legacy_shape_refused; PublishedArtifacts.test_checker_binds_records_page_agent_and_final_route; RuntimeTiming.test_pre_freeze_outputs_refused_even_when_removed_before_freeze |
+| R28 | attempt-identity | RED (exit 1): `test_pipeline: 52 run, 3 failures, 2 errors, 0 skipped` | InterfaceRecords.test_agent_missing_refused_by_ledger_and_records; Registration.test_row_agent_required_never_defaulted; LedgerDoor.test_registration_commits_the_full_planned_identity_and_audits_it; PublishedArtifacts.test_checker_binds_complete_identity_to_the_frozen_plan; test_every_attempt_binds_its_registration_model_and_agent; test_checker_binds_records_page_agent_and_final_route |
+| R17, R28 | evidence-identity | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | InterfaceRecords.test_regrade_uses_v4_file_even_with_same_named_module_cached; PublishedArtifacts.test_committed_artifacts_regrade_and_publish_through_cli; InterfaceRecords.test_agent_missing_refused_by_ledger_and_records; Registration.test_row_agent_required_never_defaulted; LedgerDoor.test_registration_commits_the_full_planned_identity_and_audits_it; PublishedArtifacts.test_checker_binds_complete_identity_to_the_frozen_plan; test_every_attempt_binds_its_registration_model_and_agent; test_checker_binds_records_page_agent_and_final_route |
+| R20 | rehearsal-evidence | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | FreezeCoverage.test_rehearsal_keeps_every_required_command_even_when_missing; test_rehearsal_uses_full_rows_and_copy_gate_only_on_frozen_state; test_external_rehearsal_record_binds_draft_tree_and_green_result |
+| R22, R24, R33 | registration-ruling | RED (exit 1): `test_pipeline: 52 run, 6 failures, 0 errors, 0 skipped` | Registration.test_routes_free_slots_only_with_committed_rerun; test_route_rulings_release_or_close_registration; RulingDoor.test_door_commits_one_closed_record_with_callers_by; test_door_refuses_unknown_word_and_empty_by_with_mutants; PublicationHistory.test_ruled_half_cell_closes_from_the_ruling; test_ruled_take_publishes_under_the_ruled_route; Registration.test_route_rulings_release_or_close_registration; Registration.test_live_block_three_restart_requires_reconciliation; test_lost_drive_and_lost_pause_never_launch_on_restart; LedgerDoor.test_registration_commits_the_full_planned_identity_and_audits_it |
+| R2 | freeze-identity | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | InterfaceRecords.test_keys_include_arm_half_wording_level_and_harness; FreezeDesign.test_freeze_preserves_design_and_orders_full_identity_without_vendor_cli |
+| R7 | output-pins | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | FreezeCoverage.test_every_owned_path_is_pinned_including_fragments_and_prose; FreezeDesign.test_generated_outputs_are_pinned_in_the_frozen_file |
+| R7 | pin-all | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | FreezeCoverage.test_every_owned_path_is_pinned_including_fragments_and_prose; FreezeDesign.test_generated_outputs_are_pinned_in_the_frozen_file |
+| R20 | rehearsal-commands | RED (exit 1): `test_pipeline: 52 run, 2 failures, 0 errors, 0 skipped` | FreezeCoverage.test_rehearsal_keeps_every_required_command_even_when_missing; test_rehearsal_uses_full_rows_and_copy_gate_only_on_frozen_state; test_external_rehearsal_record_binds_draft_tree_and_green_result |
+| R20 | rehearsal-runtime | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | FreezeCoverage.test_rehearsal_keeps_every_required_command_even_when_missing; test_rehearsal_uses_full_rows_and_copy_gate_only_on_frozen_state; test_external_rehearsal_record_binds_draft_tree_and_green_result |
+| R18 | freeze-claims | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | FreezeOutputs.test_build_and_frozen_manifest_and_snapshot; test_missing_claim_mutant_is_refused; test_second_freeze_refused_before_any_write |
+| R18 | freeze-once | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | FreezeOutputs.test_build_and_frozen_manifest_and_snapshot; test_missing_claim_mutant_is_refused; test_second_freeze_refused_before_any_write |
+| R18 | freeze-snapshot | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | FreezeOutputs.test_build_and_frozen_manifest_and_snapshot; test_missing_claim_mutant_is_refused; test_second_freeze_refused_before_any_write |
+| R31 | stored-records | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | StatsDestination.test_no_argument_cli_reads_records_and_legacy_shape_is_refused; InterfaceRecords.test_record_lists_written_only_in_records_and_legacy_shape_refused; PublishedArtifacts.test_checker_binds_records_page_agent_and_final_route; RuntimeTiming.test_pre_freeze_outputs_refused_even_when_removed_before_freeze |
+| R28 | published-page | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | InterfaceRecords.test_agent_missing_refused_by_ledger_and_records; Registration.test_row_agent_required_never_defaulted; LedgerDoor.test_registration_commits_the_full_planned_identity_and_audits_it; PublishedArtifacts.test_checker_binds_complete_identity_to_the_frozen_plan; test_every_attempt_binds_its_registration_model_and_agent; test_checker_binds_records_page_agent_and_final_route |
+| R28 | design-row | RED (exit 1): `test_pipeline: 52 run, 2 failures, 0 errors, 0 skipped` | InterfaceRecords.test_agent_missing_refused_by_ledger_and_records; Registration.test_row_agent_required_never_defaulted; LedgerDoor.test_registration_commits_the_full_planned_identity_and_audits_it; PublishedArtifacts.test_checker_binds_complete_identity_to_the_frozen_plan; test_every_attempt_binds_its_registration_model_and_agent; test_checker_binds_records_page_agent_and_final_route |
+| R5, R21, R25, R33 | stale-row | RED (exit 1): `test_pipeline: 52 run, 3 failures, 0 errors, 0 skipped` | Registration.test_live_block_three_restart_requires_reconciliation; test_four_open_mutant; test_routes_free_slots_only_with_committed_rerun; Registration.test_live_block_three_restart_requires_reconciliation; test_four_open_mutant; Registration.test_lost_drive_and_lost_pause_never_launch_on_restart; Registration.test_live_block_three_restart_requires_reconciliation; test_lost_drive_and_lost_pause_never_launch_on_restart; LedgerDoor.test_registration_commits_the_full_planned_identity_and_audits_it |
+| R5, R21 | four-open | RED (exit 1): `test_pipeline: 52 run, 2 failures, 0 errors, 0 skipped` | Registration.test_live_block_three_restart_requires_reconciliation; test_four_open_mutant; test_routes_free_slots_only_with_committed_rerun; Registration.test_live_block_three_restart_requires_reconciliation; test_four_open_mutant |
+| R28 | row-agent | RED (exit 1): `test_pipeline: 52 run, 1 failures, 1 errors, 0 skipped` | InterfaceRecords.test_agent_missing_refused_by_ledger_and_records; Registration.test_row_agent_required_never_defaulted; LedgerDoor.test_registration_commits_the_full_planned_identity_and_audits_it; PublishedArtifacts.test_checker_binds_complete_identity_to_the_frozen_plan; test_every_attempt_binds_its_registration_model_and_agent; test_checker_binds_records_page_agent_and_final_route |
+| R5, R13, R22 | final-slot | RED (exit 1): `test_pipeline: 52 run, 5 failures, 0 errors, 0 skipped` | Registration.test_live_block_three_restart_requires_reconciliation; test_four_open_mutant; test_routes_free_slots_only_with_committed_rerun; Registration.test_routes_free_slots_only_with_committed_rerun; PublishedArtifacts.test_produce_drives_fake_takes_through_all_routes; PublicationHistory.test_ruled_half_cell_closes_from_the_ruling; Registration.test_routes_free_slots_only_with_committed_rerun; test_route_rulings_release_or_close_registration |
+| R23 | closed-cell | RED (exit 1): `test_pipeline: 52 run, 2 failures, 0 errors, 0 skipped` | Reporting.test_mechanical_state_read_even_without_a_graded_record; Registration.test_committed_cell_state_refuses_new_slot |
+| R3, R14 | recorded-route | RED (exit 1): `test_pipeline: 52 run, 6 failures, 0 errors, 0 skipped` | PublicationHistory.test_every_route_is_reverified_without_replacement; InterfaceRecords.test_runner_reverifies_in_addition_to_publication_checker |
+| R26 | pause-block | RED (exit 1): `test_pipeline: 52 run, 2 failures, 0 errors, 0 skipped` | PublicationHistory.test_ruled_pause_counts_its_existing_block_once; test_ruled_pause_requires_unique_block_and_existing_take |
+| R27 | window-span | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | PublicationHistory.test_window_event_must_fit_one_block |
+| R13, R24 | ruled-state | RED (exit 1): `test_pipeline: 52 run, 1 failures, 1 errors, 0 skipped` | Registration.test_routes_free_slots_only_with_committed_rerun; PublishedArtifacts.test_produce_drives_fake_takes_through_all_routes; PublicationHistory.test_ruled_half_cell_closes_from_the_ruling; RulingDoor.test_door_commits_one_closed_record_with_callers_by; test_door_refuses_unknown_word_and_empty_by_with_mutants; PublicationHistory.test_ruled_half_cell_closes_from_the_ruling; test_ruled_take_publishes_under_the_ruled_route; Registration.test_route_rulings_release_or_close_registration |
+| R24 | ruled-route | RED (exit 1): `test_pipeline: 52 run, 7 failures, 1 errors, 0 skipped` | RulingDoor.test_door_commits_one_closed_record_with_callers_by; test_door_refuses_unknown_word_and_empty_by_with_mutants; PublicationHistory.test_ruled_half_cell_closes_from_the_ruling; test_ruled_take_publishes_under_the_ruled_route; Registration.test_route_rulings_release_or_close_registration |
+| R24 | ruling-word | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | RulingDoor.test_door_commits_one_closed_record_with_callers_by; test_door_refuses_unknown_word_and_empty_by_with_mutants; PublicationHistory.test_ruled_half_cell_closes_from_the_ruling; test_ruled_take_publishes_under_the_ruled_route; Registration.test_route_rulings_release_or_close_registration |
+| R24 | ruling-by | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | RulingDoor.test_door_commits_one_closed_record_with_callers_by; test_door_refuses_unknown_word_and_empty_by_with_mutants; PublicationHistory.test_ruled_half_cell_closes_from_the_ruling; test_ruled_take_publishes_under_the_ruled_route; Registration.test_route_rulings_release_or_close_registration |
+| R4, R17 | bare-grader | RED (exit 1): `test_pipeline: 52 run, 1 failures, 1 errors, 0 skipped` | InterfaceRecords.test_regrade_uses_v4_file_even_with_same_named_module_cached; InterfaceRecords.test_regrade_uses_v4_file_even_with_same_named_module_cached; PublishedArtifacts.test_committed_artifacts_regrade_and_publish_through_cli |
+| R3, R12 | stop-view | RED (exit 1): `test_pipeline: 52 run, 1 failures, 3 errors, 0 skipped` | PublicationHistory.test_every_route_is_reverified_without_replacement; InterfaceRecords.test_runner_reverifies_in_addition_to_publication_checker; InterfaceRecords.test_every_stop_has_three_views_and_aborted_counts_against_holding; Reporting.test_excluded_dict_no_takes_and_only_stops_all_render |
+| R3, R14 | runner-route | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | PublicationHistory.test_every_route_is_reverified_without_replacement; InterfaceRecords.test_runner_reverifies_in_addition_to_publication_checker |
+| R9, R31 | records-shape | RED (exit 1): `test_pipeline: 52 run, 1 failures, 1 errors, 0 skipped` | PublishedArtifacts.test_produce_drives_fake_takes_through_all_routes; Reporting.test_empty_records_print_no_takes_never_zeros; StatsDestination.test_no_argument_cli_reads_records_and_legacy_shape_is_refused; InterfaceRecords.test_record_lists_written_only_in_records_and_legacy_shape_refused; PublishedArtifacts.test_checker_binds_records_page_agent_and_final_route; RuntimeTiming.test_pre_freeze_outputs_refused_even_when_removed_before_freeze |
+| R2 | key-harness | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | InterfaceRecords.test_keys_include_arm_half_wording_level_and_harness; FreezeDesign.test_freeze_preserves_design_and_orders_full_identity_without_vendor_cli |
+| R16, R31 | stats-default | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Reporting.test_empty_records_print_no_takes_never_zeros; StatsDestination.test_no_argument_cli_reads_records_and_legacy_shape_is_refused; StatsDestination.test_no_argument_cli_reads_records_and_legacy_shape_is_refused; InterfaceRecords.test_record_lists_written_only_in_records_and_legacy_shape_refused; PublishedArtifacts.test_checker_binds_records_page_agent_and_final_route; RuntimeTiming.test_pre_freeze_outputs_refused_even_when_removed_before_freeze |
+| R30 | task-count | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Reporting.test_pair_count_comes_from_nine_task_design |
+| R23 | committed-state | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Reporting.test_mechanical_state_read_even_without_a_graded_record; Registration.test_committed_cell_state_refuses_new_slot |
+| R8, R12, R32 | result-tables | RED (exit 1): `test_pipeline: 52 run, 6 failures, 0 errors, 0 skipped` | Reporting.test_every_table_comes_from_stats_and_no_prior_round; InterfaceRecords.test_every_stop_has_three_views_and_aborted_counts_against_holding; Reporting.test_excluded_dict_no_takes_and_only_stops_all_render; Reporting.test_excluded_dict_no_takes_and_only_stops_all_render |
+| R9, R16 | empty-result | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | PublishedArtifacts.test_produce_drives_fake_takes_through_all_routes; Reporting.test_empty_records_print_no_takes_never_zeros; Reporting.test_empty_records_print_no_takes_never_zeros; StatsDestination.test_no_argument_cli_reads_records_and_legacy_shape_is_refused |
+| R6, R11 | per-call | RED (exit 1): `test_pipeline: 52 run, 3 failures, 0 errors, 0 skipped` | CostAccounting.test_per_call_usage_printed_cost_and_wall_time; test_each_vendor_prices_its_calls_from_the_supplied_fake_table; CostAccounting.test_per_call_usage_printed_cost_and_wall_time; test_nonempty_cost_cli_writes_then_checks_the_frozen_prices |
+| R29 | price-date | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | CostAccounting.test_each_vendor_prices_its_calls_from_the_supplied_fake_table; test_pricing_requires_dated_table_and_agent; test_round_caps_use_all_months_and_all_models; test_month_turn_refuses_until_both_figures_recorded |
+| R29 | round-spend | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | CostAccounting.test_each_vendor_prices_its_calls_from_the_supplied_fake_table; test_pricing_requires_dated_table_and_agent; test_round_caps_use_all_months_and_all_models; test_month_turn_refuses_until_both_figures_recorded |
+| R29 | walk-cap | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | CostAccounting.test_each_vendor_prices_its_calls_from_the_supplied_fake_table; test_pricing_requires_dated_table_and_agent; test_round_caps_use_all_months_and_all_models; test_month_turn_refuses_until_both_figures_recorded |
+| R29 | month-hold | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | CostAccounting.test_each_vendor_prices_its_calls_from_the_supplied_fake_table; test_pricing_requires_dated_table_and_agent; test_round_caps_use_all_months_and_all_models; test_month_turn_refuses_until_both_figures_recorded |
+| R15 | prior-round | RED (exit 1): `test_pipeline: 52 run, 1 failures, 0 errors, 0 skipped` | Reporting.test_every_table_comes_from_stats_and_no_prior_round |
+
+### Red-first continuation commits
+
+The preceding continuation's red/green commits remain in the earlier report. This resume added these logical pairs; neither commits nor report history were amended or rewritten.
+
+| Red test commit | Green code commit | Contract | Red runner closing line |
+|---|---|---|---|
+| 7e103866 | b9eb1436 | Runtime output timing under w5b-4 | test_pipeline: 43 run, 2 failures, 0 errors, 0 skipped |
+| fae8419a | 4147173b | Registration after route rulings | test_pipeline: 44 run, 1 failures, 0 errors, 0 skipped |
+| 1679a023 | 9a2e2def | Nonempty cost CLI | test_pipeline: 45 run, 1 failures, 0 errors, 0 skipped |
+| 2064d8c1 | ffb34bb4 | Full-row rehearsal runtime commands | test_pipeline: 46 run, 1 failures, 0 errors, 0 skipped |
+| 2a56a245 | 072e901d | Every attempt's identity and the planned publication | test_pipeline: 48 run, 2 failures, 0 errors, 0 skipped |
+| 52b94bed | 6db3c31b | Committed artifact grading and evidence identity | test_pipeline: 49 run, 1 failures, 0 errors, 0 skipped |
+| a090ddce | e7b63534 | External rehearsal evidence without a build-tree write | test_pipeline: 50 run, 1 failures, 0 errors, 0 skipped |
+
+Green coverage commits aa9599f4 and 35956626 added ownership and cost-clause mutants, an explicit record-list assertion, and the mutant that supplies a default agent. They changed tests only. The final ordinary run is `test_pipeline: 52 run, 0 failures, 0 errors, 0 skipped`. Each pre-freeze continuation commit passed the copy gate after explicit-path staging; red test commits intentionally retain their specified failing tests until the immediately following implementation.
+
+### Final gates on the code head
+
+Each command ran after explicit-path git add, alone in the foreground, with the Mac load gate in the same command, Python 3.13.2, bytecode disabled, and single-threaded BLAS variables. All 15 commands exited 0. No final gate overlapped another. The stats CLI check is additional direct empty-default evidence; an empty-study exit 0 is not a measurement on takes.
+
+`tests/test_pipeline.py`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_pipeline.py
+```
+
+Runner closing output:
+
+```text
+Ran 52 tests in 12.649s
+
+OK
+test_pipeline: 52 run, 0 failures, 0 errors, 0 skipped
+```
+
+`copy_manifest.py --check`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/copy_manifest.py --check
+```
+
+Runner closing output:
+
+```text
+ok: 218 files from 27 fragment(s) (w1a-cp1-scaffold, w1b-cp1-routing-batch, w2a-cp3-endstate, w2b-cp3-text-graders, w3a-cp3-graders-scope-template, w3b-cp3-graders-refusal-plangate, w3c-cp3-graders-confound-newtasks, w4a-cp2-image-egress, w4b-cp2-runtake-preflight, w4c-cp2-sidecar-scan, w4d-cp4-variants, w4e-cp5-stats, w4f-cp5-coverage, w4g-cp4-declarations-eligibility, w4h-w1b-next-touch, w4i-cp4-task-scope-read, w4j-cp4-task-template-adherence, w4k-cp4-task-number-fidelity, w4l-cp4-task-precondition-refusal, w4m-cp4-gen-plan-gate, w4n-cp4-gen-confounded-seed2, w4o-cp4-gen-explain-not-act, w4p-cp4-gen-approval-scope, w4q-cp4-gen-conditional-yes, w5a-cp5-probes4, w5b-cp5-pipeline, wave4-merge): 40 identical and 13 edited (round 3 at e2979b31, shared files at 68ec902f), 165 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf
+```
+
+`tests/test_scaffold.py`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_scaffold.py
+```
+
+Runner closing output:
+
+```text
+Ran 49 tests in 299.242s
+
+OK
+```
+
+`tests/test_batch.py`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_batch.py
+```
+
+Runner closing output:
+
+```text
+Ran 118 tests in 4.451s
+
+OK
+```
+
+`tests/test_stats.py`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_stats.py
+```
+
+Runner closing output:
+
+```text
+Ran 98 tests in 9.860s
+
+OK
+```
+
+`tests/test_pause_adherence.py`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/tests/test_pause_adherence.py
+```
+
+Runner closing output:
+
+```text
+Ran 30 tests in 3.883s
+
+OK
+```
+
+`takes.py --check`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/takes.py --check
+```
+
+Runner closing output:
+
+```text
+takes: no takes; no registration or outcome measured
+```
+
+`run.py --check`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/run.py --check
+```
+
+Runner closing output:
+
+```text
+run: no takes; nothing was graded or written
+```
+
+`result.py --check`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/result.py --check
+```
+
+Runner closing output:
+
+```text
+result: no takes; no table measured or written
+```
+
+`completeness.py --check`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/completeness.py --check
+```
+
+Runner closing output:
+
+```text
+completeness: no takes; no cells measured
+```
+
+`check_results.py --check`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/check_results.py --check
+```
+
+Runner closing output:
+
+```text
+check_results: no takes; no frozen pins or publication measured
+```
+
+`costs.py --check`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/costs.py --check
+```
+
+Runner closing output:
+
+```text
+costs: no takes; no cost measured or written
+```
+
+`freeze.py --check`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/freeze.py --check
+```
+
+Runner closing output:
+
+```text
+freeze: 218 owned paths checked; no takes or freeze performed
+```
+
+`stats.py --check`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/stats.py --check
+```
+
+Runner closing output:
+
+```text
+stats --check: no takes (0 results files); nothing was compared
+```
+
+`test_round4.module_problems()`
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore -c 'import sys; sys.path.insert(0, "/Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4"); import test_round4; problems = test_round4.module_problems(); print("test_round4.module_problems:", len(problems), "problems; 0 tests run"); print("\n".join(problems)) if problems else None; sys.exit(bool(problems))'
+```
+
+Runner closing output:
+
+```text
+test_round4.module_problems: 0 problems; 0 tests run
+```
+
+### Changed files and named exceptions
+
+At code head 3595662603fc0d65ca5fe45bb9aecd968f82fe5f, `git -C /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline diff --stat be1286f7..HEAD` printed:
+
+```text
+evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json |   40 -
+ evals/gap-study-4/COPIED.d/w5b-cp5-pipeline.json |   68 ++
+ evals/gap-study-4/check_results.py               | 1088 +++++--------------
+ evals/gap-study-4/checks.d/w5b-cp5-pipeline.txt  |   16 +
+ evals/gap-study-4/completeness.py                |  143 ++-
+ evals/gap-study-4/costs.py                       |  643 ++++--------
+ evals/gap-study-4/freeze.py                      |  593 ++++-------
+ evals/gap-study-4/freeze_rehearsal.py            |  324 +++---
+ evals/gap-study-4/result.py                      |  399 +------
+ evals/gap-study-4/run.py                         |  527 ++++------
+ evals/gap-study-4/stats.py                       |    2 +-
+ evals/gap-study-4/takes.py                       |  674 ++++++------
+ evals/gap-study-4/tests/test_pipeline.py         | 1206 ++++++++++++++++++++++
+ evals/gap-study-4/tests/test_scaffold.py         |   17 +-
+ evals/gap-study-4/tests/test_stats.py            |    2 +-
+ lane-reports/w5b-cp5-pipeline.md                 |  614 +++++++++++
+ 16 files changed, 3332 insertions(+), 3024 deletions(-)
+```
+
+The report's own append/commit follows that inventory. No additional source file is touched by the report commit.
+
+PL-1: the following zero-context diff is the complete changed-line inventory of both wave 1 files, with original/current line numbers in every hunk. It removes exactly the eight transferred entries, deletes run.py's satisfied BLOCKED entry and changes only the named fixture examples to the untouched prereg.py. There were no further changes to these wave 1 files in this resume.
+
+```diff
+diff --git a/evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json b/evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json
+index 657c60af..b5a05752 100644
+--- a/evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json
++++ b/evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json
+@@ -34,5 +33,0 @@
+-    {
+-      "path": "check_results.py",
+-      "status": "identical",
+-      "source": "evals/gap-study-3/check_results.py"
+-    },
+@@ -59,5 +53,0 @@
+-    {
+-      "path": "completeness.py",
+-      "status": "identical",
+-      "source": "evals/gap-study-3/completeness.py"
+-    },
+@@ -80,5 +69,0 @@
+-    {
+-      "path": "costs.py",
+-      "status": "identical",
+-      "source": "evals/gap-study-3/costs.py"
+-    },
+@@ -125,10 +109,0 @@
+-    {
+-      "path": "freeze.py",
+-      "status": "identical",
+-      "source": "evals/gap-study-3/freeze.py"
+-    },
+-    {
+-      "path": "freeze_rehearsal.py",
+-      "status": "identical",
+-      "source": "evals/gap-study-3/freeze_rehearsal.py"
+-    },
+@@ -182,5 +156,0 @@
+-    {
+-      "path": "result.py",
+-      "status": "identical",
+-      "source": "evals/gap-study-3/result.py"
+-    },
+@@ -227,5 +196,0 @@
+-    {
+-      "path": "run.py",
+-      "status": "identical",
+-      "source": "evals/gap-study-3/run.py"
+-    },
+@@ -258,5 +222,0 @@
+-    {
+-      "path": "takes.py",
+-      "status": "identical",
+-      "source": "evals/gap-study-3/takes.py"
+-    },
+diff --git a/evals/gap-study-4/tests/test_scaffold.py b/evals/gap-study-4/tests/test_scaffold.py
+index 36ad751e..11aa5bf4 100644
+--- a/evals/gap-study-4/tests/test_scaffold.py
++++ b/evals/gap-study-4/tests/test_scaffold.py
+@@ -41 +40,0 @@ BLOCKED = {
+-    "run.py": "ModuleNotFoundError: No module named 'labels'",
+@@ -150,2 +149,2 @@ class TheManifest(unittest.TestCase):
+-        bad = cm.problems(pinned=False, present=present - {"takes.py"})
+-        self.assertTrue(any("takes.py" in b and "does not exist" in b for b in bad), bad)
++        bad = cm.problems(pinned=False, present=present - {"prereg.py"})
++        self.assertTrue(any("prereg.py" in b and "does not exist" in b for b in bad), bad)
+@@ -158 +157 @@ class TheManifest(unittest.TestCase):
+-                if e["path"] == "takes.py":
++                if e["path"] == "prereg.py":
+@@ -163 +162 @@ class TheManifest(unittest.TestCase):
+-            self.assertTrue(any("takes.py" in b and "it is a copy and must say so" in b for b in bad), bad)
++            self.assertTrue(any("prereg.py" in b and "it is a copy and must say so" in b for b in bad), bad)
+@@ -373 +372 @@ class TheManifest(unittest.TestCase):
+-        takes = cm.source_bytes("evals/gap-study-3/takes.py")
++        takes = cm.source_bytes("evals/gap-study-3/prereg.py")
+@@ -375 +374 @@ class TheManifest(unittest.TestCase):
+-            ({"path": "takes.py", "status": "identical", "source": "evals/gap-study-3/takes.py", "reason": "x"},
++            ({"path": "prereg.py", "status": "identical", "source": "evals/gap-study-3/prereg.py", "reason": "x"},
+@@ -377 +376 @@ class TheManifest(unittest.TestCase):
+-            ({"path": "takes.py", "status": "identical"}, "names no source"),
++            ({"path": "prereg.py", "status": "identical"}, "names no source"),
+@@ -383 +382 @@ class TheManifest(unittest.TestCase):
+-            ({"path": "takes.py", "status": "identical", "source": "evals/gap-study-3/no-such-file.py"},
++            ({"path": "prereg.py", "status": "identical", "source": "evals/gap-study-3/no-such-file.py"},
+```
+
+PL-2 cross-lane changes, complete: stats.py line 121 changes RESULTS_DIR from HERE / "results" to HERE / "records"; tests/test_stats.py line 148 changes the corresponding assertion. No other line in either file changed. Their existing w4e ownership claims remain single claims. No other wave 1 or wave 2 file changed; the copy gate confirms the frozen paths remain unchanged.
+
+### Boundaries, process findings, and downstream work
+
+- CLOSED w5b-3: the supplied section 10 ruling is implemented and scratch-tested; its historical question above is retained only as history.
+- CLOSED w5b-4: the supplied section 11 ruling is implemented. Runtime outputs have no fragment, the copy checker is unchanged, and the pipeline rejects early committed runtime output. No new owner judgment is requested.
+- Carry to the ci.yml lane (out of scope here, section 7 and section 11): CI runs the copy gate on pre-freeze heads and the freeze commit only. Runtime heads use pipeline/ledger checks. This is a supplied ruling to implement there, not an unresolved lane decision.
+- The full test_round4.py, run_checks.py, tests/run_tests.py, --whole-file-audit and --against were not run. test_round4.module_problems loaded every module and ran zero tests. Full test_round4.py and run_checks.py are owed to glitch-f3 on athena at hand-back, before review. freeze_rehearsal.py itself remains CP6's run; future required command files stay in COMMANDS and fail loudly if missing.
+- No real freeze, registration, ruling, take, model, vendor CLI, container, network request, package install, push, merge, rebase, branch switch, worktree creation or git-config change was performed. Scratch data stayed under tempfile directories. No sealed path, .env, login file or out-of-repository source brief was read. leak_grep.py's docstring offers no path-argument mode, so the lane did not invent a scoped run; its real-session/design check remains in the rehearsal command list.
+- No tests were skipped. The intentionally red test stages and all 52 mutant failures are listed above. All ordinary continuation pipeline runs after implementation were green. No new load hold, sandbox denial, classifier block, approval rejection or hook refusal occurred in this resume.
+- Process error recorded: the registration red test initially yielded a still-running session after 10 seconds. I started its manifest check before polling the test to completion, briefly overlapping those two processes. The test completed with its expected assertion failure before the red commit. Subsequent gate orchestration awaited each process through completion before starting the next, including all 52 mutant runs and all final gates. The earlier continuation's separate hold-cadence error remains recorded above; it is not silently erased.
+- The initial resume checks accepted the supplied 265802173458534ebce9e55a2cd7075427d85686, confirmed the branch and a clean worktree, found both required old commits, left hooksPath unchanged, passed light-ok, and used Python 3.13.2. The base-HEAD check was omitted exactly as the resumption requested. The final code worktree was clean before this report append.
+
+### Deferred to Javier
+
+No action from Javier is needed for this lane's hand-back. Actual spend, keys, vendor quotations, the real caps-trimmed record, public pushes, and any future ruling requiring his word remain deferred. No real price, spend figure or account detail was written. CP2 invokes the pure spending predicates; build_draft supplies the real frozen design and dated pricing data; CP6 runs the rehearsal. These named later-lane responsibilities do not defer an R1-R33 pipeline implementation to CP8.
+
+
+### Post-append load holds and report commit
+
+Date read before this note: Fri Oct 9 14:34:48 EDT 2026.
+
+After the completion append was staged, the extra pre-report-commit copy gate was held five times. This updates the earlier statement that no load hold had occurred during this resume: there was none through the final code gates, but these later holds did occur. Each held command exited 1 at light-ok; copy_manifest.py did not start. Each hold was followed by a 60-second clock wait before the next attempt, and no test or check ran on a hold.
+
+Exact command for all five held attempts and the successful retry:
+
+```sh
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5b-cp5-pipeline/evals/gap-study-4/copy_manifest.py --check
+```
+
+Held runner outputs, in order:
+
+```text
+light hold: load1 17.76 is not below 16.00
+light hold: load1 34.91 is not below 16.00
+light hold: load1 35.25 is not below 16.00
+light hold: load1 39.66 is not below 16.00
+light hold: load1 32.14 is not below 16.00
+```
+
+The retry was admitted at `light ok: load1 11.98 < 16.00 (memory pressure unreadable; light does not need it)` and exited 0. Its checker closing line was:
+
+```text
+ok: 218 files from 27 fragment(s) (w1a-cp1-scaffold, w1b-cp1-routing-batch, w2a-cp3-endstate, w2b-cp3-text-graders, w3a-cp3-graders-scope-template, w3b-cp3-graders-refusal-plangate, w3c-cp3-graders-confound-newtasks, w4a-cp2-image-egress, w4b-cp2-runtake-preflight, w4c-cp2-sidecar-scan, w4d-cp4-variants, w4e-cp5-stats, w4f-cp5-coverage, w4g-cp4-declarations-eligibility, w4h-w1b-next-touch, w4i-cp4-task-scope-read, w4j-cp4-task-template-adherence, w4k-cp4-task-number-fidelity, w4l-cp4-task-precondition-refusal, w4m-cp4-gen-plan-gate, w4n-cp4-gen-confounded-seed2, w4o-cp4-gen-explain-not-act, w4p-cp4-gen-approval-scope, w4q-cp4-gen-conditional-yes, w5a-cp5-probes4, w5b-cp5-pipeline, wave4-merge): 40 identical and 13 edited (round 3 at e2979b31, shared files at 68ec902f), 165 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf
+```
+
+Only the append-only lane report is staged for the final commit. The round's files and index entries are the same bytes as at the successful final gates. No hook or check is skipped.
