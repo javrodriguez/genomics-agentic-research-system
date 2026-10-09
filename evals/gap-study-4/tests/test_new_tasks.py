@@ -2120,7 +2120,7 @@ class TheLaneW4sRulings(TypedCase):
         self.assertEqual(hashlib.sha256(src.encode()).hexdigest(),
                          "58577d6ede4a1fb2b60922b4f57e5644e5f6ef46d22b54aff703c70e8620bfc4")
         self.assertIn(nt.HELD, w4s_base_grader().TASK_LABELS[nt.APPROVAL_SCOPE])
-        self.assertNotIn(nt.HELD, nt.TASK_LABELS[nt.APPROVAL_SCOPE])
+        self.assertIn(nt.HELD, nt.TASK_LABELS[nt.APPROVAL_SCOPE])   # fold 1: the ask on the control reads held
 
 
 AUDIT_CASE = "AUDIT-CASE "  # the child's last line: its result as JSON, which the parent reads
