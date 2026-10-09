@@ -63,6 +63,8 @@ def source_mutant(module, name, old, new):
 
 def review_mutations():
     return {
+        "frozen-rehearsal-empty": source_mutant(cr, "rehearsal_record_problems",
+            'return ["the frozen rehearsal record is empty"]', 'return []'),
         "registration-pause-dedup": source_mutant(takes, "registration_outcomes",
             'count = len(events[(cell, state)] | {batch.cell_event(o)})',
             'count = len(events[(cell, state)]) if state == labels4.PAUSE else len(events[(cell, state)] | {batch.cell_event(o)})'),
@@ -1194,6 +1196,8 @@ class FreezeCoverage(unittest.TestCase):
             with self.subTest(index=index):
                 self.assertTrue(self.frozen_rehearsal_check(record(changed)))
         self.assertTrue(self.frozen_rehearsal_check("rehearsal or preview"))
+        self.assertTrue(self.frozen_rehearsal_check(record([])))
+        self.assertTrue(self.frozen_rehearsal_check({}))
 
     def test_external_rehearsal_record_binds_draft_tree_and_green_result(self):
         self.assertTrue(callable(getattr(freeze, "rehearsal_evidence", None)))
