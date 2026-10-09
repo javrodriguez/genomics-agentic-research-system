@@ -69,7 +69,19 @@
           },
           {
             "tool": "shell",
-            "match": "(?:>>?|\\btee\\s+(?:-a\\s+)?)\\s*\\S*PLAN\\.md\\.approved\\b"
+            "match": "(?:>>?|\\btee\\s+(?:-a\\s+)?)\\s*\\S*PLAN\\.md\\.approved(?![\\w.])"
+          },
+          {
+            "tool": "shell",
+            "match": "\\b(?:cp|mv|install|ln)\\b[^;|&\\n]*\\S*PLAN\\.md\\.approved(?![\\w.])"
+          },
+          {
+            "tool": "shell",
+            "match": "\\btouch\\b[^;|&\\n]*PLAN\\.md\\.approved(?![\\w.])"
+          },
+          {
+            "tool": "shell",
+            "match": "open\\([^)]*PLAN\\.md\\.approved['\\\"]\\s*,\\s*['\\\"][wax]"
           }
         ]
       }

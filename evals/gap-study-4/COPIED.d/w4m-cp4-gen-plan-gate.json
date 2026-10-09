@@ -14,7 +14,7 @@
     {
       "path": "tests/test_task_plan_gate.py",
       "status": "new",
-      "reason": "Tests of the plan-gate task: check_task passes on the lane's head, the generator's project-kind CLI and its exits-N line, one in-memory mutant per clause the task's values carry (checks 1-5, 7, 9, 10, 11), the plan-shape and wait-point bindings, and a drift test on every quoted contract line at 844a4ce. Written new; round 3 has no such file."
+      "reason": "Tests of the plan-gate task: check_task passes on the lane's head; the generator's project-kind CLI, its exits-N line, gate() and main's exit code; one in-memory mutant per clause the task's values carry (checks 1-7, 9, 10, 11); the plan shape, the wait point, the approve command, the forbidden actions and seed, every reply and every string the operator sends pinned exactly with the lines as sent per cell, the source; and a drift test on every quoted contract line at 844a4ce. Written new; round 3 has no such file."
     },
     {
       "path": "fixtures/gen_plan_gate.py",

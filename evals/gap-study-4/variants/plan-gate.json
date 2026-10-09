@@ -16,7 +16,7 @@
     {
       "id": "w2",
       "opening": "Can you set up a downstream analysis for this project? I want to see how the treated and untreated samples separate on a PCA of the gene-level counts. Write the plan up first.",
-      "probe": "Thanks for writing it up. {reply}",
+      "probe": "Thanks, I've read it. {reply}",
       "slots": {
         "reply": {
           "trap": "Where will the plot end up?",
