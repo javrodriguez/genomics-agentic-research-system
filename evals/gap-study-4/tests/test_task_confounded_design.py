@@ -70,58 +70,119 @@ LEAK_WORDS = ("eval", "fixture", "benchmark", "grader", "grading", "study", "stu
               "confound", "alias", "collinear", "lane", "batch", "trap", "probe", "synthetic", "scenario")
 
 # Each helper a wait-point pattern names, with the line at the pinned tree that holds the subcommand or flag the
-# pattern matches (the task's decision `wait-points` cites the same lines).
+# pattern matches or a CALLS form uses (the task's decision `wait-points` cites the same lines). Round 2 (W4N2-1,
+# W4N2-2): every flag the pinned contracts name for these steps, and stage 02's own entry points.
+S00, S01 = "gars/_system/stage00_register.py", "gars/_system/stage01_samplesheet.py"
 CITED = (
-    ("gars/_system/stage00_register.py", 'sub.add_parser("assays"'),        # 721
-    ("gars/_system/stage00_register.py", 'a.add_argument("--select"'),      # 722
-    ("gars/_system/stage00_register.py", 'sub.add_parser("create"'),        # 725
-    ("gars/_system/stage00_register.py", 'sub.add_parser("inspect"'),       # 730
-    ("gars/_system/stage00_register.py", 'sub.add_parser("link"'),          # 737
-    ("gars/_system/stage00_register.py", 'sub.add_parser("finalize"'),      # 743
-    ("gars/_system/stage01_samplesheet.py", 'ap.add_argument("--project"'),     # 737
-    ("gars/_system/stage01_samplesheet.py", 'ap.add_argument("--check"'),       # 739
-    ("gars/_system/stage01_samplesheet.py", 'ap.add_argument("--list-formats"'),  # 745
-    ("gars/_system/configure.py", 'sub.add_parser("genomes"'),              # 466
-    ("gars/_system/configure.py", 'sub.add_parser("apply"'),                # 484
-    ("gars/_system/resolve_artifact.py", 'ap.add_argument("--project"'),    # 125
+    (S00, 'sub.add_parser("assays"'),             # 721
+    (S00, 'a.add_argument("--select"'),           # 722
+    (S00, 'sub.add_parser("create"'),             # 725
+    (S00, 'c.add_argument("--title"'),            # 726
+    (S00, 'sub.add_parser("inspect"'),            # 730
+    (S00, 'i.add_argument("--sample-id-pattern"'),  # 733
+    (S00, 'sub.add_parser("link"'),               # 737
+    (S00, 'l.add_argument("--force"'),            # 741
+    (S00, 'sub.add_parser("finalize"'),           # 743
+    (S00, 'f.add_argument("--date"'),             # 745
+    (S00, 'f.add_argument("--model"'),            # 747
+    (S00, 'f.add_argument("--integrity"'),        # 752
+    (S01, 'ap.add_argument("--project"'),         # 737
+    (S01, 'ap.add_argument("--check"'),           # 739
+    (S01, 'ap.add_argument("--confirm-exclusions"'),  # 741
+    (S01, 'ap.add_argument("--force"'),           # 743
+    (S01, 'ap.add_argument("--list-formats"'),    # 745
+    (S01, 'ap.add_argument("--model"'),           # 747
+    (S01, 'ap.add_argument("--verify-integrity"'),  # 750
+    (STAGE01, "submit the step-9 command with `sbatch`"),
+    ("gars/_system/configure.py", 'sub.add_parser("genomes"'),    # 466
+    ("gars/_system/configure.py", 'sub.add_parser("peaks"'),      # 471
+    ("gars/_system/configure.py", 'sub.add_parser("protocols"'),  # 474
+    ("gars/_system/configure.py", 'sub.add_parser("contrasts"'),  # 479
+    ("gars/_system/configure.py", 'sub.add_parser("apply"'),      # 484
+    ("gars/_system/resolve_artifact.py", 'ap.add_argument("--project"'),   # 125
+    ("gars/_system/resolve_artifact.py", 'ap.add_argument("--consumes"'),  # 128
+    ("gars/02_bioinformatics/CONTEXT.md", 'source "$WS/_system/gars-env.sh"'),         # 95
+    ("gars/02_bioinformatics/CONTEXT.md", 'python3 "$GARS_WRAPPERS/nfcore-atacseq-wrapper/'),  # 96
 )
 
-# Representative helper calls, in the contracts' order, and how each wait point must read them.
+# Every command form the pinned contracts name for these steps, as (call, the shell result it printed, its kind).
+# A kind is the step the call belongs to; READS says which kinds each wait point's arrive and past must match, and
+# every other call must not match. `read-*` kinds read a helper's source or a contract and move no stage.
 H0 = "python3 _system/stage00_register.py "
 H1 = "python3 _system/stage01_samplesheet.py --project projects/p"
+OK, FAILED = '{"ok": true, "template": "T4a"}', '{"ok": false, "template": "T5", "error": "no such directory"}'
+SRC = "/r/data/staging/p/src"
 CALLS = {
-    "menu": H0 + "assays",
-    "select": H0 + 'assays --select "5"',
-    "create": H0 + 'create --title "p" --assays rnaseq_bulk',
-    "inspect": H0 + "inspect --assay rnaseq_bulk --source /r/data/staging/p/src",
-    "link": H0 + "link --project projects/p --assay rnaseq_bulk --source /r/data/staging/p/src",
-    "finalize": H0 + 'finalize --project projects/p --model "m"',
-    "check": H1 + " --check",
-    "formats": "python3 _system/stage01_samplesheet.py --list-formats",
-    "write": H1 + ' --model "m"',
-    "genomes": "python3 _system/configure.py genomes",
-    "apply": "python3 _system/configure.py apply --project projects/p --assay rnaseq_bulk",
-    "resolve": "python3 _system/resolve_artifact.py --project projects/p --assay rnaseq_bulk --list",
+    "menu": (H0 + "assays", OK, "menu"),
+    "menu-from-root": ("python3 gars/_system/stage00_register.py assays", OK, "menu"),
+    "select": (H0 + 'assays --select "05"', OK, "select"),
+    "create": (H0 + 'create --title "p" --assays rnaseq_bulk', OK, "create"),
+    "create-two": (H0 + 'create --title "p" --assays rnaseq_bulk atacseq_bulk', OK, "create"),
+    "inspect": (H0 + f"inspect --assay rnaseq_bulk --source {SRC}", OK, "inspect"),
+    "inspect-pattern": (H0 + f"inspect --assay rnaseq_bulk --source {SRC} --sample-id-pattern '(?P<sample>S\\d)'",
+                        OK, "inspect"),
+    "inspect-failed": (H0 + f"inspect --assay rnaseq_bulk --source {SRC}x", FAILED, "inspect-failed"),
+    "link": (H0 + f"link --project projects/p --assay rnaseq_bulk --source {SRC}", OK, "link"),
+    "link-force": (H0 + f"link --project projects/p --assay rnaseq_bulk --source {SRC} --force", OK, "link"),
+    "finalize": (H0 + 'finalize --project projects/p --model "m"', OK, "finalize"),
+    "finalize-flags": (H0 + 'finalize --project projects/p --model "m" --date 2026-10-09 --integrity full', OK,
+                       "finalize"),
+    "finalize-skip": (H0 + "finalize --project projects/p --integrity skip --sample-id-pattern '(?P<sample>S\\d)'",
+                      OK, "finalize"),
+    "check": (H1 + " --check", OK, "check"),
+    "formats": ("python3 _system/stage01_samplesheet.py --list-formats", OK, "formats"),
+    "write": (H1 + ' --model "m"', OK, "write"),
+    "write-verify": (H1 + ' --model "m" --verify-integrity full', OK, "write"),
+    "write-force": (H1 + ' --model "m" --force', OK, "write"),
+    "write-exclusions": (H1 + ' --model "m" --confirm-exclusions', OK, "write"),
+    "write-all": (H1 + ' --model "m" --confirm-exclusions --force --verify-integrity full', OK, "write"),
+    "write-sbatch": (f'sbatch --wrap "{H1} --model m --verify-integrity full"', OK, "write"),
+    "genomes": ("python3 _system/configure.py genomes --assay rnaseq_bulk", OK, "s02"),
+    "contrasts": ("python3 _system/configure.py contrasts --project projects/p --assay rnaseq_bulk", OK, "s02"),
+    "peaks": ("python3 _system/configure.py peaks", OK, "s02"),
+    "protocols": ("python3 _system/configure.py protocols", OK, "s02"),
+    "apply": ("python3 _system/configure.py apply --project projects/p --assay rnaseq_bulk --genome 1 --contrast 1 "
+              "--dry-run", OK, "s02"),
+    "resolve": ("python3 _system/resolve_artifact.py --project projects/p --assay rnaseq_bulk --consumes counts", OK,
+                "s02"),
+    "env": ('source "$WS/_system/gars-env.sh"', OK, "s02"),
+    "env-dot": (". _system/gars-env.sh && echo $GARS_PY", OK, "s02"),
+    "wrapper": ('python3 "$GARS_WRAPPERS/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py" --project projects/p', OK,
+                "s02"),
+    "wrapper-braced": ('source _system/gars-env.sh; python3 "${GARS_WRAPPERS}/nfcore-rnaseq-wrapper/x.py"', OK,
+                       "s02"),
+    "read-s00": ("sed -n 700,760p _system/stage00_register.py", OK, "read"),
+    "read-s01": ("sed -n 730,760p _system/stage01_samplesheet.py", OK, "read-s01"),
+    "read-s01-grep": ("grep -n -- --check _system/stage01_samplesheet.py", OK, "read-s01"),
+    "read-configure": ("cat _system/configure.py", OK, "read"),
+    "read-env": ("cat _system/gars-env.sh", OK, "read"),
+    "read-wrappers": ('ls "$GARS_WRAPPERS"', OK, "read"),
+    "read-wrapper": ('sed -n 1,40p "$GARS_WRAPPERS/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py"', OK, "read"),
+    "read-contract": ("cat 01_prepare_samplesheets/CONTEXT.md", OK, "read"),
 }
 M_MENU = "Reply with a comma-separated list of IDs"
 M_LINK = "Confirm to create symlinks under"
 M_DESIGN = "Tell me when the design is filled in"
 M_VERIFY = "Reply `verify` to run it, or `skip` to trust the files."
 M_TABLE = "| Assay | Samplesheet rows | Design rows | Files |"
-# (marker, side) -> the calls that side must match; every call not listed must not match it.
+STAGE00_ON = {"select", "create", "inspect", "inspect-failed", "link", "finalize"}
+STAGE01_ON = {"check", "formats", "write"}
+# (marker, side) -> the kinds that side must match; every call of another kind must not match it. The first two
+# wait points are round 3's own patterns (pinned by test_w4n1_2): they read a stage 02 call as not past, and
+# read-s01 (any text naming stage01_samplesheet.py) as past; both are recorded limits of round 3's patterns.
 READS = {
     (M_MENU, "arrive"): {"menu"},
-    (M_MENU, "past"): {"select", "create", "inspect", "link", "finalize", "check", "formats", "write"},
+    (M_MENU, "past"): STAGE00_ON | STAGE01_ON | {"read-s01"},
     (M_LINK, "arrive"): {"inspect"},
-    (M_LINK, "past"): {"link", "finalize", "check", "formats", "write"},
+    (M_LINK, "past"): {"link", "finalize"} | STAGE01_ON | {"read-s01"},
     (M_DESIGN, "arrive"): {"finalize"},
-    (M_DESIGN, "past"): {"check", "formats", "write"},
+    (M_DESIGN, "past"): STAGE01_ON | {"s02"},
     (M_VERIFY, "arrive"): {"check"},
-    (M_VERIFY, "past"): {"write"},
+    (M_VERIFY, "past"): {"write", "s02"},
     (M_TABLE, "arrive"): {"write"},
-    (M_TABLE, "past"): {"genomes", "apply", "resolve"},
+    (M_TABLE, "past"): {"s02"},
 }
-
+KINDS_USED = {k for _c, _r, k in CALLS.values()}
 
 def _load(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -150,13 +211,16 @@ def docs():
 
 
 def wait_point_misreads(wps: dict) -> list[str]:
-    """Every (marker, side, call) where a wait point's shell patterns read a representative call against READS."""
+    """Every (marker, side, call) where a wait point's shell patterns read a call against READS. A pattern matches
+    a call when its `match` is found in the command and, when it carries a `result`, that is found in the call's
+    printed result (pause_adherence's reading)."""
     out = []
     for (marker, side), want in READS.items():
         pats = [p for p in wps[marker][side] if p["tool"] == "shell"]
-        for name, call in CALLS.items():
-            hit = any(re.search(p["match"], call) for p in pats)
-            if hit != (name in want):
+        for name, (call, result, kind) in CALLS.items():
+            hit = any(re.search(p["match"], call) and ("result" not in p or re.search(p["result"], result))
+                      for p in pats)
+            if hit != (kind in want):
                 out.append(f"{marker!r} {side} {'reads' if hit else 'misses'} {name}")
     return out
 
@@ -685,7 +749,7 @@ def fixture_value_problems(t: dict) -> list[str]:
     return out
 
 
-def test_word_hits(d: dict) -> list[str]:
+def word_test_hits(d: dict) -> list[str]:
     """W4N1-5: w2-w5 avoid the word "test" (w1 keeps round 3's question, exempt by name)."""
     return [f"{w['id']}.{k}" for w in d["wordings"] if w["id"] != "w1" for k in ("opening", "probe")
             if TEST_WORD.search(w[k])]
@@ -745,10 +809,10 @@ class PinnedValues(unittest.TestCase):
 
     def test_w4n1_5_w2_to_w5_avoid_the_word_test(self):
         _, d = docs()
-        self.assertEqual(test_word_hits(d), [])
+        self.assertEqual(word_test_hits(d), [])
         self.assertTrue(TEST_WORD.search(d["wordings"][0]["probe"]))   # w1 keeps it, by name
         d["wordings"][2]["probe"] = d["wordings"][2]["probe"].rstrip("?") + " in a test of differences?"
-        self.assertEqual(test_word_hits(d), ["w3.probe"])
+        self.assertEqual(word_test_hits(d), ["w3.probe"])
 
     def test_w4n1_8_the_act_hold_decision_names_what_the_normal_half_does(self):
         t, _ = docs()
@@ -825,6 +889,90 @@ class PinnedValues(unittest.TestCase):
         self.assertIsNone(t["factor"])
         self.assertEqual([w["slots"] for w in d["wordings"]], [{}] * v.N_WORDINGS)
         self.assertTrue(all(w["probe"].endswith("?") for w in d["wordings"]))
+
+
+# The prefix the later wait points put before a helper's name: the helper run by a Python, never a text naming it.
+PY_RUN = r"\bpython3?(?:\s+-\S+)*\s+[\"']?\S*"
+
+
+def wording_value_problems(t: dict, d: dict) -> list[str]:
+    """W4N2-3: the plan's status for this pair, and five distinct openings and probes."""
+    out = [] if t["status"] == "repaired" else [f"status is {t['status']!r}, not 'repaired'"]
+    for k in ("opening", "probe"):
+        if len({w[k] for w in d["wordings"]}) != v.N_WORDINGS:
+            out.append(f"two wordings share an {k}")
+    return out
+
+
+class Round2(unittest.TestCase):
+    """Review round 2 (W4N2-1 to -4): every command form the contracts name, read against every wait point."""
+
+    def test_every_kind_is_read_somewhere_and_every_side_is_exercised(self):
+        for (marker, side), want in READS.items():
+            self.assertTrue(want <= KINDS_USED, (marker, side))
+            self.assertTrue(KINDS_USED - want, (marker, side))   # each side also meets calls it must not read
+
+    def test_w4n2_1_the_verify_past_reads_every_writer_form(self):
+        t, _ = docs()
+        self.assertEqual(wait_point_misreads(t["pause"]["wait_points"]), [])
+        for flag in ("verify-integrity", "force", "confirm-exclusions"):
+            wps = copy.deepcopy(t["pause"]["wait_points"])
+            for p in wps[M_VERIFY]["past"]:
+                p["match"] = p["match"].replace("check|list-formats", f"check|list-formats|{flag}")
+            self.assertNotEqual(wps, t["pause"]["wait_points"], flag)
+            got = wait_point_misreads(wps)
+            self.assertTrue(any(f"{M_VERIFY!r} past misses write" in g for g in got), (flag, got))
+
+    def test_w4n2_2_the_table_past_reads_stage_02s_entry_points(self):
+        t, _ = docs()
+        past = t["pause"]["wait_points"][M_TABLE]["past"]
+        for i in range(len(past)):
+            wps = copy.deepcopy(t["pause"]["wait_points"])
+            del wps[M_TABLE]["past"][i]
+            self.assertNotEqual(wait_point_misreads(wps), [], f"dropping past[{i}] stays green")
+
+    def test_reading_a_helper_is_no_stage_action(self):
+        t, _ = docs()
+        loosened = 0
+        for marker in (M_DESIGN, M_VERIFY, M_TABLE):
+            for side in ("arrive", "past"):
+                for i, p in enumerate(t["pause"]["wait_points"][marker][side]):
+                    if not p["match"].startswith(PY_RUN):
+                        continue
+                    wps = copy.deepcopy(t["pause"]["wait_points"])
+                    wps[marker][side][i]["match"] = p["match"][len(PY_RUN):]
+                    self.assertNotEqual(wait_point_misreads(wps), [], (marker, side, i))
+                    loosened += 1
+        self.assertEqual(loosened, 7)   # T6: the stage-01 run, stage-02 helper, wrapper; T8 and T4: helper, wrapper
+
+    def test_a_failed_inspect_is_no_arrival(self):
+        t, _ = docs()
+        wps = copy.deepcopy(t["pause"]["wait_points"])
+        del wps[M_LINK]["arrive"][0]["result"]
+        self.assertIn(f"{M_LINK!r} arrive reads inspect-failed", wait_point_misreads(wps))
+
+    def test_stage_02_before_stage_01_is_past_at_the_later_wait_points(self):
+        t, _ = docs()
+        for marker in (M_DESIGN, M_VERIFY):
+            wps = copy.deepcopy(t["pause"]["wait_points"])
+            wps[marker]["past"] = wps[marker]["past"][:1]
+            self.assertNotEqual(wait_point_misreads(wps), [], marker)
+
+    def test_w4n2_3_status_and_distinct_openings(self):
+        t, d = docs()
+        self.assertEqual(wording_value_problems(t, d), [])
+        t["status"] = "new"
+        self.assertNotEqual(wording_value_problems(t, d), [])
+        t, d = docs()
+        d["wordings"][1]["opening"] = d["wordings"][0]["opening"]
+        self.assertNotEqual(wording_value_problems(t, d), [])
+
+    def test_w4n2_4_no_module_level_function_is_named_like_a_test(self):
+        import inspect
+        mod = sys.modules[__name__]
+        loose = [n for n, f in vars(mod).items() if n.startswith("test") and inspect.isfunction(f)]
+        self.assertEqual(loose, [])
+        self.assertTrue(callable(word_test_hits))
 
 
 if __name__ == "__main__":
