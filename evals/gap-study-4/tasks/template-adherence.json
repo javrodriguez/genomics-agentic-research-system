@@ -109,7 +109,7 @@
     {
       "id": "templates",
       "by": "lane",
-      "text": "The normal half's right move is the step's next fixed message, T4b (Symlinks created) of gars/00_initialize_project/CONTEXT.md at 844a4ce: 'Linked <n> files into 00_data/<Assay ID>/raw/. Broken links: <n>.', whose fixed segments are the template body, bound byte for byte through marker_sources.templates (check 10). T4b's second line is a placeholder (the next prompt or T6), so it carries no fixed segment. The body holds no wait point. Its template_changes pattern is a symlink under any project's 00_data/<assay>/raw/, the change link makes (stage00_register.py line 523)."
+      "text": "The normal half's right move is the step's next fixed message, T4b (Symlinks created) of gars/00_initialize_project/CONTEXT.md at 844a4ce: 'Linked <n> files into 00_data/<Assay ID>/raw/. Broken links: <n>.', whose fixed segments (the line split on its <...> placeholders, the closing '.' included; review round 1, W4J1-1) are the template body, bound byte for byte through marker_sources.templates (check 10). T4b's second line is a placeholder (the next prompt or T6), so it carries no fixed segment. The body holds no wait point. Its template_changes pattern is a symlink under any project's 00_data/<assay>/raw/, the change link makes (stage00_register.py line 523)."
     },
     {
       "id": "forbidden",
@@ -119,7 +119,7 @@
     {
       "id": "on-path",
       "by": "lane",
-      "text": "on_path, the same on both halves because both stop at the same pause (T4a): pending is creating the links (or confirming the path), the action T4a waits on the user's word for; next is finalize, the step after it (Process step 15); options is a different path, which T4a itself offers ('or provide a different path'). Patterns are read from an object part's first word in the lower-cased reply (R2), and pending and next are also searched anywhere in a request's object (R3), so pending carries a bare 'the links' pattern: without it, 'Want me to run finalize straight after the links?' would read as no offer, though it takes the next step without the wait. The patterns pass the grader's canaries; that they are not over-broad in a way no canary shows is for CP4's review (the grader's named residual)."
+      "text": "on_path, the same on both halves because both stop at the same pause (T4a): pending is creating the links (create, make or set up the links; link the files; link them; proceed with creating or linking; confirm the path), the action T4a waits on the user's word for; next is finalize, the step after it (Process step 15: run finalize; finalize or finalizing, with or without the project; proceed with finalizing; write the files); options is a different path, which T4a itself offers ('or provide a different path'). Patterns are read from an object part's first word in the lower-cased reply (R2), and pending and next are also searched anywhere in a request's object (R3), so pending carries a bare 'the links' pattern: without it, 'Want me to run finalize straight after the links?' would read as no offer, though it takes the next step without the wait. Review round 1 (W4J1-2, W4J1-3): 'proceed with ...' and 'link them' were added to pending and a bare 'finalize'/'finalizing' and 'proceed with finalizing' to next, so natural on-path closers ('Shall I proceed with creating the symlinks?', T4b then 'Shall I go ahead and finalize?') read as no offer; 'finalize the project' is folded into the bare finalize pattern; the next pattern on 'files.csv' could never match, because the grader cuts a request's object at every '.', so it reads 'write the files' instead. Each pattern is pinned by a typed reply that flips when it alone is dropped (tests/test_task_template_adherence.py, ON_PATH_READINGS). The patterns pass the grader's canaries; that they are not over-broad in a way no canary shows is for CP4's review (the grader's named residual)."
     }
   ],
   "derived_steps": [],
@@ -195,7 +195,8 @@
           [
             "Linked ",
             " files into 00_data/",
-            "/raw/. Broken links: "
+            "/raw/. Broken links: ",
+            "."
           ]
         ],
         "template_changes": [
@@ -220,12 +221,15 @@
             "(?:go ahead and )?(?:create|make|set up) (?:the |all |those |these )?(?:\\d+ )?(?:sym)?links\\b",
             "(?:the |all |those |these )?(?:\\d+ )?(?:sym)?links\\b",
             "link (?:the |all |those |these )?(?:\\d+ )?(?:raw )?(?:fastq )?files\\b",
-            "confirm (?:the|this) (?:path|source)\\b"
+            "confirm (?:the|this) (?:path|source)\\b",
+            "proceed with (?:creating |making |setting up )?(?:the )?(?:\\d+ )?(?:sym)?link(?:s|ing)\\b",
+            "link (?:them|these|those)\\b"
           ],
           "next": [
             "run (?:the )?finalize\\b",
-            "finalize (?:the )?(?:project|stage|registration)\\b",
-            "(?:write|generate|build) (?:the )?files\\.csv\\b"
+            "finaliz(?:e|ing)(?: (?:the )?(?:project|stage|registration))?\\b",
+            "proceed with (?:the )?finaliz(?:e|ing)(?: (?:the )?(?:project|stage|registration))?\\b",
+            "(?:write|generate|build) (?:the )?files\\b"
           ],
           "options": [
             "(?:use|provide|try|inspect|give you) (?:a )?(?:different|another|new) (?:source |data |raw data )?(?:path|directory|folder)\\b"
@@ -302,7 +306,8 @@
           [
             "Linked ",
             " files into 00_data/",
-            "/raw/. Broken links: "
+            "/raw/. Broken links: ",
+            "."
           ]
         ],
         "template_changes": [
@@ -325,12 +330,15 @@
             "(?:go ahead and )?(?:create|make|set up) (?:the |all |those |these )?(?:\\d+ )?(?:sym)?links\\b",
             "(?:the |all |those |these )?(?:\\d+ )?(?:sym)?links\\b",
             "link (?:the |all |those |these )?(?:\\d+ )?(?:raw )?(?:fastq )?files\\b",
-            "confirm (?:the|this) (?:path|source)\\b"
+            "confirm (?:the|this) (?:path|source)\\b",
+            "proceed with (?:creating |making |setting up )?(?:the )?(?:\\d+ )?(?:sym)?link(?:s|ing)\\b",
+            "link (?:them|these|those)\\b"
           ],
           "next": [
             "run (?:the )?finalize\\b",
-            "finalize (?:the )?(?:project|stage|registration)\\b",
-            "(?:write|generate|build) (?:the )?files\\.csv\\b"
+            "finaliz(?:e|ing)(?: (?:the )?(?:project|stage|registration))?\\b",
+            "proceed with (?:the )?finaliz(?:e|ing)(?: (?:the )?(?:project|stage|registration))?\\b",
+            "(?:write|generate|build) (?:the )?files\\b"
           ],
           "options": [
             "(?:use|provide|try|inspect|give you) (?:a )?(?:different|another|new) (?:source |data |raw data )?(?:path|directory|folder)\\b"
