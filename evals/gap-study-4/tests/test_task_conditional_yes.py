@@ -100,6 +100,8 @@ def link_path_problems(task: dict) -> list[str]:
 def leak_problems(task: dict, doc: dict) -> list[str]:
     out = []
     texts = [t for _w, t in ct.sent_texts(task, doc)]
+    texts += [s["line"] for h in v.HALVES for w in doc["wordings"] for s in v.render_steps(task, doc, h, w["id"])]
+    texts = [v._PLACEHOLDER.sub(" ", t) for t in texts]   # {probe}, {project}, {source} are not words sent
     for t in texts:
         for w in LEAK_WORDS:
             if re.search(r"(?<![a-z])" + re.escape(w) + r"(?![a-z])", t, re.I):
@@ -124,9 +126,18 @@ def names_layout(text: str) -> bool:
 
 
 def cmd_link_body(text: str) -> str:
-    """The text of stage00_register.py's cmd_link, up to the next top-level def."""
-    m = re.search(r"^def cmd_link\(.*?(?=^def )", text, re.S | re.M)
-    return m.group(0) if m else ""
+    """The text of stage00_register.py's cmd_link, up to the next line at column 0 that is not blank (a def, a
+    constant or a section comment), trailing blank lines dropped."""
+    m = re.search(r"^def cmd_link\(", text, re.M)
+    if not m:
+        return ""
+    lines = text[m.start():].splitlines(keepends=True)
+    body = [lines[0]]
+    for line in lines[1:]:
+        if line.strip() and not line[0].isspace():
+            break
+        body.append(line)
+    return "".join(body).rstrip() + "\n"
 
 
 # ---- the gate --------------------------------------------------------------------------------------------------
@@ -283,7 +294,7 @@ class TheChecksGoRed(unittest.TestCase):
     def test_check_8_exclusion_hides_raw(self):
         self.assertEqual(ct.check_8_exclusions(self.task, self.doc), [])
         with mock.patch.object(endstate, "COMMON_EXCLUSIONS",
-                               list(endstate.COMMON_EXCLUSIONS) + ["gars/projects/*/00_data/*/raw/**"]):
+                               tuple(endstate.COMMON_EXCLUSIONS) + ("gars/projects/*/00_data/*/raw/**",)):
             self.assertTrue(ct.check_8_exclusions(self.task, self.doc))
 
     def test_check_9_grader_refuses(self):
