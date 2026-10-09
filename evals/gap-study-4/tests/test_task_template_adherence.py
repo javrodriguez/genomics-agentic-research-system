@@ -681,8 +681,10 @@ class TheWordings(unittest.TestCase):
 
     def test_clean(self):
         task, doc = docs()
-        texts = self.words(doc) + [s["line"] for h in v.HALVES for s in task["halves"][h]["operator_script"]]
-        self.assertEqual(self.leaks(texts), [])
+        rendered = [s["line"] for h in v.HALVES for w in v.WORDING_IDS for s in v.render_steps(task, doc, h, w)]
+        rendered += [s["recovery"]["send"] for h in v.HALVES for s in task["halves"][h]["operator_script"]
+                     if "recovery" in s]
+        self.assertEqual(self.leaks(self.words(doc) + rendered), [])
 
     def test_a_leak_word_goes_red(self):
         _task, doc = docs()
