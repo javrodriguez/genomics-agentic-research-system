@@ -2,10 +2,10 @@ status: done
 
 # Lane w4q-cp4-gen-conditional-yes: CP4 fixture gen_conditional_yes.py and task conditional-yes (new)
 
-_Written Fri 09 Oct 2026 03:35 UTC by the opus-medium builder, in a cloud session launched by the cloud lead; review round 1 folded at 03:51 UTC, round 2 at 04:12 UTC._
+_Written Fri 09 Oct 2026 03:35 UTC by the opus-medium builder, in a cloud session launched by the cloud lead; review round 1 folded at 03:51 UTC, round 2 at 04:12 UTC, round 3 (PASS, loop stopped) at 04:32 UTC._
 
 - Base: `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d not closed).
-- Branch: `gap4/w4q-cp4-gen-conditional-yes`. Commits: `1d085fa7` (red test), `780baaaf` (task, wordings, generator: green), `37dd03d5` (this report, first form), `b00b6539` (review round 1 guards), `dde2bb2b` (the round 1 report, draft), `dcb683c5` (report after round 1), `6362da64` (round 1 copy corrected to the final report, re-quoted), `a04a0bb3` (round 2 guards and the value walk), `a5849acc` (the round 2 report, verbatim), then this report's update.
+- Branch: `gap4/w4q-cp4-gen-conditional-yes`. Commits: `1d085fa7` (red test), `780baaaf` (task, wordings, generator: green), `37dd03d5` (this report, first form), `b00b6539` (review round 1 guards), `dde2bb2b` (the round 1 report, draft), `dcb683c5` (report after round 1), `6362da64` (round 1 copy corrected to the final report, re-quoted), `a04a0bb3` (round 2 guards and the value walk), `a5849acc` (the round 2 report, verbatim), `8fe69e80` (report after round 2), `5a5c3363` (W4Q3-1: forbidden lists pinned), `395e25fa` (the round 3 report, verbatim), then this report's update.
 - `$PY` = `/usr/bin/python3.13`, Python 3.13.16 (NAMED DEPARTURE D2). Every gate ran with `PYTHONDONTWRITEBYTECODE=1 -B -W ignore`, single-threaded BLAS, in the foreground, one at a time, under `flock /tmp/claude-0/lanes/test.lock`.
 - Start block: HEAD and branch as required; `git status --porcelain --ignored` empty; e2979b31, 844a4ce and 68ec902f resolve; `core.hooksPath` unset. No STOP.
 
@@ -16,12 +16,13 @@ _Written Fri 09 Oct 2026 03:35 UTC by the opus-medium builder, in a cloud sessio
  .../checks.d/w4q-cp4-gen-conditional-yes.txt       |   4 +
  evals/gap-study-4/fixtures/gen_conditional_yes.py  | 135 ++++
  evals/gap-study-4/tasks/conditional-yes.json       | 273 +++++++
- .../gap-study-4/tests/test_task_conditional_yes.py | 832 +++++++++++++++++++++
+ .../gap-study-4/tests/test_task_conditional_yes.py | 848 +++++++++++++++++++++
  evals/gap-study-4/variants/conditional-yes.json    |  37 +
  .../reviews/w4q-cp4-gen-conditional-yes-r1.md      | 146 ++++
  .../reviews/w4q-cp4-gen-conditional-yes-r2.md      | 109 +++
- lane-reports/w4q-cp4-gen-conditional-yes.md        | 179 +++++
- 9 files changed, 1750 insertions(+)
+ .../reviews/w4q-cp4-gen-conditional-yes-r3.md      |  99 +++
+ lane-reports/w4q-cp4-gen-conditional-yes.md        | 222 ++++++
+ 10 files changed, 1908 insertions(+)
 ```
 
 All owned files plus the review copies the cloud lead asked for; nothing else touched. The task, wordings and generator are unchanged since `780baaaf`: both review folds touched the test file only.
@@ -48,7 +49,7 @@ All owned files plus the review copies the cloud lead asked for; nothing else to
 ## Tests and checks run (runner output, last lines)
 
 1. Red first, on the base plus the test only (commit `1d085fa7`). It failed at import, with `FileNotFoundError: ... evals/gap-study-4/fixtures/gen_conditional_yes.py`.
-2. `flock /tmp/claude-0/lanes/test.lock env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tests/test_task_conditional_yes.py` gave `Ran 47 tests in 1.596s` / `OK` at `780baaaf`, `Ran 61 tests in 1.756s` / `OK` after review round 1's guards (`b00b6539`), and `Ran 79 tests in 1.854s` / `OK` on the final tree (after round 2's guards, `a04a0bb3`).
+2. `flock /tmp/claude-0/lanes/test.lock env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tests/test_task_conditional_yes.py` gave `Ran 47 tests in 1.596s` / `OK` at `780baaaf`, `Ran 61 tests in 1.756s` / `OK` after review round 1's guards (`b00b6539`), `Ran 79 tests in 1.854s` / `OK` after round 2's guards (`a04a0bb3`), and `Ran 80 tests in 1.817s` / `OK` on the final tree (after round 3's pin, `5a5c3363`).
    - The first green attempt had 2 failures and 1 error, all in the test's own helpers:
      - the leak check read the raw `{probe}` placeholder as the word "probe";
      - the cmd_link reader ran into a626cdc2's new top-level constants;
@@ -217,6 +218,36 @@ fix: Assert that the path question's `past` holds the same stage 01 pattern as R
 
 How it was folded: Folded in `a04a0bb3`, by the same whole pin: `past` must equal [the inspect/link/finalize pattern, ROUND3_WAIT_POINTS['Confirm to create symlinks under']['past'][1]]. Mutant asserted red: the stage 01 entry dropped.
 
-The value walk asked for with round 2 (each value that changes a take's outcome is pinned by a guard with a mutant, in `a04a0bb3`): the whole operator script is pinned exactly (`EXPECTED_SCRIPT`: lines, markers, the recovery's `if_reply_holds` and `send`, no `at_most`, the probe at step 4), with mutants on step 3, the recovery trigger, an added `at_most` and the probe turn; both fixtures are pinned (kind, generator path, the shared seed 20261009, `seed_sensitive` true; `sha256` was already bound to the build) with mutants on the generator path and the seed; `link_command`, `link_paths`, `flag_marker`, `source_template`, the forbidden lists, the wait points, the right moves and the marker sources were already pinned (round 1 and the first build). Not pinned, as not outcome-changing: the decisions' and `why` texts.
+The value walk asked for with round 2 (each value that changes a take's outcome is pinned by a guard with a mutant, in `a04a0bb3`): the whole operator script is pinned exactly (`EXPECTED_SCRIPT`: lines, markers, the recovery's `if_reply_holds` and `send`, no `at_most`, the probe at step 4), with mutants on step 3, the recovery trigger, an added `at_most` and the probe turn; both fixtures are pinned (kind, generator path, the shared seed 20261009, `seed_sensitive` true; `sha256` was already bound to the build) with mutants on the generator path and the seed; `link_command`, `link_paths`, `flag_marker`, `source_template`, the wait points, the right moves and the marker sources were already pinned (round 1 and the first build). Not pinned, as not outcome-changing: the decisions' and `why` texts. CORRECTION (round 3, W4Q3-1): this walk first said the forbidden lists were already pinned; they were bound for coverage only (round 1's W4Q1-3), not pinned. They are pinned exactly since `5a5c3363`.
 
 Cross-lane point: as round 1; already routed to the lane lead, not counted against this lane.
+
+### Round 3 (`lane-reports/reviews/w4q-cp4-gen-conditional-yes-r3.md`, head reviewed `8fe69e80`)
+
+Verdict line, verbatim:
+
+```
+VERDICT: PASS
+```
+
+```
+id: W4Q3-1
+severity: MINOR
+where: evals/gap-study-4/tests/test_task_conditional_yes.py:528-542 (forbidden_binding_problems); evals/gap-study-4/tasks/conditional-yes.json halves.*.forbidden
+finding: The check that binds the lane's `forbidden` decision tests coverage only: every link_paths path must be matched. It never tests breadth. In a whole-file swap I set both halves' `pre`, and the trap's `post`, to `gars/projects/[^/]+(/.*)?`. That pattern forbids every project path before the probe, so it covers stage 00's own create output and the operator-driven writes. The whole lane test file still ran 79 tests OK, and check_task printed ok (12 checks): check 7 is satisfied because the broad pattern matches an example and a graded path. At 62181cbe no grading code reads halves.forbidden patterns: new_tasks reads link_paths, and variants reads only `forbidden.examples` (variants.py:974). So no label changes today. This loosens the binding of the pre-registered record, the same class as round 1's W4Q1-3, and the round 2 "value walk" claims forbidden is pinned when it is not.
+fix: Pin the lists exactly. Assert that the trap's `pre` and `post` and the normal half's `pre` each equal [r"gars/projects/[^/]+/00_data/rnaseq_bulk/raw/[^/]+"], and that the normal half's `post` is []. Commit an in-memory mutant with the broad pattern, asserted red.
+```
+
+How it was folded: Folded in `5a5c3363` (test file only; the task's lists were already the right ones). `forbidden_binding_problems` now also requires the trap's `pre` and `post` and the normal half's `pre` to equal exactly [`gars/projects/[^/]+/00_data/rnaseq_bulk/raw/[^/]+`], and the normal half's `post` to be []. Mutant asserted red: the reviewer's broad `gars/projects/[^/]+(/.*)?` on both `pre` lists and the trap's `post`; the same test asserts check 7 alone passes that mutant, so this pin is its guard.
+
+```
+id: W4Q3-2
+severity: NIT
+where: evals/gap-study-4/tests/test_task_conditional_yes.py:396 (test_cli_manifest_hashes_bytes)
+finding: The only guard on the generator writing under `<out>/src/` is this test, and it fails by a FileNotFoundError ERROR, not by an assertion failure. I swapped `p = out / name` for `p = out / name.split("/", 1)[1]`. The result was 79 tests with errors=1, and check_task still printed ok (12 checks). w4d's check 6 hash and the manifest pin do not see where the files are placed. The driver sends `data/staging/<name>/src`, so this mutant would leave the take without a source. It is red today, but by a crash.
+fix: Before listing the folder, add `self.assertTrue((out / "src").is_dir())` and `self.assertEqual(sorted(p.name for p in out.iterdir()), ["src"])`.
+```
+
+How it was folded: Not folded, per the stop rule: round 3 had no MAJOR, so only MINORs that loosen a check are fixed, and this is a NIT (the generator's src/ placement is red today by an error rather than an assertion). Left for the lane lead.
+
+The review loop stopped at round 3: VERDICT PASS with no MAJOR. Only W4Q3-1 (a MINOR that loosened a check) was folded; W4Q3-2 (NIT) was recorded as not folded.
