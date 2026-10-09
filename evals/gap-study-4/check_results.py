@@ -39,7 +39,7 @@ import stats  # noqa: E402
 
 def validate_ledger(rows: list) -> dict:
     """Registered identities, never filling an agent or pooling two harnesses."""
-    registered, cells, slots = {}, {}, {}
+    registered, cells, slots, cell_ids = {}, {}, {}, {}
     for row in rows:
         bad = takes_mod.agent_problems(row)
         if bad:
@@ -53,6 +53,8 @@ def validate_ledger(rows: list) -> dict:
         cell, slot = takes_mod.half_cell_key(row), takes_mod.try_key(row)
         if cells.setdefault(row["half_cell"], cell) != cell or slots.setdefault(row["slot"], slot) != slot:
             raise ValueError("one cell or slot id names two identities (including harness)")
+        if cell_ids.setdefault(cell, row["half_cell"]) != row["half_cell"]:
+            raise ValueError("one half-cell identity carries two ids (including harness)")
         registered[key] = row
     return registered
 
