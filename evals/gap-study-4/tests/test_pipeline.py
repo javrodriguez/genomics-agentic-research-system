@@ -10,6 +10,7 @@ import copy
 import importlib.util
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -37,6 +38,7 @@ _patches = []
 
 
 def mutations():
+    validate_ruling = getattr(takes, "validate_ruling", None)
     return {
         "freeze-claims": (freeze, "output_fragment", lambda: {"lane": "freeze", "files": []}),
         "freeze-once": (freeze, "outputs_exist", lambda root: False),
@@ -51,6 +53,9 @@ def mutations():
         "window-span": (cr, "window_problems", lambda history: []),
         "ruled-state": (cr, "ruling_closes", lambda count, cap: False),
         "ruled-route": (cr, "ruled_route", lambda ruling: labels4.GRADED),
+        "ruling-word": (takes, "validate_ruling", lambda r, h: validate_ruling(
+            dict(r, ruling=labels4.RULE_RERUN, route=None), h)),
+        "ruling-by": (takes, "validate_ruling", lambda r, h: validate_ruling(dict(r, by="synthetic-person"), h)),
     }
 
 
@@ -411,6 +416,47 @@ class PublicationHistory(unittest.TestCase):
                        recorded(labels4.PAUSE, row(2), window=2), recorded(labels4.PAUSE, row(3), window=1)]
         with self.assertRaises(ValueError):
             cr.publication(interleaved, table())
+
+
+class RulingDoor(unittest.TestCase):
+    def setUp(self):
+        self.assertTrue(callable(getattr(takes, "commit_ruling", None)), "one human door commits a closed ruling")
+
+    def test_door_commits_one_closed_record_with_callers_by(self):
+        with repository() as repo:
+            r = row()
+            repo.register(r, 1)
+            o = outcome(r, state=labels4.FAILED, final=False)
+            repo.commit_records(r, 1, o)
+            who = "synthetic-person"
+            with mock.patch.dict(os.environ, {"GIT_AUTHOR_NAME": who, "GIT_COMMITTER_NAME": who,
+                                             "GIT_AUTHOR_EMAIL": "synthetic@example.invalid",
+                                             "GIT_COMMITTER_EMAIL": "synthetic@example.invalid"}):
+                got = takes.commit_ruling(slot=r["slot"], attempt=1, word=labels4.RULE_ROUTE,
+                                          route=labels4.ABORTED, by=who, root=repo.root, repo=repo.root)
+            self.assertEqual(set(got), set(batch.RULING_KEYS))
+            self.assertTrue(batch.is_ruling(got))
+            self.assertEqual(got["by"], who)
+            self.assertEqual(takes.read_history(root=repo.root, repo=repo.root), [o, got])
+            self.assertEqual(git(repo.root, "show", "--format=", "--name-only", "HEAD"), "rulings.json")
+            self.assertEqual(json.loads((repo.root / "rulings.json").read_text()), [got])
+
+    def test_door_refuses_unknown_word_and_empty_by_with_mutants(self):
+        history = [outcome(row(), state=labels4.FAILED, final=False)]
+        good = ruling(row(), word=labels4.RULE_RERUN, route=None)
+        takes.validate_ruling(good, history)
+        real = takes.validate_ruling
+        for bad, repair in ((dict(good, ruling="outside"), lambda r: dict(r, ruling=labels4.RULE_RERUN)),
+                            (dict(good, by="  "), lambda r: dict(r, by="synthetic-person"))):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    takes.validate_ruling(bad, history)
+                with mock.patch.object(takes, "validate_ruling", lambda r, h: real(repair(r), h)):
+                    takes.validate_ruling(bad, history)
+        with self.assertRaises(ValueError):
+            takes.validate_ruling(dict(good, block=1), history)
+        with self.assertRaises(ValueError):
+            takes.validate_ruling(good, [])
 
 
 if __name__ == "__main__":
