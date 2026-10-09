@@ -14,6 +14,8 @@ The two generated non-self outputs are pinned inside prereg.json as well.
 All three outputs belong to one freeze commit. Any existing output refuses a
 second freeze, including an interrupted first write. Rehearsal/review evidence
 must already match the committed draft and tree before the real --write.
+Pass the disposable rehearsal report with --rehearsal-record; its content and
+hash are retained in prereg.json, without adding that output to the build tree.
 """
 
 from __future__ import annotations
@@ -243,6 +245,21 @@ def recorded_tree(record: Path) -> str | None:
     return None
 
 
+def rehearsal_evidence(record, digest: str, tree: str) -> dict:
+    """Bind an external rehearsal output without changing the rehearsed tree."""
+    if record is None:
+        raise ValueError("a green rehearsal record is required (--rehearsal-record)")
+    record = Path(record)
+    data = record.read_bytes()
+    text = data.decode("utf-8")
+    lines = text.rstrip().splitlines()
+    if (not lines or lines[0] != digest or lines[-1] != REHEARSAL_LAST_LINE or
+            [line for line in lines if line.startswith(REHEARSAL_TREE_PREFIX)] !=
+            [REHEARSAL_TREE_PREFIX + tree]):
+        raise ValueError("the rehearsal must be green for this draft and committed tree")
+    return {"name": record.name, "sha256": hashlib.sha256(data).hexdigest(), "text": text}
+
+
 def rehearsal_problems(draft_sha256: str, verification: Path, study_tree: str | None = None) -> list[str]:
     """Why the freeze may not be written yet: no rehearsal record for THESE draft bytes that ended all green.
 
@@ -323,6 +340,7 @@ def main(argv=None) -> int:
     parser.add_argument("--review-commit")
     parser.add_argument("--write", action="store_true")
     parser.add_argument("--rehearsal", action="store_true")
+    parser.add_argument("--rehearsal-record", type=Path)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
     try:
@@ -351,10 +369,7 @@ def main(argv=None) -> int:
         tree = study_tree_sha()
         record = None
         if args.write and not args.rehearsal:
-            bad = rehearsal_problems(digest, HERE / study.VERIFY_DIR, tree)
-            if bad:
-                raise ValueError("; ".join(bad))
-            record = admitted_rehearsal(digest, HERE / study.VERIFY_DIR, tree)
+            record = rehearsal_evidence(args.rehearsal_record, digest, tree)
         pins = [pin(p) for p in PINNED]
         if any(p.get("missing") or p.get("uncommitted") for p in pins):
             raise ValueError("every owned build file must have a committed pin")
@@ -363,7 +378,7 @@ def main(argv=None) -> int:
                          frozen_at=datetime.now(timezone.utc).replace(microsecond=0).isoformat())
         frozen.update(draft_sha256_at_freeze=digest, pre_freeze_review_file=review_file,
                       pre_freeze_review_sha256=hashlib.sha256((REPO / review_file).read_bytes()).hexdigest(),
-                      rehearsal_record=study.rel(study.VERIFY_DIR, record.name) if record else "rehearsal or preview",
+                      rehearsal_record=record if record else "rehearsal or preview",
                       rehearsed_study_tree_sha256=tree)
         if keys_outside_the_freeze(draft, frozen):
             raise ValueError("freeze changed the registered design")

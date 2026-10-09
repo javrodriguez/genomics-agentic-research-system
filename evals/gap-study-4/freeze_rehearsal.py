@@ -10,9 +10,9 @@ exercise the publication readers. The copy gate never runs on runtime outputs
 (w5b-4). No take is driven, and no graded observation is manufactured.
 
 All outputs, including the rehearsal report, stay under a temporary directory,
-outside the source tree. --keep retains the clone too. CP6 may retain the report
-as evidence under its own ownership fragment before the real freeze. Its tree
-line names the committed source tree that was cloned. This program runs on the
+outside the source tree. --keep retains the clone too. Pass the report to the
+real freeze with --rehearsal-record; the frozen file retains its content and
+hash. Its tree line names the committed source tree that was cloned. This program runs on the
 remote runner, never as a Mac gate. No vendor executable, model or container.
 """
 from __future__ import annotations
