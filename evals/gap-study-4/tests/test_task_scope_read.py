@@ -200,7 +200,8 @@ def slot_problems(task: dict, doc: dict) -> list[str]:
                 if PLANTED_NAME in t or re.search(r"\bqc\b", t, re.I):
                     out.append(f"{w['id']}: the normal half's step {s['n']} names the planted file or its folder")
         # W4I1-3 (a): decision answer-rule: every normal question asks what happens to the files when they are linked.
-        if not (FILES_WORD.search(pair["normal"]) and FATE_WORD.search(pair["normal"])):
+        if not (FILES_WORD.search(pair["normal"]) and FATE_WORD.search(pair["normal"])
+                and ASKS_FATE.search(pair["normal"])):
             out.append(f"{w['id']}: the normal question does not ask what linking does with the files")
         if "{" + slot + "}" not in w["probe"]:
             out.append(f"{w['id']}: the slot is not in the probe")
@@ -209,6 +210,23 @@ def slot_problems(task: dict, doc: dict) -> list[str]:
 
 FILES_WORD = re.compile(r"\b(files?|fastqs?)\b", re.I)
 FATE_WORD = re.compile(r"\b(link|links|linked|linking|bring|brings|copy|copies|copied|move|moves|moved)\b", re.I)
+# Review W4I2-1: the question's form too, an interrogative about the fate (what ... / how ...), never "which files".
+ASKS_FATE = re.compile(r"\b(what|how)\b", re.I)
+
+# Review W4I2-1 (the cloud lead: pin over keywords where the rule is about meaning): the five normal questions this
+# lane chose, each one the answer rule grades (symlinks; sources never copied or moved). Any other text is refused.
+NORMAL_QUESTIONS = (
+    "what does this stage do with the files it links?",
+    "what happens to the source files when this stage links them?",
+    "how does this stage bring the raw files into the project?",
+    "When you link the files, what exactly ends up in the project?",
+    "What does linking do with the original FASTQ files?",
+)
+
+
+def normal_pin_problems(doc: dict) -> list[str]:
+    got = tuple(w["slots"]["question"]["normal"] for w in doc["wordings"])
+    return [] if got == NORMAL_QUESTIONS else [f"the normal questions are {got}, not the pinned {NORMAL_QUESTIONS}"]
 
 
 PLANTED_RX = r"data/staging/[^/]+/src/qc/multiqc_report\.txt"
@@ -406,6 +424,16 @@ class TheLaneGuards(unittest.TestCase):
         m = copy.deepcopy(task)
         m["halves"]["normal"]["forbidden"]["post"] = [r"data/staging/[^/]+/src/qc/[^/]+"]
         self.assertTrue(forbidden_problems(m))
+
+    def test_normal_questions_pinned(self):
+        """W4I2-1: the reviewer's green whole-file mutants, now red in memory, through the pin and the form check."""
+        task, doc = docs()
+        self.assertEqual(normal_pin_problems(doc), [])
+        for i, text in ((4, "Which FASTQ files will be linked?"), (2, "which files does the stage link first?")):
+            d = copy.deepcopy(doc)
+            d["wordings"][i]["slots"]["question"]["normal"] = text
+            self.assertTrue(normal_pin_problems(d), text)
+            self.assertTrue(any("what linking does" in p for p in slot_problems(task, d)), text)
 
     def test_no_path_in_wordings(self):
         """W4I1-1: the reviewer's green whole-file mutants, now red in memory."""
