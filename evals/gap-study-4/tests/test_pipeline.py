@@ -49,7 +49,18 @@ _patches = []
 def mutations():
     validate_ruling = getattr(takes, "validate_ruling", None)
     runner = get_run()
+    accounting = costs.account
+    fragments = cm.load_fragments
     return {
+        "claims-eight": (cm, "load_fragments", lambda *a, **k: (
+            [(lane, e) for lane, e in fragments(*a, **k)[0] if e["path"] != "run.py"], fragments(*a, **k)[1])),
+        "foreign-module": (takes, "__file__", "/synthetic/old/takes.py"),
+        "printed-cost": (costs, "account", lambda c, p: dict(accounting(c, p), total_cost_usd=None)),
+        "token-sums": (costs, "account", lambda c, p: dict(accounting(c, p), usage={})),
+        "wall-time": (costs, "account", lambda c, p: dict(accounting(c, p), wall_seconds=None)),
+        "vendor-prices": (costs, "account", lambda c, p: dict(accounting(c, p), priced_cost_usd=Decimal(0))),
+        "vendor-caps": (costs, "CAPS", {"openai": Decimal(400), "google": Decimal(400)}),
+        "total-cap": (costs, "TOTAL_CAP", Decimal(401)),
         "runtime-timing": (cr, "runtime_timing_problems", lambda: []),
         "attempt-identity": (runner, "require_registered_outcome", lambda o, registered: None),
         "evidence-identity": (runner, "require_evidence_identity", lambda row, evidence: None),
@@ -207,6 +218,23 @@ class FreezeOutputs(unittest.TestCase):
             bad = cm.problems(folder, pinned=False)
             for path in ("COPIED.json", "prereg.json", "COPIED.d/freeze.json"):
                 self.assertTrue(any(b.startswith(path + " is under") and "no fragment" in b for b in bad), bad)
+
+
+class PipelineOwnership(unittest.TestCase):
+    def test_eight_edited_sources_and_local_module_files(self):
+        names = ("takes.py", "run.py", "result.py", "completeness.py", "check_results.py",
+                 "costs.py", "freeze.py", "freeze_rehearsal.py")
+        entries, bad = cm.load_fragments()
+        self.assertEqual(bad, [])
+        own = {e["path"]: e for lane, e in entries if lane == "w5b-cp5-pipeline"}
+        self.assertTrue(set(names) <= set(own))
+        for name in names:
+            self.assertEqual(own[name]["status"], "edited")
+            self.assertEqual(own[name]["source"], cm.SOURCE_DIR + "/" + name)
+            self.assertTrue(own[name]["reason"].strip())
+        for module in (takes, get_run(), result_page, completeness, cr, costs, freeze, freeze_rehearsal,
+                       stats, routing, batch, variants):
+            self.assertEqual(Path(module.__file__).resolve().parent, HERE.resolve())
 
 
 def row(n=1, **kw):
@@ -579,6 +607,7 @@ class InterfaceRecords(unittest.TestCase):
             self.assertEqual(takes.try_key(r), takes.try_key(dict(r, agent={"harness": "another", "version": "0.0.1"})))
 
     def test_every_stop_has_three_views_and_aborted_counts_against_holding(self):
+        self.assertEqual(self.run.stop_views(), stats.STOP_VIEWS)
         for label in labels4.RESERVED:
             r = row()
             state = labels4.ABORTED if label == labels4.ABORTED else labels4.GRADED
@@ -758,8 +787,8 @@ class CostAccounting(unittest.TestCase):
     def fake_prices(self):
         # Deliberately invented prices, never usable as vendor quotations.
         return {"as_of": "2026-10-01", "fake": True, "vendors": {
-            v: {"synthetic-model": {"input_tokens": "2", "output_tokens": "3"}}
-            for v in ("openai", "google")}}
+            "openai": {"synthetic-model": {"input_tokens": "2", "output_tokens": "3"}},
+            "google": {"synthetic-model": {"input_tokens": "5", "output_tokens": "7"}}}}
 
     def call(self):
         return {"call_id": "c1", "vendor": "openai", "model": "synthetic-model",
@@ -773,6 +802,7 @@ class CostAccounting(unittest.TestCase):
         c = self.call()
         got = account([c, copy.deepcopy(c)], self.fake_prices())
         self.assertEqual(got["calls"], 1)
+        self.assertIn("input_tokens", got["usage"])
         self.assertEqual(got["usage"]["input_tokens"], 1000000)
         self.assertEqual(got["total_cost_usd"], Decimal("4.25"))
         self.assertEqual(got["priced_cost_usd"], Decimal("5"))
@@ -785,6 +815,15 @@ class CostAccounting(unittest.TestCase):
         self.assertFalse(account([], self.fake_prices())["measured"])
         c["usage"] = None
         self.assertIsNone(account([c], self.fake_prices())["priced_cost_usd"])
+
+    def test_each_vendor_prices_its_calls_from_the_supplied_fake_table(self):
+        c = self.call()
+        other = dict(c, vendor="google")
+        got = costs.account([c, c, other, other], self.fake_prices())
+        self.assertEqual(got["calls"], 2)
+        self.assertEqual(got["priced_cost_usd"], Decimal(17))
+        self.assertEqual(got["vendors"]["openai"]["priced_cost_usd"], Decimal(5))
+        self.assertEqual(got["vendors"]["google"]["priced_cost_usd"], Decimal(12))
 
     def test_pricing_requires_dated_table_and_agent(self):
         account = self.api()
@@ -864,6 +903,7 @@ class FreezeCoverage(unittest.TestCase):
             body = "a" * 64 + "\nDisposable rehearsal\n" + freeze.REHEARSAL_TREE_PREFIX + "b" * 64 + "\nall green\n"
             record.write_text(body)
             got = freeze.rehearsal_evidence(record, "a" * 64, "b" * 64)
+            self.assertEqual(set(got), {"name", "sha256", "text"})
             self.assertEqual(got["text"], body)
             self.assertEqual(got["sha256"], __import__("hashlib").sha256(body.encode()).hexdigest())
             self.assertNotIn(str(Path(tmp)), json.dumps(got))
