@@ -1,0 +1,4 @@
+# Lane w5a-cp5-probes4: CP5's probes gate, probes4.py (constructed triples through the v4 graders).
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_probes4.py
+python3 -B -W ignore evals/gap-study-4/probes4.py --check
