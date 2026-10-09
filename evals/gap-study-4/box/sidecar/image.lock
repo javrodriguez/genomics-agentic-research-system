@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "image": "sidecar",
+  "dockerfile": "sidecar/Dockerfile",
+  "base": "PENDING",
+  "harness": null,
+  "python": "PENDING",
+  "image_id": "PENDING",
+  "users": {
+    "agent": {
+      "name": "dana",
+      "uid": 10001,
+      "gid": 10001
+    },
+    "watcher": {
+      "name": "eli",
+      "uid": 10002,
+      "gid": 10002
+    },
+    "keepalive": {
+      "uid": 10003,
+      "gid": 10003
+    }
+  },
+  "pending": {
+    "base": "the shared base digest (the take images' base), read and pinned when CP2 builds on the real box",
+    "python": "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16); the sidecar program's floor is 3.11",
+    "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box"
+  }
+}

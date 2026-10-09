@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "image": "egress",
+  "dockerfile": "egress/Dockerfile",
+  "base": "PENDING",
+  "harness": null,
+  "python": null,
+  "squid": "PENDING",
+  "image_id": "PENDING",
+  "users": null,
+  "pending": {
+    "base": "the egress image's own base digest, read and pinned when CP2 builds on the real box",
+    "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box",
+    "squid": "the squid package version the pinned base's archive offers, read and pinned when CP2 builds the egress image; squid -k parse on that build is a real-box check"
+  }
+}

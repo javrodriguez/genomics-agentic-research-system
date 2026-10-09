@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+"""test_egress.py: the egress proxy's configuration (box/egress/proxy_conf.py and proxy.conf), with no proxy at all.
+
+Nothing here builds the egress image or starts squid; `squid -k parse` on a built image is a real-box check. A
+module-level guard (interface 10) makes every process start and every signal raise for the whole module, armed right
+after the one read of round 3's leak words (interface 16).
+
+"Exactly one allowed host per take, its arm's" (D8 B2 item 8): each harness's rendered configuration allows exactly
+its own host, and every mutant of MUTANT_CONFS is refused by `check`. Run alone, the module first prints every mutant
+with its red run, then runs the tests.
+"""
+
+from __future__ import annotations
+
+import inspect as pyinspect
+import json
+import os
+import re
+import subprocess
+import sys
+import unittest
+from unittest import mock
+
+sys.dont_write_bytecode = True
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, HERE)
+REPO = os.path.dirname(os.path.dirname(HERE))
+# Round 3's done commit (copy_manifest.SOURCE_COMMIT), where its leak words are read.
+ROUND3 = "e2979b3143081824aadea73523ec41af30c1ddb1"
+# The lane lead's additions to round 3's leak words (interface 16).
+ADDED_LEAK_WORDS = ("gap4", "round 4", "sidecar", "watcher", "evidence", "holdout", "sealed", "probe", "trap",
+                    "grader")
+
+
+def _round3_leak_words() -> tuple:
+    """Round 3's `leak_words`, read once with git show (the only process this module starts), never written down."""
+    out = subprocess.run(["git", "-C", REPO, "show", f"{ROUND3}:evals/gap-study-3/prereg.json"],
+                         capture_output=True, text=True, check=True).stdout
+    words = json.loads(out)["leak_words"]
+    if not words or not all(isinstance(w, str) and w for w in words):
+        raise AssertionError("round 3's leak_words is not a non-empty list of words")
+    return tuple(words)
+
+
+LEAK_WORDS = _round3_leak_words() + ADDED_LEAK_WORDS
+
+
+# Interface 10: from here on no test can start a process or signal one.
+def _blocked(*_a, **_k):
+    raise AssertionError("process start or signal blocked in the box tests")
+
+
+_GUARDED = [(subprocess, "run"), (subprocess, "Popen")]
+_GUARDED += [(os, n) for n in ("system", "kill", "killpg", "posix_spawn", "posix_spawnp", "fork") if hasattr(os, n)]
+_GUARDED += [(os, n) for n in sorted(dir(os)) if n.startswith(("exec", "spawn")) and callable(getattr(os, n))]
+for _mod, _name in _GUARDED:
+    mock.patch.object(_mod, _name, _blocked).start()
+
+import harness_bookkeeping as hb  # noqa: E402
+from box import image_lock as il  # noqa: E402
+from box.egress import proxy_conf as pc  # noqa: E402
+
+# The allowed hosts as D8 B2 item 8 states them, keyed by the module's own harness constants.
+HOSTS = {hb.CLAUDE_CODE: "api.anthropic.com", pc.CODEX: "api.openai.com",
+         pc.GEMINI: "generativelanguage.googleapis.com"}
+CC = hb.CLAUDE_CODE
+
+
+def rendered(harness: str = CC) -> str:
+    return pc.render(harness)
+
+
+# Each policy clause, mutated in a rendered configuration: (harness, old, new). Every one must be refused by check.
+MUTANT_CONFS = {
+    "a second dstdomain value": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n api.anthropic.com example.org"),
+    "a leading-dot domain": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n .anthropic.com"),
+    "a dstdom_regex": (CC, "dstdomain -n api.anthropic.com", "dstdom_regex -n ^api.anthropic.com$"),
+    "a reverse lookup allowed": (CC, "dstdomain -n api.anthropic.com", "dstdomain api.anthropic.com"),
+    "a second dstdomain flag": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n -i api.anthropic.com"),
+    "a host with a trailing dot": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n api.anthropic.com."),
+    "a second dstdomain acl": (CC, "http_access deny !tunnel", "acl other dstdomain -n example.org\n"
+                               "http_access deny !tunnel"),
+    # Fold 3 (W4A1-4 a): the extra definition comes FIRST, so only the duplicate refusal can catch it (squid would
+    # merge the two and allow example.org).
+    "the same acl defined twice": (CC, "acl api_host dstdomain -n api.anthropic.com",
+                                   "acl api_host dstdomain -n example.org\nacl api_host dstdomain -n api.anthropic.com"),
+    "an http_access allow all": (CC, "http_access deny all", "http_access allow all\nhttp_access deny all"),
+    "an allow that is not CONNECT": (CC, "http_access allow tunnel api_host", "http_access allow api_host"),
+    "a second allow line": (CC, "http_access deny all", "http_access allow tunnel api_host\nhttp_access deny all"),
+    "an allow with a negation": (CC, "http_access allow tunnel api_host", "http_access allow tunnel !api_host"),
+    "deny all missing": (CC, "http_access deny all\n", ""),
+    "deny all not last": (CC, "http_access allow tunnel api_host\nhttp_access deny all",
+                          "http_access deny all\nhttp_access allow tunnel api_host"),
+    "deny !CONNECT missing": (CC, "http_access deny !tunnel\n", ""),
+    "deny CONNECT to other ports missing": (CC, "http_access deny tunnel !tls_port\n", ""),
+    "port 443 changed": (CC, "acl tls_port port 443", "acl tls_port port 8443"),
+    "a second port": (CC, "acl tls_port port 443", "acl tls_port port 443 80"),
+    "a port range": (CC, "acl tls_port port 443", "acl tls_port port 1-65535"),
+    "a second port acl": (CC, "http_access deny !tunnel", "acl web port 80\nhttp_access deny !tunnel"),
+    "a second method": (CC, "acl tunnel method CONNECT", "acl tunnel method CONNECT GET"),
+    "the codex render carrying the Anthropic host": (pc.CODEX, "dstdomain -n api.openai.com",
+                                                    "dstdomain -n api.anthropic.com"),
+    "the gemini render carrying the OpenAI host": (pc.GEMINI, "dstdomain -n generativelanguage.googleapis.com",
+                                                  "dstdomain -n api.openai.com"),
+    "an unrendered slot": (CC, "dstdomain -n api.anthropic.com", "dstdomain -n " + "@ALLOWED_HOST@"),
+    "an unknown directive": (CC, "cache deny all", "cache deny all\nalways_direct allow all"),
+    "an unknown acl type": (CC, "acl tls_port port 443", "acl tls_port dst 0.0.0.0/0"),
+    "a second listening port": (CC, "http_port 3128", "http_port 3128\nhttp_port 8080"),
+    "the listening port moved": (CC, "http_port 3128", "http_port 8080"),
+    "a listening address": (CC, "http_port 3128", "http_port 0.0.0.0:3128"),
+    "a cache": (CC, "cache deny all\n", ""),
+    "the access log off": (CC, "access_log stdio:/dev/stdout", "access_log none"),
+    "a pid file": (CC, "pid_filename none", "pid_filename /run/squid.pid"),
+    "a continuation": (CC, "http_access deny all", "http_access deny \\\nall"),
+    # Fold 3 (W4A1-2): squid reads a physical line with fgets(BUFSIZ); a comment longer than BUFSIZ-1 (8191) ends
+    # early and its tail is read as a directive, here the first http_access rule.
+    "P2 a long comment hiding a directive": (CC, "http_access deny !tunnel", "#" + "x" * 8190
+                                             + "http_access allow all\nhttp_access deny !tunnel"),
+    "a line over 512 characters": (CC, "cache deny all", "cache deny all" + " " * 499),
+    "a carriage return": (CC, "cache deny all", "cache deny all\r"),
+    "a non-breaking space": (CC, "http_access deny all", "http_access deny\u00a0all"),
+    "a control character in a comment": (CC, "pid_filename none", "pid_filename none\n# \x0b"),
+}
+
+
+def conf_mutated(name: str) -> tuple:
+    harness, old, new = MUTANT_CONFS[name]
+    text = rendered(harness)
+    if text.count(old) != 1:
+        raise AssertionError(f"mutant {name!r}: {old!r} is not once in {harness}'s rendered configuration")
+    return harness, text.replace(old, new)
+
+
+def leak_hits(strings) -> list:
+    return [s for s in strings if any(re.search(r"(?<![A-Za-z0-9])" + re.escape(w) + r"(?![A-Za-z0-9])", s,
+                                                re.IGNORECASE) for w in LEAK_WORDS)]
+
+
+class GuardTest(unittest.TestCase):
+    def test_the_process_guard_is_armed(self):
+        with self.assertRaises(AssertionError):
+            subprocess.run(["true"])
+        with self.assertRaises(AssertionError):
+            os.kill(0, 0)
+        self.assertIn((os, "posix_spawn"), _GUARDED)
+
+    def test_the_modules_are_this_rounds(self):
+        self.assertTrue(os.path.abspath(pc.__file__).startswith(os.path.join(HERE, "box", "egress") + os.sep))
+        self.assertFalse(os.path.exists(os.path.join(os.path.dirname(pc.__file__), "__init__.py")))
+
+
+class ConstantsTest(unittest.TestCase):
+    def test_the_shared_values(self):
+        self.assertEqual(pc.HOSTS, HOSTS)
+        self.assertEqual((pc.CODEX, pc.GEMINI), ("codex", "gemini"))
+        self.assertIn(hb.CLAUDE_CODE, pc.HOSTS)
+        self.assertEqual((pc.ALIAS, pc.PORT, pc.PROXY_URL), ("proxy", 3128, "http://proxy:3128"))
+        self.assertEqual(pc.CONF_PATH, "/etc/squid/squid.conf")
+        self.assertEqual(list(pc.COMMAND), ["squid", "-N", "-f", "/etc/squid/squid.conf"])
+        self.assertEqual(pc.TLS_PORT, 443)
+
+    def test_each_constant_change_goes_red(self):
+        for const, value in (("PORT", 3129), ("TLS_PORT", 8443), ("ACCESS_LOG", "none")):
+            with self.subTest(const), mock.patch.object(pc, const, value):
+                self.assertTrue(pc.check(pc._template_text().replace(pc.SLOT, HOSTS[CC]), CC))
+        for harness in HOSTS:
+            with self.subTest(harness), mock.patch.dict(pc.HOSTS, {harness: "example.org"}):
+                self.assertTrue(pc.check(pc._template_text().replace(pc.SLOT, HOSTS[harness]), harness))
+
+    def test_the_pending_user(self):
+        self.assertEqual(pc.USER, pc.PENDING)
+        self.assertEqual(set(pc.pending()), {"USER"})
+        self.assertTrue(pc.pending()["USER"].strip())
+        with self.assertRaises(pc.NotReady):
+            pc.launch_fields()
+        with mock.patch.object(pc, "USER", "13:13"):
+            self.assertEqual(pc.pending(), {})
+            self.assertEqual(pc.launch_fields(), {"conf_target": "/etc/squid/squid.conf", "command": pc.COMMAND,
+                                                  "user": "13:13", "alias": "proxy"})
+        # The mutant that drops the refusal hands out the PENDING user.
+        with mock.patch.object(pc, "pending", lambda: {}):
+            self.assertEqual(pc.launch_fields()["user"], pc.PENDING)
+
+    def test_no_parameter_can_override_a_pending_value(self):
+        self.assertEqual(list(pyinspect.signature(pc.launch_fields).parameters), [])
+        self.assertEqual(list(pyinspect.signature(pc.pending).parameters), [])
+        self.assertEqual(list(pyinspect.signature(pc.render).parameters), ["harness"])
+        self.assertEqual(list(pyinspect.signature(pc.check).parameters), ["text", "harness"])
+        self.assertEqual(list(pyinspect.signature(pc.allowed_hosts).parameters), ["text"])
+
+
+class RenderTest(unittest.TestCase):
+    def test_each_harness_allows_exactly_its_host(self):
+        for harness, host in HOSTS.items():
+            with self.subTest(harness):
+                text = rendered(harness)
+                self.assertEqual(pc.allowed_hosts(text), [host])
+                self.assertEqual(pc.check(text, harness), [])
+                for other, other_host in HOSTS.items():
+                    if other != harness:
+                        self.assertNotIn(other_host, text)
+                        self.assertTrue(pc.check(text, other))   # one take's conf never passes for another arm
+
+    def test_the_template(self):
+        text = pc._template_text()
+        self.assertEqual(text.count(pc.SLOT), 1)
+        self.assertEqual(text.count("@"), 2)
+        self.assertTrue(pc.check(text, CC))   # the unrendered template itself is refused
+        lines = [ln for ln in text.split("\n") if ln and not ln.startswith("#")]
+        self.assertEqual(lines, ["http_port 3128", "acl tls_port port 443", "acl tunnel method CONNECT",
+                                 "acl api_host dstdomain -n @ALLOWED_HOST@", "http_access deny !tunnel",
+                                 "http_access deny tunnel !tls_port", "http_access allow tunnel api_host",
+                                 "http_access deny all", "cache deny all", "access_log stdio:/dev/stdout",
+                                 "pid_filename none"])
+
+    def test_an_unknown_harness_is_refused(self):
+        for name in ("fake-second", "", "Claude-Code", "claude"):
+            with self.subTest(name):
+                with self.assertRaises(pc.ProxyConfError):
+                    pc.render(name)
+                self.assertTrue(pc.check(rendered(CC), name))
+
+    def test_a_template_slot_twice_or_missing_is_refused(self):
+        twice = pc._template_text() + "acl x dstdomain " + pc.SLOT + "\n"
+        with mock.patch.object(pc, "_template_text", lambda: twice), self.assertRaises(pc.ProxyConfError):
+            pc.render(CC)
+        none = pc._template_text().replace(pc.SLOT, HOSTS[CC])
+        with mock.patch.object(pc, "_template_text", lambda: none), self.assertRaises(pc.ProxyConfError):
+            pc.render(CC)
+
+    def test_render_refuses_a_template_that_fails_its_check(self):
+        loose = pc._template_text().replace("http_access deny all\n", "")
+        with mock.patch.object(pc, "_template_text", lambda: loose), self.assertRaises(pc.ProxyConfError):
+            pc.render(CC)
+
+    def test_every_conf_mutant_is_refused(self):
+        for name in MUTANT_CONFS:
+            with self.subTest(name):
+                harness, text = conf_mutated(name)
+                self.assertTrue(pc.check(text, harness), name)
+
+    def test_allowed_hosts_refuses_an_unbounded_allow(self):
+        for name in ("an http_access allow all", "an allow with a negation"):
+            with self.subTest(name), self.assertRaises(pc.ProxyConfError):
+                pc.allowed_hosts(conf_mutated(name)[1])
+        self.assertEqual(pc.allowed_hosts(conf_mutated("a second dstdomain value")[1]),
+                         ["api.anthropic.com", "example.org"])
+        self.assertEqual(pc.allowed_hosts(conf_mutated("an allow that is not CONNECT")[1]), ["api.anthropic.com"])
+        with self.assertRaises(pc.ProxyConfError):
+            pc.allowed_hosts(conf_mutated("an unknown directive")[1])
+
+
+class ParseTest(unittest.TestCase):
+    def test_tokens_split_on_space_and_tab_only(self):
+        text = rendered(CC).replace("http_access deny all", "http_access\tdeny \t all")
+        self.assertEqual(pc.check(text, CC), [])   # squid splits on space and tab alike
+        self.assertIn(("http_access", ["deny", "all"]), [(d, a) for _, d, a in pc.parse(text)])
+
+    def test_the_line_length_limit(self):
+        self.assertEqual(pc.MAX_LINE, 512)
+        ok = rendered(CC).replace("cache deny all", "cache deny all" + " " * (512 - len("cache deny all")))
+        self.assertEqual(pc.check(ok, CC), [])     # exactly 512 is read
+        with self.assertRaises(pc.ProxyConfError):
+            pc.parse(ok.replace("cache deny all", "cache deny all "))
+
+
+class EgressImageTest(unittest.TestCase):
+    def dockerfile(self) -> str:
+        with open(os.path.join(il.BOX_DIR, il.DOCKERFILES[il.EGRESS_IMAGE]), encoding="utf-8") as fh:
+            return fh.read()
+
+    def lock(self) -> dict:
+        return il.load(os.path.join(il.BOX_DIR, "egress", "image.lock"))
+
+    def test_the_egress_image_is_by_digest_and_copies_nothing(self):
+        text, lock = self.dockerfile(), self.lock()
+        self.assertEqual(il.check_dockerfile(text, lock), [])
+        ins = il.parse_dockerfile(text)
+        self.assertEqual((ins[0].args, ins[1].keyword, ins[1].args), ("BASE", "FROM", "${BASE}"))
+        self.assertFalse([i for i in ins if i.keyword in ("COPY", "ADD")])
+        self.assertEqual(il.pending(lock), ("base", "image_id", "squid"))
+        for old, new in (("FROM ${BASE}", "FROM debian:13"), ("ENTRYPOINT []", "COPY proxy.conf /etc/x\nENTRYPOINT []"),
+                         ('"squid=${SQUID_VERSION}"', "squid")):
+            with self.subTest(new):
+                self.assertTrue(il.check_dockerfile(text.replace(old, new), lock))
+
+    def test_the_egress_build_takes_squid_from_the_lock(self):
+        lock = self.lock()
+        with self.assertRaises(il.NotReady):
+            il.build_argv(lock, context="/srv/ctx")
+        lock.update(base="registry.example/fake-base@sha256:" + "a" * 64, squid="6.99-1+fake1", pending={
+            "image_id": "the build makes it"})
+        argv = il.build_argv(lock, context="/srv/ctx")
+        self.assertIn("SQUID_VERSION=6.99-1+fake1", argv)
+        self.assertIn(il.SQUID_LABEL + "=6.99-1+fake1", argv)
+
+
+class NeutralityTest(unittest.TestCase):
+    def test_the_agent_visible_proxy_strings_carry_no_study_word(self):
+        # The take container's exec environment carries HTTPS_PROXY=PROXY_URL; the alias names the proxy there.
+        self.assertEqual(leak_hits([pc.PROXY_URL, pc.ALIAS]), [])
+
+    def test_a_planted_study_word_goes_red(self):
+        with mock.patch.object(pc, "ALIAS", "probe"):
+            self.assertEqual(leak_hits([pc.ALIAS]), ["probe"])
+        self.assertTrue(leak_hits(["http://" + LEAK_WORDS[0].replace(" ", "-") + ":3128"]))
+
+
+def print_mutants() -> None:
+    for name in MUTANT_CONFS:
+        harness, text = conf_mutated(name)
+        found = pc.check(text, harness)
+        print(f"mutant conf {name!r} ({harness}): {'red' if found else 'GREEN'} ({found[0] if found else '-'})")
+
+
+if __name__ == "__main__":
+    print_mutants()
+    unittest.main()

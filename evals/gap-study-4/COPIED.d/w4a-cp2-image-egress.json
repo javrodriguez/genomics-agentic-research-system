@@ -1,0 +1,90 @@
+{
+  "lane": "w4a-cp2-image-egress",
+  "files": [
+    {
+      "path": "COPIED.d/w4a-cp2-image-egress.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "box/Dockerfile",
+      "status": "new",
+      "reason": "The arm A (and C) take image (CP2): the shared base by digest from the lock, Claude Code at the lock's exact npm version with an installed-version check, the recorded Python, the closed package line, the two fixed non-root users, git's ownership setting, nothing of the study copied in, labels from the build arguments."
+    },
+    {
+      "path": "box/codex/Dockerfile",
+      "status": "new",
+      "reason": "The arm O take image (D8 B2 item 2): the same shared base and common block as the arm A image, with Codex CLI at the lock's exact npm version."
+    },
+    {
+      "path": "box/codex/image.lock",
+      "status": "new",
+      "reason": "The arm O take image's lock: base, Codex CLI version, Python version and image id PENDING with their reasons; the fixed users."
+    },
+    {
+      "path": "box/egress/Dockerfile",
+      "status": "new",
+      "reason": "The egress proxy's image: its base by digest from its own lock, squid at the lock's exact package version, nothing copied in, the entrypoint reset."
+    },
+    {
+      "path": "box/egress/image.lock",
+      "status": "new",
+      "reason": "The egress image's lock: base, image id and squid package version PENDING with their reasons; no harness, no Python, no users."
+    },
+    {
+      "path": "box/egress/proxy.conf",
+      "status": "new",
+      "reason": "The egress proxy's policy template (squid): one listening port, a CONNECT to exactly one host on 443 through the one slot, everything else denied, no cache, the access log to stdout."
+    },
+    {
+      "path": "box/egress/proxy_conf.py",
+      "status": "new",
+      "reason": "The egress configuration module (CP2, D8 B2 item 8): the allowed host by harness and the shared proxy values (interface 11), the PENDING squid user with its refusal, render, a closed-grammar parse and the check that exactly one host is allowed, the take's arm's."
+    },
+    {
+      "path": "box/gemini/Dockerfile",
+      "status": "new",
+      "reason": "The arm G take image (D8 B2 item 2): the same shared base and common block as the arm A image, with Gemini CLI at the lock's exact npm version."
+    },
+    {
+      "path": "box/gemini/image.lock",
+      "status": "new",
+      "reason": "The arm G take image's lock: base, Gemini CLI version, Python version and image id PENDING with their reasons; the fixed users."
+    },
+    {
+      "path": "box/image.lock",
+      "status": "new",
+      "reason": "The arm A (and C) take image's lock (CP2): base digest, Claude Code version, Python version and built image id, each PENDING with its reason until CP2 builds on the real box; the fixed users 10001, 10002 and 10003."
+    },
+    {
+      "path": "box/image_lock.py",
+      "status": "new",
+      "reason": "The box images' lock reader (CP2): the closed lock schema with nullability bound by image, the pending map and its refusals (NotReady), the expected labels and check_labels against docker image inspect, and the constructed (never run) docker build argv."
+    },
+    {
+      "path": "box/sidecar/Dockerfile",
+      "status": "new",
+      "reason": "The sidecar's image (ruling C1): the shared base, the same common block (packages, users), one COPY of sidecar.py to /opt/w/sidecar.py, no harness, last USER the watcher; never used for a take."
+    },
+    {
+      "path": "box/sidecar/image.lock",
+      "status": "new",
+      "reason": "The sidecar image's lock: base, Python version and image id PENDING with their reasons; no harness; the fixed users."
+    },
+    {
+      "path": "checks.d/w4a-cp2-image-egress.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test files and interface 10's ast check over its non-test box modules."
+    },
+    {
+      "path": "tests/test_egress.py",
+      "status": "new",
+      "reason": "Tests of box/egress/proxy_conf.py and proxy.conf: each harness allows exactly its host, a mutant per policy clause and constant, the PENDING user's refusal, the egress image's Dockerfile, and the neutrality of the agent-visible proxy strings."
+    },
+    {
+      "path": "tests/test_image.py",
+      "status": "new",
+      "reason": "Tests of box/image_lock.py and the box Dockerfiles: the closed lock schema and its nullability by image, the exact pending sets, the refusal against labels, the constructed build argv, every Dockerfile rule with a mutant, the byte-identical common block, and the neutrality of every agent-visible string, with the process guard of interface 10 and the leak-word read of interface 16."
+    }
+  ]
+}
