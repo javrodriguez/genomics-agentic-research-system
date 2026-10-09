@@ -1522,6 +1522,27 @@ OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY",
 DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 # How subprocess may appear, at DockerRuntime.run only: run as the func of a call, TimeoutExpired in an except.
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})
+# W4B3-3, derived once from the box modules and committed: every (module, name) a from-import brings in, every
+# attribute used on each allowed module, and every getattr as (base, constant name).
+IMPORT_FROM_ALLOWED = frozenset({("__future__", "annotations"), ("box", "preflight"), ("box", "run_take"),
+                                 ("dataclasses", "dataclass"), ("dataclasses", "field"), ("decimal", "Decimal"),
+                                 ("decimal", "InvalidOperation"), ("typing", "Callable")})
+MODULE_ATTRS = {
+    "agent_adapter": frozenset({"COUNTER_FIELDS"}), "dataclasses": frozenset({"replace"}),
+    "harness_bookkeeping": frozenset({"CLAUDE_CODE"}), "hashlib": frozenset({"sha256"}),
+    "json": frozenset({"dump", "dumps", "loads"}),
+    "preflight": frozenset({"expected_take_inspect", "inspect_mismatches"}),
+    "re": frozenset({"IGNORECASE", "compile", "escape", "fullmatch", "search"}),
+    "run_take": frozenset({"AGENT_USER", "CLAUDE_CODE", "CODEX", "CONFIG_MOUNT", "GEMINI", "HARNESS_ENV",
+                           "INSPECT_PATHS", "INSPECT_STATUS", "KEEPALIVE_COMMAND", "KEEPALIVE_USER", "LOGIN_VARIABLE",
+                           "NotReady", "PENDING", "PENDING_WHY", "PROXY_ALIAS", "PROXY_URL", "RUNTIME_CLIENT",
+                           "Refused", "_abs_path", "_check_id", "_is_pending", "_known_harness", "_path_get",
+                           "_write_json", "agent_exec_argv", "check_spec", "config_home_names",
+                           "outside_every_repository", "refused_variables", "runtime_env"}),
+    "secrets": frozenset({"token_hex"}), "shutil": frozenset({"rmtree"}),
+    "stat": frozenset({"S_IMODE", "S_ISLNK", "S_ISREG"}), "sys": frozenset({"path"}),
+}
+GETATTR_ALLOWED = frozenset({("e", "filename"), ("e", "stdout")})
 FORBIDDEN_OS = re.compile(r"(kill|killpg|system|popen|fork|forkpty|posix_spawnp?|exec[lvpe]*|spawn[lvpe]*)")
 
 
@@ -1543,6 +1564,19 @@ def audit_source(rel: str, source: str) -> list:
     attr_bases = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
     parents = {id(c): n for n in ast.walk(tree) for c in ast.iter_child_nodes(n)}
     for node in ast.walk(tree):
+        # W4B3-3, default-deny by construction over from-imports, module attributes and getattr.
+        if isinstance(node, ast.ImportFrom):
+            for a in node.names:
+                if (node.module, a.name) not in IMPORT_FROM_ALLOWED or a.asname:
+                    out.append(f"{rel}: from {node.module} import {a.name} is not in IMPORT_FROM_ALLOWED")
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id in MODULE_ATTRS \
+                and node.attr not in MODULE_ATTRS[node.value.id]:
+            out.append(f"{rel}: {node.value.id}.{node.attr} is not in MODULE_ATTRS")
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "getattr":
+            base = node.args[0].id if node.args and isinstance(node.args[0], ast.Name) else None
+            const = node.args[1].value if len(node.args) > 1 and isinstance(node.args[1], ast.Constant) else None
+            if (base, const) not in GETATTR_ALLOWED:
+                out.append(f"{rel}: getattr({base}, {const!r}) is not in GETATTR_ALLOWED")
         # W4B2-2, default-deny: os only through its committed attribute list; no dunder outside its committed list.
         if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "os" \
                 and node.attr not in OS_ATTRS:
@@ -1721,8 +1755,27 @@ class TestAuditAllowlists(MutantCase):
                     dunders.add(name)
         return os_attrs, dunders
 
+    def used3(self):
+        imp, attrs, ga = set(), {}, set()
+        for rel in BOX_MODULES:
+            tree = ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())
+            for n in ast.walk(tree):
+                if isinstance(n, ast.ImportFrom):
+                    imp |= {(n.module, a.name) for a in n.names}
+                if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id in MODULE_ATTRS:
+                    attrs.setdefault(n.value.id, set()).add(n.attr)
+                if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "getattr" \
+                        and len(n.args) > 1 and isinstance(n.args[0], ast.Name) and isinstance(n.args[1], ast.Constant):
+                    ga.add((n.args[0].id, n.args[1].value))
+        return imp, attrs, ga
+
     def check(self):
         out = list(process_audit())
+        imp, attrs, ga = self.used3()
+        out += [f"IMPORT_FROM_ALLOWED holds unused {x}" for x in sorted(set(IMPORT_FROM_ALLOWED) - imp)]
+        out += [f"MODULE_ATTRS holds unused {m}.{a}" for m, v in MODULE_ATTRS.items() for a in sorted(v)
+                if a not in attrs.get(m, set())]
+        out += [f"GETATTR_ALLOWED holds unused {x}" for x in sorted(set(GETATTR_ALLOWED) - ga)]
         os_attrs, dunders = self.used()
         out += [f"OS_ATTRS holds unused {a}" for a in sorted(set(OS_ATTRS) - os_attrs)]
         out += [f"DUNDERS_ALLOWED holds unused {d}" for d in sorted(set(DUNDERS_ALLOWED) - dunders)]
@@ -1739,6 +1792,13 @@ class TestAuditAllowlists(MutantCase):
             ("dunders-emptied", patched(me, "DUNDERS_ALLOWED", frozenset())),
             ("subprocess-uses-widened", patched(me, "SUBPROCESS_USES", SUBPROCESS_USES | {("run", "value")})),
             ("subprocess-uses-emptied", patched(me, "SUBPROCESS_USES", frozenset())),
+            ("import-from-widened", patched(me, "IMPORT_FROM_ALLOWED", IMPORT_FROM_ALLOWED | {("os", "system")})),
+            ("import-from-emptied", patched(me, "IMPORT_FROM_ALLOWED", frozenset())),
+            ("module-attrs-widened", patched(me, "MODULE_ATTRS", dict(MODULE_ATTRS, json=MODULE_ATTRS["json"]
+                                                                       | {"JSONDecoder"}))),
+            ("module-attrs-emptied", patched(me, "MODULE_ATTRS", {k: frozenset() for k in MODULE_ATTRS})),
+            ("getattr-widened", patched(me, "GETATTR_ALLOWED", GETATTR_ALLOWED | {("e", "args")})),
+            ("getattr-emptied", patched(me, "GETATTR_ALLOWED", frozenset())),
         ])
 
     def test_subprocess_rule_fires_on_the_real_call(self):
