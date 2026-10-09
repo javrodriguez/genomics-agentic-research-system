@@ -1307,5 +1307,39 @@ class Round3(unittest.TestCase):
         self.assertIsNotNone(before)
 
 
+# glitch-f3's fold-and-close ruling (01:26 EDT Fri 9 Oct 2026, under Javier's delegation): fold exactly round 4's
+# MAJOR (W4N4-1) as its reviewer wrote it, behind a committed closing gate built from the reviewer's own cases.
+REVIEWER_CASES = ("cd /r/gars; source _system/gars-env.sh",
+                  "cd /r/gars; source _system/gars-env.sh; nextflow run nf-core/rnaseq -profile singularity")
+
+
+class ClosingGate(unittest.TestCase):
+    """The closing gate for W4N4-1: sourcing gars-env.sh after a semicolon is a stage 02 move at T6, T8 and T4, and
+    the reviewer's mutant (the `;` dropped from the separator class) is red."""
+
+    def test_w4n4_1_sourcing_after_a_semicolon_reads_past(self):
+        self.assertEqual(CALLS["env-semicolon"], ("cd /r/gars; source _system/gars-env.sh", OK, "s02"))
+        t, _ = docs()
+        wps = t["pause"]["wait_points"]
+        for marker in (M_DESIGN, M_VERIFY, M_TABLE):
+            pats = [p for p in wps[marker]["past"] if p["tool"] == "shell"]
+            got = side_readings(pats, {f"case{i}": (c, OK, "s02") for i, c in enumerate(REVIEWER_CASES)})
+            self.assertEqual(got, {"case0": True, "case1": True}, marker)
+        self.assertEqual(wait_point_misreads(wps), [])
+        self.assertEqual(fragment_problems(wps), [])
+
+    def test_w4n4_1_the_reviewers_mutant_is_red(self):
+        t, _ = docs()
+        wps = t["pause"]["wait_points"]
+        mutant = copy.deepcopy(wps)
+        for marker in (M_DESIGN, M_VERIFY, M_TABLE):
+            for p in mutant[marker]["past"]:
+                p["match"] = p["match"].replace("[;&|(]", "[&|(]")
+        self.assertNotEqual(mutant, wps)
+        got = wait_point_misreads(mutant)
+        for marker in (M_DESIGN, M_VERIFY, M_TABLE):
+            self.assertIn(f"{marker!r} past misses env-semicolon", got)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
