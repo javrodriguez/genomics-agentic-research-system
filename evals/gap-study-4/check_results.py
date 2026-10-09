@@ -462,6 +462,8 @@ def pipeline():
 
 def check_publication(rows, history, records, pre, page, grade, table=None):
     import result
+    for row in rows:
+        takes_mod.require_planned_row(row, pre)
     stats.check_records(records)
     wanted = pipeline().produce(rows, history, grade, table=table)["records"]
     rendered = result.render(result.from_records(wanted, pre, rows, history, table))

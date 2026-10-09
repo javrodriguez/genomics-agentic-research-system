@@ -127,22 +127,33 @@ def record_for(row: dict, outcome: dict, grade: dict) -> dict | None:
     return stats.validate_record(record)
 
 
+def require_registered_outcome(outcome: dict, registered: dict) -> None:
+    key = (outcome["slot"], outcome["attempt"])
+    if key not in registered:
+        raise ValueError("an outcome has no registered row")
+    row = registered[key]
+    if row["half_cell"] != outcome["half_cell"]:
+        raise ValueError("the outcome differs from its registered half-cell")
+    records = outcome["records"]
+    if records is not None:
+        pin = records["pin"]
+        if any(pin.get(k) != v for k, v in dict(model=row["model"], **row["agent"]).items()):
+            raise ValueError("the outcome differs from its registered model or agent")
+
+
 def produce(rows: list, history: list, grade, *, table=None) -> dict:
     """Re-verify every attempt, then grade final eligible takes; no routing repair."""
     table = routing.load_table() if table is None else table
     registered = check_results.validate_ledger(rows)
     for o in history:
         if not batch.is_ruling(o):
+            require_registered_outcome(o, registered)
             verify_route(o, table)
     published = check_results.publication(history, table)
     records, audit = [], []
     for o in published["outcomes"]:
         key = (o["slot"], o["attempt"])
-        if key not in registered:
-            raise ValueError("an outcome has no registered row")
         row = registered[key]
-        if row["half_cell"] != o["half_cell"]:
-            raise ValueError("the outcome names another half-cell")
         result = grade(row, o) if o["state"] == labels4.GRADED else {}
         cell = published["cells"].get(o["half_cell"])
         rec = record_for(row, dict(o, cell_state=cell["state"] if cell else o["cell_state"]), result)
