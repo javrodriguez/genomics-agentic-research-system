@@ -19,7 +19,7 @@ WHAT IT DOES, in order:
      sha256 and whose ruling is DO FREEZE: freeze.py requires a committed review that lands exactly one report, and
      the rehearsal must exercise that rule, not skip it. The report is synthetic and says so on its second line;
   3. runs `freeze.py --review-commit <that commit> --rehearsal --write` in the clone and commits the frozen file;
-  4. runs the entire gate on the frozen state -- THIS round's gate, which is the fourteen commands its own
+  4. runs the entire gate on the frozen state -- THIS round's gate, which is the required commands its own
      reviewer brief names plus the two earlier rounds' checkers: the battery, `copy_manifest.py --check`,
      `allowlist.py --check`, `build_draft.py --check`, `leak_grep.py --check`, `fixture_walk.py` in its four
      modes, `mode_binding.py` over the walks and the takes, `review_kit/rounds.py --check`, both language
@@ -66,6 +66,16 @@ CLONES = Path.home() / f".{study.STUDY}-rehearsal"
 NOT_DONE = ("the synthetic full ledger of 108 takes: not done, no synthetic graded-take generator exists; the ledger "
             "was exercised with one real registered row instead")
 
+
+# Level 3, including the battery. This constant is inspected on the Mac;
+# executing this module belongs to the lead's rehearsal on the remote runner.
+COMMANDS = (
+    ("test_round4.py",), ("copy_manifest.py", "--check"),
+    ("tests/test_box_integration.py",), ("tests/test_pipeline.py",),
+    ("probes4.py", "--check"), ("build_draft.py", "--check"),
+    ("leak_grep.py", "--check"), ("holdout.py", "--check"),
+    ("review_kit/rounds.py", "--check"),
+)
 
 def sh(argv: list[str], cwd: Path, env: dict | None = None, timeout: int = 3600) -> tuple[int, str]:
     r = subprocess.run(argv, cwd=str(cwd), capture_output=True, text=True, env=env, timeout=timeout)
@@ -148,44 +158,15 @@ def main() -> int:
             # ROUND 3, REVIEW 1 BLOCKER 2. Round 2 rewrote its round-1 regrade record here, against the
             # frozen file. This round has no such record -- it regrades nothing of an earlier round -- so
             # the freeze commit lands the frozen file alone.
-            git(clone, "add", "--", str((study_dir / "prereg.json").relative_to(clone)))
+            git(clone, "add", "--", *(f"{study.STUDY_REL}/{p}" for p in ("prereg.json", "COPIED.json", "COPIED.d/freeze.json")))
             git(clone, "commit", "-q", "-m", "freeze: the pre-registration, rehearsed")
         # 4. the gate on the frozen state
         S = study.STUDY_REL
-        for name, argv in [
-            ("prereg.py --status", [sys.executable, f"{S}/prereg.py", "--status"]),
-            ("copy_manifest.py --check", [sys.executable, f"{S}/copy_manifest.py", "--check"]),
-            # ROUND 3, REVIEW 1 BLOCKER 2. Round 2's gate named test_harness.py, mutations, the controls and
-            # regrade modes of check_results.py, the round-1 regrade script and a clean-clone battery. None
-            # of those exists in this round, so the rehearsal could never have ended `all green`. This is
-            # THIS round's gate: the fourteen commands its own reviewer brief names, plus the two earlier
-            # rounds, which must stay green.
-            ("test_round3.py", [sys.executable, "-W", "ignore", f"{S}/test_round3.py"]),
-            ("allowlist.py --check", [sys.executable, f"{S}/allowlist.py", "--check"]),
-            ("build_draft.py --check", [sys.executable, f"{S}/build_draft.py", "--check"]),
-            ("leak_grep.py --check", [sys.executable, f"{S}/leak_grep.py", "--check"]),
-            ("fixture_walk.py --static", [sys.executable, f"{S}/fixture_walk.py", "--static"]),
-            ("fixture_walk.py --finding", [sys.executable, f"{S}/fixture_walk.py", "--finding"]),
-            ("fixture_walk.py --check", [sys.executable, f"{S}/fixture_walk.py", "--check"]),
-            ("fixture_walk.py --coverage", [sys.executable, f"{S}/fixture_walk.py", "--coverage"]),
-            ("mode_binding.py --walks --check", [sys.executable, f"{S}/mode_binding.py", "--walks", "--check"]),
-            ("mode_binding.py --check", [sys.executable, f"{S}/mode_binding.py", "--check"]),
-            ("review_kit/rounds.py --check", [sys.executable, f"{S}/review_kit/rounds.py", "--check"]),
-            ("contracts.py --check", [sys.executable, f"{S}/contracts.py", "--check"]),
-            ("fixtures/check_fixture.py --all", [sys.executable, f"{S}/fixtures/check_fixture.py", "--all"]),
-            ("lint_language.py", [sys.executable, f"{S}/lint_language.py", f"{S}/"]),
-            ("lint_pooling.py", [sys.executable, f"{S}/lint_pooling.py", f"{S}/"]),
-            ("check_results.py", [sys.executable, f"{S}/check_results.py"]),
-            ("check_results.py --ledger", [sys.executable, f"{S}/check_results.py", "--ledger"]),
-            ("result.py --check", [sys.executable, f"{S}/result.py", "--check"]),
-            ("completeness.py --check", [sys.executable, f"{S}/completeness.py", "--check"]),
-            ("costs.py --check", [sys.executable, f"{S}/costs.py", "--check"]),
-            # the two earlier rounds must stay green (the checklist requires it; round 2's review 3 asked
-            # the rehearsal to show it)
-            ("evals/gap-study/check_results.py", [sys.executable, "evals/gap-study/check_results.py"]),
-            ("evals/check_results.py --controls --lexicon", [sys.executable, "evals/check_results.py", "--controls", "--lexicon"]),
-        ]:
-            step(name, argv)
+        for command in COMMANDS:
+            # Do not filter absent files: the interpreter reports a missing gate
+            # as a failure, including gates supplied by later lanes.
+            argv = [sys.executable, "-B", "-W", "ignore", f"{S}/{command[0]}", *command[1:]]
+            step(" ".join(command), argv)
         # the clean clone's own record, which lived inside the clone and was lost with it (review 2, round 2)
         # ROUND 3: this round runs no clean-clone battery, so there is no such record to carry.
         cc = sorted((study_dir / "verification").glob("clean-clone-*.txt"), key=lambda p: p.stat().st_mtime)

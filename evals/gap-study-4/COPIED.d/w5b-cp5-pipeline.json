@@ -57,6 +57,12 @@
       "status": "edited",
       "source": "evals/gap-study-3/costs.py",
       "reason": "R6 R11 R29: per-call costs, dated prices and round spending predicates."
+    },
+    {
+      "path": "freeze_rehearsal.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/freeze_rehearsal.py",
+      "reason": "R19 R20: local imports and complete frozen-state round 4 gate."
     }
   ]
 }

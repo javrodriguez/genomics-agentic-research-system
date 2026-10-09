@@ -108,11 +108,6 @@
       "source": "evals/gap-study-3/fixtures/symbol_rulings.json"
     },
     {
-      "path": "freeze_rehearsal.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/freeze_rehearsal.py"
-    },
-    {
       "path": "language-allowlist.json",
       "status": "edited",
       "source": "evals/gap-study-3/language-allowlist.json",

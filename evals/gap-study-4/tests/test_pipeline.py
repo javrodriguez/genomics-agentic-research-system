@@ -50,7 +50,7 @@ def mutations():
     validate_ruling = getattr(takes, "validate_ruling", None)
     runner = get_run()
     return {
-        "pin-all": (freeze, "owned_paths", lambda manifest, folder: [p for p in manifest.read_fragments(folder)[0] if p.endswith(".py")]),
+        "pin-all": (freeze, "owned_paths", lambda manifest, folder: [e["path"] for lane, e in manifest.load_fragments(folder)[0] if e["path"].endswith(".py")]),
         "rehearsal-commands": (freeze_rehearsal, "COMMANDS", ()),
         "freeze-claims": (freeze, "output_fragment", lambda: {"lane": "freeze", "files": []}),
         "freeze-once": (freeze, "outputs_exist", lambda root: False),
@@ -809,7 +809,7 @@ class FreezeCoverage(unittest.TestCase):
             self.assertIn("COPIED.d/synthetic.json", paths)
             self.assertIn("instrument.txt", paths)
             self.assertIn("prereg-draft.json", paths)
-            expected = {entry["path"] for entry in cm.derive(folder)["files"]}
+            expected = {entry["path"].removeprefix(study.STUDY_REL + "/") for entry in cm.derive(folder)["files"]}
             self.assertEqual(set(paths), expected)
             with mock.patch.object(freeze, "owned_paths", lambda m, f: []):
                 self.assertNotEqual(set(freeze.owned_paths(cm, folder)), expected)
