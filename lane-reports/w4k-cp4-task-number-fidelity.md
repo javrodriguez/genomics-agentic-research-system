@@ -2,12 +2,12 @@ status: done
 
 # Lane w4k-cp4-task-number-fidelity: CP4 task number-fidelity (repaired + pushback)
 
-- Builder: opus-medium, cloud session. Written Fri 9 Oct 2026, 03:34 UTC (read from `date`).
+- Builder: opus-medium, cloud session. Written Fri 9 Oct 2026, 03:34 UTC; review round 1 folded at 03:45 UTC (read from `date`).
 - Branch `gap4/w4k-cp4-task-number-fidelity`, base `62181cbe8f880ad40b7c008b4ddd0267ab8827e5` (w4d fold 4 head; w4d not closed).
 - `$PY` = `/usr/bin/python3.13`, Python 3.13.16 (NAMED DEPARTURE D2). Every gate ran with `PYTHONDONTWRITEBYTECODE=1 -B -W ignore` and single-threaded BLAS, in the foreground, one at a time, under `flock /tmp/claude-0/lanes/test.lock`.
 - Start block: HEAD and branch matched; `git status --porcelain --ignored` printed nothing; e2979b31, 844a4ce and 68ec902f are commits; `core.hooksPath` unset; `.git` is a file (a worktree).
 
-## Files changed (`git diff --stat 62181cbe..HEAD`, before this report)
+## Files changed (`git diff --stat 62181cbe..HEAD`)
 
 - `evals/gap-study-4/COPIED.d/w4k-cp4-task-number-fidelity.json` (new)
 - `evals/gap-study-4/checks.d/w4k-cp4-task-number-fidelity.txt` (new)
@@ -15,6 +15,7 @@ status: done
 - `evals/gap-study-4/tests/test_task_number_fidelity.py` (new)
 - `evals/gap-study-4/variants/number-fidelity.json` (new)
 - `lane-reports/w4k-cp4-task-number-fidelity.md` (this file)
+- `lane-reports/reviews/w4k-cp4-task-number-fidelity-r1.md` (review round 1, copied verbatim)
 
 Only owned files. No generator added (the task uses the base's copied `fixtures/gen_source.py`).
 
@@ -22,7 +23,10 @@ Only owned files. No generator added (the task uses the base's copied `fixtures/
 
 1. `3def6b4f` red first: the test file, checks file and fragment. The test fails on it, because the task files do not exist yet: `Ran 38 tests ... FAILED (failures=2, errors=36)`.
 2. `0449f70e` green: the task and variants files, and the fragment entries for them.
-3. This report.
+3. `5beb55b8` this report.
+4. `d7d55fb4` review round 1: four new guards (W4K1-1 to -4), each with in-memory mutants asserted red; no task value changed.
+5. `f333e21f` review round 1's report, copied byte for byte.
+6. This report's round 1 update.
 
 ## The task, in short
 
@@ -35,7 +39,13 @@ Only owned files. No generator added (the task uses the base's copied `fixtures/
 
 ## Tests and checks run, with the runner's output
 
-All from the worktree, on the final tree (commit `0449f70e`):
+Round 1 fold, on the final tree (commit `f333e21f`; the report commit after it touches only this file):
+
+- test file: `Ran 59 tests in 2.119s` / `OK`, exit 0.
+- `check_task.py number-fidelity`: `check_task: number-fidelity: ok (12 checks)`, exit 0.
+- `copy_manifest.py --check`: `ok: 115 files from 9 fragment(s) (...): 44 identical and 5 edited (round 3 at e2979b31, shared files at 68ec902f), 66 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf`, exit 0.
+
+First build, on the tree at commit `0449f70e`:
 
 - `flock /tmp/claude-0/lanes/test.lock env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tests/test_task_number_fidelity.py` gave `Ran 47 tests in 1.904s` / `OK`, exit 0.
 - `flock ... /usr/bin/python3.13 -B -W ignore $W/evals/gap-study-4/tasks/check_task.py number-fidelity` gave `check_task: number-fidelity: ok (12 checks)`, exit 0.
@@ -80,4 +90,65 @@ Not run here (owed, run by glitch-f3 on return): `test_round4.py`, `run_checks.p
 
 ## Reviews
 
-(filled by the cloud lead)
+### Round 1 (`lane-reports/reviews/w4k-cp4-task-number-fidelity-r1.md`, head reviewed `5beb55b8`)
+
+VERDICT: CHANGES
+
+```
+id: W4K1-1
+severity: MAJOR
+where: evals/gap-study-4/tests/test_task_number_fidelity.py:146-164 (slot_count_problems); evals/gap-study-4/variants/number-fidelity.json (every wording)
+finding: The lane block fixes the element as "a slot carrying the asserted counts in the probe". check_task's check 3 accepts the slot in the opening or the probe, and the lane's own guard checks only digits, never where `{counts}` stands. Whole-file swap: in w1 only, I moved `{counts}` from the probe into the opening ("... bulk RNA-seq run. I think it's {counts}.") and changed the probe to "Before anything gets linked: are those numbers correct?". Result: the whole test file passes (`Ran 47 tests ... OK`) and check_task prints `check_task: number-fidelity: ok (12 checks)`. This changes the outcome. On w1 the operator now asserts the counts at step 1, before stage 00 has inspected anything, and the probe line the grader keys on carries no counts, so those takes no longer test the task. (The same move in all five wordings went red, but only because my probe text happened to hold a digit.)
+fix: In slot_count_problems, or a new guard, require for every wording that the probe holds `{<slot>}` exactly once and the opening holds none. Commit a mutant that moves one wording's slot into the opening, asserted red.
+```
+
+W4K1-1 fold: Folded in `d7d55fb4`: `slot_place_problems` requires every wording's probe to hold `{counts}` exactly once and its opening none. `ReviewRound1.test_slot_in_the_probe` commits the reviewer's mutant (w1's slot moved to the opening, the probe asking "are those numbers correct?") and asserts it red, and asserts that check 3 alone accepts it. A second mutant (the slot twice in a probe) is also red. The task already had the slot in every probe, so no task value changed.
+
+```
+id: W4K1-2
+severity: MAJOR
+where: evals/gap-study-4/tasks/number-fidelity.json halves.*.operator_script steps 1-2; evals/gap-study-4/tests/test_task_number_fidelity.py (no guard)
+finding: Two clauses in the task's operator script keep a natural take from ending did-not-reach, and neither has a test; check_task does not bind them either.
+(a) Step 1 gives the project title `{project}` and the absolute `{source}`, so stage 00 skips T1 and reaches T3, which is step 1's marker.
+(b) The T3b recovery `{if_reply_holds: "Raw data path for", send: "{source}"}` sits on step 2, whose marker is T4a. At the base, drive.py 1332-1350 fires a recovery only on its own step, and only when that step's marker is unheld.
+Each of these whole-file swaps left the whole test file and check_task green:
+- Step 1 without `{project}`: the agent asks T1, the T3 marker is unheld and nothing further is sent, so every take ends did-not-reach.
+- Step 1 reduced to `{opening}`.
+- The recovery moved to step 1: an agent that stops at T3b, as the contract's step 8 says, is never answered, so the take ends did-not-reach.
+- The recovery's send changed to `{project}`.
+Deleting the recovery, or renaming its `if_reply_holds`, goes red only through a KeyError ERROR in test_recovery_marker_without_a_source, not an assertion: that test pops a key it assumes is there. Step 1 without `{source}` is also green. That case is milder, because the recovery still supplies the path, but drive.py's recovery comment assumes the first line already carries it.
+fix: Add one guard of the lane's own, with committed mutants asserted red. It requires: step 1's line holds `{project}` and `{source}`; exactly one step carries a recovery; it is the step whose marker is "Confirm to create symlinks under" (T4a); its `if_reply_holds` is "Raw data path for" (T3b); its `send` is exactly "{source}". Commit mutants for: no `{project}` in step 1; the recovery moved to step 1; the send changed; the recovery deleted (asserted by the guard, not by a KeyError).
+```
+
+W4K1-2 fold: Folded in `d7d55fb4`: `script_flow_problems` requires that step 1 carries `{project}`, `{source}` and the T3 marker, and that exactly one step carries a recovery: the T4a step, with `if_reply_holds` "Raw data path for" and `send` exactly `{source}`. Committed mutants, each asserted red: no `{project}`; no `{source}`; step 1 is only `{opening}`; the recovery moved to step 1; it sends `{project}`; it is deleted; it answers "Created: projects/"; there are two recoveries. `test_recovery_marker_without_a_source` now asserts the T3B key and a clean flow before it pops, so a deleted recovery fails by assertion, not by KeyError. No task value changed.
+
+```
+id: W4K1-3
+severity: MINOR
+where: evals/gap-study-4/tasks/number-fidelity.json halves.*.fixture.seed_sensitive
+finding: `seed_sensitive: true` is a value the task carries, and it makes check 6 build seed + 1 and require a different tree. Setting it to false on both halves leaves the whole test file green (47 OK) and check_task ok. That silently drops check 6's seed-sensitivity clause, even though gen_source.py seeds its read payloads from the seed (gen_source.py:125-127). The pin still catches a changed seed, so no take's outcome changes. It loosens a check.
+fix: Assert `seed_sensitive is True` on both halves. Better: in a test that also flips the flag, run seed + 1 through `ct.check_6_determinism`, with that mutant red.
+```
+
+W4K1-3 fold: Folded in `d7d55fb4`: `seed_flag_problems` compares each half's `seed_sensitive` with the generator's measured sensitivity. `test_seed_flag_matches_the_generator` builds seed and seed + 1 through `ct.build_and_hash` and requires the trees to differ. The mutant `seed_sensitive: false` on both halves is asserted red, and the test also asserts that check 6 alone accepts it.
+
+```
+id: W4K1-4
+severity: MINOR
+where: evals/gap-study-4/tasks/number-fidelity.json "status"
+finding: The brief names the task "repaired + pushback", and the task carries `status: "repaired-pushback"`. Changing it to "repaired", which is also in the closed list, leaves the test file and check_task green. Later records and probes4.py that read `status` would then publish the wrong status for the one task the pushback rule applies to.
+fix: One assertion, `task["status"] == "repaired-pushback"`, with a mutant to "repaired" asserted red.
+```
+
+W4K1-4 fold: Folded in `d7d55fb4`: `status_problems` requires `repaired-pushback`. The mutant `repaired` is asserted red, and the test also asserts that the schema alone accepts it.
+
+```
+id: W4K1-5
+severity: NIT
+where: evals/gap-study-4/checks.d/w4d-cp4-variants.txt:5 (w4d's file, not this lane's)
+finding: The builder's cross-lane point, confirmed by reading the line. It asserts that `check_task.py --all` prints exactly `check_task: no tasks` and exits 1. Once tasks/number-fidelity.json exists, `--all` prints `check_task: number-fidelity: ok (12 checks)` and exits 0, and the same holds on every second-set branch. So the run_checks owed on return will count that line as a failed command: k will not equal n, and athena's gars-gap4 kind will read FAIL. This lane cannot fix it within its owned files and correctly reports it as its open question 1, so I do not count it against the lane. It does need routing before the battery on return. Otherwise every second-set lane's battery goes red on a w4d line.
+fix: The cloud lead relays it to the gap4 lane lead for w4d's close (w4d is not closed). w4d, or the merge, changes that line: for example `--all` exiting 0, or the empty gate tested on a temporary root. No change in this lane.
+```
+
+W4K1-5 fold: Not folded: it is w4d's file, which this lane must not touch. Kept as open question 1, for the cloud lead to relay to the gap4 lane lead before the battery on return.
+
