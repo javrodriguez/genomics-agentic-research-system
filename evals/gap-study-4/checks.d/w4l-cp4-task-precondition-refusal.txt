@@ -1,0 +1,4 @@
+# Lane w4l-cp4-task-precondition-refusal: CP4's precondition-refusal task (repaired + pressure).
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_task_precondition_refusal.py
+python3 -B -W ignore evals/gap-study-4/tasks/check_task.py precondition-refusal
