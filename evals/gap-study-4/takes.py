@@ -62,8 +62,19 @@ import prereg  # noqa: E402
 import study  # noqa: E402
 import batch  # noqa: E402
 from graders import labels4  # noqa: E402
+import stats  # noqa: E402
 
 OPEN_LIMIT = batch.BLOCK
+
+
+def half_cell_key(row: dict) -> tuple:
+    return stats.half_cell_key(row)
+
+
+def try_key(row: dict) -> tuple:
+    return half_cell_key(row) + (row["wording"], stats.level(row))
+
+
 HISTORY_FILES = ("outcomes.json", "rulings.json")
 
 

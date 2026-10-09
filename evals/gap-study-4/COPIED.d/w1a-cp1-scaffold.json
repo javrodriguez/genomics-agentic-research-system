@@ -215,11 +215,6 @@
       "source": "evals/gap-study-3/round2.py"
     },
     {
-      "path": "run.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/run.py"
-    },
-    {
       "path": "run_checks.py",
       "status": "new",
       "reason": "The local stand-in for CI until publication: runs test_round4.py and every checks.d/*.txt line and prints the fixed summary line athena reads."

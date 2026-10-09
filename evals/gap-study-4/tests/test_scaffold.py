@@ -38,7 +38,6 @@ OWN_FRAGMENT = cm.FRAGMENTS / f"{LANE}.json"
 # checkpoint's file; when that file lands this test goes red and the entry must go.
 BLOCKED = {
     "drive.py": "SystemExit: no pre-registration: neither prereg.json nor prereg-draft.json exists.",
-    "run.py": "ModuleNotFoundError: No module named 'labels'",
 }
 
 # Run in a fresh interpreter, from a folder outside the study, as `python3 <path>` would: the file's own folder is

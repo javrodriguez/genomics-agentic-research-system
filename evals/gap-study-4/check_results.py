@@ -60,6 +60,27 @@ import transcript as tx  # noqa: E402
 import batch  # noqa: E402
 import routing  # noqa: E402
 from graders import labels4  # noqa: E402
+import stats  # noqa: E402
+
+
+def validate_ledger(rows: list) -> dict:
+    """Registered identities, never filling an agent or pooling two harnesses."""
+    registered, cells, slots = {}, {}, {}
+    for row in rows:
+        bad = takes_mod.agent_problems(row)
+        if bad:
+            raise ValueError("; ".join(bad))
+        identity = {k: row[k] for k in stats.TAKE_FIELDS[:8]}
+        stats.validate_record(dict(identity, route=labels4.GRADED, cell_state=None,
+                                   label="identity-only", views={v: "wrong" for v in stats.VIEWS}))
+        key = (row["slot"], row["attempt"])
+        if type(row["attempt"]) is not int or row["attempt"] < 1 or key in registered:
+            raise ValueError("a registration needs a unique slot and positive attempt")
+        cell, slot = takes_mod.half_cell_key(row), takes_mod.try_key(row)
+        if cells.setdefault(row["half_cell"], cell) != cell or slots.setdefault(row["slot"], slot) != slot:
+            raise ValueError("one cell or slot id names two identities (including harness)")
+        registered[key] = row
+    return registered
 
 
 def verify_route(outcome: dict, table: dict) -> None:
