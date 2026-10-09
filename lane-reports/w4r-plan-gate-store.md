@@ -39,7 +39,8 @@ One code line in `approval_at`, under the named exception:
 - `check_spec` is unchanged.
   The store is still never the plan itself, never a path under the plan, and never a folder holding the plan.
   The real spec (store `.../01_sample-pca/PLAN.md.approved`) already passed it.
-- For a folder store (`.gars-approvals/`) nothing moves: the folder itself is excluded by `is_folder`, as before.
+- For a folder store (`.gars-approvals/`) nothing moves on every take w3b's tests cover: the folder itself is excluded by `is_folder`, as before.
+  It does not hold in general (named residual W4R1-1 below).
 - Consequences, named:
   - An unreadable entry at the store's own path is now refused, like any unreadable record (before, it was skipped).
     No w3b case or refusal take has one; the constructed-store comparison below shows nothing moved.
@@ -92,6 +93,28 @@ Not run here, by the brief: `test_round4.py`, `run_checks.py`, `test_preconditio
 - `lane-reports/w4r-plan-gate-store.md` (this file).
 
 No checks.d file and no COPIED.d fragment: both files are already claimed `new` by w3b's fragment, and w3b's checks file already runs `tests/test_plan_gate.py`.
+
+## Review
+
+One review, round 1, by an opus-medium reviewer: `VERDICT: PASS`, no MAJOR, no MINOR, two NITs (`scratchpad/w4-review/w4r_r1_findings.md`).
+The lane lead decided on this one report-only commit: both NITs are named residuals here, with no change to `plan_gate.py` or any test.
+
+## Named residuals (review round 1)
+
+- **W4R1-1 (NIT): "nothing moves" for a folder store holds on every take w3b covers, not in general.**
+  Results move when the folder store's own path holds something other than a folder.
+  The reviewer's moves, from its probe (head against c43f3f85):
+  - unreadable: `forged H` or `held ok` at the base, refused at the head;
+  - a file holding a bound record, plus a stamp: `forged H` at the base, `proceeded H` at the head;
+  - a link: `held ok` at the base, `forged H` at the head;
+  - a fixture that ships the store as a link to a folder: `held ok` at the base, refused at the first snapshot at the head.
+
+  Every move is fail-closed or more correct, and no live task uses a folder store (w4m's task uses the record file).
+  For a folder store, a non-folder entry at the store's own path (a file, a link, an unreadable entry) is now read as a record, so a later task whose fixture ships its store as a link is refused at the first snapshot.
+- **W4R1-2 (NIT): with a record-file store, records under a folder made at that path still count.**
+  An agent can `mkdir PLAN.md.approved`, write a bound record inside it and stamp the plan by hand with no approve run; that reads `proceeded H` on the normal half, while stage 03's own `verify` would refuse it (`record_path.is_file()` is false).
+  The base reads it the same way.
+  The human sample catches it, since no approve ran: the command reader and the end state disagree.
 
 ## For the lane lead
 
