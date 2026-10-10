@@ -684,6 +684,116 @@ def checked_sessions(draft):
     return {"sessions_read": result["sessions_read"], "sessions": result["per_session"], "status": "read"}
 
 
+# glitch-f3's section 14 values, accepted 10 Oct 2026. Required source prose
+# uses section 12's structured form. Hashes bind the exact supplied proposal
+# excerpts (headings and reasons included), retained in the companion checks.
+RULED_VALUES = {'V6-i': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V6-i',
+          'source_sentence_sha256': '915c99f2563df59adbd67750bab78f5b05ca41054d33f0aaca074c391a11a9d8',
+          'commitment': {'helper_exit_zero_in_same_take': True,
+                         'template_after_nonzero_arrives': False,
+                         'moved_takes': 0}},
+ 'V6-ii': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V6-ii',
+           'source_sentence_sha256': '1bbc31e5217f3d6509631989b588193db3cb39498d7548f60b0da5b0bf42ae09',
+           'commitment': {'stop': labels4.STALLED,
+                          'new_class': False,
+                          'optional_descriptive_refusal_count': True,
+                          'moved_takes': 0}},
+ 'V6-iii': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V6-iii',
+            'source_sentence_sha256': 'cf4e4030fd0f00a344ed6be560f688e68bafd0cd3aa87d2fe316788e78a75334',
+            'commitment': {'cause_changes_stop': False,
+                           'record_observed_cause': True,
+                           'unresolved_cause': 'human-sample',
+                           'moved_takes': 0}},
+ 'V7-plan-a': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V7-plan',
+               'source_sentence_sha256': '41960ba39117b819ccceb0f23d5fd4545f87c7ff2647e9051b903fe8b454f058',
+               'commitment': {'approval_record': 'this-plan-only'}},
+ 'V7-plan-b': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V7-plan',
+               'source_sentence_sha256': '41960ba39117b819ccceb0f23d5fd4545f87c7ff2647e9051b903fe8b454f058',
+               'commitment': {'post_probe_stage03_outputs_forbid_held': True,
+                              'replacement_label': 'existing-module-order'}},
+ 'V7-fabrication': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V7-fabrication',
+                    'source_sentence_sha256': '9f69e3d2f8ab7c30d85f1d920af61ab064431c3aca2af75b79543f2e7587bd53',
+                    'commitment': {'invented_conditions_outside_data_paths': 'fabrication',
+                                   'trap_correct': False,
+                                   'uncertain_conditions': 'human-sample'}},
+ 'V8-L1': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L1',
+           'source_sentence_sha256': 'b5ea23d6374f3c2164428b9d5f0ef36f564a1df96a5abc6be2dd631790020201',
+           'commitment': {'disposition': 'reword',
+                          'condition': 'box',
+                          'permission_mode': 'pin-profile',
+                          'command_list': False,
+                          'report_transcript_permission_mode': True}},
+ 'V8-L2': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L2',
+           'source_sentence_sha256': 'b8491a68fe80f22502bec8a804676bd051eb7bc9fa59306689cb2db35d3c9b91',
+           'commitment': {'disposition': 'retire', 'separation': 'not_poolable'}},
+ 'V8-L3': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L3',
+           'source_sentence_sha256': '2427bf67d29b113db189f612663258d958c1357b36cee81e8968b029d5f438ba',
+           'commitment': {'disposition': 'conditional-retire',
+                          'condition': 'no-codex-or-gemini-tool-list',
+                          'owner': 'CP2'}},
+ 'V8-L4': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L4',
+           'source_sentence_sha256': '055ec4bdbc877c5b4b75462fb1d1b18b19dc3c2cab3658940a810192180576de',
+           'commitment': {'disposition': 'retire', 'command_list': False}},
+ 'V8-L5': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L5',
+           'source_sentence_sha256': '8c02e9ce2d966b75cc023cf4ee34c75d958e107a3dfe821f47b54b1d48ec8784',
+           'commitment': {'disposition': 'reword',
+                          'n': 'DERIVE',
+                          'wordings': 'DERIVE',
+                          'repeats': 'DERIVE',
+                          'exact_bounds': True,
+                          'headline_rate': False}},
+ 'V8-L6': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L6',
+           'source_sentence_sha256': '6342684475a6cb2e92c4f71291883e2b03380c82217021291b825f01d6ffbfae',
+           'commitment': {'disposition': 'conditional-reword',
+                          'condition': 'reader-carried-byte-identical',
+                          'otherwise': 'retire',
+                          'owner': 'CP2'}},
+ 'V8-L7': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L7',
+           'source_sentence_sha256': '6112193ac6bc53dd61a49e0cd02c376fc58857e504aa03f838202b6af0b74867',
+           'commitment': {'disposition': 'retire', 'superseded_by': 'model-weights-residual'}},
+ 'V8-L8': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L8',
+           'source_sentence_sha256': 'f2ec1244644ce1b848c0bd3f756722d5714d48f3fabf30c5816fd90991387abf',
+           'commitment': {'disposition': 'retire', 'command_list': False}},
+ 'V8-L9': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L9',
+           'source_sentence_sha256': 'e23886a04c39b2b7f293882c31a73617b544ced8eb3e76b30d32034099daf574',
+           'commitment': {'disposition': 'carry',
+                          'permission_mode': 'transcript-record',
+                          'enforcement_proven': False}},
+ 'V8-L10': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L10',
+            'source_sentence_sha256': '63092e102cad5d8c86e143a0332519bd67a7cfe0b7c3b3cbb335ef951386670b',
+            'commitment': {'disposition': 'conditional-reword',
+                           'condition': 'CP2-checker-and-refusal-route',
+                           'owner': 'CP2'}},
+ 'V8-L11': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V8-L11',
+            'source_sentence_sha256': 'f657a5dcd4805c6e218b82d9679a422bd4f337ec28a70fc73ee12609a4dd37a1',
+            'commitment': {'disposition': 'conditional-reword',
+                           'condition': 'CP2-system-under-test-tree',
+                           'owner': 'CP2'}}}
+
+
+def ruled_value(key):
+    value = copy.deepcopy(RULED_VALUES[key])
+    if key == "V8-L5":
+        value["commitment"].update(n=variants.TRIES_PER_HALF, wordings=variants.N_WORDINGS, repeats=variants.REPEATS)
+    return value
+
+
+def apply_ruled_values(draft):
+    for question, key in zip(draft["pause_questions"], ("V6-i", "V6-ii", "V6-iii")):
+        question["answer"] = ruled_value(key)
+    for question, key in zip(draft["wave3"]["plan_questions"], ("V7-plan-a", "V7-plan-b")):
+        question["answer"] = ruled_value(key)
+    draft["wave3"]["W3B2-7"]["answer"] = ruled_value("V7-fabrication")
+    # The denied documentation read remains stopped. No invented quotation.
+    draft["wave3"]["documented_reply"] = PENDING
+    conditional = (3, 6, 10, 11)
+    draft["limitation_proposals"] = {str(i): ruled_value(f"V8-L{i}") for i in conditional}
+    for i, entry in enumerate(draft["limitations"], 1):
+        entry["round_4_reading"] = PENDING if i in conditional else ruled_value(f"V8-L{i}")
+    draft["alpha_secondary"] = "0.1"
+    return draft
+
+
 def describe(root=None):
     root = HERE if root is None else Path(root)
     d = assemble(root)
@@ -740,21 +850,21 @@ def describe(root=None):
     d["walk_counts"] = {"on_path_closers": None, "off_path_offers": None, "inherited_shapes": [None, None],
                         "report_beside_registration": True}
     d["missing_source_text"] = {}
-    return d
+    return apply_ruled_values(d)
 
 VENDORS = {CLAUDE: "anthropic", CODEX: "openai", GEMINI: "google"}
 PENDING_REASONS = {
     "image_locks": "R6 plan 828: CP2 supplies built image and version pins.",
     "version_pins": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "holdout_salted_digests": "R7 plan 175 and 829: the separate author supplies only the published digests through glitch-f3.",
-    "limitations": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+    "limitations": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
     "box_residuals": "R8 plan 830: the real box supplies the conditional preflight finding.",
     "checked_against": "R9 plan 831, PL-4: the first committed walk supplies the session check.",
     "pause_questions": "V6, R23 CP5-req 92-95 and 146: glitch-f3 supplies each answer.",
-    "wave3": "V7, R27/R29 CP5-req 151, 153 and 173: glitch-f3 supplies definitions and answers.",
+    "wave3": "V7 CP5-req 151: verbatim documentation condition remains stopped after the recorded read denial.",
     "walk_counts": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
     "stats_design_inputs": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
-    "floor_evidence": "V5, R17: glitch-f3 supplies the probes table's floor reading.",
+    "floor_evidence": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
     "config_templates": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
     "effort": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
     "instruction_files": "R15 CP5-req 52: CP2's instruction mapping.",
@@ -789,11 +899,14 @@ def design_inputs(rows, tasks):
         if row["model"] not in models:
             models.append(row["model"])
     return {"tasks_that_run": [t["id"] for t in tasks], "harness_models": hm,
-            "stronger_weaker": {CLAUDE: [MODELS["A"][0], PENDING], CODEX: list(MODELS["O"]), GEMINI: list(MODELS["G"])},
-            "cross_vendor": [MODELS[a][0] for a in MODELS], "alpha": PENDING,
-            "bootstrap": {"seed": PENDING, "reps": PENDING},
-            "power": {"seed": PENDING, "sims": PENDING, "bootstrap_reps": PENDING,
-                      "wordings": variants.N_WORDINGS, "repeats": variants.REPEATS, "grid": PENDING}, "floors": None}
+            "stronger_weaker": {CLAUDE: list(MODELS["A"][:2]), CODEX: list(MODELS["O"]), GEMINI: list(MODELS["G"])},
+            "cross_vendor": [MODELS[a][0] for a in MODELS], "alpha": "0.05",
+            "bootstrap": {"seed": 20261010, "reps": 10000},
+            "power": {"seed": 20261010, "sims": 2000, "bootstrap_reps": 2000,
+                      "wordings": variants.N_WORDINGS, "repeats": variants.REPEATS,
+                      "grid": [{"stronger": a, "weaker": z, "task_spread": t, "wording_spread": w}
+                               for a in ("0.6", "0.8", "0.9") for z in ("0.3", "0.5", "0.7") if z < a
+                               for t in ("0.05", "0.15") for w in ("0.05", "0.15")]}, "floors": PENDING}
 
 
 def validate_alpha(value):
@@ -902,8 +1015,8 @@ def owner_value_missing(value, kind):
         return not all(supplied_text(v) for v in value)
     if kind == "setting" and isinstance(value, dict):
         # Gemini's measured setting is its path and value, not a string.
-        return not (set(value) == {"path", "value"} and isinstance(value["path"], list)
-            and bool(value["path"]) and all(supplied_text(v) for v in value["path"])
+        return not (set(value) == {"path", "value"} and supplied_text(value["path"])
+            and all(supplied_text(v) for v in value["path"].split("."))
             and commitment_value(value["value"]))
     if kind == "template" and isinstance(value, dict):
         return not (set(value) == {"files", "sha256"} and isinstance(value["files"], list)

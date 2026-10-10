@@ -1276,7 +1276,7 @@ class OwnerSlots(unittest.TestCase):
                  "commitment": {"arrived": True, "mode": "fake", "count": 0}}
         cases = [(OWNER_PATHS[0], quote), (("furniture", CODEX), []),
                  (("routing_marker_inputs", CODEX, "rate_limit_markers"), ["fake marker"]),
-                 (("effort", GEMINI, MODELS["G"][0]), {"path": ["fake", "level"], "value": 0}),
+                 (("effort", GEMINI, MODELS["G"][0]), {"path": "fake.level", "value": 0}),
                  (("config_templates", CODEX, MODELS["O"][0]),
                   {"files": [{"path": "fake.json", "sha256": "b"*64}], "sha256": "c"*64})]
         for path, value in cases:
@@ -1547,6 +1547,7 @@ def expected_power():
 
 VALUE_MUTANTS = {
     "value-secondary": ("alpha_secondary",),
+    "value-source-field": ("pause_questions", 0, "answer", "source_sentence_sha256"),
     "value-pause": ("pause_questions", 0, "answer"),
     "value-plan": ("wave3", "plan_questions", 0, "answer"),
     "value-fabrication": ("wave3", "W3B2-7", "answer"),
@@ -1559,7 +1560,13 @@ VALUE_SETUP = setUpModule
 def setUpModule():
     if SELECTED in VALUE_MUTANTS:
         original = b.build
-        patch = mock.patch.object(b, "build", lambda *a, **k: changed(original(*a, **k), VALUE_MUTANTS[SELECTED], "fake drift"))
+        def altered_value(*a, **k):
+            d = original(*a, **k)
+            if SELECTED == "value-source-field":
+                del d["pause_questions"][0]["answer"]["source_sentence_sha256"]
+                return d
+            return changed(d, VALUE_MUTANTS[SELECTED], "fake drift")
+        patch = mock.patch.object(b, "build", altered_value)
         patch.start(); PATCHES.append(patch)
     else:
         VALUE_SETUP()
@@ -1574,6 +1581,9 @@ class RuledValues(unittest.TestCase):
         self.assertEqual(design["power"], expected_power())
         self.assertEqual(design["floors"], "PENDING")
         self.assertEqual(d["floor_evidence"], "PENDING")
+        filled = copy.deepcopy(design)
+        filled["floors"] = {task: "fake floor" for task in filled["tasks_that_run"]}
+        self.assertEqual(stats.validate_design(filled), filled)
 
     def test_supplied_answers_and_readings(self):
         d = b.build()
@@ -1599,7 +1609,111 @@ class RuledValues(unittest.TestCase):
             self.assertEqual(value, EXPECTED_VALUES[key])
 
 
+
+# Explicit Athena-only whole-file witnesses. Never called by ordinary imports
+# or by a targeted Mac invocation. Three disjoint groups bound command time.
+def witness_binding(name):
+    if name in CORE_MUTANTS:
+        return "Assembly.test_rows", CORE_MUTANTS[name][0]
+    if name in DESCRIPTION_MUTANTS:
+        return "Description.test_commitments", DESCRIPTION_MUTANTS[name][0]
+    if name in READY_MUTANTS:
+        return "Readiness.test_inputs", READY_MUTANTS[name][0]
+    if name in OWNER_MUTANTS:
+        method = "test_list_shapes_are_fixed" if name == "owner-list" else (
+            "test_structured_inputs_retain_their_types" if name == "owner-typed" else "test_missing_forms_keep_closed")
+        return "OwnerSlots." + method, ""
+    if name in VALUE_MUTANTS:
+        method = "test_numeric_values" if name == "value-secondary" else "test_supplied_answers_and_readings"
+        return "RuledValues." + method, ""
+    methods = {"digest-shape":"test_digest_shapes", "price-shape":"test_price_shapes",
+               "alpha-shape":"test_alpha_before_write", "user-overlap":"test_user_names_and_wordings",
+               "pending-erase":"test_freeze_closed", "profile-mismatch":"test_profiles_and_templates",
+               "committed-presence":"test_committed_writer"}
+    if name in methods:
+        return "Readiness." + methods[name], ""
+    if name in CLAIM_MUTANTS:
+        return "Claims." + ("test_unclaimed_module" if name == "unclaimed-accepted" else "test_relocated_claims"), ""
+    if name == "earlier-count":
+        return "Description.test_predictions_read_no_counts", ""
+    raise AssertionError("unbound witness: " + name)
+
+
+def witness_names():
+    return sorted(set(CORE_MUTANTS) | set(DESCRIPTION_MUTANTS) | set(READY_MUTANTS) | set(VALIDATOR_MUTANTS) | set(CLAIM_MUTANTS) | set(OWNER_MUTANTS) | set(VALUE_MUTANTS) | {"earlier-count"})
+
+
+def witness_groups():
+    names = witness_names()
+    assert all(witness_binding(name)[0] for name in names)
+    groups = [names[i::3] for i in range(3)]
+    assert len(names) == len(set(names)) and names
+    assert sorted(name for group in groups for name in group) == names
+    assert sum(len(group) for group in groups) == len(names)
+    return groups
+
+
+def run_witnesses(group):
+    import re
+    import subprocess
+    names = witness_groups()[group - 1]
+    red = 0
+    mixed = []
+    for name in names:
+        got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name],
+                             capture_output=True, text=True, timeout=180)
+        lines = got.stdout + got.stderr
+        summary = re.search(r"test_build_draft: (\d+) run, (\d+) failures, (\d+) errors, (\d+) skipped", lines)
+        method, clause = witness_binding(name)
+        failures = re.findall(r"^FAIL: [^\n]*\(__main__\.([^)]*)\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)",
+                              lines, re.M | re.S)
+        attributed = any(bound == method and "AssertionError" in body and (not clause or clause in body)
+                         for bound, body in failures)
+        passed = bool(attributed and summary and got.returncode != 0 and int(summary[1]) > 0
+                      and int(summary[2]) > 0 and int(summary[4]) == 0
+                      and "AssertionError" in lines)
+        print(f"witness {name}: {'RED' if passed else 'FAIL'}; " + (summary[0] if summary else "missing summary"), flush=True)
+        if not passed:
+            print(lines, flush=True)
+            return 1
+        red += 1
+        if int(summary[3]):
+            mixed.append(name)
+    print(f"test_build_draft witnesses group {group}/3: {red}/{len(names)} red; registry {len(witness_names())}", flush=True)
+    print(f"clean assertion-red: {red-len(mixed)}; mixed assertion/error: {len(mixed)} {mixed}", flush=True)
+    return 0
+
+
+
+class WitnessEvidence(unittest.TestCase):
+    def test_partition_and_attribution(self):
+        import contextlib, io
+        from unittest import mock
+        names = witness_names()
+        groups = witness_groups()
+        self.assertEqual(sorted(n for group in groups for n in group), names)
+        name = 'n'
+        method, clause = witness_binding(name)
+        for bound, failures, errors, skips, expected in (
+            (method,1,0,0,0), (method,1,1,0,0),
+            ("Other.unrelated",1,0,0,1), (method,0,1,0,1), (method,1,0,1,1)):
+            output = (f"FAIL: fake (__main__.{bound})\n---\nAssertionError: {clause}\n"
+                      f"test_build_draft: 1 run, {failures} failures, {errors} errors, {skips} skipped\n")
+            fake = mock.Mock(stdout=output, stderr="", returncode=1)
+            with self.subTest(bound=bound, failures=failures, errors=errors, skips=skips), \
+                 mock.patch.object(sys.modules[__name__], "witness_groups", return_value=[[name],[],[]]), \
+                 mock.patch.object(sys.modules[__name__], "witness_names", return_value=[name]), \
+                 mock.patch("subprocess.run", return_value=fake), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(run_witnesses(1), expected)
+
+
 if __name__ == "__main__":
+    if "--witnesses" in sys.argv:
+        index = sys.argv.index("--witnesses")
+        group = int(sys.argv[index + 1])
+        if group not in (1,2,3):
+            raise SystemExit("witness group must be 1, 2 or 3")
+        raise SystemExit(run_witnesses(group))
     if "--mutant" in sys.argv:
         index = sys.argv.index("--mutant")
         SELECTED = sys.argv[index + 1]
