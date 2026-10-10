@@ -3824,3 +3824,105 @@ Static mechanism: the owner-lower and owner-mixed mutations make owner_value_mis
 The Codex coordinator approved this bounded verification repair under delegated in-plan authority; these are not new words attributed to Javier. No test or commit occurred while the prior Athena run was active. After completion, the same-command light-ok normal target passed 1/1 in 1.946 seconds with zero failures/errors/skips. Serial copy gate passed (223 files, 28 fragments); sweep passed 30/30 in 2.126 seconds. Language and pooling raw exits remain 1, with complete outputs byte-identical to the prior baseline (25 and 8 findings). Scope gate passed: only the bound method differs, owned test alone staged, no untracked/ignored additions, clean whitespace. Candidate committed through commit-F with the required Codex trailer; clean tree and no local process were reported immediately. No complete file or witness loop ran on Mac.
 
 Final repair verification uses the unchanged Athena partition commands, including groups 4 and 6, with full intended-assertion attribution and zero skips. No witness is removed, no attribution relaxed, and no separate remote execution road is introduced. All required exact-head full checks remain pending. The 79 owner inputs, denied source-read STOP, conditional V8 readings, V5 absent floor evidence, proxy-accounting OPEN and optional NIT residual remain as previously recorded. No review, landing or push occurred. Writer ownership is relinquished with this runtime report-only commit; any new code work requires coordinator reassignment.
+
+## Update — Claude R2 fold, 2026-10-10 13:07 EDT
+
+Earlier opening lines and appendices remain historical; this is the latest builder status.
+status: stopped
+head: c5e4acbb32e42d7aab4013004657c813674a9368 (last code candidate; report-only child follows)
+RESUME HERE: coordinator owns the exact-head complete draft, full suite/battery and all 354 clause-attributed whole-file witnesses on Athena. None of those new-candidate outcomes is claimed here. Require that evidence before independent Claude review. Required owner inputs remain pending; no done/freeze-ready/full-PASS claim.
+
+Fresh Claude R2 is `e11914b32f90d342d4fb9229295591b7cf3828c5`, supplied as review-r2.md with verified sha256 `5c2de56b5b10dac9d4df1cc4e92d6f58a2bf1ed33a7f4c72306894f4824aaa05`: CHANGES, 2 MAJOR, 2 MINOR, 3 NIT. The coordinator assigned those findings under delegated in-plan authority. This builder did not review its own work. Start was clean/relinquished `72b0f23f3b058af97ad456b76e8429560652bc49`. Only build_draft.py, prereg-draft.json, tests/test_build_draft.py and tests/test_ci_job.py changed under evals/gap-study-4. Workflow, runner, checks.d, instruments, previous report bytes and the unchanged committed-writer assertion were preserved.
+
+| Finding | Fold | Binding evidence and remaining obligation |
+| --- | --- | --- |
+| W5C2-1 MAJOR | Floors are an independent required owner pointer. The value must be a nonempty dictionary with supplied-text values over exactly the actual task ids; the declared tasks_that_run must equal those actual ids. Null, empty, missing, sentinel-valued, short, extra-task and non-dictionary forms keep the freeze closed. fill_fake now uses explicitly fake per-task text. | Readiness.test_floors_keep_closed, floor guard/task-set witnesses. Real V5 stays PENDING because the source table has no floor field; no extraction output invented. |
+| W5C2-2 MAJOR | Accepted V6/V7 answer words and settled V8 L1/L5 rewords accompany source hashes and structured commitments. L5 n/wordings/repeats render from variants; the independent test derives expected words from the already supplied proposal excerpt and checks changed derived counts. Legitimate structured values remain accepted. | RuledValues.test_accepted_words; eight word-removal witnesses; per-value lint results below. No structured-only waiver invoked. |
+| W5C2-3 MINOR | finalize validates alpha_secondary through the same canonical decimal contract before writing, including missing and non-string refusal. | Readiness.test_secondary_alpha_before_write verifies refused spellings and unchanged destination bytes; secondary-alpha-validator witness. |
+| W5C2-4 MINOR | Job parsing ends at the next nonblank/noncomment line with less than four spaces. The job env body is exact, including GIT_CONFIG_COUNT and the four configuration lines. Named steps admit only their run field, comments and the indented literal body. | JobContract.test_closed_structure and seven inert workflow text witnesses for top-level env/concurrency, job env additions and step env/timeout/with. No fixture is executed as a command. |
+| W5C2-5 NIT | The floors pointer now uses the same honest no-floor-field/table-owner pending reason as floor_evidence. | Floor reason assertion and floors-reason witness. |
+| W5C2-6 NIT | kickoff-presence is registered outside the deferred-box branch. | JobContract.test_kickoff_registry_after_box tests the landed-box state; kickoff-registry-conditional witness proves that registration cannot regress. |
+| W5C2-7 NIT | Current OPEN/OPEN-value list appears one item per line below. | The actual set of 79 pending pointers is exactly equal to the prior draft, verified by enumeration. The reason for floors changes; no pointer is silently removed. |
+
+### Reproduction, ordinary targets and ordering
+
+Red regression commit `a7ed69b5` precedes the fixes: draft targets 4 run, 26 assertion failures, zero errors/skips (0.981s); CI targets 2 run, 8 assertion failures, zero errors/skips (0.143s). Earlier diagnostic runs were retained, not credited as clean red: draft 22 failures/4 errors from malformed floor cases reaching the old stats validator, and CI 7 failures/1 error from a missing mock import. The draft assertion was moved before finalize and the missing test import supplied before the final clean red runs. No production fix preceded that final red evidence.
+
+All admitted Mac tests used the same-command light-ok prefix, explicit Python 3.13, -B -W ignore, PYTHONDONTWRITEBYTECODE=1 and all three numerical thread caps at 1, with login:false and strict serial completion. A session_id was polled to its exit before the next test; no poll/next-launch bundle and no overlapping processes. No complete draft, scaffold, pipeline, whole-file mutation group or full suite ran on Mac. No hold bypass, guard change or alternate execution road was used.
+
+| Check | Actual result |
+| --- | --- |
+| New draft targets after implementation | 6/6, zero failures/errors/skips, 1.326s |
+| Final bounded draft regression set | 16/16, zero failures/errors/skips, 6.725s |
+| Final floor actual/declared task binding and freeze targets | 2/2, zero failures/errors/skips, 1.010s |
+| Existing description/source/readiness targets | 4/4, zero failures/errors/skips, 0.718s |
+| Normal CI whole file (bounded) | 19/19, zero failures/errors/skips, 0.766s |
+| Real precommit unchanged writer at red-regression HEAD | 1 run, 1 failure, zero errors/skips, 0.259s: committed old draft differs from newly generated draft. This remains a failure. |
+| Immediate unchanged writer at c5e4acbb | 1/1, zero failures/errors/skips, 0.521s |
+| Copy gate before candidate | Exit 0, 223 files / 28 fragments |
+| Sweep before candidate | 30/30, exit 0, 2.088s |
+| Language lint, separately serial | Raw exit 1; complete output byte-identical to baseline: 25 findings / 61 inputs |
+| Pooling lint, separately serial | Raw exit 1; complete output byte-identical to baseline: 8 findings / 61 files / 0 commits |
+| Scope and source audit | Four owned paths only; no unstaged/untracked/ignored additions; whitespace clean; prior report unchanged; committed-writer AST unchanged; review source hash matches |
+
+The existing coordinator ordering ruling remains explicit: retain precommit mismatch, commit the unreviewed candidate after independent gates/sweep, immediately run the unchanged writer on committed HEAD, then require the complete file on Athena before passing hand-back. The target does not substitute for the complete-file obligation. Code edits stopped at c5e4acbb. The previous failed Athena 108/110 run stays a failure in the prior appendix; no new evidence relabels it.
+
+### Per-value wording lint evidence
+
+Both lint scanners ran on each exact supplied excerpt with rel=prereg-draft.json, and separately on every emitted accepted word string. No finding occurred; no allowlist or lint rule changed.
+
+| Source value | Excerpt language / pooling | Emitted words language / pooling |
+| --- | --- | --- |
+| V6-i | 0 / 0 | 0 / 0 |
+| V6-ii | 0 / 0 | 0 / 0 |
+| V6-iii | 0 / 0 | 0 / 0 |
+| V7-plan (a) and (b) | 0 / 0 | Each 0 / 0 |
+| V7-fabrication | 0 / 0 | 0 / 0 |
+| V8-L1 | 0 / 0 | 0 / 0 |
+| V8-L2 | 0 / 0 | Retired; no new wording required |
+| V8-L3 | 0 / 0 | Conditional; reading stays PENDING |
+| V8-L4 | 0 / 0 | Retired; no new wording required |
+| V8-L5 | 0 / 0 | 0 / 0; figures derived |
+| V8-L6 | 0 / 0 | Conditional; reading stays PENDING |
+| V8-L7 | 0 / 0 | Retired; no new wording required |
+| V8-L8 | 0 / 0 | Retired; no new wording required |
+| V8-L9 | 0 / 0 | Carry; existing limitation text retained |
+| V8-L10 | 0 / 0 | Conditional; reading stays PENDING |
+| V8-L11 | 0 / 0 | Conditional; reading stays PENDING |
+
+No V7 scope_read wording was fetched, reconstructed or invented. Neither the four denied grader-source reads nor either step described in R2's saved-output/brief-read departure was repeated. Already supplied approved proposal excerpts and existing context supplied this fold; reviewer artifacts were not modified.
+
+### Whole-file witness obligations
+
+A source audit loaded only the lane's own former/current test definitions and verified every original named witness survives: draft 227 is a subset of 239; CI 107 is a subset of 115. Total 354, with 20 additions. Existing nine checks.d commands are unchanged. Draft groups are 40/40/40/40/40/39; CI groups 39/38/38. Their deterministic disjoint union and bindings remain asserted; ordinary target invocations do not launch these loops.
+
+New draft names: floors-null-guard, floors-task-set, floors-reason, secondary-alpha-validator, words-V6-i, words-V6-ii, words-V6-iii, words-V7-plan-a, words-V7-plan-b, words-V7-fabrication, words-V8-L1, words-V8-L5.
+
+New CI names: top-level-env, top-level-concurrency, job-env-pythonpath, job-env-git_dir, run-key-env, run-key-timeout, run-key-with, kickoff-registry-conditional.
+
+Each new name maps to its intended method and clause, with the existing runner requiring an attributed AssertionError and zero skips. Unrelated committed-writer drift, error-only output and mere nonzero exit cannot count; mixed assertion/error cases remain separately reported. All 354 whole-file outcomes and unmutated exact-head complete-file zero-failure/zero-error/zero-skip checks are owed to Athena. No assertion-red result is claimed for an unrun whole-file witness.
+
+### Current OPEN and OPEN-value items (one per line)
+
+OPEN-value: V5 — /floor_evidence and /stats_design_inputs/floors remain PENDING; probes4 exposes no floor field. The table owner must supply the per-task evidence and its tested extraction; never null or a fabricated not-run line.
+OPEN-value: V7 documented reply — /wave3/documented_reply remains STOPPED/PENDING under the denied-read boundary; no approved exact module rule has been supplied.
+OPEN-value: V8-L3 — /limitations/2/round_4_reading needs CP2 evidence that no Codex/Gemini pin profile passes a tool list.
+OPEN-value: V8-L6 — /limitations/5/round_4_reading needs the later owner's evidence for the conditional reader disposition; no denied source read is authorized.
+OPEN-value: V8-L10 — /limitations/9/round_4_reading needs CP2 checker/refusal-route evidence.
+OPEN-value: V8-L11 — /limitations/10/round_4_reading needs CP2 system_under_test tree evidence.
+OPEN-value: pins — 21 version_pins and 18 image_locks pointers await measured matching CP2/routing/image versions and ids.
+OPEN-value: digests — one published-digest pointer awaits the separate author through the coordinator; this lane never reads, lists, generates or guesses holdout material.
+OPEN-value: preflight — /box_residuals/0/finding awaits the real box/CP6 evidence.
+OPEN-value: first-walk — /checked_against/status awaits the first committed walk and the required leak check against it.
+OPEN-value: instrument-values — 7 config_templates, 7 effort, 3 served_model_rule and 3 furniture pointers await CP2/harness/CP6 owners; legitimate measured types remain intact.
+OPEN-value: price-table — the price_table pointer awaits Javier's dated vendor-price walk gate; no real price invented.
+OPEN-value: routing — 4 routing_marker_inputs and routing_markers/spend_cap_markers_status await CP2/routing-owner evidence; routing.json and driver-key carries remain with those owners.
+OPEN-value: walk-counts — four null count pointers await Javier's CP6 walks; null here is the existing measured-count contract, distinct from forbidden null floors.
+OPEN-value: regrade-flag — the later grader/walk owner must settle and record whether the accepted readings require regrading; no claim that section-14 acceptance itself changes an instrument or measured result.
+OPEN: W5C1-5 proxy counts — workflow records length remains only a proxy. Later check_results/default-sweep/ledger/regrade/result/completeness owners must expose and record their own run/failure/error/skip counts.
+OPEN: V7 fabrication downstream alignment — accepted words/commitment are recorded; the grader and human-sample route remain later-owner work, not an instrument change here.
+OPEN: W5C1-9 optional residual — deleted/renamed prereg branch strengthening remains unimplemented and is not claimed fixed.
+OPEN: CP2 box and prereg.py --order carries — inherited owner boundaries remain; no driver, box runtime or ordering command implementation is taken over by this fold.
+OPEN: exact-head Athena and independent review — coordinator schedules complete candidate validation, then fresh independent Claude review; builder does neither review nor landing.
+
+Evidence files use the r2-* prefix under `/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-r1-ugt74255`, including red/target/final logs, r2-precommit-writer.txt, r2-exact-writer.txt, r2-audit.txt and the exact added-witness list. V1-V4, V6 and the supported V7/V8 readings are no longer listed as blanket OPEN. The current 79-pointer enumeration is preserved exactly. No push, landing, merge, deployment, spending, model/vendor call, credential/holdout access, guard/engine edit or self-review occurred. Code commits carry the exact Codex trailer; this runtime report-only commit carries none. The builder explicitly relinquishes sole-writer ownership when this report commit completes; new code work requires coordinator reassignment.
