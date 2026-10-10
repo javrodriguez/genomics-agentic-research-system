@@ -832,6 +832,93 @@ def validate_prices(value, harness_models):
                 costs.amount(price)
 
 
+# Required owner inputs are independent of a caller's document or pending map.
+# Narrative slots admit section 12's closed quotation form; derived slots retain
+# their actual types. The validated design, prices and published digests have
+# their own validators, and planned-row versions are checked by validate_ledger.
+ABSENT = object()
+OWNER_SLOTS = {
+    "/box_residuals/0/finding": "narrative",
+    "/checked_against/status": "text",
+    "/floor_evidence": "narrative",
+    "/wave3/documented_reply": "narrative",
+    "/wave3/W3B2-7/answer": "narrative",
+    "/routing_markers/spend_cap_markers_status": "text",
+    **{f"/pause_questions/{i}/answer": "narrative" for i in range(3)},
+    **{f"/limitations/{i}/round_4_reading": "narrative" for i in range(11)},
+    **{f"/wave3/plan_questions/{i}/answer": "narrative" for i in range(2)},
+    **{f"/{key}/{h}": kind for key, kind in (("served_model_rule", "narrative"),
+       ("furniture", "list")) for h in HARNESSES.values()},
+    **{f"/{key}/{h}/{m}": kind for key, kind in (("config_templates", "template"),
+       ("effort", "setting")) for a,h in HARNESSES.items() for m in MODELS[a]},
+    **{f"/routing_marker_inputs/{h}/{k}": "list" for h in (CODEX, GEMINI)
+       for k in ("rate_limit_markers", "spend_cap_markers")},
+    **{f"/image_locks/{i}/lock/{key}": "text"
+       for i, keys in enumerate((("base", "harness/version", "image_id", "python"),
+                                ("base", "image_id", "squid"),
+                                ("base", "harness/version", "image_id", "python"),
+                                ("base", "harness/version", "image_id", "python"),
+                                ("base", "image_id", "python"))) for key in keys},
+}
+
+
+def pointer_value(document, pointer):
+    value = document
+    try:
+        for part in pointer.lstrip("/").split("/"):
+            key = part.replace("~1", "/").replace("~0", "~")
+            value = value[int(key)] if isinstance(value, list) else value[key]
+        return value
+    except (KeyError, IndexError, TypeError, ValueError):
+        return ABSENT
+
+
+def supplied_text(value):
+    return isinstance(value, str) and bool(value.strip()) and not value.strip().casefold().startswith("pending")
+
+
+def commitment_value(value):
+    if isinstance(value, str):
+        return supplied_text(value)
+    if isinstance(value, bool) or (isinstance(value, (int, float)) and not isinstance(value, bool)):
+        return True
+    if isinstance(value, list):
+        return bool(value) and all(commitment_value(v) for v in value)
+    if isinstance(value, dict):
+        return bool(value) and all(supplied_text(k) and commitment_value(v) for k,v in value.items())
+    return False
+
+
+def owner_value_missing(value, kind):
+    if supplied_text(value):
+        return False
+    if kind == "narrative" and isinstance(value, dict):
+        return not (set(value) == {"source", "source_sentence_sha256", "commitment"}
+            and supplied_text(value["source"])
+            and isinstance(value["source_sentence_sha256"], str)
+            and re.fullmatch(r"[0-9a-f]{64}", value["source_sentence_sha256"])
+            and isinstance(value["commitment"], dict) and commitment_value(value["commitment"]))
+    if kind == "list" and isinstance(value, list):
+        return not all(supplied_text(v) for v in value)
+    if kind == "setting" and isinstance(value, dict):
+        # Gemini's measured setting is its path and value, not a string.
+        return not (set(value) == {"path", "value"} and isinstance(value["path"], list)
+            and bool(value["path"]) and all(supplied_text(v) for v in value["path"])
+            and commitment_value(value["value"]))
+    if kind == "template" and isinstance(value, dict):
+        return not (set(value) == {"files", "sha256"} and isinstance(value["files"], list)
+            and bool(value["files"]) and all(isinstance(v, dict) and set(v) == {"path", "sha256"}
+                and supplied_text(v["path"]) and isinstance(v["sha256"], str)
+                and re.fullmatch(r"[0-9a-f]{64}", v["sha256"]) for v in value["files"])
+            and isinstance(value["sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", value["sha256"]))
+    return True
+
+
+def owner_list_problems(draft):
+    return [key for key, count in (("pause_questions", 3), ("limitations", 11))
+            if not isinstance(draft.get(key), list) or len(draft[key]) != count]
+
+
 def pending(draft):
     """All missing values as JSON-pointer paths, with their source and owner.
 
@@ -843,7 +930,7 @@ are excluded to avoid self-reference. The five walk counts use null as required.
     def scan(value, parts):
         prefix = parts[0]
         path = '/' + '/'.join(str(p).replace('~', '~0').replace('/', '~1') for p in parts)
-        if (isinstance(value, str) and value.startswith(PENDING)) or (value is None and prefix == "walk_counts"):
+        if (isinstance(value, str) and value.strip().casefold().startswith(PENDING.casefold())) or (value is None and prefix == "walk_counts"):
             result[path] = PENDING_REASONS.get(prefix, "A supplied value is required before the freeze.")
         elif isinstance(value, dict):
             for key, child in value.items():
@@ -855,12 +942,18 @@ are excluded to avoid self-reference. The five walk counts use null as required.
     for key, value in draft.items():
         if key not in ("pending", stats.DESIGN_KEY, "rows", "predictions"):
             scan(value, [key])
+    for pointer, kind in OWNER_SLOTS.items():
+        if owner_value_missing(pointer_value(draft, pointer), kind):
+            result[pointer] = PENDING_REASONS[pointer.split("/")[1]]
     return dict(sorted(result.items()))
 
 
 def finalize(draft):
     """Re-close a document after in-memory inputs; never an owner-input CLI."""
     d = copy.deepcopy(draft)
+    malformed = owner_list_problems(d)
+    if malformed:
+        raise ValueError("required owner list shape: " + ", ".join(malformed))
     design = d["stats_design_inputs"]
     if design["alpha"] != PENDING:
         validate_alpha(design["alpha"])

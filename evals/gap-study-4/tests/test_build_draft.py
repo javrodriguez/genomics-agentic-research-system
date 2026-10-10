@@ -1219,7 +1219,7 @@ OWNER_PATHS = [("pause_questions", 0, "answer"), ("limitations", 0, "round_4_rea
                ("effort", CODEX, MODELS["O"][0]),
                ("routing_marker_inputs", CODEX, "rate_limit_markers")]
 OWNER_SETUP = setUpModule
-OWNER_MUTANTS = tuple("owner-" + name for name in OWNER_BAD) + ("owner-absent", "owner-list")
+OWNER_MUTANTS = tuple("owner-" + name for name in OWNER_BAD) + ("owner-absent", "owner-list", "owner-typed")
 
 def setUpModule():
     if SELECTED in OWNER_MUTANTS:
@@ -1229,6 +1229,8 @@ def setUpModule():
             original = b.owner_value_missing
             form = SELECTED.removeprefix("owner-")
             def opened(value, kind):
+                if form == "typed" and isinstance(value, (dict, list)):
+                    return True
                 if (form == "absent" and value is b.ABSENT) or (form in OWNER_BAD and value == OWNER_BAD[form]):
                     return False
                 return original(value, kind)
@@ -1268,6 +1270,22 @@ class OwnerSlots(unittest.TestCase):
                 with self.subTest(name=name, length=len(values)):
                     with self.assertRaisesRegex(ValueError, name):
                         b.finalize(dict(fake, **{name: values}))
+
+    def test_structured_inputs_retain_their_types(self):
+        fake = fill_fake(b.build())
+        quote = {"source": "fake source", "source_sentence_sha256": "a"*64,
+                 "commitment": {"arrived": True, "mode": "fake", "count": 0}}
+        cases = [(OWNER_PATHS[0], quote), (("furniture", CODEX), []),
+                 (("routing_marker_inputs", CODEX, "rate_limit_markers"), ["fake marker"]),
+                 (("effort", GEMINI, MODELS["G"][0]), {"path": ["fake", "level"], "value": 0}),
+                 (("config_templates", CODEX, MODELS["O"][0]),
+                  {"files": [{"path": "fake.json", "sha256": "b"*64}], "sha256": "c"*64})]
+        for path, value in cases:
+            with self.subTest(path=path):
+                self.assertEqual(b.pending(changed(fake, path, value)), {})
+        for key in quote:
+            missing = dict(quote); del missing[key]
+            self.assertIn("/pause_questions/0/answer", b.pending(changed(fake, OWNER_PATHS[0], missing)))
 
     def test_required_set_is_independent_of_input(self):
         self.assertTrue(hasattr(b, "OWNER_SLOTS"), "the required owner pointers are a module constant")
