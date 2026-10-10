@@ -472,7 +472,7 @@ class TheBinding(unittest.TestCase):
             out.append("round name")
         if s.ROUND1_REL != "evals/gap-study-3" or s.ROUND1 != REPO / "evals" / "gap-study-3":
             out.append("prior round")
-        if tuple(s.ARMS) != ("A", "C"):
+        if tuple(s.ARMS) != ("A", "C", "O", "G"):
             out.append("arms")
         for m in (s.SECTION_TITLE, s.SUMMARY_START, s.SUMMARY_END, s.SECTION_END):
             if "gap-study-4" not in m and "round 4" not in m:
