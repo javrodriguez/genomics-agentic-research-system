@@ -104,7 +104,7 @@ def job_block(text):
 
 def steps(block):
     result = []
-    pattern = r"^      - name: ([^\n]+)\n(.*?)(?=^      - (?:name|uses):|\Z)"
+    pattern = r"^      - name: ([^\n]+)\n(.*?)(?=^      - |\Z)"
     for match in re.finditer(pattern, block, re.M | re.S):
         body = match[2]
         run = re.search(r"^        run: ([^\n]+)\n", body, re.M)
@@ -169,14 +169,25 @@ def problems(text, baseline, introduced, *, box_present=None):
     need(text.replace(block, "", 1) == baseline, "R37.outside")
     need(text.split("jobs:\n", 1)[0] == baseline.split("jobs:\n", 1)[0], "R37.trigger")
     active = "\n".join(line for line in block.splitlines() if not line.lstrip().startswith("#"))
-    need("secrets." not in active, "R37.secrets")
+    # The permitted YAML subset is closed before command clauses are read.
+    need(re.findall(r"^    ([^ :]+):", active, re.M) == ["runs-on", "env", "steps"], "R37.job-keys")
+    need(all(re.match(r"^      - (?:name: .+|uses: actions/(?:checkout@v4|setup-python@v5))$", line)
+             for line in active.splitlines() if line.startswith("      - ")), "R37.step-keys")
+    action_lines = lambda body: [line for line in body.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+    checkout_lines = action_lines(checkout)
+    checkout_without_ref = [line for line in checkout_lines if not re.fullmatch(r"          ref: [0-9a-fA-F]{40}", line)]
+    need(checkout_without_ref == ["        with:", "          fetch-depth: 0"], "R37.checkout-keys")
+    need(action_lines(setup) == ["        with:", '          python-version: "3.12"'], "R37.setup-keys")
+    need(not re.search(r"\bsecrets\b|github\.token", active), "R37.secrets")
     need(not re.search(r"\bpermissions\s*:", active), "R37.permissions")
     for clause, pattern in (
-        ("push", r"\bgit\s+push\b"), ("gh", r"\bgh\s+"),
+        ("push", r"\bgit\b[^\n]*\bpush\b"), ("gh", r"\bgh\s+"),
         ("deploy", r"\bdeploy\b"), ("upload", r"\bupload(?:-artifact)?\b"),
-        ("release", r"\brelease\b"), ("network", r"\b(?:curl|wget|fetch|clone|pip|npm)\b|https?://"),
+        ("release", r"\brelease\b"), ("network", r"\b(?:curl|wget|fetch|clone|pip|npm|urllib|requests|ls-remote)\b|https?://"),
     ):
-        need(not re.search(pattern, "\n".join(runs), re.I), "R37." + clause)
+        # The exact admitted checkout option is not a shell fetch command.
+        inspected = active.replace("          fetch-depth: 0", "") if clause == "network" else active
+        need(not re.search(pattern, inspected, re.I), "R37." + clause)
     need(all(action in ("actions/checkout@v4", "actions/setup-python@v5")
              for action in re.findall(r"\buses:\s*(\S+)", active)), "R37.actions")
 
@@ -244,12 +255,14 @@ def problems(text, baseline, introduced, *, box_present=None):
     need(introduced == KICKOFF, "R44.kickoff")
     addition = [run for name, _, run in entries if name == "Round 4 workflow diff is additive"]
     want_addition = (
+        f"git cat-file -e {introduced}^{{commit}}\n"
         f"removed=$(git diff {introduced} HEAD --numstat -- .github/workflows/ \\\n"
         "          | awk '{s+=$2} END {print s+0}')\n"
         'echo "workflow lines removed since the kickoff: $removed"\n'
         'test "$removed" -eq 0'
     )
     need(addition == [want_addition], "R44.step")
+    need(bool(addition) and addition[0].startswith(f"git cat-file -e {KICKOFF}^{{commit}}\n"), "R44.present")
     removed = sum(i2 - i1 for tag, i1, i2, _, _ in
                   difflib.SequenceMatcher(a=baseline.splitlines(), b=text.splitlines(), autojunk=False).get_opcodes()
                   if tag in ("delete", "replace"))
@@ -311,6 +324,7 @@ def mutations():
     }
     if BOX_DEFERRED in RAW:
         edits.update({
+        "kickoff-presence": ("R44.present", f"          git cat-file -e {KICKOFF}^{{commit}}\n", ""),
             "box-owner": ("R38.box-owner", BOX_OWNER, ""),
             "box-ruling": ("R38.box-ruling", BOX_RULING, ""),
             "box-premature": ("R38.box-absent", BOX_DEFERRED, BOX_DEFERRED + BOX_STEP),

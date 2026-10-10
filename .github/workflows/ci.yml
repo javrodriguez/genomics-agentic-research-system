@@ -483,6 +483,7 @@ jobs:
       - name: Round 4 workflow diff is additive
         # Binds this workflow to added lines only since the introducing commit.
         run: |
+          git cat-file -e ad88d14d82f8e88e5bf6253f03faadcfbbb242f4^{commit}
           removed=$(git diff ad88d14d82f8e88e5bf6253f03faadcfbbb242f4 HEAD --numstat -- .github/workflows/ \
                     | awk '{s+=$2} END {print s+0}')
           echo "workflow lines removed since the kickoff: $removed"
