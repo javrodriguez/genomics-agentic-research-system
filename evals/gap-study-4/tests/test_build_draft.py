@@ -811,6 +811,63 @@ class Writer(unittest.TestCase):
         self.assertEqual(b.pending(fake),d['pending'])
 
 
+import importlib.util
+
+_spec = importlib.util.spec_from_file_location('draft_scaffold', HERE / 'tests/test_scaffold.py')
+scaffold = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(scaffold)
+CLAIM_MUTANTS = ('claims-old-only', 'claims-unowned', 'unclaimed-accepted')
+SETUP_WITH_WRITER = setUpModule
+
+
+def setUpModule():
+    if SELECTED in CLAIM_MUTANTS:
+        original = scaffold.copied_modules
+        if SELECTED == 'claims-old-only':
+            patch = mock.patch.object(scaffold, 'copied_modules',
+                                      lambda: [p for p in original() if p not in ('build_draft.py', 'study.py')])
+        elif SELECTED == 'claims-unowned':
+            patch = mock.patch.object(scaffold, 'copied_modules', lambda: original() + ['fake_unowned.py'])
+        else:
+            original_problems = scaffold.cm.problems
+            patch = mock.patch.object(scaffold.cm, 'problems',
+                                      lambda *a, **k: [p for p in original_problems(*a, **k)
+                                                      if not p.startswith('build_draft.py is under ')])
+        patch.start()
+        PATCHES.append(patch)
+    else:
+        SETUP_WITH_WRITER()
+
+
+class Claims(unittest.TestCase):
+    def test_relocated_claims(self):
+        fragments = [HERE / 'COPIED.d' / name for name in
+                     ('w1a-cp1-scaffold.json', 'w5c-draft-ci.json')]
+        expected = [entry['path'] for path in fragments for entry in json.loads(path.read_text())['files']
+                    if entry['status'] != 'new' and entry['path'].endswith('.py')]
+        self.assertGreater(len(expected), 30)
+        read_text = Path.read_text
+        reads = []
+        def read(path, *args, **kwargs):
+            reads.append(path)
+            return read_text(path, *args, **kwargs)
+        with mock.patch.object(Path, 'read_text', read):
+            self.assertEqual(scaffold.copied_modules(), expected)
+        self.assertEqual(reads, fragments)
+        self.assertIn('build_draft.py', expected)
+        self.assertIn('study.py', expected)
+
+    def test_unclaimed_module(self):
+        entries, problems = scaffold.cm.load_fragments()
+        self.assertEqual(problems, [])
+        removed = [(lane, entry) for lane, entry in entries if entry['path'] != 'build_draft.py']
+        self.assertEqual(len(removed), len(entries) - 1)
+        with mock.patch.object(scaffold.cm, 'load_fragments', return_value=(removed, [])):
+            found = scaffold.cm.problems(pinned=False)
+        self.assertTrue(any(p.startswith('build_draft.py is under ') and 'no fragment' in p
+                            for p in found), found)
+
+
 
 if __name__ == "__main__":
     if "--mutant" in sys.argv:
