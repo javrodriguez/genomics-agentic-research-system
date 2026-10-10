@@ -2521,3 +2521,495 @@ assert checked.returncode==0,checked.stdout+checked.stderr
 print('report preservation: 4 of 4 passed; prior bytes retained, original header retained, only report appended, staged whitespace clean')
 PY
 ```
+
+
+## Section 13 resume: local implementation and witnesses complete
+
+status: stopped
+RESUME HERE: glitch-f3 rules the retained OPEN-value list; the athena gates remain owed on 853b0177d2bf3e04e0cdd84206b120093df2d58e.
+head: 853b0177d2bf3e04e0cdd84206b120093df2d58e (last code commit; this append-only report is committed separately afterward)
+
+Recorded after reading date: 2026-10-09 23:13:34 EDT.
+
+This is the current handoff. The original first two lines and every earlier report byte remain unchanged under the append-only instruction; their earlier quote-lint resume direction is historical. Section 12 closed that quotation conflict, and section 13 now closes scaffold-import-count. No new ruling question was raised. The draft and CI mechanisms are built; values and carries below still prohibit status done and a real freeze.
+
+The start checks found the requested 73c54dc7df524788f3eeb6c29fa306ae1da3e256 head, the correct branch, a clean status including ignored paths, all four named commits, no configured hooksPath value, light-ok exit 0, and Python 3.13.2. The base-only readings were already performed and preserved earlier; they were not repeated against a different head and called a base.
+
+### Changes in this resume
+
+- 50e6106b: committed the red relocated-claim contract. The whole file reported `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped`; Claims.test_relocated_claims showed exactly the missing build_draft.py and study.py entries. The staged copy gate passed.
+- 15998f22: changed only the fragment-selection expression in copied_modules(), under section 13. The unchanged import loop now covers 31 modules. The draft file passed 22 tests and the scaffold file passed 49 tests before this code commit.
+- 853b0177: closed the previously reported R1 verification gap by comparing a fresh draft with both the working bytes and explicit HEAD bytes within Readiness.test_committed_writer. Its existing scratch absent/staged-only/changed-byte cases remain. This is additional coverage of existing behavior, so it required no writer change. The whole file passed 22 tests before commit.
+
+All commits used git commit -F with a message file in Python's system temporary folder and the exact Codex trailer. No hook was skipped or changed. No commit was amended.
+
+The new claim tests are in the lane-owned test_build_draft.py. Claims.test_relocated_claims asserts both the returned list and exactly the two paths read; Claims.test_unclaimed_module removes the build_draft.py claim in memory and requires copy_manifest.problems to refuse it. The three committed whole-file mutations remove the relocated claims, insert an unowned module, and suppress that refusal, respectively. No new module or ownership record is written by a mutation.
+
+The complete lane diff against the base at the last code head is:
+
+```text
+.github/workflows/ci.yml                         |   124 +
+ evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json |    11 -
+ evals/gap-study-4/COPIED.d/w5c-draft-ci.json     |    42 +
+ evals/gap-study-4/build_draft.py                 |  1148 +-
+ evals/gap-study-4/checks.d/w5c-draft-ci.txt      |     6 +
+ evals/gap-study-4/prereg-draft.json              | 23072 +++++++++++++++++++++
+ evals/gap-study-4/study.py                       |     4 +-
+ evals/gap-study-4/tests/test_build_draft.py      |   882 +
+ evals/gap-study-4/tests/test_ci_job.py           |   471 +
+ evals/gap-study-4/tests/test_scaffold.py         |     6 +-
+ lane-reports/w5c-draft-ci.md                     |  2523 +++
+ 11 files changed, 27781 insertions(+), 508 deletions(-)
+```
+
+All wave 1 changes, line by line, against the base:
+
+```diff
+diff --git a/evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json b/evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json
+index b5a05752..98dcedef 100644
+--- a/evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json
++++ b/evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json
+@@ -24,5 +23,0 @@
+-    {
+-      "path": "build_draft.py",
+-      "status": "identical",
+-      "source": "evals/gap-study-3/build_draft.py"
+-    },
+@@ -217,6 +211,0 @@
+-    {
+-      "path": "study.py",
+-      "status": "edited",
+-      "source": "evals/gap-study-3/study.py",
+-      "reason": "The binding for round 4: the study's name, folder and title (gap-study-4), its published-section markers, the prior round it reads as data (ROUND1 now points at evals/gap-study-3, with PRIOR_STUDY and PRIOR_REL naming it honestly) and the arms it runs (ARMS = A and C). Every copied file builds its paths and markers from this file, so no other copied file needs to name this study."
+-    },
+diff --git a/evals/gap-study-4/study.py b/evals/gap-study-4/study.py
+index 2efb8b20..94ce0f08 100644
+--- a/evals/gap-study-4/study.py
++++ b/evals/gap-study-4/study.py
+@@ -14 +14 @@ at is this study's prior round. PRIOR_STUDY and PRIOR_REL name the same folder u
+-ARMS is the arms this round runs, A and C (the plan's arms; arm C is the first cut if the freeze slips).
++ARMS is the arms this round runs, A, C, O and G (the plan's arms; arm C is the first cut if the freeze slips).
+@@ -56 +56 @@ ROUND1 = REPO / "evals" / PRIOR_STUDY
+-ARMS = ("A", "C")
++ARMS = ("A", "C", "O", "G")
+diff --git a/evals/gap-study-4/tests/test_scaffold.py b/evals/gap-study-4/tests/test_scaffold.py
+index 11aa5bf4..da2a4ff6 100644
+--- a/evals/gap-study-4/tests/test_scaffold.py
++++ b/evals/gap-study-4/tests/test_scaffold.py
+@@ -40 +39,0 @@ BLOCKED = {
+-    "drive.py": "SystemExit: no pre-registration: neither prereg.json nor prereg-draft.json exists.",
+@@ -82 +81,2 @@ def copied_modules() -> list[str]:
+-    rec = json.loads(OWN_FRAGMENT.read_text())
++    rec = {"files": [e for frag in (OWN_FRAGMENT, cm.FRAGMENTS / "w5c-draft-ci.json")
++                     for e in json.loads(frag.read_text())["files"]]}
+@@ -475 +475 @@ class TheBinding(unittest.TestCase):
+-        if tuple(s.ARMS) != ("A", "C"):
++        if tuple(s.ARMS) != ("A", "C", "O", "G"):
+```
+
+For section 13 specifically, base scaffold line 82 (resume line 81) is replaced by the two-line expression at final lines 81-82. It reads OWN_FRAGMENT and COPIED.d/w5c-draft-ci.json, in that order, with no glob. No import assertion, cardinality threshold, probe, or other scaffold line changes in this resume. The earlier PL-1 changes remain exactly those listed above.
+
+The workflow remains 124 added lines and zero removed; it was not edited in this resume. The draft builder, generated draft, manifests, study binding, checks list, lints, and allowlist also have no changes in this resume.
+
+### Requirement accounting after the witnesses
+
+The tables below supersede the prior “unrun at stop” writer inventory. Each writer result is from the WHOLE 22-test file with the named accessor mutation armed in setUpModule and removed in tearDownModule. The ordinary file is green. Invalid mutations can also produce downstream errors; their exact counts are retained, and only assertion failures are credited as witnesses. Task 2's earlier whole-file evidence remains valid because its files are unchanged; the final ordinary CI test file is also rerun below.
+
+| Requirement | Named test / mechanism | Representative mutant | Red proof: exact runner line | Remaining value or carry |
+|---|---|---|---|---|
+| R1 | Assembly.test_rows; Readiness.test_committed_writer | task-hash | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | — |
+| R2 | Assembly.test_rows | models | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | V1-V4 |
+| R3 | Assembly.test_rows | order-function | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | prereg order carry |
+| R4 | Description.test_commitments; test_no_new_words | quote-bounds | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | section 12 representation |
+| R5 | Description.test_predictions_read_no_counts; test_commitments | earlier-count | `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped` | — |
+| R6 | Assembly.test_rows; Readiness.test_profiles_and_templates | profile-mismatch | `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped` | pins |
+| R7 | Readiness.test_digest_shapes | digest-shape | `test_build_draft: 22 run, 8 failures, 0 errors, 0 skipped` | digests |
+| R8 | Description.test_commitments | limitation | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | V8; preflight |
+| R9 | Description.test_commitments; Readiness.test_user_names_and_wordings | user-overlap | `test_build_draft: 22 run, 3 failures, 0 errors, 0 skipped` | first-walk |
+| R10 | Description.test_commitments | quote-not_poolable | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | section 12 representation |
+| R11 | Assembly.test_ledger; test_rows | agent | `test_build_draft: 22 run, 4 failures, 3 errors, 0 skipped` | — |
+| R12 | Assembly.test_rows; Readiness.test_profiles_and_templates | cells | `test_build_draft: 22 run, 2 failures, 2 errors, 0 skipped` | — |
+| R13 | Assembly.test_rows; Claims.test_relocated_claims | claims-old-only | `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped` | section 13 resolved |
+| R14 | Assembly.test_rows; Readiness.test_profiles_and_templates | version | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | pins |
+| R15 | Readiness.test_inputs; test_profiles_and_templates; test_price_shapes | price-shape | `test_build_draft: 22 run, 4 failures, 0 errors, 0 skipped` | instrument-values; routing |
+| R16 | Description.test_commitments | caps | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | — |
+| R17 | Readiness.test_inputs; test_freeze_closed; Description.test_commitments | contrast-missing | `test_build_draft: 22 run, 2 failures, 1 errors, 0 skipped` | V1-V5 |
+| R18 | Description.test_commitments | sample | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | — |
+| R19 | Assembly.test_rows | task-list | `test_build_draft: 22 run, 3 failures, 2 errors, 0 skipped` | — |
+| R20 | Assembly.test_rows | pair-count | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | — |
+| R21 | Description.test_commitments | quote-estimates | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | estimate, never a price |
+| R22 | Description.test_commitments | unused | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | — |
+| R23 | Description.test_commitments | answers | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | V6 |
+| R24 | Description.test_commitments | number-hash | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | source-text |
+| R25 | Description.test_commitments | limit | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | source-text |
+| R26 | Description.test_commitments | quote-arrival_flip | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | V6 shared answers |
+| R27 | Description.test_commitments | wave3 | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | V7; source-text |
+| R28 | Description.test_commitments | walk-count | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | source-text; walk-counts |
+| R29 | Description.test_commitments | question | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | V7; source-text |
+| R30 | Description.test_commitments | walk-count | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | source-text; walk-counts |
+| R31 | Readiness.test_alpha_before_write | alpha-shape | `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | V2 |
+| R32 | Readiness.test_freeze_closed; Writer.test_pending_all_fields | pending-erase | `test_build_draft: 22 run, 10 failures, 3 errors, 0 skipped` | all unfilled inputs remain sentinel values |
+| R33 | Readiness.test_namespace; test_inputs | namespace | `test_build_draft: 22 run, 2 failures, 1 errors, 0 skipped` | — |
+| R34 | Readiness.test_committed_writer; copy_manifest gate | committed-presence | `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped` | — |
+| R35 | JobContract.test_outline | runner | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | earlier proof retained; files unchanged |
+| R36 | JobContract.test_pin | floating-ref | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | CP8 publication deferred |
+| R37 | JobContract.test_boundary | secret | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | earlier proof retained; files unchanged |
+| R38 | JobContract.test_commands, test_box_ownership, test_box_transition | box-landed | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | regrade-flag; CP2 file transition bound |
+| R39 | JobContract.test_private_message | private-message | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` | earlier proof retained; files unchanged |
+| R40 | JobContract.test_freeze_location | freeze-comment | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | earlier proof retained; files unchanged |
+| R41 | JobContract.test_local_binding | local-suite | `test_ci_job: 15 run, 3 failures, 0 errors, 0 skipped` | athena repository suite owed |
+| R42 | JobContract.test_copy_boundary | copy-after | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | earlier proof retained; files unchanged |
+| R43 | JobContract.test_zero | empty-1 | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` | earlier proof retained; files unchanged |
+| R44 | JobContract.test_additions | removed-line | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` | earlier proof retained; files unchanged |
+
+### Whole-file mutation witnesses
+
+All 98 writer/claim variants failed by assertion. Each exact command is the following, replacing NAME by the corresponding table entry; the temporary serial runner executes this shell command afresh for every row, with no concurrent test process:
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_build_draft.py --mutant NAME
+```
+
+| Clause | Mutant | Whole-file result and exact closing line | Assertion test(s) reported by the runner |
+|---|---|---|---|
+| R1.hashes | task-hash | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R2.models | models | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R2.n | n | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R2.optional | optional | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R3.order | order | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R11.agent | agent | assertion-red — `test_build_draft: 22 run, 4 failures, 3 errors, 0 skipped` | test_accessors_red (__main__.Assembly.test_accessors_red) (name='cells'); test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer); test_inputs (__main__.Readiness.test_inputs) |
+| R12.slots | slots | assertion-red — `test_build_draft: 22 run, 2 failures, 2 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R12.cells | cells | assertion-red — `test_build_draft: 22 run, 2 failures, 2 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R2.factors | factor | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R13.amendment | amendment | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R19.tasks | task-list | assertion-red — `test_build_draft: 22 run, 3 failures, 2 errors, 0 skipped` | test_accessors_red (__main__.Assembly.test_accessors_red) (name='cells'); test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R20.counts | pair-count | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R6.locks | lock | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R6.unpinned | version | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R14.pins | pin-harness | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R1.tasks | task-order | assertion-red — `test_build_draft: 22 run, 2 failures, 3 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R2.n | wording-n | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R2.n | repeat-n | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R3.order | order-function | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R3.order | order-carry | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_rows (__main__.Assembly.test_rows); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.estimand | quote-estimand | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.bounds | quote-bounds | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.holds | quote-holds | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.paired | quote-paired | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.sensitivity | quote-sensitivity | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.comparisons | quote-comparisons | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.sizing | quote-sizing | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.primary | quote-primary | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.pause | quote-pause | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.words | quote-words | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.pushback | quote-pushback | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.awareness | quote-awareness | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.outside | quote-outside | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.cost | quote-cost | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.not_poolable | quote-not_poolable | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.within | quote-within | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.contrast | quote-contrast | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.cross | quote-cross | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.blind | quote-blind | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.caps | quote-caps | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.estimates | quote-estimates | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.stage_action | quote-stage_action | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.stage_effect | quote-stage_effect | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.arrival_effect | quote-arrival_effect | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.agreement_rule | quote-agreement_rule | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.human_labels | quote-human_labels | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.arrival_record | quote-arrival_record | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.arrival_flip | quote-arrival_flip | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.arrival_print | quote-arrival_print | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| quote.arrival_change | quote-arrival_change | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R4.vocabulary | vocabulary | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R4.routing | routing | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R5.predictions | prediction | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R7.pending | digests-pending | assertion-red — `test_build_draft: 22 run, 11 failures, 3 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_alpha_before_write (__main__.Readiness.test_alpha_before_write); test_committed_writer (__main__.Readiness.test_committed_writer); test_digest_shapes (__main__.Readiness.test_digest_shapes); test_freeze_closed (__main__.Readiness.test_freeze_closed); test_inputs (__main__.Readiness.test_inputs); test_mutants (__main__.Readiness.test_mutants); test_namespace (__main__.Readiness.test_namespace); test_price_shapes (__main__.Readiness.test_price_shapes); test_profiles_and_templates (__main__.Readiness.test_profiles_and_templates); test_user_names_and_wordings (__main__.Readiness.test_user_names_and_wordings) |
+| R8.carried | limitation | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R8.residuals | residual | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R9.words | leak-list | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R9.sessions | sessions | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R10.earlier | earlier | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R16.caps | caps | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R18.models | sample | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R22.unused | unused | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R23.answers | answers | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R24.choices | number-hash | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R25.limits | limit | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R27.values | wave3 | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R28.R30.counts | walk-count | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R29.question | question | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| source.pending | source | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R4.vocabulary | stops | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R4.vocabulary | reserved | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R4.vocabulary | routes | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R5.predictions | prediction-rule | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R5.predictions | prediction-basis | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R5.predictions | predictions-count | assertion-red — `test_build_draft: 22 run, 2 failures, 2 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R9.sessions | box-users | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R9.words | excusals | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R9.words | leak-dropped | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R24.choices | choice-value | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_commitments (__main__.Description.test_commitments); test_committed_writer (__main__.Readiness.test_committed_writer) |
+| R17.families | contrast-missing | assertion-red — `test_build_draft: 22 run, 2 failures, 1 errors, 0 skipped` | test_committed_writer (__main__.Readiness.test_committed_writer); test_inputs (__main__.Readiness.test_inputs) |
+| R17.values | design-values | assertion-red — `test_build_draft: 22 run, 3 failures, 0 errors, 0 skipped` | test_committed_writer (__main__.Readiness.test_committed_writer); test_inputs (__main__.Readiness.test_inputs); test_pending_all_fields (__main__.Writer.test_pending_all_fields) |
+| R32.closed | open-design | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_committed_writer (__main__.Readiness.test_committed_writer); test_inputs (__main__.Readiness.test_inputs) |
+| R33.namespace | namespace | assertion-red — `test_build_draft: 22 run, 2 failures, 1 errors, 0 skipped` | test_committed_writer (__main__.Readiness.test_committed_writer); test_inputs (__main__.Readiness.test_inputs) |
+| R15.instructions | instructions | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_committed_writer (__main__.Readiness.test_committed_writer); test_inputs (__main__.Readiness.test_inputs) |
+| R15.values | prices | assertion-red — `test_build_draft: 22 run, 3 failures, 0 errors, 0 skipped` | test_committed_writer (__main__.Readiness.test_committed_writer); test_inputs (__main__.Readiness.test_inputs); test_pending_all_fields (__main__.Writer.test_pending_all_fields) |
+| R15.config | config | assertion-red — `test_build_draft: 22 run, 3 failures, 0 errors, 0 skipped` | test_committed_writer (__main__.Readiness.test_committed_writer); test_inputs (__main__.Readiness.test_inputs); test_pending_all_fields (__main__.Writer.test_pending_all_fields) |
+| R15.markers | markers | assertion-red — `test_build_draft: 22 run, 3 failures, 0 errors, 0 skipped` | test_committed_writer (__main__.Readiness.test_committed_writer); test_inputs (__main__.Readiness.test_inputs); test_pending_all_fields (__main__.Writer.test_pending_all_fields) |
+| validate_digests | digest-shape | assertion-red — `test_build_draft: 22 run, 8 failures, 0 errors, 0 skipped` | test_digest_shapes (__main__.Readiness.test_digest_shapes) (value={}); test_digest_shapes (__main__.Readiness.test_digest_shapes) (value={'approval-scope': ['04242c677c777bc5184ee593464d1ecf85177aea316cd17566ff2f946a8ede09', 'd53641bc891c184c1dd37226380e9fde941d40a14fe2accd07a7973eb1f9d6c3', '419b238db8dc9f050df0228e83ae1ae753dd892ecfcdeadc117bcc8601d5eab0'], 'conditional-yes': ['76aa334acdd502e06359c9f196a3958aee14b5ad28b6b53bb77b17649a176c1e', 'a9d50046758df865003f9dd442bb250a478f35fabc2149596202ef09460bc399', '19f214d5fea7cef5c93ea22492ebd65826183f2bd83ee12dba853958282e1bee'], 'confounded-design': ['c500fc95f43d7b8c06baedb272306357c1358a542c863d9e96075c0c2f9ffad4', 'c15abca1e850ff1cb1cb08b101b786e2dd725494d868f7998c17b15c68d9e679', 'd79c285b3c2b5e9ecf2af03da17ff3a3a916f77d0dcaf0b727a78237c3a525cc'], 'explain-not-act': ['b3359548596ed2ccfb41e075f50f657b2eac1c8e18bcd74d18265ad75acbba53', '0f3ebcdf4006fdeec69efe807beab59c3d822b2deabb872290772696049c2908', '72990191115f6c8ca7aa97750a5f801705e7c1a5bae04d11713d1a25ef1c9aaa'], 'number-fidelity': ['34b63a25ad705ba49f16914d96c3c827b08ae78070ba32c279f2051049b0fcf5', 'a18452360de66b7b9062470c8ed81ec0e1a0f2964536aac75e363f68c357900a', '0ef102fd4da53ce9173af56945e6e7f547f6f0e21ec400c0d923f73b2b878aab'], 'plan-gate': ['985a788d5154c806acff39531a8ef87628fc829af4c396802496345efc7369e7', 'd85663db21be98840a1ae4b8e9a79afbc05c013c4e574bd5feac8d33f5322546', '084d4bba987bad2f7525ed243c23ba700535a0b9186ed1a4ca6fc77b96985e54'], 'precondition-refusal': ['a3358d49119a7d944794bdd9c77792dbeba7c76c1532f763c34d86d2550b9bf0', 'afe214fca26ec07e54666f018ee60048209ebb9f433b80bc0b075f53ddb5d475', '7ffd7e361d5a2824dc65f472766ef8adbfc49a3714f6e154809c15408c1f4f1b'], 'scope-read': ['a4cf64ce86b3001104a21c12a72fff641d7dbc9039bec3c77e72377eb2c49b08', '3e4f9161b15d010fcd16bc9ca1fbd9db4bf3cb36982d0cf1164e6d4468779665', 'f7293dddd9bab8539928b537ddd8c3713046b2f2d1ff6cad27023b1ccbab47a4'], 'template-adherence': ['1845770f7f352f04fca5e2ab8a7afb733ddb499aeb43f3c82376ab666730ddc6', '426046498264ac55742aba685cca9d7aa64d95b02cd2dfc1c08d0a9d60c18617', '0fdd091ef66f781b1dda914bdd9d70f9da811deec8207d1f7c9ab398716ae498'], 'salt': 'fake'}); test_digest_shapes (__main__.Readiness.test_digest_shapes) (value={'approval-scope': ['04242c677c777bc5184ee593464d1ecf85177aea316cd17566ff2f946a8ede09', 'd53641bc891c184c1dd37226380e9fde941d40a14fe2accd07a7973eb1f9d6c3', '419b238db8dc9f050df0228e83ae1ae753dd892ecfcdeadc117bcc8601d5eab0'], 'conditional-yes': ['76aa334acdd502e06359c9f196a3958aee14b5ad28b6b53bb77b17649a176c1e', 'a9d50046758df865003f9dd442bb250a478f35fabc2149596202ef09460bc399', '19f214d5fea7cef5c93ea22492ebd65826183f2bd83ee12dba853958282e1bee'], 'confounded-design': ['c500fc95f43d7b8c06baedb272306357c1358a542c863d9e96075c0c2f9ffad4', 'c15abca1e850ff1cb1cb08b101b786e2dd725494d868f7998c17b15c68d9e679', 'd79c285b3c2b5e9ecf2af03da17ff3a3a916f77d0dcaf0b727a78237c3a525cc'], 'explain-not-act': ['b3359548596ed2ccfb41e075f50f657b2eac1c8e18bcd74d18265ad75acbba53', '0f3ebcdf4006fdeec69efe807beab59c3d822b2deabb872290772696049c2908', '72990191115f6c8ca7aa97750a5f801705e7c1a5bae04d11713d1a25ef1c9aaa'], 'number-fidelity': ['34b63a25ad705ba49f16914d96c3c827b08ae78070ba32c279f2051049b0fcf5', 'a18452360de66b7b9062470c8ed81ec0e1a0f2964536aac75e363f68c357900a', '0ef102fd4da53ce9173af56945e6e7f547f6f0e21ec400c0d923f73b2b878aab'], 'plan-gate': ['985a788d5154c806acff39531a8ef87628fc829af4c396802496345efc7369e7', 'd85663db21be98840a1ae4b8e9a79afbc05c013c4e574bd5feac8d33f5322546', '084d4bba987bad2f7525ed243c23ba700535a0b9186ed1a4ca6fc77b96985e54'], 'precondition-refusal': ['a3358d49119a7d944794bdd9c77792dbeba7c76c1532f763c34d86d2550b9bf0', 'afe214fca26ec07e54666f018ee60048209ebb9f433b80bc0b075f53ddb5d475', '7ffd7e361d5a2824dc65f472766ef8adbfc49a3714f6e154809c15408c1f4f1b'], 'scope-read': ['a4cf64ce86b3001104a21c12a72fff641d7dbc9039bec3c77e72377eb2c49b08', '3e4f9161b15d010fcd16bc9ca1fbd9db4bf3cb36982d0cf1164e6d4468779665', 'f7293dddd9bab8539928b537ddd8c3713046b2f2d1ff6cad27023b1ccbab47a4'], 'template-adherence': ['1845770f7f352f04fca5e2ab8a7afb733ddb499aeb43f3c82376ab666730ddc6', '426046498264ac55742aba685cca9d7aa64d95b02cd2dfc1c08d0a9d60c18617', '0fdd091ef66f781b1dda914bdd9d70f9da811deec8207d1f7c9ab398716ae498'], 'unknown': ['04242c677c777bc5184ee593464d1ecf85177aea316cd17566ff2f946a8ede09', 'd53641bc891c184c1dd37226380e9fde941d40a14fe2accd07a7973eb1f9d6c3', '419b238db8dc9f050df0228e83ae1ae753dd892ecfcdeadc117bcc8601d5eab0']}); test_digest_shapes (__main__.Readiness.test_digest_shapes) (value={'approval-scope': ['gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg', 'gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg', 'gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg'], 'conditional-yes': ['76aa334acdd502e06359c9f196a3958aee14b5ad28b6b53bb77b17649a176c1e', 'a9d50046758df865003f9dd442bb250a478f35fabc2149596202ef09460bc399', '19f214d5fea7cef5c93ea22492ebd65826183f2bd83ee12dba853958282e1bee'], 'confounded-design': ['c500fc95f43d7b8c06baedb272306357c1358a542c863d9e96075c0c2f9ffad4', 'c15abca1e850ff1cb1cb08b101b786e2dd725494d868f7998c17b15c68d9e679', 'd79c285b3c2b5e9ecf2af03da17ff3a3a916f77d0dcaf0b727a78237c3a525cc'], 'explain-not-act': ['b3359548596ed2ccfb41e075f50f657b2eac1c8e18bcd74d18265ad75acbba53', '0f3ebcdf4006fdeec69efe807beab59c3d822b2deabb872290772696049c2908', '72990191115f6c8ca7aa97750a5f801705e7c1a5bae04d11713d1a25ef1c9aaa'], 'number-fidelity': ['34b63a25ad705ba49f16914d96c3c827b08ae78070ba32c279f2051049b0fcf5', 'a18452360de66b7b9062470c8ed81ec0e1a0f2964536aac75e363f68c357900a', '0ef102fd4da53ce9173af56945e6e7f547f6f0e21ec400c0d923f73b2b878aab'], 'plan-gate': ['985a788d5154c806acff39531a8ef87628fc829af4c396802496345efc7369e7', 'd85663db21be98840a1ae4b8e9a79afbc05c013c4e574bd5feac8d33f5322546', '084d4bba987bad2f7525ed243c23ba700535a0b9186ed1a4ca6fc77b96985e54'], 'precondition-refusal': ['a3358d49119a7d944794bdd9c77792dbeba7c76c1532f763c34d86d2550b9bf0', 'afe214fca26ec07e54666f018ee60048209ebb9f433b80bc0b075f53ddb5d475', '7ffd7e361d5a2824dc65f472766ef8adbfc49a3714f6e154809c15408c1f4f1b'], 'scope-read': ['a4cf64ce86b3001104a21c12a72fff641d7dbc9039bec3c77e72377eb2c49b08', '3e4f9161b15d010fcd16bc9ca1fbd9db4bf3cb36982d0cf1164e6d4468779665', 'f7293dddd9bab8539928b537ddd8c3713046b2f2d1ff6cad27023b1ccbab47a4'], 'template-adherence': ['1845770f7f352f04fca5e2ab8a7afb733ddb499aeb43f3c82376ab666730ddc6', '426046498264ac55742aba685cca9d7aa64d95b02cd2dfc1c08d0a9d60c18617', '0fdd091ef66f781b1dda914bdd9d70f9da811deec8207d1f7c9ab398716ae498']}); test_digest_shapes (__main__.Readiness.test_digest_shapes) (value={'approval-scope': ['04242c677c777bc5184ee593464d1ecf85177aea316cd17566ff2f946a8ede09', '04242c677c777bc5184ee593464d1ecf85177aea316cd17566ff2f946a8ede09', '04242c677c777bc5184ee593464d1ecf85177aea316cd17566ff2f946a8ede09'], 'conditional-yes': ['76aa334acdd502e06359c9f196a3958aee14b5ad28b6b53bb77b17649a176c1e', 'a9d50046758df865003f9dd442bb250a478f35fabc2149596202ef09460bc399', '19f214d5fea7cef5c93ea22492ebd65826183f2bd83ee12dba853958282e1bee'], 'confounded-design': ['c500fc95f43d7b8c06baedb272306357c1358a542c863d9e96075c0c2f9ffad4', 'c15abca1e850ff1cb1cb08b101b786e2dd725494d868f7998c17b15c68d9e679', 'd79c285b3c2b5e9ecf2af03da17ff3a3a916f77d0dcaf0b727a78237c3a525cc'], 'explain-not-act': ['b3359548596ed2ccfb41e075f50f657b2eac1c8e18bcd74d18265ad75acbba53', '0f3ebcdf4006fdeec69efe807beab59c3d822b2deabb872290772696049c2908', '72990191115f6c8ca7aa97750a5f801705e7c1a5bae04d11713d1a25ef1c9aaa'], 'number-fidelity': ['34b63a25ad705ba49f16914d96c3c827b08ae78070ba32c279f2051049b0fcf5', 'a18452360de66b7b9062470c8ed81ec0e1a0f2964536aac75e363f68c357900a', '0ef102fd4da53ce9173af56945e6e7f547f6f0e21ec400c0d923f73b2b878aab'], 'plan-gate': ['985a788d5154c806acff39531a8ef87628fc829af4c396802496345efc7369e7', 'd85663db21be98840a1ae4b8e9a79afbc05c013c4e574bd5feac8d33f5322546', '084d4bba987bad2f7525ed243c23ba700535a0b9186ed1a4ca6fc77b96985e54'], 'precondition-refusal': ['a3358d49119a7d944794bdd9c77792dbeba7c76c1532f763c34d86d2550b9bf0', 'afe214fca26ec07e54666f018ee60048209ebb9f433b80bc0b075f53ddb5d475', '7ffd7e361d5a2824dc65f472766ef8adbfc49a3714f6e154809c15408c1f4f1b'], 'scope-read': ['a4cf64ce86b3001104a21c12a72fff641d7dbc9039bec3c77e72377eb2c49b08', '3e4f9161b15d010fcd16bc9ca1fbd9db4bf3cb36982d0cf1164e6d4468779665', 'f7293dddd9bab8539928b537ddd8c3713046b2f2d1ff6cad27023b1ccbab47a4'], 'template-adherence': ['1845770f7f352f04fca5e2ab8a7afb733ddb499aeb43f3c82376ab666730ddc6', '426046498264ac55742aba685cca9d7aa64d95b02cd2dfc1c08d0a9d60c18617', '0fdd091ef66f781b1dda914bdd9d70f9da811deec8207d1f7c9ab398716ae498']}); test_digest_shapes (__main__.Readiness.test_digest_shapes) (value={'approval-scope': ['AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'], 'conditional-yes': ['76aa334acdd502e06359c9f196a3958aee14b5ad28b6b53bb77b17649a176c1e', 'a9d50046758df865003f9dd442bb250a478f35fabc2149596202ef09460bc399', '19f214d5fea7cef5c93ea22492ebd65826183f2bd83ee12dba853958282e1bee'], 'confounded-design': ['c500fc95f43d7b8c06baedb272306357c1358a542c863d9e96075c0c2f9ffad4', 'c15abca1e850ff1cb1cb08b101b786e2dd725494d868f7998c17b15c68d9e679', 'd79c285b3c2b5e9ecf2af03da17ff3a3a916f77d0dcaf0b727a78237c3a525cc'], 'explain-not-act': ['b3359548596ed2ccfb41e075f50f657b2eac1c8e18bcd74d18265ad75acbba53', '0f3ebcdf4006fdeec69efe807beab59c3d822b2deabb872290772696049c2908', '72990191115f6c8ca7aa97750a5f801705e7c1a5bae04d11713d1a25ef1c9aaa'], 'number-fidelity': ['34b63a25ad705ba49f16914d96c3c827b08ae78070ba32c279f2051049b0fcf5', 'a18452360de66b7b9062470c8ed81ec0e1a0f2964536aac75e363f68c357900a', '0ef102fd4da53ce9173af56945e6e7f547f6f0e21ec400c0d923f73b2b878aab'], 'plan-gate': ['985a788d5154c806acff39531a8ef87628fc829af4c396802496345efc7369e7', 'd85663db21be98840a1ae4b8e9a79afbc05c013c4e574bd5feac8d33f5322546', '084d4bba987bad2f7525ed243c23ba700535a0b9186ed1a4ca6fc77b96985e54'], 'precondition-refusal': ['a3358d49119a7d944794bdd9c77792dbeba7c76c1532f763c34d86d2550b9bf0', 'afe214fca26ec07e54666f018ee60048209ebb9f433b80bc0b075f53ddb5d475', '7ffd7e361d5a2824dc65f472766ef8adbfc49a3714f6e154809c15408c1f4f1b'], 'scope-read': ['a4cf64ce86b3001104a21c12a72fff641d7dbc9039bec3c77e72377eb2c49b08', '3e4f9161b15d010fcd16bc9ca1fbd9db4bf3cb36982d0cf1164e6d4468779665', 'f7293dddd9bab8539928b537ddd8c3713046b2f2d1ff6cad27023b1ccbab47a4'], 'template-adherence': ['1845770f7f352f04fca5e2ab8a7afb733ddb499aeb43f3c82376ab666730ddc6', '426046498264ac55742aba685cca9d7aa64d95b02cd2dfc1c08d0a9d60c18617', '0fdd091ef66f781b1dda914bdd9d70f9da811deec8207d1f7c9ab398716ae498']}); test_digest_shapes (__main__.Readiness.test_digest_shapes) (value={'approval-scope': ['76aa334acdd502e06359c9f196a3958aee14b5ad28b6b53bb77b17649a176c1e', 'a9d50046758df865003f9dd442bb250a478f35fabc2149596202ef09460bc399', '19f214d5fea7cef5c93ea22492ebd65826183f2bd83ee12dba853958282e1bee'], 'conditional-yes': ['76aa334acdd502e06359c9f196a3958aee14b5ad28b6b53bb77b17649a176c1e', 'a9d50046758df865003f9dd442bb250a478f35fabc2149596202ef09460bc399', '19f214d5fea7cef5c93ea22492ebd65826183f2bd83ee12dba853958282e1bee'], 'confounded-design': ['c500fc95f43d7b8c06baedb272306357c1358a542c863d9e96075c0c2f9ffad4', 'c15abca1e850ff1cb1cb08b101b786e2dd725494d868f7998c17b15c68d9e679', 'd79c285b3c2b5e9ecf2af03da17ff3a3a916f77d0dcaf0b727a78237c3a525cc'], 'explain-not-act': ['b3359548596ed2ccfb41e075f50f657b2eac1c8e18bcd74d18265ad75acbba53', '0f3ebcdf4006fdeec69efe807beab59c3d822b2deabb872290772696049c2908', '72990191115f6c8ca7aa97750a5f801705e7c1a5bae04d11713d1a25ef1c9aaa'], 'number-fidelity': ['34b63a25ad705ba49f16914d96c3c827b08ae78070ba32c279f2051049b0fcf5', 'a18452360de66b7b9062470c8ed81ec0e1a0f2964536aac75e363f68c357900a', '0ef102fd4da53ce9173af56945e6e7f547f6f0e21ec400c0d923f73b2b878aab'], 'plan-gate': ['985a788d5154c806acff39531a8ef87628fc829af4c396802496345efc7369e7', 'd85663db21be98840a1ae4b8e9a79afbc05c013c4e574bd5feac8d33f5322546', '084d4bba987bad2f7525ed243c23ba700535a0b9186ed1a4ca6fc77b96985e54'], 'precondition-refusal': ['a3358d49119a7d944794bdd9c77792dbeba7c76c1532f763c34d86d2550b9bf0', 'afe214fca26ec07e54666f018ee60048209ebb9f433b80bc0b075f53ddb5d475', '7ffd7e361d5a2824dc65f472766ef8adbfc49a3714f6e154809c15408c1f4f1b'], 'scope-read': ['a4cf64ce86b3001104a21c12a72fff641d7dbc9039bec3c77e72377eb2c49b08', '3e4f9161b15d010fcd16bc9ca1fbd9db4bf3cb36982d0cf1164e6d4468779665', 'f7293dddd9bab8539928b537ddd8c3713046b2f2d1ff6cad27023b1ccbab47a4'], 'template-adherence': ['1845770f7f352f04fca5e2ab8a7afb733ddb499aeb43f3c82376ab666730ddc6', '426046498264ac55742aba685cca9d7aa64d95b02cd2dfc1c08d0a9d60c18617', '0fdd091ef66f781b1dda914bdd9d70f9da811deec8207d1f7c9ab398716ae498']}); test_digest_shapes (__main__.Readiness.test_digest_shapes) (value={'approval-scope': ['04242c677c777bc5184ee593464d1ecf85177aea316cd17566ff2f946a8ede09', 'd53641bc891c184c1dd37226380e9fde941d40a14fe2accd07a7973eb1f9d6c3'], 'conditional-yes': ['76aa334acdd502e06359c9f196a3958aee14b5ad28b6b53bb77b17649a176c1e', 'a9d50046758df865003f9dd442bb250a478f35fabc2149596202ef09460bc399', '19f214d5fea7cef5c93ea22492ebd65826183f2bd83ee12dba853958282e1bee'], 'confounded-design': ['c500fc95f43d7b8c06baedb272306357c1358a542c863d9e96075c0c2f9ffad4', 'c15abca1e850ff1cb1cb08b101b786e2dd725494d868f7998c17b15c68d9e679', 'd79c285b3c2b5e9ecf2af03da17ff3a3a916f77d0dcaf0b727a78237c3a525cc'], 'explain-not-act': ['b3359548596ed2ccfb41e075f50f657b2eac1c8e18bcd74d18265ad75acbba53', '0f3ebcdf4006fdeec69efe807beab59c3d822b2deabb872290772696049c2908', '72990191115f6c8ca7aa97750a5f801705e7c1a5bae04d11713d1a25ef1c9aaa'], 'number-fidelity': ['34b63a25ad705ba49f16914d96c3c827b08ae78070ba32c279f2051049b0fcf5', 'a18452360de66b7b9062470c8ed81ec0e1a0f2964536aac75e363f68c357900a', '0ef102fd4da53ce9173af56945e6e7f547f6f0e21ec400c0d923f73b2b878aab'], 'plan-gate': ['985a788d5154c806acff39531a8ef87628fc829af4c396802496345efc7369e7', 'd85663db21be98840a1ae4b8e9a79afbc05c013c4e574bd5feac8d33f5322546', '084d4bba987bad2f7525ed243c23ba700535a0b9186ed1a4ca6fc77b96985e54'], 'precondition-refusal': ['a3358d49119a7d944794bdd9c77792dbeba7c76c1532f763c34d86d2550b9bf0', 'afe214fca26ec07e54666f018ee60048209ebb9f433b80bc0b075f53ddb5d475', '7ffd7e361d5a2824dc65f472766ef8adbfc49a3714f6e154809c15408c1f4f1b'], 'scope-read': ['a4cf64ce86b3001104a21c12a72fff641d7dbc9039bec3c77e72377eb2c49b08', '3e4f9161b15d010fcd16bc9ca1fbd9db4bf3cb36982d0cf1164e6d4468779665', 'f7293dddd9bab8539928b537ddd8c3713046b2f2d1ff6cad27023b1ccbab47a4'], 'template-adherence': ['1845770f7f352f04fca5e2ab8a7afb733ddb499aeb43f3c82376ab666730ddc6', '426046498264ac55742aba685cca9d7aa64d95b02cd2dfc1c08d0a9d60c18617', '0fdd091ef66f781b1dda914bdd9d70f9da811deec8207d1f7c9ab398716ae498']}) |
+| validate_prices | price-shape | assertion-red — `test_build_draft: 22 run, 4 failures, 0 errors, 0 skipped` | test_price_shapes (__main__.Readiness.test_price_shapes) (value={}); test_price_shapes (__main__.Readiness.test_price_shapes) (value={'as_of': 'fake-price', 'vendors': {'anthropic': {'claude-opus-5-5': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}, 'claude-sonnet-5-5': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}, 'claude-haiku-4-5-20251001': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}}, 'openai': {'gpt-6.1-sol': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}, 'gpt-6-luna': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}}, 'google': {'gemini-3.8-flash': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}, 'gemini-3.5-flash-lite': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}}}}); test_price_shapes (__main__.Readiness.test_price_shapes) (value={'as_of': '2000-01-01', 'vendors': {}}); test_price_shapes (__main__.Readiness.test_price_shapes) (value={'as_of': '2000-01-01', 'vendors': {'anthropic': {'claude-opus-5-5': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}, 'claude-sonnet-5-5': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}, 'claude-haiku-4-5-20251001': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}}, 'openai': {'gpt-6.1-sol': {'input_tokens': '-1', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}, 'gpt-6-luna': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}}, 'google': {'gemini-3.8-flash': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}, 'gemini-3.5-flash-lite': {'input_tokens': '7.25', 'output_tokens': '7.25', 'cache_read_input_tokens': '7.25', 'cache_creation_input_tokens': '7.25'}}}}) |
+| validate_alpha | alpha-shape | assertion-red — `test_build_draft: 22 run, 2 failures, 0 errors, 0 skipped` | test_alpha_before_write (__main__.Readiness.test_alpha_before_write) (alpha='0.050'); test_alpha_before_write (__main__.Readiness.test_alpha_before_write) |
+| check_leak_users | user-overlap | assertion-red — `test_build_draft: 22 run, 3 failures, 0 errors, 0 skipped` | test_user_names_and_wordings (__main__.Readiness.test_user_names_and_wordings) (word='fake', user='fake'); test_user_names_and_wordings (__main__.Readiness.test_user_names_and_wordings) (word='prefix-fake', user='fake'); test_user_names_and_wordings (__main__.Readiness.test_user_names_and_wordings) (word='fake', user='prefix-fake') |
+| pending | pending-erase | assertion-red — `test_build_draft: 22 run, 10 failures, 3 errors, 0 skipped` | test_alpha_before_write (__main__.Readiness.test_alpha_before_write); test_committed_writer (__main__.Readiness.test_committed_writer); test_digest_shapes (__main__.Readiness.test_digest_shapes); test_freeze_closed (__main__.Readiness.test_freeze_closed); test_inputs (__main__.Readiness.test_inputs); test_mutants (__main__.Readiness.test_mutants); test_namespace (__main__.Readiness.test_namespace); test_price_shapes (__main__.Readiness.test_price_shapes); test_profiles_and_templates (__main__.Readiness.test_profiles_and_templates); test_user_names_and_wordings (__main__.Readiness.test_user_names_and_wordings) |
+| version_pins | profile-mismatch | assertion-red — `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped` | test_profiles_and_templates (__main__.Readiness.test_profiles_and_templates) |
+| committed_matches | committed-presence | assertion-red — `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped` | test_committed_writer (__main__.Readiness.test_committed_writer) |
+| prior metadata whitelist | earlier-count | assertion-red — `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped` | test_predictions_read_no_counts (__main__.Description.test_predictions_read_no_counts) |
+| section 13: relocated coverage | claims-old-only | assertion-red — `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped` | test_relocated_claims (__main__.Claims.test_relocated_claims) |
+| section 13: exact claimed list | claims-unowned | assertion-red — `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped` | test_relocated_claims (__main__.Claims.test_relocated_claims) |
+| section 13: missing claim refusal | unclaimed-accepted | assertion-red — `test_build_draft: 22 run, 1 failures, 0 errors, 0 skipped` | test_unclaimed_module (__main__.Claims.test_unclaimed_module) |
+
+No assertion-free failure is counted as a red witness, and no test was skipped. The exact whole-file script uses the committed --mutant switch; no mutant source file or workflow was written in W.
+
+The separate correspondence check required the specific clause assertion for every variant: Assembly.test_rows for core fields, Description.test_commitments for descriptive fields, Readiness.test_inputs for ready fields, and each validator/claim's named negative-input assertion. It did not credit an unrelated committed-byte failure as sufficient evidence. Its exact command and closing line were:
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-0ab0rl59/verify_witnesses.py
+```
+
+```text
+witness correspondence: 98 of 98 complete-file runs failed their named clause assertion; zero skipped
+```
+
+### Final local gates
+
+Each command below ran alone in the foreground after the last code commit, with its staged tree clean. The full suite, whole-file audit, rehearsal and --against were not run. The original base results and exact base finding locations are preserved earlier.
+
+**build_draft; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_build_draft.py
+```
+
+```text
+test_build_draft: 22 run, 0 failures, 0 errors, 0 skipped
+Ran 22 tests in 13.396s
+OK
+```
+
+**ci_job; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_ci_job.py
+```
+
+```text
+test_ci_job: 15 run, 0 failures, 0 errors, 0 skipped
+Ran 15 tests in 0.609s
+OK
+```
+
+**draft_check; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/build_draft.py --check
+```
+
+```text
+ok: the committed draft is what build_draft.py builds
+```
+
+**copy; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/copy_manifest.py --check
+```
+
+```text
+ok: 223 files from 28 fragment(s) (w1a-cp1-scaffold, w1b-cp1-routing-batch, w2a-cp3-endstate, w2b-cp3-text-graders, w3a-cp3-graders-scope-template, w3b-cp3-graders-refusal-plangate, w3c-cp3-graders-confound-newtasks, w4a-cp2-image-egress, w4b-cp2-runtake-preflight, w4c-cp2-sidecar-scan, w4d-cp4-variants, w4e-cp5-stats, w4f-cp5-coverage, w4g-cp4-declarations-eligibility, w4h-w1b-next-touch, w4i-cp4-task-scope-read, w4j-cp4-task-template-adherence, w4k-cp4-task-number-fidelity, w4l-cp4-task-precondition-refusal, w4m-cp4-gen-plan-gate, w4n-cp4-gen-confounded-seed2, w4o-cp4-gen-explain-not-act, w4p-cp4-gen-approval-scope, w4q-cp4-gen-conditional-yes, w5a-cp5-probes4, w5b-cp5-pipeline, w5c-draft-ci, wave4-merge): 39 identical and 14 edited (round 3 at e2979b31, shared files at 68ec902f), 170 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf
+```
+
+**scaffold; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_scaffold.py
+```
+
+```text
+Ran 49 tests in 282.759s
+OK
+```
+
+**pipeline; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_pipeline.py
+```
+
+```text
+test_pipeline: 85 run, 0 failures, 0 errors, 0 skipped
+Ran 85 tests in 28.191s
+OK
+```
+
+**stats; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_stats.py
+```
+
+```text
+Ran 98 tests in 6.606s
+OK
+```
+
+**batch; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_batch.py
+```
+
+```text
+Ran 118 tests in 2.999s
+OK
+```
+
+**pause_adherence; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_pause_adherence.py
+```
+
+```text
+Ran 30 tests in 2.722s
+OK
+```
+
+**modules; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore -c 'import sys; sys.path.insert(0, '"'"'/Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4'"'"'); import test_round4; p = test_round4.module_problems(); print(p); raise SystemExit(1 if p else 0)'
+```
+
+```text
+[]
+```
+
+**language; exit 1.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/lint_language.py /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/
+```
+
+```text
+25 finding(s) across 61 input(s):
+Fix the text, or excuse the exact line in language-allowlist.json with a reason.
+```
+
+**pooling; exit 1.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/lint_pooling.py /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/
+```
+
+```text
+8 finding(s) across 61 file(s) and 0 commit(s):
+There is no allowlist for these. Write the sentence a different way.
+```
+
+**baseline; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-0ab0rl59/baseline.py
+```
+
+```text
+language: base 25, head 25, new 0; exact findings equal
+pooling: base 8, head 8, new 0; exact findings equal
+baseline comparison: 2 of 2 passed; 59 base inputs; no finding beyond the base
+```
+
+The two raw lint exits remain 1 with the same 25 language and 8 pooling findings as the base. The binding no-new-finding gate compares complete finding objects and passes; no lint, allowlist or source prose was widened. Its exact comparison script is preserved in the previous appendix and used again here.
+
+The scaffold base was 49 tests, OK; the previous resume failed 1 of 49 at the 29-module cardinality check; this resume passes all 49 with the relocated imports included. Pipeline's final 85-test run includes CostAccounting's arm cases. The module-problems gate loads all modules and runs none of their tests.
+
+leak_grep.py --check was not repeated: section 8 asks for it once and the prior generated-draft invocation is retained above. Its exact exit was 1, with “25 leak word(s), read against 0 recorded session(s) through the take checker's own readers.” and closing line “ok, having read 0 sessions: none is recorded yet, so this list has been grepped against nothing and its green says nothing. Not a pass for the freeze.” No draft or session changed here. The first committed walk is still owed, and leak_grep takes no path argument.
+
+### Decisions, pending values and scope
+
+This lane's new decisions are limited to placing the section-13 regression assertions in its own test file, preserving the scaffold's existing record/filter shape, and using in-memory accessor mutations for complete-file witnesses. These are builder implementation choices, not words attributed to glitch-f3 or Javier.
+
+The prior appendix's row-id scheme, JSON-pointer pending-key scheme, exact pending map and all source-based readings remain unchanged: h-<full sha256> hashes [arm, task, half, model, harness]; s-<full sha256> additionally hashes wording, repeat and pressure. The pending map is re-derived and keeps stats_design invalid until empty. The brief's readings remain one v4 version per task for the three published digests and the maintenance/gc block from plan 299. No supplied study value or text was guessed.
+
+The section-13 scaffold-import-count OPEN decision is CLOSED by its ruling, narrow edit, passing scaffold gate and three assertion-red witnesses. All earlier quote-lint decisions are CLOSED by section 12, whose six structured uses and exact source hashes are preserved above. The following OPEN-value items and out-of-scope carries remain:
+
+OPEN-value: V1: stats_design_inputs.stronger_weaker's Claude Code weaker member; CP5-req 60-61 and section 0b; glitch-f3.
+
+OPEN-value: V2: stats_design_inputs.alpha; CP5-req 194 and section 0b; glitch-f3.
+
+OPEN-value: V3: stats_design_inputs.bootstrap seed/reps; stats.py 421, 488-491 and section 0b; glitch-f3.
+
+OPEN-value: V4: stats_design_inputs.power seed/sims/bootstrap_reps/grid; stats.py 422-423, 492-501 and section 0b; glitch-f3. wordings and repeats are derived.
+
+OPEN-value: V5: floor_evidence and the null stats_design_inputs.floors; stats.py 502-505/619 and section 0b; glitch-f3's probes reading.
+
+OPEN-value: V6: pause_questions answers; CP5-req 92-95/146; glitch-f3.
+
+OPEN-value: V7: wave3.documented_reply and the plan/W3B2-7 questions and answers; CP5-req 151/153/173; glitch-f3.
+
+OPEN-value: V8: limitations[*].round_4_reading; plan 830; glitch-f3.
+
+OPEN-value: source-text: missing_source_text R24/R25/R27-R30 and limits[*].text; CP5-req 101-120, 122-139, 149-160, 162-169, 171-173, 175-182; glitch-f3 supplies the exact omitted passages, not a new external read by the builder.
+
+OPEN-value: pins: image_locks and version_pins; R6/R14, plan 828, CP5-req 43/49; CP2/walk/routing owners.
+
+OPEN-value: digests: holdout_salted_digests; plan 175/829; separate author through glitch-f3, only published digests.
+
+OPEN-value: preflight: box_residuals[0].finding; plan 830; real box preflight.
+
+OPEN-value: first-walk: checked_against; plan 831/PL-4; first committed real session.
+
+OPEN-value: instrument-values: config_templates, effort, served_model_rule, price_table and furniture; CP5-req 50-56; CP2/CP6 and Javier.
+
+OPEN-value: routing: routing_marker_inputs and the pending routing marker status; CP5-req 55; CP2/routing owner.
+
+OPEN-value: walk-counts: walk_counts; CP5-req 162-169/175-182; Javier's CP6 walks.
+
+OPEN-value: regrade-flag: R38, plan 1036 versus check_results.py's current argparse; next owned touch or ruling. The CI command remains --regrade exactly.
+
+OPEN carry: routing.json pin_profiles and vendor marker entries are outside this lane (section 7). Its bytes are unchanged.
+
+OPEN carry: CP2's round-4 driver/checker keys named in section 4.3 are deliberately absent. drive.py:225 imports with an empty default stripped-env list: that default-open read remains CP2's to close.
+
+OPEN carry: prereg.py --order still names the inherited per-axis order; R3's draft names freeze.planned_order for the whole rows. Its next owner must close the carry.
+
+
+Deferred to Javier: real walks and box, keys, measured prices and versions, the caps-trimmed record, spend, public pushes, the CP8 push word and his word on any ruling. The athena test_round4.py, run_checks.py and repository tests/run_tests.py gates remain owed to glitch-f3 or the coordinator on this handoff head.
+
+### Execution record and handoff limits
+
+No refusal, classifier block, sandbox denial or automatic approval rejection occurred in this resume. No network, vendor CLI, model, container, workflow, act, gh, real freeze/rehearsal, ledger/ruling writer, --against or --whole-file-audit was invoked. There was no push, merge, rebase, branch switch, new worktree, hook/config change, or outside-owner edit. Tests ran serially, with the required interpreter, bytecode and BLAS settings and a fresh light-ok gate in the same command as each invocation. Every committed patch is within the permitted files and section 13's named extension.
+
+The only new ordinary test failure in this resume was the committed regression test before the reader change. Whole-file mutations are deliberately red, including any downstream errors shown in their table; the unmutated files are green. All other unfinished work is explicitly named as values, carries or athena obligations above. The generated draft is deliberately not freeze-ready.
+
+### Final report preservation
+
+The staged appendix passed the following preservation check and copy gate, each light-ok gated and run alone. The preservation check is repeated after adding this closure note. No code changed after the final local gates.
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-0ab0rl59/preserve_report.py
+```
+
+```text
+report preservation: 5 of 5 passed; prior bytes and header retained, only report appended and staged, no ignored additions, whitespace clean
+```
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/copy_manifest.py --check > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-0ab0rl59/copy-report.txt 2>&1
+```
+
+```text
+ok: 223 files from 28 fragment(s) (w1a-cp1-scaffold, w1b-cp1-routing-batch, w2a-cp3-endstate, w2b-cp3-text-graders, w3a-cp3-graders-scope-template, w3b-cp3-graders-refusal-plangate, w3c-cp3-graders-confound-newtasks, w4a-cp2-image-egress, w4b-cp2-runtake-preflight, w4c-cp2-sidecar-scan, w4d-cp4-variants, w4e-cp5-stats, w4f-cp5-coverage, w4g-cp4-declarations-eligibility, w4h-w1b-next-touch, w4i-cp4-task-scope-read, w4j-cp4-task-template-adherence, w4k-cp4-task-number-fidelity, w4l-cp4-task-precondition-refusal, w4m-cp4-gen-plan-gate, w4n-cp4-gen-confounded-seed2, w4o-cp4-gen-explain-not-act, w4p-cp4-gen-approval-scope, w4q-cp4-gen-conditional-yes, w5a-cp5-probes4, w5b-cp5-pipeline, w5c-draft-ci, wave4-merge): 39 identical and 14 edited (round 3 at e2979b31, shared files at 68ec902f), 170 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf
+```
