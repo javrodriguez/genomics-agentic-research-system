@@ -344,10 +344,42 @@ def mutations():
         edits[f"message-{number}"] = ("R38.after:" + command,
             f'{command}\n          else\n            echo "not applicable — not frozen"',
             f'{command}\n          else\n            echo "passed"')
+    edits.update({
+        "unnamed-push": ("R37.push", f"        run: {BEFORE[0]}\n",
+                         f"        run: {BEFORE[0]}\n      - run: git push origin HEAD\n"),
+        "unnamed-item": ("R37.step-keys", f"        run: {BEFORE[0]}\n",
+                         f"        run: {BEFORE[0]}\n      - run: echo fake\n"),
+        "checkout-repository": ("R37.checkout-keys", "          fetch-depth: 0\n",
+                               "          fetch-depth: 0\n          repository: fake/repo\n"),
+        "checkout-persist": ("R37.checkout-keys", "          fetch-depth: 0\n",
+                            "          fetch-depth: 0\n          persist-credentials: true\n"),
+        "setup-cache": ("R37.setup-keys", '          python-version: "3.12"\n',
+                       '          python-version: "3.12"\n          cache: pip\n'),
+        "job-container": ("R37.job-keys", "    steps:\n", "    container: fake\n    steps:\n"),
+    })
+    for name, clause, body in (
+        ("push-option", "push", "git -C . push"),
+        ("secret-index", "secrets", "${{ secrets['FAKE'] }}"),
+        ("implicit-token", "secrets", "${{ github.token }}"),
+        ("network-python", "network", "urllib"),
+        ("network-client", "network", "requests"),
+        ("network-remote", "network", "git ls-remote"),
+    ):
+        edits[name] = ("R37." + clause, '          test "$removed" -eq 0',
+                       '          test "$removed" -eq 0\n          ' + body)
+    for number, command in enumerate(BEFORE, 1):
+        if command in (BOX, COPY):
+            continue  # BOX has its two presence states; COPY has R42's exact body.
+        edits[f"before-{number}"] = ("R38.before:" + command, f"        run: {command}\n",
+            f"        run: |\n          echo fake\n          {command}\n")
     return edits
 
 
 def altered(text, name):
+    if name == "outside-block":
+        return replace_once(text, "name: CI\n", "name: Other\n")
+    if name == "introduced":
+        return text
     if name == "trigger":
         return replace_once(text, "on:\n", "on:\n  workflow_dispatch:\n")
     if name == "removed-line":
@@ -362,6 +394,8 @@ def altered(text, name):
 def setUpModule():
     global RAW, CURRENT, BASE_TEXT, INTRODUCED, CURRENT_BOX_PRESENT
     BASE_TEXT, INTRODUCED = history(REPO)
+    if SELECTED == "introduced":
+        INTRODUCED = BASE
     RAW = (REPO / WORKFLOW).read_text(encoding="utf-8")
     CURRENT_BOX_PRESENT = True if SELECTED == "box-landed" else None
     CURRENT = altered(RAW, SELECTED) if SELECTED and SELECTED != "box-landed" else RAW
@@ -443,10 +477,23 @@ class JobContract(unittest.TestCase):
     def test_mutations(self):
         self.assertIsNotNone(job_block(RAW))
         expected = {name: entry[0] for name, entry in mutations().items()}
-        expected.update(trigger="R37.trigger", **{"removed-line": "R44.additive"})
+        expected.update(trigger="R37.trigger", **{"removed-line": "R44.additive",
+                        "outside-block": "R37.outside", "introduced": "R44.kickoff"})
         for name, clause in expected.items():
             with self.subTest(name=name):
-                self.assertIn(clause, problems(altered(RAW, name), BASE_TEXT, INTRODUCED))
+                self.assertIn(clause, problems(altered(RAW, name), BASE_TEXT, BASE if name == "introduced" else INTRODUCED))
+
+    def test_kickoff_presence_before_comparison(self):
+        addition = [run for name, _, run in steps(job_block(CURRENT))
+                    if name == "Round 4 workflow diff is additive"]
+        self.assertEqual(len(addition), 1)
+        self.assertTrue(addition[0].startswith(f"git cat-file -e {KICKOFF}^{{commit}}\n"))
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder).resolve()
+            scratch_git.init(repo)
+            result = subprocess.run(["git", "-C", str(repo), "cat-file", "-e", KICKOFF + "^{commit}"],
+                                    capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
 
     def test_absent_history(self):
         # A history-dependent reader fails loudly in a disposable repository.
