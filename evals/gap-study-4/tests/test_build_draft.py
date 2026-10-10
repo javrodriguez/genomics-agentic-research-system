@@ -1206,6 +1206,79 @@ class SuppliedText(unittest.TestCase):
 DESCRIPTION_MUTANTS.update(SOURCE_MUTANTS)
 
 
+
+# R1-1: owner slots are required even when a sentinel is erased or misspelled.
+OWNER_BAD = {"null": None, "empty": "", "space": " ", "lower": "pending",
+             "mixed": " PeNdInG: later ", "number": 7, "mapping": {}}
+OWNER_PATHS = [("pause_questions", 0, "answer"), ("limitations", 0, "round_4_reading"),
+               ("wave3", "documented_reply"), ("wave3", "W3B2-7", "answer"),
+               ("wave3", "plan_questions", 0, "answer"), ("floor_evidence",),
+               ("served_model_rule", CODEX), ("box_residuals", 0, "finding"),
+               ("checked_against", "status"), ("furniture", CODEX),
+               ("config_templates", CODEX, MODELS["O"][0]),
+               ("effort", CODEX, MODELS["O"][0]),
+               ("routing_marker_inputs", CODEX, "rate_limit_markers")]
+OWNER_SETUP = setUpModule
+OWNER_MUTANTS = tuple("owner-" + name for name in OWNER_BAD) + ("owner-absent", "owner-list")
+
+def setUpModule():
+    if SELECTED in OWNER_MUTANTS:
+        if SELECTED == "owner-list":
+            patch = mock.patch.object(b, "owner_list_problems", return_value=[])
+        else:
+            original = b.owner_value_missing
+            form = SELECTED.removeprefix("owner-")
+            def opened(value, kind):
+                if (form == "absent" and value is b.ABSENT) or (form in OWNER_BAD and value == OWNER_BAD[form]):
+                    return False
+                return original(value, kind)
+            patch = mock.patch.object(b, "owner_value_missing", opened)
+        patch.start(); PATCHES.append(patch)
+    else:
+        OWNER_SETUP()
+
+class OwnerSlots(unittest.TestCase):
+    def test_missing_forms_keep_closed(self):
+        fake = fill_fake(b.build())
+        for path in OWNER_PATHS:
+            pointer = "/" + "/".join(map(str, path))
+            for form, value in OWNER_BAD.items():
+                with self.subTest(pointer=pointer, form=form):
+                    self.assertIn(pointer, b.pending(changed(fake, path, value)))
+            erased = copy.deepcopy(fake)
+            node = erased
+            for key in path[:-1]:
+                node = node[key]
+            del node[path[-1]]
+            with self.subTest(pointer=pointer, form="absent"):
+                self.assertIn(pointer, b.pending(erased))
+
+    def test_missing_values_refuse_freeze(self):
+        fake = fill_fake(b.build())
+        for form, value in OWNER_BAD.items():
+            with self.subTest(form=form):
+                d = b.finalize(changed(fake, OWNER_PATHS[0], value))
+                with self.assertRaises((ValueError, stats.StatsError)):
+                    freeze.prepare(d, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
+
+    def test_list_shapes_are_fixed(self):
+        fake = fill_fake(b.build())
+        for name, count in (("pause_questions", 3), ("limitations", 11)):
+            for values in ([], fake[name][:-1], fake[name] + [fake[name][0]]):
+                with self.subTest(name=name, length=len(values)):
+                    with self.assertRaisesRegex(ValueError, name):
+                        b.finalize(dict(fake, **{name: values}))
+
+    def test_required_set_is_independent_of_input(self):
+        self.assertTrue(hasattr(b, "OWNER_SLOTS"), "the required owner pointers are a module constant")
+        d = b.build()
+        unvalidated = {k for k in d["pending"] if not k.startswith(
+            ("/stats_design_inputs/", "/version_pins/", "/walk_counts/"))
+            and k not in ("/holdout_salted_digests", "/price_table")}
+        self.assertTrue(unvalidated <= set(b.OWNER_SLOTS))
+        self.assertTrue(set(b.OWNER_SLOTS) <= set(b.pending({})))
+
+
 if __name__ == "__main__":
     if "--mutant" in sys.argv:
         index = sys.argv.index("--mutant")
