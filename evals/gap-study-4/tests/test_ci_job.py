@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
@@ -432,6 +433,24 @@ class JobContract(unittest.TestCase):
 
     def test_outline(self):
         self.clauses("R35")
+
+    def test_closed_structure(self):
+        for tail in ("env:\n  PYTHONPATH: fake\n", "concurrency: fake\n"):
+            with self.subTest(tail=tail):
+                self.assertIn("R37.outside", problems(RAW + tail, BASE_TEXT, INTRODUCED))
+        for key in ("PYTHONPATH", "GIT_DIR"):
+            text = RAW.replace('      GIT_CONFIG_VALUE_1: "0"\n', '      GIT_CONFIG_VALUE_1: "0"\n      ' + key + ': fake\n')
+            with self.subTest(key=key):
+                self.assertIn("R37.env-keys", problems(text, BASE_TEXT, INTRODUCED))
+        for extra in ("        env:\n          FAKE: fake\n", "        timeout-minutes: 1\n", "        with:\n          fake: fake\n"):
+            text = RAW.replace(f"        run: {BEFORE[0]}\n", extra + f"        run: {BEFORE[0]}\n")
+            with self.subTest(extra=extra):
+                self.assertIn("R37.run-keys", problems(text, BASE_TEXT, INTRODUCED))
+
+    def test_kickoff_registry_after_box(self):
+        landed = RAW.replace(BOX_DEFERRED, BOX_STEP)
+        with mock.patch.dict(globals(), RAW=landed):
+            self.assertIn("kickoff-presence", mutations(), "R44.present:registry")
 
     def test_pin(self):
         self.clauses("R36")

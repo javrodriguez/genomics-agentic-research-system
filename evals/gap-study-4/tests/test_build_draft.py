@@ -535,7 +535,7 @@ def fill_fake(d):
     design["stronger_weaker"][CLAUDE][1] = MODELS["A"][2]
     design.update(alpha="0.05", bootstrap={"seed": 0, "reps": 1},
                   power={"seed": 0, "sims": 1, "bootstrap_reps": 1, "wordings": variants.N_WORDINGS,
-                         "repeats": variants.REPEATS, "grid": [{k: "0.1" for k in stats.GRID_FIELDS}]}, floors=None)
+                         "repeats": variants.REPEATS, "grid": [{k: "0.1" for k in stats.GRID_FIELDS}]}, floors={task["id"]: "fake floor for " + task["id"] for task in d["tasks"]})
     out["holdout_salted_digests"] = fake_digests(t["id"] for t in d["tasks"])
     out["price_table"] = fake_price(d)
     out["walk_counts"].update(on_path_closers=0, off_path_offers=0, inherited_shapes=[0,0])
@@ -651,6 +651,30 @@ class Readiness(unittest.TestCase):
             self.assertEqual(len(freeze.prepare(opened, **kwargs)["take_order"]),1260)
             self.assertNotEqual(opened[stats.DESIGN_KEY], closed[stats.DESIGN_KEY])
 
+    def test_floors_keep_closed(self):
+        fake = fill_fake(self.get())
+        tasks = [task["id"] for task in fake["tasks"]]
+        floors = fake["stats_design_inputs"]["floors"]
+        self.assertEqual(set(floors), set(tasks))
+        self.assertEqual(b.finalize(fake)["pending"], {})
+        bad = [None, {}, "fake text", {task: "PENDING" for task in tasks},
+               {task: "" for task in tasks}, {task: None for task in tasks},
+               {task: "fake floor" for task in tasks[:-1]}, dict(floors, fake_extra="fake floor")]
+        for value in bad:
+            with self.subTest(value=value):
+                draft = changed(fake, ("stats_design_inputs", "floors"), value)
+                self.assertIn("/stats_design_inputs/floors", b.pending(draft), "R2.floors")
+                closed = b.finalize(draft)
+                self.assertIn("/stats_design_inputs/floors", closed["pending"], "R2.floors")
+                with self.assertRaises((ValueError, stats.StatsError)):
+                    freeze.prepare(closed, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
+        absent = copy.deepcopy(fake); del absent["stats_design_inputs"]["floors"]
+        self.assertIn("/stats_design_inputs/floors", b.pending(absent), "R2.floors")
+        moved = copy.deepcopy(fake)
+        moved["tasks"][0]["id"] = "fake changed task"
+        self.assertIn("/stats_design_inputs/floors", b.pending(moved), "R2.floors:tasks")
+        self.assertIn("no floor field", self.get()["pending"]["/stats_design_inputs/floors"], "R2.floors:reason")
+
     def test_digest_shapes(self):
         d=self.get(); ids=[t['id'] for t in d['tasks']]; fake=fake_digests(ids)
         b.validate_digests(fake,ids)
@@ -676,6 +700,19 @@ class Readiness(unittest.TestCase):
                 d=self.get(); d['stats_design_inputs']['alpha']=bad
                 with self.assertRaises(ValueError): b.write_draft(d,path)
                 self.assertEqual(path.read_text(),'fake original')
+
+    def test_secondary_alpha_before_write(self):
+        fake = fill_fake(self.get())
+        for bad in ("0.10", ".1", "1e-1", "PENDING", None, 0.1, ""):
+            with self.subTest(alpha=bad), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp)/"draft.json"; path.write_text("fake original")
+                d = changed(fake, ("alpha_secondary",), bad)
+                with self.assertRaises((ValueError, stats.StatsError), msg="R2.secondary-alpha"):
+                    b.write_draft(d, path)
+                self.assertEqual(path.read_text(), "fake original")
+        absent = copy.deepcopy(fake); del absent["alpha_secondary"]
+        with self.assertRaises((ValueError, stats.StatsError), msg="R2.secondary-alpha:missing"):
+            b.finalize(absent)
 
     def test_user_names_and_wordings(self):
         d=self.get(); b.check_leak_users(d['leak_words'],d['box_users'])
@@ -1531,6 +1568,24 @@ EXPECTED_VALUE_PASSAGES = {'V6-i': '### (i) "Does arriving at a wait point mean 
            "- Reason: the limit holds whichever tree round 4 pins, but `system_under_test` is CP2's key "
            "(BRIEF 4.3) and is `PENDING`. If CP2 pins round 2's tree again, name it in the new words."}
 
+def expected_words(key):
+    source_key = "V7-plan" if key.startswith("V7-plan-") else key
+    text = EXPECTED_VALUE_PASSAGES[source_key]
+    if key.startswith("V8-"):
+        words = text.split('New words: "', 1)[1].split('"\n', 1)[0]
+        if key == "V8-L5":
+            number = lambda n: {2:"two", 5:"five", 6:"six"}.get(n, str(n))
+            words = words.replace("n = 10", f"n = {variants.TRIES_PER_HALF}")
+            words = words.replace("five wordings", number(variants.N_WORDINGS) + " wordings")
+            words = words.replace("two repeats", number(variants.REPEATS) + " repeats")
+        return words
+    marker = "- **" + (("(" + key[-1] + ") ") if key.startswith("V7-plan-") else "") + "Proposed answer: "
+    line = next(line for line in text.splitlines() if line.startswith(marker))
+    return line[len(marker):].replace("**", "")
+
+WORD_KEYS = ("V6-i", "V6-ii", "V6-iii", "V7-plan-a", "V7-plan-b", "V7-fabrication", "V8-L1", "V8-L5")
+
+
 def expected_value(key):
     value = copy.deepcopy(EXPECTED_VALUES[key])
     if key == "V8-L5":
@@ -1576,6 +1631,22 @@ def setUpModule():
         VALUE_SETUP()
 
 class RuledValues(unittest.TestCase):
+    def test_accepted_words(self):
+        d = b.build()
+        actual = [q["answer"] for q in d["pause_questions"]] + [q["answer"] for q in d["wave3"]["plan_questions"]] + [d["wave3"]["W3B2-7"]["answer"], d["limitations"][0]["round_4_reading"], d["limitations"][4]["round_4_reading"]]
+        for key, value in zip(WORD_KEYS, actual):
+            with self.subTest(key=key):
+                self.assertEqual(value.get("words"), expected_words(key), "R2.words:" + key)
+        with mock.patch.multiple(variants, TRIES_PER_HALF=12, N_WORDINGS=6, REPEATS=2):
+            self.assertEqual(b.ruled_value("V8-L5").get("words"), expected_words("V8-L5"), "R2.words:derived")
+
+    def test_value_word_lints(self):
+        for key in WORD_KEYS:
+            words = expected_words(key)
+            with self.subTest(key=key):
+                self.assertEqual(ll.scan_text(words, study.rel("prereg-draft.json"), ll.load_allowlist()), [])
+                self.assertEqual(lp.scan_text(words, study.rel("prereg-draft.json")), [])
+
     def test_numeric_values(self):
         d = b.build(); design = d["stats_design_inputs"]
         self.assertEqual(design["stronger_weaker"][CLAUDE], MODELS["A"][:2])
