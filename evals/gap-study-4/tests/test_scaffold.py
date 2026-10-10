@@ -78,7 +78,8 @@ def foreign(files: list[str]) -> list[str]:
 
 
 def copied_modules() -> list[str]:
-    rec = json.loads(OWN_FRAGMENT.read_text())
+    rec = {"files": [e for frag in (OWN_FRAGMENT, cm.FRAGMENTS / "w5c-draft-ci.json")
+                     for e in json.loads(frag.read_text())["files"]]}
     return [e["path"] for e in rec["files"] if e["status"] != "new" and e["path"].endswith(".py")]
 
 
