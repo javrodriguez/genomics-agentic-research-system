@@ -493,7 +493,7 @@ class Description(unittest.TestCase):
 
     def test_no_new_words(self):
         d = self.get()
-        content = json.dumps(d, indent=2, ensure_ascii=False)
+        content = json.dumps(b.build() if hasattr(b, "build") else d, indent=2, ensure_ascii=False)
         self.assertEqual(ll.scan_text(content, study.rel("prereg-draft.json"), ll.load_allowlist()), [])
         self.assertEqual(lp.scan_text(content, study.rel("prereg-draft.json")), [])
 
@@ -618,7 +618,10 @@ def setUpModule():
 class Readiness(unittest.TestCase):
     def get(self):
         self.assertTrue(hasattr(b, "build"), "the complete draft builder is required")
-        return b.build()
+        try:
+            return b.build()
+        except Exception as exc:
+            self.fail(f"builder refused its registered inputs: {exc}")
 
     def test_inputs(self):
         self.assertEqual(ready_problems(self.get()), [])
@@ -632,7 +635,7 @@ class Readiness(unittest.TestCase):
     def test_freeze_closed(self):
         d = self.get()
         kwargs = dict(review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
-        with self.assertRaises(ValueError):
+        with self.assertRaises((ValueError, stats.StatsError)):
             freeze.prepare(d, **kwargs)
         fake = b.finalize(fill_fake(d))
         self.assertEqual(b.pending(fake), {})
@@ -642,7 +645,7 @@ class Readiness(unittest.TestCase):
         fake["wave3"]["documented_reply"] = "PENDING"
         closed = b.finalize(fake)
         self.assertIn('/wave3/documented_reply', closed['pending'])
-        with self.assertRaises(ValueError):
+        with self.assertRaises((ValueError, stats.StatsError)):
             freeze.prepare(closed, **kwargs)
         with mock.patch.object(b, "pending", return_value={}):
             opened = b.finalize(fake)
@@ -736,6 +739,76 @@ class Readiness(unittest.TestCase):
             self.assertFalse(b.committed_matches(dict(d,status='fake'),out,repo))
         manifest=json.loads((HERE/'COPIED.d/w5c-draft-ci.json').read_text())
         self.assertEqual(next(f['status'] for f in manifest['files'] if f['path']=='prereg-draft.json'),'new')
+
+
+# Additional clause mutations: their normal-file assertions inspect the rule
+# itself; --mutant swaps the same builder accessor for the whole runner.
+CORE_MUTANTS.update({
+    'task-order': ('R1.tasks', ('tasks',), []),
+    'wording-n': ('R2.n', ('wordings',), 4),
+    'repeat-n': ('R2.n', ('repeats',), 3),
+    'order-function': ('R3.order', ('take_order_function',), 'fake.function'),
+    'order-carry': ('R3.order', ('order_carry',), ''),
+})
+DESCRIPTION_MUTANTS.update({
+    'stops': ('R4.vocabulary', ('stop_taxonomy','values'), []),
+    'reserved': ('R4.vocabulary', ('reserved_labels',), []),
+    'routes': ('R4.vocabulary', ('routes',), []),
+    'prediction-rule': ('R5.predictions', ('predictions_rule','basis'), 'fake basis'),
+    'prediction-basis': ('R5.predictions', ('predictions',0,'informed_by'), 'fake basis'),
+    'predictions-count': ('R5.predictions', ('predictions',), []),
+    'box-users': ('R9.sessions', ('box_users',), []),
+    'excusals': ('R9.words', ('leak_context_excusals',), []),
+    'leak-dropped': ('R9.words', ('leak_word_dropped',), {}),
+    'choice-value': ('R24.choices', ('number_fidelity','choices','ATTRIBUTION_REJECTS'), False),
+})
+VALIDATOR_MUTANTS['committed-presence']='committed_matches'
+SETUP_WITH_READY = setUpModule
+
+
+def setUpModule():
+    if SELECTED == 'committed-presence':
+        patch=mock.patch.object(b,'committed_matches',return_value=True)
+        patch.start(); PATCHES.append(patch)
+    elif SELECTED == 'earlier-count':
+        original=b.prior_metadata
+        patch=mock.patch.object(b,'prior_metadata',lambda: dict(original(),results={'fake-count':999}))
+        patch.start(); PATCHES.append(patch)
+    else:
+        SETUP_WITH_READY()
+
+
+class Writer(unittest.TestCase):
+    def test_cli_check(self):
+        self.assertTrue(hasattr(b,'build'))
+        d=b.build()
+        for matches, code, word in ((True,0,'ok:'),(False,1,'FAIL:')):
+            out=io.StringIO()
+            with mock.patch.object(b,'build',return_value=d), mock.patch.object(b,'committed_matches',return_value=matches), contextlib.redirect_stdout(out):
+                self.assertEqual(b.main(['--check']),code)
+            self.assertIn(word,out.getvalue())
+        self.assertNotIn('driver_constants',d)
+        self.assertNotIn('driver_change',d)
+
+    def test_pending_all_fields(self):
+        self.assertTrue(hasattr(b,'build'))
+        d=b.build()
+        paths=[]
+        def walk(value,path):
+            if isinstance(value,str) and value.startswith('PENDING'):
+                paths.append(path)
+            elif value is None and path.startswith('/walk_counts/'):
+                paths.append(path)
+            elif isinstance(value,dict):
+                for k,v in value.items():
+                    if k!='pending':walk(v,path+'/'+k.replace('~','~0').replace('/','~1'))
+            elif isinstance(value,list):
+                for i,v in enumerate(value):walk(v,path+'/'+str(i))
+        for k,v in d.items():
+            if k not in ('pending',stats.DESIGN_KEY,'rows','predictions'):walk(v,'/'+k)
+        self.assertEqual(sorted(paths),sorted(d['pending']))
+        fake=copy.deepcopy(d);fake['pending']={}
+        self.assertEqual(b.pending(fake),d['pending'])
 
 
 

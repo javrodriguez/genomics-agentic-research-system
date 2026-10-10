@@ -32,6 +32,11 @@
       "status": "edited",
       "source": "evals/gap-study-3/study.py",
       "reason": "The binding for round 4: the study's name, folder and title (gap-study-4), its published-section markers, the prior round it reads as data (ROUND1 now points at evals/gap-study-3, with PRIOR_STUDY and PRIOR_REL naming it honestly) and the arms it runs (ARMS = A and C). Every copied file builds its paths and markers from this file, so no other copied file needs to name this study. PL-1 w5c-1 and R13: ARMS adds O and G; C remains optional."
+    },
+    {
+      "path": "prereg-draft.json",
+      "status": "new",
+      "reason": "R1-R34: generated draft with pending inputs and a closed freeze gate."
     }
   ]
 }

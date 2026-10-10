@@ -473,3 +473,205 @@ def describe(root=None):
     d["missing_source_text"] = {key: {"source": SOURCES["req"] + " line " + lines, "text": PENDING}
                                 for key, lines in MISSING_TEXT.items()}
     return d
+
+VENDORS = {CLAUDE: "anthropic", CODEX: "openai", GEMINI: "google"}
+PENDING_REASONS = {
+    "image_locks": "R6 plan 828: CP2 supplies built image and version pins.",
+    "version_pins": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+    "holdout_salted_digests": "R7 plan 175 and 829: the separate author supplies only the published digests through glitch-f3.",
+    "limitations": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+    "box_residuals": "R8 plan 830: the real box supplies the conditional preflight finding.",
+    "checked_against": "R9 plan 831, PL-4: the first committed walk supplies the session check.",
+    "pause_questions": "V6, R23 CP5-req 92-95 and 146: glitch-f3 supplies each answer.",
+    "limits": "R25 CP5-req 122-139: glitch-f3 supplies the omitted exact source text.",
+    "wave3": "V7, R27/R29 CP5-req 151, 153 and 173: glitch-f3 supplies definitions, questions and answers.",
+    "walk_counts": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
+    "missing_source_text": "R24/R25/R27-R30: glitch-f3 supplies exact passages omitted from the brief; the external sources cannot be read here.",
+    "stats_design_inputs": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
+    "floor_evidence": "V5, R17: glitch-f3 supplies the probes table's floor reading.",
+    "config_templates": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
+    "effort": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
+    "instruction_files": "R15 CP5-req 52: CP2's instruction mapping.",
+    "served_model_rule": "R15 CP5-req 53: the harness owners supply the served-model rule.",
+    "price_table": "R15 CP5-req 54: Javier's walk gate reads dated vendor prices.",
+    "routing_markers": "R15 CP5-req 55: the routing owner rules the marker status.",
+    "routing_marker_inputs": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
+    "furniture": "R15 CP5-req 56: CP6 walks supply each harness's list.",
+}
+
+
+def config_templates():
+    result = {}
+    for arm, harness in HARNESSES.items():
+        result[harness] = {}
+        for model in MODELS[arm]:
+            try:
+                files = take_config.files_for(harness, model=None if harness == CLAUDE else model)
+            except take_config.NotReady:
+                result[harness][model] = PENDING
+            else:
+                entries = [{"path": path, "sha256": sha(data)} for path, data in sorted(files.items())]
+                combined = ''.join(f'{entry["path"]}\0{entry["sha256"]}\n' for entry in entries).encode()
+                result[harness][model] = {"files": entries, "sha256": sha(combined)}
+    return result
+
+
+def design_inputs(rows, tasks):
+    hm = {}
+    for row in rows:
+        models = hm.setdefault(row["agent"]["harness"], [])
+        if row["model"] not in models:
+            models.append(row["model"])
+    return {"tasks_that_run": [t["id"] for t in tasks], "harness_models": hm,
+            "stronger_weaker": {CLAUDE: [MODELS["A"][0], PENDING], CODEX: list(MODELS["O"]), GEMINI: list(MODELS["G"])},
+            "cross_vendor": [MODELS[a][0] for a in MODELS], "alpha": PENDING,
+            "bootstrap": {"seed": PENDING, "reps": PENDING},
+            "power": {"seed": PENDING, "sims": PENDING, "bootstrap_reps": PENDING,
+                      "wordings": variants.N_WORDINGS, "repeats": variants.REPEATS, "grid": PENDING}, "floors": None}
+
+
+def validate_alpha(value):
+    fraction = stats._on_grid(value)
+    if not 0 < fraction < 1 or value != stats._canonical(fraction):
+        raise ValueError("alpha must use its shortest decimal spelling")
+
+
+def validate_digests(value, task_ids):
+    """Published digests only: no file reader, salt, extra task or duplicate."""
+    if not isinstance(value, dict) or set(value) != set(task_ids):
+        raise ValueError("one digest list per task; no other keys")
+    seen = set()
+    for digests in value.values():
+        if not isinstance(digests, list) or len(digests) != 3:
+            raise ValueError("three published digests per task version")
+        for digest in digests:
+            if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or digest in seen:
+                raise ValueError("distinct lowercase sha256 digests are required")
+            seen.add(digest)
+
+
+def validate_prices(value, harness_models):
+    costs.require_price_date(value)
+    if not isinstance(value, dict) or set(value) != {"as_of", "vendors"} or not isinstance(value["vendors"], dict):
+        raise ValueError("a price table holds as_of and vendors")
+    for harness, models in harness_models.items():
+        for model in models:
+            try:
+                prices = value["vendors"][VENDORS[harness]][model]
+            except (KeyError, TypeError) as exc:
+                raise ValueError("the price table lacks a vendor/model") from exc
+            if not isinstance(prices, dict) or set(prices) != set(costs.CLASSES):
+                raise ValueError("prices name every token class")
+            for price in prices.values():
+                costs.amount(price)
+
+
+def pending(draft):
+    """All missing values as JSON-pointer paths, with their source and owner.
+
+Rows and predictions repeat the version pins; their null versions are bound by
+those pins and by validate_ledger. The generated map and closed-design sentinel
+are excluded to avoid self-reference. The five walk counts use null as required.
+"""
+    result = {}
+    def scan(value, parts):
+        prefix = parts[0]
+        path = '/' + '/'.join(str(p).replace('~', '~0').replace('/', '~1') for p in parts)
+        if (isinstance(value, str) and value.startswith(PENDING)) or (value is None and prefix == "walk_counts"):
+            result[path] = PENDING_REASONS.get(prefix, "A supplied value is required before the freeze.")
+        elif isinstance(value, dict):
+            for key, child in value.items():
+                if key != "pending":
+                    scan(child, parts + [key])
+        elif isinstance(value, list):
+            for i, child in enumerate(value):
+                scan(child, parts + [i])
+    for key, value in draft.items():
+        if key not in ("pending", stats.DESIGN_KEY, "rows", "predictions"):
+            scan(value, [key])
+    return dict(sorted(result.items()))
+
+
+def finalize(draft):
+    """Re-close a document after in-memory inputs; never an owner-input CLI."""
+    d = copy.deepcopy(draft)
+    design = d["stats_design_inputs"]
+    if design["alpha"] != PENDING:
+        validate_alpha(design["alpha"])
+    if d["holdout_salted_digests"] != PENDING:
+        validate_digests(d["holdout_salted_digests"], [t["id"] for t in d["tasks"]])
+    if d["price_table"] != PENDING:
+        validate_prices(d["price_table"], design["harness_models"])
+    d["pending"] = pending(d)
+    d[stats.DESIGN_KEY] = {PENDING: sorted(d["pending"])} if d["pending"] else stats.validate_design(copy.deepcopy(design))
+    if not d["pending"]:
+        import check_results
+        check_results.validate_ledger([dict(row, attempt=1) for row in d["rows"]])
+    return d
+
+
+def build(root=None):
+    root = HERE if root is None else Path(root)
+    d = describe(root)
+    d["stats_design_inputs"] = design_inputs(d["rows"], d["tasks"])
+    d["floor_evidence"] = PENDING
+    d["config_templates"] = config_templates()
+    d["effort"] = {h: {m: copy.deepcopy(take_config.CODEX_REASONING_EFFORT if h == CODEX else
+                      take_config.GEMINI_THINKING if h == GEMINI else PENDING) for m in MODELS[a]}
+                   for a, h in HARNESSES.items()}
+    d["instruction_files"] = {CODEX: dict(take_config.CODEX_TOP)["project_doc_fallback_filenames"],
+                               GEMINI: dict(take_config.GEMINI_SETTINGS)["context.fileName"]}
+    d["served_model_rule"] = {h: PENDING for h in HARNESSES.values()}
+    d["furniture"] = {h: PENDING for h in HARNESSES.values()}
+    d["price_table"] = PENDING
+    table = json.loads((root / "routing.json").read_text())
+    kinds = ("rate_limit_markers", "spend_cap_markers")
+    d["routing_markers"] = {k: table[k] for kind in kinds for k in (kind, kind + "_status")}
+    d["routing_marker_inputs"] = {h: {k: PENDING for k in kinds if h not in table[k]}
+                                  for h in HARNESSES.values() if any(h not in table[k] for k in kinds)}
+    url = "https://github.com/javrodriguez/genomics-agentic-research-system/" + study.STUDY_REL
+    d["session_namespace"] = {"uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, url)), "derived_from": url,
+                               "note": "uuid5(NAMESPACE_URL, derived_from); distinct from earlier sessions."}
+    return finalize(d)
+
+
+def write_draft(draft, path=None):
+    path = DRAFT if path is None else Path(path)
+    d = finalize(draft)
+    path.write_bytes(json_bytes(d))
+    return d
+
+
+def committed_matches(draft, path=None, repo=None):
+    path = DRAFT if path is None else Path(path)
+    repo = REPO if repo is None else Path(repo)
+    rel = path.resolve().relative_to(repo.resolve()).as_posix()
+    got = subprocess.run(["git", "-C", str(repo), "show", "HEAD:" + rel], capture_output=True)
+    expected = json_bytes(draft)
+    return got.returncode == 0 and got.stdout == expected and path.is_file() and path.read_bytes() == expected
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--check", action="store_true")
+    args = ap.parse_args(argv)
+    try:
+        d = build()
+        if args.check:
+            same = committed_matches(d)
+            print("ok: the committed draft is what build_draft.py builds" if same else
+                  "FAIL: the committed draft is missing or differs from what build_draft.py builds")
+            return 0 if same else 1
+        write_draft(d)
+        print(f"wrote {DRAFT.name}: {len(d['rows'])} planned tries, {d['counts']['half_cells']} half-cells")
+        for key, why in pending(d).items():
+            print(f"PENDING {key}: {why}")
+        print(f"pending inputs: {len(d['pending'])}; freeze {'closed' if d['pending'] else 'ready for its other checks'}")
+        return 0
+    except (ValueError, stats.StatsError, OSError, subprocess.CalledProcessError) as exc:
+        print(f"build_draft: {exc}")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

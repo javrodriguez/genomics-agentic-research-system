@@ -37,7 +37,6 @@ OWN_FRAGMENT = cm.FRAGMENTS / f"{LANE}.json"
 # Copied modules that cannot import yet, each with the exact error it stops on. Each waits on a later
 # checkpoint's file; when that file lands this test goes red and the entry must go.
 BLOCKED = {
-    "drive.py": "SystemExit: no pre-registration: neither prereg.json nor prereg-draft.json exists.",
 }
 
 # Run in a fresh interpreter, from a folder outside the study, as `python3 <path>` would: the file's own folder is
