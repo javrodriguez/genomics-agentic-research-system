@@ -1792,3 +1792,732 @@ PY
 light ok: load1 4.21 < 16.00 (memory pressure unreadable; light does not need it)
 report preservation: 4 of 4 passed; original bytes and first two lines unchanged; only report appended; staged whitespace clean
 ```
+
+
+---
+
+## Resume under section 12 — current hand-back
+
+status: blocked
+RESUME HERE: glitch-f3 extends w5c-1 to make test_scaffold.copied_modules read the relocated claims; then rerun the scaffold gate and finish the draft's whole-file mutation witnesses.
+head: 81637101484b1dab646a6e1c34233c88ea3bb5db (last code commit; this append-only report has the following separate commit)
+
+Recorded after reading date: 2026-10-09 22:04:17 EDT.
+
+The historical first two lines above remain byte-for-byte because the resume says to append, never rewrite. This entry supplies the current status and RESUME HERE line. The earlier quotation-conflict stops are resolved by section 12; this is a distinct, newly observed scaffold conflict, not another quotation ruling request.
+
+The draft is now generated and committed: nine task pairs, 540 arm-A tries, 360 arm-O tries, 360 arm-G tries, 1,260 rows, 126 half-cells, seven active models, optional C with zero rows. There are 114 explicit pending inputs. The built draft fails freeze.prepare; a copy filled only in memory with fake inputs passes its three checks. The complete writer file passes 20 tests, the unchanged CI contract passes 15, and copy_manifest and the committed-draft check pass. Both lints have exactly their base findings, with zero new ones. This is not a completed lane or a freeze-ready registration.
+
+### The new stop, with its exact boundary
+
+OPEN: scaffold-import-count: PL-1/w5c-1 requires removing build_draft.py and study.py from COPIED.d/w1a-cp1-scaffold.json and claiming them in this lane's fragment. However, tests/test_scaffold.py's copied_modules() reads only OWN_FRAGMENT, and TheImports.test_every_copied_module_imports_from_inside_this_folder requires self.assertGreater(len(mods), 30). Moving those two claims reduces its list from 31 to 29. May copied_modules() be made fragment-aware while preserving the import-coverage check? PL-1 permits changing only the old drive.py BLOCKED entry and the expected arms tuple in that test file; changing this reader or its cardinality assertion needs an extension of the named exception. The binding conflict is PL-1(b,c) and section 5 versus the unchanged copied_modules() and its greater-than-30 assertion (current lines 82-85 and 437).
+
+The complete scaffold run ended:
+
+```text
+AssertionError: 29 not greater than 30
+Ran 49 tests in 238.062s
+FAILED (failures=1)
+```
+
+This assertion runs before the import loop. I initially described the import issue in a progress message too early; the actual failure is the cardinality assertion. A subsequent, separately gated call to the scaffold's existing probe('drive.py') confirmed that drive.py imports without a foreign-round module. Its BLOCKED entry was therefore removed exactly as PL-1 permits. The cardinality check and reader were left unchanged. I did not lower the threshold, duplicate a copy claim, relabel a copied file as new, or edit an unowned file to get a pass.
+
+Section 9 ends implementation at this conflict. The final writer step was committed after its own tests and copy gate passed; the lane as a whole remains red at the protected scaffold check. Task 2 was already built before this resume and was not restarted or changed on a red task-1 tree. Its ordinary file gate still passes.
+
+### Start, sequence and scope
+
+The start read the requested acf3460a42c941efdb82051c08d1db772e4887be head, the correct branch, an empty status including ignored files, four existing old commits, no configured hooksPath, light-ok exit 0, and Python 3.13.2. The obsolete base-HEAD equality check was omitted under the resume instruction. The once-only base readings already recorded in this report were retained, not represented as new runs. CLAUDE.md and the opening development orientation were read; no sealed path or external plan source was opened.
+
+This resume's commits, in order:
+
+- b1bb710d: red row/source contract — test_build_draft: 4 run, 4 failures, 0 errors, 0 skipped.
+- e337fe44: derived identities, locks, pins and the permitted arm/claim changes — test_build_draft: 4 run, 0 failures, 0 errors, 0 skipped.
+- 03da157e: red commitment contract — test_build_draft: 8 run, 4 failures, 0 errors, 0 skipped.
+- e6acbaa1: required sentences and section 12 rendering — test_build_draft: 8 run, 0 failures, 0 errors, 0 skipped.
+- cf937757: red pending/writer contract — test_build_draft: 18 run, 10 failures, 0 errors, 0 skipped.
+- 81637101: generated draft, fail-closed pending mechanism, writer, checks and permitted BLOCKED removal — final test_build_draft: 20 run, 0 failures, 0 errors, 0 skipped.
+
+All commits used git commit -F with a system-temporary message file and the exact Codex trailer. No history was rewritten and no hook refused a commit. The tests grew additional clause assertions in their green folds. Whole-file swapped-module witnesses for the new writer have NOT been run: the stop arrived first. The temporary driver for those runs was prepared but never invoked.
+
+### Files and the wave 1 exception
+
+The actual diff --stat from the base to the last code commit follows. The report's new appendix is additional to this snapshot.
+
+```text
+ .github/workflows/ci.yml                         |   124 +
+ evals/gap-study-4/COPIED.d/w1a-cp1-scaffold.json |    11 -
+ evals/gap-study-4/COPIED.d/w5c-draft-ci.json     |    42 +
+ evals/gap-study-4/build_draft.py                 |  1148 +-
+ evals/gap-study-4/checks.d/w5c-draft-ci.txt      |     6 +
+ evals/gap-study-4/prereg-draft.json              | 23072 +++++++++++++++++++++
+ evals/gap-study-4/study.py                       |     4 +-
+ evals/gap-study-4/tests/test_build_draft.py      |   822 +
+ evals/gap-study-4/tests/test_ci_job.py           |   471 +
+ evals/gap-study-4/tests/test_scaffold.py         |     3 +-
+ lane-reports/w5c-draft-ci.md                     |  1794 ++
+ 11 files changed, 26990 insertions(+), 507 deletions(-)
+```
+Every wave 1 change is the named exception, line by line (base line numbers):
+
+- study.py:14: “A and C” became “A, C, O and G” in its existing docstring sentence.
+- study.py:56: ARMS = ("A", "C") became ARMS = ("A", "C", "O", "G").
+- tests/test_scaffold.py:40: removed the drive.py BLOCKED entry after its import was confirmed; no replacement error was invented.
+- tests/test_scaffold.py:475: its expected arms tuple became ("A", "C", "O", "G").
+- COPIED.d/w1a-cp1-scaffold.json:24-28: removed exactly the five-line build_draft.py entry.
+- COPIED.d/w1a-cp1-scaffold.json:217-222: removed exactly the six-line study.py entry.
+
+Both moved files are claimed edited, with their original round-3 source paths, in COPIED.d/w5c-draft-ci.json. The study reason carries w1a's reason and names the addition under w5c-1/R13. The draft, both tests, the checks file and this lane's fragment are all claimed; the report lives outside the round's copy inventory. The workflow remains 124 added lines and zero removed against the base, and it has no changes in this resume. The sibling jobs and intervals job remain unchanged. The source lints and language-allowlist.json are unchanged; no w5c-2 entry existed at the resumed head to remove.
+
+### Section 12 applied, without lint exceptions
+
+The following required sentences are represented by source, source_sentence_sha256 and commitment fields, with no sentence text in their rendered entry. The test's independent literal sentences re-derive every digest; its quote-* mutations remove the corresponding object. The exact sentences stay in Python source and the test, where the existing default lints do not scan code. No lint rule or suffix list was altered.
+
+| Entry | Source | SHA-256 |
+|---|---|---|
+| bounds | plans/gap-study-round-4.md line 210 | 5e067c2108902c6011cedf867db0b67c55049736f3f8d1c38f9dcea03f30a2ea |
+| holds | plans/gap-study-round-4.md line 211 | abf8cad965e0589ddc24102a88ffd58e0399b087559eb5c79f4ea44338fc4828 |
+| cost | plans/gap-study-round-4.md line 186 | c3633531b9e3cea2cc8667c9469c4a715922dd88c6a01cd11fd90b5b19a8a424 |
+| not_poolable | plans/gap-study-round-4.md line 140 | ee3936a0322a9f4b871d013b858fcf6438ea27177f159a86f2df31be9a921d8e |
+| contrast | plans/gap-study-round-4/CP5-requirements.md line 60 | 6725d79c95b42cc4b396220727675059dad7ae9aac0b02c13f13a3f84b210d48 |
+| cross | plans/gap-study-round-4/CP5-requirements.md line 61 | 7158e57a4bd81c8073402f814ef119e861bea5c7d8eea31bc042b3486bab13d1 |
+
+The remaining supplied sentences are carried verbatim with source lines. Missing exact CP5-req passages remain explicit PENDING fields under source-text, as already recorded in this report before the resume. Nothing was reconstructed from memory or read outside the permitted tree.
+
+### Requirement accounting at the stop
+
+“Internal red” below means a changed emitted field is rejected by the committed contract checker in the ordinary green file run, or an invalid fake input is refused. It does NOT claim the required separate whole-file swapped-module run. Those writer witnesses remain owed under scaffold-import-count. The unchanged job retains the 83 assertion-red whole-file witnesses recorded earlier in this report; none was silently re-run or credited to this resume.
+
+| Requirement | Named test / mechanism | Named mutant or invalid fixture | Whole-file proof / outstanding item |
+|---|---|---|---|
+| R1 | Assembly.test_rows; Readiness.test_committed_writer; Writer.test_cli_check | task-hash; task-order; committed-presence | Internal red; scratch HEAD reader and final real --check pass; separate real-HEAD assertion in the test file and swapped run remain owed |
+| R2 | Assembly.test_rows | models; n; wording-n; repeat-n; factor; optional | Internal red; V1-V4 remain pending |
+| R3 | Assembly.test_rows | order; order-function; order-carry | Internal red; prereg order carry remains |
+| R4 | Description.test_commitments; test_no_new_words | quote-bounds; quote-holds; quote-cost; vocabulary; stops; reserved; routes; routing | Internal red; section 12 applied |
+| R5 | Description.test_predictions_read_no_counts; test_commitments | prediction; prediction-rule; prediction-basis; predictions-count; earlier-count | Output mutants asserted internally; earlier-count whole-file witness unrun |
+| R6 | Assembly.test_rows; Readiness.test_profiles_and_templates | lock; version; profile-mismatch | Internal invalid mismatch red; OPEN-value pins |
+| R7 | Readiness.test_digest_shapes | digest-shape; digests-pending; extra/missing task, salt, duplicate, nonhex, uppercase and wrong length | Invalid fixtures refused; OPEN-value digests |
+| R8 | Description.test_commitments | limitation; residual | Internal red; OPEN-value V8 and preflight |
+| R9 | Description.test_commitments; Readiness.test_user_names_and_wordings | leak-list; box-users; excusals; leak-dropped; sessions; user-overlap | Internal output red; both overlap directions and equality refused; first-walk pending |
+| R10 | Description.test_commitments | quote-not_poolable; earlier | Internal red; section 12 applied |
+| R11 | Assembly.test_ledger; test_rows | agent; absent/empty/defaulted agent | Ledger invalid fixtures refused; 1,260 fake-pinned rows accepted |
+| R12 | Assembly.test_rows; Readiness.test_profiles_and_templates | cells; slots; pin-harness | Internal red; harness is part of both identifiers |
+| R13 | Assembly.test_rows; TheBinding.test_a_wrong_binding_goes_red | amendment; existing scaffold binding mutation | Internal red; OPEN scaffold-import-count |
+| R14 | Assembly.test_rows; Readiness.test_profiles_and_templates | models; pin-harness; version; profile-mismatch | Internal red; OPEN-value pins |
+| R15 | Readiness.test_inputs; test_profiles_and_templates; test_price_shapes | instructions; prices; price-shape; config; markers | Internal red/refused fixtures; instrument-values and routing carries pending |
+| R16 | Description.test_commitments | caps; quote-caps | Internal red; CAPS and TOTAL_CAP read from costs |
+| R17 | Readiness.test_inputs; test_freeze_closed; Description.test_commitments | contrast-missing; design-values; quote-within; quote-contrast; quote-cross | Internal red; fake closed design accepted; OPEN-value V1-V5 |
+| R18 | Description.test_commitments | sample; quote-blind | Internal red; seven models derived |
+| R19 | Assembly.test_rows | task-list; task-order | Internal red; dropped task also refused by source_tasks |
+| R20 | Assembly.test_rows | pair-count | Internal red; all counts derived from rows |
+| R21 | Description.test_commitments | quote-estimates | Internal red; estimate text separate from pending price table |
+| R22 | Description.test_commitments | unused | Internal red; label imported from labels4 |
+| R23 | Description.test_commitments | answers; quote-stage_action; quote-stage_effect; quote-arrival_effect; quote-agreement_rule | Internal red; OPEN-value V6 |
+| R24 | Description.test_commitments | number-hash; choice-value; quote-human_labels; source | Internal red; constants loaded by path; missing full passage is source-text |
+| R25 | Description.test_commitments | limit; source | Internal red; named ids/SUPERSEDED recorded; full passages source-text |
+| R26 | Description.test_commitments | quote-arrival_record; quote-arrival_flip; quote-arrival_print; quote-arrival_change | Internal red; shared answers V6 |
+| R27 | Description.test_commitments | wave3; source | Internal red; named labels imported; V7/source-text pending |
+| R28 | Description.test_commitments | walk-count; source | Internal red; source-text/walk-counts pending |
+| R29 | Description.test_commitments | question; source | Internal red; V7/source-text pending |
+| R30 | Description.test_commitments | walk-count; source | Internal red; source-text/walk-counts pending |
+| R31 | Readiness.test_alpha_before_write | alpha-shape; 0.050, .05, 0.10, 5e-2, 1/20 | Every spelling refused before writing; V2 remains pending |
+| R32 | Readiness.test_freeze_closed; Writer.test_pending_all_fields | open-design; pending-erase | In-memory erase changes freeze acceptance; complete swapped run owed |
+| R33 | Readiness.test_namespace; test_inputs | namespace | Internal red; takes.namespace recomputes it |
+| R34 | Readiness.test_committed_writer; staged copy_manifest gate | committed-presence; changed scratch bytes | Absent/staged-only/changed scratch bytes refused; real draft claimed new and generated |
+| R35 | JobContract.test_outline | runner and the prior R35 mutations | Earlier 83-witness table; ordinary 15-test file passes |
+| R36 | JobContract.test_pin; test_future_pin | floating-ref and prior R36 mutations | Earlier 83-witness table; CP8 pin deferred |
+| R37 | JobContract.test_boundary | trigger; secret; added-action and prior R37 mutations | Earlier 83-witness table; no public action |
+| R38 | JobContract.test_commands; test_box_ownership; test_box_transition | command mutations; box-landed | Earlier 83-witness table; OPEN-value regrade-flag |
+| R39 | JobContract.test_private_message | private-message | Earlier 83-witness table; exact closing line retained there |
+| R40 | JobContract.test_freeze_location | freeze-comment | Earlier 83-witness table; local freeze check is outside this lane |
+| R41 | JobContract.test_local_binding | local-suite | Earlier 83-witness table; repository suite owed to athena |
+| R42 | JobContract.test_copy_boundary | copy-after and both branch mutations | Earlier 83-witness table; no post-freeze HEAD copy gate |
+| R43 | JobContract.test_zero | empty-1 and other zero-count mutations | Earlier 83-witness table |
+| R44 | JobContract.test_additions | removed-line; kickoff mutations | Earlier 83-witness table; current diff is 124 added, 0 removed |
+
+The exact closing lines of the earlier CI mutations are retained in their original table rather than reconstructed here. All R1-R34 rows still owe the separate swapped whole-file witness and the protected scaffold gate. No incomplete row is presented as meeting section 9's done condition.
+
+### Writer mutant inventory
+
+These names are committed and available through test_build_draft.py --mutant NAME. Ordinary contract tests exercise the emitted-field variants in memory; validator variants have invalid-input fixtures. The complete swapped-file run column is deliberately unrun for every new variant because implementation stopped at scaffold-import-count. No green mutant is concealed as red.
+
+| Clause | Mutant | Whole-file run | Test |
+|---|---|---|---|
+| R1.hashes | task-hash | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R2.models | models | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R2.n | n | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R2.optional | optional | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R3.order | order | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R11.agent | agent | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R12.slots | slots | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R12.cells | cells | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R2.factors | factor | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R13.amendment | amendment | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R19.tasks | task-list | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R20.counts | pair-count | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R6.locks | lock | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R6.unpinned | version | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R14.pins | pin-harness | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R1.tasks | task-order | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R2.n | wording-n | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R2.n | repeat-n | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R3.order | order-function | unrun at stop | Assembly.test_rows / test_accessors_red |
+| R3.order | order-carry | unrun at stop | Assembly.test_rows / test_accessors_red |
+| quote.estimand | quote-estimand | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.bounds | quote-bounds | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.holds | quote-holds | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.paired | quote-paired | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.sensitivity | quote-sensitivity | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.comparisons | quote-comparisons | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.sizing | quote-sizing | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.primary | quote-primary | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.pause | quote-pause | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.words | quote-words | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.pushback | quote-pushback | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.awareness | quote-awareness | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.outside | quote-outside | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.cost | quote-cost | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.not_poolable | quote-not_poolable | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.within | quote-within | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.contrast | quote-contrast | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.cross | quote-cross | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.blind | quote-blind | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.caps | quote-caps | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.estimates | quote-estimates | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.stage_action | quote-stage_action | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.stage_effect | quote-stage_effect | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.arrival_effect | quote-arrival_effect | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.agreement_rule | quote-agreement_rule | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.human_labels | quote-human_labels | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.arrival_record | quote-arrival_record | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.arrival_flip | quote-arrival_flip | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.arrival_print | quote-arrival_print | unrun at stop | Description.test_commitments / test_each_clause_red |
+| quote.arrival_change | quote-arrival_change | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R4.vocabulary | vocabulary | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R4.routing | routing | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R5.predictions | prediction | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R7.pending | digests-pending | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R8.carried | limitation | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R8.residuals | residual | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R9.words | leak-list | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R9.sessions | sessions | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R10.earlier | earlier | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R16.caps | caps | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R18.models | sample | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R22.unused | unused | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R23.answers | answers | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R24.choices | number-hash | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R25.limits | limit | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R27.values | wave3 | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R28.R30.counts | walk-count | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R29.question | question | unrun at stop | Description.test_commitments / test_each_clause_red |
+| source.pending | source | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R4.vocabulary | stops | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R4.vocabulary | reserved | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R4.vocabulary | routes | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R5.predictions | prediction-rule | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R5.predictions | prediction-basis | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R5.predictions | predictions-count | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R9.sessions | box-users | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R9.words | excusals | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R9.words | leak-dropped | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R24.choices | choice-value | unrun at stop | Description.test_commitments / test_each_clause_red |
+| R17.families | contrast-missing | unrun at stop | Readiness.test_inputs / test_mutants |
+| R17.values | design-values | unrun at stop | Readiness.test_inputs / test_mutants |
+| R32.closed | open-design | unrun at stop | Readiness.test_inputs / test_mutants |
+| R33.namespace | namespace | unrun at stop | Readiness.test_inputs / test_mutants |
+| R15.instructions | instructions | unrun at stop | Readiness.test_inputs / test_mutants |
+| R15.values | prices | unrun at stop | Readiness.test_inputs / test_mutants |
+| R15.config | config | unrun at stop | Readiness.test_inputs / test_mutants |
+| R15.markers | markers | unrun at stop | Readiness.test_inputs / test_mutants |
+| validate_digests | digest-shape | unrun at stop | Readiness invalid-input fixtures |
+| validate_prices | price-shape | unrun at stop | Readiness invalid-input fixtures |
+| validate_alpha | alpha-shape | unrun at stop | Readiness invalid-input fixtures |
+| check_leak_users | user-overlap | unrun at stop | Readiness invalid-input fixtures |
+| pending | pending-erase | unrun at stop | Readiness invalid-input fixtures |
+| version_pins | profile-mismatch | unrun at stop | Readiness invalid-input fixtures |
+| committed_matches | committed-presence | unrun at stop | Readiness invalid-input fixtures |
+| prior metadata whitelist | earlier-count | unrun at stop | Description.test_predictions_read_no_counts |
+
+### This lane's implementation decisions
+
+These are builder choices, not new rulings by glitch-f3 or Javier:
+
+- Task entries carry id, task/variant SHA-256, the grader object, factor, wording ids and cells from variants.task_cells. The task list is discovered from the two matching directories; no nine-item list is typed in production.
+- h-<full sha256> is the half-cell id, over the compact JSON array [arm, task, half, model, harness]. s-<full sha256> is the slot id, over that array plus wording, repeat and pressure. Versions do not change identity; the planned agent separately binds the pinned version. Both mappings are checked for collisions/aliases.
+- stats_design_inputs retains the inspectable candidate design. stats_design is the deliberately invalid {"PENDING": sorted_paths} while any pending item remains; it becomes the validated closed design only with no pending items. floors is null, with floor_evidence PENDING so the V5 omission cannot silently become ready.
+- Pending keys are JSON-pointer paths, escaping tilde and slash. They are re-derived, not trusted from the stored pending map. Repeated row/prediction null versions are represented by their version-pin inputs, while their ledger validity separately refuses null. Required walk counts use null and still appear in pending. Quoted source status text is not mistaken for an input merely because it mentions the sentinel mid-sentence.
+- The source reader has one git-show door at e2979b31 and projects only limitations_lines, leak_words, leak_word_dropped and leak_context_excusals. It never reads earlier results or imports an earlier round's module.
+- A quoted sentence rejected by either existing lint uses section 12; an accepted sentence remains verbatim. Structured commitments carry the same rule and do not add allowlist entries. Pending-reason line citations use words such as “and”, not digit/digit spellings that the unchanged language lint rejects.
+- Harness/model profiles come from routing.json and each take lock. A missing mode or version is PENDING; a disagreement is an error; no row gets a version until its routing and lock values agree.
+- Config-template file hashes and the combined digest use take_config.files_for's bytes, with the same sorted path/NUL/digest/newline framing as take_config.config_sha256. NotReady becomes PENDING. No folder is written to render a template.
+- Dated fake price fixtures exercise costs.require_price_date, every registered vendor/model and each token class. The real table remains PENDING. No estimate is used as a token price.
+- The writer accepts only --check at its CLI; it has no approval, reaffirmation or digest-input option. In-memory finalize and pure validators supply the test seam. The ordinary writer generates the real draft without owner inputs.
+- The real --check compares HEAD's committed bytes and working bytes with a fresh build, failing for a missing HEAD file even if a file is staged. Both sides of relative_to are resolved for macOS symlinks.
+- The brief's reading of “per version” is one v4 version per running task, three published digests each. No private wording, path or salt was read or generated.
+- The brief's reading of plan 299 includes the existing maintenance/gc environment for scratch commits; the probes command mirrors the validity step; the sibling intervals job is untouched. CP2's missing box integration step is explicitly omitted under section 10 and becomes required when its file lands.
+
+The exact pending map, including each owner/source reason, follows. It is generated by build_draft.pending and is the inventory behind the OPEN-value groups below.
+
+```text
+{
+  "/box_residuals/0/finding": "R8 plan 830: the real box supplies the conditional preflight finding.",
+  "/checked_against/status": "R9 plan 831, PL-4: the first committed walk supplies the session check.",
+  "/config_templates/claude-code/claude-haiku-4-5-20251001": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
+  "/config_templates/claude-code/claude-opus-5-5": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
+  "/config_templates/claude-code/claude-sonnet-5-5": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
+  "/config_templates/codex/gpt-6-luna": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
+  "/config_templates/codex/gpt-6.1-sol": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
+  "/config_templates/gemini/gemini-3.5-flash-lite": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
+  "/config_templates/gemini/gemini-3.8-flash": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
+  "/effort/claude-code/claude-haiku-4-5-20251001": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
+  "/effort/claude-code/claude-opus-5-5": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
+  "/effort/claude-code/claude-sonnet-5-5": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
+  "/effort/codex/gpt-6-luna": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
+  "/effort/codex/gpt-6.1-sol": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
+  "/effort/gemini/gemini-3.5-flash-lite": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
+  "/effort/gemini/gemini-3.8-flash": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
+  "/floor_evidence": "V5, R17: glitch-f3 supplies the probes table's floor reading.",
+  "/furniture/claude-code": "R15 CP5-req 56: CP6 walks supply each harness's list.",
+  "/furniture/codex": "R15 CP5-req 56: CP6 walks supply each harness's list.",
+  "/furniture/gemini": "R15 CP5-req 56: CP6 walks supply each harness's list.",
+  "/holdout_salted_digests": "R7 plan 175 and 829: the separate author supplies only the published digests through glitch-f3.",
+  "/image_locks/0/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/0/lock/harness/version": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/0/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/0/lock/python": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/1/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/1/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/1/lock/squid": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/2/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/2/lock/harness/version": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/2/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/2/lock/python": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/3/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/3/lock/harness/version": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/3/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/3/lock/python": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/4/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/4/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/image_locks/4/lock/python": "R6 plan 828: CP2 supplies built image and version pins.",
+  "/limitations/0/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limitations/1/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limitations/10/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limitations/2/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limitations/3/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limitations/4/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limitations/5/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limitations/6/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limitations/7/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limitations/8/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limitations/9/round_4_reading": "V8, R8 plan 830: glitch-f3 supplies each re-reading.",
+  "/limits/W2B3-10/text": "R25 CP5-req 122-139: glitch-f3 supplies the omitted exact source text.",
+  "/limits/W2B3-2/text": "R25 CP5-req 122-139: glitch-f3 supplies the omitted exact source text.",
+  "/limits/W2B3-3/text": "R25 CP5-req 122-139: glitch-f3 supplies the omitted exact source text.",
+  "/limits/W2B3-4/text": "R25 CP5-req 122-139: glitch-f3 supplies the omitted exact source text.",
+  "/limits/W2B3-5/text": "R25 CP5-req 122-139: glitch-f3 supplies the omitted exact source text.",
+  "/limits/W2B3-6/text": "R25 CP5-req 122-139: glitch-f3 supplies the omitted exact source text.",
+  "/missing_source_text/R24/text": "R24/R25/R27-R30: glitch-f3 supplies exact passages omitted from the brief; the external sources cannot be read here.",
+  "/missing_source_text/R25/text": "R24/R25/R27-R30: glitch-f3 supplies exact passages omitted from the brief; the external sources cannot be read here.",
+  "/missing_source_text/R27/text": "R24/R25/R27-R30: glitch-f3 supplies exact passages omitted from the brief; the external sources cannot be read here.",
+  "/missing_source_text/R28/text": "R24/R25/R27-R30: glitch-f3 supplies exact passages omitted from the brief; the external sources cannot be read here.",
+  "/missing_source_text/R29/text": "R24/R25/R27-R30: glitch-f3 supplies exact passages omitted from the brief; the external sources cannot be read here.",
+  "/missing_source_text/R30/text": "R24/R25/R27-R30: glitch-f3 supplies exact passages omitted from the brief; the external sources cannot be read here.",
+  "/pause_questions/0/answer": "V6, R23 CP5-req 92-95 and 146: glitch-f3 supplies each answer.",
+  "/pause_questions/1/answer": "V6, R23 CP5-req 92-95 and 146: glitch-f3 supplies each answer.",
+  "/pause_questions/2/answer": "V6, R23 CP5-req 92-95 and 146: glitch-f3 supplies each answer.",
+  "/price_table": "R15 CP5-req 54: Javier's walk gate reads dated vendor prices.",
+  "/routing_marker_inputs/codex/rate_limit_markers": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
+  "/routing_marker_inputs/codex/spend_cap_markers": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
+  "/routing_marker_inputs/gemini/rate_limit_markers": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
+  "/routing_marker_inputs/gemini/spend_cap_markers": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
+  "/routing_markers/spend_cap_markers_status": "R15 CP5-req 55: the routing owner rules the marker status.",
+  "/served_model_rule/claude-code": "R15 CP5-req 53: the harness owners supply the served-model rule.",
+  "/served_model_rule/codex": "R15 CP5-req 53: the harness owners supply the served-model rule.",
+  "/served_model_rule/gemini": "R15 CP5-req 53: the harness owners supply the served-model rule.",
+  "/stats_design_inputs/alpha": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
+  "/stats_design_inputs/bootstrap/reps": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
+  "/stats_design_inputs/bootstrap/seed": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
+  "/stats_design_inputs/power/bootstrap_reps": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
+  "/stats_design_inputs/power/grid": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
+  "/stats_design_inputs/power/seed": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
+  "/stats_design_inputs/power/sims": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
+  "/stats_design_inputs/stronger_weaker/claude-code/1": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
+  "/version_pins/claude-code/claude-haiku-4-5-20251001/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/claude-code/claude-haiku-4-5-20251001/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/claude-code/claude-haiku-4-5-20251001/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/claude-code/claude-opus-5-5/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/claude-code/claude-opus-5-5/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/claude-code/claude-opus-5-5/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/claude-code/claude-sonnet-5-5/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/claude-code/claude-sonnet-5-5/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/claude-code/claude-sonnet-5-5/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/codex/gpt-6-luna/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/codex/gpt-6-luna/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/codex/gpt-6-luna/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/codex/gpt-6.1-sol/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/codex/gpt-6.1-sol/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/codex/gpt-6.1-sol/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/gemini/gemini-3.5-flash-lite/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/gemini/gemini-3.5-flash-lite/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/gemini/gemini-3.5-flash-lite/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/gemini/gemini-3.8-flash/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/gemini/gemini-3.8-flash/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/version_pins/gemini/gemini-3.8-flash/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+  "/walk_counts/inherited_shapes/0": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
+  "/walk_counts/inherited_shapes/1": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
+  "/walk_counts/off_path_offers": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
+  "/walk_counts/on_path_closers": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
+  "/wave3/W3B2-7/answer": "V7, R27/R29 CP5-req 151, 153 and 173: glitch-f3 supplies definitions, questions and answers.",
+  "/wave3/W3B2-7/question": "V7, R27/R29 CP5-req 151, 153 and 173: glitch-f3 supplies definitions, questions and answers.",
+  "/wave3/documented_reply": "V7, R27/R29 CP5-req 151, 153 and 173: glitch-f3 supplies definitions, questions and answers.",
+  "/wave3/plan_questions/0/answer": "V7, R27/R29 CP5-req 151, 153 and 173: glitch-f3 supplies definitions, questions and answers.",
+  "/wave3/plan_questions/0/question": "V7, R27/R29 CP5-req 151, 153 and 173: glitch-f3 supplies definitions, questions and answers.",
+  "/wave3/plan_questions/1/answer": "V7, R27/R29 CP5-req 151, 153 and 173: glitch-f3 supplies definitions, questions and answers.",
+  "/wave3/plan_questions/1/question": "V7, R27/R29 CP5-req 151, 153 and 173: glitch-f3 supplies definitions, questions and answers."
+}
+```
+
+### Gates, their exact invocations, and limits
+
+The base closing lines and original base file:line findings are preserved earlier in this report. No base-only red was fixed outside ownership. The final code tree is unchanged since 81637101. Output redirection below only retained local logs; no gate ran as a shell background job. Each listed runner was preceded by light-ok in the same command.
+
+**tests/test_build_draft.py; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_build_draft.py > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/build-final.txt 2>&1
+```
+
+```text
+
+----------------------------------------------------------------------
+Ran 20 tests in 9.706s
+
+OK
+test_build_draft: 20 run, 0 failures, 0 errors, 0 skipped
+```
+
+**tests/test_ci_job.py; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_ci_job.py > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/ci.txt 2>&1
+```
+
+```text
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.551s
+
+OK
+test_ci_job: 15 run, 0 failures, 0 errors, 0 skipped
+```
+
+**build_draft.py --check; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/build_draft.py --check > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/check.txt 2>&1
+```
+
+```text
+ok: the committed draft is what build_draft.py builds
+```
+
+**copy_manifest.py --check; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/copy_manifest.py --check > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/copy.txt 2>&1
+```
+
+```text
+ok: 223 files from 28 fragment(s) (w1a-cp1-scaffold, w1b-cp1-routing-batch, w2a-cp3-endstate, w2b-cp3-text-graders, w3a-cp3-graders-scope-template, w3b-cp3-graders-refusal-plangate, w3c-cp3-graders-confound-newtasks, w4a-cp2-image-egress, w4b-cp2-runtake-preflight, w4c-cp2-sidecar-scan, w4d-cp4-variants, w4e-cp5-stats, w4f-cp5-coverage, w4g-cp4-declarations-eligibility, w4h-w1b-next-touch, w4i-cp4-task-scope-read, w4j-cp4-task-template-adherence, w4k-cp4-task-number-fidelity, w4l-cp4-task-precondition-refusal, w4m-cp4-gen-plan-gate, w4n-cp4-gen-confounded-seed2, w4o-cp4-gen-explain-not-act, w4p-cp4-gen-approval-scope, w4q-cp4-gen-conditional-yes, w5a-cp5-probes4, w5b-cp5-pipeline, w5c-draft-ci, wave4-merge): 39 identical and 14 edited (round 3 at e2979b31, shared files at 68ec902f), 170 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf
+```
+
+**tests/test_pipeline.py; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_pipeline.py > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/pipeline.txt 2>&1
+```
+
+```text
+
+----------------------------------------------------------------------
+Ran 85 tests in 24.406s
+
+OK
+test_pipeline: 85 run, 0 failures, 0 errors, 0 skipped
+```
+
+**tests/test_stats.py; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_stats.py > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/stats.txt 2>&1
+```
+
+```text
+..................................................................................................
+----------------------------------------------------------------------
+Ran 98 tests in 5.158s
+
+OK
+```
+
+**tests/test_batch.py; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_batch.py > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/batch.txt 2>&1
+```
+
+```text
+......................................................................................................................
+----------------------------------------------------------------------
+Ran 118 tests in 2.387s
+
+OK
+```
+
+**tests/test_pause_adherence.py; exit 0.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_pause_adherence.py > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/pause.txt 2>&1
+```
+
+```text
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 2.065s
+
+OK
+```
+
+**lint_language.py /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/; exit 1.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/lint_language.py /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/ > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/language.txt 2>&1
+```
+
+```text
+25 finding(s) across 61 input(s):
+Fix the text, or excuse the exact line in language-allowlist.json with a reason.
+```
+
+**lint_pooling.py /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/; exit 1.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/lint_pooling.py /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/ > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/pooling.txt 2>&1
+```
+
+```text
+8 finding(s) across 61 file(s) and 0 commit(s):
+There is no allowlist for these. Write the sentence a different way.
+```
+
+**leak_grep.py --check; exit 1.**
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/leak_grep.py --check > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/leak.txt 2>&1
+```
+
+```text
+25 leak word(s), read against 0 recorded session(s) through the take checker's own readers.
+
+
+ok, having read 0 sessions: none is recorded yet, so this list has been grepped against nothing and its green says nothing. Not a pass for the freeze.
+```
+
+The scaffold's exact invocation was the same prefix with the following script (no output redirection on that run):
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_scaffold.py
+```
+
+```text
+Ran 49 tests in 238.062s
+FAILED (failures=1)
+AssertionError: 29 not greater than 30
+```
+
+That run preceded the final commit; the unchanged reader and cardinality assertion still see the same 29 claims at the final head. It was not re-run after the stop to manufacture an identical failure. Its import loop did not execute, so the separate drive probe is evidence only for that one import, not for the whole loop.
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore - <<'PY'
+import sys
+sys.path.insert(0, '/Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests')
+import test_scaffold
+result = test_scaffold.probe('drive.py')
+assert result['error'] is None, result['error']
+assert test_scaffold.foreign(result['files']) == []
+print('drive import: 1 of 1 passed; no blocked import or foreign-round module')
+PY
+```
+
+```text
+drive import: 1 of 1 passed; no blocked import or foreign-round module
+```
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore -c "import sys; sys.path.insert(0, '/Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4'); import test_round4; p = test_round4.module_problems(); print(p); raise SystemExit(1 if p else 0)" > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/modules.txt 2>&1
+```
+
+```text
+[]
+```
+
+The module-problems check loads modules without running their tests. No patch starts at import. Pipeline's 85 passing tests include CostAccounting's arm handling; stats passed 98, batch 118, pause adherence 30. No skipped test occurred in the ordinary final gates.
+
+Both raw lints remain exit 1 as at the base. The binding no-new-finding comparison is exit 0 and compares the complete finding objects, not merely totals. Its exact command and script are retained here so the temporary driver is not needed to reproduce it:
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/baseline.py > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/baseline.txt 2>&1
+```
+
+```python
+import collections,json,subprocess,sys
+from pathlib import Path
+repo=Path('/Users/javrodher/aegis-builds/gap4-w5c-draft-ci')
+sys.path.insert(0,str(repo/'evals/gap-study-4'))
+import lint_language as ll
+import lint_pooling as lp
+base='89b54db4e34c18dcdde253c04179077a68f0888f'
+def blob(rel):
+    return subprocess.run(['git','-C',str(repo),'show',base+':'+rel],capture_output=True,text=True)
+entries=json.loads(blob('evals/gap-study-4/language-allowlist.json').stdout)['excused']
+old={'language':[],'pooling':[]};now={'language':[],'pooling':[]}
+count=0
+for p in ll.iter_files([str(repo/'evals/gap-study-4')]):
+    rel=p.resolve().relative_to(repo.resolve()).as_posix(); prior=blob(rel)
+    if prior.returncode:
+        assert rel in ('evals/gap-study-4/prereg-draft.json','evals/gap-study-4/COPIED.d/w5c-draft-ci.json'),prior.stderr
+    else:
+        count+=1
+        old['language'].extend(ll.scan_text(prior.stdout,rel,entries))
+        old['pooling'].extend(lp.scan_text(prior.stdout,rel))
+    now['language'].extend(ll.scan_text(p.read_text(),rel,ll.load_allowlist()))
+    now['pooling'].extend(lp.scan_text(p.read_text(),rel))
+for kind in old:
+    before=collections.Counter(json.dumps(f,sort_keys=True) for f in old[kind]);after=collections.Counter(json.dumps(f,sort_keys=True) for f in now[kind])
+    assert before==after,list(after-before)
+    print(f'{kind}: base {len(old[kind])}, head {len(now[kind])}, new 0; exact findings equal')
+    for f in old[kind]:print(f"{f['file']}:{f['line']} [{f['pattern']}]")
+print(f'baseline comparison: 2 of 2 passed; {count} base inputs; no finding beyond the base')
+```
+
+```text
+language: base 25, head 25, new 0; exact findings equal
+evals/gap-study-4/COPIED.d/w3c-cp3-graders-confound-newtasks.json:8 [free]
+evals/gap-study-4/COPIED.d/w4n-cp4-gen-confounded-seed2.json:42 [ratio-slash]
+evals/gap-study-4/contract_quotes.json:134 [free]
+evals/gap-study-4/tasks/approval-scope.json:68 [consisten]
+evals/gap-study-4/tests/fixtures_confounded_design.json:15 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:55 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:85 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:145 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:265 [always]
+evals/gap-study-4/tests/fixtures_confounded_design.json:315 [reliab]
+evals/gap-study-4/tests/fixtures_confounded_design.json:385 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:395 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:515 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:545 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:625 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:675 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:935 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:975 [free]
+evals/gap-study-4/tests/fixtures_confounded_design.json:979 [free]
+evals/gap-study-4/tests/fixtures_confounded_design.json:980 [free]
+evals/gap-study-4/tests/fixtures_confounded_design.json:1005 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:1055 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:1085 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:1105 [free]
+evals/gap-study-4/tests/fixtures_confounded_design.json:1110 [free]
+pooling: base 8, head 8, new 0; exact findings equal
+evals/gap-study-4/COPIED.d/w4f-cp5-coverage.json:22 [pooled]
+evals/gap-study-4/tasks/confounded-design.json:175 [across-halves]
+evals/gap-study-4/tasks/plan-gate.json:104 [better-than]
+evals/gap-study-4/tasks/scope-read.json:175 [across-halves]
+evals/gap-study-4/tasks/scope-read.json:238 [across-halves]
+evals/gap-study-4/tasks/template-adherence.json:188 [across-halves]
+evals/gap-study-4/tasks/template-adherence.json:302 [across-halves]
+evals/gap-study-4/tests/fixtures_number_fidelity.json:304 [in-total]
+baseline comparison: 2 of 2 passed; 59 base inputs; no finding beyond the base
+```
+
+The leak check was run once on the newly generated draft because the earlier invocation stopped before a draft existed. It now actually reads the 25-word list and reports zero sessions, exit 1; it is not freeze evidence. leak_grep still has no path argument. The first committed walk remains owed.
+
+### Failures, unfinished verification and execution notes
+
+- The protected scaffold cardinality is the one unresolved code-tree gate. The required fix is outside the permitted test lines; no workaround was applied.
+- The new writer's separate whole-file mutation runs remain unrun. The prepared temporary run_mutants.py was never invoked. The report's inventory is a list of obligations, not a red-proof claim. The unchanged job's earlier 83-run proof remains recorded above.
+- The writer test reads the real working draft and exercises committed HEAD bytes in a scratch repo. The final CLI --check separately reads the real committed draft. An explicit real-HEAD read assertion within test_build_draft.py itself is still owed before claiming the brief's full test contract complete.
+- During development, the first commitment run exposed nullable users on the egress lock (8 run, 0 failures, 4 errors); both the builder and its independent reader were corrected to honor that closed schema. The first freeze-negative assertion expected ValueError, but stats.StatsError is a separate type (18 run, 0 failures, 1 errors); the assertion was corrected, not the production validator.
+- Expanding the lint test to the complete draft exposed 23 language findings in the builder's own pending-reason citations, such as 175/829 (20 run, 1 failures, 0 errors). Their punctuation was changed and the draft regenerated. The final no-new-finding comparison is exact; no finding was allowed away.
+- A mistyped check command attempted /usr/local/bin/python3 -B -W ignore W/copy_missing.py after light-ok. Python exited 2: “can't open file '/Users/javrodher/aegis-builds/gap4-w5c-draft-ci/copy_missing.py': [Errno 2] No such file or directory”. It executed no test and was not treated as a gate result. That command also misspelled OPENBLAS_NUM_THREADS as OPENBLAS_THREADS; no test process ran under that typo. The intended copy gate subsequently ran in the prescribed form.
+- One drive-import check was started after a writer-test tool call yielded, before its completion was collected. This did not honor the strict one-process sequencing rule. The writer's completion was then collected; the final recorded file gates were run and collected sequentially. No shell background gate or heavy work was started.
+- One read-only extraction of the named frozen JSON used -B but omitted the PYTHONDONTWRITEBYTECODE environment setting; it wrote no file. Later Python calls used both settings.
+
+No model, vendor CLI, network, package install, container, workflow, act, gh, real freeze/rehearsal, ledger/ruling writer, --against or --whole-file-audit was invoked. The full test_round4.py, run_checks.py and repository tests/run_tests.py remain owed to glitch-f3 or the coordinator on athena. No refusal, classifier block, sandbox denial or automatic approval rejection occurred; no such rejection was retried in another form. No hook configuration was changed. No push, merge, rebase, branch switch or new worktree occurred.
+
+### OPEN values and carries retained
+
+OPEN-value: V1: stats_design_inputs.stronger_weaker's Claude Code weaker member; CP5-req 60-61 and section 0b; glitch-f3.
+OPEN-value: V2: stats_design_inputs.alpha; CP5-req 194 and section 0b; glitch-f3.
+OPEN-value: V3: stats_design_inputs.bootstrap seed/reps; stats.py 421, 488-491 and section 0b; glitch-f3.
+OPEN-value: V4: stats_design_inputs.power seed/sims/bootstrap_reps/grid; stats.py 422-423, 492-501 and section 0b; glitch-f3. wordings and repeats are derived.
+OPEN-value: V5: floor_evidence and the null stats_design_inputs.floors; stats.py 502-505/619 and section 0b; glitch-f3's probes reading.
+OPEN-value: V6: pause_questions answers; CP5-req 92-95/146; glitch-f3.
+OPEN-value: V7: wave3.documented_reply and the plan/W3B2-7 questions and answers; CP5-req 151/153/173; glitch-f3.
+OPEN-value: V8: limitations[*].round_4_reading; plan 830; glitch-f3.
+OPEN-value: source-text: missing_source_text R24/R25/R27-R30 and limits[*].text; CP5-req 101-120, 122-139, 149-160, 162-169, 171-173, 175-182; glitch-f3 supplies the exact omitted passages, not a new external read by the builder.
+OPEN-value: pins: image_locks and version_pins; R6/R14, plan 828, CP5-req 43/49; CP2/walk/routing owners.
+OPEN-value: digests: holdout_salted_digests; plan 175/829; separate author through glitch-f3, only published digests.
+OPEN-value: preflight: box_residuals[0].finding; plan 830; real box preflight.
+OPEN-value: first-walk: checked_against; plan 831/PL-4; first committed real session.
+OPEN-value: instrument-values: config_templates, effort, served_model_rule, price_table and furniture; CP5-req 50-56; CP2/CP6 and Javier.
+OPEN-value: routing: routing_marker_inputs and the pending routing marker status; CP5-req 55; CP2/routing owner.
+OPEN-value: walk-counts: walk_counts; CP5-req 162-169/175-182; Javier's CP6 walks.
+OPEN-value: regrade-flag: R38, plan 1036 versus check_results.py's current argparse; next owned touch or ruling. The CI command remains --regrade exactly.
+
+OPEN carry: routing.json pin_profiles and vendor marker entries are outside this lane (section 7). Its bytes are unchanged.
+OPEN carry: CP2's round-4 driver/checker keys named in section 4.3 are deliberately absent. drive.py:225 imports with an empty default stripped-env list: that default-open read remains CP2's to close.
+OPEN carry: prereg.py --order still names the inherited per-axis order; R3's draft names freeze.planned_order for the whole rows. Its next owner must close the carry.
+
+Deferred to Javier: real walks and box, keys, real prices and versions, the caps-trimmed record, spend, public pushes, the CP8 push word and his word on any ruling. No owner answer, price, version, salt, wording or private path was invented. These outstanding inputs and the scaffold conflict prohibit status done.
+
+### Closure verification
+
+Line-reference correction after checking numbered source: at the final code head, copied_modules() is at tests/test_scaffold.py:80-82 and its greater-than-30 assertion is at line 436. The captured traceback used line 437 before the authorized BLOCKED-entry removal shifted it. This corrects the current-line reference above; the named functions and conflict are unchanged.
+
+The report-preservation check, gated with light-ok, asserted that the report starts with the exact acf3460 bytes, retains its original first two lines, is the only change from the code head, and has no staged whitespace errors. Its closing line was:
+
+```text
+report preservation: 4 of 4 passed; prior bytes retained, original header retained, only report appended, staged whitespace clean
+```
+
+The final staged copy gate ran as:
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/copy_manifest.py --check > /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-b3h4yhgi/copy-final.txt 2>&1
+```
+
+```text
+ok: 223 files from 28 fragment(s) (w1a-cp1-scaffold, w1b-cp1-routing-batch, w2a-cp3-endstate, w2b-cp3-text-graders, w3a-cp3-graders-scope-template, w3b-cp3-graders-refusal-plangate, w3c-cp3-graders-confound-newtasks, w4a-cp2-image-egress, w4b-cp2-runtake-preflight, w4c-cp2-sidecar-scan, w4d-cp4-variants, w4e-cp5-stats, w4f-cp5-coverage, w4g-cp4-declarations-eligibility, w4h-w1b-next-touch, w4i-cp4-task-scope-read, w4j-cp4-task-template-adherence, w4k-cp4-task-number-fidelity, w4l-cp4-task-precondition-refusal, w4m-cp4-gen-plan-gate, w4n-cp4-gen-confounded-seed2, w4o-cp4-gen-explain-not-act, w4p-cp4-gen-approval-scope, w4q-cp4-gen-conditional-yes, w5a-cp5-probes4, w5b-cp5-pipeline, w5c-draft-ci, wave4-merge): 39 identical and 14 edited (round 3 at e2979b31, shared files at 68ec902f), 170 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf
+```
+
+The preservation assertions are repeated on this fully staged appendix before its report-only commit. The protected scaffold gate and the new whole-file mutation witnesses remain outstanding as stated above.
+
+The exact final preservation command (exit 0; closing line quoted above):
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore - <<'PY'
+from pathlib import Path
+import subprocess
+repo=Path('/Users/javrodher/aegis-builds/gap4-w5c-draft-ci')
+rel='lane-reports/w5c-draft-ci.md'
+before=subprocess.check_output(['git','-C',str(repo),'show','acf3460a42c941efdb82051c08d1db772e4887be:'+rel])
+after=(repo/rel).read_bytes()
+assert after.startswith(before)
+assert after.splitlines()[:2]==before.splitlines()[:2]
+changed=subprocess.check_output(['git','-C',str(repo),'diff','--name-only','HEAD'],text=True).splitlines()
+assert changed==[rel],changed
+checked=subprocess.run(['git','-C',str(repo),'diff','--cached','--check'],capture_output=True,text=True)
+assert checked.returncode==0,checked.stdout+checked.stderr
+print('report preservation: 4 of 4 passed; prior bytes retained, original header retained, only report appended, staged whitespace clean')
+PY
+```
