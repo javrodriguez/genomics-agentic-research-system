@@ -50,6 +50,15 @@ AFTER = PLAN_COMMANDS[-3:] + (
 )
 BEFORE = PLAN_COMMANDS[:9] + (PLAN_COMMANDS[10],)
 COPY = PLAN_COMMANDS[3]
+BOX = PLAN_COMMANDS[4]
+BOX_OWNER = "      # CP2 owns tests/test_box_integration.py; omitted until it exists\n"
+BOX_RULING = "      # under glitch-f3's section 10 box-integration ruling.\n"
+BOX_DEFERRED = BOX_OWNER + BOX_RULING
+BOX_STEP = (
+    "      - name: Box integration\n"
+    "        # Binds the integrated box interface supplied by CP2.\n"
+    f"        run: {BOX}\n"
+)
 ZERO_RULE = (
     "THE ZERO RULE. Each step below either grades a countable number of items or says it graded none. "
     "Before the freeze there are no takes and no result, so the two steps that need them report "
@@ -63,6 +72,7 @@ COUNT_COMMAND = (
 )
 SELECTED = None
 RAW = CURRENT = BASE_TEXT = INTRODUCED = None
+CURRENT_BOX_PRESENT = None
 
 
 def git(repo, *args):
@@ -102,13 +112,20 @@ def steps(block):
             result.append((match[1], body, ""))
         elif run[1] == "|":
             lines = body[run.end():].splitlines()
-            result.append((match[1], body, "\n".join(line[10:] for line in lines if line.strip())))
+            literal = []
+            for line in lines:
+                if not line.strip():
+                    continue
+                if not line.startswith(" " * 10):
+                    break
+                literal.append(line[10:])
+            result.append((match[1], body, "\n".join(literal)))
         else:
             result.append((match[1], body, run[1]))
     return result
 
 
-def problems(text, baseline, introduced):
+def problems(text, baseline, introduced, *, box_present=None):
     """Clause ids and findings; a text reader, never a runner."""
     found = []
 
@@ -163,7 +180,14 @@ def problems(text, baseline, introduced):
     need(all(action in ("actions/checkout@v4", "actions/setup-python@v5")
              for action in re.findall(r"\buses:\s*(\S+)", active)), "R37.actions")
 
-    expected = BEFORE + AFTER
+    if box_present is None:
+        box_present = (HERE / "tests/test_box_integration.py").is_file()
+    before = BEFORE if box_present else tuple(command for command in BEFORE if command != BOX)
+    if not box_present:
+        need(BOX_OWNER in block, "R38.box-owner")
+        need(BOX_RULING in block, "R38.box-ruling")
+        need(not any("test_box_integration.py" in run for run in runs), "R38.box-absent")
+    expected = before + AFTER
     command_steps = {}
     for command in expected:
         matching = [(name, body, run) for name, body, run in entries
@@ -172,7 +196,7 @@ def problems(text, baseline, introduced):
         if len(matching) == 1:
             command_steps[command] = matching[0]
     need(len({entry[0] for entry in command_steps.values()}) == len(expected), "R38.separate")
-    for command in BEFORE:
+    for command in before:
         if command != COPY and command in command_steps:
             need(command_steps[command][2] == command, "R38.before:" + command)
     for command in AFTER:
@@ -285,6 +309,14 @@ def mutations():
         "kickoff": ("R44.step", KICKOFF, BASE),
         "additive-assertion": ("R44.step", 'test "$removed" -eq 0', 'test "$removed" -ge 0'),
     }
+    if BOX_DEFERRED in RAW:
+        edits.update({
+            "box-owner": ("R38.box-owner", BOX_OWNER, ""),
+            "box-ruling": ("R38.box-ruling", BOX_RULING, ""),
+            "box-premature": ("R38.box-absent", BOX_DEFERRED, BOX_DEFERRED + BOX_STEP),
+            "box-indented": ("R44.step", BOX_DEFERRED,
+                             "    " + BOX_OWNER + "    " + BOX_RULING),
+        })
     language_step = ('      - name: Language rules\n'
                      '        # Binds the permitted publication language.\n'
                      f'        run: {BEFORE[0]}\n')
@@ -301,6 +333,8 @@ def mutations():
                           ("upload", "upload fake"), ("release", "release fake"), ("network", "curl https://example.invalid")):
         edits[name] = ("R37." + name, f'echo "{PRIVATE_MESSAGE}"', command)
     for number, command in enumerate(BEFORE + AFTER, 1):
+        if command == BOX and BOX_DEFERRED in RAW:
+            continue
         edits[f"command-{number:02}"] = ("R38.command:" + command, command, command + " --missing")
     for number, command in enumerate(AFTER, 1):
         old = f"          if [ -f {FROZEN} ]; then\n            {COUNT_COMMAND}\n            {command}\n"
@@ -326,20 +360,22 @@ def altered(text, name):
 
 
 def setUpModule():
-    global RAW, CURRENT, BASE_TEXT, INTRODUCED
+    global RAW, CURRENT, BASE_TEXT, INTRODUCED, CURRENT_BOX_PRESENT
     BASE_TEXT, INTRODUCED = history(REPO)
     RAW = (REPO / WORKFLOW).read_text(encoding="utf-8")
-    CURRENT = altered(RAW, SELECTED) if SELECTED else RAW
+    CURRENT_BOX_PRESENT = True if SELECTED == "box-landed" else None
+    CURRENT = altered(RAW, SELECTED) if SELECTED and SELECTED != "box-landed" else RAW
 
 
 def tearDownModule():
-    global RAW, CURRENT, BASE_TEXT, INTRODUCED
+    global RAW, CURRENT, BASE_TEXT, INTRODUCED, CURRENT_BOX_PRESENT
     RAW = CURRENT = BASE_TEXT = INTRODUCED = None
+    CURRENT_BOX_PRESENT = None
 
 
 class JobContract(unittest.TestCase):
     def clauses(self, prefix):
-        issues = problems(CURRENT, BASE_TEXT, INTRODUCED)
+        issues = problems(CURRENT, BASE_TEXT, INTRODUCED, box_present=CURRENT_BOX_PRESENT)
         self.assertEqual([issue for issue in issues if issue.startswith(prefix + ".")], [])
 
     def test_outline(self):
@@ -364,6 +400,17 @@ class JobContract(unittest.TestCase):
             )
             self.assertIn("# under glitch-f3's section 10 box-integration ruling.", block)
             self.assertFalse(any(PLAN_COMMANDS[4] in run for _, _, run in steps(block)))
+
+    def test_box_transition(self):
+        # Both file-presence states are inputs in memory, never host fixtures.
+        deferred = RAW.replace(BOX_STEP, BOX_DEFERRED) if BOX_STEP in RAW else RAW
+        included = deferred.replace(BOX_DEFERRED, BOX_STEP)
+        self.assertEqual(problems(deferred, BASE_TEXT, INTRODUCED, box_present=False), [])
+        self.assertIn("R38.command:" + BOX,
+                      problems(deferred, BASE_TEXT, INTRODUCED, box_present=True))
+        self.assertEqual(problems(included, BASE_TEXT, INTRODUCED, box_present=True), [])
+        self.assertIn("R38.box-absent",
+                      problems(included, BASE_TEXT, INTRODUCED, box_present=False))
 
     def test_private_message(self):
         self.clauses("R39")
