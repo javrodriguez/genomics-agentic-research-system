@@ -1611,7 +1611,8 @@ class RuledValues(unittest.TestCase):
 
 
 # Explicit Athena-only whole-file witnesses. Never called by ordinary imports
-# or by a targeted Mac invocation. Three disjoint groups bound command time.
+# or by a targeted Mac invocation. Six disjoint groups bound command time.
+WITNESS_GROUP_COUNT = 6
 def witness_binding(name):
     if name in CORE_MUTANTS:
         return "Assembly.test_rows", CORE_MUTANTS[name][0]
@@ -1646,7 +1647,7 @@ def witness_names():
 def witness_groups():
     names = witness_names()
     assert all(witness_binding(name)[0] for name in names)
-    groups = [names[i::3] for i in range(3)]
+    groups = [names[i::WITNESS_GROUP_COUNT] for i in range(WITNESS_GROUP_COUNT)]
     assert len(names) == len(set(names)) and names
     assert sorted(name for group in groups for name in group) == names
     assert sum(len(group) for group in groups) == len(names)
@@ -1679,7 +1680,7 @@ def run_witnesses(group):
         red += 1
         if int(summary[3]):
             mixed.append(name)
-    print(f"test_build_draft witnesses group {group}/3: {red}/{len(names)} red; registry {len(witness_names())}", flush=True)
+    print(f"test_build_draft witnesses group {group}/{WITNESS_GROUP_COUNT}: {red}/{len(names)} red; registry {len(witness_names())}", flush=True)
     print(f"clean assertion-red: {red-len(mixed)}; mixed assertion/error: {len(mixed)} {mixed}", flush=True)
     return 0
 
@@ -1691,6 +1692,7 @@ class WitnessEvidence(unittest.TestCase):
         from unittest import mock
         names = witness_names()
         groups = witness_groups()
+        self.assertEqual(len(groups), WITNESS_GROUP_COUNT)
         self.assertEqual(sorted(n for group in groups for n in group), names)
         name = 'n'
         method, clause = witness_binding(name)
@@ -1711,8 +1713,8 @@ if __name__ == "__main__":
     if "--witnesses" in sys.argv:
         index = sys.argv.index("--witnesses")
         group = int(sys.argv[index + 1])
-        if group not in (1,2,3):
-            raise SystemExit("witness group must be 1, 2 or 3")
+        if group not in range(1, WITNESS_GROUP_COUNT + 1):
+            raise SystemExit("witness group must be 1 through 6")
         raise SystemExit(run_witnesses(group))
     if "--mutant" in sys.argv:
         index = sys.argv.index("--mutant")
