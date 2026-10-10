@@ -3715,3 +3715,98 @@ assert new['stats_design']=={'PENDING':sorted(new['pending'])}
 print('source scope: exactly 15 missing-source sentinels closed; '+str(len(new['pending']))+' inputs remain pending; reserved choices, answers and measured counts unchanged')
 print('changed draft keys: '+', '.join(sorted(changed)))
 ```
+
+## Update — R1 fold, 2026-10-10 09:29 EDT
+
+The opening status/head lines and earlier appendices are historical. This appendix is the current builder record; it does not constitute review or landing authority.
+
+status: stopped
+head: 3df9fc6fb5957035bb60432a25b3fd26a066af43 (last code commit; a report-only commit follows)
+RESUME HERE: coordinator owns Athena run `gap4-w5c-r1-3df9fc6-20261010T132659Z` on this exact code SHA, launched with `--solo --max-minutes 240`. No verdict exists at this report's timestamp. Require ordinary whole-file/battery passes and all attributed whole-file witnesses before fresh independent Claude review. No full local PASS or freeze-ready claim is made. Required owner inputs remain OPEN.
+
+### Authority and scope
+
+This is the sole local builder's fold of cloud R1 `e151fa599f9d4ea3dd993e5620849c74bee2d128`, with 2 MAJOR, 5 MINOR, and 2 NIT findings. Starting report HEAD was `72973dec9433f486de17662399976941ab9c83f1`. Coordinator rulings w5c-r1-6 and w5c-r1-order-1, plus slow-check and six-group scheduling instructions, apply. No review was performed by this builder. No merge, landing, push, deployment, paid/model/vendor call, credential access, holdout access, instrument modification, guard change, or engine change occurred.
+
+Exactly six code paths changed in this fold: build_draft.py, prereg-draft.json, tests/test_build_draft.py, tests/test_ci_job.py, checks.d/w5c-draft-ci.txt (all under evals/gap-study-4), and .github/workflows/ci.yml. No wave 1 file changed. The workflow diff against the starting HEAD is one added line and zero removed lines. Prior report bytes, including its first two lines and R1–R44 history, are preserved.
+
+### Findings and red-first evidence
+
+| Finding | Fold and evidence | Remaining condition |
+| --- | --- | --- |
+| W5C1-1 MAJOR | Closed independent owner-slot table refuses missing/null/blank/wrong-type values and normalized pending sentinels. Valid structured source commitments, lists, derived settings and image-lock leaves retain their legitimate types. Red commit 9e1fdf12: 4 tests, 118 assertion failures, zero errors/skips; fix 473b37eb. | 79 input pointers still pending; finalize remains closed. |
+| W5C1-2 MAJOR | Parse every workflow list item; unnamed item forms cannot disappear. | Whole-file clause witnesses owed Athena. |
+| W5C1-3 MINOR | Closed job keys and exact action option shapes, preserving permitted optional 40-hex checkout ref. | Whole-file clause witnesses owed Athena. |
+| W5C1-4 MINOR | Bind active job text for forbidden push/network/token/secrets forms, with only the exact allowed checkout fetch-depth line excluded from the network pattern. Examples are inert own-check fixtures, never executable probes. | Whole-file clause witnesses owed Athena. |
+| W5C1-5 MINOR | The workflow's printed records length is an explicit proxy, not each script's own run/failure/error/skip accounting. No workflow change for this finding. | OPEN: later owners of check_results, default sweep/ledger/regrade and result/completeness paths must expose and record their own counts; the proxy cannot close their acceptance. |
+| W5C1-6 MINOR | Precede range use with git cat-file -e on the exact kickoff commit, per coordinator ruling. Missing-commit scratch proof fails closed. | Do not rely solely on future landing history. |
+| W5C1-7 MINOR | Register outside-block, changed introducing SHA, every BEFORE command, and future box-wrapper witnesses with binding assertions. | All whole-file executions owed Athena. |
+| W5C1-8 NIT | This appendix expressly makes the old opening historical. | Runtime report has NO AI trailer, per newer standing handoff; code commits have the exact Codex trailer. |
+| W5C1-9 NIT | Optional deleted/renamed prereg branch strengthening unchanged this round. | Residual, not silently claimed fixed. |
+
+CI red commit a09d38d8: 16 tests, 13 assertion failures, zero errors/skips; implementation bf70bfa3. Authorized-value red commit 7895ac4f: 3 tests, 3 assertion failures, zero errors/skips; implementation 5de2aa6de4c6b4a1e127c4e83c637ed7a945ccfd. Final scheduling-only commit 3df9fc6 partitions the unchanged draft registry into six groups. Code editing stopped there.
+
+### Supplied values and OPEN inputs
+
+Only accepted section-14 values and supplied V6–V8 proposal evidence were used. Recorded values include the supplied Opus/Sonnet pair, alpha 0.05, secondary 0.1, bootstrap seed 20261010 with 10000 repetitions, power seed 20261010 with 2000 simulations and 2000 bootstrap repetitions, and the 32 supplied grid combinations. Variant wordings/repeats are derived. Source commitments retain excerpt hashes and structured typed commitments; tests rederive hashes from the supplied excerpts.
+
+V5: probes4 exposes no floor field. The missing floor evidence and floors remain PENDING/OPEN, never null or an invented not-run outcome. The table owner must provide the field/evidence.
+
+V6 supplied answers and supported V7 answers were filled. V7 scope_read's verbatim source condition remains STOPPED/PENDING: the proposal document records a classifier-denied docstring read. It was not retried through any route, and no paraphrase was substituted. Normal existing module imports are not source introspection; none of the denied module text was printed/read. Downstream V7 fabrication grader alignment remains a later-owner carry, not an instrument edit here.
+
+Seven settled V8 readings are represented as commitments. L3/L6/L10/L11 remain conditional/PENDING pending later CP2 evidence; their proposals are retained separately. L5 counts/wordings/repeats are derived. Remaining measured inputs, source conditions and frozen acceptance gates are not closed by this fold. Freeze readiness is not claimed.
+
+### Witness execution contract
+
+There are 227 draft and 107 CI named witnesses, 334 total. The existing battery invokes nine lane-owned commands; run_checks.py and its 3600-second per-command timeout were not edited. Draft groups contain 38/38/38/38/38/37 witnesses; CI groups contain 36/36/35. Deterministic disjoint partition, union completeness, unique names and binding completeness are asserted. Default local test entrypoints do not run heavy witness loops.
+
+```
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 1
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 2
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 3
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 4
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 5
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 6
+python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py --witnesses 1
+python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py --witnesses 2
+python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py --witnesses 3
+```
+
+The runner parses whole-file summaries and failure blocks, requires the intended method's AssertionError and its clause where specified, and requires zero skips. Generic committed-draft drift, unrelated failure, or error-only output cannot receive credit. Mixed assertion/error outcomes are logged separately from clean assertion-red outcomes. Historical mixed evidence remains historical. All 334 actual whole-file outcomes are owed to Athena; this report does not claim they are already red. Unmutated ordinary files must have zero failures, errors and skips.
+
+### Local evidence and ordering
+
+Every admitted local test used the same-command prefix below, one process at a time after the overlap deviation described next:
+
+```
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore
+```
+
+Initial scaffold and pipeline diagnostics overlapped. Scaffold was 49/49 in 363.291 seconds; pipeline 85/85 in 32.712 seconds. These are diagnostic results, NOT a serially established baseline. The coordinator forbade repeating these slow whole files on Mac; exact-parent Athena evidence remains historical, and new-candidate repetitions are owed to Athena. A shell-startup conda warning occurred during one baseline invocation; explicit Python 3.13 still executed that lint. Subsequent commands used login:false with explicit paths, without reproducing environment report contents.
+
+Execution invariant for the remainder: one test per exec invocation; if it returns session_id, poll only that session until exit_code exists before launching another test. Never bundle a poll and the next launch. The overlap is preserved as a deviation, not waived. Light admission holds at load1 30.00, 60.35 and 49.02 were honored; no test ran while held, and no alternate route or gate change was used.
+
+| Check | Evidence |
+| --- | --- |
+| Owner positive/negative targets | 7/7 in 3.681s; legitimate typed structures 5/5 in 3.022s. |
+| Final numeric/owner/freeze/lint targets | 12/12, zero failures/errors/skips, 13.283s. |
+| CI whole file after final witness addition | 17/17, zero failures/errors/skips, 3.213s. |
+| Partition/attribution target after six-group change | 1/1, zero failures/errors/skips, 0.016s. |
+| Real precommit whole draft | 32 run, 1 failure, zero errors/skips, 39.003s. Sole failure: unchanged Readiness.test_committed_writer comparing committed old draft to candidate. This was a failure, not a pass. |
+| Later precommit targeted set | 10 run, same sole writer failure, zero errors/skips, 11.708s. |
+| Immediate committed writer at 5de2aa6 | 1/1, zero failures/errors/skips, 2.166s. |
+| Immediate committed writer at final 3df9fc6 | 1/1, zero failures/errors/skips, 1.942s. |
+| Final build_draft.py --check at 3df9fc6 | Exit 0. |
+| Final module_problems() at 3df9fc6 | Exit 0, empty list. |
+| Language baseline and candidate | Raw exit 1 retained; 25 findings over 61 inputs; complete outputs byte-identical, not merely equal counts. |
+| Pooling baseline and candidate | Raw exit 1 retained; 8 findings over 61 files, 0 commits; complete outputs byte-identical. |
+| Copy gate before candidate and scheduling commit | Exit 0, 223 files, 28 fragments. |
+| Default-deny sweep before candidate | 30/30, 8.258s. |
+| Default-deny sweep before scheduling commit | 30/30, 8.100s. |
+| Candidate scope | Six owned paths only, unchanged committed-writer AST, workflow +1/-0, report untouched, no untracked/ignored additions, whitespace clean. |
+
+Coordinator w5c-r1-order-1 extends section 15 ordering to this fold: retain real precommit failure; commit the unreviewed candidate only after independent gates/sweep; run unchanged committed-writer immediately at committed HEAD. The measured complete draft file takes 39 seconds, so its postcommit entire-file verification was explicitly transferred to Athena under the slow-check ruling. The targeted result is not substituted for that owed whole-file result. Scaffold, pipeline, statistics/batch/full battery/repository suite and all whole-file mutants remain coordinator-owned Athena obligations at the exact candidate.
+
+Scratch evidence is retained at `/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-r1-ugt74255`, including precommit-draft.txt, final-target-before-commit.txt, target-final.txt, ci-final.txt, exact-head-writer-final.txt, check-exact.txt, modules-exact.txt, base/final-language.txt, base/final-pooling.txt, copy-final.txt, copy-scheduling.txt, sweep-final.txt and sweep-scheduling.txt. This report-only commit is subject to append-only preservation, copy and sweep gates. After committing it, the builder relinquishes the writer; code remains frozen at 3df9fc6 pending coordinator evidence and independent review.
+
+Report-only closing gates: preservation PASS (original bytes/header, exact code HEAD, report-only staged, no untracked/ignored additions, clean whitespace, unchanged committed-writer AST, six permitted code paths); serial copy exit 0 (223 files/28 fragments, 5 fixture builders byte-identical, 8 frozen paths unchanged); serial sweep 30/30 in 7.142 seconds, exit 0. No local test process remains. These report gates do not close the pending Athena obligations. Writer ownership is explicitly relinquished upon this report commit; further code changes require coordinator assignment.
