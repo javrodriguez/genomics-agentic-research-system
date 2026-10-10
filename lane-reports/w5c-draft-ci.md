@@ -614,3 +614,612 @@ The walks, real box, keys, prices, real versions, caps-trimmed record, spend, pu
 No classifier block, sandbox denial, automatic approval rejection or hook refusal occurred. No retry or workaround of such a denial occurred. The deliberate negative cases are the mutation assertions, empty scratch history, the in-memory quote rejection and the reported script failures.
 
 The one real leak command stopped with the exact no-pre-registration message recorded above. The two existing lints returned 1 as at the base. No new test was skipped. This head is not represented as fully green or ready to freeze. The remaining work and every unresolved value are named above.
+
+## Resume from a0cd341: section 10 rulings
+
+status: stopped
+RESUME HERE: glitch-f3 rules OPEN quote-lint for R10 versus lint_pooling.py's absent excusal path; then resume task 1.
+head: 8bd75c85720931020af1c4ca8e982e386ccd49e0 (last code commit; the append-only report commit follows it)
+
+Recorded after reading date: 2026-10-09 20:07:46 EDT.
+
+This appendix is the current disposition. Everything above is preserved as the earlier handoff; its historical OPEN entries are updated below, not erased. The original first two lines remain unchanged as instructed. Task 1 resumed with the new rulings, but stopped before edits because w5c-2 cannot make the required R10 quotation pass the unchanged pooling linter. Task 2's independent box-integration ruling is implemented and green. No draft or owner-value mechanism was built, and this is not a completed lane.
+
+### Start and commits on this resume
+
+The resume-head check found exactly a0cd341dbd82454ed4d4d41c0b6ac169ead8f461 on gap4/w5c-draft-ci, with an empty status including ignored paths. All four named old commits were present. core.hooksPath had no value and was left unchanged. The start block's remaining closing output was:
+
+```text
+commit
+commit
+commit
+commit
+hooksPath read
+light ok: load1 2.82 < 16.00 (memory pressure unreadable; light does not need it)
+light-ok exit 0
+Python 3.13.2
+```
+
+The user's resume instruction replaces only the old base-HEAD equality check. The base readings already recorded above were retained, not repeated on a falsely labelled base. CLAUDE.md was read again. No external source, sealed path, login file, private wording or other lane's worktree was read. No sub-agent was spawned.
+
+The visible red-then-green history is:
+
+- 0f124a787dacbce90bd0a5e0db28758889a87934: added JobContract.test_box_ownership while the old box step remained; the whole file failed by assertion, with closing line `test_ci_job: 14 run, 1 failures, 0 errors, 0 skipped`. The staged copy gate passed.
+- 8bd75c85720931020af1c4ca8e982e386ccd49e0: omitted that step until CP2's file exists, recorded its owner and ruling, and bound both presence states in the text contract. The whole file passes, and all 83 whole-file mutations fail by assertion.
+- The separate report commit appends this evidence. Neither earlier commit was amended or rewritten; both used git commit -F with a system-temp message file and the exact Codex trailer. No hook was changed or refused a commit.
+
+Actual diff at the last code commit, before this appendix:
+
+```text
+.github/workflows/ci.yml                     | 124 ++++++
+ evals/gap-study-4/COPIED.d/w5c-draft-ci.json |  20 +
+ evals/gap-study-4/checks.d/w5c-draft-ci.txt  |   4 +
+ evals/gap-study-4/tests/test_ci_job.py       | 471 ++++++++++++++++++++
+ lane-reports/w5c-draft-ci.md                 | 616 +++++++++++++++++++++++++++
+ 5 files changed, 1235 insertions(+)
+124	0	.github/workflows/ci.yml
+```
+
+Only .github/workflows/ci.yml and evals/gap-study-4/tests/test_ci_job.py changed on this resume before the report. The workflow's net change against 89b54db4 is 124 added lines and zero removed lines; the two omission comments replace three lines added by this lane's earlier commit, as the new ruling directs. All sibling jobs and the on: block remain byte-identical to the base.
+
+PL-1 changes to wave 1 files, line by line: none. study.py lines 14 and 56, tests/test_scaffold.py lines 40 and 475, and the build_draft.py/study.py claims in w1a's fragment remain unchanged. build_draft.py, language-allowlist.json and both linter modules also remain unchanged. No new file was added under evals/gap-study-4, so the existing copy fragment still claims the three task 2 files correctly.
+
+### Why the new quote ruling does not complete task 1
+
+The allowlist format CAN hold an exact, cited line: lint_language.excused compares file, pattern and exact line text. The in-memory R4 entry removes its percentage finding, and a one-word change to that quotation brings the finding back.
+
+However, lint_pooling.scan_text accepts only text and path. It reads its own patterns and never reads language-allowlist.json. Its main function likewise calls scan_text without an excusal mechanism. R10's exact required sentence still produces `pooled` even when the two w5c-2 entries are supplied to the language linter's loader in memory. This is a new finding, not one of the 8 baseline pooling findings. w5c-2 explicitly preserves both lint modules, and baseline-lints permits no finding beyond the base. No authorized edit can reconcile those facts here.
+
+This is a construction/quotation check, not a guard-evasion probe. It neither writes a draft nor edits a linter or allowlist. Its exact command and output were:
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore - <<'PY'
+import json, sys
+from unittest.mock import patch
+sys.path.insert(0, '/Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4')
+import lint_language as ll
+import lint_pooling as lp
+rel = 'evals/gap-study-4/prereg-draft.json'
+quotes = [
+    ('R4 plan 210', "Counts with exact Clopper-Pearson 95% bounds per half-cell, rounded outward (lane E1's method); never a rate in a headline.", 'percentage'),
+    ('R10 plan 140', "Round 4 is a fresh baseline: it is never compared with or pooled with round 3, or with any earlier round (the study's `not_poolable` rule), so it needs no bridge back to them (D3, decided).", 'pooled'),
+]
+entries = ll.load_allowlist() + [
+    {'file': rel, 'pattern': pattern, 'line_text': json.dumps(quote, ensure_ascii=False),
+     'ruled': 'glitch-f3, section 10, w5c-2', 'why': source}
+    for source, quote, pattern in quotes
+]
+for source, quote, pattern in quotes:
+    line = json.dumps(quote, ensure_ascii=False)
+    with patch.object(ll, 'load_allowlist', return_value=entries):
+        language = [f['pattern'] for f in ll.scan_text(line, rel, ll.load_allowlist())]
+        pooling = [f['pattern'] for f in lp.scan_text(line, rel)]
+    print(source + ': ' + json.dumps({'language': language, 'pooling': pooling}))
+    assert language == []
+    assert pooling == (['pooled'] if pattern == 'pooled' else [])
+changed = json.dumps(quotes[0][1].replace('Counts', 'Figures'), ensure_ascii=False)
+assert [f['pattern'] for f in ll.scan_text(changed, rel, entries)] == ['percentage']
+print('proposed exact entries: 1 of 2 quotations still rejected; R4 one-word change rejected; no file written')
+PY
+```
+
+```text
+light ok: load1 3.61 < 16.00 (memory pressure unreadable; light does not need it)
+R4 plan 210: {"language": [], "pooling": []}
+R10 plan 140: {"language": [], "pooling": ["pooled"]}
+proposed exact entries: 1 of 2 quotations still rejected; R4 one-word change rejected; no file written
+```
+
+OPEN: quote-lint: Section 10 w5c-2 authorizes exactly two entries in language-allowlist.json and no lint-module change, but R10/plan 140's verbatim sentence is rejected by lint_pooling.py, which has no allowlist path (scan_text and main). Section 10 baseline-lints rejects new findings. What named change permits that exact R10 sentence while retaining a binding pooling gate? Task 1 stopped under section 9; no encoded wording, changed quotation, widened entry or lint bypass was attempted.
+
+The committed w5c-2 one-word/widened-entry tests and the two allowlist entries remain unbuilt with task 1. The in-memory R4 evidence above is not represented as their completion. V1–V8 and all previously listed OPEN-value inputs remain unfilled; no mechanism for them is falsely claimed.
+
+### Task 2 change and this lane's decisions
+
+The job omits tests/test_box_integration.py while the file is absent, with these exact comments:
+
+```yaml
+      # CP2 owns tests/test_box_integration.py; omitted until it exists
+      # under glitch-f3's section 10 box-integration ruling.
+```
+
+This lane's implementation choices:
+
+- Determine the command's presence requirement from the owned test file's existence at runtime. The original PLAN_COMMANDS tuple retains the plan's verbatim command; the effective list excludes only that command while its file is absent.
+- Require both the CP2 ownership comment and the named ruling comment while omitting the step. Reject an active invocation while the file is absent.
+- Pass fake file-presence states as in-memory arguments to the text checker. With the file present, the missing command is an assertion failure; with both file and command present, the text contract passes. No fake file is written into W.
+- Arm the whole-file box-landed input only in setUpModule and clear it in tearDownModule. No import-time patch or guard was added.
+- Stop YAML literal run text at a dedented nonblank line. The new job-level comments exposed that the previous reader included trailing comments in the preceding shell body. The box-indented mutation proves that moving those comments into that body is rejected.
+- Retain the prior row/half-cell and pending-map non-decisions: none were selected or constructed because task 1 stopped before implementation. The brief's R7 reading remains unimplemented. The brief's plan 299 reading and unchanged intervals job remain as documented in the first report.
+- Keep the checks file's existing task 2 command. Section 10 checks-list authorizes adding both task 1 commands together with task 1; neither nonexistent deliverable is claimed by this head.
+
+No workflow, CI service, model, vendor CLI, container, freeze, rehearsal, ledger/ruling write, --against run or whole suite was invoked. The --regrade command remains as the plan spells it, with its prior OPEN-value dependency.
+
+### Current requirement disposition
+
+The original R1–R44 table remains above as historical evidence. The following table updates every row for this resumed head. Task 1 rows are incomplete because of the named conflict, not waived. OPEN-value ids and exact source lines remain as recorded above.
+
+| Requirement | Current test or disposition | Mutant / red evidence | Remaining item |
+|---|---|---|---|
+| R1 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R2 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R3 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R4 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R5 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R6 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R7 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R8 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R9 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R10 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R11 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R12 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R13 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R14 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R15 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R16 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R17 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R18 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R19 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R20 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R21 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R22 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R23 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R24 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R25 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R26 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R27 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R28 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R29 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R30 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R31 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R32 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R33 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R34 | Not built; task 1 stopped before edits | No implementation or committed mutant claimed | OPEN quote-lint; applicable OPEN-value dependencies retained above |
+| R35 | JobContract.test_outline | runner: `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | Built; earlier detailed clause accounting retained |
+| R36 | JobContract.test_pin | floating-ref: `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | Built; earlier detailed clause accounting retained |
+| R37 | JobContract.test_boundary | secret: `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | Built; earlier detailed clause accounting retained |
+| R38 | JobContract.test_commands, test_box_ownership, test_box_transition | box-landed: `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | OPEN-value regrade-flag; box omission ruled and implemented |
+| R39 | JobContract.test_private_message | private-message: `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` | Built; earlier detailed clause accounting retained |
+| R40 | JobContract.test_freeze_location | freeze-comment: `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | Built; earlier detailed clause accounting retained |
+| R41 | JobContract.test_local_binding | local-suite: `test_ci_job: 15 run, 3 failures, 0 errors, 0 skipped` | Repository suite owed to athena under PL-5(a) and section 10 |
+| R42 | JobContract.test_copy_boundary | copy-after: `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` | Built; earlier detailed clause accounting retained |
+| R43 | JobContract.test_zero | empty-1: `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` | Built; earlier detailed clause accounting retained |
+| R44 | JobContract.test_additions | removed-line: `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` | Built; earlier detailed clause accounting retained |
+
+### New clause mutants and whole-file results
+
+All mutation inputs are in memory and the complete test_ci_job.py file ran each time. No test was skipped and every red was an assertion failure, not an import or execution error. The first four mutations are also asserted by test_mutations; test_box_transition asserts the future-file failure as well as both accepted presence states.
+
+| Clause | Mutation | Binding test | Whole-file closing line |
+|---|---|---|---|
+| R38.box-owner | box-owner | JobContract.test_commands; test_box_ownership | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| R38.box-ruling | box-ruling | JobContract.test_commands; test_box_ownership | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| R38.box-absent | box-premature | JobContract.test_commands; test_box_ownership | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| Literal body ends on dedent / R44.step | box-indented | JobContract.test_additions; test_commands | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| CP2 file present requires its command | box-landed | JobContract.test_commands; test_box_transition | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+
+For each name below, the exact invocation was the following command with NAME replaced by that row's literal name. Each invocation separately ran light-ok immediately before the one test process. The pre-existing command-05 mutation is absent because its command is now deliberately omitted; the future-file obligation is box-landed. All other earlier mutations were repeated because the command-list and run-block reader changed.
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_ci_job.py --mutant NAME
+```
+
+| NAME | Exit | Exact closing line |
+|---|---|---|
+| duplicate-job | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| runner | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| checkout | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| python-action | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| depth | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| history-comment | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| python-version | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| maintenance | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| gc | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| step-comment | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| job-condition | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| step-condition | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| ignored-exit | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| interval-comment | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| floating-ref | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| ref-location | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| publication-comment | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| secret | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| permissions | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| extra-action | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| private-message | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| private-command | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| freeze-comment | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| freeze-command | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| local-suite | 1 (assertion red) | `test_ci_job: 15 run, 3 failures, 0 errors, 0 skipped` |
+| copy-before | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| copy-head | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| copy-recent | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| copy-empty | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| copy-location | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| copy-after | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| copy-print | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| copy-head-print | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| copy-cleanup | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| copy-extra | 1 (assertion red) | `test_ci_job: 15 run, 4 failures, 0 errors, 0 skipped` |
+| zero-comment | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| kickoff | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| additive-assertion | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| box-owner | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| box-ruling | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| box-premature | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| box-indented | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| before-wrapper | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| combined-steps | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| extra-step | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| push | 1 (assertion red) | `test_ci_job: 15 run, 3 failures, 0 errors, 0 skipped` |
+| gh | 1 (assertion red) | `test_ci_job: 15 run, 3 failures, 0 errors, 0 skipped` |
+| deploy | 1 (assertion red) | `test_ci_job: 15 run, 3 failures, 0 errors, 0 skipped` |
+| upload | 1 (assertion red) | `test_ci_job: 15 run, 3 failures, 0 errors, 0 skipped` |
+| release | 1 (assertion red) | `test_ci_job: 15 run, 3 failures, 0 errors, 0 skipped` |
+| network | 1 (assertion red) | `test_ci_job: 15 run, 3 failures, 0 errors, 0 skipped` |
+| command-01 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-02 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-03 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-04 | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| command-06 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-07 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-08 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-09 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-10 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-11 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-12 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-13 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-14 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| command-15 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| after-1 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| empty-1 | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| message-1 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| after-2 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| empty-2 | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| message-2 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| after-3 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| empty-3 | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| message-3 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| after-4 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| empty-4 | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| message-4 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| after-5 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| empty-5 | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| message-5 | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| trigger | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+| removed-line | 1 (assertion red) | `test_ci_job: 15 run, 2 failures, 0 errors, 0 skipped` |
+| box-landed | 1 (assertion red) | `test_ci_job: 15 run, 1 failures, 0 errors, 0 skipped` |
+
+83 of 83 whole-file mutations were red, with 0 errors and 0 skipped in each runner result. This is a series of permitted single-file invocations, not test_round4.py, run_checks.py or a whole-file audit.
+
+### Current gates and retained base readings
+
+Every test/check used the prescribed interpreter, bytecode/BLAS settings and light-ok in the same foreground command. No light hold occurred. The final per-file gates ran after staging and on code head 8bd75c85; the copy gate ran on its exact staged code tree immediately before committing it. The report is outside the round's copy inventory. The base closing lines are those already recorded on the clean 89b54db4, retained here beside the new results.
+
+#### tests/test_ci_job.py
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_ci_job.py
+```
+
+Base: 
+
+```text
+Not present on the lane base; earlier red is recorded above.
+```
+
+Resumed head (exit 0):
+
+```text
+Ran 15 tests in 0.428s
+
+OK
+test_ci_job: 15 run, 0 failures, 0 errors, 0 skipped
+```
+
+#### tests/test_scaffold.py
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_scaffold.py
+```
+
+Base: 
+
+```text
+Ran 49 tests in 243.384s
+
+OK
+```
+
+Resumed head (exit 0):
+
+```text
+Ran 49 tests in 247.130s
+
+OK
+```
+
+#### tests/test_pipeline.py
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_pipeline.py
+```
+
+Base: 
+
+```text
+Ran 85 tests in 24.805s
+
+OK
+test_pipeline: 85 run, 0 failures, 0 errors, 0 skipped
+```
+
+Resumed head (exit 0):
+
+```text
+Ran 85 tests in 23.098s
+
+OK
+test_pipeline: 85 run, 0 failures, 0 errors, 0 skipped
+```
+
+#### tests/test_stats.py
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_stats.py
+```
+
+Base: 
+
+```text
+Not one of the five required base readings.
+```
+
+Resumed head (exit 0):
+
+```text
+Ran 98 tests in 5.043s
+
+OK
+```
+
+#### tests/test_batch.py
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_batch.py
+```
+
+Base: 
+
+```text
+Not one of the five required base readings.
+```
+
+Resumed head (exit 0):
+
+```text
+Ran 118 tests in 2.340s
+
+OK
+```
+
+#### tests/test_pause_adherence.py
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/tests/test_pause_adherence.py
+```
+
+Base: 
+
+```text
+Not one of the five required base readings.
+```
+
+Resumed head (exit 0):
+
+```text
+Ran 30 tests in 2.079s
+
+OK
+```
+
+#### test_round4.module_problems()
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore -c "import sys; sys.path.insert(0, '/Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4'); import test_round4; p = test_round4.module_problems(); print(p); raise SystemExit(1 if p else 0)"
+```
+
+Base: 
+
+```text
+Not one of the five required base readings.
+```
+
+Resumed head (exit 0):
+
+```text
+[]
+```
+
+#### lint_language.py
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/lint_language.py evals/gap-study-4/
+```
+
+Base: 
+
+```text
+25 finding(s) across 59 input(s):
+Fix the text, or excuse the exact line in language-allowlist.json with a reason.
+```
+
+Resumed head (exit 1):
+
+```text
+25 finding(s) across 60 input(s):
+Fix the text, or excuse the exact line in language-allowlist.json with a reason.
+```
+
+#### lint_pooling.py
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/lint_pooling.py evals/gap-study-4/
+```
+
+Base: 
+
+```text
+8 finding(s) across 59 file(s) and 0 commit(s):
+There is no allowlist for these. Write the sentence a different way.
+```
+
+Resumed head (exit 1):
+
+```text
+8 finding(s) across 60 file(s) and 0 commit(s):
+There is no allowlist for these. Write the sentence a different way.
+```
+
+#### copy_manifest.py --check
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore /Users/javrodher/aegis-builds/gap4-w5c-draft-ci/evals/gap-study-4/copy_manifest.py --check
+```
+
+Base: exit 0, 218 files from 27 fragments, 40 identical, 13 edited, 165 new, 5 fixture builders byte-identical and 8 frozen paths unchanged; the full exact runner line remains above.
+
+Resumed code tree (exit 0):
+
+```text
+ok: 221 files from 28 fragment(s) (w1a-cp1-scaffold, w1b-cp1-routing-batch, w2a-cp3-endstate, w2b-cp3-text-graders, w3a-cp3-graders-scope-template, w3b-cp3-graders-refusal-plangate, w3c-cp3-graders-confound-newtasks, w4a-cp2-image-egress, w4b-cp2-runtake-preflight, w4c-cp2-sidecar-scan, w4d-cp4-variants, w4e-cp5-stats, w4f-cp5-coverage, w4g-cp4-declarations-eligibility, w4h-w1b-next-touch, w4i-cp4-task-scope-read, w4j-cp4-task-template-adherence, w4k-cp4-task-number-fidelity, w4l-cp4-task-precondition-refusal, w4m-cp4-gen-plan-gate, w4n-cp4-gen-confounded-seed2, w4o-cp4-gen-explain-not-act, w4p-cp4-gen-approval-scope, w4q-cp4-gen-conditional-yes, w5a-cp5-probes4, w5b-cp5-pipeline, w5c-draft-ci, wave4-merge): 40 identical and 13 edited (round 3 at e2979b31, shared files at 68ec902f), 168 new; 5 fixture builders byte-identical; 8 frozen paths unchanged since 68ec902f63bf
+```
+
+The red-test commit's staged copy gate also passed with that same runner closing line. No new copy claim was needed on this resume.
+
+#### Baseline findings, by file and line
+
+The raw lint commands still exit 1, as at the base. Under the section 10 ruling their lane gate is now the absence of a new finding. The comparison below reads each named round 4 input at 89b54db4 with git show, keeps the base allowlist separate, and compares complete findings including file, line, pattern and excerpt. It fails if the head adds any finding. This is read-only and creates no checkout or worktree.
+
+```bash
+/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/mac_slot.py light-ok && env PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 /usr/local/bin/python3 -B -W ignore - <<'PY'
+import collections, json, subprocess, sys
+from pathlib import Path
+repo = Path('/Users/javrodher/aegis-builds/gap4-w5c-draft-ci')
+sys.path.insert(0, str(repo / 'evals/gap-study-4'))
+import lint_language as ll
+import lint_pooling as lp
+base = '89b54db4e34c18dcdde253c04179077a68f0888f'
+def blob(rel):
+    return subprocess.run(['git', '-C', str(repo), 'show', base + ':' + rel], capture_output=True, text=True)
+raw = blob('evals/gap-study-4/language-allowlist.json')
+assert raw.returncode == 0, raw.stderr
+base_entries = json.loads(raw.stdout)['excused']
+current_entries = ll.load_allowlist()
+old = {'language': [], 'pooling': []}
+now = {'language': [], 'pooling': []}
+old_count = 0
+for path in ll.iter_files([str(repo / 'evals/gap-study-4')]):
+    rel = str(path.resolve().relative_to(repo.resolve()))
+    content = path.read_text()
+    prior = blob(rel)
+    if prior.returncode:
+        assert rel == 'evals/gap-study-4/COPIED.d/w5c-draft-ci.json', prior.stderr
+    else:
+        old_count += 1
+        old['language'].extend(ll.scan_text(prior.stdout, rel, base_entries))
+        old['pooling'].extend(lp.scan_text(prior.stdout, rel))
+    now['language'].extend(ll.scan_text(content, rel, current_entries))
+    now['pooling'].extend(lp.scan_text(content, rel))
+for kind in old:
+    before = collections.Counter(json.dumps(f, sort_keys=True) for f in old[kind])
+    after = collections.Counter(json.dumps(f, sort_keys=True) for f in now[kind])
+    assert not (after - before), list(after - before)
+    assert before == after
+    print(f'{kind}: base {len(old[kind])}, head {len(now[kind])}, new 0; exact findings equal')
+    for finding in old[kind]:
+        print(f"{finding['file']}:{finding['line']} [{finding['pattern']}]")
+print(f'baseline comparison: 2 of 2 passed; {old_count} base inputs; no finding beyond the base')
+PY
+```
+
+Exact output (exit 0), which lists all 25 language and 8 pooling findings at the base and at this head:
+
+```text
+light ok: load1 3.75 < 16.00 (memory pressure unreadable; light does not need it)
+language: base 25, head 25, new 0; exact findings equal
+evals/gap-study-4/COPIED.d/w3c-cp3-graders-confound-newtasks.json:8 [free]
+evals/gap-study-4/COPIED.d/w4n-cp4-gen-confounded-seed2.json:42 [ratio-slash]
+evals/gap-study-4/contract_quotes.json:134 [free]
+evals/gap-study-4/tasks/approval-scope.json:68 [consisten]
+evals/gap-study-4/tests/fixtures_confounded_design.json:15 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:55 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:85 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:145 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:265 [always]
+evals/gap-study-4/tests/fixtures_confounded_design.json:315 [reliab]
+evals/gap-study-4/tests/fixtures_confounded_design.json:385 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:395 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:515 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:545 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:625 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:675 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:935 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:975 [free]
+evals/gap-study-4/tests/fixtures_confounded_design.json:979 [free]
+evals/gap-study-4/tests/fixtures_confounded_design.json:980 [free]
+evals/gap-study-4/tests/fixtures_confounded_design.json:1005 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:1055 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:1085 [perfect]
+evals/gap-study-4/tests/fixtures_confounded_design.json:1105 [free]
+evals/gap-study-4/tests/fixtures_confounded_design.json:1110 [free]
+pooling: base 8, head 8, new 0; exact findings equal
+evals/gap-study-4/COPIED.d/w4f-cp5-coverage.json:22 [pooled]
+evals/gap-study-4/tasks/confounded-design.json:175 [across-halves]
+evals/gap-study-4/tasks/plan-gate.json:104 [better-than]
+evals/gap-study-4/tasks/scope-read.json:175 [across-halves]
+evals/gap-study-4/tasks/scope-read.json:238 [across-halves]
+evals/gap-study-4/tasks/template-adherence.json:188 [across-halves]
+evals/gap-study-4/tasks/template-adherence.json:302 [across-halves]
+evals/gap-study-4/tests/fixtures_number_fidelity.json:304 [in-total]
+baseline comparison: 2 of 2 passed; 59 base inputs; no finding beyond the base
+```
+
+### Failures, unrun work and current OPEN items
+
+The intentional first red was test_box_ownership's absent required comment (14 tests, 1 failure). The first implementation run then failed 4 assertions out of 15 because the text parser included the new dedented comments in the preceding literal run block; the committed fix stops at dedent, and the entire file and every mutation were rerun afterward. No failing implementation was left at the code head.
+
+tests/test_build_draft.py and build_draft.py --check remain unrun because task 1 stopped before its code and generated draft. The committed old builder is not represented as this lane's deliverable. leak_grep.py --check was not repeated: the required one run is already recorded in the earlier report, with the exact no-pre-registration closing line. No draft or session has been added since then. Its lack of a path argument and the owed real-session check remain unchanged.
+
+The full test_round4.py, run_checks.py and tests/run_tests.py, and any whole-file audit, remain owed to glitch-f3 or the interim coordinator on athena, under section 10 athena-gates. The allowed module_problems() substitute passed. No skipped test is claimed as a pass.
+
+Current disposition of the earlier OPEN entries:
+
+- quote-lint remains OPEN for the specific R10 incompatibility reproduced above. The R4 exact-line format works in memory, but task 1 cannot land a complete green implementation under the present ruling.
+- baseline-lints is settled by section 10: 25 language and 8 pooling findings are inherited, with zero new findings proven above. Their underlying files were not edited.
+- checks-list is settled as sequencing: add test_build_draft.py and build_draft.py --check together with task 1. Their implementation is still owed, not an additional unanswered decision.
+- box-integration is settled and implemented: omission is explicit until CP2 supplies the file, and the text contract then demands its step.
+- athena-gates is assigned to glitch-f3 or the interim coordinator by section 10; no Mac run is substituted or claimed.
+
+OPEN-value: V1: unchanged; CP5-req 60–61 and section 0b V1, supplied by glitch-f3.
+OPEN-value: V2: unchanged; CP5-req 194 and section 0b V2, supplied by glitch-f3.
+OPEN-value: V3: unchanged; stats.py 421, 488–491 and section 0b V3, supplied by glitch-f3.
+OPEN-value: V4: unchanged; stats.py 422–423, 492–501 and section 0b V4, supplied by glitch-f3; wordings/repeats must be derived.
+OPEN-value: V5: unchanged; stats.py 502–505, 619 and section 0b V5, supplied by glitch-f3.
+OPEN-value: V6: unchanged; CP5-req 92–95, 146 and section 0b V6, supplied by glitch-f3.
+OPEN-value: V7: unchanged; CP5-req 151, 153, 173 and section 0b V7, supplied by glitch-f3.
+OPEN-value: V8: unchanged; plan 830 and section 0b V8, supplied by glitch-f3.
+OPEN-value: source-text: unchanged; R24/R25/R27–R30 exact external source text is still missing from the supplied brief; glitch-f3 supplies it, with the line ranges recorded above.
+OPEN-value: pins: unchanged; R6/R14, plan 828 and CP5-req 43, 49, supplied by the box/walk and routing owners.
+OPEN-value: digests: unchanged; R7, plan 175, 829, supplied by the separate author through glitch-f3.
+OPEN-value: preflight: unchanged; R8, plan 830, supplied by the real box preflight.
+OPEN-value: first-walk: unchanged; R9, plan 831 and PL-4(b), supplied by the first committed real session.
+OPEN-value: instrument-values: unchanged; R15, CP5-req 50–56, supplied by the CP2 owners, walks and Javier.
+OPEN-value: walk-counts: unchanged; R28/R30, CP5-req 162–169 and 175–182, supplied by Javier's CP6 walks.
+OPEN-value: regrade-flag: unchanged; R38/plan 1036 versus check_results.py's parser, supplied by its next owner or a ruling.
+
+OPEN carries: routing.json's pin profiles and vendor markers (R6/R12/R15); CP2's round 4 driver keys and drive.py:225's default-open empty stripping list (section 4.3); prereg.py --order's inherited per-axis order (R3/plan 174). Their full key lists and ownership remain recorded above. Nothing in task 2 closes them.
+
+Deferred to Javier: the walks, real box, keys, prices, real versions, caps-trimmed record, spend, public pushes, CP8's push word and his word on any ruling. The real freeze/rehearsal and publication remain outside this lane. No owner input was chosen, and no sentinel mechanism is claimed as built.
+
+No classifier refusal, sandbox denial, automatic approval rejection or hook refusal occurred on this resume. No denial was retried or routed around. The stop is a requirements conflict with recorded evidence, not an environment failure.
