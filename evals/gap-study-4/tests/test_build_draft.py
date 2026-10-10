@@ -498,6 +498,246 @@ class Description(unittest.TestCase):
         self.assertEqual(lp.scan_text(content, study.rel("prereg-draft.json")), [])
 
 
+import contextlib
+import io
+import os
+import subprocess
+import tempfile
+import uuid
+import freeze
+import scratch_git
+import takes
+from box import take_config
+
+
+def fake_digests(ids):
+    return {task: [hashlib.sha256(f"fake-{task}-{i}".encode()).hexdigest() for i in range(3)] for task in ids}
+
+
+def fake_price(d):
+    return {"as_of": "2000-01-01", "vendors": {vendor: {model: {k: "7.25" for k in costs.CLASSES}
+        for model in d["stats_design_inputs"]["harness_models"][harness]} for harness,vendor in b.VENDORS.items()}}
+
+
+def fill_fake(d):
+    """Only an in-memory fake document; never writes these values to the draft."""
+    out = copy.deepcopy(d)
+    def filled(value):
+        if isinstance(value, dict):
+            return {k: filled(v) for k,v in value.items() if k != "pending"}
+        if isinstance(value, list):
+            return [filled(v) for v in value]
+        if isinstance(value, str) and value.startswith("PENDING"):
+            return "fake supplied text"
+        return value
+    out = filled(out)
+    design = out["stats_design_inputs"]
+    design["stronger_weaker"][CLAUDE][1] = MODELS["A"][2]
+    design.update(alpha="0.05", bootstrap={"seed": 0, "reps": 1},
+                  power={"seed": 0, "sims": 1, "bootstrap_reps": 1, "wordings": variants.N_WORDINGS,
+                         "repeats": variants.REPEATS, "grid": [{k: "0.1" for k in stats.GRID_FIELDS}]}, floors=None)
+    out["holdout_salted_digests"] = fake_digests(t["id"] for t in d["tasks"])
+    out["price_table"] = fake_price(d)
+    out["walk_counts"].update(on_path_closers=0, off_path_offers=0, inherited_shapes=[0,0])
+    for row in out["rows"]:
+        row["agent"]["version"] = "0.0.0-fake"
+    return out
+
+
+def ready_problems(d):
+    bad = []
+    def need(ok, clause):
+        if not ok:
+            bad.append(clause)
+    design = d["stats_design_inputs"]
+    need(set(design) == set(stats.DESIGN_FIELDS) and design["tasks_that_run"] == [t["id"] for t in d["tasks"]] and
+         design["harness_models"] == {HARNESSES[a]: models for a, models in MODELS.items()} and
+         design["stronger_weaker"] == {CLAUDE: [MODELS["A"][0], "PENDING"], CODEX: MODELS["O"], GEMINI: MODELS["G"]} and
+         design["cross_vendor"] == [models[0] for models in MODELS.values()], "R17.families")
+    need(design["alpha"] == "PENDING" and design["bootstrap"] == {"seed": "PENDING", "reps": "PENDING"} and
+         design["power"] == {"seed": "PENDING", "sims": "PENDING", "bootstrap_reps": "PENDING",
+            "wordings": variants.N_WORDINGS, "repeats": variants.REPEATS, "grid": "PENDING"} and
+         design["floors"] is None and d["floor_evidence"] == "PENDING", "R17.values")
+    need(d[stats.DESIGN_KEY] == {"PENDING": sorted(b.pending(d))} and d["pending"] == b.pending(d) and bool(d["pending"]), "R32.closed")
+    ns = d["session_namespace"]
+    need(ns["derived_from"].endswith('/' + study.STUDY_REL) and ns["uuid"] == str(uuid.uuid5(uuid.NAMESPACE_URL, ns["derived_from"])) and
+         ns["uuid"] != "9607c78d-18c9-5965-9202-5f09043bdf0c", "R33.namespace")
+    need(d["instruction_files"] == {CODEX: dict(take_config.CODEX_TOP)["project_doc_fallback_filenames"],
+                                   GEMINI: dict(take_config.GEMINI_SETTINGS)["context.fileName"]}, "R15.instructions")
+    need(d["price_table"] == "PENDING" and all(v == "PENDING" for v in d["served_model_rule"].values()) and
+         all(v == "PENDING" for v in d["furniture"].values()), "R15.values")
+    need(all(v == "PENDING" for models in d["config_templates"].values() for v in models.values()) and
+         all(v == "PENDING" for models in d["effort"].values() for v in models.values()), "R15.config")
+    table = json.loads((HERE / "routing.json").read_text())
+    need(d["routing_markers"] == {key: table[key] for key in ("rate_limit_markers", "rate_limit_markers_status", "spend_cap_markers", "spend_cap_markers_status")} and
+         d["routing_marker_inputs"] == {h: {k: "PENDING" for k in ("rate_limit_markers", "spend_cap_markers")} for h in (CODEX,GEMINI)}, "R15.markers")
+    return bad
+
+
+READY_MUTANTS = {
+    "contrast-missing": ("R17.families", ("stats_design_inputs", "stronger_weaker", CODEX), []),
+    "design-values": ("R17.values", ("stats_design_inputs", "alpha"), "0.05"),
+    "open-design": ("R32.closed", (stats.DESIGN_KEY,), {}),
+    "namespace": ("R33.namespace", ("session_namespace", "uuid"), "fake-uuid"),
+    "instructions": ("R15.instructions", ("instruction_files", CODEX), []),
+    "prices": ("R15.values", ("price_table",), {}),
+    "config": ("R15.config", ("config_templates", CLAUDE, MODELS["A"][0]), {}),
+    "markers": ("R15.markers", ("routing_marker_inputs", CODEX), {}),
+}
+PREVIOUS_SETUP = setUpModule
+VALIDATOR_MUTANTS = {"digest-shape": "validate_digests", "price-shape": "validate_prices", "alpha-shape": "validate_alpha",
+                     "user-overlap": "check_leak_users", "pending-erase": "pending", "profile-mismatch": "version_pins"}
+
+
+def setUpModule():
+    if SELECTED in READY_MUTANTS:
+        original = b.build
+        _, path, value = READY_MUTANTS[SELECTED]
+        patch = mock.patch.object(b, "build", lambda *a, **k: changed(original(*a, **k), path, value))
+        patch.start(); PATCHES.append(patch)
+    elif SELECTED in VALIDATOR_MUTANTS:
+        name = VALIDATOR_MUTANTS[SELECTED]
+        original = getattr(b, name)
+        if name == "pending":
+            replacement = lambda *a, **k: {}
+        elif name == "version_pins":
+            def replacement(locks, table):
+                fixed = copy.deepcopy(table)
+                for h, models in fixed["pin_profiles"].items():
+                    for pin in models.values():
+                        pin["version"] = "PENDING"
+                return original(locks, fixed)
+        else:
+            replacement = lambda *a, **k: None
+        patch = mock.patch.object(b, name, replacement)
+        patch.start(); PATCHES.append(patch)
+    else:
+        PREVIOUS_SETUP()
+
+
+class Readiness(unittest.TestCase):
+    def get(self):
+        self.assertTrue(hasattr(b, "build"), "the complete draft builder is required")
+        return b.build()
+
+    def test_inputs(self):
+        self.assertEqual(ready_problems(self.get()), [])
+
+    def test_mutants(self):
+        d = self.get()
+        for name, (clause, path, value) in READY_MUTANTS.items():
+            with self.subTest(name=name):
+                self.assertIn(clause, ready_problems(changed(d,path,value)))
+
+    def test_freeze_closed(self):
+        d = self.get()
+        kwargs = dict(review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
+        with self.assertRaises(ValueError):
+            freeze.prepare(d, **kwargs)
+        fake = b.finalize(fill_fake(d))
+        self.assertEqual(b.pending(fake), {})
+        self.assertEqual(stats.validate_design(fake[stats.DESIGN_KEY]), fake["stats_design_inputs"])
+        self.assertEqual(len(freeze.prepare(fake, **kwargs)["take_order"]), 1260)
+        # One still-missing value closes the design even with fake pins filled.
+        fake["wave3"]["documented_reply"] = "PENDING"
+        closed = b.finalize(fake)
+        self.assertIn('/wave3/documented_reply', closed['pending'])
+        with self.assertRaises(ValueError):
+            freeze.prepare(closed, **kwargs)
+        with mock.patch.object(b, "pending", return_value={}):
+            opened = b.finalize(fake)
+            self.assertEqual(len(freeze.prepare(opened, **kwargs)["take_order"]),1260)
+            self.assertNotEqual(opened[stats.DESIGN_KEY], closed[stats.DESIGN_KEY])
+
+    def test_digest_shapes(self):
+        d=self.get(); ids=[t['id'] for t in d['tasks']]; fake=fake_digests(ids)
+        b.validate_digests(fake,ids)
+        changes=[{},dict(fake,salt='fake'),dict(fake,unknown=fake[ids[0]]),dict(fake,**{ids[0]:['g'*64]*3}),
+                 dict(fake,**{ids[0]:[fake[ids[0]][0]]*3}),dict(fake,**{ids[0]:['A'*64]*3}),
+                 dict(fake,**{ids[0]:fake[ids[1]]}),dict(fake,**{ids[0]:fake[ids[0]][:2]})]
+        for bad in changes:
+            with self.subTest(value=bad),self.assertRaises(ValueError): b.validate_digests(bad,ids)
+
+    def test_price_shapes(self):
+        d=self.get(); fake=fake_price(d); b.validate_prices(fake,d['stats_design_inputs']['harness_models'])
+        for bad in ({},dict(fake,as_of='fake-price'),dict(fake,vendors={}),
+                    changed(fake,('vendors','openai',MODELS['O'][0],costs.CLASSES[0]),'-1')):
+            with self.subTest(value=bad),self.assertRaises(ValueError): b.validate_prices(bad,d['stats_design_inputs']['harness_models'])
+
+    def test_alpha_before_write(self):
+        self.get()
+        for good in ('0.05','0.1'): b.validate_alpha(good)
+        for bad in ('0.050','.05','0.10','5e-2','1/20'):
+            with self.subTest(alpha=bad),self.assertRaises(ValueError): b.validate_alpha(bad)
+            with tempfile.TemporaryDirectory() as tmp:
+                path=Path(tmp)/'d.json'; path.write_text('fake original')
+                d=self.get(); d['stats_design_inputs']['alpha']=bad
+                with self.assertRaises(ValueError): b.write_draft(d,path)
+                self.assertEqual(path.read_text(),'fake original')
+
+    def test_user_names_and_wordings(self):
+        d=self.get(); b.check_leak_users(d['leak_words'],d['box_users'])
+        for word,user in [('fake','fake'),('prefix-fake','fake'),('fake','prefix-fake')]:
+            with self.subTest(word=word,user=user),self.assertRaises(ValueError): b.check_leak_users([word],[user])
+        for p in (HERE/'variants').glob('*.json'):
+            content=p.read_text().casefold()
+            for word in d['leak_words']:
+                self.assertNotIn(word.casefold(),content)
+
+    def test_profiles_and_templates(self):
+        d=self.get(); table=json.loads((HERE/'routing.json').read_text())
+        locks=copy.deepcopy(d['image_locks'])
+        for item in locks:
+            if item['lock']['image'] in image_lock.TAKE_IMAGES: item['lock']['harness']['version']='0.0.0-fake'
+        table['pin_profiles']={h:{m:{'permission_mode':'fake-mode','version':'0.0.0-fake'} for m in MODELS[a]} for a,h in HARNESSES.items()}
+        pins=b.version_pins(locks,table)
+        self.assertTrue(all(p['agent_version']=='0.0.0-fake' for ps in pins.values() for p in ps.values()))
+        table['pin_profiles'][CODEX][MODELS['O'][0]]['version']='0.0.1-fake'
+        with self.assertRaises(ValueError): b.version_pins(locks,table)
+        fake_settings={'CLAUDE_BYPASS_KEY':'fakeBypass','CODEX_REASONING_EFFORT':'fake-effort',
+                       'GEMINI_THINKING':{'path':'fake.thinking','value':'fake-default'},
+                       'GEMINI_AUTH_SETTING':{'path':'fake.auth','value':'fake-kind'},'GEMINI_SETTINGS_PATH':'fake/settings.json'}
+        with mock.patch.multiple(take_config,**fake_settings):
+            templates=b.config_templates()
+            for a,h in HARNESSES.items():
+                for m in MODELS[a]:
+                    files=take_config.files_for(h,model=None if h==CLAUDE else m)
+                    expected=hashlib.sha256(''.join(f'{p}\0{hashlib.sha256(data).hexdigest()}\n' for p,data in sorted(files.items())).encode()).hexdigest()
+                    self.assertEqual(templates[h][m]['sha256'],expected)
+
+    def test_namespace(self):
+        d=self.get()
+        with mock.patch.object(takes.prereg,'load',return_value=d):
+            self.assertEqual(str(takes.namespace()),d['session_namespace']['uuid'])
+
+    def test_committed_writer(self):
+        d=self.get()
+        path=HERE/'prereg-draft.json'
+        self.assertTrue(path.is_file(), 'generated draft must exist')
+        self.assertEqual(path.read_bytes(),b.json_bytes(d))
+        # Read committed bytes as well: during red/green development only the
+        # scratch history below is the committed-file oracle. Final HEAD is
+        # bound by the CLI --check gate after the code commit.
+        with tempfile.TemporaryDirectory() as tmp:
+            repo=Path(tmp).resolve(); scratch_git.init(repo)
+            def git(*args):
+                return subprocess.run(['git','-C',str(repo),*args],check=True,capture_output=True,text=True)
+            git('config','user.name','Fake Writer');git('config','user.email','fake-writer@example.invalid')
+            out=repo/'d.json'; b.write_draft(d,out)
+            self.assertFalse(b.committed_matches(d,out,repo))
+            git('add','d.json')
+            self.assertFalse(b.committed_matches(d,out,repo))
+            fake_home=repo/'empty-home'; fake_home.mkdir()
+            with mock.patch.dict(os.environ,{'HOME':str(fake_home),'GIT_CONFIG_GLOBAL':os.devnull,'GIT_CONFIG_NOSYSTEM':'1'}):
+                git('commit','-qm','Record fake bytes')
+            self.assertTrue(b.committed_matches(d,out,repo))
+            out.write_bytes(out.read_bytes()+b' ')
+            self.assertFalse(b.committed_matches(d,out,repo))
+            self.assertFalse(b.committed_matches(dict(d,status='fake'),out,repo))
+        manifest=json.loads((HERE/'COPIED.d/w5c-draft-ci.json').read_text())
+        self.assertEqual(next(f['status'] for f in manifest['files'] if f['path']=='prereg-draft.json'),'new')
+
+
 
 if __name__ == "__main__":
     if "--mutant" in sys.argv:
