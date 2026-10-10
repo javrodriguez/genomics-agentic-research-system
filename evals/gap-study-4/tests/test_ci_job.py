@@ -98,8 +98,11 @@ def job_block(text):
     if text.count(JOB) != 1:
         return None
     start = text.index(JOB)
-    following = re.search(r"^  [A-Za-z0-9_-]+:\s*$", text[start + len(JOB):], re.M)
-    end = start + len(JOB) + following.start() if following else len(text)
+    end = start + len(JOB)
+    for line in text[end:].splitlines(keepends=True):
+        if line.strip() and not line.lstrip().startswith("#") and not line.startswith(" " * 4):
+            break
+        end += len(line)
     return text[start:end]
 
 
@@ -124,6 +127,13 @@ def steps(block):
         else:
             result.append((match[1], body, run[1]))
     return result
+
+
+def named_step_closed(body):
+    lines = [line for line in body.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+    if not lines or not lines[0].startswith("        run: "):
+        return False
+    return len(lines) == 1 or (lines[0] == "        run: |" and all(line.startswith(" " * 10) for line in lines[1:]))
 
 
 def problems(text, baseline, introduced, *, box_present=None):
@@ -154,6 +164,9 @@ def problems(text, baseline, introduced, *, box_present=None):
            '      GIT_CONFIG_KEY_0: maintenance.auto\n      GIT_CONFIG_VALUE_0: "false"\n'
            '      GIT_CONFIG_KEY_1: gc.auto\n      GIT_CONFIG_VALUE_1: "0"\n')
     need(env in block, "R35.maintenance")
+    env_body = re.search(r"^    env:\n(.*?)(?=^    \S|\Z)", block, re.M | re.S)
+    need(env_body is not None and env_body[0] == env, "R37.env-keys")
+    need(all(named_step_closed(body) for _, body, _ in entries), "R37.run-keys")
     need(entries and len({n for n, _, _ in entries}) == len(entries)
          and all(re.search(r"^        # \S", body, re.M) for _, body, _ in entries), "R35.comments")
     need(not re.search(r"^ {4,8}(?:if|continue-on-error|shell|working-directory):", block, re.M), "R35.runnable")
@@ -323,9 +336,17 @@ def mutations():
         "kickoff": ("R44.step", KICKOFF, BASE),
         "additive-assertion": ("R44.step", 'test "$removed" -eq 0', 'test "$removed" -ge 0'),
     }
+    edits["kickoff-presence"] = ("R44.present", f"          git cat-file -e {KICKOFF}^{{commit}}\n", "")
+    edits.update({
+        "top-level-env": ("R37.outside", "", "env:\n  PYTHONPATH: fake\n"),
+        "top-level-concurrency": ("R37.outside", "", "concurrency: fake\n"),
+        **{"job-env-" + key.lower(): ("R37.env-keys", '      GIT_CONFIG_VALUE_1: "0"\n', '      GIT_CONFIG_VALUE_1: "0"\n      ' + key + ': fake\n') for key in ("PYTHONPATH", "GIT_DIR")},
+        **{"run-key-" + key: ("R37.run-keys", f"        run: {BEFORE[0]}\n", extra + f"        run: {BEFORE[0]}\n") for key, extra in (
+            ("env", "        env:\n          FAKE: fake\n"), ("timeout", "        timeout-minutes: 1\n"), ("with", "        with:\n          fake: fake\n"))},
+    })
     if BOX_DEFERRED in RAW:
         edits.update({
-        "kickoff-presence": ("R44.present", f"          git cat-file -e {KICKOFF}^{{commit}}\n", ""),
+
             "box-owner": ("R38.box-owner", BOX_OWNER, ""),
             "box-ruling": ("R38.box-ruling", BOX_RULING, ""),
             "box-premature": ("R38.box-absent", BOX_DEFERRED, BOX_DEFERRED + BOX_STEP),
@@ -387,10 +408,16 @@ def mutations():
             continue  # BOX has its two presence states; COPY has R42's exact body.
         edits[f"before-{number}"] = ("R38.before:" + command, f"        run: {command}\n",
             f"        run: |\n          echo fake\n          {command}\n")
+    if SELECTED == "kickoff-registry-conditional" and BOX_DEFERRED not in RAW:
+        edits.pop("kickoff-presence")
     return edits
 
 
 def altered(text, name):
+    if name == "kickoff-registry-conditional":
+        return text
+    if name in ("top-level-env", "top-level-concurrency"):
+        return text + mutations()[name][2]
     if name == "before-box":
         text = replace_once(text, BOX_DEFERRED, BOX_STEP) if BOX_DEFERRED in text else text
         return replace_once(text, f"        run: {BOX}\n",
@@ -549,6 +576,8 @@ class JobContract(unittest.TestCase):
 # Explicit Athena-only whole-file witnesses. Never called by ordinary imports
 # or by a targeted Mac invocation. Three disjoint groups bound command time.
 def witness_binding(name):
+    if name == "kickoff-registry-conditional":
+        return "JobContract.test_kickoff_registry_after_box", "R44.present:registry"
     special = {"trigger":"R37.trigger", "removed-line":"R44.additive",
                "outside-block":"R37.outside", "introduced":"R44.kickoff", "box-landed":"R38.command:" + BOX,
                "before-box":"R38.before:" + BOX}
@@ -560,7 +589,7 @@ def witness_binding(name):
 
 
 def witness_names():
-    return sorted(set(mutations()) | {"trigger", "removed-line", "outside-block", "introduced", "box-landed", "before-box"})
+    return sorted(set(mutations()) | {"trigger", "removed-line", "outside-block", "introduced", "box-landed", "before-box", "kickoff-registry-conditional"})
 
 
 def witness_groups():

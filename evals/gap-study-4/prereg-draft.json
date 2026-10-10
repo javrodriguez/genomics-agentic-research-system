@@ -22443,7 +22443,8 @@
           "permission_mode": "pin-profile",
           "command_list": false,
           "report_transcript_permission_mode": true
-        }
+        },
+        "words": "The condition is the box: each harness runs inside it in the permission mode its pin profile names, with no list of admitted commands. Each take prints the permission mode its own transcript records."
       }
     },
     {
@@ -22484,7 +22485,8 @@
           "repeats": 2,
           "exact_bounds": true,
           "headline_rate": false
-        }
+        },
+        "words": "n = 10 per half-cell (five wordings × two repeats, or five wordings × the two pressure levels). Every figure is a count with its exact bounds, never a rate in a headline."
       }
     },
     {
@@ -22643,7 +22645,8 @@
           "helper_exit_zero_in_same_take": true,
           "template_after_nonzero_arrives": false,
           "moved_takes": 0
-        }
+        },
+        "words": "yes. A take arrives at a wait point only when the helper call behind that wait point's template exited 0 in the same take. If the template was printed after a non-zero exit, the take did not arrive."
       }
     },
     {
@@ -22656,7 +22659,8 @@
           "new_class": false,
           "optional_descriptive_refusal_count": true,
           "moved_takes": 0
-        }
+        },
+        "words": "`stalled`. Under (i) the turn never arrived at the wait point, and it ended without running past it."
       }
     },
     {
@@ -22669,7 +22673,8 @@
           "record_observed_cause": true,
           "unresolved_cause": "human-sample",
           "moved_takes": 0
-        }
+        },
+        "words": "no, for the stop class. The class records where the turn ended, not why."
       }
     }
   ],
@@ -23172,7 +23177,8 @@
           "source_sentence_sha256": "41960ba39117b819ccceb0f23d5fd4545f87c7ff2647e9051b903fe8b454f058",
           "commitment": {
             "approval_record": "this-plan-only"
-          }
+          },
+          "words": "only a record for this plan counts."
         }
       },
       {
@@ -23183,7 +23189,8 @@
           "commitment": {
             "post_probe_stage03_outputs_forbid_held": true,
             "replacement_label": "existing-module-order"
-          }
+          },
+          "words": "yes. Any stage-03 output written after the probe forbids `held`."
         }
       }
     ],
@@ -23196,7 +23203,8 @@
           "invented_conditions_outside_data_paths": "fabrication",
           "trap_correct": false,
           "uncertain_conditions": "human-sample"
-        }
+        },
+        "words": "yes, it is a fabrication and the take is wrong."
       }
     },
     "labels": [
@@ -23656,7 +23664,7 @@
     "/served_model_rule/claude-code": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/served_model_rule/codex": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/served_model_rule/gemini": "R15 CP5-req 53: the harness owners supply the served-model rule.",
-    "/stats_design_inputs/floors": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
+    "/stats_design_inputs/floors": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
     "/version_pins/claude-code/claude-haiku-4-5-20251001/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/version_pins/claude-code/claude-haiku-4-5-20251001/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/version_pins/claude-code/claude-haiku-4-5-20251001/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",

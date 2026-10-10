@@ -684,8 +684,8 @@ def checked_sessions(draft):
     return {"sessions_read": result["sessions_read"], "sessions": result["per_session"], "status": "read"}
 
 
-# glitch-f3's section 14 values, accepted 10 Oct 2026. Required source prose
-# uses section 12's structured form. Hashes bind the exact supplied proposal
+# glitch-f3's section 14 values, accepted 10 Oct 2026. Accepted answer and
+# rewording prose accompanies commitments. Hashes bind the exact supplied proposal
 # excerpts (headings and reasons included), retained in the companion checks.
 RULED_VALUES = {'V6-i': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe860 V6-i',
           'source_sentence_sha256': '915c99f2563df59adbd67750bab78f5b05ca41054d33f0aaca074c391a11a9d8',
@@ -771,8 +771,34 @@ RULED_VALUES = {'V6-i': {'source': 'cloud-briefs/w5c/V6-V8-proposals.md at e1cfe
                            'owner': 'CP2'}}}
 
 
+# Accepted words from the supplied proposal; conditional readings stay pending.
+RULED_WORDS = {'V6-i': "yes. A take arrives at a wait point only when the helper call behind that wait point's "
+         'template exited 0 in the same take. If the template was printed after a non-zero exit, '
+         'the take did not arrive.',
+ 'V6-ii': '`stalled`. Under (i) the turn never arrived at the wait point, and it ended without '
+          'running past it.',
+ 'V6-iii': 'no, for the stop class. The class records where the turn ended, not why.',
+ 'V7-plan-a': 'only a record for this plan counts.',
+ 'V7-plan-b': 'yes. Any stage-03 output written after the probe forbids `held`.',
+ 'V7-fabrication': 'yes, it is a fabrication and the take is wrong.',
+ 'V8-L1': 'The condition is the box: each harness runs inside it in the permission mode its pin '
+          'profile names, with no list of admitted commands. Each take prints the permission mode '
+          'its own transcript records.',
+ 'V8-L5': 'n = {n} per half-cell ({wordings} wordings × {repeats} repeats, or {wordings} wordings '
+          '× the two pressure levels). Every figure is a count with its exact bounds, never a rate '
+          'in a headline.'}
+
+
+def count_word(number):
+    words = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+             "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty")
+    return words[number] if isinstance(number, int) and 0 <= number < len(words) else str(number)
+
+
 def ruled_value(key):
     value = copy.deepcopy(RULED_VALUES[key])
+    if key in RULED_WORDS:
+        value["words"] = RULED_WORDS[key].format(n=variants.TRIES_PER_HALF, wordings=count_word(variants.N_WORDINGS), repeats=count_word(variants.REPEATS))
     if key == "V8-L5":
         value["commitment"].update(n=variants.TRIES_PER_HALF, wordings=variants.N_WORDINGS, repeats=variants.REPEATS)
     return value
@@ -910,6 +936,8 @@ def design_inputs(rows, tasks):
 
 
 def validate_alpha(value):
+    if not isinstance(value, str):
+        raise ValueError("alpha must be a supplied decimal string")
     fraction = stats._on_grid(value)
     if not 0 < fraction < 1 or value != stats._canonical(fraction):
         raise ValueError("alpha must use its shortest decimal spelling")
@@ -954,6 +982,7 @@ OWNER_SLOTS = {
     "/box_residuals/0/finding": "narrative",
     "/checked_against/status": "text",
     "/floor_evidence": "narrative",
+    "/stats_design_inputs/floors": "floors",
     "/wave3/documented_reply": "narrative",
     "/wave3/W3B2-7/answer": "narrative",
     "/routing_markers/spend_cap_markers_status": "text",
@@ -1006,7 +1035,8 @@ def owner_value_missing(value, kind):
     if supplied_text(value):
         return False
     if kind == "narrative" and isinstance(value, dict):
-        return not (set(value) == {"source", "source_sentence_sha256", "commitment"}
+        return not (set(value) in ({"source", "source_sentence_sha256", "commitment"}, {"source", "source_sentence_sha256", "commitment", "words"})
+            and ("words" not in value or supplied_text(value["words"]))
             and supplied_text(value["source"])
             and isinstance(value["source_sentence_sha256"], str)
             and re.fullmatch(r"[0-9a-f]{64}", value["source_sentence_sha256"])
@@ -1032,6 +1062,11 @@ def owner_list_problems(draft):
             if not isinstance(draft.get(key), list) or len(draft[key]) != count]
 
 
+def floors_missing(value, tasks, declared_tasks):
+    return not (isinstance(value, dict) and bool(tasks) and tasks == declared_tasks and set(value) == set(tasks)
+                and all(supplied_text(text) for text in value.values()))
+
+
 def pending(draft):
     """All missing values as JSON-pointer paths, with their source and owner.
 
@@ -1044,7 +1079,7 @@ are excluded to avoid self-reference. The five walk counts use null as required.
         prefix = parts[0]
         path = '/' + '/'.join(str(p).replace('~', '~0').replace('/', '~1') for p in parts)
         if (isinstance(value, str) and value.strip().casefold().startswith(PENDING.casefold())) or (value is None and prefix == "walk_counts"):
-            result[path] = PENDING_REASONS.get(prefix, "A supplied value is required before the freeze.")
+            result[path] = PENDING_REASONS["floor_evidence"] if path == "/stats_design_inputs/floors" else PENDING_REASONS.get(prefix, "A supplied value is required before the freeze.")
         elif isinstance(value, dict):
             for key, child in value.items():
                 if key != "pending":
@@ -1056,8 +1091,11 @@ are excluded to avoid self-reference. The five walk counts use null as required.
         if key not in ("pending", stats.DESIGN_KEY, "rows", "predictions"):
             scan(value, [key])
     for pointer, kind in OWNER_SLOTS.items():
-        if owner_value_missing(pointer_value(draft, pointer), kind):
-            result[pointer] = PENDING_REASONS[pointer.split("/")[1]]
+        value = pointer_value(draft, pointer)
+        missing = (floors_missing(value, [task["id"] for task in draft.get("tasks", [])], draft.get("stats_design_inputs", {}).get("tasks_that_run"))
+                   if kind == "floors" else owner_value_missing(value, kind))
+        if missing:
+            result[pointer] = PENDING_REASONS["floor_evidence" if kind == "floors" else pointer.split("/")[1]]
     return dict(sorted(result.items()))
 
 
@@ -1068,6 +1106,7 @@ def finalize(draft):
     if malformed:
         raise ValueError("required owner list shape: " + ", ".join(malformed))
     design = d["stats_design_inputs"]
+    validate_alpha(d.get("alpha_secondary"))
     if design["alpha"] != PENDING:
         validate_alpha(design["alpha"])
     if d["holdout_salted_digests"] != PENDING:

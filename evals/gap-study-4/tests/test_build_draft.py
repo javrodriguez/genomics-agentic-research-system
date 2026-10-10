@@ -673,6 +673,8 @@ class Readiness(unittest.TestCase):
         moved = copy.deepcopy(fake)
         moved["tasks"][0]["id"] = "fake changed task"
         self.assertIn("/stats_design_inputs/floors", b.pending(moved), "R2.floors:tasks")
+        declared = changed(fake, ("stats_design_inputs", "tasks_that_run"), tasks + ["fake extra task"])
+        self.assertIn("/stats_design_inputs/floors", b.pending(declared), "R2.floors:tasks")
         self.assertIn("no floor field", self.get()["pending"]["/stats_design_inputs/floors"], "R2.floors:reason")
 
     def test_digest_shapes(self):
@@ -1588,6 +1590,8 @@ WORD_KEYS = ("V6-i", "V6-ii", "V6-iii", "V7-plan-a", "V7-plan-b", "V7-fabricatio
 
 def expected_value(key):
     value = copy.deepcopy(EXPECTED_VALUES[key])
+    if key in WORD_KEYS:
+        value["words"] = expected_words(key)
     if key == "V8-L5":
         value["commitment"].update(n=variants.TRIES_PER_HALF, wordings=variants.N_WORDINGS, repeats=variants.REPEATS)
     return value
@@ -1685,10 +1689,44 @@ class RuledValues(unittest.TestCase):
 
 
 
+# R2 clause mutations preserve the existing registry and its attribution.
+R2_MUTANTS = {"floors-null-guard": ("Readiness.test_floors_keep_closed", "R2.floors"),
+              "floors-task-set": ("Readiness.test_floors_keep_closed", "R2.floors:tasks"),
+              "floors-reason": ("Readiness.test_floors_keep_closed", "R2.floors:reason"),
+              "secondary-alpha-validator": ("Readiness.test_secondary_alpha_before_write", "R2.secondary-alpha"),
+              **{"words-" + key: ("RuledValues.test_accepted_words", "R2.words:" + key) for key in WORD_KEYS}}
+R2_SETUP = setUpModule
+
+def setUpModule():
+    if SELECTED in R2_MUTANTS:
+        if SELECTED == "floors-null-guard":
+            patch = mock.patch.object(b, "floors_missing", return_value=False)
+        elif SELECTED == "floors-task-set":
+            original = b.floors_missing
+            patch = mock.patch.object(b, "floors_missing", lambda value, tasks, declared: original(value, list(value) if isinstance(value, dict) else tasks, list(value) if isinstance(value, dict) else declared))
+        elif SELECTED == "floors-reason":
+            patch = mock.patch.dict(b.PENDING_REASONS, floor_evidence="fake stale reason")
+        elif SELECTED == "secondary-alpha-validator":
+            patch = mock.patch.object(b, "validate_alpha", return_value=None)
+        else:
+            original = b.ruled_value
+            def no_words(key):
+                value = original(key)
+                if key == SELECTED.removeprefix("words-"):
+                    value.pop("words", None)
+                return value
+            patch = mock.patch.object(b, "ruled_value", no_words)
+        patch.start(); PATCHES.append(patch)
+    else:
+        R2_SETUP()
+
+
 # Explicit Athena-only whole-file witnesses. Never called by ordinary imports
 # or by a targeted Mac invocation. Six disjoint groups bound command time.
 WITNESS_GROUP_COUNT = 6
 def witness_binding(name):
+    if name in R2_MUTANTS:
+        return R2_MUTANTS[name]
     if name in CORE_MUTANTS:
         return "Assembly.test_rows", CORE_MUTANTS[name][0]
     if name in DESCRIPTION_MUTANTS:
@@ -1716,7 +1754,7 @@ def witness_binding(name):
 
 
 def witness_names():
-    return sorted(set(CORE_MUTANTS) | set(DESCRIPTION_MUTANTS) | set(READY_MUTANTS) | set(VALIDATOR_MUTANTS) | set(CLAIM_MUTANTS) | set(OWNER_MUTANTS) | set(VALUE_MUTANTS) | {"earlier-count"})
+    return sorted(set(CORE_MUTANTS) | set(DESCRIPTION_MUTANTS) | set(READY_MUTANTS) | set(VALIDATOR_MUTANTS) | set(CLAIM_MUTANTS) | set(OWNER_MUTANTS) | set(VALUE_MUTANTS) | set(R2_MUTANTS) | {"earlier-count"})
 
 
 def witness_groups():
