@@ -718,9 +718,12 @@ class Readiness(unittest.TestCase):
         path=HERE/'prereg-draft.json'
         self.assertTrue(path.is_file(), 'generated draft must exist')
         self.assertEqual(path.read_bytes(),b.json_bytes(d))
-        # Read committed bytes as well: during red/green development only the
-        # scratch history below is the committed-file oracle. Final HEAD is
-        # bound by the CLI --check gate after the code commit.
+        committed = subprocess.run(['git', '-C', str(REPO), 'show',
+                                    'HEAD:' + path.resolve().relative_to(REPO.resolve()).as_posix()],
+                                   capture_output=True)
+        self.assertEqual(committed.returncode, 0, committed.stderr)
+        self.assertEqual(committed.stdout, b.json_bytes(d))
+        self.assertTrue(b.committed_matches(d, path, REPO))
         with tempfile.TemporaryDirectory() as tmp:
             repo=Path(tmp).resolve(); scratch_git.init(repo)
             def git(*args):
