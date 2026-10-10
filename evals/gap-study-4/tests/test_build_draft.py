@@ -1245,6 +1245,9 @@ class OwnerSlots(unittest.TestCase):
             pointer = "/" + "/".join(map(str, path))
             for form, value in OWNER_BAD.items():
                 with self.subTest(pointer=pointer, form=form):
+                    # Bind the owner validator itself: the recursive pending
+                    # scan independently rejects some sentinel strings.
+                    self.assertTrue(b.owner_value_missing(value, b.OWNER_SLOTS[pointer]))
                     self.assertIn(pointer, b.pending(changed(fake, path, value)))
             erased = copy.deepcopy(fake)
             node = erased
@@ -1252,6 +1255,7 @@ class OwnerSlots(unittest.TestCase):
                 node = node[key]
             del node[path[-1]]
             with self.subTest(pointer=pointer, form="absent"):
+                self.assertTrue(b.owner_value_missing(b.ABSENT, b.OWNER_SLOTS[pointer]))
                 self.assertIn(pointer, b.pending(erased))
 
     def test_missing_values_refuse_freeze(self):
