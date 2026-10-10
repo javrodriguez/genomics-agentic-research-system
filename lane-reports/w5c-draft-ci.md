@@ -1223,3 +1223,9 @@ OPEN carries: routing.json's pin profiles and vendor markers (R6/R12/R15); CP2's
 Deferred to Javier: the walks, real box, keys, prices, real versions, caps-trimmed record, spend, public pushes, CP8's push word and his word on any ruling. The real freeze/rehearsal and publication remain outside this lane. No owner input was chosen, and no sentinel mechanism is claimed as built.
 
 No classifier refusal, sandbox denial, automatic approval rejection or hook refusal occurred on this resume. No denial was retried or routed around. The stop is a requirements conflict with recorded evidence, not an environment failure.
+
+### Report verification follow-up
+
+The original report's bytes and first two lines were checked against a0cd341 before committing this appendix. The gated runner printed `report preservation: 4 of 4 passed; original report bytes and first two lines unchanged`.
+
+The additional `git diff --cached --check` returned 2 for trailing spaces after nine newly appended `Base:` headings at report lines 905, 926, 948, 972, 992, 1012, 1032, 1050 and 1070. The reporting command sequence continued to commit dc0f13cf212938254c010c870147da376be8c424 despite that whitespace check. This is a report-format defect, not a passing check, and is recorded here rather than rewriting the now-committed appendix under the user's append-only instruction. No code gate failed, and the last code head remains 8bd75c85720931020af1c4ca8e982e386ccd49e0. This follow-up is a separate report-only commit; neither prior commit is amended.
