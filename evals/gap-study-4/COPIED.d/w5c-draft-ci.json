@@ -15,6 +15,11 @@
       "path": "COPIED.d/w5c-draft-ci.json",
       "status": "new",
       "reason": "Interface 1: records this lane's added files."
+    },
+    {
+      "path": "tests/test_build_draft.py",
+      "status": "new",
+      "reason": "R1-R34: derived draft commitments and accessor mutations."
     }
   ]
 }
