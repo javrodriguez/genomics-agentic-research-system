@@ -1,5 +1,5 @@
-status: done
-RESUME HERE: hand-back at 27c2391a (code head, unchanged; the ruling commit on top changes only the copy record and this report). w6a-1 ruled (a) ratify by glitch-1b, 11 Oct; next: one fresh opus-medium review round on construction, then athena run_checks on the exact head.
+status: review passed; athena owed
+RESUME HERE: hand-back at 9f176f29 (code head after the review round 1 fold; W6A-close-1: round 1 PASS, loop closed). Next: athena run_checks on the exact head; status becomes done only after it passes.
 
 head: 27c2391a (last code/test commit; this report's own commit follows it). Base 89b54db4 (gap4/cp5-pipeline-merge), branch gap4/w6a-cp2-preflight-binding, worktree /Users/javrodher/aegis-builds/gap4-w6a.
 
@@ -96,3 +96,20 @@ Not run on the Mac: test_round4 (the battery), run_checks.py and any whole suite
 ## Writer release
 
 The sole writer releases the worktree at the report commit. The tree is clean and no `__pycache__` is left (`-B` throughout). Scratch outputs are in the session scratchpad under `w6a/`, outside the repository.
+
+## Fold of review round 1 (W6A-close-1, glitch-1b, 11 Oct)
+
+Round 1 passed; the loop is closed. Folded at 9f176f29:
+- W6A-R1-1: `test_c1_relative_path_to_a_valid_lock_refused` (C1-relative) gives a relative path to a VALID, ready take lock and requires run_take.Refused with no load and no runtime call. Witness `omit-absolute-path-rule` (preflight's `_abs_path` line deleted): `red by C1-relative (1 own, 0 collateral, 0 errors)`. Seven witnesses now, each bound to its own check.
+- W6A-R1-2 (ruling: the new audit entries are w6a's under w6a-1): `tests/test_run_take.py` adds `reach_audit`. It ast-parses box/image_lock.py and box/egress/proxy_conf.py, and requires imports within REACH_IMPORTS (`__future__, fnmatch, json, os, re, dataclasses, harness_bookkeeping, box.egress`), bound both ways, with no subprocess and no FORBIDDEN_OS name. It has four planted positives, and `TestReachAudit` has five mutants, all red. `--process-audit` runs it. The ownership is recorded in w4b's COPIED.d entry for that file.
+- W6A-R1-3: the allowlist comment names ruling w6a-1 as ratified.
+
+Gates at 9f176f29 (Mac, light-ok, Python 3.13), all rc 0:
+- test_run_take `Ran 44 ... OK`
+- test_preflight `Ran 43 ... OK`
+- test_take_config `Ran 9 ... OK`
+- `--process-audit`: `30 planted positives caught, 3 modules and 3 test files read, 4 reach positives caught and 2 reached modules read, 0 problem(s)`
+- test_wave4_bindings `Ran 12 ... OK`
+- `copy_manifest.py --check` ok
+
+Owed: athena run_checks (and the battery) on the exact head.
