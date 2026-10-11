@@ -1,0 +1,26 @@
+{
+  "lane": "w6e-drive-commit",
+  "files": [
+    {
+      "path": "drive.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/drive.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (where it was an identical copy) under ruling S5-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026). CP2's drive lifecycle, part 1, the commit step, appended after round 3's main() so no line other files cite by number moves (its named changes R4-1 to R4-6 sit in the appended banner): TakeRepo, batch.Batch's repo, whose commit_records stages the take's records and the outcome ledger, scans them through box/scan_record.py, stages again after masking and refuses unless every staged blob's sha256 equals the scan's sha256_after (lane w4c's Q3); refuses any staged name outside the take; history() is takes.read_history in commit order; register refuses while a container the committed history records as leaked is still listed (run_take.refuse_restart_if_leaked); preflight_take passes straight to S1's preflight.collect_and_evaluate. Everything above the banner is round 3's file byte for byte."
+    },
+    {
+      "path": "tests/test_drive_commit.py",
+      "status": "new",
+      "reason": "Tests for drive.py's commit step (lane w6e) on scratch git repositories and fakes only: a process guard admitting only git in its own scratch folder, synthetic prereg readers, six bound checks (re-stage, re-hash, chronological history, restart refusal, stray staged file, preflight entry point), each with a whole-file witness of drive.py compiled in memory that its own check turns red."
+    },
+    {
+      "path": "COPIED.d/w6e-drive-commit.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w6e-drive-commit.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}

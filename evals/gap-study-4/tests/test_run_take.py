@@ -1568,12 +1568,15 @@ DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})
 # W4B3-3, derived once from the box modules and committed: every (module, name) a from-import brings in, every
 # attribute used on each allowed module, and every getattr as (base, constant name).
-IMPORT_FROM_ALLOWED = frozenset({("__future__", "annotations"), ("box", "preflight"), ("box", "run_take"),
-                                 ("dataclasses", "dataclass"), ("dataclasses", "field"), ("decimal", "Decimal"),
-                                 ("decimal", "InvalidOperation"), ("typing", "Callable")})
+# Lane w6a (CP2-preflight-2; glitch-1b's ruling w6a-1, ratified 11 Oct): preflight reads the take lock through w4a's
+# image_lock (load and require_ready only); the two lists below name exactly that, and REACH_MODULES audits its reach.
+IMPORT_FROM_ALLOWED = frozenset({("__future__", "annotations"), ("box", "image_lock"), ("box", "preflight"),
+                                 ("box", "run_take"), ("dataclasses", "dataclass"), ("dataclasses", "field"),
+                                 ("decimal", "Decimal"), ("decimal", "InvalidOperation"), ("typing", "Callable")})
 MODULE_ATTRS = {
     "agent_adapter": frozenset({"COUNTER_FIELDS"}), "dataclasses": frozenset({"replace"}),
     "harness_bookkeeping": frozenset({"CLAUDE_CODE"}), "hashlib": frozenset({"sha256"}),
+    "image_lock": frozenset({"load", "require_ready"}),
     "json": frozenset({"dump", "dumps", "loads"}),
     "preflight": frozenset({"expected_take_inspect", "inspect_mismatches"}),
     "re": frozenset({"IGNORECASE", "compile", "escape", "fullmatch", "search"}),
@@ -1952,17 +1955,90 @@ class TestProcessAudit(MutantCase):
 _AUDIT_READ = None
 
 
+# ------------------------------------------------- lane w6a (W6A-R1-2, ruling w6a-1): what preflight now reaches
+# preflight imports box.image_lock, which imports box.egress.proxy_conf: neither may reach a process. Each module's
+# imports must be within REACH_IMPORTS, and neither names subprocess or a FORBIDDEN_OS attribute.
+REACH_MODULES = ("box/image_lock.py", "box/egress/proxy_conf.py")
+REACH_IMPORTS = frozenset({"__future__", "fnmatch", "json", "os", "re", "dataclasses", "harness_bookkeeping",
+                           "box.egress"})
+
+
+def reach_source(rel: str, source: str) -> list:
+    out = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            out += [f"{rel}: import {a.name} is outside REACH_IMPORTS" for a in node.names
+                    if a.name not in REACH_IMPORTS]
+        elif isinstance(node, ast.ImportFrom):
+            mod = ("." * node.level) + (node.module or "")
+            if mod not in REACH_IMPORTS:
+                out.append(f"{rel}: from {mod} import is outside REACH_IMPORTS")
+            if mod == "os":
+                out += [f"{rel}: from os import {a.name}" for a in node.names if FORBIDDEN_OS.fullmatch(a.name)]
+        elif isinstance(node, ast.Name) and node.id == "subprocess":
+            out.append(f"{rel}: names subprocess")
+        elif isinstance(node, ast.Attribute):
+            if node.attr == "subprocess":
+                out.append(f"{rel}: .subprocess reached")
+            if isinstance(node.value, ast.Name) and node.value.id == "os" and FORBIDDEN_OS.fullmatch(node.attr):
+                out.append(f"{rel}: os.{node.attr}")
+    return out
+
+
+REACH_PLANTED = {
+    "imports-subprocess": "import subprocess\n",
+    "os-system": "import os\nos.system('x')\n",
+    "from-os-fork": "from os import fork\n",
+    "imports-socket": "import socket\n",
+}
+
+
+def reach_audit(read=None) -> list:
+    """Planted positives first (each must be caught), then the two real modules (each must be clean)."""
+    out = [f"planted reach {n} was not caught" for n, src in REACH_PLANTED.items() if not reach_source("planted", src)]
+    used = set()
+    for rel in REACH_MODULES:
+        src = read(rel) if read else open(os.path.join(HERE, rel), encoding="utf-8").read()
+        out += reach_source(rel, src)
+        for n in ast.walk(ast.parse(src)):
+            if isinstance(n, ast.Import):
+                used |= {a.name for a in n.names}
+            elif isinstance(n, ast.ImportFrom):
+                used.add(("." * n.level) + (n.module or ""))
+    # Bound both ways, as W4B2-2's lists: a widened entry nothing imports is a problem too.
+    out += [f"REACH_IMPORTS holds unused {m}" for m in sorted(set(REACH_IMPORTS) - used)]
+    return out
+
+
+class TestReachAudit(MutantCase):
+    def test_reach(self):
+        real = {rel: open(os.path.join(HERE, rel), encoding="utf-8").read() for rel in REACH_MODULES}
+        me = sys.modules[__name__]
+
+        def added(rel, extra):
+            return lambda: mock.patch.object(me, "reach_audit", lambda read=None, _f=reach_audit: _f(
+                lambda r: real[r] + (extra if r == rel else "")))
+        self.assert_green_then_red(lambda: me.reach_audit(), [
+            ("image-lock-imports-subprocess", added("box/image_lock.py", "\nimport subprocess\n")),
+            ("proxy-conf-kills", added("box/egress/proxy_conf.py", "\nos.kill(1, 9)\n")),
+            ("reach-widened", patched(me, "REACH_IMPORTS", REACH_IMPORTS | {"subprocess"})),
+            ("reach-narrowed", patched(me, "REACH_IMPORTS", REACH_IMPORTS - {"fnmatch"})),
+            ("planted-dropped", lambda: mock.patch.dict(REACH_PLANTED, {"imports-subprocess": "x = 1\n"})),
+        ])
+
+
 # Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).
 _PATCHED_AT_IMPORT = _patched_now()
 
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--process-audit"]:
-        problems = process_audit()
+        problems = process_audit() + reach_audit()
         for p in problems:
             print(f"process audit: {p}")
         print(f"process audit: {len(PLANTED) + len(TEST_PLANTED)} planted positives caught, "
               f"{len(BOX_MODULES)} modules and {len(LANE_TESTS)} test files read, "
+              f"{len(REACH_PLANTED)} reach positives caught and {len(REACH_MODULES)} reached modules read, "
               f"{len(problems)} problem(s)")
         sys.exit(1 if problems else 0)
     unittest.main(verbosity=2)

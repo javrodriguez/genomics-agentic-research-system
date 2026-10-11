@@ -1481,5 +1481,229 @@ def main() -> int:
     return 0
 
 
+# =====================================================================================================================
+# ROUND 4, CP2: THE DRIVE LIFECYCLE, PART 1 -- THE COMMIT STEP (lane w6e, slice S5 of next-slices-2026-10-11;
+# ownership moved here from lane w1a's copy record under glitch-1b's ruling S5-gap4-1).
+#
+# THE CHANGES FROM ROUND 3'S DRIVER, ROUND 4 (the plan's named-changes PATTERN). They are written here, beside the
+# code, and not in the docstring's block at the top, so that every line other files cite by number (drive.py:149,
+# 158-186, 170, 241-242, 741, 750, 1346, 1348, and the constants test_run_take reads by ast) stays where it is.
+# Everything above this banner is round 3's driver, byte for byte.
+#
+#   R4-1. TakeRepo: the repo object batch.Batch is handed, with its three doors, register, commit_records and
+#         history. It holds no state a restart could inherit except the committed record (its RegistrationGuard is
+#         process-local, as takes.py requires).
+#   R4-2. THE COMMIT STEP RE-STAGES AND RE-HASHES AFTER MASKING (lane w4c's call Q3; CP2-requirements, "Re-stage and
+#         re-hash after masking"). The take's files and the outcome ledger are staged, and the scan list is built
+#         from the staged index (record checks read the index). box/scan_record.py then masks agent-text hits ON
+#         DISK. So every scanned file is staged AGAIN, and every staged blob's sha256 must equal the scan's
+#         `sha256_after` before anything is committed. A commit of the first staging would carry the unmasked value;
+#         a file that moved after the scan would carry bytes nobody scanned. Either refuses, and nothing is committed.
+#   R4-3. Every staged name must be one of the take's declared files or the ledger, and every one of those must be
+#         staged: a stray staged file refuses the commit rather than riding it unscanned.
+#   R4-4. history() IS CHRONOLOGICAL: takes.read_history, the committed outcomes and rulings in commit order
+#         (CP2-requirements, w1b fold 4 open question 10), never the two files concatenated, so a ruling committed
+#         after its outcome comes back after it.
+#   R4-5. A RESTART IS REFUSED WHILE A LEAKED CONTAINER REMAINS (open question 11). register() first lists every
+#         container (box/run_take.py's refuse_restart_if_leaked, a full-id listing with no filter) and refuses,
+#         naming it, while any id the committed history records as `leaked_container` is still present. batch.py
+#         registers before it launches, so a refused register launches nothing.
+#   R4-6. preflight_take is the driver's one road to preflight: S1's composition entry point, every argument passed
+#         through. The driver never reads or projects a take lock itself (CP2-preflight-2).
+#
+# Not here yet (S6 and later): launch, the turns, quiescence, routing, the sidecar's finish, teardown and the
+# finally-path cleanup on every refusal. A refused commit leaves the tree as it stands for a human to reconcile
+# (takes.py's rule for a failed commit); the next registration then refuses on the unclean tree.
+# =====================================================================================================================
+
+from box import preflight as _preflight  # noqa: E402
+from box import run_take as _run_take  # noqa: E402
+from box import scan_record as _scan_record  # noqa: E402
+
+OUTCOMES_FILE = takes_mod.HISTORY_FILES[0]
+OUTCOME_KIND = "ledger"
+COMMIT_SUBJECT = "Record one take's outcome and its records"
+
+
+class CommitRefused(RuntimeError):
+    """The commit step committed nothing. Its message names paths, lines and kinds, never a secret's value."""
+
+
+def _git_bytes(repo: Path, *args: str) -> bytes:
+    got = subprocess.run(["git", "-C", str(repo), *args], capture_output=True)
+    if got.returncode:
+        raise CommitRefused(f"git {args[0]} failed (exit {got.returncode})")
+    return got.stdout
+
+
+def _staged_names(repo: Path) -> list[str]:
+    raw = _git_bytes(repo, "diff", "--cached", "--name-only", "--no-renames", "-z")
+    return [n.decode("utf-8") for n in raw.split(b"\0") if n]
+
+
+def preflight_take(runtime, *, launched, sidecar, lock_path: str, harness: str, hosts: dict, evidence_dir: str,
+                   begin_reply, caller_env=None) -> dict:
+    """R4-6: S1's entry point, unchanged arguments, its record returned as it is. Its typed refusals (a lock or launch
+    record it cannot use) propagate to the drive step, which records a pre-turn refusal and cleans up (S6)."""
+    return _preflight.collect_and_evaluate(
+        runtime, launched=launched, sidecar=sidecar, lock_path=lock_path, harness=harness, hosts=hosts,
+        evidence_dir=evidence_dir, begin_reply=begin_reply, caller_env=caller_env)
+
+
+class TakeRepo:
+    """batch.Batch's repo (R4-1): register(row, attempt), commit_records(row, attempt, outcome), history().
+
+    runtime          the container runtime protocol box/run_take.py uses (run(argv, env=, timeout=))
+    record_files     (row, attempt) -> [(absolute path, scan_record kind)]: the take's record files, from the drive
+                     step; every one inside the repository, a regular file, listed once
+    secrets          () -> [(kind, value)], read at commit time and never held by this object
+    rules_scanner    scan_record's rules scanner (required; the real one refuses while it is PENDING)
+    holdout_matcher  scan_record's holdout matcher, injected on the Mac (None records "not-checked")
+    """
+
+    def __init__(self, *, runtime, record_files, secrets, rules_scanner, holdout_matcher=None, root=HERE,
+                 repo=REPO, caller_env=None):
+        if not callable(getattr(runtime, "run", None)):
+            raise TypeError("runtime must offer run(argv, env=, timeout=)")
+        for name, fn in (("record_files", record_files), ("secrets", secrets), ("rules_scanner", rules_scanner)):
+            if not callable(fn):
+                raise TypeError(f"{name} must be callable")
+        self.runtime, self.record_files, self.secrets = runtime, record_files, secrets
+        self.rules_scanner, self.holdout_matcher, self.caller_env = rules_scanner, holdout_matcher, caller_env
+        self.root, self.repo = Path(root).resolve(), Path(repo).resolve()
+        self.guard = takes_mod.RegistrationGuard()
+
+    # ------------------------------------------------------------------------------------------- history (R4-4)
+    def history(self) -> list:
+        return takes_mod.read_history(root=self.root, repo=self.repo)
+
+    # ------------------------------------------------------------------------------------------- restart (R4-5)
+    def leaked_ids(self) -> list:
+        """Every container id the committed outcomes record as leaked, once each, in commit order."""
+        ids = []
+        for entry in self.history():
+            cid = None if takes_mod.batch.is_ruling(entry) else entry["leaked_container"]
+            if cid is not None and cid not in ids:
+                ids.append(cid)
+        return ids
+
+    def refuse_restart(self) -> None:
+        _run_take.refuse_restart_if_leaked(self.runtime, self.leaked_ids(), caller_env=self.caller_env)
+
+    def register(self, row: dict, attempt: int) -> str:
+        self.refuse_restart()
+        return takes_mod.commit_registration(row, attempt, guard=self.guard, root=self.root, repo=self.repo)
+
+    # ------------------------------------------------------------------------------------------- commit (R4-2, R4-3)
+    def _reserved(self) -> set:
+        """W6E-R1-2: the study's own ledgers (outcomes.json, rulings.json, takes.json), never a take's record."""
+        return {(self.root / f).relative_to(self.repo).as_posix()
+                for f in (*takes_mod.HISTORY_FILES, takes_mod.LEDGER.name)}
+
+    def _take_files(self, row: dict, attempt: int, reserved: set) -> dict:
+        """{repo-relative name: (absolute path, kind)} for the take's record files, or CommitRefused. A record file
+        is a new file: never one of the ledgers, never a path already tracked at HEAD (W6E-R1-2)."""
+        files = {}
+        for item in self.record_files(row, attempt):
+            if not (isinstance(item, (tuple, list)) and len(item) == 2):
+                raise CommitRefused("a record file is not (absolute path, kind)")
+            path, kind = item
+            if not isinstance(path, str) or not os.path.isabs(path) or os.path.normpath(path) != path:
+                raise CommitRefused(f"a record file is not a normalised absolute path: {path!r}")
+            if kind not in _scan_record.KINDS:
+                raise CommitRefused(f"{path}: kind {kind!r} is not one of the scan's kinds")
+            try:
+                name = Path(path).relative_to(self.repo).as_posix()
+            except ValueError:
+                raise CommitRefused(f"{path} is outside the repository") from None
+            if name in reserved:
+                raise CommitRefused(f"{name} is one of the study's ledgers, which a take's records never are")
+            if os.path.islink(path) or not os.path.isfile(path):
+                raise CommitRefused(f"{name} is not a regular file")
+            if name in files:
+                raise CommitRefused(f"{name} is listed twice")
+            if _git_bytes(self.repo, "ls-tree", "--name-only", "HEAD", "--", name).strip():
+                raise CommitRefused(f"{name} is already tracked at HEAD; a take's records are new files")
+            files[name] = (path, kind)
+        return files
+
+    def _staged_exactly(self, declared: dict) -> list:
+        """R4-3: the staged names, which must be exactly the declared ones."""
+        staged = _staged_names(self.repo)
+        extra = sorted(n for n in staged if n not in declared)
+        missing = sorted(n for n in declared if n not in staged)
+        if extra:
+            raise CommitRefused(f"staged outside the take's records: {', '.join(extra)}")
+        if missing:
+            raise CommitRefused(f"declared but not staged: {', '.join(missing)}")
+        return [n for n in staged if n in declared]
+
+    def commit_records(self, row: dict, attempt: int, outcome: dict) -> dict:
+        """One commit: the take's record files and its outcome, appended to the ledger. Returns the commit and the
+        scan's masked count. Raises CommitRefused, takes.py's identity refusal (ValueError) or the scan's own
+        scan_record.ScanError / NotReady (W6E-R1-4), each fail-closed: no commit lands, and HEAD moves only by the
+        pinned update-ref below."""
+        if not isinstance(outcome, dict) or set(outcome) != set(takes_mod.batch.OUTCOME_KEYS):
+            raise CommitRefused("the outcome does not hold exactly batch.OUTCOME_KEYS")
+        if (outcome["slot"], outcome["attempt"]) != (row["slot"], attempt):
+            raise CommitRefused("the outcome is not this row's slot and attempt")
+        # W6E-R1-1: the outcome must be one batch can trust after the committed history, or nothing is written.
+        bad = takes_mod.batch.Batch.history_problems(self.history() + [outcome])
+        if bad:
+            raise CommitRefused("the outcome cannot follow the committed history: " + "; ".join(bad))
+        ledger = self.root / OUTCOMES_FILE
+        ledger_rel = ledger.relative_to(self.repo).as_posix()
+        files = self._take_files(row, attempt, self._reserved())
+        takes_mod.require_commit_identity(self.repo)
+        tracked = _git_bytes(self.repo, "ls-tree", "--name-only", "HEAD", "--", ledger_rel).strip()
+        committed = json.loads(_git_bytes(self.repo, "show", f"HEAD:{ledger_rel}")) if tracked else []
+        if not isinstance(committed, list):
+            raise CommitRefused(f"{ledger_rel} at HEAD is not a list")
+        ledger.write_text(json.dumps(committed + [outcome], indent=2) + "\n", encoding="utf-8")
+        declared = {name: kind for name, (_, kind) in files.items()}
+        declared[ledger_rel] = OUTCOME_KIND
+        paths = {name: path for name, (path, _) in files.items()}
+        paths[ledger_rel] = str(ledger)
+        _git_bytes(self.repo, "add", "--", *sorted(declared))
+        staged = self._staged_exactly(declared)
+        scan = _scan_record.scan([(paths[n], declared[n]) for n in staged], list(self.secrets()),
+                                 rules_scanner=self.rules_scanner, holdout_matcher=self.holdout_matcher)
+        if not _scan_record.passed(scan):
+            why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
+            raise CommitRefused(f"the commit scan refused the take: {why}")
+        # THE INDEX (R4-2): the scan masked on disk, so stage again, then bind every staged blob to its scanned bytes.
+        _git_bytes(self.repo, "add", "--", *staged)
+        staged = self._staged_exactly(declared)
+        # W6E-R1-3: the commit is bound to the checked tree. The index is written once as a tree; that tree's change
+        # set and blobs are checked; the commit is made from that tree and HEAD moves only from the head it was
+        # checked against. A file staged after write-tree never reaches the commit; a moved HEAD refuses.
+        head = _git_bytes(self.repo, "rev-parse", "--verify", "HEAD").decode().strip()
+        tree = _git_bytes(self.repo, "write-tree").decode().strip()
+        changed = sorted(n.decode("utf-8") for n in _git_bytes(
+            self.repo, "diff-tree", "-r", "--name-only", "--no-renames", "-z", head, tree).split(b"\0") if n)
+        if changed != sorted(declared):
+            raise CommitRefused(f"the written tree changes {changed}, not the take's declared files")
+        after = {rec["path"]: rec["sha256_after"] for rec in scan["files"]}
+        for name in staged:
+            blob = _git_bytes(self.repo, "cat-file", "blob", f"{tree}:{name}")
+            if hashlib.sha256(blob).hexdigest() != after.get(paths[name]):
+                raise CommitRefused(f"the staged blob of {name} is not the bytes the scan left (sha256_after)")
+        self._before_commit()
+        commit = self._bind(head, tree)
+        return {"commit": commit, "masked": scan["masked"], "events": scan["events"], "holdout": scan["holdout"]}
+
+    def _before_commit(self) -> None:
+        """Between the checked tree and the commit. Does nothing; the tests stage an interloper here (W6E-R1-3)."""
+
+    def _bind(self, head: str, tree: str) -> str:
+        """The commit of exactly `tree` on `head`; HEAD moves only if it still is `head` (update-ref's old value)."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as message:
+            message.write(COMMIT_SUBJECT + "\n")
+            message.flush()
+            new = _git_bytes(self.repo, "commit-tree", tree, "-p", head, "-F", message.name).decode().strip()
+        _git_bytes(self.repo, "update-ref", "-m", COMMIT_SUBJECT, "HEAD", new, head)
+        return new
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

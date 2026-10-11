@@ -5,6 +5,13 @@ the record's place beside the evidence folder, and the after-take credential che
 
 A FakeRuntime answers the probes; no test reaches a real process (the guard below is armed after the one leak-word
 read, interface 16). Each guard is also run against in-memory mutants, printed with their red results.
+
+Lane w6a (CP2-preflight-1 to -5, glitch-1b's rulings of 10 Oct): the lock reaches preflight only through
+`load_take_lock` (the real image_lock.load and require_ready, then the harness's own take image), evaluate takes a
+required `evidence_dir` and binds the sidecar's evidence mount source to it, and `collect_and_evaluate` composes the
+probes on `Launched.spec`. Lock files are synthetic copies in a temporary stand-in for box/ (image_lock.BOX_DIR
+patched, test_image's convention); a committed lock is only ever read. Six witnesses are whole-file mutants of
+box/preflight.py compiled in memory (never written to disk); each must go red by its bound check's own assertion.
 """
 
 from __future__ import annotations
@@ -19,6 +26,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from unittest import mock
 
@@ -95,6 +103,7 @@ def _module_set_up_extra():
 def _module_tear_down_extra():
     pass
 
+from box import image_lock as il  # noqa: E402
 from box import preflight as pf  # noqa: E402
 from box import run_take as rt  # noqa: E402
 
@@ -141,12 +150,13 @@ def ok(doc):
 
 
 @contextlib.contextmanager
-def filled(harness=rt.CLAUDE_CODE):
-    """Every PENDING constant evaluate needs, filled in memory only (interface 15)."""
+def filled(harness=rt.CLAUDE_CODE, mod=None):
+    """Every PENDING constant evaluate needs, filled in memory only (interface 15), on preflight or a witness copy."""
+    mod = pf if mod is None else mod
     with mock.patch.object(rt, "INSPECT_STATUS", "confirmed-in-test"), \
-            mock.patch.object(pf, "VERSION_PATTERNS", {h: VERSION_OUT[h][1] for h in ARMS}), \
-            mock.patch.object(pf, "STUDY_PATHS", STUDY), \
-            mock.patch.object(pf, "LEAK_WORDS", LEAK_WORDS):
+            mock.patch.object(mod, "VERSION_PATTERNS", {h: VERSION_OUT[h][1] for h in ARMS}), \
+            mock.patch.object(mod, "STUDY_PATHS", STUDY), \
+            mock.patch.object(mod, "LEAK_WORDS", LEAK_WORDS):
         yield
 
 
@@ -237,7 +247,7 @@ class World:
 
     def evaluate(self, raw=None, **kw):
         args = dict(spec=self.spec, lock=self.lock, sidecar_expect=self.sidecar_expect, harness=self.harness,
-                    hosts=HOSTS)
+                    hosts=HOSTS, evidence_dir=self.ev)
         args.update(kw)
         return pf.evaluate(self.raw() if raw is None else raw, **args)
 
@@ -329,6 +339,9 @@ BREAKS = {
         ("mount-listed", edit_json("listing", lambda d: d.update({"/srv/ev": "listed"}))),
         ("host-listed", lambda raw, w: edit_json("listing", lambda d: d.update({w.ev: "listed"}))(raw, w)),
         ("one-path", edit_json("listing", lambda d: d.pop("/srv/ev"))),
+        # Lane w6a: the listing tried another host folder than the evidence folder preflight judges.
+        ("other-folder", lambda raw, w: edit_json("listing", lambda d: (d.pop(w.ev), d.update(
+            {"/srv/w9/ev": "FileNotFoundError"})))(raw, w)),
     ],
     "watcher-invisible": [
         ("unreadable-row", edit_json("processes", lambda d: d.append({"pid": 7, "unreadable": "PermissionError"}))),
@@ -362,6 +375,10 @@ BREAKS = {
             "sidecar-inspect", lambda d: d[0]["HostConfig"].update(SecurityOpt=[]))(raw, w))),
         ("both-ev-elsewhere", lambda raw, w: (w.sidecar_expect["mounts"][1].update(destination="/srv/x"), edit_json(
             "sidecar-inspect", lambda d: d[0]["Mounts"][1].update(Destination="/srv/x"))(raw, w))),
+        # Lane w6a (CP2-preflight-3): both agree on another evidence source than the folder preflight reads.
+        ("both-ev-source-elsewhere", lambda raw, w: (w.sidecar_expect["mounts"][1].update(source="/srv/w9/ev"),
+                                                     edit_json("sidecar-inspect", lambda d: d[0]["Mounts"][1].update(
+                                                         Source="/srv/w9/ev"))(raw, w))),
     ],
     "watcher-started": [
         ("no-health", edit_value("health", lambda v: v.clear())),
@@ -595,7 +612,7 @@ class TestEvaluate(MutantCase):
                 w.spec = rt.TakeSpec(**dict(w.spec.__dict__, run_tree=tree))
                 with filled():
                     rec = pf.evaluate(w.raw(), spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                      harness=w.harness, hosts=HOSTS)
+                                      harness=w.harness, hosts=HOSTS, evidence_dir=w.ev)
                 if "run-tree-path-neutral" not in failing(rec):
                     out.append(f"a run tree path carrying {word} passed")
             w = World()
@@ -937,6 +954,675 @@ class TestRecordAndPostflight(MutantCase):
             ("no-names", patched(pf, "CREDENTIAL_FILES", {h: () for h in rt.LOGIN_VARIABLE})),
             ("no-pattern", patched(pf, "CREDENTIAL_LIKE", re.compile(r"(?!x)x"))),
         ])
+
+
+# ======================================================================= lane w6a: the lock and evidence seam
+# CP2-preflight-1 to -5 (glitch-1b's rulings, 10 Oct 16:05 EDT). Fakes only: synthetic lock files in a temporary
+# stand-in for box/, a FakeRuntime, the World above. No container, no model, no network.
+
+FAKE_BASE = "registry.example/fake-base@sha256:" + "a" * 64
+PLACEHOLDER_NET = "e" * 64                      # the pre-launch placeholder network id (W4B2-3), never the launched one
+# Each harness's own take image, typed here (never read from preflight), so a swapped map in preflight shows.
+HARNESS_IMAGE = {rt.CLAUDE_CODE: "take-a", rt.CODEX: "take-o", rt.GEMINI: "take-g"}
+REFUSALS = (rt.Refused, rt.NotReady, il.LockError, il.NotReady, ValueError, TypeError, OSError)
+
+
+def committed_lock(image: str) -> dict:
+    """A committed lock, read through the real loader at its real path (read only, never edited)."""
+    return il.load(os.path.join(il.BOX_DIR, os.path.dirname(il.DOCKERFILES[image]), "image.lock"))
+
+
+def ready_lock(image: str, version: str = "9.8.7") -> dict:
+    """The committed lock with every PENDING value replaced by an obviously fake pinned value (test_image's way)."""
+    lock = copy.deepcopy(committed_lock(image))
+    lock["base"] = FAKE_BASE
+    lock["image_id"] = IMAGE
+    if lock["harness"] is not None:
+        lock["harness"]["version"] = version
+    if lock["python"] is not None:
+        lock["python"] = "3.12.99"
+    if "squid" in lock:
+        lock["squid"] = "6.99-1+fake1"
+    lock["pending"] = {}
+    return lock
+
+
+def flat(lock: dict) -> dict:
+    """The five values a ready nested lock projects to, by the schema paths typed here."""
+    return {"image_id": lock["image_id"], "harness.version": lock["harness"]["version"],
+            "users.agent.uid": lock["users"]["agent"]["uid"], "users.watcher.uid": lock["users"]["watcher"]["uid"],
+            "users.keepalive.uid": lock["users"]["keepalive"]["uid"]}
+
+
+class LockBox:
+    """A temporary stand-in for box/: each lock at its own relative path; image_lock.BOX_DIR is patched while active."""
+
+    def __init__(self):
+        self.root = tempfile.mkdtemp(prefix="w-")
+
+    def path(self, image: str) -> str:
+        return os.path.join(self.root, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
+
+    def put(self, image: str, doc=None, *, text=None, at=None) -> str:
+        p = at or self.path(image)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "w", encoding="utf-8") as fh:
+            fh.write(text if text is not None else json.dumps(doc, indent=1))
+        return p
+
+    def active(self):
+        return mock.patch.object(il, "BOX_DIR", self.root)
+
+
+def launched_for(w, *, spec="launched", **edits):
+    """The launch record run_take.launch returns, on the World's spec (its network is the one launch made)."""
+    rec = rt.Launched(config_dir=w.cfg, spec=w.spec if spec == "launched" else spec, network_id=ID["net"],
+                      proxy_id="b" * 64, sidecar_id=ID["side"], take_id=ID["take"], ok=True)
+    for k, v in edits.items():
+        setattr(rec, k, v)
+    return rec
+
+
+def sidecar_for(w):
+    never = lambda cid: ("never",)  # noqa: E731
+    return rt.SidecarLaunch(create_argv=("docker", "create"), start_argv_for=never, ctl_argv_for=never,
+                            rm_argv_for=never, expect=w.sidecar_expect)
+
+
+def compose(m, w, lock_path, *, launched=None, sidecar=None, evidence_dir=None, script=True):
+    """collect_and_evaluate of module `m` over World `w`, with spies on the probes, the evaluator, the health read, the
+    loader, the readiness gate and the launch lifecycle. Returns (("record", rec) | ("refused", exc), spies, fake).
+    A refusal of the REFUSALS types is an outcome; anything else raises (an error, never a pass or a kill)."""
+    fake = FakeRuntime(w.script() if script else ())
+    spies = {k: [] for k in ("probes", "evaluate", "health", "load", "ready", "lifecycle")}
+    real = {"probes": m.probes, "evaluate": m.evaluate, "health": m._read_health, "load": il.load,
+            "ready": il.require_ready}
+
+    def probes_spy(spec, **k):
+        spies["probes"].append(dict(k, spec=spec))
+        return real["probes"](spec, **k)
+
+    def evaluate_spy(raw, **k):
+        spies["evaluate"].append(k)
+        return real["evaluate"](raw, **k)
+
+    def health_spy(path):
+        spies["health"].append(path)
+        return real["health"](path)
+
+    def load_spy(path):
+        got = real["load"](path)
+        spies["load"].append((path, got))
+        return got
+
+    def ready_spy(lock):
+        spies["ready"].append(lock)
+        return real["ready"](lock)
+
+    def lifecycle(name):
+        def trip(*a, **k):
+            spies["lifecycle"].append(name)
+            raise AssertionError(f"preflight reached run_take.{name}")
+        return trip
+    launched = launched_for(w) if launched is None else launched
+    sidecar = sidecar_for(w) if sidecar is None else sidecar
+    with filled(mod=m), mock.patch.object(m, "probes", probes_spy), mock.patch.object(m, "evaluate", evaluate_spy), \
+            mock.patch.object(m, "_read_health", health_spy), mock.patch.object(il, "load", load_spy), \
+            mock.patch.object(il, "require_ready", ready_spy), \
+            mock.patch.object(os.path, "lexists", lambda p: False), \
+            mock.patch.object(rt, "launch", lifecycle("launch")), \
+            mock.patch.object(rt, "run_turn", lifecycle("run_turn")), \
+            mock.patch.object(rt, "teardown", lifecycle("teardown")), \
+            mock.patch.object(rt, "kill_agent", lifecycle("kill_agent")):
+        try:
+            out = ("record", m.collect_and_evaluate(
+                fake, launched=launched, sidecar=sidecar, lock_path=lock_path, harness=w.harness, hosts=HOSTS,
+                evidence_dir=w.ev if evidence_dir is None else evidence_dir, begin_reply=w.begin,
+                caller_env={"PATH": "/bin"}))
+        except REFUSALS as e:
+            out = ("refused", e)
+    return out, spies, fake
+
+
+def run_case(problems: list, tag: str, case: str, fn):
+    """One case of a check: its own assertions append `tag: ...` lines; an unexpected exception is an ERROR line,
+    which never counts as a witness's kill."""
+    try:
+        fn()
+    except Exception as e:  # recorded, never swallowed: the bound check is then not a clean kill
+        problems.append(f"ERROR {tag} {case}: {type(e).__name__}: {str(e)[:120]}")
+
+
+class LockSeam:
+    """The bound checks (each returns [] on preflight). `m` is box/preflight.py or a witness's in-memory copy."""
+
+    @staticmethod
+    def c1_loader(m) -> list:
+        """Criterion 1: for each take harness a valid, ready nested lock reaches evaluate as exactly the five values,
+        and the real image_lock.load and require_ready were called on it."""
+        out = []
+        for h in ARMS:
+            def case(h=h):
+                w = World(h)
+                box = LockBox()
+                lock = ready_lock(HARNESS_IMAGE[h], VERSION_OUT[h][2])
+                path = box.put(HARNESS_IMAGE[h], lock)
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path)
+                if [p for p, _ in spies["load"]] != [path]:
+                    calls = [p for p, _ in spies["load"]]
+                    out.append(f"C1-loader-spy {h}: image_lock.load calls {calls}, not [{path}]")
+                if len(spies["ready"]) != 1 or not spies["load"] or spies["ready"][0] is not spies["load"][0][1]:
+                    out.append(f"C1-ready-spy {h}: require_ready was not called once on load's own result")
+                if kind != "record":
+                    out.append(f"C1-values {h}: refused ({type(got).__name__}: {str(got)[:80]})")
+                    return
+                if [e["lock"] for e in spies["evaluate"]] != [flat(lock)]:
+                    out.append(f"C1-values {h}: evaluate received {[e['lock'] for e in spies['evaluate']]}")
+                if failing(got) or not got["ok"]:
+                    out.append(f"C1-values {h}: the record fails {failing(got)}")
+            run_case(out, "C1-loader", h, case)
+        return out
+
+    @staticmethod
+    def c1_flat(m) -> list:
+        """Criterion 1: a pre-flattened lock never reaches evaluate: not as a file, not as an argument."""
+        out = []
+
+        def case():
+            w = World()
+            box = LockBox()
+            path = box.put("take-a", flat(ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2])))
+            for label, arg in (("a flattened lock file", path), ("a flattened dict", w.lock)):
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, arg, script=False)
+                if kind != "refused" or fake.calls or spies["evaluate"]:
+                    out.append(f"C1-flat {label}: {kind}, {len(fake.calls)} runtime calls, "
+                               f"{len(spies['evaluate'])} evaluations")
+        run_case(out, "C1-flat", "flat", case)
+        return out
+
+    @staticmethod
+    def c1_relative(m) -> list:
+        """Criterion 1 (W6A-R1-1): a relative path to a VALID, ready take lock refuses (run_take.Refused) before
+        the loader and the runtime, so only the absolute-path rule can refuse it."""
+        out = []
+
+        def case():
+            w = World()
+            box = LockBox()
+            path = box.put("take-a", ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2]))
+            rel = os.path.relpath(path)
+            if os.path.isabs(rel) or not os.path.isfile(rel):
+                out.append(f"C1-relative: the fixture is not a readable relative path ({rel})")
+                return
+            with box.active():
+                (kind, got), spies, fake = compose(m, w, rel, script=False)
+            if kind != "refused" or not isinstance(got, rt.Refused) or fake.calls or spies["load"] \
+                    or spies["evaluate"]:
+                out.append(f"C1-relative: {kind} ({type(got).__name__}), {len(spies['load'])} loads, "
+                           f"{len(fake.calls)} runtime calls")
+        run_case(out, "C1-relative", "relative", case)
+        return out
+
+    @staticmethod
+    def c2_closed(m) -> list:
+        """Criterion 2: the closed schema, duplicate keys and the neighbouring Dockerfile refuse before any runtime
+        call, through the composition."""
+        out = []
+        dup = json.dumps(ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2]), indent=1).replace(
+            '"schema": 1,', '"schema": 1,\n "schema": 1,', 1)
+        cases = {
+            "missing key": (lambda lk: lk.pop("python"), il.LockError, None),
+            "unknown key": (lambda lk: lk.update(extra=1), il.LockError, None),
+            "wrong package": (lambda lk: lk["harness"].update(package="@openai/codex"), il.LockError, None),
+            "wrong image": (lambda lk: lk.update(image="take-o"), il.LockError, None),
+            "duplicate key": (None, il.LockError, dup),
+            "wrong neighbouring Dockerfile": ("codex", il.LockError, None),
+            "malformed JSON": (None, ValueError, '{"schema": 1,'),
+        }
+        for label, (edit, err, text) in cases.items():
+            def case(label=label, edit=edit, err=err, text=text):
+                w = World()
+                box = LockBox()
+                lock = ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2])
+                if callable(edit):
+                    edit(lock)
+                at = box.path("take-o") if edit == "codex" else None
+                path = box.put("take-a", lock, text=text, at=at)
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path, script=False)
+                if kind != "refused" or not isinstance(got, err) or fake.calls or spies["probes"] \
+                        or spies["evaluate"]:
+                    out.append(f"C2-closed {label}: {kind} ({type(got).__name__}), {len(fake.calls)} runtime calls")
+            run_case(out, "C2-closed", label, case)
+        return out
+
+    @staticmethod
+    def c2_pending(m) -> list:
+        """Criterion 2: every still-PENDING field refuses (image_lock.NotReady) before any runtime call."""
+        out = []
+        for field in ("base", "harness.version", "python", "image_id"):
+            def case(field=field):
+                w = World()
+                box = LockBox()
+                lock = ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2])
+                head, _, tail = field.partition(".")
+                if tail:
+                    lock[head][tail] = il.PENDING
+                else:
+                    lock[head] = il.PENDING
+                lock["pending"] = {field: "a synthetic reason (lane w6a's test)"}
+                path = box.put("take-a", lock)
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path, script=False)
+                if kind != "refused" or not isinstance(got, il.NotReady) or fake.calls or spies["evaluate"]:
+                    out.append(f"C2-pending {field}: {kind} ({type(got).__name__}), not NotReady before the runtime "
+                               f"({len(fake.calls)} runtime calls, {len(spies['evaluate'])} evaluations)")
+            run_case(out, "C2-pending", field, case)
+        return out
+
+    @staticmethod
+    def c3_cross(m) -> list:
+        """Criterion 3: a valid, ready lock of another take image refuses; each intended pair is accepted."""
+        out = []
+        pairs = [(rt.CLAUDE_CODE, "take-o", False), (rt.CODEX, "take-a", False), (rt.GEMINI, "take-o", False)]
+        pairs += [(h, HARNESS_IMAGE[h], True) for h in ARMS]
+        for h, image, accepted in pairs:
+            def case(h=h, image=image, accepted=accepted):
+                w = World(h)
+                box = LockBox()
+                path = box.put(image, ready_lock(image, VERSION_OUT[h][2]))
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path, script=accepted)
+                if accepted and (kind != "record" or not got["ok"]):
+                    out.append(f"C3-cross {image} for {h}: the intended pair was not accepted ({kind})")
+                if not accepted and (kind != "refused" or not isinstance(got, rt.Refused) or fake.calls):
+                    out.append(f"C3-cross {image} for {h}: {kind} ({type(got).__name__}), {len(fake.calls)} calls")
+            run_case(out, "C3-cross", f"{image}/{h}", case)
+        return out
+
+    @staticmethod
+    def c3_non_take(m) -> list:
+        """Criterion 3: the sidecar's and the egress proxy's locks never serve a take."""
+        out = []
+        for h in ARMS:
+            for image in (il.SIDECAR_IMAGE, il.EGRESS_IMAGE):
+                def case(h=h, image=image):
+                    w = World(h)
+                    box = LockBox()
+                    path = box.put(image, ready_lock(image))
+                    with box.active():
+                        (kind, got), spies, fake = compose(m, w, path, script=False)
+                    if kind != "refused" or not isinstance(got, rt.Refused) or fake.calls:
+                        out.append(f"C3-non-take {image} for {h}: {kind} ({type(got).__name__})")
+                run_case(out, "C3-non-take", f"{image}/{h}", case)
+        return out
+
+    @staticmethod
+    def c4_mount(m) -> list:
+        """Criterion 4: the sidecar's evidence mount source must be the folder preflight reads. Healthy data at A; a
+        mount at B in either or both places, or probes at A judged as B, fails, and the record is not ok."""
+        out = []
+
+        def at_b(w, raw, where):
+            b = tempfile.mkdtemp(prefix="w-")
+            if where in ("both", "expect"):
+                w.sidecar_expect["mounts"][1]["source"] = b
+            if where in ("both", "inspect"):
+                doc = json.loads(raw["sidecar-inspect"]["stdout"])
+                doc[0]["Mounts"][1]["Source"] = b
+                set_out(raw, "sidecar-inspect", doc)
+            return b
+
+        def case_baseline():
+            w = World()
+            with filled(mod=m):
+                rec = m.evaluate(w.raw(), spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
+                                 harness=w.harness, hosts=HOSTS, evidence_dir=w.ev)
+            if failing(rec) or not rec["ok"]:
+                out.append(f"C4-mount baseline: a world at A fails {failing(rec)}")
+        run_case(out, "C4-mount", "baseline", case_baseline)
+        for where in ("both", "expect", "inspect"):
+            def case(where=where):
+                w = World()
+                raw = w.raw()
+                at_b(w, raw, where)
+                with filled(mod=m):
+                    rec = m.evaluate(raw, spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
+                                     harness=w.harness, hosts=HOSTS, evidence_dir=w.ev)
+                if "sidecar-isolated" not in failing(rec) or rec["ok"]:
+                    out.append(f"C4-mount {where} at B, probes at A: sidecar-isolated passed ({failing(rec)})")
+            run_case(out, "C4-mount", where, case)
+
+        def case_judged_b():
+            w = World()
+            raw = w.raw()
+            b = at_b(w, raw, "both")
+            with filled(mod=m):
+                rec = m.evaluate(raw, spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
+                                 harness=w.harness, hosts=HOSTS, evidence_dir=b)
+            if "evidence-out-of-reach" not in failing(rec) or rec["ok"]:
+                out.append(f"C4-probes mount at B, probes at A, judged as B: passed ({failing(rec)})")
+        run_case(out, "C4-probes", "judged-b", case_judged_b)
+        return out
+
+    @staticmethod
+    def c4_arg(m) -> list:
+        """Criterion 4: evidence_dir is required and absolute; omitting it is never a compatibility bypass."""
+        out = []
+        w = World()
+        raw = w.raw()
+        base = dict(spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect, harness=w.harness, hosts=HOSTS)
+        for label, value in (("None", None), ("empty", ""), ("relative", "rec/ev"), ("dotted", w.ev + "/../ev"),
+                             ("root", "/")):
+            def case(label=label, value=value):
+                with filled(mod=m):
+                    try:
+                        rec = m.evaluate(raw, evidence_dir=value, **base)
+                    except rt.Refused:
+                        return
+                out.append(f"C4-arg {label}: accepted (ok={rec['ok']})")
+            run_case(out, "C4-arg", label, case)
+
+        def omitted():
+            with filled(mod=m):
+                try:
+                    m.evaluate(raw, **base)
+                except TypeError:
+                    return
+            out.append("C4-arg omitted: evaluate ran without evidence_dir")
+        run_case(out, "C4-arg", "omitted", omitted)
+        return out
+
+    @staticmethod
+    def c5_positive(m) -> list:
+        """Criterion 5: expectation, inspect and probes all at A pass every check, and A itself (not a copy of the
+        expectation) reaches the probes, the health read and evaluate."""
+        out = []
+        for h in ARMS:
+            def case(h=h):
+                w = World(h)
+                box = LockBox()
+                path = box.put(HARNESS_IMAGE[h], ready_lock(HARNESS_IMAGE[h], VERSION_OUT[h][2]))
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path)
+                if [p.get("evidence_dir") for p in spies["probes"]] != [w.ev]:
+                    got_dirs = [p.get("evidence_dir") for p in spies["probes"]]
+                    out.append(f"C5-probes-path {h}: probes received {got_dirs}")
+                if [e.get("evidence_dir") for e in spies["evaluate"]] != [w.ev]:
+                    out.append(f"C5-evaluate-path {h}: evaluate received "
+                               f"{[e.get('evidence_dir') for e in spies['evaluate']]}")
+                if spies["health"] != [os.path.join(w.ev, pf.HEALTH)]:
+                    out.append(f"C5-health-path {h}: the health read was {spies['health']}")
+                if [e.get("sidecar_expect") is w.sidecar_expect for e in spies["evaluate"]] != [True]:
+                    out.append(f"C5-expect {h}: evaluate did not receive the sidecar's own expectation")
+                if kind != "record" or failing(got) or not got["ok"]:
+                    out.append(f"C5-record {h}: {kind}, failing {failing(got) if kind == 'record' else got}")
+                if fake.unexpected or fake.script:
+                    out.append(f"C5-record {h}: the runtime saw {len(fake.unexpected)} unexpected calls, "
+                               f"{len(fake.script)} unasked")
+            run_case(out, "C5", h, case)
+        return out
+
+    @staticmethod
+    def c6_launched(m) -> list:
+        """Criterion 6: Launched.spec (the network launch made) is the spec probed and evaluated, never the caller's
+        pre-launch placeholder; the helper never launches, runs a turn or tears down."""
+        out = []
+
+        def case():
+            w = World()
+            self_check = rt.TakeSpec(**dict(w.spec.__dict__, network=PLACEHOLDER_NET))
+            if self_check.network == w.spec.network:
+                out.append("C6-launched-spec: the placeholder is the launched network (the test bites nothing)")
+            box = LockBox()
+            path = box.put("take-a", ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2]))
+            with box.active():
+                (kind, got), spies, fake = compose(m, w, path)
+            nets = [e["spec"].network for e in spies["evaluate"]] + [p["spec"].network for p in spies["probes"]]
+            if nets != [ID["net"], ID["net"]]:
+                out.append(f"C6-launched-spec: the probed/evaluated networks are {nets}, not the launched {ID['net']}")
+            if kind != "record" or failing(got) or not got["ok"]:
+                out.append(f"C6-launched-spec: {kind}, failing {failing(got) if kind == 'record' else got}")
+            if spies["lifecycle"]:
+                out.append(f"C6-lifecycle: reached {spies['lifecycle']}")
+        run_case(out, "C6-launched-spec", "launched", case)
+        return out
+
+    @staticmethod
+    def c6_absent(m) -> list:
+        """Criterion 6: a launch record without spec or ids, not ok, or with its spec off its own network, refuses
+        with no runtime call and no probe built."""
+        out = []
+        w0 = World()
+        cases = {"no spec": dict(spec=None), "no take id": dict(take_id=None), "no sidecar id": dict(sidecar_id=None),
+                 "not ok": dict(ok=False), "spec off its network": dict(network_id=PLACEHOLDER_NET),
+                 "short take id": dict(take_id="d" * 12)}
+        for label, edits in cases.items():
+            def case(label=label, edits=edits):
+                w = World()
+                box = LockBox()
+                path = box.put("take-a", ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2]))
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path, launched=launched_for(w, **edits), script=False)
+                if kind != "refused" or not isinstance(got, rt.Refused) or fake.calls or spies["probes"] \
+                        or spies["evaluate"]:
+                    out.append(f"C6-absent {label}: {kind} ({type(got).__name__}), {len(fake.calls)} runtime calls")
+            run_case(out, "C6-absent", label, case)
+
+        def not_a_record():
+            box = LockBox()
+            path = box.put("take-a", ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2]))
+            with box.active():
+                (kind, got), spies, fake = compose(m, w0, path, launched=launched_for(w0).to_record(), script=False)
+            if kind != "refused" or not isinstance(got, rt.Refused) or fake.calls:
+                out.append(f"C6-absent a dict for the record: {kind} ({type(got).__name__})")
+        run_case(out, "C6-absent", "dict", not_a_record)
+        return out
+
+
+class TestLockSeam(unittest.TestCase):
+    """Criteria 1-6, each green on box/preflight.py (the witnesses below turn each red)."""
+
+    def test_c1_loader_really_used(self):
+        self.assertEqual(LockSeam.c1_loader(pf), [])
+
+    def test_c1_no_flattened_lock(self):
+        self.assertEqual(LockSeam.c1_flat(pf), [])
+
+    def test_c1_relative_path_to_a_valid_lock_refused(self):
+        self.assertEqual(LockSeam.c1_relative(pf), [])
+
+    def test_c2_closed_validation_survives(self):
+        self.assertEqual(LockSeam.c2_closed(pf), [])
+
+    def test_c2_pending_refused_before_the_runtime(self):
+        self.assertEqual(LockSeam.c2_pending(pf), [])
+
+    def test_c3_harness_image_binding(self):
+        self.assertEqual(LockSeam.c3_cross(pf), [])
+
+    def test_c3_no_sidecar_or_egress_lock_for_a_take(self):
+        self.assertEqual(LockSeam.c3_non_take(pf), [])
+
+    def test_c4_evidence_identity(self):
+        self.assertEqual(LockSeam.c4_mount(pf), [])
+
+    def test_c4_evidence_dir_required(self):
+        self.assertEqual(LockSeam.c4_arg(pf), [])
+
+    def test_c5_positive_composition(self):
+        self.assertEqual(LockSeam.c5_positive(pf), [])
+
+    def test_c6_launched_spec(self):
+        self.assertEqual(LockSeam.c6_launched(pf), [])
+
+    def test_c6_incomplete_launch_record(self):
+        self.assertEqual(LockSeam.c6_absent(pf), [])
+
+    def test_the_composition_names_no_lifecycle_or_adapter(self):
+        """The helper's own source calls no launch, turn, teardown, subprocess or adapter (read by ast)."""
+        src = open(pf.__file__, encoding="utf-8").read()
+        fn = [n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.FunctionDef)
+              and n.name in ("collect_and_evaluate", "load_take_lock", "_launched_parts")]
+        self.assertEqual(sorted(f.name for f in fn), ["_launched_parts", "collect_and_evaluate", "load_take_lock"])
+        names = {n.attr if isinstance(n, ast.Attribute) else n.id for f in fn for n in ast.walk(f)
+                 if isinstance(n, (ast.Attribute, ast.Name))}
+        self.assertEqual(names & {"launch", "run_turn", "teardown", "kill_agent", "subprocess", "agent_adapter",
+                                  "exec_argv", "DockerRuntime"}, set())
+
+
+# ------------------------------------------------------------------------------------ criterion 7: nothing dropped
+# Every test of this module at the base 89b54db4 (Ran 20, OK), by id: each must still exist and still run.
+BASE_TESTS = (
+    "TestEvaluate.test_all_green_every_arm", "TestEvaluate.test_each_check_catches_its_breaks",
+    "TestEvaluate.test_each_check_mutant_red", "TestEvaluate.test_missing_probe_fails",
+    "TestEvaluate.test_run_records_failures", "TestEvaluate.test_run_tree_path_neutral",
+    "TestExpectedInspect.test_bound_to_create", "TestExpectedInspect.test_mismatch_refuses_pending_and_wrong_keys",
+    "TestHostIndependence.test_host_temp_root_is_never_read",
+    "TestPending.test_no_parameter_overrides_a_pending_constant", "TestPending.test_pending",
+    "TestProcessGuard.test_guard_is_armed", "TestProcessGuard.test_module_is_this_rounds",
+    "TestProcessGuard.test_the_guard_starts_no_patch_at_import", "TestProcessesProgram.test_literal_refused_names",
+    "TestProcessesProgram.test_processes_program", "TestPrograms.test_programs",
+    "TestRecordAndPostflight.test_postflight", "TestRecordAndPostflight.test_write_beside_evidence",
+    "TestShape.test_shape",
+)
+# The breaks per check at the base: each check keeps at least these (a fold may add, never drop).
+BASE_BREAKS = {"agent-non-root": 9, "image-matches-lock": 3, "harness-version-matches-lock": 4,
+               "take-inspect-matches-spec": 20, "limits-apply": 5, "evidence-out-of-reach": 3,
+               "watcher-invisible": 6, "sidecar-isolated": 15, "watcher-started": 2, "watcher-capability": 5,
+               "consequential-paths-readable": 4, "no-container-socket": 4, "egress-allowed-host": 2,
+               "egress-other-host-refused": 2, "egress-direct-refused": 1, "names-do-not-resolve": 5,
+               "study-folders-absent": 2, "run-tree-path-neutral": 0}
+
+
+class TestNothingDropped(unittest.TestCase):
+    def test_every_base_test_still_runs(self):
+        loaded = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
+
+        def ids(suite):
+            for t in suite:
+                if isinstance(t, unittest.TestSuite):
+                    yield from ids(t)
+                else:
+                    yield t
+        tests = {f"{type(t).__name__}.{t._testMethodName}": t for t in ids(loaded)}
+        self.assertEqual([b for b in BASE_TESTS if b not in tests], [])
+        flagged = [k for k, t in tests.items()
+                   if getattr(type(t), "__unittest_skip__", False)
+                   or getattr(getattr(t, t._testMethodName), "__unittest_skip__", False)
+                   or getattr(getattr(t, t._testMethodName), "__unittest_expecting_failure__", False)]
+        self.assertEqual(flagged, [])
+
+    def test_every_base_break_still_runs(self):
+        self.assertEqual(list(BREAKS), list(BASE_BREAKS))
+        self.assertEqual([c for c, n in BASE_BREAKS.items() if len(BREAKS[c]) < n], [])
+        self.assertEqual(pf.PREFLIGHT_CHECKS, tuple(BASE_BREAKS))
+
+
+# --------------------------------------------------------------------------------- criterion 8: the six witnesses
+class WitnessNotPerformed(AssertionError):
+    pass
+
+
+def witness_module(edits: tuple, extra: dict | None = None) -> types.ModuleType:
+    """box/preflight.py with `edits` applied, compiled in memory as its own module (never written to disk). Every
+    anchor must occur exactly once, or the witness was not performed."""
+    with open(pf.__file__, encoding="utf-8") as fh:
+        src = fh.read()
+    for old, new in edits:
+        if src.count(old) != 1:
+            raise WitnessNotPerformed(f"the anchor occurs {src.count(old)} times: {old[:60]!r}")
+        src = src.replace(old, new)
+    name = pf.__name__ + "_witness"
+    mod = types.ModuleType(name)
+    mod.__file__ = pf.__file__
+    mod.__dict__.update(extra or {})
+    sys.modules[name] = mod
+    try:
+        exec(compile(src, pf.__file__ + " (witness)", "exec"), mod.__dict__)
+    finally:
+        sys.modules.pop(name, None)
+    return mod
+
+
+PRE_LAUNCH_SPEC = rt.TakeSpec(image=IMAGE, run_tree=os.path.join(World.FAKE_ROOT, "tree"),
+                              config_dir=os.path.join(World.FAKE_ROOT, "cfg"), network=PLACEHOLDER_NET,
+                              memory_reservation=512 * 2 ** 20, memory=3 * 512 * 2 ** 20, cpus="2", pids_limit=256)
+
+# name: (edits to box/preflight.py, the bound check, the line prefix that is its own assertion, injected names)
+WITNESSES = {
+    "omit-load": ((("    lock = image_lock.load(lock_path)\n",
+                    "    with open(lock_path, encoding=\"utf-8\") as fh:\n        lock = json.loads(fh.read())\n"),),
+                  LockSeam.c1_loader, "C1-loader-spy", None),
+    "omit-absolute-path-rule": ((("    lock_path = run_take._abs_path(lock_path, \"lock_path\")\n", ""),),
+                                LockSeam.c1_relative, "C1-relative", None),
+    "omit-readiness": ((("    image_lock.require_ready(lock)\n", ""),), LockSeam.c2_pending, "C2-pending", None),
+    "omit-harness-image-binding": ((("    if lock[\"image\"] != TAKE_IMAGE[harness]:\n", "    if False:\n"),),
+                                   LockSeam.c3_cross, "C3-cross", None),
+    "drop-mount-source-comparison": ((("    _need(not _evidence_source_problems(exp, evidence_dir), ",
+                                       "    _need(True or not _evidence_source_problems(exp, evidence_dir), "),),
+                                     LockSeam.c4_mount, "C4-mount", None),
+    "probes-at-another-evidence-path": ((("evidence_dir=evidence_dir)\n    raw = run(",
+                                          "evidence_dir=os.path.dirname(evidence_dir))\n    raw = run("),),
+                                        LockSeam.c5_positive, "C5-probes-path", None),
+    "pre-launch-spec": ((("    spec, take_id, sidecar_id = _launched_parts(launched)\n",
+                          "    _, take_id, sidecar_id = _launched_parts(launched)\n    spec = PRE_LAUNCH_SPEC\n"),),
+                        LockSeam.c6_launched, "C6-launched-spec", {"PRE_LAUNCH_SPEC": PRE_LAUNCH_SPEC}),
+}
+WITNESS_LOG: list = []
+
+
+class TestWitnesses(unittest.TestCase):
+    """Criterion 8: each witness is killed only by its bound check's own assertion (a line with its prefix), with the
+    bound check green on the real module first; an ERROR line, a raise, an unperformed edit or a skip is never a
+    kill. Every other line the bound check prints under the witness is listed as collateral, never credited."""
+
+    def kill(self, name):
+        edits, check, prefix, extra = WITNESSES[name]
+        self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+        mod = witness_module(edits, extra)
+        got = check(mod)
+        errors = [p for p in got if p.startswith("ERROR")]
+        own = [p for p in got if p.startswith(prefix + " ") or p.startswith(prefix + ":")]
+        collateral = [p for p in got if p not in own and p not in errors]
+        line = (f"WITNESS {name}: {'red' if own and not errors else 'NOT KILLED'} by {prefix} ({len(own)} own, "
+                f"{len(collateral)} collateral, {len(errors)} errors)")
+        print(f"\n{line}", end=" ")
+        WITNESS_LOG.append(line)
+        self.assertEqual(errors, [], f"{name}: the bound check errored under the witness")
+        self.assertTrue(own, f"{name}: survived (no {prefix} line): {got}")
+
+    def test_witness_omit_load(self):
+        self.kill("omit-load")
+
+    def test_witness_omit_absolute_path_rule(self):
+        self.kill("omit-absolute-path-rule")
+
+    def test_witness_omit_readiness(self):
+        self.kill("omit-readiness")
+
+    def test_witness_omit_harness_image_binding(self):
+        self.kill("omit-harness-image-binding")
+
+    def test_witness_drop_mount_source_comparison(self):
+        self.kill("drop-mount-source-comparison")
+
+    def test_witness_probes_at_another_evidence_path(self):
+        self.kill("probes-at-another-evidence-path")
+
+    def test_witness_pre_launch_spec(self):
+        self.kill("pre-launch-spec")
+
+    def test_the_witnesses_are_named(self):
+        """The readiness note's six, plus W6A-R1-1's absolute-path witness; each bound to its own check."""
+        self.assertEqual(sorted(WITNESSES), sorted(["omit-load", "omit-readiness", "omit-harness-image-binding",
+                                                    "drop-mount-source-comparison",
+                                                    "probes-at-another-evidence-path", "pre-launch-spec",
+                                                    "omit-absolute-path-rule"]))
+        bound = {n: w[1].__name__ for n, w in WITNESSES.items()}
+        self.assertEqual(len(set(bound.values())), 7, bound)
 
 
 # Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).
