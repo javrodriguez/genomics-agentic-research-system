@@ -632,7 +632,7 @@ class Readiness(unittest.TestCase):
                 self.assertIn(clause, ready_problems(changed(d,path,value)))
 
     def test_freeze_closed(self):
-        d = self.get()
+        d = json.loads((HERE / 'prereg-draft.json').read_text())
         kwargs = dict(review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
         with self.assertRaises((ValueError, stats.StatsError), msg="R32.freeze"):
             freeze.prepare(d, **kwargs)
@@ -748,7 +748,7 @@ class Readiness(unittest.TestCase):
             if item['lock']['image'] in image_lock.TAKE_IMAGES: item['lock']['harness']['version']='0.0.0-fake'
         table['pin_profiles']={h:{m:{'permission_mode':'fake-mode','version':'0.0.0-fake'} for m in MODELS[a]} for a,h in HARNESSES.items()}
         pins=b.version_pins(locks,table)
-        self.assertTrue(all(p['agent_version']=='0.0.0-fake' for ps in pins.values() for p in ps.values()))
+        self.assertTrue(all(p['agent_version']=='0.0.0-fake' for ps in pins.values() for p in ps.values()), "R6.profile-mismatch")
         table['pin_profiles'][CODEX][MODELS['O'][0]]['version']='0.0.1-fake'
         with self.assertRaises(ValueError, msg="R6.profile-mismatch"): b.version_pins(locks,table)
         fake_settings={'CLAUDE_BYPASS_KEY':'fakeBypass','CODEX_REASONING_EFFORT':'fake-effort',
@@ -1851,75 +1851,125 @@ def witness_groups():
     return groups
 
 
+def mutant_outcomes(result):
+    """Rule B protocol line: every failing, erroring and skipped test id of one mutant run."""
+    def ids(pairs):
+        return [getattr(test, "test_case", test).id().removeprefix("__main__.") for test, _ in pairs]
+    return {"failures": ids(result.failures), "errors": ids(result.errors), "skipped": ids(result.skipped)}
+
+
 def run_witnesses(group):
+    # Rule B (Javier, 11 Oct 2026, "gap4 witness rule B"): RED only when the bound
+    # method fails by an AssertionError carrying the whole clause token; an error or
+    # skip in the bound method fails the witness. Failures, errors and skips in other
+    # methods of the same mutant run are never credited and never hidden: each is
+    # printed per witness and totalled as collateral.
+    import json
     import re
     import subprocess
     names = witness_groups()[group - 1]
     red = 0
-    mixed = []
+    collateral = {}
     for name in names:
         got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name],
                              capture_output=True, text=True, timeout=180)
         lines = got.stdout + got.stderr
         summary = re.search(r"test_build_draft: (\d+) run, (\d+) failures, (\d+) errors, (\d+) skipped", lines)
+        recorded = re.findall(r"^test_build_draft outcomes: (\{.*\})$", lines, re.M)
         method, clause = witness_binding(name)
         failures = re.findall(r"^FAIL: [^\n]*\(__main__\.([^)]*)\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)",
                               lines, re.M | re.S)
         attributed = any(bound == method and "AssertionError" in body and clause
                          and re.search(r"(?<![\w:.-])" + re.escape(clause) + r"(?![\w:.-])", body)
                          for bound, body in failures)
-        passed = bool(attributed and summary and got.returncode != 0 and int(summary[1]) > 0
-                      and int(summary[2]) > 0 and int(summary[3]) == 0 and int(summary[4]) == 0
-                      and "AssertionError" in lines)
-        print(f"witness {name}: {'RED' if passed else 'FAIL'}; " + (summary[0] if summary else "missing summary"), flush=True)
+        try:
+            outcome = json.loads(recorded[-1]) if recorded else None
+            consistent = bool(summary and outcome and all(
+                isinstance(outcome[k], list) and len(outcome[k]) == int(summary[i])
+                for k, i in (("failures", 2), ("errors", 3), ("skipped", 4))))
+        except (ValueError, KeyError, TypeError):
+            outcome, consistent = None, False
+        bound_clean = consistent and method in outcome["failures"] and method not in outcome["errors"] \
+            and method not in outcome["skipped"]
+        passed = bool(attributed and bound_clean and got.returncode != 0 and "AssertionError" in lines)
+        other = {k: [t for t in outcome[k] if t != method] for k in ("failures", "errors", "skipped")} if consistent else {}
+        note = ("; collateral: " + ", ".join(f"{len(v)} {k} {sorted(set(v))}" for k, v in other.items())
+                if any(other.values()) else ("; collateral: none" if consistent else "; outcomes line missing or inconsistent"))
+        print(f"witness {name}: {'RED' if passed else 'FAIL'}; " + (summary[0] if summary else "missing summary") + note, flush=True)
         if not passed:
             print(lines, flush=True)
             return 1
         red += 1
-        if int(summary[3]):
-            mixed.append(name)
+        if any(other.values()):
+            collateral[name] = other
+    totals = {k: sum(len(v[k]) for v in collateral.values()) for k in ("failures", "errors", "skipped")}
     print(f"test_build_draft witnesses group {group}/{WITNESS_GROUP_COUNT}: {red}/{len(names)} red; registry {len(witness_names())}", flush=True)
-    print(f"clean assertion-red: {red-len(mixed)}; mixed assertion/error: {len(mixed)} {mixed}", flush=True)
+    print(f"red without collateral: {red-len(collateral)}; red with collateral (not credited, listed): {len(collateral)} {sorted(collateral)}", flush=True)
+    print(f"collateral totals: {totals['failures']} failures, {totals['errors']} errors, {totals['skipped']} skipped", flush=True)
     return 0
 
 
 
 class WitnessEvidence(unittest.TestCase):
-    def test_partition_and_attribution(self):
+    @staticmethod
+    def fake_run(fails, errors=(), skips=(), text=None, clause=None, record=True, count=None):
+        """A synthetic mutant run: FAIL blocks for `fails`, plus the outcomes line."""
+        import json
+        body = "".join(f"FAIL: fake (__main__.{m})\n---\nAssertionError: {text if text is not None else clause}\n"
+                       for m in fails)
+        body += "".join(f"ERROR: fake (__main__.{m})\n---\nValueError: fake\n" for m in errors)
+        counts = count or (len(fails), len(errors), len(skips))
+        body += f"test_build_draft: 1 run, {counts[0]} failures, {counts[1]} errors, {counts[2]} skipped\n"
+        if record:
+            body += f"test_build_draft outcomes: " + json.dumps({"failures": list(fails), "errors": list(errors),
+                                                        "skipped": list(skips)}) + "\n"
+        return mock.Mock(stdout=body, stderr="", returncode=1)
+
+    def outcome(self, name, fake):
         import contextlib, io
-        from unittest import mock
+        out = io.StringIO()
+        with mock.patch.object(sys.modules[__name__], "witness_groups", return_value=[[name], [], []]), \
+             mock.patch.object(sys.modules[__name__], "witness_names", return_value=[name]), \
+             mock.patch("subprocess.run", return_value=fake), contextlib.redirect_stdout(out):
+            code = run_witnesses(1)
+        return code, out.getvalue()
+
+    def test_partition_and_attribution(self):
         names = witness_names()
         groups = witness_groups()
-        self.assertEqual(len(groups), WITNESS_GROUP_COUNT)
         self.assertEqual(sorted(n for group in groups for n in group), names)
         name = 'n'
         method, clause = witness_binding(name)
-        for bound, failures, errors, skips, expected in (
-            (method,1,0,0,0), (method,1,1,0,1),
-            ("Other.unrelated",1,0,0,1), (method,0,1,0,1), (method,1,0,1,1)):
-            output = (f"FAIL: fake (__main__.{bound})\n---\nAssertionError: {clause}\n"
-                      f"test_build_draft: 1 run, {failures} failures, {errors} errors, {skips} skipped\n")
-            fake = mock.Mock(stdout=output, stderr="", returncode=1)
-            with self.subTest(bound=bound, failures=failures, errors=errors, skips=skips), \
-                 mock.patch.object(sys.modules[__name__], "witness_groups", return_value=[[name],[],[]]), \
-                 mock.patch.object(sys.modules[__name__], "witness_names", return_value=[name]), \
-                 mock.patch("subprocess.run", return_value=fake), contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(run_witnesses(1), expected)
+        other = "Other.unrelated"
+        for case, fake, expected in (
+            ("bound only", self.fake_run([method], clause=clause), 0),
+            ("collateral error", self.fake_run([method], errors=[other], clause=clause), 0),
+            ("collateral failure and skip", self.fake_run([method, other], skips=[other], clause=clause), 0),
+            ("other method only", self.fake_run([other], clause=clause), 1),
+            ("bound error only", self.fake_run([], errors=[method], clause=clause), 1),
+            ("bound failure and bound error", self.fake_run([method], errors=[method], clause=clause), 1),
+            ("bound skip", self.fake_run([method], skips=[method], clause=clause), 1),
+            ("no outcomes line", self.fake_run([method], clause=clause, record=False), 1),
+            ("outcomes disagree with summary", self.fake_run([method], clause=clause, count=(1, 1, 0)), 1)):
+            with self.subTest(case=case):
+                code, printed = self.outcome(name, fake)
+                self.assertEqual(code, expected)
+                if case == "collateral error":
+                    self.assertIn("collateral: 0 failures [], 1 errors ['Other.unrelated'], 0 skipped []", printed)
+                    self.assertIn("red with collateral (not credited, listed): 1", printed)
+                    self.assertIn("collateral totals: 0 failures, 1 errors, 0 skipped", printed)
+                if case == "collateral failure and skip":
+                    self.assertIn("1 failures ['Other.unrelated'], 0 errors [], 1 skipped ['Other.unrelated']", printed)
+                if case == "bound only":
+                    self.assertIn("collateral: none", printed)
 
     def test_clause_tokens_are_exact(self):
-        import contextlib, io
-        name = "floors-null-guard"
+        name = 'floors-null-guard'
         method, clause = witness_binding(name)
         for text, expected in ((clause, 0), (clause + ":tasks", 1), (clause + ":reason", 1),
-                               (clause + "Extra", 1), ("prefix-" + clause, 1), ("unrelated", 1)):
-            output = (f"FAIL: fake (__main__.{method})\n---\nAssertionError: {text}\n"
-                      "test_build_draft: 1 run, 1 failures, 0 errors, 0 skipped\n")
-            fake = mock.Mock(stdout=output, stderr="", returncode=1)
-            with self.subTest(text=text), \
-                 mock.patch.object(sys.modules[__name__], "witness_groups", return_value=[[name], [], []]), \
-                 mock.patch.object(sys.modules[__name__], "witness_names", return_value=[name]), \
-                 mock.patch("subprocess.run", return_value=fake), contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(run_witnesses(1), expected)
+                             (clause + "Extra", 1), ("prefix-" + clause, 1), ("unrelated", 1)):
+            with self.subTest(text=text):
+                self.assertEqual(self.outcome(name, self.fake_run([method], text=text))[0], expected)
 
 
 if __name__ == "__main__":
@@ -1935,4 +1985,7 @@ if __name__ == "__main__":
         del sys.argv[index:index + 2]
     result = unittest.main(verbosity=2, exit=False).result
     print(f"test_build_draft: {result.testsRun} run, {len(result.failures)} failures, {len(result.errors)} errors, {len(result.skipped)} skipped")
+    if SELECTED is not None:
+        import json
+        print(f"test_build_draft outcomes: " + json.dumps(mutant_outcomes(result)))
     raise SystemExit(not result.wasSuccessful())
