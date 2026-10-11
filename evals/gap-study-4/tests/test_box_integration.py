@@ -962,6 +962,33 @@ def b8_config(mod, p):
     return out
 
 
+@guarded("B9-restart")
+def b9_restart(mod, p):
+    """Ruling S6-gap4-2: a take whose container was removed but whose sidecar (or proxy) survived is committed with
+    every surviving recorded id, and a restart refuses while any of them is still listed, naming it."""
+    out = missing_api(mod, p, "TakeDriver", "TakeRepo")
+    if out:
+        return out
+    for kind in ("sidecar", "proxy"):
+        with scratch_repo() as root:
+            rig = Rig(mod, root, box=FakeBox(fail_rm=(kind,), fail_times=10))
+            b, got = run_batch(rig, [row(1), row(2)])
+            launched = rig.take().launched
+            survivor = launched.sidecar_id if kind == "sidecar" else launched.proxy_id
+            if launched.take_id in rig.box.containers or survivor not in rig.box.containers:
+                out.append(f"{p}: {kind}: the scenario is not a removed take container beside a surviving {kind}")
+                continue
+            restarted = mod.TakeRepo(runtime=rig.box, record_files=lambda r, a: [], secrets=lambda: [("token", TOKEN)],
+                                     rules_scanner=lambda paths: [], root=root, repo=root)
+            try:
+                restarted.register(row(2), 1)
+                out.append(f"{p}: {kind}: the restart registered while the leaked {kind} is still listed")
+            except rt.LeakedContainer as e:
+                if survivor not in str(e):
+                    out.append(f"{p}: {kind}: the restart refusal does not name the surviving {kind}: {e}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 def need(case, *names):
     """A part-2 name missing from drive.py is this test's failure (an assertion), never an error."""
@@ -1228,6 +1255,9 @@ class TestBoundChecks(unittest.TestCase):
     def test_b8_the_config_folder_goes_only_after_the_commit(self):
         self.assertEqual(b8_config(drive), [])
 
+    def test_b9_a_leaked_sidecar_or_proxy_refuses_the_restart(self):
+        self.assertEqual(b9_restart(drive), [])
+
 
 # ------------------------------------------------------------------------------------------------ the real-box half
 class RealBoxHalf:
@@ -1293,6 +1323,8 @@ WITNESSES = {
                                "        still = []\n")), b7_remove, "B7-remove"),
     "remove-checks-the-take-alone": ((("        ids = launched.ids() if launched is not None else [container_id]\n",
                                        "        ids = [container_id]\n"),), b7_remove, "B7-remove"),
+    "leaked-take-id-only": ((("            for cid in [entry[\"leaked_container\"], *(entry[\"leaked_containers\"] or [])]:\n",
+                              "            for cid in [entry[\"leaked_container\"]]:\n"),), b9_restart, "B9-restart"),
     "timeout-not-a-refusal": ((("    if isinstance(e, (ValueError, TimeoutError)):\n",
                                 "    if isinstance(e, ValueError):\n"),), b3_preturn, "B3-preturn"),
     "no-on-published": ((("                self.on_published(row, attempt)\n", "                pass\n"),),
@@ -1347,6 +1379,9 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_remove_checks_the_take_alone(self):
         self.kill("remove-checks-the-take-alone")
 
+    def test_witness_leaked_take_id_only(self):
+        self.kill("leaked-take-id-only")
+
     def test_witness_timeout_not_a_refusal(self):
         self.kill("timeout-not-a-refusal")
 
@@ -1355,10 +1390,10 @@ class TestWitnesses(unittest.TestCase):
                                                     "failed-preflight-read-as-passed", "no-drive-scan",
                                                     "no-finally-cleanup", "no-cap-kill", "remove-never-removes",
                                                     "no-on-published", "remove-checks-the-take-alone",
-                                                    "timeout-not-a-refusal"]))
-        # Ten witnesses over eight bound checks: the fold's two (W6H-R1-1, R1-3) are bound to B3 and B7.
-        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 8)
-        self.assertEqual(len({w[2] for w in WITNESSES.values()}), 8)
+                                                    "timeout-not-a-refusal", "leaked-take-id-only"]))
+        # Eleven witnesses over nine bound checks: the fold's two (W6H-R1-1, R1-3) are bound to B3 and B7.
+        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 9)
+        self.assertEqual(len({w[2] for w in WITNESSES.values()}), 9)
 
 
 if __name__ == "__main__":

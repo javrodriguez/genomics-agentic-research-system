@@ -1584,12 +1584,15 @@ class TakeRepo:
 
     # ------------------------------------------------------------------------------------------- restart (R4-5)
     def leaked_ids(self) -> list:
-        """Every container id the committed outcomes record as leaked, once each, in commit order."""
+        """Every container id the committed outcomes record as leaked, once each, in commit order: leaked_container
+        and every id of leaked_containers (ruling S6-gap4-2: a take's surviving sidecar or proxy too)."""
         ids = []
         for entry in self.history():
-            cid = None if takes_mod.batch.is_ruling(entry) else entry["leaked_container"]
-            if cid is not None and cid not in ids:
-                ids.append(cid)
+            if takes_mod.batch.is_ruling(entry):
+                continue
+            for cid in [entry["leaked_container"], *(entry["leaked_containers"] or [])]:
+                if cid is not None and cid not in ids:
+                    ids.append(cid)
         return ids
 
     def refuse_restart(self) -> None:
@@ -1783,7 +1786,9 @@ class TakeRepo:
 #          recorded id (run_take.teardown); what failed is written to teardown.json, with the survivors of each
 #          quiescence cap by turn (W6H-R1-6). remove(id) checks every container the take recorded (take, sidecar,
 #          proxy), removes again by its id each one the full listing still holds, and raises (A LEAK) naming any
-#          still listed after, or a network whose removal the teardown recorded as failed (W6H-R1-3). A launch failure carries the take container's id when the partial teardown failed to remove
+#          still listed after, or a network whose removal the teardown recorded as failed (W6H-R1-3). The leak
+#          carries those ids (`leaked_ids`); batch commits them as leaked_containers, and leaked_ids() reads them
+#          beside leaked_container, so a restart refuses while a leaked sidecar or proxy is listed (S6-gap4-2). A launch failure carries the take container's id when the partial teardown failed to remove
 #          it. The per-take config folder is deleted only once the take's records are committed (TakeRepo's
 #          on_published = TakeDriver.published), never after a refused commit.
 #   R4-12. The restart listing stays per register (ruling S6-Q4: correctness first; hoisted only if measured slow).
@@ -2126,7 +2131,9 @@ class TakeDriver:
             self.runtime.run(argv, env=self._env(), timeout=_run_take.STEP_TIMEOUT_S)
         still = _run_take.leaked(self.runtime, ids, caller_env=self.caller_env)
         if still:
-            raise _run_take.LeakedContainer(f"still listed after their removal: {', '.join(still)}")
+            leak = _run_take.LeakedContainer(f"still listed after their removal: {', '.join(still)}")
+            leak.leaked_ids = list(still)          # S6-gap4-2: batch commits them as leaked_containers
+            raise leak
         steps = (take.teardown or {}).get("steps", []) if take is not None else []
         bad = [s for s in steps if s.get("step") == "network-rm" and s.get("returncode") != 0]
         if bad and launched is not None and launched.network_id:

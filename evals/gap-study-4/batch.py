@@ -76,6 +76,10 @@ with every key below always present (None where it does not apply), decided BEFO
     mask_basis                   "annotations" or why the mask was set fail-closed
     leaked_container             the recorded id of a container remove() failed on (else None): the
                                  take keeps its route and fate, and the loop stops (A LEAK)
+    leaked_containers            every recorded container id still listed after that removal (the take,
+                                 its sidecar, its proxy), from the exception's `leaked_ids`, else
+                                 [leaked_container]; None when nothing leaked. A restart refuses while
+                                 any of them is listed (ruling S6-gap4-2, glitch-1b, 11 Oct 2026)
     final                        True when this record is the slot's final result
     rerun                        True when the slot is re-run (same slot, next attempt)
     beyond_cap                   True when a cap was reached
@@ -214,7 +218,8 @@ PENDING = "PENDING"
 
 # Every key of a committed outcome (see WHAT IS COMMITTED).
 OUTCOME_KEYS = ("slot", "half_cell", "attempt", "container_id", "state", "reason", "decision", "records",
-                "events", "mask", "mask_basis", "leaked_container", "final", "rerun", "beyond_cap", "stop",
+                "events", "mask", "mask_basis", "leaked_container", "leaked_containers", "final", "rerun",
+                "beyond_cap", "stop",
                 "cell_state", "cell_reason", "drive_started", "window_event")
 # Every key of a committed ruling (THE RULINGS, W1B3-1): a closed record, told from an outcome by its kind.
 RULING_KEYS = ("kind", "slot", "attempt", "ruling", "route", "by")
@@ -850,7 +855,8 @@ class Batch:
             out = self._route(row, attempt, cid, records)
         out.update(self._annotations(records))
         if removal_error is not None:                      # A LEAK (W1B3-1): the take keeps its state, the loop stops
-            out.update(leaked_container=cid,
+            out.update(leaked_container=cid,       # S6-gap4-2: and every surviving recorded id
+                       leaked_containers=list(getattr(removal_error, "leaked_ids", None) or [cid]),
                        reason=f"container {cid} leaked: remove failed: {removal_error}"
                               + (f" (after: {out['reason']})" if out["reason"] else ""))
         return out
