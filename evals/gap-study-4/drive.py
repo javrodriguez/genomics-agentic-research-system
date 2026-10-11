@@ -1807,21 +1807,26 @@ class TakeRepo:
 import threading  # noqa: E402
 
 import agent_adapter as _adapter  # noqa: E402
+import harness_bookkeeping as _hb  # noqa: E402
 import routing as _routing  # noqa: E402
+from graders import endstate as _endstate  # noqa: E402
 from box import sidecar as _sidecar  # noqa: E402
 
 # The take folder's files, each with its scan kind (box/scan_record.KINDS). A file outside this closed map refuses
 # the take: nothing rides a commit unscanned under a guessed kind.
 TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.log": "proxy-log",
                    "preflight.json": "preflight", "refusal.json": "preflight", "transcript.jsonl": "transcript",
-                   "postflight.json": "preflight"}    # S6b (e)
+                   "postflight.json": "preflight",    # S6b (e)
+                   "operator-check.json": "launch"}   # S6b C11
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
 EVIDENCE_DIR, SESSION_DIR = "evidence", "session"
 EVIDENCE_KINDS = {_sidecar.SNAPSHOTS: "snapshot", _sidecar.BLOBS: "blob"}
 PREFLIGHT_RECORD, REFUSAL_RECORD, TEARDOWN_RECORD = "preflight.json", "refusal.json", "teardown.json"
-POSTFLIGHT_RECORD = "postflight.json"
+POSTFLIGHT_RECORD, OPERATOR_CHECK_RECORD = "postflight.json", "operator-check.json"
 # What the checker callable returns: a closed record (the drive step's operator-side reading of the take).
-CHECKER_KEYS = ("checker_reasons", "checker_events", "unexplained_operator_diffs", "finalize_abort")
+# S6b (C11, C12): the operator-diff count and the finalize abort are the driver's own readings now, so the checker
+# hands only its reasons and its per-id events.
+CHECKER_KEYS = ("checker_reasons", "checker_events")
 # The checker event the scan counts itself (W6H-R1-2): the account email is a secret the scan masks, so the checker's
 # count of it is only cross-checked, never added (one email is one event, not two).
 ACCOUNT_EMAIL_EVENT, EMAIL_SECRET = "account-email", "email"
@@ -1902,8 +1907,9 @@ class TakeDriver:
     script_for       (row) -> the operator lines of the take's own wording, in order
     pin_for          (row) -> the routing pin: the registered row's pre-registered profile (batch.expected_pin)
     checker          (row, take, turns) -> {CHECKER_KEYS}: the operator-side reading (check_take.check4's reasons and
-                     its per-id events dict as checker_events, the operator-diff count, round 3's finalize abort);
-                     not called when preflight failed or no turn ran (W6H-R1-4)
+                     its per-id events dict as checker_events); not called when preflight failed or no turn ran
+                     (W6H-R1-4). The operator-diff count and the finalize abort are the driver's own (S6b C11, C12)
+    project_for      (row) -> the take's project name (the neutral name of its session), for the operator steps
     secrets          () -> [(kind, value)] for the scan, read at scan time and never held
     rules_scanner, holdout_matcher   box/scan_record.py's
     uid_map          the runtime's uid map lines (container start, host start, length)
@@ -1913,13 +1919,13 @@ class TakeDriver:
 
     def __init__(self, *, runtime, take_folder, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts,
                  adapter_for, script_for, pin_for, checker, secrets, rules_scanner, uid_map, budget_s,
-                 finalize_wait_s, poll_s, clock, sleep, holdout_matcher=None, caller_env=None):
+                 finalize_wait_s, poll_s, clock, sleep, project_for, holdout_matcher=None, caller_env=None):
         if not callable(getattr(runtime, "run", None)):
             raise TypeError("runtime must offer run(argv, env=, timeout=)")
         for name, fn in (("take_folder", take_folder), ("spec_for", spec_for), ("sidecar_for", sidecar_for),
                          ("adapter_for", adapter_for), ("script_for", script_for), ("pin_for", pin_for),
                          ("checker", checker), ("secrets", secrets), ("rules_scanner", rules_scanner),
-                         ("clock", clock), ("sleep", sleep)):
+                         ("clock", clock), ("sleep", sleep), ("project_for", project_for)):
             if not callable(fn):
                 raise TypeError(f"{name} must be callable")
         self.runtime, self.take_folder, self.config_parent = runtime, take_folder, config_parent
@@ -1929,6 +1935,7 @@ class TakeDriver:
         self.secrets, self.rules_scanner, self.holdout_matcher = secrets, rules_scanner, holdout_matcher
         self.uid_map, self.budget_s, self.finalize_wait_s, self.poll_s = uid_map, budget_s, finalize_wait_s, poll_s
         self.clock, self.sleep, self.caller_env = clock, sleep, caller_env
+        self.project_for = project_for
         self._lock = threading.Lock()
         self._by_id: dict = {}        # take container id -> _Take
         self._by_slot: dict = {}      # slot -> the slot's latest _Take not yet published
@@ -2021,6 +2028,61 @@ class TakeDriver:
             return False
         return record["ok"] is True
 
+    # ------------------------------------------------------------------------------------------- S6b C9-C11
+    def _evidence_line(self, take, rec: dict) -> None:
+        """C10: one record of the driver's evidence ledger (endstate's ledger.jsonl), appended in order."""
+        with open(os.path.join(take.evidence_dir, _endstate.LEDGER), "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec, sort_keys=True) + "\n")
+
+    def _operator_step(self, take, row, step) -> bool:
+        """C9 (ruling D8): the closed table's operator step after turn n, done host-side in the run tree and logged
+        as one operator event (its writes with the state each leaves). False when the step's wait ran out (C12:
+        round 3's finalize abort); the event is then not logged, because nothing was written."""
+        op_id, action = step
+        tree = take.launched.spec.run_tree
+        project = self.project_for(row)
+        proj = os.path.join(tree, "gars", "projects", project)
+        target = os.path.join(proj, "00_data", "rnaseq_bulk", "samples.csv")
+        if action == OPERATOR_SAVE:
+            from fixtures import gen_explain_not_act as _gen          # the generator's own save (SAVE_PATH)
+            written = str(_gen.operator_save(Path(proj)))
+        elif action == OPERATOR_FINALIZE:
+            deadline = self.clock() + self.finalize_wait_s
+            while not (os.path.isfile(target) and "sample_id" in open(target, encoding="utf-8",
+                                                                           errors="replace").read()):
+                if self.clock() >= deadline:
+                    return False
+                self.sleep(self.poll_s)
+            shutil.copyfile(os.path.join(tree, "data", "staging", project, "samples.csv"), target)
+            written = target
+        else:
+            raise DriveRefused(f"operator step {op_id!r} has no action this driver knows ({action!r})")
+        rel = os.path.relpath(written, tree).replace(os.sep, "/")
+        if self._excluded(rel, row["agent"]["harness"]):          # CP2-requirements open question 4
+            raise DriveRefused(f"operator step {op_id!r} writes {rel}, an excluded path; it is never logged")
+        with open(written, "rb") as fh:
+            after = {"type": "file", "sha256": hashlib.sha256(fh.read()).hexdigest()}
+        self._evidence_line(take, {"kind": "operator", "id": op_id, "at": self.clock(),
+                                   "writes": [{"path": rel, "after": after}]})
+        return True
+
+    @staticmethod
+    def _excluded(rel: str, harness: str) -> bool:
+        """A run-tree path endstate never diffs (git's and helpers' bookkeeping, the harness's own)."""
+        return any(_hb.matches(p, rel) for p in _endstate.COMMON_EXCLUSIONS
+                   + _endstate.harness_run_tree_exclusions(harness))
+
+    def _operator_check(self, take, row) -> int:
+        """C11: endstate's operator_check over the take's evidence, after the sidecar's finish (in the teardown),
+        written as operator-check.json. An evidence folder that does not load is never read as no diff: it counts
+        one, so the take routes by the operator-diff rows (never graded), and the reason is in that record."""
+        try:
+            got = _endstate.Evidence.load(take.evidence_dir).operator_check()
+        except _endstate.EvidenceError as e:
+            got = {"unexplained_diffs": 1, "problems": [f"the evidence does not load: {e}"]}
+        self._write(take, OPERATOR_CHECK_RECORD, got)
+        return got["unexplained_diffs"]
+
     def _postflight(self, take, row) -> dict | None:
         """S6b (e): preflight.postflight on the per-take config folder (still there: it goes only after the commit),
         written as postflight.json; a failure to run it is recorded in take.cleanup and returns None (a stop)."""
@@ -2078,7 +2140,12 @@ class TakeDriver:
             raise DriveRefused(f"take {container_id} was already driven")
         take.driven = True
         turns, unreadable, survivors, killed, adapter, state, post = [], [], 0, False, None, None, None
+        finalize_abort = False
         try:
+            self._evidence_line(take, {"kind": "take", "model": row["model"],     # S6b C10: before begin
+                                       "agent": {"harness": row["agent"]["harness"],
+                                                 "version": self.pin_for(row)["version"]},
+                                       "run_tree": "", "home": None})
             ok = self._preflight(take, row["agent"]["harness"])      # W6H-R1-8a: read inside the try
             if ok:
                 try:              # W6H-R1-7: the adapter's making or start before turn 1 is a pre-turn refusal
@@ -2095,14 +2162,24 @@ class TakeDriver:
                         unreadable += self._ctl(take, "snapshot", f"pre-{n}")["unreadable_consequential"]
                     turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
                     turns.append(turn)
+                    self._evidence_line(take, {"kind": "turn", "n": n, "started_at": turn.started_at,
+                                               "ended_at": turn.ended_at})              # S6b C10
                     left, k = self._quiesce(take, turn)
                     survivors += len(left)
                     if left:
                         take.survivors.append({"turn": n, "pids": list(left)})
+                        stopped = self.clock()
+                        for pid in left:                   # S6b C10: stopped at the cap, before post-n
+                            self._evidence_line(take, {"kind": "background", "pid": pid, "stopped_at": stopped})
                     killed = killed or (k and bool(left))
                     unreadable += self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
                     if turn.end_reason != _adapter.END_TURN:
                         break
+                    step = OPERATOR_STEPS.get((row["task"], n))
+                    if step is not None and n < len(lines):          # S6b C9: between post-n and pre-(n+1)
+                        if not self._operator_step(take, row, step):
+                            finalize_abort = True                     # C12: nothing further is sent
+                            break
             state = _run_take.container_state(self.runtime, take.launched.take_id, caller_env=self.caller_env)
         finally:
             self._cleanup(take, adapter)
@@ -2119,9 +2196,10 @@ class TakeDriver:
         ids = tuple(_routing.load_table()["checker_reasons_become_events"]["ids"])
         if ok and turns:
             checked = self.checker(row, take, list(turns))
+            diffs = self._operator_check(take, row)          # S6b C11: endstate's re-verification, the driver's own
         else:                     # W6H-R1-4: nothing of the agent ran, so there is nothing to check
-            checked = {"checker_reasons": [], "checker_events": dict.fromkeys(ids, 0),
-                       "unexplained_operator_diffs": 0, "finalize_abort": False}
+            checked = {"checker_reasons": [], "checker_events": dict.fromkeys(ids, 0)}
+            diffs = 0
         if not isinstance(checked, dict) or set(checked) != set(CHECKER_KEYS):
             raise DriveRefused(f"the checker's record is not exactly {CHECKER_KEYS}")
         events = checked["checker_events"]
@@ -2137,10 +2215,10 @@ class TakeDriver:
         reach = scan["events"] + sum(v for k, v in events.items() if k != ACCOUNT_EMAIL_EVENT)
         box = {"preflight_ok": ok, "container_started": True, "container_exited": not state["running"],
                "sidecar": sidecar_health(take.evidence_dir),
-               "unexplained_operator_diffs": checked["unexplained_operator_diffs"],
+               "unexplained_operator_diffs": diffs,
                "checker_reasons": checked["checker_reasons"], "quiescence_kill": killed,
                "outside_reach_events": reach,
-               "finalize_abort": checked["finalize_abort"], "committed": False,
+               "finalize_abort": finalize_abort, "committed": False,
                "unreadable_consequential": list(dict.fromkeys(unreadable)),
                "quiescence_cap_survivors": survivors}
         return _adapter.harness_records(turns, pin=self.pin_for(row), box=box)
@@ -2232,9 +2310,30 @@ class TakeDriver:
 #             a bare KeyError.
 #   R-S6-net  a network the teardown failed to remove is carried as "network:<id>" in the leak's leaked_ids (batch
 #             commits it in leaked_containers), and the restart refusal lists the networks for those ids.
+#   C10       the driver's evidence ledger (endstate's ledger.jsonl): the take record before the sidecar's begin, a
+#             turn record per line sent, a background record per cap survivor (stopped before post-n), an operator
+#             record per operator event.
+#   C9/D8     the closed OPERATOR_STEPS table: between post-n and pre-(n+1) the driver does the step host-side in
+#             the run tree and logs it; a write on an excluded path is refused, never logged.
+#   C12       confounded-design's finalize wait (finalize_wait_s, the injected clock): a samples.csv that never
+#             comes is round 3's finalize abort (ledger.finalize_abort, nothing further sent).
+#   C11       the operator-diff count is endstate's operator_check over the evidence after finish, written as
+#             operator-check.json; the checker hands only its reasons and events (CHECKER_KEYS).
 # =====================================================================================================================
 
 NETWORK_PREFIX = "network:"
+
+# C9 / ruling D8: the closed operator-step table, (task, the operator line it follows) -> (event id, action); frozen
+# into the pre-registration at CP6. Its sources: explain-not-act's save is fixtures/gen_explain_not_act.py's
+# SAVE_AFTER_STEP (2) and operator_save (SAVE_PATH), the task's decision `operator-save`; confounded-design's is round
+# 3's step-3 then-step, dropped from tasks/confounded-design.json's script (its decision `script-from-round-3`, line
+# 190) and named for CP2's driver: wait up to finalize_wait_s for stage 00's samples.csv, then copy the fixture's
+# design table over it (round 3's drive.py 1405-1425); if it never appears, round 3's finalize abort (C12).
+OPERATOR_SAVE, OPERATOR_FINALIZE = "save", "finalize-copy"
+OPERATOR_STEPS = {
+    ("explain-not-act", 2): ("operator-save", OPERATOR_SAVE),
+    ("confounded-design", 3): ("wait-for-samples-csv-then-copy-design", OPERATOR_FINALIZE),
+}
 _FULL_ID = re.compile(r"[0-9a-f]{64}")
 
 
