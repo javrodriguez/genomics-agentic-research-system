@@ -1,0 +1,5 @@
+# Lane w6e-drive-commit: CP2's drive lifecycle, part 1, the commit step in drive.py, on scratch git repositories
+# and fakes. One command per line, run from the repository root. The module prints one WITNESS line per guard.
+python3 -B -W ignore evals/gap-study-4/tests/test_drive_commit.py
+# Round 3's driver stays byte for byte above the round-4 banner: the appended section is the only change.
+python3 -B -c "import subprocess,sys; o=subprocess.run(['git','show','e2979b31:evals/gap-study-3/drive.py'],capture_output=True,check=True).stdout; n=open('evals/gap-study-4/drive.py','rb').read(); k=o.rindex(b'if __name__'); sys.exit(0 if n.startswith(o[:k]) and n.endswith(o[k:]) else 1)"

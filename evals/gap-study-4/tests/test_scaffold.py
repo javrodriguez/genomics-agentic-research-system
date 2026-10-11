@@ -79,7 +79,9 @@ def foreign(files: list[str]) -> list[str]:
 
 
 def copied_modules() -> list[str]:
-    rec = json.loads(OWN_FRAGMENT.read_text())
+    # Departure w6e-1: drive.py's claim moved to lane w6e's fragment (ruling S5-gap4-1); it is still probed here.
+    rec = {"files": [e for frag in (OWN_FRAGMENT, cm.FRAGMENTS / "w6e-drive-commit.json")
+                     for e in json.loads(frag.read_text())["files"]]}
     return [e["path"] for e in rec["files"] if e["status"] != "new" and e["path"].endswith(".py")]
 
 
@@ -130,7 +132,9 @@ class TheManifest(unittest.TestCase):
 
     def test_a_copy_that_differs_without_an_edited_entry_is_refused(self):
         real = cm.read_copy
-        for name in ("drive.py", "check_take.py", "lexicons/permission-stop.json", "review_kit/rounds.py"):
+        # Departure w6e-1 (lane w6e, ruling S5-gap4-1 moved drive.py to w6e as an edited copy): denials.py, an
+        # identical copy this lane still claims, stands in for drive.py, so the four cases stay four.
+        for name in ("denials.py", "check_take.py", "lexicons/permission-stop.json", "review_kit/rounds.py"):
             mutated = lambda path, name=name: real(path) + (b" " if path == name else b"")
             bad = cm.problems(pinned=False, read=mutated)
             self.assertIn(f"{name} ({LANE}) differs from evals/gap-study-3/{name} at {cm.SOURCE_COMMIT} and has no "

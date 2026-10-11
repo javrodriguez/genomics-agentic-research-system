@@ -4,7 +4,7 @@
     {
       "path": "COPIED.d/w1a-cp1-scaffold.json",
       "status": "new",
-      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/. Transfer (ruling S5-gap4-1, glitch-1b under Javier's standing delegation, 11 Oct 2026): drive.py, copied identical here from evals/gap-study-3/drive.py, moved to lane w6e-drive-commit, which edits it for CP2 and claims it in COPIED.d/w6e-drive-commit.json."
     },
     {
       "path": "allowlist-derivation.json",
@@ -71,11 +71,6 @@
       "path": "denials.py",
       "status": "identical",
       "source": "evals/gap-study-3/denials.py"
-    },
-    {
-      "path": "drive.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/drive.py"
     },
     {
       "path": "fixture_walk.py",
@@ -228,7 +223,7 @@
     {
       "path": "tests/test_scaffold.py",
       "status": "new",
-      "reason": "Proves the copy manifest, the copied modules' import paths, study.py's round-4 binding and run_checks.py, each by mutating what it guards."
+      "reason": "Proves the copy manifest, the copied modules' import paths, study.py's round-4 binding and run_checks.py, each by mutating what it guards. Departure w6e-1 (lane w6e, under ruling S5-gap4-1, for glitch-1b to ratify): two edits that follow drive.py's move to w6e as an edited copy: the identical-copy refusal case uses denials.py in drive.py's place, and copied_modules also reads w6e's fragment so drive.py is still import-probed."
     }
   ]
 }
