@@ -33,6 +33,13 @@ is reported as superseded rather than graded: an anachronism is not a finding. I
 its leak verdict still stands, because which paths a session reads does not depend on the permission mode.
 
 No model, no network, stdlib only. Read-only.
+
+ROUND 4 (lane w6i, slice S6b, Q2; this file moved from lane w1a's copy record to lane w6i under glitch-1b's ruling
+S6b-gap4-1). The expectation is the take's routing pin (ruling D1: routing.json's pin_profiles, the profile
+batch.expected_pin hands the driver), keyed by the harness and the model the take ran, never by the model alone and
+never one constant: a mode still PENDING (or absent) is never an expectation, so a take under it is a problem and
+--check exits 1 naming it. The takes are read from round 4's take folders (TAKE_ROOTS); with none committed the
+empty gate still prints that nothing was graded.
 """
 
 from __future__ import annotations
@@ -47,11 +54,16 @@ REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
 import prereg  # noqa: E402
+import routing  # noqa: E402
 import study  # noqa: E402
 
 # The same reading drive.py makes, spelled here independently: a re-derivation that imported the driver's
 # reader would be checking the driver against itself.
 ROOTS = ("transcripts", "rehearsals", "pauses")
+# ROUND 4: the folders round 4's take records are committed under (drive.py's take_folder; named question Q-w6i-1:
+# the production take_folder is not fixed yet, so this is the reading the plan supports, to be confirmed).
+TAKE_ROOTS = ("takes",)
+PENDING = "PENDING"
 
 
 def modes_recorded(transcript: Path) -> set[str]:
@@ -88,22 +100,27 @@ def mode_of(transcript: Path) -> str:
     return mode_precedence(modes_recorded(transcript))
 
 
-def expected() -> dict[str, str]:
-    exp = (prereg.load()["driver_constants"].get("permission_mode_expected") or {})
-    if not exp:
-        raise SystemExit("the pre-registration pins no driver_constants.permission_mode_expected, so there "
-                         "is nothing to hold a session to. Nothing here can be checked.")
-    return exp
+def expected(table: dict | None = None) -> dict[tuple, str]:
+    """ROUND 4 (Q2, D1): {(harness, model): the pinned permission mode} from routing.json's pin_profiles; a mode that
+    is missing, empty or PENDING is kept as PENDING, which judge() never reads as an expectation."""
+    t = routing.load_table() if table is None else table
+    out: dict[tuple, str] = {}
+    for harness, models in (t.get("pin_profiles") or {}).items():
+        for model, profile in (models or {}).items():
+            mode = (profile or {}).get("permission_mode")
+            out[(harness, model)] = mode if isinstance(mode, str) and mode and mode != PENDING else PENDING
+    return out
 
 
-def attempts(walks: bool = False) -> list[Path]:
+def attempts(walks: bool = False, base: Path | None = None) -> list[Path]:
+    base = HERE if base is None else Path(base)
     if walks:
-        return sorted((HERE / "walks").glob("*/*/transcript.jsonl")) if (HERE / "walks").is_dir() else []
+        return sorted((base / "walks").glob("*/*/transcript.jsonl")) if (base / "walks").is_dir() else []
     out: list[Path] = []
-    for root in ROOTS:
-        base = HERE / root
-        if base.is_dir():
-            out += sorted(base.rglob("transcript.jsonl"))
+    for root in TAKE_ROOTS:
+        folder = base / root
+        if folder.is_dir():
+            out += sorted(folder.rglob("transcript.jsonl"))
     return out
 
 
@@ -116,14 +133,18 @@ def judge(ledger: dict, derived: str, exp: dict, walks: bool) -> tuple[bool, lis
     that made two of them pass over nothing.
     """
     model = ledger.get("model_requested") or "?"
+    harness = ledger.get("harness") or "?"
     if walks and ledger.get("permission_mode_expected") is None:
         return True, []
-    want = exp.get(model)
+    want = exp.get((harness, model))           # ROUND 4 (Q2): keyed by the harness and the model the take ran
     problems = []
     if want is None:
-        problems.append(f"the pre-registration pins no expected mode for {model!r}")
+        problems.append(f"routing.json pins no profile for {model!r} under harness {harness!r}")
+    elif want == PENDING:
+        problems.append(f"the pin for {model!r} under {harness!r} is PENDING; a pending mode is never an "
+                        f"expectation")
     elif derived != want:
-        problems.append(f"the session recorded {derived!r}; {model} is pinned to record {want!r}")
+        problems.append(f"the session recorded {derived!r}; {model} under {harness} is pinned to record {want!r}")
     recorded = ledger.get("permission_mode_recorded")
     if recorded is not None and recorded != derived:
         problems.append(f"the ledger publishes {recorded!r} where the transcript records {derived!r}")
@@ -136,10 +157,11 @@ def judge(ledger: dict, derived: str, exp: dict, walks: bool) -> tuple[bool, lis
     return False, problems
 
 
-def rows(walks: bool = False) -> list[dict]:
-    exp = expected()
+def rows(walks: bool = False, base: Path | None = None, table: dict | None = None) -> list[dict]:
+    exp = expected(table)
+    base = HERE if base is None else Path(base)
     out = []
-    for t in attempts(walks):
+    for t in attempts(walks, base):
         ledger_path = t.parent / "driver-ledger.json"
         ledger = json.loads(ledger_path.read_text()) if ledger_path.is_file() else {}
         model = ledger.get("model_requested") or "?"
@@ -147,10 +169,11 @@ def rows(walks: bool = False) -> list[dict]:
         superseded, problems = judge(ledger, derived, exp, walks)
         recorded = ledger.get("permission_mode_recorded")
         out.append({
-            "attempt": str(t.parent.relative_to(HERE)),
+            "attempt": str(t.parent.relative_to(base)),
             "task": ledger.get("task"), "half": ledger.get("half"), "model": model,
+            "harness": ledger.get("harness"),
             "passed": ledger.get("permission_mode_passed") or ledger.get("permission_mode"),
-            "recorded": derived, "expected": None if superseded else exp.get(model),
+            "recorded": derived, "expected": None if superseded else exp.get((ledger.get("harness") or "?", model)),
             "ledger_agrees": recorded is None or recorded == derived,
             "superseded": superseded, "problems": problems,
         })
