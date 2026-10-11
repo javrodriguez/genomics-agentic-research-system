@@ -190,6 +190,15 @@ def k1_arm(mod, p):
         got = mod.constant_problems(ledger(arm, mode), pre)
         if has(got, "constant-binding") != refused:
             out.append(f"{p}: arm {arm!r} recording {mode!r}: constant-binding {'missing' if refused else 'raised'}")
+    # W6H-R1-5: the ledger's arm must be the take's arm (the mode is read by the ledger's arm).
+    for led_arm, refused in (("C", True), ("A", False), (None, True)):
+        path = transcript()
+        (path.parent / "driver-ledger.json").write_text(json.dumps({} if led_arm is None else {"arm": led_arm}))
+        got = quiet(mod.check4, path, "synthetic-task", "positive", None, True, wording_script=WORDING, arm="A")
+        hit = any(q.startswith("[constant-binding] the driver ledger records arm") for q in got["problems"])
+        if hit != refused:
+            out.append(f"{p}: a ledger of arm {led_arm!r} checked as arm 'A': the arm binding "
+                       f"{'missing' if refused else 'raised'}")
     return out
 
 
@@ -363,6 +372,8 @@ def witness_module(edits: tuple) -> types.ModuleType:
 WITNESSES = {
     "one-mode-constant": ((("    want_mode = mode_for_arm(pre, ledger.get(\"arm\"))",
                             "    want_mode = pre[\"driver_constants\"][\"permission_mode\"]"),), k1_arm, "K1-arm"),
+    "ledger-arm-unbound": ((("    if led is not None and led.get(\"arm\") != arm:\n", "    if False:\n"),),
+                           k1_arm, "K1-arm"),
     "the-halfs-script": ((("    script = half[\"operator_script\"] if wording_script is None else wording_script",
                            "    script = half[\"operator_script\"]"),), k2_wording, "K2-wording"),
     # Two layers, both off: the lift, and the agreement check that refuses a reason its reader did not count (either
@@ -395,6 +406,9 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_one_mode_constant(self):
         self.kill("one-mode-constant")
 
+    def test_witness_ledger_arm_unbound(self):
+        self.kill("ledger-arm-unbound")
+
     def test_witness_the_halfs_script(self):
         self.kill("the-halfs-script")
 
@@ -406,7 +420,8 @@ class TestWitnesses(unittest.TestCase):
 
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["one-mode-constant", "the-halfs-script", "nothing-lifted",
-                                                    "recorded-mode-unchecked"]))
+                                                    "recorded-mode-unchecked", "ledger-arm-unbound"]))
+        # Five witnesses over four bound checks: W6H-R1-5's is bound to K1.
         self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 4)
         self.assertEqual(len({w[2] for w in WITNESSES.values()}), 4)
 

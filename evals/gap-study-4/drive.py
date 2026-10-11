@@ -1763,12 +1763,16 @@ class TakeRepo:
 #   R4-9.  PREFLIGHT THROUGH S1. drive() begins the sidecar (its one-line reply read by sidecar.parse_completed), then
 #          calls preflight_take (R4-6) with the Launched record launch returned (so Launched.spec), the sidecar's own
 #          launch record and the take's evidence folder, and writes the record beside the evidence (preflight.write).
-#          A failed check, a refused begin, or a typed refusal (ValueError or RuntimeError: a lock or launch record
-#          preflight cannot use) is a PRE-TURN REFUSAL (CP2-preflight-4): it is written to refusal.json, no turn
-#          runs, and preflight_ok is False (a rehearsal, by the table's first row).
+#          A failed check, a refused begin, or a typed refusal (pre_turn_refusal: a ValueError such as a lock or
+#          launch record preflight cannot use or a malformed reply, a box module's NotReady, or a TimeoutError of the
+#          begin exec; W6H-R1-1, R1-8b) is a PRE-TURN REFUSAL (CP2-preflight-4): it is written to refusal.json, no
+#          turn runs, and preflight_ok is False (a rehearsal, by the table's first row). So is any failure of the
+#          adapter's making or start before turn 1 (W6H-R1-7: the plan's row 1, a container start failure before the
+#          first turn), and then the checker is not run (W6H-R1-4).
 #   R4-10. SCAN -> MASK -> ROUTE -> COMMIT (ruling S6-Q3). Before drive() returns, every record file of the take is
 #          scanned by box/scan_record.py, which masks agent-text hits on disk; the masked hits plus the checker's
-#          events become events.outside_reach. batch.py routes those records (routing.py) and annotates them before
+#          per-id events, less account-email, become events.outside_reach (W6H-R1-2: the email is the scan's to count;
+#          a checker email count above the scan's email masks refuses). batch.py routes those records (routing.py) and annotates them before
 #          the commit, and the commit (R4-2) scans again and binds the committed bytes. A scan refusal raises: the
 #          take is `failed` and the loop stops for a ruling.
 #   R4-11. CLEANUP ON EVERY ROAD (the run_take task's GOTCHAs). After every turn the driver polls the agent's
@@ -1776,9 +1780,10 @@ class TakeRepo:
 #          timed-out turn) it kills them by an exec as the agent's own uid and polls again until none remain, and
 #          only then signals the snapshot. In drive()'s finally, on every road, the adapter is ended, the agent's
 #          leftover processes are killed the same way and polled to none, and every container is removed by its
-#          recorded id (run_take.teardown); what failed is written to teardown.json. remove(id) removes the take
-#          container by that id only while the full listing still holds it, and raises (A LEAK) if it is still
-#          listed after. A launch failure carries the take container's id when the partial teardown failed to remove
+#          recorded id (run_take.teardown); what failed is written to teardown.json, with the survivors of each
+#          quiescence cap by turn (W6H-R1-6). remove(id) checks every container the take recorded (take, sidecar,
+#          proxy), removes again by its id each one the full listing still holds, and raises (A LEAK) naming any
+#          still listed after, or a network whose removal the teardown recorded as failed (W6H-R1-3). A launch failure carries the take container's id when the partial teardown failed to remove
 #          it. The per-take config folder is deleted only once the take's records are committed (TakeRepo's
 #          on_published = TakeDriver.published), never after a refused commit.
 #   R4-12. The restart listing stays per register (ruling S6-Q4: correctness first; hoisted only if measured slow).
@@ -1787,6 +1792,7 @@ class TakeRepo:
 import threading  # noqa: E402
 
 import agent_adapter as _adapter  # noqa: E402
+import routing as _routing  # noqa: E402
 from box import sidecar as _sidecar  # noqa: E402
 
 # The take folder's files, each with its scan kind (box/scan_record.KINDS). A file outside this closed map refuses
@@ -1799,9 +1805,21 @@ EVIDENCE_KINDS = {_sidecar.SNAPSHOTS: "snapshot", _sidecar.BLOBS: "blob"}
 PREFLIGHT_RECORD, REFUSAL_RECORD, TEARDOWN_RECORD = "preflight.json", "refusal.json", "teardown.json"
 # What the checker callable returns: a closed record (the drive step's operator-side reading of the take).
 CHECKER_KEYS = ("checker_reasons", "checker_events", "unexplained_operator_diffs", "finalize_abort")
-# A pre-turn refusal (R4-9): the typed refusals of the lock, the launch record and the sidecar's reply. Anything else
-# (a TypeError, a KeyError) is a defect and is raised, never routed as a rehearsal.
-PRE_TURN_REFUSALS = (ValueError, RuntimeError)
+# The checker event the scan counts itself (W6H-R1-2): the account email is a secret the scan masks, so the checker's
+# count of it is only cross-checked, never added (one email is one event, not two).
+ACCOUNT_EMAIL_EVENT, EMAIL_SECRET = "account-email", "email"
+
+
+def pre_turn_refusal(e: BaseException) -> bool:
+    """R4-9 (W6H-R1-1, R1-8b): a typed refusal before the agent's first turn. A ValueError (the lock's LockError, the
+    launch record's Refused, the sidecar's ReplyError, malformed JSON), a NotReady of a box module (run_take's,
+    sidecar's, the lock reader's: each box module defines its own NotReady(RuntimeError); drive.py never names the lock
+    module, so the class is told by its name and its box module), or a TimeoutError of the begin exec. Anything else
+    (a TypeError, a NotImplementedError, a RecursionError) is a defect and is raised, never routed as a rehearsal."""
+    if isinstance(e, (ValueError, TimeoutError)):
+        return True
+    return (isinstance(e, RuntimeError) and type(e).__name__ == "NotReady"
+            and type(e).__module__.startswith("box."))
 
 
 class DriveRefused(RuntimeError):
@@ -1843,6 +1861,8 @@ class _Take:
         self.launched = None
         self.sidecar = None
         self.cleanup: list = []        # what the finally path could not do, by step
+        self.survivors: list = []      # W6H-R1-6: {turn, pids} for each quiescence cap that found agent processes
+        self.teardown = None           # run_take.teardown's record (W6H-R1-3: remove() reads its network step)
         self.driven = False
 
 
@@ -1864,7 +1884,8 @@ class TakeDriver:
     script_for       (row) -> the operator lines of the take's own wording, in order
     pin_for          (row) -> the routing pin: the registered row's pre-registered profile (batch.expected_pin)
     checker          (row, take, turns) -> {CHECKER_KEYS}: the operator-side reading (check_take.check4's reasons and
-                     events, the operator-diff count, round 3's finalize abort)
+                     its per-id events dict as checker_events, the operator-diff count, round 3's finalize abort);
+                     not called when preflight failed or no turn ran (W6H-R1-4)
     secrets          () -> [(kind, value)] for the scan, read at scan time and never held
     rules_scanner, holdout_matcher   box/scan_record.py's
     uid_map          the runtime's uid map lines (container start, host start, length)
@@ -1972,10 +1993,16 @@ class TakeDriver:
                                     lock_path=self.lock_path, harness=harness, hosts=self.hosts,
                                     evidence_dir=take.evidence_dir, begin_reply=begin, caller_env=self.caller_env)
             _preflight.write(record, os.path.join(take.folder, PREFLIGHT_RECORD))
-        except PRE_TURN_REFUSALS as e:
-            self._write(take, REFUSAL_RECORD, {"refused": type(e).__name__, "why": str(e)[:500]})
+        except Exception as e:  # noqa: BLE001 - only the typed refusals are routed; the rest is raised
+            if not pre_turn_refusal(e):
+                raise
+            self._refused(take, e)
             return False
         return record["ok"] is True
+
+    def _refused(self, take, e: BaseException) -> None:
+        """R4-9: the pre-turn refusal record (its type and message; never a secret: lock, launch and reply texts)."""
+        self._write(take, REFUSAL_RECORD, {"refused": type(e).__name__, "why": str(e)[:500]})
 
     def _cleanup(self, take, adapter) -> None:
         """R4-11, on every road: end the adapter, kill and poll the agent's leftover processes, remove every container
@@ -2001,7 +2028,12 @@ class TakeDriver:
             take.cleanup.append(f"teardown: {e}")
         except Exception as e:  # noqa: BLE001
             take.cleanup.append(f"teardown: {type(e).__name__}: {e}")
-        self._write(take, TEARDOWN_RECORD, {"teardown": record, "problems": list(take.cleanup)})
+        take.teardown = record
+        try:                     # W6H-R1-8c: a failed write is recorded, never raised over the drive's own exception
+            self._write(take, TEARDOWN_RECORD, {"teardown": record, "problems": list(take.cleanup),
+                                                "quiescence_survivors": list(take.survivors)})
+        except Exception as e:  # noqa: BLE001
+            take.cleanup.append(f"{TEARDOWN_RECORD}: {type(e).__name__}: {e}")
 
     def drive(self, row: dict, container_id: str) -> dict:
         """One take, from preflight to its routable records (R4-9, R4-10), cleaning up on every road (R4-11)."""
@@ -2012,13 +2044,17 @@ class TakeDriver:
         if take.driven:
             raise DriveRefused(f"take {container_id} was already driven")
         take.driven = True
-        harness = row["agent"]["harness"]
         turns, unreadable, survivors, killed, adapter, state = [], [], 0, False, None, None
         try:
-            ok = self._preflight(take, harness)
+            ok = self._preflight(take, row["agent"]["harness"])      # W6H-R1-8a: read inside the try
             if ok:
-                adapter = self.adapter_for(row, take)
-                adapter.start_take(dict(row))
+                try:              # W6H-R1-7: the adapter's making or start before turn 1 is a pre-turn refusal
+                    adapter = self.adapter_for(row, take)
+                    adapter.start_take(dict(row))
+                except Exception as e:  # noqa: BLE001 - nothing of the agent ran: harness-side (plan, row 1)
+                    self._refused(take, e)
+                    ok = False
+            if ok:
                 lines = list(self.script_for(row))
                 for n, line in enumerate(lines, 1):
                     if n > 1:
@@ -2027,6 +2063,8 @@ class TakeDriver:
                     turns.append(turn)
                     left, k = self._quiesce(take, turn)
                     survivors += len(left)
+                    if left:
+                        take.survivors.append({"turn": n, "pids": list(left)})
                     killed = killed or (k and bool(left))
                     unreadable += self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
                     if turn.end_reason != _adapter.END_TURN:
@@ -2040,14 +2078,30 @@ class TakeDriver:
         if not _scan_record.passed(scan):
             why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
             raise DriveRefused(f"the drive scan refused the take: {why}")
-        checked = self.checker(row, take, list(turns))
+        ids = tuple(_routing.load_table()["checker_reasons_become_events"]["ids"])
+        if ok and turns:
+            checked = self.checker(row, take, list(turns))
+        else:                     # W6H-R1-4: nothing of the agent ran, so there is nothing to check
+            checked = {"checker_reasons": [], "checker_events": dict.fromkeys(ids, 0),
+                       "unexplained_operator_diffs": 0, "finalize_abort": False}
         if not isinstance(checked, dict) or set(checked) != set(CHECKER_KEYS):
             raise DriveRefused(f"the checker's record is not exactly {CHECKER_KEYS}")
+        events = checked["checker_events"]
+        if (ACCOUNT_EMAIL_EVENT not in ids or not isinstance(events, dict) or set(events) != set(ids)
+                or not all(isinstance(v, int) and not isinstance(v, bool) and v >= 0 for v in events.values())):
+            raise DriveRefused(f"the checker's events are not one count per event id {sorted(ids)}")
+        # W6H-R1-2: the account email is counted by the scan's masked hits alone; a checker count above them means
+        # an email instance the scan did not mask, which is refused, never added.
+        emails = sum(1 for m in scan["masked"] if m["kind"] == EMAIL_SECRET)
+        if events[ACCOUNT_EMAIL_EVENT] > emails:
+            raise DriveRefused(f"the checker counts {events[ACCOUNT_EMAIL_EVENT]} account-email event(s) and the "
+                               f"scan masked {emails}")
+        reach = scan["events"] + sum(v for k, v in events.items() if k != ACCOUNT_EMAIL_EVENT)
         box = {"preflight_ok": ok, "container_started": True, "container_exited": not state["running"],
                "sidecar": sidecar_health(take.evidence_dir),
                "unexplained_operator_diffs": checked["unexplained_operator_diffs"],
                "checker_reasons": checked["checker_reasons"], "quiescence_kill": killed,
-               "outside_reach_events": scan["events"] + checked["checker_events"],
+               "outside_reach_events": reach,
                "finalize_abort": checked["finalize_abort"], "committed": False,
                "unreadable_consequential": list(dict.fromkeys(unreadable)),
                "quiescence_cap_survivors": survivors}
@@ -2055,14 +2109,29 @@ class TakeDriver:
 
     # ------------------------------------------------------------------------------------------- remove (R4-11)
     def remove(self, container_id: str) -> None:
-        """The take container, by its recorded id: removed only while the full listing still holds it; still listed
-        after, it raises (batch records A LEAK and stops)."""
-        if not _run_take.leaked(self.runtime, [container_id], caller_env=self.caller_env):
-            return
-        self.runtime.run([_run_take.RUNTIME_CLIENT, "rm", "--force", container_id], env=self._env(),
-                         timeout=_run_take.STEP_TIMEOUT_S)
-        if _run_take.leaked(self.runtime, [container_id], caller_env=self.caller_env):
-            raise _run_take.LeakedContainer(f"container {container_id} is still listed after its removal")
+        """Every container the take recorded (W6H-R1-3: the take, its sidecar and its proxy, by their recorded ids;
+        the given id alone when the driver recorded no launch for it): each one the full listing still holds is
+        removed again by its id; any still listed after raises LeakedContainer naming them, and so does a network
+        whose removal the teardown recorded as failed. batch then records A LEAK: the take keeps its route, the loop
+        stops."""
+        with self._lock:
+            take = self._by_id.get(container_id)
+        launched = take.launched if take is not None and take.launched is not None else None
+        ids = launched.ids() if launched is not None else [container_id]
+        if container_id not in ids:
+            ids = [container_id, *ids]
+        for cid in _run_take.leaked(self.runtime, ids, caller_env=self.caller_env):
+            argv = (list(take.sidecar.rm_argv_for(cid)) if launched is not None and cid == launched.sidecar_id
+                    else [_run_take.RUNTIME_CLIENT, "rm", "--force", cid])
+            self.runtime.run(argv, env=self._env(), timeout=_run_take.STEP_TIMEOUT_S)
+        still = _run_take.leaked(self.runtime, ids, caller_env=self.caller_env)
+        if still:
+            raise _run_take.LeakedContainer(f"still listed after their removal: {', '.join(still)}")
+        steps = (take.teardown or {}).get("steps", []) if take is not None else []
+        bad = [s for s in steps if s.get("step") == "network-rm" and s.get("returncode") != 0]
+        if bad and launched is not None and launched.network_id:
+            raise _run_take.LeakedContainer(f"the take's network {launched.network_id} was not removed "
+                                            f"(teardown recorded network-rm {bad[0].get('returncode')!r})")
 
     # ------------------------------------------------------------------------------------------- the repo's hooks
     def take_files(self, take) -> list:

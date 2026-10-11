@@ -1838,6 +1838,8 @@ def main() -> int:
 #         re-derived here, must be exactly the arm's pinned mode. A take recording any other mode carries
 #         constant-binding, an operator reason, so it routes by the table (a rehearsal before the agent's first
 #         turn, harness-error after it) and never grades.
+#   R4C-6. check4 refuses (constant-binding) a driver ledger whose `arm` is not the take's arm (W6H-R1-5), since
+#         R4C-1 reads the pinned mode by the ledger's own arm.
 # =====================================================================================================================
 
 import routing as _routing  # noqa: E402
@@ -1928,6 +1930,11 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
     problems = check(path, task_id, half_name, row_index, is_walk, wording_script=wording_script)
     if not is_walk:
         problems += recorded_mode_problems(path, prereg.load(), arm)
+    # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
+    led = _ledger_beside(path)
+    if led is not None and led.get("arm") != arm:
+        problems.append(f"[constant-binding] the driver ledger records arm {led.get('arm')!r}, and the take is "
+                        f"checked as arm {arm!r}")
     reasons, kept, lifted = [], [], set()
     for p in problems:
         rid = reason_ids([p])

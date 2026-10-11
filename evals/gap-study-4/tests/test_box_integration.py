@@ -193,7 +193,7 @@ class FakeBox:
     begin        "ok" | "refused" | "malformed": the sidecar's begin reply
     """
 
-    def __init__(self, *, fail_rm=(), fail_times=1, stubborn=False, begin="ok", unreadable=()):
+    def __init__(self, *, fail_rm=(), fail_times=1, stubborn=False, begin="ok", unreadable=(), fail_net=False):
         self.n = 0
         self.networks: set = set()
         self.containers: dict = {}          # id -> {"kind", "running", "ev"}
@@ -203,8 +203,9 @@ class FakeBox:
         self.kills: list = []               # (take id, user)
         self.removed: list = []
         self.fail_rm, self.fail_times, self.stubborn = set(fail_rm), fail_times, stubborn
-        self.begin, self.unreadable = begin, list(unreadable)
+        self.begin, self.unreadable, self.fail_net = begin, list(unreadable), fail_net
         self.specs: dict = {}
+        self.spawned: list = []
 
     def new(self) -> str:
         self.n += 1
@@ -214,7 +215,8 @@ class FakeBox:
         return self.containers.get(cid, {}).get("kind")
 
     def spawn(self, take_id, lives=None):
-        pid = 4000 + sum(len(v) for v in self.procs.values()) + len(self.kills) * 10 + 1
+        pid = 4100 + len(self.spawned)
+        self.spawned.append(pid)
         self.procs.setdefault(take_id, []).append([pid, lives])
 
     def alive(self, take_id) -> list:
@@ -233,6 +235,8 @@ class FakeBox:
             self.networks.add(nid)
             return ok(nid + "\n")
         if a[:3] == ["docker", "network", "rm"]:
+            if self.fail_net:
+                return rt.Completed(1, "", "synthetic network removal failure")
             self.networks.discard(a[3])
             return ok()
         if a[:3] == ["docker", "network", "connect"] or a[:2] == ["docker", "logs"]:
@@ -319,6 +323,8 @@ class FakeBox:
 
     def ctl(self, sid, command, label):
         if command == "begin":
+            if self.begin == "timeout":
+                raise TimeoutError("synthetic: the begin exec timed out")
             if self.begin == "malformed":
                 return ok("not a reply\n")
             if self.begin == "refused":
@@ -397,6 +403,17 @@ class FakeAdapter(aa.AgentAdapter):
 
     def _end(self):
         self.ended += 1
+
+
+EVENT_IDS = tuple(routing.load_table()["checker_reasons_become_events"]["ids"])
+EMAIL = "synthetic.account@example.invalid"      # a fake account email, never a real address
+
+
+def checker_record(**events) -> dict:
+    """A closed checker record: no reason, and check4's per-id event counts (0 unless given)."""
+    counts = dict.fromkeys(EVENT_IDS, 0)
+    counts.update({k.replace("_", "-"): v for k, v in events.items()})
+    return {"checker_reasons": [], "checker_events": counts, "unexplained_operator_diffs": 0, "finalize_abort": False}
 
 
 def preflight_record(ok_=True) -> dict:
@@ -509,7 +526,7 @@ class Rig:
 
     def clean_checker(self, r, take, turns):
         self.checked.append((r["slot"], len(turns)))
-        return {"checker_reasons": [], "checker_events": 0, "unexplained_operator_diffs": 0, "finalize_abort": False}
+        return checker_record()
 
     def take(self, slot="s1"):
         return self.driver._by_slot.get(slot) or [t for t in self.driver.published_takes if t.row["slot"] == slot][-1]
@@ -644,23 +661,27 @@ def b3_preturn(mod, p):
     out = missing_api(mod, p, "TakeDriver")
     if out:
         return out
-    cases = {"a failed check": Spy(result=preflight_record(ok_=False)),
-             "a typed refusal": Spy(raises=rt.Refused("synthetic: the launch record is incomplete"))}
-    for why, spy in cases.items():
+    cases = {"a failed check": (Spy(result=preflight_record(ok_=False)), FakeBox()),
+             "a typed refusal": (Spy(raises=rt.Refused("synthetic: the launch record is incomplete")), FakeBox()),
+             "a begin timeout": (Spy(), FakeBox(begin="timeout"))}
+    for why, (spy, box) in cases.items():
         with scratch_repo() as root:
-            rig = Rig(mod, root, spy=spy)
+            rig = Rig(mod, root, spy=spy, box=box)
             b, got = run_batch(rig, [row(1)])
             o = got[0]
             if rig.adapters:
                 out.append(f"{p}: {why}: an adapter was started, so a turn could run")
+            if rig.checked:
+                out.append(f"{p}: {why}: the checker ran on a take where nothing of the agent ran")
             if o["state"] != labels4.REHEARSAL:
                 out.append(f"{p}: {why}: routed {o['state']!r} ({o['reason']}), not a rehearsal")
             elif o["records"]["preflight"]["ok"] is not False or o["records"]["ledger"]["turns"] != 0:
                 out.append(f"{p}: {why}: the records do not say preflight failed with no turn")
             take = rig.take()
             refusal = os.path.join(take.folder, mod.REFUSAL_RECORD)
-            if why == "a typed refusal" and not os.path.isfile(refusal):
-                out.append(f"{p}: {why}: no refusal record was written")
+            want = {"a typed refusal": "Refused", "a begin timeout": "TimeoutError"}.get(why)
+            if want and (not os.path.isfile(refusal) or json.load(open(refusal))["refused"] != want):
+                out.append(f"{p}: {why}: no refusal record naming {want} was written")
     return out
 
 
@@ -674,8 +695,7 @@ def b4_scan(mod, p):
 
         def checker(r, take, turns):
             events.append("checker")
-            return {"checker_reasons": [], "checker_events": 2, "unexplained_operator_diffs": 0,
-                    "finalize_abort": False}
+            return checker_record(study_materials_reached=1, read_outside_the_checkout=1)
         rig = Rig(mod, root, turns=[{"text": "plain"}, {"text": f"I found {TOKEN} here"}], checker=checker)
         real_route = routing.route
         seen = {}
@@ -709,7 +729,10 @@ def drive_stream(take, n) -> Path:
     return Path(take.folder) / f"turn-{n}.jsonl"
 
 
-ROADS = ("passed", "failed check", "typed refusal", "adapter raises", "timed out", "scan refuses")
+ROADS = ("passed", "failed check", "typed refusal", "adapter raises", "timed out", "scan refuses",
+         "sidecar rm fails", "proxy rm fails")
+# W6H-R1-3: a teardown step that failed is cleared by remove(), which batch calls after drive(), by recorded id.
+AFTER_REMOVE = {"sidecar rm fails": "sidecar", "proxy rm fails": "proxy"}
 
 
 @guarded("B5-cleanup")
@@ -726,8 +749,9 @@ def b5_cleanup(mod, p):
                 turns = [{"text": "plain", "spawn": (None,), "end": labels4.TIMED_OUT}]
             scanner = (lambda paths: [{"path": paths[0], "line": 1, "rule": "synthetic-rule"}]) \
                 if road == "scan refuses" else None
+            box = FakeBox(fail_rm=(AFTER_REMOVE[road],), fail_times=1) if road in AFTER_REMOVE else None
             rig = Rig(mod, root, spy=spy, turns=turns, raise_at=2 if road == "adapter raises" else None,
-                      scanner=scanner)
+                      scanner=scanner, box=box)
             with spying(rig.spy):
                 cid = rig.driver.launch(row(1))
                 ids = list(rig.driver._by_slot["s1"].launched.ids())
@@ -736,13 +760,18 @@ def b5_cleanup(mod, p):
                     raised = None
                 except Exception as e:  # noqa: BLE001
                     raised = e
+                if road in AFTER_REMOVE:
+                    try:
+                        rig.driver.remove(cid)
+                    except Exception as e:  # noqa: BLE001
+                        out.append(f"{p}: {road}: remove() raised {type(e).__name__}: {e}")
             if road in ("adapter raises", "scan refuses") and raised is None:
                 out.append(f"{p}: {road}: drive() did not raise")
             if road not in ("adapter raises", "scan refuses") and raised is not None:
                 out.append(f"{p}: {road}: drive() raised {type(raised).__name__}: {raised}")
             left = rig.box.empty()
             if left:
-                out.append(f"{p}: {road}: the box is not clean after drive(): {left}")
+                out.append(f"{p}: {road}: the box is not clean after drive(){' and remove()' if road in AFTER_REMOVE else ''}: {left}")
             if any(i not in rig.box.removed for i in ids):
                 out.append(f"{p}: {road}: a container was not removed by its recorded id")
             if road != "failed check" and road != "typed refusal" and not any(
@@ -759,10 +788,14 @@ def b6_quiesce(mod, p):
     if out:
         return out
     with scratch_repo() as root:
-        rig = Rig(mod, root, turns=[{"text": "plain", "spawn": (None,)}, {"text": "plain", "spawn": (2,)}])
+        rig = Rig(mod, root, turns=[{"text": "plain", "spawn": (2,)}, {"text": "plain", "spawn": (None,)}])
         with spying(rig.spy):
             cid = rig.driver.launch(row(1))
             recs = rig.driver.drive(row(1), cid)
+        pids = rig.box.spawned
+        record = json.load(open(os.path.join(rig.take().folder, mod.TEARDOWN_RECORD)))
+        if record.get("quiescence_survivors") != [{"turn": 2, "pids": [pids[1]]}]:
+            out.append(f"{p}: the cap survivors are not recorded with turn 2: {record.get('quiescence_survivors')}")
         snaps = dict(rig.box.snapshots)
         if snaps.get("post-1") != 0:
             out.append(f"{p}: post-1 was signalled with {snaps.get('post-1')} agent process(es) alive")
@@ -774,9 +807,9 @@ def b6_quiesce(mod, p):
             out.append(f"{p}: the cap kill is not recorded: kill {recs['quiescence_kill']}, survivors "
                        f"{recs['quiescence_cap_survivors']}")
         first_kill = next((i for i, a in enumerate(rig.box.calls) if a[-2:] == ["--", "-1"]), None)
-        first_snap = next((i for i, a in enumerate(rig.box.calls) if "snapshot" in a), None)
-        if first_kill is None or first_snap is None or first_kill > first_snap:
-            out.append(f"{p}: the first snapshot came before the cap kill")
+        post = {a[-1]: i for i, a in enumerate(rig.box.calls) if "snapshot" in a}
+        if first_kill is None or not (post.get("post-1", 10 ** 9) < first_kill < post.get("post-2", -1)):
+            out.append(f"{p}: the cap kill did not come between post-1 and post-2 (turn 2's cap)")
         if CAP_S not in [sum(rig.clock.slept[:i]) for i in range(len(rig.clock.slept) + 1)]:
             out.append(f"{p}: the driver did not wait out the cap ({rig.clock.slept})")
     with scratch_repo() as root:
@@ -847,6 +880,45 @@ def b7_remove(mod, p):
         except rt.LaunchError as e:
             if getattr(e, "container_id", "unset") is None or e.container_id not in box.containers:
                 out.append(f"{p}: a launch whose teardown left the take container did not carry its id")
+    for kind in ("sidecar", "proxy"):          # W6H-R1-3: every recorded id, not the take container alone
+        with scratch_repo() as root:
+            rig = Rig(mod, root, box=FakeBox(fail_rm=(kind,), fail_times=1))
+            with spying(rig.spy):
+                cid = rig.driver.launch(row(1))
+                launched = rig.take().launched
+                rig.driver.drive(row(1), cid)
+            other = launched.sidecar_id if kind == "sidecar" else launched.proxy_id
+            if other not in rig.box.containers:
+                out.append(f"{p}: {kind}: the fake teardown failure did not leave the {kind}")
+                continue
+            rig.driver.remove(cid)
+            if other in rig.box.containers:
+                out.append(f"{p}: {kind}: remove() did not remove the still-listed {kind} by its recorded id")
+        with scratch_repo() as root:
+            rig = Rig(mod, root, box=FakeBox(fail_rm=(kind,), fail_times=5))
+            with spying(rig.spy):
+                cid = rig.driver.launch(row(1))
+                launched = rig.take().launched
+                rig.driver.drive(row(1), cid)
+            other = launched.sidecar_id if kind == "sidecar" else launched.proxy_id
+            try:
+                rig.driver.remove(cid)
+                out.append(f"{p}: {kind}: a {kind} still listed after its removal did not raise")
+            except rt.LeakedContainer as e:
+                if other not in str(e):
+                    out.append(f"{p}: {kind}: the leak does not name the surviving {kind}")
+    with scratch_repo() as root:
+        rig = Rig(mod, root, box=FakeBox(fail_net=True))
+        with spying(rig.spy):
+            cid = rig.driver.launch(row(1))
+            net = rig.take().launched.network_id
+            rig.driver.drive(row(1), cid)
+        try:
+            rig.driver.remove(cid)
+            out.append(f"{p}: a network whose removal failed did not raise")
+        except rt.LeakedContainer as e:
+            if net not in str(e):
+                out.append(f"{p}: the network leak does not name the network")
     return out
 
 
@@ -980,6 +1052,98 @@ class TestTheTakePath(unittest.TestCase):
             self.assertEqual(rig.adapters, [])
             self.assertEqual(rig.box.empty(), [])
 
+    def test_a_begin_timeout_is_a_pre_turn_refusal(self):
+        """W6H-R1-1: a TimeoutError of the begin exec rehearses (refusal.json names it), with no turn, a clean box."""
+        need(self, "TakeDriver", "TakeRepo", "DriveRefused", "sidecar_health", "pre_turn_refusal")
+        with scratch_repo() as root:
+            rig = Rig(drive, root, box=FakeBox(begin="timeout"))
+            b, got = run_batch(rig, [row(1)])
+            self.assertEqual(got[0]["state"], labels4.REHEARSAL, got[0]["reason"])
+            self.assertEqual(got[0]["records"]["ledger"]["turns"], 0)
+            refusal = json.loads(Path(rig.take().folder, drive.REFUSAL_RECORD).read_text())
+            self.assertEqual(refusal["refused"], "TimeoutError")
+            self.assertEqual(rig.box.empty(), [])
+            self.assertEqual(rig.checked, [])
+
+    def test_the_refusal_set_is_typed(self):
+        """W6H-R1-8b: a box module's NotReady and a ValueError are refusals; a defect is not."""
+        need(self, "pre_turn_refusal")
+        for e in (rt.NotReady("x"), sc.NotReady("x"), rt.Refused("x"), sc.ReplyError("x"), TimeoutError("x"),
+                  ValueError("x")):
+            self.assertTrue(drive.pre_turn_refusal(e), type(e))
+        for e in (NotImplementedError("x"), RecursionError("x"), RuntimeError("x"), TypeError("x"), KeyError("x"),
+                  drive.DriveRefused("x")):
+            self.assertFalse(drive.pre_turn_refusal(e), type(e))
+
+    def test_an_adapter_that_cannot_start_is_a_pre_turn_refusal(self):
+        """W6H-R1-7: adapter_for or start_take raising before turn 1 rehearses (the plan's row 1)."""
+        need(self, "TakeDriver", "TakeRepo", "DriveRefused", "sidecar_health")
+        for where in ("adapter_for", "start_take"):
+            with self.subTest(where=where), scratch_repo() as root:
+                rig = Rig(drive, root)
+                real = rig.adapter_for
+
+                def broken(r, take, where=where, real=real):
+                    if where == "adapter_for":
+                        raise RuntimeError("synthetic: the harness could not be made")
+                    a = real(r, take)
+                    a._start = lambda t: (_ for _ in ()).throw(OSError("synthetic: the start exec failed"))
+                    return a
+                rig.driver.adapter_for = broken
+                b, got = run_batch(rig, [row(1)])
+                self.assertEqual(got[0]["state"], labels4.REHEARSAL, got[0]["reason"])
+                self.assertEqual(got[0]["records"]["ledger"]["turns"], 0)
+                self.assertTrue(Path(rig.take().folder, drive.REFUSAL_RECORD).is_file())
+                self.assertEqual(rig.box.empty(), [])
+                self.assertEqual(rig.checked, [])
+
+    def test_one_account_email_is_one_event(self):
+        """W6H-R1-2: an email the scan masks, which the checker also reports, counts once."""
+        need(self, "TakeDriver", "TakeRepo", "DriveRefused", "sidecar_health")
+        with scratch_repo() as root:
+            rig = Rig(drive, root, turns=[{"text": f"mail {EMAIL} please"}],
+                      secrets=lambda: [("token", TOKEN), ("email", EMAIL)],
+                      checker=lambda r, t, turns: checker_record(account_email=1))
+            rig.repo.secrets = lambda: [("token", TOKEN), ("email", EMAIL)]
+            b, got = run_batch(rig, [row(1)])
+            self.assertEqual(got[0]["state"], labels4.GRADED, got[0]["reason"])
+            self.assertEqual(got[0]["records"]["events"]["outside_reach"], 1)
+            self.assertNotIn(EMAIL, drive_stream(rig.take(), 1).read_text())
+
+    def test_a_checker_email_count_above_the_scans_refuses(self):
+        need(self, "TakeDriver", "TakeRepo", "DriveRefused", "sidecar_health")
+        with scratch_repo() as root:
+            rig = Rig(drive, root, turns=[{"text": "plain"}],
+                      checker=lambda r, t, turns: checker_record(account_email=1))
+            b, got = run_batch(rig, [row(1)])
+            self.assertEqual(got[0]["state"], labels4.FAILED)
+            self.assertIn("account-email event(s) and the scan masked 0", got[0]["reason"])
+            self.assertEqual(rig.box.empty(), [])
+
+    def test_a_checker_record_off_its_shape_refuses(self):
+        need(self, "TakeDriver", "TakeRepo", "DriveRefused", "sidecar_health")
+        bad = [dict(checker_record(), checker_events=2),
+               dict(checker_record(), checker_events={"account-email": 0}),
+               dict(checker_record(), checker_events=dict(checker_record()["checker_events"], **{"account-email": -1}))]
+        for rec in bad:
+            with self.subTest(rec=rec["checker_events"]), scratch_repo() as root:
+                rig = Rig(drive, root, turns=[{"text": "plain"}], checker=lambda r, t, turns, rec=rec: rec)
+                b, got = run_batch(rig, [row(1)])
+                self.assertEqual(got[0]["state"], labels4.FAILED)
+                self.assertIn("the checker's events are not one count per event id", got[0]["reason"])
+
+    def test_a_leaked_sidecar_keeps_the_route_and_stops_the_loop(self):
+        """W6H-R1-3: a sidecar that cannot be removed is A LEAK: the take keeps its route, the loop stops."""
+        need(self, "TakeDriver", "TakeRepo", "DriveRefused", "sidecar_health")
+        with scratch_repo() as root:
+            rig = Rig(drive, root, box=FakeBox(fail_rm=("sidecar",), fail_times=10))
+            b, got = run_batch(rig, [row(1), row(2)])
+            self.assertEqual(len(got), 1)
+            self.assertEqual(got[0]["state"], labels4.GRADED)
+            self.assertIsNotNone(got[0]["leaked_container"])
+            self.assertIn(rig.take().launched.sidecar_id, got[0]["reason"])
+            self.assertIsNotNone(b.stopped)
+
     def test_an_adapter_that_raises_is_failed_and_the_box_is_clean(self):
         need(self, "TakeDriver", "TakeRepo", "DriveRefused", "sidecar_health")
         with scratch_repo() as root:
@@ -1110,7 +1274,7 @@ def witness_module(edits: tuple) -> types.ModuleType:
 # name: (edits to drive.py, the bound check, the line prefix that is its own assertion)
 WITNESSES = {
     "omit-restore": ((("                self._restore()\n", "                pass\n"),), b1_rollback, "B1-rollback"),
-    "skip-preflight": ((("            ok = self._preflight(take, harness)\n", "            ok = True\n"),),
+    "skip-preflight": ((("            ok = self._preflight(take, row[\"agent\"][\"harness\"])", "            ok = True"),),
                        b2_preflight, "B2-preflight"),
     "failed-preflight-read-as-passed": ((("        return record[\"ok\"] is True\n", "        return True\n"),),
                                         b3_preturn, "B3-preturn"),
@@ -1123,9 +1287,14 @@ WITNESSES = {
                            b5_cleanup, "B5-cleanup"),
     "no-cap-kill": ((("            if survivors:\n                self._kill(take)\n",
                       "            if False:\n                self._kill(take)\n"),), b6_quiesce, "B6-quiesce"),
-    "remove-never-removes": ((("        if not _run_take.leaked(self.runtime, [container_id], "
-                               "caller_env=self.caller_env):\n            return\n",
-                               "        return\n"),), b7_remove, "B7-remove"),
+    "remove-never-removes": ((("        for cid in _run_take.leaked(self.runtime, ids, caller_env=self.caller_env):\n",
+                               "        for cid in []:\n"),
+                              ("        still = _run_take.leaked(self.runtime, ids, caller_env=self.caller_env)\n",
+                               "        still = []\n")), b7_remove, "B7-remove"),
+    "remove-checks-the-take-alone": ((("        ids = launched.ids() if launched is not None else [container_id]\n",
+                                       "        ids = [container_id]\n"),), b7_remove, "B7-remove"),
+    "timeout-not-a-refusal": ((("    if isinstance(e, (ValueError, TimeoutError)):\n",
+                                "    if isinstance(e, ValueError):\n"),), b3_preturn, "B3-preturn"),
     "no-on-published": ((("                self.on_published(row, attempt)\n", "                pass\n"),),
                         b8_config, "B8-config"),
 }
@@ -1175,11 +1344,19 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_no_on_published(self):
         self.kill("no-on-published")
 
+    def test_witness_remove_checks_the_take_alone(self):
+        self.kill("remove-checks-the-take-alone")
+
+    def test_witness_timeout_not_a_refusal(self):
+        self.kill("timeout-not-a-refusal")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["omit-restore", "skip-preflight",
                                                     "failed-preflight-read-as-passed", "no-drive-scan",
                                                     "no-finally-cleanup", "no-cap-kill", "remove-never-removes",
-                                                    "no-on-published"]))
+                                                    "no-on-published", "remove-checks-the-take-alone",
+                                                    "timeout-not-a-refusal"]))
+        # Ten witnesses over eight bound checks: the fold's two (W6H-R1-1, R1-3) are bound to B3 and B7.
         self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 8)
         self.assertEqual(len({w[2] for w in WITNESSES.values()}), 8)
 
