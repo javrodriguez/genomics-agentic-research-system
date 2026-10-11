@@ -41,12 +41,21 @@ in the folder is refused (evidence is read only from the sidecar's own folder, a
     health.jsonl            the sidecar's health records, in time order (else refused): {"kind": "watcher-start",
                             "at": num} | {"kind": "watcher-stop", "at": num, "exit_code": int} | {"kind":
                             "queue-overflow", "at": num}. See THE WATCHER'S HEALTH below
+    watched.json            the paths the watcher watched: {"paths": [run-tree-relative path, ...]}, sorted,
+                            distinct and non-empty, written by the sidecar's `begin` from its own --watch list (S7-D3,
+                            ruled C). `load` requires it; `accesses(path=p)` refuses a p the list does not hold, so an
+                            empty reading always means "watched, and nothing seen", never "not watched".
+                            `from_parts(watched=None)` builds evidence without one (constructed fixtures only: no
+                            membership check, and `watched()` refuses)
     blobs/<sha256>          the bytes of a consequential file as a snapshot found it, named by their own sha256
                             (optional; only the pre-registered consequential paths are copied)
 
     STATE                   {"type": "file", "sha256": <64 hex>} | {"type": "link", "target": str} |
-                            {"type": "dir"} | {"type": "unreadable"}. An unreadable state is never the same as
-                            any state, itself included (`same_state`)
+                            {"type": "dir"} | {"type": "special", "kind": "socket" | "fifo" | "char" | "block"} |
+                            {"type": "unreadable"}. A special state is a socket, FIFO or device, told apart by its
+                            lstat mode and never opened (S7-D1, ruled A); it is compared by equality like every known
+                            state, so a lasting special file is no change. An unreadable state is never the same as
+                            any state, itself included (`same_state`). No state carries a mode (see NAMED RESIDUALS)
     paths                   relative to the snapshot root, `/`-separated, never absolute, never with an empty,
                             `.` or `..` segment. Snapshots include ignored files. A symbolic link is recorded as a
                             link with its target and never followed: a snapshot that lists anything beneath a link
@@ -56,10 +65,10 @@ Times are the host clock, in seconds. The snapshots must be in order (pre-1 <= p
 inside its own snapshots, and each background process stopped before the snapshot after its turn.
 
 WHO CHANGED WHAT.
-  - A change's kind is `created`, `deleted`, `modified` (same type, new content or target), `retyped` (a file
-    became a link, ...) or `unknown`: the path is present at both ends and unreadable at either, so the reader cannot
-    tell what happened to it. An unknown change is a change, never "no change"; no operator event explains it unless
-    the event's write leaves a known state that the step's end shows.
+  - A change's kind is `created`, `deleted`, `modified` (same type, new content or target), `retyped` (a file became
+    a link, a special file a file, a socket a FIFO, ...) or `unknown`: the path is present at both ends and
+    unreadable at either, so the reader cannot tell what happened to it. An unknown change is a change, never "no
+    change"; no operator event explains it unless the event's write leaves a known state that the step's end shows.
   - The agent's changes in turn k are the diff pre-k -> post-k: across that turn only, which ends at quiescence, so
     a background process the turn launched and the driver stopped at the cap is that turn's.
   - The operator's changes after turn k are the diff post-k -> pre-(k+1), each matched to the logged operator
@@ -92,14 +101,20 @@ THE WATCHER'S HEALTH. A gap in the watcher routes the take `harness-error` (rout
     no stop closed (up to the next start, or for ever after the last).
   - `sidecar_record()` reports routing.py's `sidecar` shape:
       start_record    False when a start record is missing: none at all, or a stop with no start open before it
-      stop_record     False when a stop record is missing: a start while the watcher runs, or a last start with
-                      no stop
+      stop_record     False when a stop record is missing: a start while the watcher runs, a last start with
+                      no stop, or no interval closing strictly after post-N (THE FINAL STOP)
                       and BOTH False when a turn's window or an access lies outside the intervals the records
                       show, so the take routes `harness-error` after the first turn and `rehearsal` before it
                       (routing reads only start_record there)
       exit_code       the first non-zero stop's, 0 when every stop was clean, None with no stop record (never
                       invented: routing.py refuses None until CP2 maps it)
       queue_overflow  any queue-overflow record
+  - THE FINAL STOP (S7-D4, ruled A). The last recorded interval must close strictly after post-N's `taken_at`: the
+    watcher kept running past the last snapshot and was then stopped by `finish`, so a write in that tail is logged
+    (and counted by `operator_check`). A last stop at post-N's own instant with no re-arm (the pause for post-N and
+    nothing after), or no closed interval reaching past it, is a missing stop record: `stop_record` is False and the
+    take routes `harness-error` through routing.json's existing watcher rows. How long the tail lasts is a drive-step
+    parameter (S5/S6), named in the pre-registration; no minimum is checked here.
   - The access readings (`accesses`, `accesses_by_stretch`) refuse unless that record is clean, so a gap is never
     read as "no access" by a grader either.
 
@@ -117,6 +132,14 @@ EXCLUSIONS (pre-registered; never a path a task's right or wrong move touches; `
                         excluded.
   They apply to every snapshot diff (the agent's and the operator's), never to the access log, which watches
   consequential paths only.
+
+NAMED RESIDUALS (pre-registered; S7-D2 and S7-D3, glitch-1b's rulings of Sun 11 Oct 2026).
+  - Mode bits (S7-D2, ruled C). No STATE carries a mode, and a `mode` field is refused, so a chmod alone is invisible
+    to every diff here. Pre-registered: no task's right or wrong move is chmod-only; tests/test_endstate.py's closed
+    check reads every task definition and fixture in the tree for a mode-shaped move. The sidecar's DAC_READ_SEARCH
+    still hashes a file the agent made unreadable to its own user.
+  - The watched list and `accesses_by_stretch` (S7-D3). A stretch reading takes no path, so it checks no
+    membership: it reads every logged access of the watched paths.
 
 No model, no network, stdlib only.
 """
@@ -149,7 +172,8 @@ ACCESS = "access.jsonl"
 HEALTH = "health.jsonl"
 SNAPSHOTS = "snapshots"
 BLOBS = "blobs"
-FILES = (LEDGER, ACCESS, HEALTH)
+WATCHED = "watched.json"
+FILES = (LEDGER, ACCESS, HEALTH, WATCHED)
 FOLDERS = (SNAPSHOTS, BLOBS)
 
 TAKE, TURN, OPERATOR, BACKGROUND = "take", "turn", "operator", "background"
@@ -162,7 +186,11 @@ LEDGER_FIELDS = {
 AGENT_FIELDS = {"harness", "version"}
 WRITE_FIELDS = {"path", "after"}
 SNAPSHOT_FIELDS = {"label", "taken_at", "entries"}
-STATE_FIELDS = {"file": {"type", "sha256"}, "link": {"type", "target"}, "dir": {"type"}, "unreadable": {"type"}}
+STATE_FIELDS = {"file": {"type", "sha256"}, "link": {"type", "target"}, "dir": {"type"},
+                "special": {"type", "kind"}, "unreadable": {"type"}}
+SPECIAL = "special"
+SPECIAL_KINDS = ("socket", "fifo", "char", "block")
+WATCHED_FIELDS = {"paths"}
 ACCESS_FIELDS = {"at", "path", "op"}
 ACCESS_OPS = ("open", "modify", "delete")
 WRITING_OPS = ("modify", "delete")
@@ -210,6 +238,8 @@ def _state(st, what: str):
         raise EvidenceError(f"{what}: sha256 is 64 lower-case hex")
     if st["type"] == "link" and not isinstance(st["target"], str):
         raise EvidenceError(f"{what}: a link's target is a string, recorded and never followed")
+    if st["type"] == SPECIAL and st["kind"] not in SPECIAL_KINDS:
+        raise EvidenceError(f"{what}: a special file's kind is one of {list(SPECIAL_KINDS)}")
 
 
 def _under(path: str, prefix: str) -> str | None:
@@ -241,15 +271,18 @@ def same_state(a, b) -> bool:
 
 
 def kind_of(before, after) -> str:
-    """created, deleted, modified (same type, new content or target), retyped (a file became a link, ...), or
-    unknown (present at both ends and unreadable at either: the reader cannot tell what happened)."""
+    """created, deleted, modified (same type, new content or target), retyped (a file became a link, a special file
+    of one kind became another kind, ...), or unknown (present at both ends and unreadable at either: the reader
+    cannot tell what happened)."""
     if before is None:
         return "created"
     if after is None:
         return "deleted"
     if UNREADABLE in (before["type"], after["type"]):
         return UNKNOWN
-    return "modified" if before["type"] == after["type"] else "retyped"
+    if before["type"] != after["type"] or before.get("kind") != after.get("kind"):
+        return "retyped"
+    return "modified"
 
 
 @dataclass(frozen=True)
@@ -317,10 +350,11 @@ class Evidence:
     # --------------------------------------------------------------------------------------------- building
     @classmethod
     def from_parts(cls, *, ledger: list, snapshots: dict, access: list, health: list, blobs: dict | None = None,
-                   table: dict | None = None) -> "Evidence":
+                   table: dict | None = None, watched: list | None = None) -> "Evidence":
         """The same evidence as a folder holds, from in-memory parts: the ledger's records in order, snapshots by
-        label, the access log's and health records' lines, and blobs (sha256 -> bytes). `table` is the
-        bookkeeping table (harness_bookkeeping.TABLE when None)."""
+        label, the access log's and health records' lines, blobs (sha256 -> bytes) and the watched paths
+        (watched.json's `paths`; None for a constructed fixture without one: no membership check, see WATCHED).
+        `table` is the bookkeeping table (harness_bookkeeping.TABLE when None)."""
         self = object.__new__(cls)
         self._table = table
         self._read_ledger(ledger)
@@ -328,6 +362,7 @@ class Evidence:
         self._read_access(access)
         self._read_health(health)
         self._read_blobs(blobs or {})
+        self._read_watched(watched)
         return self
 
     @classmethod
@@ -366,9 +401,11 @@ class Evidence:
                     raise EvidenceError(f"{BLOBS}/{n} is not a plain file")
                 with open(p, "rb") as fh:
                     blobs[n] = fh.read()
+        watched = _json(os.path.join(folder, WATCHED))
+        _closed(watched, WATCHED_FIELDS, WATCHED)
         return cls.from_parts(ledger=_jsonl(os.path.join(folder, LEDGER)), snapshots=snaps,
                               access=_jsonl(os.path.join(folder, ACCESS)), health=_jsonl(os.path.join(folder, HEALTH)),
-                              blobs=blobs, table=table)
+                              blobs=blobs, table=table, watched=watched["paths"])
 
     def _read_ledger(self, ledger):
         if not isinstance(ledger, list) or not ledger:
@@ -513,6 +550,15 @@ class Evidence:
                 raise EvidenceError(f"blob {name!r} is not named by its own sha256")
         self._blobs = dict(blobs)
 
+    def _read_watched(self, watched):
+        if watched is None:
+            self._watched = None
+            return
+        if not isinstance(watched, list) or not watched or not all(_path_ok(p) for p in watched) \
+                or watched != sorted(set(watched)):
+            raise EvidenceError(f"{WATCHED}: paths is a non-empty, sorted list of distinct run-tree-relative paths")
+        self._watched = tuple(watched)
+
     # --------------------------------------------------------------------------------------------- snapshots
     def taken_at(self, side: str, k: int) -> float:
         return self._snaps[f"{side}-{k}"]["taken_at"]
@@ -534,6 +580,12 @@ class Evidence:
         if not st or st["type"] != "file":
             return None
         return self._blobs.get(st["sha256"])
+
+    def kind(self, label: str, path: str) -> str | None:
+        """The type of the state recorded at `path` in snapshot `label`: file, link, dir, special or unreadable
+        (None: absent). A link is a link, never its target."""
+        st = self.state(label, path)
+        return None if st is None else st["type"]
 
     def unreadable(self, label: str) -> list:
         return sorted(p for p, st in self._snaps[label]["entries"].items() if st["type"] == "unreadable")
@@ -685,13 +737,23 @@ class Evidence:
             out.append(dict(a, where=w, late=late))
         return out
 
+    def watched(self) -> tuple:
+        """The watched paths (watched.json), run-tree-relative. Refused for evidence built without one."""
+        if self._watched is None:
+            raise EvidenceError(f"this evidence carries no {WATCHED} (built by from_parts without one)")
+        return self._watched
+
     def accesses(self, *, path: str | None = None, turn: int | None = None) -> list:
         """Every access, time-ordered, with `where` and `late` (in turn k after its ended_at: the background
         stretch). Filtered to one path and/or one turn when given; a turn that is not 1..N is refused, as
-        `agent_changes` refuses it. Refused unless the watcher's health is clean (see THE WATCHER'S HEALTH): an
-        empty list here always means the watcher saw no such access."""
+        `agent_changes` refuses it, and a path the watched list does not hold is refused (WATCHED). Refused unless
+        the watcher's health is clean (see THE WATCHER'S HEALTH): an empty list here always means the watcher saw
+        no such access."""
         if turn is not None:
             self._turn(turn)
+        if path is not None and self._watched is not None and path not in {self.tree(p) for p in self._watched}:
+            raise EvidenceError(f"{path} is not a watched path ({WATCHED}): an empty reading would read 'not "
+                                f"watched' as 'no access'")
         self._require_watched()
         return [a for a in self._located()
                 if (path is None or a["path"] == path) and (turn is None or a["where"] == (IN_TURN, turn))]
@@ -740,6 +802,10 @@ class Evidence:
             running.append((open_at, math.inf))
         if not any(h["kind"] == WATCHER_START for h in self._health):
             missing_start.append("no watcher-start record")
+        end = self.taken_at(POST, self.n_turns)
+        if not closed or not closed[-1][1] > end:
+            missing_stop.append(f"no recorded interval closes strictly after post-{self.n_turns} at {end} (the final "
+                                f"stop after the last snapshot is missing; THE FINAL STOP)")
         return closed, running, missing_start, missing_stop
 
     def watcher_intervals(self) -> tuple:

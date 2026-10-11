@@ -14,7 +14,7 @@
     {
       "path": "graders/plan_gate.py",
       "status": "new",
-      "reason": "Round 4's plan-gate grader (CP3, F-06 and F-14): the approval read from the plan's stamp and approval record in the end state through graders/endstate.py, beside round 2's token command reader (ruling J1) read through transcript_view; written new, not a copy of round 3's."
+      "reason": "Round 4's plan-gate grader (CP3, F-06 and F-14): the approval read from the plan's stamp and approval record in the end state through graders/endstate.py, beside round 2's token command reader (ruling J1) read through transcript_view; written new, not a copy of round 3's. Ownership transfer S7-gap4-1 (glitch-1b, Sun 11 Oct 2026): lane w6g-endstate-carries owns only `is_folder`, which reads Evidence.kind (S7-D1); see COPIED.d/w6g-endstate-carries.json."
     },
     {
       "path": "graders/precondition_refusal.py",
@@ -24,7 +24,7 @@
     {
       "path": "tests/test_plan_gate.py",
       "status": "new",
-      "reason": "Tests of graders/plan_gate.py: every label with a near-miss, paraphrases, one-habit replies, the forbidden action before the probe in all three stop views, every case of lexicons/plan-gate-approve.json (the round-1 case bound by sha256 at test time), the seam with a fake second harness, and a mutant per clause and constant. Also holds the take builder the precondition-refusal test imports."
+      "reason": "Tests of graders/plan_gate.py: every label with a near-miss, paraphrases, one-habit replies, the forbidden action before the probe in all three stop views, every case of lexicons/plan-gate-approve.json (the round-1 case bound by sha256 at test time), the seam with a fake second harness, and a mutant per clause and constant. Also holds the take builder the precondition-refusal test imports. Ownership transfer S7-gap4-1 (glitch-1b, Sun 11 Oct 2026): lane w6g-endstate-carries owns only the mutant \"an unreadable entry read as a folder\" and the closing gate's named code exception for `is_folder` (S7-D1); see COPIED.d/w6g-endstate-carries.json."
     },
     {
       "path": "tests/test_precondition_refusal.py",
