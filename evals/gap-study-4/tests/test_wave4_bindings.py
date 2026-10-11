@@ -17,8 +17,12 @@ Carried items (the lane lead's brief):
     a missing file, a relative path, and an owner case under one uid mock both readers share. The real-path walk is
     bound here on both sides (glitch-f3): a mutant that puts abspath back on either reader goes red;
   - binding 6 binds image_lock.SIDECAR_PROGRAM to sidecar.PROGRAM;
-  - binding 8 binds preflight's lock keys to w4a's schema paths only: preflight does not yet read the locks through
-    image_lock.load. Binding 8: load wiring is CP2's first sequential lane.
+  - binding 8 binds preflight's lock keys to w4a's schema paths, and (lane w6a, CP2-preflight-2) the loader-to-
+    evaluator connection: preflight reads a take's lock only through w4a's own image_lock.load and require_ready,
+    for the harness's own take image, and projects exactly LOCK_KEYS from it; the committed locks are refused as
+    not ready, and a filled synthetic copy reaches evaluate's lock contract;
+  - binding 4 also binds the sidecar's parsed evidence source (sidecar.create_argv's `evidence`) to the
+    evidence_dir preflight judges (lane w6a, CP2-preflight-3).
 
 No model, no container, no network; nothing reads a real login file.
 """
@@ -83,6 +87,7 @@ fixtures_c = read_fixtures("test_scan_record.py", ("TOKEN", "GOOD", "LOGIN_FIXTU
 MUTANTS: list = []
 IMAGE = "sha256:" + "a" * 64
 RUN_TREE = "/srv/w/t1/tree"
+EVIDENCE = "/srv/e/t1"
 
 
 def tearDownModule():
@@ -218,7 +223,7 @@ class TestBinding3Proxy(Binding):
 # ------------------------------------------------------------------------------------------------ binding 4
 class TestBinding4SidecarExpect(Binding):
     def expect(self):
-        return sc.expect_from_argv(sc.create_argv(image=IMAGE, run_tree=RUN_TREE, evidence="/srv/e/t1",
+        return sc.expect_from_argv(sc.create_argv(image=IMAGE, run_tree=RUN_TREE, evidence=EVIDENCE,
                                                   watch=["out/result.txt", "notes.md"]))
 
     def check(self):
@@ -239,18 +244,26 @@ class TestBinding4SidecarExpect(Binding):
         spec = types.SimpleNamespace(run_tree=RUN_TREE)
         # As parsed: preflight's check refuses only on the PENDING cap_add.
         try:
-            pf._check_sidecar({}, spec, None, None, None, exp)
+            pf._check_sidecar({}, spec, None, None, None, exp, EVIDENCE)
             out.append("preflight passed a sidecar expectation that holds PENDING")
         except pf._Fail as e:
             if str(e) != "sidecar_expect PENDING: cap_add":
                 out.append(f"as parsed, preflight refuses for another reason: {e}")
         # With cap_add filled in memory, every field rule passes: the check reaches the inspect probe.
         try:
-            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=["DAC_READ_SEARCH"]))
+            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=["DAC_READ_SEARCH"]), EVIDENCE)
             out.append("preflight passed without the sidecar inspect")
         except pf._Fail as e:
             if str(e) != "probe sidecar-inspect is missing":
                 out.append(f"a field of the parsed expectation fails preflight: {e}")
+        # Lane w6a: the parsed evidence source is the folder preflight judges; any other folder fails before the
+        # inspect is read.
+        try:
+            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=["DAC_READ_SEARCH"]), "/srv/e/t2")
+            out.append("preflight passed a sidecar whose evidence source is not the judged folder")
+        except pf._Fail as e:
+            if "evidence" not in str(e) or str(e) == "probe sidecar-inspect is missing":
+                out.append(f"another evidence folder fails for another reason: {e}")
         return out
 
     def test_binding_4(self):
@@ -457,11 +470,58 @@ class TestBinding7RoutingNames(Binding):
 
 # ------------------------------------------------------------------------------------------------ binding 8
 class TestBinding8LockKeys(Binding):
-    """Key paths only. Binding 8: load wiring is CP2's first sequential lane (preflight does not yet call
-    image_lock.load)."""
+    """Key paths, then (lane w6a, CP2-preflight-2) the real loader-to-evaluator connection: preflight.load_take_lock
+    reads through w4a's image_lock.load and require_ready, for the harness's own take image, and projects exactly
+    LOCK_KEYS by their schema paths."""
+
+    def loader(self) -> list:
+        out = []
+        if pf.image_lock is not il:
+            out.append("preflight's image_lock is not w4a's module")
+        if set(pf.TAKE_IMAGE) != set(rt.LOGIN_VARIABLE) or sorted(pf.TAKE_IMAGE.values()) != sorted(il.TAKE_IMAGES):
+            out.append(f"preflight's TAKE_IMAGE {pf.TAKE_IMAGE} does not pair every harness with one take image")
+        for h, image in pf.TAKE_IMAGE.items():
+            if il.HARNESS_PACKAGES.get(image, "").split("/")[-1] not in (h, h + "-cli"):
+                out.append(f"{h}: {image}'s package {il.HARNESS_PACKAGES.get(image)} is not that harness")
+        loaded = locks()
+        for h, image in sorted(pf.TAKE_IMAGE.items()):
+            path = os.path.join(il.BOX_DIR, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
+            try:
+                pf.load_take_lock(path, harness=h)
+                out.append(f"{h}: the committed {image} lock (PENDING) was accepted")
+            except il.NotReady:
+                pass
+            except Exception as e:  # the committed lock must reach require_ready, nothing earlier
+                out.append(f"{h}: the committed {image} lock refused before readiness ({type(e).__name__}: {e})")
+            filled = dict(loaded[image], base="registry.example/fake-base@sha256:" + "a" * 64, image_id=IMAGE,
+                          python="3.12.99", harness=dict(loaded[image]["harness"], version="9.8.7"), pending={})
+            with tempfile.TemporaryDirectory(prefix="w-") as d:
+                p = os.path.join(d, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
+                os.makedirs(os.path.dirname(p), exist_ok=True)
+                with open(p, "w", encoding="utf-8") as fh:
+                    json.dump(filled, fh)
+                with mock.patch.object(il, "BOX_DIR", d):
+                    try:
+                        got = pf.load_take_lock(p, harness=h)
+                    except Exception as e:
+                        out.append(f"{h}: a filled {image} lock refused ({type(e).__name__}: {e})")
+                        continue
+            want = {k: path_get(filled, k) for k in pf.LOCK_KEYS}
+            if got != want:
+                out.append(f"{h}: projected {got}, not the schema paths' {want}")
+            spec = rt.TakeSpec(image=IMAGE, run_tree=RUN_TREE, config_dir="/srv/w/t1/cfg", network="b" * 64,
+                               memory_reservation=512, memory=1536, cpus="1", pids_limit=64)
+            try:
+                rec = pf.evaluate({}, spec=spec, lock=got, sidecar_expect={}, harness=h, hosts=pc.HOSTS,
+                                  evidence_dir=EVIDENCE)
+                if rec["ok"] or [c["id"] for c in rec["checks"]] != list(pf.PREFLIGHT_CHECKS):
+                    out.append(f"{h}: evaluate over no probes is not a full failing record")
+            except Exception as e:
+                out.append(f"{h}: evaluate refuses the projected lock ({type(e).__name__}: {e})")
+        return out
 
     def check(self):
-        out = []
+        out = self.loader()
         loaded = locks()
         for key in pf.LOCK_KEYS:
             top = key.split(".")[0]
@@ -485,6 +545,27 @@ class TestBinding8LockKeys(Binding):
     def test_binding_8(self):
         self.green_then_red("binding 8: preflight reads a lock key w4a's schema lacks",
                             mock.patch.object(pf, "LOCK_KEYS", pf.LOCK_KEYS[:-1] + ("users.keepalive.name",)))
+
+    def test_binding_8_loader(self):
+        """Lane w6a: the loader-to-evaluator connection, red when preflight pairs a harness with another image."""
+        self.green_then_red("binding 8: preflight pairs claude-code with the codex take image",
+                            mock.patch.object(pf, "TAKE_IMAGE", dict(pf.TAKE_IMAGE, **{rt.CLAUDE_CODE: "take-o"})))
+        self.green_then_red("binding 8: preflight projects a key the lock does not carry",
+                            mock.patch.object(pf, "LOCK_KEYS", pf.LOCK_KEYS + ("users.keepalive.name",)))
+
+
+# Lane w6a, criterion 7: every test of this module at the base 89b54db4 (Ran 10, OK) still exists and runs.
+BASE_TESTS = ("TestBinding1Users.test_binding_1", "TestBinding2Hosts.test_binding_2", "TestBinding3Proxy.test_binding_3",
+              "TestBinding4SidecarExpect.test_binding_4", "TestBinding5Login.test_binding_5",
+              "TestBinding5Login.test_binding_5_real_path_on_both_sides",
+              "TestBinding5Login.test_the_union_holds_both_outcomes", "TestBinding6Program.test_binding_6",
+              "TestBinding7RoutingNames.test_binding_7", "TestBinding8LockKeys.test_binding_8")
+
+
+class TestNothingDropped(unittest.TestCase):
+    def test_every_base_binding_still_runs(self):
+        names = {f"{c.__name__}.{n}" for c in Binding.__subclasses__() for n in dir(c) if n.startswith("test_")}
+        self.assertEqual([b for b in BASE_TESTS if b not in names], [])
 
 
 if __name__ == "__main__":
