@@ -1062,9 +1062,14 @@ def owner_list_problems(draft):
             if not isinstance(draft.get(key), list) or len(draft[key]) != count]
 
 
+def folded(text):
+    """W5C-R4-4: casefolded, with every run of whitespace collapsed to one space."""
+    return " ".join(text.casefold().split())
+
+
 def floors_missing(value, tasks, declared_tasks):
     return not (isinstance(value, dict) and bool(tasks) and tasks == declared_tasks and set(value) == set(tasks)
-                and all(supplied_text(text) and stats.FLOOR_NOT_RUN.rsplit(", ", 1)[-1] not in text
+                and all(supplied_text(text) and folded(stats.FLOOR_NOT_RUN.rsplit(", ", 1)[-1]) not in folded(text)
                         for text in value.values()))
 
 

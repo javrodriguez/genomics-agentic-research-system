@@ -4081,3 +4081,45 @@ The code commit carries the Claude Opus 5.5 trailer; this report-only child carr
 
 Merge readiness (glitch-1b's merge writer, under ruling W5C-merge-1): the OPEN items this report still lists (V1-V8, the 79 pending inputs, and the carries such as W5C1-5 proxy counts, NITs W5C-R4-2..R4-4 and the run_checks echo item for w1a) are values and carries owned elsewhere, not open decisions of this lane; review R4 closed under the cap (glitch-1b's record in plans/gap-study-round-4/w5c-review-r4-2026-10-11.md, "W5C-R4-1 closed by evidence capture", 16:15 EDT); athena run gap4-w5c-ruleb-16778b1-16778b1-20261011T161248Z PASS (commit 16778b119181, battery 110/110, 1303 ran, 0 failures, 0 errors, 82 skipped; run.log sha256 4ac37977dc387a3b…), and the collateral capture beside it (collateral-capture/, nine partitions exit 0 on 419be9f6, 358/358 RED, SHA256SUMS listing each .out). The lane is ready to merge into gap4/w5c-merge from 89b54db4.
 This report-only child carries no trailer.
+
+## Appendix S4 (w6c-w5c-nits) — Sun 11 Oct 2026 16:58 EDT
+
+RESUME HERE: hand-back at a41df4577c06b86296fbadd2ac5acb0d414db77f; glitch-1b runs the athena full run_checks on the exact head, then one fresh review round.
+
+Writer: the S4 builder, sole writer of this slice under ruling S4-gap4-1 (glitch-1b, Javier's standing delegation), on branch gap4/w6c-w5c-nits from 28e1be3e (the w5c merge).
+Code commit: a41df4577c06b86296fbadd2ac5acb0d414db77f (Opus trailer).
+
+Ownership transfer: ruling S4-gap4-1 moves `evals/gap-study-4/run_checks.py` from w1a-cp1-scaffold to this slice.
+The claim moved in the same commit: its entry left `COPIED.d/w1a-cp1-scaffold.json` (no other byte changed there) and now sits in the new fragment `COPIED.d/w6c-w5c-nits.json`, whose reason names the ruling; `copy_manifest.py --check` exits 0 with 29 fragments.
+
+What changed:
+1. W5C-R4-2: both runners (`tests/test_build_draft.py`, `tests/test_ci_job.py`) now print `red without collateral: <a>; red; collateral listed, never credited: <b> [<names>]`.
+From this appendix on, this report calls those witnesses "red; collateral listed, never credited"; the earlier sections keep their historical wording byte for byte.
+2. W5C-R4-3: the summary and outcomes lines are read from the mutant run's stdout only, taking the last match of each; the FAIL-block attribution still reads both streams.
+3. W5C-R4-4: `build_draft.floors_missing` compares through a new `folded()` (casefold, then every whitespace run collapsed to one space), so "NOT YET RUN", "not  yet\trun" and a no-break-space spelling stay pending.
+4. run_checks echo: a PASSING command also echoes lines starting with "test_build_draft witnesses", "test_ci_job witnesses", "red without collateral" and "collateral totals" (ECHO_ON_PASS, beside the battery's "test_round4: "), so the athena log itself holds every group's collateral.
+
+Witness ids, methods, clause bindings and the registry are unchanged: 358 (draft 242, CI 116), read from the runners' own registry lines below.
+
+| Check (Mac, light-ok, Python 3.13, conda unset) | Result | Exit |
+| --- | --- | --- |
+| RED before the fix: test_build_draft.py WitnessEvidence + Readiness.test_floor_fallback_keeps_closed | 4 run, 9 failures (1 label, 3 stdout-parse, 5 floor spellings), 0 errors | 1 |
+| RED before the fix: test_ci_job.py WitnessEvidence + RunChecksEcho | 5 run, 5 failures (1 label, 3 stdout-parse, 1 echo), 0 errors | 1 |
+| GREEN: test_build_draft.py WitnessEvidence + Readiness.test_floor_fallback_keeps_closed + Claims | 6 run, 0/0/0 | 0 |
+| GREEN: test_ci_job.py WitnessEvidence + RunChecksEcho | 5 run, 0/0/0 | 0 |
+| build_draft.py --check | committed draft equals the writer output | 0 |
+| copy_manifest.py --check | ok, 224 files, 29 fragments | 0 |
+| test_scaffold.py TheRunner + TheManifest.test_check_passes_on_the_folder | 10 run, OK | 0 |
+| Single witnesses via run_checks.run_all (draft floors-fallback, floors-null-guard) | PASS; echoed: 2/2 red, registry 242; 1 without collateral, 1 listed never credited; totals 9 failures, 0 errors, 0 skipped | 0 |
+| Single witnesses via run_checks.run_all (CI runner, run-key-env, duplicate-job) | PASS; echoed: 3/3 red, registry 116; 2 without, 1 listed never credited; totals 1 failure, 1 error, 0 skipped | 0 |
+
+Departures, retained and not credited: a whole-file `test_scaffold.py` run passed the 60-second Mac bound (TheManifest's git reads) and was stopped by pid at 3.5 minutes with no failure seen; the targeted runner classes above replace it, and the full scaffold sweep is athena's.
+The first CI single-witness drive failed in the scratch driver itself (it skipped the setUpModule call that the file's own `--witnesses` entry makes); the driver was fixed and the code was not touched.
+R4-4 needed a one-function edit to `build_draft.py` (w5c's file), which the next-slices owner list for S4 does not name; the fix lives there because that is where the refusal is.
+The R4-2 label is the brief's wording verbatim; this builder could not re-read the R4 review text in-session (a permission check stopped that read), so the reviewer's exact proposed wording was not compared.
+New test placement: the echo test is `RunChecksEcho` in `tests/test_ci_job.py` (an owned file), with subprocess faked so no shell body runs, as that file's docstring requires.
+
+Not run locally (by assignment): every witness partition, the unmutated whole files, the battery and the full run_checks; all are athena's on the exact head.
+No push, spend, remote job, credential, holdout, sealed or denied-source access occurred.
+Raw logs: /private/tmp/claude-501/-Users-javrodher-glitch/e252e76a-0bbf-4607-87ce-9da731831ab1/scratchpad/s4/.
+This report-only child carries no trailer.
