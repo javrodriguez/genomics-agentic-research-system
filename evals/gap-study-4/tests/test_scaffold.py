@@ -153,13 +153,14 @@ class TheManifest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             rec = json.loads(OWN_FRAGMENT.read_text())["files"]
+            # round2.py: a byte-identical copy (prereg.py, the earlier example, is an edited copy since slice S3)
             for e in rec:
-                if e["path"] == "prereg.py":
+                if e["path"] == "round2.py":
                     e.pop("source")
                     e["status"], e["reason"] = "new", "claimed new"
             own_fragment_in(d, rec)
             bad = cm.problems(d, pinned=False)
-            self.assertTrue(any("prereg.py" in b and "it is a copy and must say so" in b for b in bad), bad)
+            self.assertTrue(any("round2.py" in b and "it is a copy and must say so" in b for b in bad), bad)
 
     def test_a_fragment_must_carry_its_own_lane_and_shape(self):
         with tempfile.TemporaryDirectory() as d:

@@ -146,8 +146,9 @@
     },
     {
       "path": "prereg.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/prereg.py"
+      "status": "edited",
+      "source": "evals/gap-study-3/prereg.py",
+      "reason": "Slice S3 (lane w6d-prereg-order, 11 Oct 2026) closes the w5c carry: --order and order() now name freeze.planned_order, the one permutation of the design's whole planned rows that the freeze writes, in place of round 3's per-axis positive/control order; a design whose agent versions are still pending is refused by that function's own ledger check, never filled. The per-axis AXES and axis_of went with it. The entry stays in this fragment as the copy's provenance; tests/test_prereg_order.py (claimed by w6d-prereg-order) binds the change."
     },
     {
       "path": "review_kit/BRIEF.md",

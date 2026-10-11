@@ -3,7 +3,7 @@
 
     python3 evals/gap-study-2/prereg.py --status        which file is in force, and whether it is frozen
     python3 evals/gap-study-2/prereg.py --task <id>     one task's design
-    python3 evals/gap-study-2/prereg.py --order <sha>   the take order this seed produces
+    python3 evals/gap-study-2/prereg.py --order <sha>   the take order this seed produces (freeze.planned_order)
 
 WHY A LOADER RATHER THAN json.load IN EACH FILE. The first study dispatched graders by a hard-coded
 id chain and kept each take's checks as module constants, so the definitions that decide a verdict
@@ -21,10 +21,11 @@ So: prereg.json wins whenever it exists, the loader says which file it read ever
 in anger, and `require_frozen()` is called by everything that produces a number. There is no flag
 that lets a grading path read the draft.
 
-THE TAKE ORDER IS A FUNCTION, NOT A LIST. It is one permutation per axis over every (task, half,
-model, take), seeded by the sha of the pre-freeze review commit -- a sha that does not exist until
-the review has happened, so the order cannot have been chosen to suit a result. Anyone can
-recompute it from the seed with `--order <sha>`.
+THE TAKE ORDER IS A FUNCTION, NOT A LIST. In round 4 it is freeze.planned_order: ONE permutation
+of the design's whole planned rows, interleaved across arm, model, task and half, seeded by the sha
+of the pre-freeze review commit -- a sha that does not exist until the review has happened, so the
+order cannot have been chosen to suit a result. Anyone can recompute it from the seed with
+`--order <sha>`, which calls that same function (slice S3 replaced round 3's per-axis order here).
 
 No model, no network, stdlib only.
 """
@@ -32,9 +33,7 @@ No model, no network, stdlib only.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
-import random
 import sys
 from pathlib import Path
 
@@ -115,8 +114,8 @@ def n() -> int:
 def cells() -> list[tuple[str, str, str, int]]:
     """Every (task, half, model, take) the plan calls for, in a fixed canonical order.
 
-    Canonical means sorted, not shuffled: this is the SET the permutation is taken over, and it
-    must not depend on dictionary ordering or on which machine built it.
+    Canonical means sorted, not shuffled. Round 4's take order is not taken over this set: it
+    permutes the design's whole rows (see order()).
     """
     out = []
     for t in sorted(x["id"] for x in load()["tasks"]):
@@ -127,31 +126,23 @@ def cells() -> list[tuple[str, str, str, int]]:
     return out
 
 
-# Round 2 has one axis. Round 1 carried a second axis for its local models; that tier was removed
-# from this study's draft at kickoff (amendment A5), so every model is on the claude axis.
-AXES = ("claude",)
+ORDER_FUNCTION = "freeze.planned_order"
 
 
-def axis_of(model: str) -> str:
-    return "claude"
+def order(seed_sha: str) -> list[dict]:
+    """The take order the freeze writes for this seed: freeze.planned_order over the whole rows.
 
-
-def order(seed_sha: str) -> dict[str, list[tuple[str, str, str, int]]]:
-    """One permutation per axis, from a seed nobody controlled when the design was written.
-
-    random.Random(int) with a fixed algorithm is reproducible across machines and Python versions
-    for shuffle; the seed is the integer value of the sha, so the whole thing is a pure function of
-    a commit that did not exist when this code was written.
+    One permutation of every planned row (arm, model, task, half, wording, repeat, agent, slot),
+    not one per axis; the freeze calls the same function with the review commit's sha, so this is
+    the order a frozen prereg.json carries as take_order. Each row's bytes, agent version included,
+    feed the permutation, so a draft whose versions are still pending has no order yet: the
+    freeze's own ledger check refuses it (ValueError), and this door does not fill or skip it.
+    Imported here, not at the top, because freeze imports this module.
     """
     if not seed_sha or len(seed_sha) < 7:
         raise SystemExit("the take order needs the full sha of the pre-freeze review commit")
-    result: dict[str, list] = {}
-    for axis in AXES:
-        members = [c for c in cells() if axis_of(c[2]) == axis]
-        rng = random.Random(int(hashlib.sha256((axis + seed_sha).encode()).hexdigest(), 16))
-        rng.shuffle(members)
-        result[axis] = members
-    return result
+    import freeze
+    return freeze.planned_order(load(), seed_sha)
 
 
 def main() -> int:
@@ -185,13 +176,18 @@ def main() -> int:
         return 0
 
     if args.order:
-        o = order(args.order)
-        for axis, members in o.items():
-            print(f"\n=== {axis} axis — {len(members)} takes, seeded by {args.order[:12]}")
-            for i, (t, half, m, k) in enumerate(members[:8]):
-                print(f"  {i:3}  {t:22} {half:8} {m:28} take {k}")
-            if len(members) > 8:
-                print(f"  ... {len(members) - 8} more")
+        try:
+            rows = order(args.order)
+        except ValueError as e:
+            print(f"take order: {ORDER_FUNCTION} refuses the design in force ({load()['_source']}): {e}")
+            return 1
+        print(f"take order: {ORDER_FUNCTION}, one permutation of {len(rows)} whole planned rows, "
+              f"seeded by {args.order[:12]}")
+        for i, r in enumerate(rows[:8]):
+            print(f"  {i:3}  {r['arm']:2} {r['model']:28} {r['task']:22} {r['half']:8} "
+                  f"{r['wording']} repeat {r['repeat']}  {r['slot']}")
+        if len(rows) > 8:
+            print(f"  ... {len(rows) - 8} more")
         return 0
 
     ap.error("give --status, --task <id> or --order <sha>")
