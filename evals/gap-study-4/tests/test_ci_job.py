@@ -414,7 +414,7 @@ def mutations():
 
 
 def altered(text, name):
-    if name == "kickoff-registry-conditional":
+    if name in ("kickoff-registry-conditional", "run-first-line-only"):
         return text
     if name in ("top-level-env", "top-level-concurrency"):
         return text + mutations()[name][2]
@@ -445,12 +445,22 @@ def setUpModule():
     RAW = (REPO / WORKFLOW).read_text(encoding="utf-8")
     CURRENT_BOX_PRESENT = True if SELECTED in ("box-landed", "before-box") else None
     CURRENT = altered(RAW, SELECTED) if SELECTED and SELECTED != "box-landed" else RAW
+    if SELECTED == "run-first-line-only":
+        def first_line_only(body):
+            lines = [line for line in body.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+            return bool(lines and lines[0].startswith("        run: "))
+        patch = mock.patch.object(sys.modules[__name__], "named_step_closed", first_line_only)
+        patch.start()
+        global CLOSURE_PATCH
+        CLOSURE_PATCH = patch
 
 
 def tearDownModule():
     global RAW, CURRENT, BASE_TEXT, INTRODUCED, CURRENT_BOX_PRESENT
     RAW = CURRENT = BASE_TEXT = INTRODUCED = None
     CURRENT_BOX_PRESENT = None
+    if SELECTED == "run-first-line-only":
+        CLOSURE_PATCH.stop()
 
 
 class JobContract(unittest.TestCase):
@@ -473,6 +483,12 @@ class JobContract(unittest.TestCase):
             text = RAW.replace(f"        run: {BEFORE[0]}\n", extra + f"        run: {BEFORE[0]}\n")
             with self.subTest(extra=extra):
                 self.assertIn("R37.run-keys", problems(text, BASE_TEXT, INTRODUCED))
+        for extra in ("        timeout-minutes: 1\n", "        env:\n          FAKE: fake\n"):
+            for end in (f"        run: {BEFORE[0]}\n", '          test "$removed" -eq 0\n'):
+                block = job_block(RAW)
+                text = replace_once(RAW, block, replace_once(block, end, end + extra))
+                with self.subTest(extra=extra, end=end):
+                    self.assertIn("R37.run-keys", problems(text, BASE_TEXT, INTRODUCED), "R37.run-keys")
 
     def test_kickoff_registry_after_box(self):
         landed = RAW.replace(BOX_DEFERRED, BOX_STEP)
@@ -576,6 +592,8 @@ class JobContract(unittest.TestCase):
 # Explicit Athena-only whole-file witnesses. Never called by ordinary imports
 # or by a targeted Mac invocation. Three disjoint groups bound command time.
 def witness_binding(name):
+    if name == "run-first-line-only":
+        return "JobContract.test_closed_structure", "R37.run-keys"
     if name == "kickoff-registry-conditional":
         return "JobContract.test_kickoff_registry_after_box", "R44.present:registry"
     special = {"trigger":"R37.trigger", "removed-line":"R44.additive",
@@ -589,12 +607,12 @@ def witness_binding(name):
 
 
 def witness_names():
-    return sorted(set(mutations()) | {"trigger", "removed-line", "outside-block", "introduced", "box-landed", "before-box", "kickoff-registry-conditional"})
+    return sorted(set(mutations()) | {"trigger", "removed-line", "outside-block", "introduced", "box-landed", "before-box", "kickoff-registry-conditional", "run-first-line-only"})
 
 
 def witness_groups():
     names = witness_names()
-    assert all(witness_binding(name)[0] for name in names)
+    assert all(all(witness_binding(name)) for name in names)
     groups = [names[i::3] for i in range(3)]
     assert len(names) == len(set(names)) and names
     assert sorted(name for group in groups for name in group) == names
@@ -616,10 +634,11 @@ def run_witnesses(group):
         method, clause = witness_binding(name)
         failures = re.findall(r"^FAIL: [^\n]*\(__main__\.([^)]*)\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)",
                               lines, re.M | re.S)
-        attributed = any(bound == method and "AssertionError" in body and (not clause or clause in body)
+        attributed = any(bound == method and "AssertionError" in body and clause
+                         and re.search(r"(?<![\w:.-])" + re.escape(clause) + r"(?![\w:.-])", body)
                          for bound, body in failures)
         passed = bool(attributed and summary and got.returncode != 0 and int(summary[1]) > 0
-                      and int(summary[2]) > 0 and int(summary[4]) == 0
+                      and int(summary[2]) > 0 and int(summary[3]) == 0 and int(summary[4]) == 0
                       and "AssertionError" in lines)
         print(f"witness {name}: {'RED' if passed else 'FAIL'}; " + (summary[0] if summary else "missing summary"), flush=True)
         if not passed:
@@ -644,13 +663,28 @@ class WitnessEvidence(unittest.TestCase):
         name = 'runner'
         method, clause = witness_binding(name)
         for bound, failures, errors, skips, expected in (
-            (method,1,0,0,0), (method,1,1,0,0),
+            (method,1,0,0,0), (method,1,1,0,1),
             ("Other.unrelated",1,0,0,1), (method,0,1,0,1), (method,1,0,1,1)):
             output = (f"FAIL: fake (__main__.{bound})\n---\nAssertionError: {clause}\n"
                       f"test_ci_job: 1 run, {failures} failures, {errors} errors, {skips} skipped\n")
             fake = mock.Mock(stdout=output, stderr="", returncode=1)
             with self.subTest(bound=bound, failures=failures, errors=errors, skips=skips), \
                  mock.patch.object(sys.modules[__name__], "witness_groups", return_value=[[name],[],[]]), \
+                 mock.patch.object(sys.modules[__name__], "witness_names", return_value=[name]), \
+                 mock.patch("subprocess.run", return_value=fake), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(run_witnesses(1), expected)
+
+    def test_clause_tokens_are_exact(self):
+        import contextlib, io
+        name = "run-key-env"
+        method, clause = witness_binding(name)
+        for text, expected in ((clause, 0), (clause + ":extra", 1), (clause + "Extra", 1),
+                               ("prefix-" + clause, 1), ("unrelated", 1)):
+            output = (f"FAIL: fake (__main__.{method})\n---\nAssertionError: {text}\n"
+                      "test_ci_job: 1 run, 1 failures, 0 errors, 0 skipped\n")
+            fake = mock.Mock(stdout=output, stderr="", returncode=1)
+            with self.subTest(text=text), \
+                 mock.patch.object(sys.modules[__name__], "witness_groups", return_value=[[name], [], []]), \
                  mock.patch.object(sys.modules[__name__], "witness_names", return_value=[name]), \
                  mock.patch("subprocess.run", return_value=fake), contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(run_witnesses(1), expected)

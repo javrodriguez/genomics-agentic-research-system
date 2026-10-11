@@ -484,7 +484,7 @@ class Description(unittest.TestCase):
         source = {key: "fake-metadata" for key in b.PRIOR_KEYS}
         source["results"] = {"fake-count": 999}
         with mock.patch.object(b.subprocess, "run", return_value=mock.Mock(stdout=json.dumps(source).encode())) as call:
-            self.assertEqual(b.prior_metadata(), {key: "fake-metadata" for key in b.PRIOR_KEYS})
+            self.assertEqual(b.prior_metadata(), {key: "fake-metadata" for key in b.PRIOR_KEYS}, "R5.metadata")
             self.assertEqual(call.call_args.args[0], ["git", "-C", str(REPO), "show", b.PRIOR_COMMIT + ":" + b.PRIOR_FILE])
         d = self.get()
         prior = b.prior_metadata()
@@ -634,7 +634,7 @@ class Readiness(unittest.TestCase):
     def test_freeze_closed(self):
         d = self.get()
         kwargs = dict(review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
-        with self.assertRaises((ValueError, stats.StatsError)):
+        with self.assertRaises((ValueError, stats.StatsError), msg="R32.freeze"):
             freeze.prepare(d, **kwargs)
         fake = b.finalize(fill_fake(d))
         self.assertEqual(b.pending(fake), {})
@@ -643,7 +643,7 @@ class Readiness(unittest.TestCase):
         # One still-missing value closes the design even with fake pins filled.
         fake["wave3"]["documented_reply"] = "PENDING"
         closed = b.finalize(fake)
-        self.assertIn('/wave3/documented_reply', closed['pending'])
+        self.assertIn('/wave3/documented_reply', closed['pending'], "R32.freeze")
         with self.assertRaises((ValueError, stats.StatsError)):
             freeze.prepare(closed, **kwargs)
         with mock.patch.object(b, "pending", return_value={}):
@@ -684,19 +684,35 @@ class Readiness(unittest.TestCase):
                  dict(fake,**{ids[0]:[fake[ids[0]][0]]*3}),dict(fake,**{ids[0]:['A'*64]*3}),
                  dict(fake,**{ids[0]:fake[ids[1]]}),dict(fake,**{ids[0]:fake[ids[0]][:2]})]
         for bad in changes:
-            with self.subTest(value=bad),self.assertRaises(ValueError): b.validate_digests(bad,ids)
+            with self.subTest(value=bad),self.assertRaises(ValueError, msg="R7.digest-shape"): b.validate_digests(bad,ids)
+
+    def test_floor_fallback_keeps_closed(self):
+        fake = fill_fake(self.get())
+        pointer = "/stats_design_inputs/floors"
+        phrase = stats.FLOOR_NOT_RUN.rsplit(", ", 1)[-1]
+        for text in (stats.FLOOR_NOT_RUN, phrase, "fake prefix " + phrase + " fake suffix"):
+            with self.subTest(text=text):
+                floors = dict(fake["stats_design_inputs"]["floors"])
+                floors[next(iter(floors))] = text
+                draft = changed(fake, ("stats_design_inputs", "floors"), floors)
+                self.assertIn(pointer, b.pending(draft), "R3.floors:fallback")
+                closed = b.finalize(draft)
+                self.assertIn(pointer, closed["pending"], "R3.floors:fallback")
+                with self.assertRaises((ValueError, stats.StatsError), msg="R3.floors:fallback"):
+                    freeze.prepare(closed, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
+        self.assertEqual(b.finalize(fake)["pending"], {}, "R3.floors:fallback")
 
     def test_price_shapes(self):
         d=self.get(); fake=fake_price(d); b.validate_prices(fake,d['stats_design_inputs']['harness_models'])
         for bad in ({},dict(fake,as_of='fake-price'),dict(fake,vendors={}),
                     changed(fake,('vendors','openai',MODELS['O'][0],costs.CLASSES[0]),'-1')):
-            with self.subTest(value=bad),self.assertRaises(ValueError): b.validate_prices(bad,d['stats_design_inputs']['harness_models'])
+            with self.subTest(value=bad),self.assertRaises(ValueError, msg="R15.price-shape"): b.validate_prices(bad,d['stats_design_inputs']['harness_models'])
 
     def test_alpha_before_write(self):
         self.get()
         for good in ('0.05','0.1'): b.validate_alpha(good)
         for bad in ('0.050','.05','0.10','5e-2','1/20'):
-            with self.subTest(alpha=bad),self.assertRaises(ValueError): b.validate_alpha(bad)
+            with self.subTest(alpha=bad),self.assertRaises(ValueError, msg="R31.alpha-shape"): b.validate_alpha(bad)
             with tempfile.TemporaryDirectory() as tmp:
                 path=Path(tmp)/'d.json'; path.write_text('fake original')
                 d=self.get(); d['stats_design_inputs']['alpha']=bad
@@ -719,7 +735,7 @@ class Readiness(unittest.TestCase):
     def test_user_names_and_wordings(self):
         d=self.get(); b.check_leak_users(d['leak_words'],d['box_users'])
         for word,user in [('fake','fake'),('prefix-fake','fake'),('fake','prefix-fake')]:
-            with self.subTest(word=word,user=user),self.assertRaises(ValueError): b.check_leak_users([word],[user])
+            with self.subTest(word=word,user=user),self.assertRaises(ValueError, msg="R9.user-overlap"): b.check_leak_users([word],[user])
         for p in (HERE/'variants').glob('*.json'):
             content=p.read_text().casefold()
             for word in d['leak_words']:
@@ -734,7 +750,7 @@ class Readiness(unittest.TestCase):
         pins=b.version_pins(locks,table)
         self.assertTrue(all(p['agent_version']=='0.0.0-fake' for ps in pins.values() for p in ps.values()))
         table['pin_profiles'][CODEX][MODELS['O'][0]]['version']='0.0.1-fake'
-        with self.assertRaises(ValueError): b.version_pins(locks,table)
+        with self.assertRaises(ValueError, msg="R6.profile-mismatch"): b.version_pins(locks,table)
         fake_settings={'CLAUDE_BYPASS_KEY':'fakeBypass','CODEX_REASONING_EFFORT':'fake-effort',
                        'GEMINI_THINKING':{'path':'fake.thinking','value':'fake-default'},
                        'GEMINI_AUTH_SETTING':{'path':'fake.auth','value':'fake-kind'},'GEMINI_SETTINGS_PATH':'fake/settings.json'}
@@ -768,9 +784,9 @@ class Readiness(unittest.TestCase):
                 return subprocess.run(['git','-C',str(repo),*args],check=True,capture_output=True,text=True)
             git('config','user.name','Fake Writer');git('config','user.email','fake-writer@example.invalid')
             out=repo/'d.json'; b.write_draft(d,out)
-            self.assertFalse(b.committed_matches(d,out,repo))
+            self.assertFalse(b.committed_matches(d,out,repo), "R34.committed-presence")
             git('add','d.json')
-            self.assertFalse(b.committed_matches(d,out,repo))
+            self.assertFalse(b.committed_matches(d,out,repo), "R34.committed-presence")
             fake_home=repo/'empty-home'; fake_home.mkdir()
             with mock.patch.dict(os.environ,{'HOME':str(fake_home),'GIT_CONFIG_GLOBAL':os.devnull,'GIT_CONFIG_NOSYSTEM':'1'}):
                 git('commit','-qm','Record fake bytes')
@@ -893,7 +909,7 @@ class Claims(unittest.TestCase):
             reads.append(path)
             return read_text(path, *args, **kwargs)
         with mock.patch.object(Path, 'read_text', read):
-            self.assertEqual(scaffold.copied_modules(), expected)
+            self.assertEqual(scaffold.copied_modules(), expected, "R13.claims")
         self.assertEqual(reads, fragments)
         self.assertIn('build_draft.py', expected)
         self.assertIn('study.py', expected)
@@ -906,7 +922,7 @@ class Claims(unittest.TestCase):
         with mock.patch.object(scaffold.cm, 'load_fragments', return_value=(removed, [])):
             found = scaffold.cm.problems(pinned=False)
         self.assertTrue(any(p.startswith('build_draft.py is under ') and 'no fragment' in p
-                            for p in found), found)
+                            for p in found), "R13.unclaimed " + repr(found))
 
 
 
@@ -1278,6 +1294,25 @@ def setUpModule():
         OWNER_SETUP()
 
 class OwnerSlots(unittest.TestCase):
+    def test_narrative_words_and_keys_keep_closed(self):
+        fake = fill_fake(b.build())
+        path = ("pause_questions", 0, "answer")
+        pointer = "/pause_questions/0/answer"
+        quote = b.ruled_value("V6-i")
+        for value in (quote, {k: v for k, v in quote.items() if k != "words"}):
+            self.assertEqual(b.finalize(changed(fake, path, value))["pending"], {})
+        cases = [("R3.owner:words", dict(quote, words=value)) for value in ("", "  ", None, 5)]
+        cases.append(("R3.owner:keys", dict(quote, fake_extra="fake")))
+        for clause, value in cases:
+            with self.subTest(clause=clause, value=value):
+                self.assertTrue(b.owner_value_missing(value, "narrative"), clause)
+                draft = changed(fake, path, value)
+                self.assertIn(pointer, b.pending(draft), clause)
+                closed = b.finalize(draft)
+                self.assertIn(pointer, closed["pending"], clause)
+                with self.assertRaises((ValueError, stats.StatsError), msg=clause):
+                    freeze.prepare(closed, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
+
     def test_missing_forms_keep_closed(self):
         fake = fill_fake(b.build())
         for path in OWNER_PATHS:
@@ -1286,16 +1321,16 @@ class OwnerSlots(unittest.TestCase):
                 with self.subTest(pointer=pointer, form=form):
                     # Bind the owner validator itself: the recursive pending
                     # scan independently rejects some sentinel strings.
-                    self.assertTrue(b.owner_value_missing(value, b.OWNER_SLOTS[pointer]))
-                    self.assertIn(pointer, b.pending(changed(fake, path, value)))
+                    self.assertTrue(b.owner_value_missing(value, b.OWNER_SLOTS[pointer]), "R1.owner:forms")
+                    self.assertIn(pointer, b.pending(changed(fake, path, value)), "R1.owner:forms")
             erased = copy.deepcopy(fake)
             node = erased
             for key in path[:-1]:
                 node = node[key]
             del node[path[-1]]
             with self.subTest(pointer=pointer, form="absent"):
-                self.assertTrue(b.owner_value_missing(b.ABSENT, b.OWNER_SLOTS[pointer]))
-                self.assertIn(pointer, b.pending(erased))
+                self.assertTrue(b.owner_value_missing(b.ABSENT, b.OWNER_SLOTS[pointer]), "R1.owner:forms")
+                self.assertIn(pointer, b.pending(erased), "R1.owner:forms")
 
     def test_missing_values_refuse_freeze(self):
         fake = fill_fake(b.build())
@@ -1310,7 +1345,7 @@ class OwnerSlots(unittest.TestCase):
         for name, count in (("pause_questions", 3), ("limitations", 11)):
             for values in ([], fake[name][:-1], fake[name] + [fake[name][0]]):
                 with self.subTest(name=name, length=len(values)):
-                    with self.assertRaisesRegex(ValueError, name):
+                    with self.assertRaisesRegex(ValueError, name, msg="R1.owner:lists"):
                         b.finalize(dict(fake, **{name: values}))
 
     def test_structured_inputs_retain_their_types(self):
@@ -1324,7 +1359,7 @@ class OwnerSlots(unittest.TestCase):
                   {"files": [{"path": "fake.json", "sha256": "b"*64}], "sha256": "c"*64})]
         for path, value in cases:
             with self.subTest(path=path):
-                self.assertEqual(b.pending(changed(fake, path, value)), {})
+                self.assertEqual(b.pending(changed(fake, path, value)), {}, "R1.owner:typed")
         for key in quote:
             missing = dict(quote); del missing[key]
             self.assertIn("/pause_questions/0/answer", b.pending(changed(fake, OWNER_PATHS[0], missing)))
@@ -1655,7 +1690,7 @@ class RuledValues(unittest.TestCase):
         d = b.build(); design = d["stats_design_inputs"]
         self.assertEqual(design["stronger_weaker"][CLAUDE], MODELS["A"][:2])
         self.assertEqual(design["alpha"], "0.05")
-        self.assertEqual(d.get("alpha_secondary"), "0.1")
+        self.assertEqual(d.get("alpha_secondary"), "0.1", "V2.secondary")
         self.assertEqual(design["bootstrap"], {"seed":20261010,"reps":10000})
         self.assertEqual(design["power"], expected_power())
         self.assertEqual(design["floors"], "PENDING")
@@ -1667,13 +1702,13 @@ class RuledValues(unittest.TestCase):
     def test_supplied_answers_and_readings(self):
         d = b.build()
         self.assertEqual([q["answer"] for q in d["pause_questions"]],
-                         [expected_value("V6-"+i) for i in ("i","ii","iii")])
+                         [expected_value("V6-"+i) for i in ("i","ii","iii")], "V6.answers")
         self.assertEqual([q["answer"] for q in d["wave3"]["plan_questions"]],
-                         [expected_value("V7-plan-"+i) for i in ("a","b")])
-        self.assertEqual(d["wave3"]["W3B2-7"]["answer"], expected_value("V7-fabrication"))
-        self.assertEqual([q["round_4_reading"] for q in d["limitations"]], expected_readings())
+                         [expected_value("V7-plan-"+i) for i in ("a","b")], "V7.plan")
+        self.assertEqual(d["wave3"]["W3B2-7"]["answer"], expected_value("V7-fabrication"), "V7.fabrication")
+        self.assertEqual([q["round_4_reading"] for q in d["limitations"]], expected_readings(), "V8.readings")
         self.assertEqual(d.get("limitation_proposals"),
-                         {str(i):expected_value(f"V8-L{i}") for i in (3,6,10,11)})
+                         {str(i):expected_value(f"V8-L{i}") for i in (3,6,10,11)}, "V8.proposals")
         self.assertEqual(d["wave3"]["documented_reply"], "PENDING")
         self.assertIn("/wave3/documented_reply", d["pending"])
         for i in (3,6,10,11):
@@ -1721,10 +1756,49 @@ def setUpModule():
         R2_SETUP()
 
 
+R3_MUTANTS = {
+    "owner-narrative-words": ("OwnerSlots.test_narrative_words_and_keys_keep_closed", "R3.owner:words"),
+    "owner-narrative-keys": ("OwnerSlots.test_narrative_words_and_keys_keep_closed", "R3.owner:keys"),
+    "floors-fallback": ("Readiness.test_floor_fallback_keeps_closed", "R3.floors:fallback"),
+}
+R3_SETUP = setUpModule
+
+
+def setUpModule():
+    if SELECTED == "floors-fallback":
+        def opened(value, tasks, declared_tasks):
+            return not (isinstance(value, dict) and bool(tasks) and tasks == declared_tasks
+                        and set(value) == set(tasks) and all(b.supplied_text(text) for text in value.values()))
+        patch = mock.patch.object(b, "floors_missing", opened)
+    elif SELECTED in ("owner-narrative-words", "owner-narrative-keys"):
+        original = b.owner_value_missing
+        def opened(value, kind):
+            if kind != "narrative" or not isinstance(value, dict):
+                return original(value, kind)
+            required = {"source", "source_sentence_sha256", "commitment"}
+            keys_ok = set(value) in (required, required | {"words"})
+            if SELECTED == "owner-narrative-keys":
+                keys_ok = set(value) >= required
+            words_ok = "words" not in value or b.supplied_text(value["words"])
+            if SELECTED == "owner-narrative-words":
+                words_ok = True
+            return not (keys_ok and words_ok and b.supplied_text(value["source"])
+                        and isinstance(value["source_sentence_sha256"], str)
+                        and b.re.fullmatch(r"[0-9a-f]{64}", value["source_sentence_sha256"])
+                        and isinstance(value["commitment"], dict) and b.commitment_value(value["commitment"]))
+        patch = mock.patch.object(b, "owner_value_missing", opened)
+    else:
+        R3_SETUP()
+        return
+    patch.start(); PATCHES.append(patch)
+
+
 # Explicit Athena-only whole-file witnesses. Never called by ordinary imports
 # or by a targeted Mac invocation. Six disjoint groups bound command time.
 WITNESS_GROUP_COUNT = 6
 def witness_binding(name):
+    if name in R3_MUTANTS:
+        return R3_MUTANTS[name]
     if name in R2_MUTANTS:
         return R2_MUTANTS[name]
     if name in CORE_MUTANTS:
@@ -1736,30 +1810,40 @@ def witness_binding(name):
     if name in OWNER_MUTANTS:
         method = "test_list_shapes_are_fixed" if name == "owner-list" else (
             "test_structured_inputs_retain_their_types" if name == "owner-typed" else "test_missing_forms_keep_closed")
-        return "OwnerSlots." + method, ""
+        clause = "R1.owner:lists" if name == "owner-list" else (
+            "R1.owner:typed" if name == "owner-typed" else "R1.owner:forms")
+        return "OwnerSlots." + method, clause
     if name in VALUE_MUTANTS:
         method = "test_numeric_values" if name == "value-secondary" else "test_supplied_answers_and_readings"
-        return "RuledValues." + method, ""
+        clauses = {"value-secondary": "V2.secondary", "value-source-field": "V6.answers",
+                   "value-pause": "V6.answers", "value-plan": "V7.plan", "value-fabrication": "V7.fabrication",
+                   "value-reading": "V8.readings", "value-conditional": "V8.readings", "value-proposal": "V8.proposals"}
+        return "RuledValues." + method, clauses[name]
     methods = {"digest-shape":"test_digest_shapes", "price-shape":"test_price_shapes",
                "alpha-shape":"test_alpha_before_write", "user-overlap":"test_user_names_and_wordings",
                "pending-erase":"test_freeze_closed", "profile-mismatch":"test_profiles_and_templates",
                "committed-presence":"test_committed_writer"}
     if name in methods:
-        return "Readiness." + methods[name], ""
+        clauses = {"digest-shape": "R7.digest-shape", "price-shape": "R15.price-shape",
+                   "alpha-shape": "R31.alpha-shape", "user-overlap": "R9.user-overlap",
+                   "pending-erase": "R32.freeze", "profile-mismatch": "R6.profile-mismatch",
+                   "committed-presence": "R34.committed-presence"}
+        return "Readiness." + methods[name], clauses[name]
     if name in CLAIM_MUTANTS:
-        return "Claims." + ("test_unclaimed_module" if name == "unclaimed-accepted" else "test_relocated_claims"), ""
+        return "Claims." + ("test_unclaimed_module" if name == "unclaimed-accepted" else "test_relocated_claims"), (
+            "R13.unclaimed" if name == "unclaimed-accepted" else "R13.claims")
     if name == "earlier-count":
-        return "Description.test_predictions_read_no_counts", ""
+        return "Description.test_predictions_read_no_counts", "R5.metadata"
     raise AssertionError("unbound witness: " + name)
 
 
 def witness_names():
-    return sorted(set(CORE_MUTANTS) | set(DESCRIPTION_MUTANTS) | set(READY_MUTANTS) | set(VALIDATOR_MUTANTS) | set(CLAIM_MUTANTS) | set(OWNER_MUTANTS) | set(VALUE_MUTANTS) | set(R2_MUTANTS) | {"earlier-count"})
+    return sorted(set(CORE_MUTANTS) | set(DESCRIPTION_MUTANTS) | set(READY_MUTANTS) | set(VALIDATOR_MUTANTS) | set(CLAIM_MUTANTS) | set(OWNER_MUTANTS) | set(VALUE_MUTANTS) | set(R2_MUTANTS) | set(R3_MUTANTS) | {"earlier-count"})
 
 
 def witness_groups():
     names = witness_names()
-    assert all(witness_binding(name)[0] for name in names)
+    assert all(all(witness_binding(name)) for name in names)
     groups = [names[i::WITNESS_GROUP_COUNT] for i in range(WITNESS_GROUP_COUNT)]
     assert len(names) == len(set(names)) and names
     assert sorted(name for group in groups for name in group) == names
@@ -1781,10 +1865,11 @@ def run_witnesses(group):
         method, clause = witness_binding(name)
         failures = re.findall(r"^FAIL: [^\n]*\(__main__\.([^)]*)\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)",
                               lines, re.M | re.S)
-        attributed = any(bound == method and "AssertionError" in body and (not clause or clause in body)
+        attributed = any(bound == method and "AssertionError" in body and clause
+                         and re.search(r"(?<![\w:.-])" + re.escape(clause) + r"(?![\w:.-])", body)
                          for bound, body in failures)
         passed = bool(attributed and summary and got.returncode != 0 and int(summary[1]) > 0
-                      and int(summary[2]) > 0 and int(summary[4]) == 0
+                      and int(summary[2]) > 0 and int(summary[3]) == 0 and int(summary[4]) == 0
                       and "AssertionError" in lines)
         print(f"witness {name}: {'RED' if passed else 'FAIL'}; " + (summary[0] if summary else "missing summary"), flush=True)
         if not passed:
@@ -1810,13 +1895,28 @@ class WitnessEvidence(unittest.TestCase):
         name = 'n'
         method, clause = witness_binding(name)
         for bound, failures, errors, skips, expected in (
-            (method,1,0,0,0), (method,1,1,0,0),
+            (method,1,0,0,0), (method,1,1,0,1),
             ("Other.unrelated",1,0,0,1), (method,0,1,0,1), (method,1,0,1,1)):
             output = (f"FAIL: fake (__main__.{bound})\n---\nAssertionError: {clause}\n"
                       f"test_build_draft: 1 run, {failures} failures, {errors} errors, {skips} skipped\n")
             fake = mock.Mock(stdout=output, stderr="", returncode=1)
             with self.subTest(bound=bound, failures=failures, errors=errors, skips=skips), \
                  mock.patch.object(sys.modules[__name__], "witness_groups", return_value=[[name],[],[]]), \
+                 mock.patch.object(sys.modules[__name__], "witness_names", return_value=[name]), \
+                 mock.patch("subprocess.run", return_value=fake), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(run_witnesses(1), expected)
+
+    def test_clause_tokens_are_exact(self):
+        import contextlib, io
+        name = "floors-null-guard"
+        method, clause = witness_binding(name)
+        for text, expected in ((clause, 0), (clause + ":tasks", 1), (clause + ":reason", 1),
+                               (clause + "Extra", 1), ("prefix-" + clause, 1), ("unrelated", 1)):
+            output = (f"FAIL: fake (__main__.{method})\n---\nAssertionError: {text}\n"
+                      "test_build_draft: 1 run, 1 failures, 0 errors, 0 skipped\n")
+            fake = mock.Mock(stdout=output, stderr="", returncode=1)
+            with self.subTest(text=text), \
+                 mock.patch.object(sys.modules[__name__], "witness_groups", return_value=[[name], [], []]), \
                  mock.patch.object(sys.modules[__name__], "witness_names", return_value=[name]), \
                  mock.patch("subprocess.run", return_value=fake), contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(run_witnesses(1), expected)

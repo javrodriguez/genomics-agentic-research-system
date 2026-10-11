@@ -1064,7 +1064,8 @@ def owner_list_problems(draft):
 
 def floors_missing(value, tasks, declared_tasks):
     return not (isinstance(value, dict) and bool(tasks) and tasks == declared_tasks and set(value) == set(tasks)
-                and all(supplied_text(text) for text in value.values()))
+                and all(supplied_text(text) and stats.FLOOR_NOT_RUN.rsplit(", ", 1)[-1] not in text
+                        for text in value.values()))
 
 
 def pending(draft):
