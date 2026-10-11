@@ -243,7 +243,7 @@ That is S6b's acceptance (ruled; plans/gap-study-round-4/s6b-checker-body-plan-2
 
 ## Ruling S6-gap4-2 (glitch-1b, 11 Oct): leaked sidecars and proxies refuse the restart
 
-This closes the R1-3 residual named above, at 77a1c104 (written 19:03 EDT, `date`).
+This closes the R1-3 residual named above, at b4146510 (written 18:55 EDT, `date`).
 The R1-7 choice was accepted.
 
 - batch.py makes one narrow edit, recorded as an EDIT in w1b's COPIED.d entry for batch.py and naming S6-gap4-2.
@@ -259,7 +259,7 @@ The R1-7 choice was accepted.
 Red first: B9 alone, before the edit, `FAILED (failures=1)`, 0 errors (both kinds registered).
 Witness leaked-take-id-only (leaked_ids reads leaked_container alone): red by B9-restart (2 own, 0 collateral, 0 errors).
 
-Green at 77a1c104 (light-ok, `timeout -s INT 90`, Python 3.13), all rc 0, each ending in OK:
+Green at b4146510 (light-ok, `timeout -s INT 90`, Python 3.13), all rc 0, each ending in OK:
 - test_box_integration: guard and stub (3), TestTheTakePath 17, TestBoundChecks 9, and the registry (11 witnesses over 9 checks).
 - Witnesses re-run after the edit: remove-never-removes B7 (7), remove-checks-the-take-alone B7 (4), no-finally-cleanup B5 (26), omit-restore B1 (3), all with 0 errors.
 - test_drive_commit: all five classes. Its witnesses omit-restart-refusal C4 (3) and concatenated-history C3 (1) are still red.
@@ -268,4 +268,4 @@ Green at 77a1c104 (light-ok, `timeout -s INT 90`, Python 3.13), all rc 0, each e
 
 A failed network removal still commits `[take id]`, because a network is not in the container listing the restart reads; the leak and the loop's stop still record it.
 
-RESUME HERE: hand-back for review round 2 at 77a1c104
+RESUME HERE: hand-back for review round 2 at b4146510
