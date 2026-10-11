@@ -147,4 +147,32 @@ Gates (Mac, light-ok first, `timeout -s INT 60`):
 
 OPEN-1 is closed by this line pending athena's test_pipeline; nothing else is open in this lane.
 
-RESUME HERE: hand-back at 418237b10ab17664edb04d2d88281d3d734b441d
+RESUME HERE (superseded below): hand-back at 418237b10ab17664edb04d2d88281d3d734b441d
+
+## Update: review round 1 fold (W6G-close-1), Sun 11 Oct 2026 18:34 EDT
+
+glitch-1b's ruling W6G-close-1: round 1 passed with two MINORs that loosen checks and one NIT, all folded here on top of `d8e1d469`.
+Code commit `31caf0deb2970726caee68181186002c8efdb118`.
+
+- W6G-R1-1 (loosened D2): `NOT_A_MODE` now pins its task, half, right-move kind `hold` and the `why` text's sha256 (`a969b640...821b7f`). New `mode_problems()` also requires the excused hit to be found exactly once and the text to hold exactly one mode-shaped token. `test_no_task_move_is_chmod_only` asserts `mode_problems() == []`. New `test_the_excuse_is_pinned_to_its_text_and_kind` plants, in a scratch copy of `tasks/`, a second "read-only" in that `why` with the move made `act`, and it reads red four ways: found twice, wrong kind, text changed, two tokens. This guard is test-local, so the planted case is its red, as ruled.
+- W6G-R1-2 (loosened preflight; ruling S7-gap4-3, `box/sidecar.py` `_begin` only): `begin` adds a problem naming any consequential path that is a special file at pre-1. The reply is then `ok: false`, and preflight's `_check_consequential` refuses the take, as `unreadable_consequential` did before S7-D1. The sidecar is not broken, and later snapshots are unchanged. Test `TestS7Sidecar.test_a_special_consequential_path_fails_begin`: a FIFO at a watched path fails begin with one problem naming it, a FIFO at an unwatched path does not, and the reply parses. A FIFO made at a watched path after begin leaves post-1's reply ok. Witness `begin-passes-a-special-consequential-path` (clause S7-D1.begin).
+- W6G-R1-3: "in-memory mutants. Edit S7-gap4-2" in w5b's fragment.
+
+Red first (on d8e1d469's production files, light-ok, `timeout -s INT 60`):
+- the new sidecar test failed with `AssertionError: True is not false : S7-D1.begin - a special consequential path passed begin`, exit 1;
+- `WitnessRegistry` failed on the new witness's missing site, exit 1.
+
+Green on the fold:
+
+| Check | Result | Exit |
+|---|---|---|
+| test_endstate | `Ran 80`, OK | 0 |
+| test_sidecar | `Ran 154`, OK | 0 |
+| `test_endstate.py --witnesses` | 13/13 RED (the new one with no collateral), both controls clean, 36 s | 0 |
+| test_preflight | `Ran 20`, OK | 0 |
+| test_wave4_bindings | `Ran 10`, OK | 0 |
+| copy_manifest --check | ok, 225 files, 29 fragments | 0 |
+
+Not run, as ruled: the whole of test_scaffold, test_pipeline and run_checks; these go to athena.
+
+RESUME HERE: hand-back at 31caf0deb2970726caee68181186002c8efdb118
