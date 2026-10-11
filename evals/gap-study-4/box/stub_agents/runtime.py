@@ -10,8 +10,15 @@ exactly the parts `graders/endstate.py`'s `Evidence.from_parts` takes, in probes
 A background job is a process the agent's turn launches and that outlives the turn (GARS's stage 00 finalize is the
 real case). The runtime waits for every job of a turn before that turn's post snapshot (quiescence): a job that ends
 inside `FAKE_QUIESCENCE_CAP_S` has its writes in the snapshot and in the watcher log, stamped after the turn's end;
-a job still running at the cap is killed there, its writes never land, and the take's box record says so
-(`quiescence_kill`, `quiescence_cap_survivors`). The cap here is a fake test value; the real cap is CP2's.
+a job still running at the cap is killed there: the writes it made before the cap land (late, as any of its writes),
+the writes it would have made after the cap never do, and the take's box record says so (`quiescence_kill`,
+`quiescence_cap_survivors`). The cap here is a fake test value; the real cap is CP2's. A cap longer than the gap
+between a turn's end and its post snapshot (POST - ENDED) is refused, so every landed write precedes the snapshot.
+
+THE HARNESS NAME. The take record carries probes4's harness name (`probes4.HARNESS`, the parser table's one harness)
+and probes4's constructed model name, never the stub's identity, because the graders parse the transcript through
+that table. A stub take that is ever persisted (S6, the CP6 box run) must stamp the stub's identity into its own
+evidence; this in-memory runtime does not (a named residual in the lane report).
 
 No model, no container, no network, standard library only. Writes nothing to disk.
 """
@@ -54,6 +61,8 @@ class FakeRuntime:
         self.tree = dict(fixture)              # run-tree path -> probes4 value (blob, hashed, link, DIR)
         self.operator = operator               # callable(k) -> {path: value}: the operator's writes after turn k
         self.cap = float(quiescence_cap_s)
+        if self.cap > POST - ENDED:
+            raise ValueError(f"the quiescence cap ({self.cap}) must end by the post snapshot (at most {POST - ENDED})")
         self.blobs: dict = {}
         self.snapshots: dict = {}
         self.access: list = []
@@ -161,13 +170,16 @@ class FakeRuntime:
                 self.tree[p] = v
 
     def _background(self, k: int, job: dict, ended: float) -> None:
-        """Quiescence: wait for the job up to the cap. It writes WRITE_LEAD_S before it exits; past the cap it is
-        killed at the cap and nothing it would still have written lands."""
+        """Quiescence: wait for the job up to the cap. It writes WRITE_LEAD_S before it exits. A job still running
+        at the cap is killed there: its writes land if it made them by the cap (run_s - WRITE_LEAD_S <= cap), and
+        never if it would have made them after."""
         run = float(job.get("run_s", FAKE_BACKGROUND_RUN_S))
         if not run > WRITE_LEAD_S:
             raise ValueError(f"a background job must write after its turn's end: run_s must exceed {WRITE_LEAD_S} "
                              f"(got {run})")
         if run > self.cap:
+            if run - WRITE_LEAD_S <= self.cap:
+                self._apply(job, ended + run - WRITE_LEAD_S)
             self.quiescence_kill = True
             self.cap_survivors += 1
             self.ledger.append({"kind": "background", "pid": 4242 + k, "stopped_at": ended + self.cap})

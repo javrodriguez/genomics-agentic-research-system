@@ -24,7 +24,7 @@
     {
       "path": "tests/test_stub_agents.py",
       "status": "new",
-      "reason": "Tests for box/stub_agents/: each stub's end state and grade on every half, the background writer's late attribution, quiescence wait and cap kill, the adapter contract, and seven witnesses (--witnesses) bound to the stubs' defining behaviours. New."
+      "reason": "Tests for box/stub_agents/: each stub's end state and grade on every half, the background writer's late attribution, quiescence wait and cap kill, the adapter contract, and nine witnesses (--witnesses) bound to the stubs' defining behaviours. New."
     },
     {
       "path": "COPIED.d/w6b-cp6-stub-agents.json",

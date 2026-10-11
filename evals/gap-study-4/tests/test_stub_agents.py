@@ -49,6 +49,27 @@ def _never_killed(self, k, job, ended):
     self.ledger.append({"kind": "background", "pid": 4242 + k, "stopped_at": ended + min(run, self.cap)})
 
 
+def _kill_drops_made_writes(self, k, job, ended):
+    """Mutant body (the behaviour before W6B-R1-1): a kill at the cap discards every write, even one made before it."""
+    run = float(job.get("run_s", rt.FAKE_BACKGROUND_RUN_S))
+    if run > self.cap:
+        self.quiescence_kill = True
+        self.cap_survivors += 1
+        self.ledger.append({"kind": "background", "pid": 4242 + k, "stopped_at": ended + self.cap})
+        return
+    self._apply(job, ended + run - rt.WRITE_LEAD_S)
+    self.ledger.append({"kind": "background", "pid": 4242 + k, "stopped_at": ended + run})
+
+
+def _operator_on_last(self, line, *, first, budget_s):
+    """Mutant body: the operator's writes are recorded after the take's last turn too."""
+    k = self._turns + 1
+    result = aa.ScriptedAdapter._turn(self, line, first=first, budget_s=budget_s)
+    own, job = self.split(k, self.moves[k - 1])
+    self.runtime.run_turn(k, line, own, background=job, last=False)
+    return result
+
+
 def _turn_without_runtime(self, line, *, first, budget_s):
     """Mutant body: the scripted record is replayed and the runtime never sees the turn."""
     return aa.ScriptedAdapter._turn(self, line, first=first, budget_s=budget_s)
@@ -70,6 +91,10 @@ MUTANTS = {
                     "TestBackgroundWriter.test_a_writer_past_the_cap_is_killed"),
     "turn-skips-runtime": (ag.StubAgent, "_turn", _turn_without_runtime,
                            "TestContract.test_each_stub_drives_the_runtime_once_per_line"),
+    "kill-drops-made-writes": (rt.FakeRuntime, "_background", _kill_drops_made_writes,
+                               "TestBackgroundWriter.test_writes_made_before_a_kill_land_late"),
+    "operator-on-last": (ag.StubAgent, "_turn", _operator_on_last,
+                         "TestContract.test_the_stub_take_is_probes4s_own_triple"),
 }
 
 
@@ -92,6 +117,34 @@ def first_cell(task_id, half):
 
 def matching(stub, task_id, half):
     return tk.probes4_result(stub, task_id, half, first_cell(task_id, half))
+
+
+def built_parts(pr, h, lines, mv):
+    """probes4.build_take's own parts for one triple: its transcript and every part it hands Evidence.from_parts
+    (captured by wrapping from_parts, which is then called as it was)."""
+    real = probes4.es.Evidence.from_parts
+    seen = {}
+
+    def capture(**kw):
+        seen.update(kw)
+        return real(**kw)
+
+    with mock.patch.object(probes4.es.Evidence, "from_parts", capture):
+        transcript, _ev = probes4.build_take(pr, h, lines, mv)
+    return dict(seen, transcript=transcript)
+
+
+class EveryTurnOperator:
+    """A task's probes, with an operator that writes one note after every turn (probes4 drops the last turn's)."""
+
+    def __init__(self, pr):
+        self._pr = pr
+
+    def __getattr__(self, name):
+        return getattr(self._pr, name)
+
+    def operator(self, h, k):
+        return {f"{probes4.P}/operator-note-{k}.txt": probes4.blob(b"note %d" % k)}
 
 
 def writer_halves():
@@ -211,6 +264,32 @@ class TestBackgroundWriter(unittest.TestCase):
                 for p in mv["writes"]:
                     self.assertEqual(post.get(p), pre.get(p), f"{t}/{h}: a killed job's write to {p} landed")
 
+    def test_writes_made_before_a_kill_land_late(self):
+        class Killed(ag.BackgroundWriterStub):
+            run_s = rt.FAKE_QUIESCENCE_CAP_S + 0.5     # writes at end + cap - 0.5, killed at end + cap
+
+        for t, h in self.halves:
+            with self.subTest(task=t, half=h):
+                take = tk.run_stub_take(ag.WRITER_NAME, t, h, stub_cls=Killed)
+                rec = take.records()
+                self.assertTrue(rec["quiescence_kill"], f"{t}/{h}: the kill was not recorded")
+                self.assertEqual(rec["quiescence_cap_survivors"], 1)
+                probe = take.half.task["halves"][h]["probe_operator_turn"]
+                mv = probes4.oracle_move(probes4.PROBES[t], take.half)
+                post = take.runtime.snapshots[f"post-{probe}"]["entries"]
+                for p, v in mv["writes"].items():
+                    self.assertEqual(post.get(p), probes4.state(v), f"{t}/{h}: a write made before the kill is lost")
+                got = [a for p in sorted(set(mv["writes"]) | set(mv["deletes"]))
+                       for a in take.evidence.accesses(path=p)
+                       if a["op"] in ("modify", "delete") and a["at"] > 100.0 * probe]
+                self.assertTrue(got, f"{t}/{h}: no write logged")
+                self.assertEqual({(a["where"], a["late"]) for a in got}, {(("turn", probe), True)})
+
+    def test_a_cap_past_the_post_snapshot_is_refused(self):
+        with self.assertRaises(ValueError):
+            rt.FakeRuntime({}, quiescence_cap_s=rt.POST - rt.ENDED + 0.5)
+        rt.FakeRuntime({}, quiescence_cap_s=rt.POST - rt.ENDED)
+
     def test_a_job_that_would_write_inside_its_turn_is_refused(self):
         class Early(ag.BackgroundWriterStub):
             run_s = rt.WRITE_LEAD_S
@@ -222,13 +301,14 @@ class TestBackgroundWriter(unittest.TestCase):
 
 # ------------------------------------------------------------------------------------------------- the adapter contract
 class TestContract(unittest.TestCase):
-    def build(self, stub=ag.ORACLE_NAME, t="template-adherence", h=V.NORMAL):
+    def build(self, stub=ag.ORACLE_NAME, t="template-adherence", h=V.NORMAL, operator=None):
         task, vdoc = V.load_task(t), V.load_variants(t)
         cell = first_cell(t, h)
         half = probes4.Half(task, vdoc, h)
         pr = probes4.PROBES[t]
         lines = probes4.operator_lines(task, vdoc, h, cell, half)
-        runtime = rt.FakeRuntime(pr.fixture(half))
+        runtime = rt.FakeRuntime(pr.fixture(half),
+                                 operator=None if operator is None else (lambda k: operator.operator(half, k)))
         return ag.STUBS[stub](half, lines, runtime), runtime, lines
 
     def test_each_stub_drives_the_runtime_once_per_line(self):
@@ -275,12 +355,33 @@ class TestContract(unittest.TestCase):
                 task, vdoc = V.load_task(t), V.load_variants(t)
                 pr = probes4.PROBES[t]
                 lines = probes4.operator_lines(task, vdoc, h, take.cell, take.half)
-                transcript, _ev = probes4.build_take(pr, take.half, lines, probes4.oracle_move(pr, take.half))
-                self.assertEqual(take.transcript, transcript)
+                parts = built_parts(pr, take.half, lines, probes4.oracle_move(pr, take.half))
+                self.assertEqual(take.transcript, parts["transcript"])
+                for k in ("ledger", "snapshots", "access", "health", "blobs"):
+                    self.assertEqual(getattr(take.runtime, k) if k != "health" else take.runtime.health(), parts[k],
+                                     f"{t}/{h}: the stub take's {k} is not probes4's")
+                writer = tk.run_stub_take(ag.WRITER_NAME, t, h)
+                self.assertEqual([r for r in writer.runtime.ledger if r["kind"] != "background"], parts["ledger"],
+                                 f"{t}/{h}: the writer's ledger differs beyond its background record")
+                last = f"post-{writer.runtime.turns}"
+                self.assertEqual(writer.runtime.snapshots[last], parts["snapshots"][last])
                 want = matching(ag.ORACLE_NAME, t, h)
                 got = take.grade()
                 for k in ("label", "correct", "human_sample", "human_check"):
                     self.assertEqual(got.get(k), want.get(k), k)
+        # On the real tasks the operator writes only after turn 2 of explain-not-act's three, never after a take's
+        # last turn, so a constructed operator that writes after every turn binds probes4's "never after the last".
+        t, h = "template-adherence", V.NORMAL
+        everywhere = EveryTurnOperator(probes4.PROBES[t])
+        with mock.patch.dict(probes4.PROBES, {t: everywhere}):
+            agent, runtime, lines = self.build(ag.ORACLE_NAME, t, h, operator=everywhere)
+            agent.start_take({"row_id": "r", "slot": 1, "half_cell": "c"})
+            for i, (_k, line, _m) in enumerate(lines):
+                agent.turn(line, first=(i == 0), budget_s=ag.BUDGET_S)
+            agent.end_take()                       # the ledger is compared before endstate ever reads it
+            parts = built_parts(everywhere, agent.half, lines, probes4.oracle_move(everywhere, agent.half))
+        self.assertEqual(runtime.ledger, parts["ledger"], "the operator's writes after the last turn differ")
+        self.assertEqual(len([r for r in parts["ledger"] if r["kind"] == "operator"]), len(lines) - 1)
 
     def test_the_check_command_passes_on_one_task(self):
         n, problems = tk.check(["template-adherence"])

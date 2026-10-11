@@ -93,6 +93,8 @@ class StubAgent(aa.ScriptedAdapter):
         result = super()._turn(line, first=first, budget_s=budget_s)   # raises past the script
         own, job = self.split(k, self.moves[k - 1])
         seen = self.runtime.run_turn(k, line, own, background=job, last=k == len(self.moves))
+        # Defensive: the runtime and the scripted record share one timing, so this cannot fire today; it refuses a
+        # future drift between them rather than reading it (W6B-R1-4; no witness).
         if (seen["started_at"], seen["ended_at"]) != (result.started_at, result.ended_at):
             raise aa.AdapterStateError(f"turn {k}: the runtime's clock and the scripted record disagree")
         return result
