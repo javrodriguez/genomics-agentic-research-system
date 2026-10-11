@@ -2488,6 +2488,33 @@ class TestS7Sidecar(TakeCase):
         self.assertEqual(e.accesses(path="z/b.json"), [], "S7-D3.begin")   # watched, nothing seen
         self.assertEqual(temps_in(t.evidence), [], "S7-D3.begin")
 
+    def test_a_special_consequential_path_fails_begin(self):
+        # S7-gap4-3 (glitch-1b's W6G-R1-2 fold): before the first turn a consequential path that is a special file is
+        # a preflight problem, as it was while special files were recorded unreadable; nothing after begin changes.
+        t = self.take(watch=(PLAN, "data/pipe"))
+        os.makedirs(os.path.join(t.run_tree, "data"), exist_ok=True)
+        os.mkfifo(os.path.join(t.run_tree, "data", "pipe"))
+        os.mkfifo(os.path.join(t.run_tree, "side.fifo"))   # a special file at a path no one watches: no problem
+        r = t.sc.handle("begin")
+        self.assertEqual(sidecar.parse_reply(json.dumps(r) + "\n"), r, "S7-D1.begin")
+        self.assertFalse(r["ok"], "S7-D1.begin - a special consequential path passed begin")
+        self.assertEqual(len(r["problems"]), 1, "S7-D1.begin")
+        self.assertIn("data/pipe", r["problems"][0], "S7-D1.begin")
+        self.assertNotIn("side.fifo", r["problems"][0], "S7-D1.begin")
+        self.assertEqual((r["unreadable"], r["unreadable_consequential"]), ([], []), "S7-D1.begin")
+        # the take itself is not broken: the watcher runs, and a special consequential path made later is graded
+        t.turn([])
+        r1 = t.sc.handle("snapshot", "post-1")
+        self.assertTrue(r1["ok"], r1)
+        clean = self.take(watch=(PLAN, "data/pipe"))
+        r0 = clean.sc.handle("begin")
+        self.assertTrue(r0["ok"], r0)
+        clean.turn([])
+        os.makedirs(os.path.join(clean.run_tree, "data"), exist_ok=True)
+        os.mkfifo(os.path.join(clean.run_tree, "data", "pipe"))
+        r2 = clean.sc.handle("snapshot", "post-1")
+        self.assertTrue(r2["ok"] and r2["problems"] == [], "S7-D1.begin - a special file after begin is a problem")
+
     def test_a_chmod_alone_is_invisible(self):
         # S7-D2 (ruled C): the named, pre-registered residual. A chmod that leaves the file readable changes no STATE.
         doc = " ".join((es.__doc__ or "").split())

@@ -28,7 +28,8 @@ COMMANDS (interface 12).
                      established; creates the evidence layout (`snapshots/`, `blobs/`, an empty `access.jsonl` and
                      `health.jsonl`, and `watched.json`: {"paths": the --watch list, sorted and distinct}; S7-D3,
                      ownership transfer S7-gap4-1). The evidence folder may hold only the driver's `ledger.jsonl`
-                     before it.
+                     before it. A consequential path that is a special file at pre-1 is a problem in its reply,
+                     so preflight refuses the take (S7-gap4-3).
   snapshot <label>   post-k (k >= 1) or pre-k (k >= 2), in the take's order only (post-1, pre-2, post-2, ...): stop
                      the watcher, drain every event it produced, write `watcher-stop` (exit code 0 for a clean
                      deliberate stop) stamped at that instant, snapshot with `taken_at` equal to that same stamp,
@@ -838,12 +839,16 @@ class Sidecar:
         _write_atomic(self._ev(WATCHED), (json.dumps({"paths": sorted(set(self.watch))}, separators=(",", ":"))
                                           + "\n").encode("utf-8"), self._temps)
         taken_at = self.clock()
-        unreadable, uc, _ = self._snapshot("pre-1", taken_at)
+        unreadable, uc, special = self._snapshot("pre-1", taken_at)
         self.state = "running"
         self.next_label = "post-1"
         rearmed = self._arm()
+        # S7-gap4-3: before the first turn a consequential path that is a special file is a preflight problem (it was,
+        # as unreadable_consequential, before S7-D1); the take is not broken, and later snapshots are unchanged.
+        special_cons = sorted(p for p in special if p in self.watch)
+        found = [f"consequential paths are special files before the first turn: {special_cons}"] if special_cons else []
         return self._reply("begin", "pre-1", taken_at=taken_at, rearmed_at=rearmed, unreadable=unreadable,
-                           uc=uc, problems=list(self.problems))
+                           uc=uc, problems=list(self.problems) + found)
 
     def _snap_command(self, label) -> dict:
         if not label_ok(label):

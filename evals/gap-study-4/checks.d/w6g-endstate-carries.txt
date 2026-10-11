@@ -3,6 +3,6 @@
 python3 -B -W ignore evals/gap-study-4/tests/test_endstate.py
 python3 -B -W ignore evals/gap-study-4/tests/test_sidecar.py
 python3 -B -W ignore evals/gap-study-4/tests/test_plan_gate.py
-# Whole-file witnesses (rule B): 12 mutants of endstate.py, plan_gate.py and sidecar.py, each RED only by its bound
+# Whole-file witnesses (rule B): 13 mutants of endstate.py, plan_gate.py and sidecar.py, each RED only by its bound
 # test's AssertionError carrying its clause token; each test file is first run unmutated and must pass whole.
 python3 -B -W ignore evals/gap-study-4/tests/test_endstate.py --witnesses

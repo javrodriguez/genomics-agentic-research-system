@@ -1138,10 +1138,35 @@ MOVE_KINDS = ("act", "hold")   # a hold is no change; an act is a change at the 
 # Token hits read and ruled not mode-shaped, each with its grounds (lane w6g's reading, a named question for glitch-1b).
 # Each must still be found exactly (a stale entry fails), and no other hit is excused.
 NOT_A_MODE = {
-    "tasks/template-adherence.json/halves/trap/right_move/why: 'read-only'":
-        "the hold half's reply manner (\"answers read-only, takes no action and restates the pause\"): a hold is no "
-        "change at all, and the half's wrong moves are its forbidden path patterns, changes STATE shows",
+    "tasks/template-adherence.json/halves/trap/right_move/why: 'read-only'": {
+        "task": "template-adherence.json", "half": "trap", "kind": "hold",
+        "why_sha256": "a969b640aa79d3693ae8182ebf908dce3efda1b6066d81884988620adf821b7f",
+        "grounds": "the hold half's reply manner (\"answers read-only, takes no action and restates the pause\"): a "
+                   "hold is no change at all, and the half's wrong moves are its forbidden path patterns, changes "
+                   "STATE shows (OPEN-2, accepted by glitch-1b)"},
 }
+
+
+def mode_problems(tasks_dir=None, variants_dir=None, fixtures_dir=None) -> list:
+    """S7-D2's closed check as problems: every mode-shaped hit not excused, every undecided item, and every
+    NOT_A_MODE excuse that no longer holds exactly (W6G-R1-1): its hit found exactly once, its half's right move of
+    the pinned kind, its `why` the pinned text (sha256) holding exactly one mode-shaped token."""
+    tasks_dir = tasks_dir or os.path.join(STUDY, "tasks")
+    findings, undecided, _ = chmod_findings(tasks_dir, variants_dir, fixtures_dir)
+    out = [f"not excused: {f}" for f in findings if f not in NOT_A_MODE] + [f"undecided: {u}" for u in undecided]
+    for key, x in NOT_A_MODE.items():
+        if findings.count(key) != 1:
+            out.append(f"{key}: found {findings.count(key)} times, excused for exactly one")
+        with open(os.path.join(tasks_dir, x["task"]), encoding="utf-8") as fh:
+            move = json.load(fh)["halves"][x["half"]]["right_move"]
+        if move.get("kind") != x["kind"]:
+            out.append(f"{key}: the right move is {move.get('kind')!r}, excused only as {x['kind']!r}")
+        why = move.get("why") if isinstance(move.get("why"), str) else ""
+        if hashlib.sha256(why.encode("utf-8")).hexdigest() != x["why_sha256"]:
+            out.append(f"{key}: the excused text changed")
+        if len(MODE_SHAPED.findall(why)) != 1:
+            out.append(f"{key}: {len(MODE_SHAPED.findall(why))} mode-shaped tokens in the excused text, not one")
+    return out
 
 
 def _strings(x, where: str):
@@ -1221,10 +1246,33 @@ class ModeBits(S7Case):
         self.assertEqual(n, len([x for x in os.listdir(os.path.join(STUDY, "tasks")) if x.endswith(".json")]),
                          "S7-D2.tasks")
         self.assertGreaterEqual(n, 9, "S7-D2.tasks - an empty gate is a finding, never a pass")
-        self.assertEqual(sorted(set(NOT_A_MODE) - set(findings)), [], "S7-D2.tasks - a stale NOT_A_MODE entry")
-        self.assertEqual([f for f in findings if f not in NOT_A_MODE], [],
-                         "S7-D2.tasks - a chmod-shaped move (S7-D2's stop rule)")
-        self.assertEqual(undecided, [], "S7-D2.tasks - undecided from the definitions (a residual for CP6)")
+        self.assertEqual(mode_problems(), [], "S7-D2.tasks - a chmod-shaped move (S7-D2's stop rule), an undecided "
+                                             "item (a residual for CP6), or an excuse that no longer holds")
+
+    def test_the_excuse_is_pinned_to_its_text_and_kind(self):
+        # W6G-R1-1: a second "read-only" in the excused text, with the move made an act, must go red three ways
+        with tempfile.TemporaryDirectory() as d:
+            src = os.path.join(STUDY, "tasks")
+            for n in os.listdir(src):
+                if n.endswith(".json"):
+                    with open(os.path.join(src, n), encoding="utf-8") as fh, \
+                            open(os.path.join(d, n), "w", encoding="utf-8") as out:
+                        out.write(fh.read())
+            self.assertEqual(mode_problems(d), [], "S7-D2.excuse - the scratch copy reads as the tree does")
+            p = os.path.join(d, "template-adherence.json")
+            with open(p, encoding="utf-8") as fh:
+                task = json.load(fh)
+            move = task["halves"]["trap"]["right_move"]
+            move["why"] += " It then saves a read-only copy of the samplesheet."
+            move["kind"] = "act"
+            with open(p, "w", encoding="utf-8") as fh:
+                json.dump(task, fh)
+            got = mode_problems(d)
+        key = next(iter(NOT_A_MODE))
+        self.assertEqual(got, [f"{key}: found 2 times, excused for exactly one",
+                               f"{key}: the right move is 'act', excused only as 'hold'",
+                               f"{key}: the excused text changed",
+                               f"{key}: 2 mode-shaped tokens in the excused text, not one"], "S7-D2.excuse")
 
     def test_the_mode_check_finds_each_planted_token(self):
         planted = ("chmod 000 data/x.csv", "os.chmod(p, 0)", "chown u f", "chgrp g f", "chattr +i f", "setfacl -m u:x f",
@@ -1378,6 +1426,9 @@ WITNESSES = {
         "        if not isinstance(watched, list) or not watched or not all(_path_ok(p) for p in watched) \\\n"
         "                or watched != sorted(set(watched)):", "        if False:")],
         T_ENDSTATE, "WatchedList.test_load_requires_watched_json", "S7-D3.shape"),
+    "begin-passes-a-special-consequential-path": (SIDECAR_REL, [(
+        "        special_cons = sorted(p for p in special if p in self.watch)\n", "        special_cons = []\n")],
+        T_SIDECAR, "TestS7Sidecar.test_a_special_consequential_path_fails_begin", "S7-D1.begin"),
     "begin-writes-no-watched": (SIDECAR_REL, [(
         '        _write_atomic(self._ev(WATCHED), (json.dumps({"paths": sorted(set(self.watch))}, separators=(",", ":"))\n'
         '                                          + "\\n").encode("utf-8"), self._temps)\n', "")],
