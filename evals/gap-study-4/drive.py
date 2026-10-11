@@ -1595,8 +1595,14 @@ class TakeRepo:
         return takes_mod.commit_registration(row, attempt, guard=self.guard, root=self.root, repo=self.repo)
 
     # ------------------------------------------------------------------------------------------- commit (R4-2, R4-3)
-    def _take_files(self, row: dict, attempt: int, ledger_rel: str) -> dict:
-        """{repo-relative name: (absolute path, kind)} for the take's record files, or CommitRefused."""
+    def _reserved(self) -> set:
+        """W6E-R1-2: the study's own ledgers (outcomes.json, rulings.json, takes.json), never a take's record."""
+        return {(self.root / f).relative_to(self.repo).as_posix()
+                for f in (*takes_mod.HISTORY_FILES, takes_mod.LEDGER.name)}
+
+    def _take_files(self, row: dict, attempt: int, reserved: set) -> dict:
+        """{repo-relative name: (absolute path, kind)} for the take's record files, or CommitRefused. A record file
+        is a new file: never one of the ledgers, never a path already tracked at HEAD (W6E-R1-2)."""
         files = {}
         for item in self.record_files(row, attempt):
             if not (isinstance(item, (tuple, list)) and len(item) == 2):
@@ -1610,12 +1616,14 @@ class TakeRepo:
                 name = Path(path).relative_to(self.repo).as_posix()
             except ValueError:
                 raise CommitRefused(f"{path} is outside the repository") from None
-            if name == ledger_rel:
-                raise CommitRefused(f"{name} is the outcome ledger, which only the commit step writes")
+            if name in reserved:
+                raise CommitRefused(f"{name} is one of the study's ledgers, which a take's records never are")
             if os.path.islink(path) or not os.path.isfile(path):
                 raise CommitRefused(f"{name} is not a regular file")
             if name in files:
                 raise CommitRefused(f"{name} is listed twice")
+            if _git_bytes(self.repo, "ls-tree", "--name-only", "HEAD", "--", name).strip():
+                raise CommitRefused(f"{name} is already tracked at HEAD; a take's records are new files")
             files[name] = (path, kind)
         return files
 
@@ -1632,14 +1640,20 @@ class TakeRepo:
 
     def commit_records(self, row: dict, attempt: int, outcome: dict) -> dict:
         """One commit: the take's record files and its outcome, appended to the ledger. Returns the commit and the
-        scan's masked count; raises CommitRefused (or takes.py's identity refusal) having committed nothing."""
+        scan's masked count. Raises CommitRefused, takes.py's identity refusal (ValueError) or the scan's own
+        scan_record.ScanError / NotReady (W6E-R1-4), each fail-closed: no commit lands, and HEAD moves only by the
+        pinned update-ref below."""
         if not isinstance(outcome, dict) or set(outcome) != set(takes_mod.batch.OUTCOME_KEYS):
             raise CommitRefused("the outcome does not hold exactly batch.OUTCOME_KEYS")
         if (outcome["slot"], outcome["attempt"]) != (row["slot"], attempt):
             raise CommitRefused("the outcome is not this row's slot and attempt")
+        # W6E-R1-1: the outcome must be one batch can trust after the committed history, or nothing is written.
+        bad = takes_mod.batch.Batch.history_problems(self.history() + [outcome])
+        if bad:
+            raise CommitRefused("the outcome cannot follow the committed history: " + "; ".join(bad))
         ledger = self.root / OUTCOMES_FILE
         ledger_rel = ledger.relative_to(self.repo).as_posix()
-        files = self._take_files(row, attempt, ledger_rel)
+        files = self._take_files(row, attempt, self._reserved())
         takes_mod.require_commit_identity(self.repo)
         tracked = _git_bytes(self.repo, "ls-tree", "--name-only", "HEAD", "--", ledger_rel).strip()
         committed = json.loads(_git_bytes(self.repo, "show", f"HEAD:{ledger_rel}")) if tracked else []
@@ -1660,17 +1674,35 @@ class TakeRepo:
         # THE INDEX (R4-2): the scan masked on disk, so stage again, then bind every staged blob to its scanned bytes.
         _git_bytes(self.repo, "add", "--", *staged)
         staged = self._staged_exactly(declared)
+        # W6E-R1-3: the commit is bound to the checked tree. The index is written once as a tree; that tree's change
+        # set and blobs are checked; the commit is made from that tree and HEAD moves only from the head it was
+        # checked against. A file staged after write-tree never reaches the commit; a moved HEAD refuses.
+        head = _git_bytes(self.repo, "rev-parse", "--verify", "HEAD").decode().strip()
+        tree = _git_bytes(self.repo, "write-tree").decode().strip()
+        changed = sorted(n.decode("utf-8") for n in _git_bytes(
+            self.repo, "diff-tree", "-r", "--name-only", "--no-renames", "-z", head, tree).split(b"\0") if n)
+        if changed != sorted(declared):
+            raise CommitRefused(f"the written tree changes {changed}, not the take's declared files")
         after = {rec["path"]: rec["sha256_after"] for rec in scan["files"]}
         for name in staged:
-            blob = _git_bytes(self.repo, "cat-file", "blob", f":{name}")
+            blob = _git_bytes(self.repo, "cat-file", "blob", f"{tree}:{name}")
             if hashlib.sha256(blob).hexdigest() != after.get(paths[name]):
                 raise CommitRefused(f"the staged blob of {name} is not the bytes the scan left (sha256_after)")
+        self._before_commit()
+        commit = self._bind(head, tree)
+        return {"commit": commit, "masked": scan["masked"], "events": scan["events"], "holdout": scan["holdout"]}
+
+    def _before_commit(self) -> None:
+        """Between the checked tree and the commit. Does nothing; the tests stage an interloper here (W6E-R1-3)."""
+
+    def _bind(self, head: str, tree: str) -> str:
+        """The commit of exactly `tree` on `head`; HEAD moves only if it still is `head` (update-ref's old value)."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as message:
             message.write(COMMIT_SUBJECT + "\n")
             message.flush()
-            _git_bytes(self.repo, "commit", "-q", "-F", message.name)
-        return {"commit": _git_bytes(self.repo, "rev-parse", "HEAD").decode().strip(), "masked": scan["masked"],
-                "events": scan["events"], "holdout": scan["holdout"]}
+            new = _git_bytes(self.repo, "commit-tree", tree, "-p", head, "-F", message.name).decode().strip()
+        _git_bytes(self.repo, "update-ref", "-m", COMMIT_SUBJECT, "HEAD", new, head)
+        return new
 
 
 if __name__ == "__main__":

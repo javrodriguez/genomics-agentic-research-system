@@ -442,6 +442,143 @@ def c6_preflight(mod, p):
     return out
 
 
+@guarded("C7-duplicate")
+def c7_duplicate(mod, p):
+    """W6E-R1-1: an outcome batch could not trust after the committed history refuses before the ledger is written."""
+    out = missing_api(mod, p, "TakeRepo", "CommitRefused")
+    if out:
+        return out
+    with scratch_repo() as root:
+        repo = make_repo(mod, root, Records(root))
+        r = row(1)
+        repo.register(r, 1)
+        o = outcome(r, state=labels4.FAILED, final=False, drive_started=False)
+        repo.commit_records(r, 1, o)
+        head, ledger = git(root, "rev-parse", "HEAD"), (root / "outcomes.json").read_bytes()
+        try:
+            repo.commit_records(r, 1, o)
+        except mod.CommitRefused:
+            pass
+        else:
+            out.append(f"{p}: the same slot and attempt were committed twice")
+        if (root / "outcomes.json").read_bytes() != ledger:
+            out.append(f"{p}: the ledger on disk was written for the refused outcome")
+        if git(root, "rev-parse", "HEAD") != head and not out:
+            out.append(f"{p}: a commit landed for the refused outcome")
+        try:
+            if make_repo(mod, root, Records(root)).history() != [o]:
+                out.append(f"{p}: the history is not the one committed outcome")
+        except ValueError as e:
+            out.append(f"{p}: the history no longer reads: {str(e)[:120]}")
+    return out
+
+
+def _refused_record(mod, p, root, repo, r, path, kind, why):
+    """Commit r with `path` as its one record file; a refusal with nothing written and HEAD unmoved is green."""
+    out = []
+    repo.record_files = lambda rr, a: [(str(path), kind)]
+    head = git(root, "rev-parse", "HEAD")
+    try:
+        repo.commit_records(r, 1, outcome(r))
+    except mod.CommitRefused:
+        pass
+    else:
+        out.append(f"{p}: {why} was committed as a take's record")
+    if not out and (git(root, "rev-parse", "HEAD") != head or (root / "outcomes.json").exists()):
+        out.append(f"{p}: {why} was refused only after something was written")
+    return out
+
+
+@guarded("C8-reserved")
+def c8_reserved(mod, p):
+    """W6E-R1-2: the study's ledgers are never a take's record file, tracked or not."""
+    out = missing_api(mod, p, "TakeRepo", "CommitRefused")
+    if out:
+        return out
+    with scratch_repo() as root:
+        repo = make_repo(mod, root, Records(root))
+        r = row(1)
+        repo.register(r, 1)
+        rulings = root / "rulings.json"
+        rulings.write_text("[]\n")
+        out += _refused_record(mod, p, root, repo, r, rulings, "ledger", "rulings.json (untracked)")
+        if out:
+            return out
+        rulings.unlink()
+        git(root, "reset", "-q")
+        takes_json = root / "takes.json"
+        takes_json.write_text(takes_json.read_text() + "\n")
+        out += _refused_record(mod, p, root, repo, r, takes_json, "ledger", "takes.json")
+    return out
+
+
+@guarded("C9-tracked")
+def c9_tracked(mod, p):
+    """W6E-R1-2: a path already tracked at HEAD is never a take's record file."""
+    out = missing_api(mod, p, "TakeRepo", "CommitRefused")
+    if out:
+        return out
+    with scratch_repo() as root:
+        repo = make_repo(mod, root, Records(root))
+        r = row(1)
+        repo.register(r, 1)
+        source = root / "README"
+        source.write_text(source.read_text() + "a take rewrote a tracked file\n")
+        out += _refused_record(mod, p, root, repo, r, source, "evidence", "a tracked source file")
+    return out
+
+
+@guarded("C10-bound")
+def c10_bound(mod, p):
+    """W6E-R1-3: the commit is the checked tree. A file staged after the check never lands; a HEAD that moved after
+    the check refuses the commit and is left where the other actor put it."""
+    out = missing_api(mod, p, "TakeRepo", "CommitRefused")
+    if out:
+        return out
+    if not callable(getattr(mod.TakeRepo, "_before_commit", None)):
+        return [f"{p}: drive.py's TakeRepo has no _before_commit seam between the checked tree and the commit"]
+    with scratch_repo() as root:
+        records = Records(root)
+        repo = make_repo(mod, root, records)
+        r = row(1)
+        repo.register(r, 1)
+        records.write(r, 1, "stream.jsonl", "stream", stream_line("plain"))
+
+        def interloper():
+            (root / "stray.txt").write_text(f"staged after the check {TOKEN}\n")
+            git(root, "add", "--", "stray.txt")
+        repo._before_commit = interloper
+        try:
+            repo.commit_records(r, 1, outcome(r))
+        except mod.CommitRefused:
+            pass
+        if "stray.txt" in git(root, "ls-tree", "-r", "--name-only", "HEAD").splitlines():
+            out.append(f"{p}: a file staged after the check landed in the commit")
+    with scratch_repo() as root:
+        records = Records(root)
+        repo = make_repo(mod, root, records)
+        r = row(1)
+        repo.register(r, 1)
+        records.write(r, 1, "stream.jsonl", "stream", stream_line("plain"))
+        moved = {}
+
+        def mover():
+            # another actor's commit on the same head: HEAD's own tree, a new commit that is not the checked one
+            moved["sha"] = git(root, "commit-tree", git(root, "rev-parse", "HEAD^{tree}"),
+                               "-p", git(root, "rev-parse", "HEAD"), "-m", "Another actor")
+            git(root, "update-ref", "HEAD", moved["sha"])
+        repo._before_commit = mover
+        try:
+            repo.commit_records(r, 1, outcome(r))
+        except mod.CommitRefused:
+            pass
+        else:
+            out.append(f"{p}: the commit landed although HEAD moved after the check")
+        if moved and git(root, "rev-parse", "HEAD") != moved["sha"] and not out:
+            out.append(f"{p}: the other actor's HEAD was overwritten")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestGuardArmed(unittest.TestCase):
     def test_a_process_start_outside_scratch_git_trips(self):
@@ -590,6 +727,21 @@ class TestHistoryAndRestart(unittest.TestCase):
             self.assertFalse((root / "takes.json").exists())
 
 
+class TestFold(unittest.TestCase):
+    """Review round 1's three MINORs (ruling W6E-close-1)."""
+    def test_c7_the_same_slot_and_attempt_twice_refuses(self):
+        self.assertEqual(c7_duplicate(drive), [])
+
+    def test_c8_a_ledger_as_a_record_file_refuses(self):
+        self.assertEqual(c8_reserved(drive), [])
+
+    def test_c9_a_tracked_file_as_a_record_file_refuses(self):
+        self.assertEqual(c9_tracked(drive), [])
+
+    def test_c10_the_commit_is_the_checked_tree(self):
+        self.assertEqual(c10_bound(drive), [])
+
+
 class TestPreflightRoad(unittest.TestCase):
     def test_c6_the_driver_takes_s1s_entry_point(self):
         self.assertEqual(c6_preflight(drive), [])
@@ -636,10 +788,27 @@ WITNESSES = {
                                "                for e in json.loads((self.root / f).read_text())]\n"),),
                              c3_history, "C3-history"),
     "omit-restart-refusal": ((("        self.refuse_restart()\n", ""),), c4_restart, "C4-restart"),
+    # Two layers since the W6E-R1-3 fold, both off: the staged-set refusal before the scan, and the written tree's
+    # change set before the commit (each alone still refuses the stray; neither is credited alone).
     "admit-stray-staged": ((("        if extra:\n            raise CommitRefused(",
-                             "        if False:\n            raise CommitRefused("),), c5_staged, "C5-staged"),
+                             "        if False:\n            raise CommitRefused("),
+                            ("        if changed != sorted(declared):\n", "        if False:\n")), c5_staged, "C5-staged"),
     "bypass-entry-point": ((("    return _preflight.collect_and_evaluate(\n", "    return _preflight.evaluate(\n"),),
                            c6_preflight, "C6-preflight"),
+    "admit-duplicate-outcome": ((("        if bad:\n            raise CommitRefused(\"the outcome cannot follow",
+                                  "        if False:\n            raise CommitRefused(\"the outcome cannot follow"),),
+                                c7_duplicate, "C7-duplicate"),
+    "admit-reserved-names": ((("            if name in reserved:\n", "            if False:\n"),),
+                             c8_reserved, "C8-reserved"),
+    "admit-tracked-paths": ((("            if _git_bytes(self.repo, \"ls-tree\", \"--name-only\", \"HEAD\", \"--\", name)"
+                              ".strip():\n", "            if False:\n"),), c9_tracked, "C9-tracked"),
+    "commit-the-index": ((("        commit = self._bind(head, tree)\n",
+                           "        with tempfile.NamedTemporaryFile(mode=\"w\", suffix=\".txt\") as message:\n"
+                           "            message.write(COMMIT_SUBJECT + \"\\n\")\n"
+                           "            message.flush()\n"
+                           "            _git_bytes(self.repo, \"commit\", \"-q\", \"-F\", message.name)\n"
+                           "        commit = _git_bytes(self.repo, \"rev-parse\", \"HEAD\").decode().strip()\n"),),
+                         c10_bound, "C10-bound"),
 }
 WITNESS_LOG: list = []
 
@@ -681,12 +850,26 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_bypass_entry_point(self):
         self.kill("bypass-entry-point")
 
+    def test_witness_admit_duplicate_outcome(self):
+        self.kill("admit-duplicate-outcome")
+
+    def test_witness_admit_reserved_names(self):
+        self.kill("admit-reserved-names")
+
+    def test_witness_admit_tracked_paths(self):
+        self.kill("admit-tracked-paths")
+
+    def test_witness_commit_the_index(self):
+        self.kill("commit-the-index")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["omit-restage", "omit-rehash", "concatenated-history",
                                                     "omit-restart-refusal", "admit-stray-staged",
-                                                    "bypass-entry-point"]))
-        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 6)
-        self.assertEqual(len({w[2] for w in WITNESSES.values()}), 6)
+                                                    "bypass-entry-point", "admit-duplicate-outcome",
+                                                    "admit-reserved-names", "admit-tracked-paths",
+                                                    "commit-the-index"]))
+        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 10)
+        self.assertEqual(len({w[2] for w in WITNESSES.values()}), 10)
 
 
 if __name__ == "__main__":
