@@ -1,4 +1,4 @@
-status: handed back for review; athena owed
+status: review round 1 folded (W6H-close-1); review round 2 owed; athena owed
 head: 2f512340 (code commit; this report's own commit follows it). Base ddebb57e (S5's folded head, on S1 4dd1e8e6, on 89b54db4), branch gap4/w6h-drive-lifecycle, worktree /Users/javrodher/aegis-builds/gap4-w6h.
 
 # Lane w6h-drive-lifecycle: CP2 drive lifecycle, part 2
@@ -160,4 +160,85 @@ The sole writer releases the worktree at this report's commit.
 The tree is clean, and no `__pycache__` was written (`-B` throughout).
 Scratch outputs are in the session scratchpad under `w6h/`, outside the repository.
 
-RESUME HERE: hand-back at 2f512340
+
+## Fold of review round 1 (W6H-close-1, glitch-1b, 11 Oct)
+
+Round 1 found 3 MAJOR, 4 MINOR and a NIT group. Everything marked FOLD is folded at 84460591 (written 18:50 EDT, `date`); NIT (d) and (e) are carried to S6b as ruled.
+
+- W6H-R1-1 (MAJOR): `pre_turn_refusal(e)` replaces `(ValueError, RuntimeError)`. It admits a ValueError, a TimeoutError, or a NotReady defined in a `box.` module.
+  drive.py may not name the lock module (w6e's test), so a NotReady is told by its class name and its box module.
+  A begin timeout now rehearses, with refusal.json naming TimeoutError, no turn and a clean box.
+  Witness timeout-not-a-refusal: red by B3-preturn (2 own, 0 collateral, 0 errors).
+- W6H-R1-8b: NotImplementedError, RecursionError, a bare RuntimeError, TypeError, KeyError and DriveRefused are not refusals (test_the_refusal_set_is_typed).
+- W6H-R1-2 (MAJOR): `checker_events` is check4's per-id dict, and its shape is checked: exactly routing.json's event ids, non-negative ints.
+  outside_reach is the scan's events plus the checker's counts except account-email.
+  A checker account-email count above the scan's email masks raises DriveRefused.
+  Tests:
+  - one masked email reported by the checker counts 1 and grades;
+  - a checker email with nothing masked is `failed`, naming it;
+  - three off-shape records are `failed`;
+  - B4 stays green (1 masked + 2).
+- W6H-R1-3 (MAJOR): `remove(id)` checks every id the take recorded (take, sidecar, proxy).
+  It removes each still-listed one again by its id, the sidecar by its own rm argv.
+  It raises LeakedContainer naming the survivors, and raises on a teardown-recorded failed network-rm.
+  Tests:
+  - B5 gains two roads (sidecar rm fails, proxy rm fails), with the box clean after remove();
+  - B7 gains one-time and persistent failures for each kind (the leak names the survivor) and a failed network rm;
+  - through batch, a persistent sidecar leak keeps the take graded, sets leaked_container, names the sidecar and stops the loop.
+
+  Witness remove-checks-the-take-alone: red by B7-remove (4 own, 0, 0).
+  remove-never-removes now turns off both the removal and the re-check: red by B7-remove (7 own, 0, 0).
+- W6H-R1-4: the checker is not called when preflight failed or no turn ran; a fixed empty record (all counts 0) stands in.
+  B3 and the begin-timeout and adapter-start tests assert it was not called.
+- W6H-R1-5: check4 adds `[constant-binding]` when the driver ledger beside the transcript names an arm other than `arm` (none included).
+  K1 has three new cases. Witness ledger-arm-unbound: red by K1-arm (2 own, 0, 0).
+- W6H-R1-6: each quiescence cap that found agent processes records `{turn, pids}`; teardown.json carries them as `quiescence_survivors`.
+  B6's scenario now has turn 1's process end by itself and turn 2's survive the cap: it asserts `[{"turn": 2, "pids": [<pid>]}]`, and that the kill falls between post-1 and post-2.
+- W6H-R1-7: an exception from adapter_for or start_take before turn 1 is a pre-turn refusal, with refusal.json, a rehearsal and no checker.
+  Any exception counts there, since nothing of the agent ran (the plan's row 1).
+- W6H-R1-8a, c: the harness is read inside the try.
+  The teardown.json write in finally is guarded, so it records its own failure and never replaces the drive's exception.
+
+Red first: the fold's tests ran on 2f512340's drive.py and check_take.py (byte backup, restored, `shasum -c` OK), all three runs rc 1:
+- TestTheTakePath: `Ran 17`, failures 15, errors 1;
+- TestBoundChecks: `Ran 8`, failures 7;
+- test_check_take TestRound4Edits: `Ran 8`, failures 1 (K1).
+
+The one error is test_drive_refuses_an_unrecorded_or_second_drive, an earlier test. On the old code the new per-id checker record makes drive() raise TypeError (an int plus a dict), so it errors there rather than failing.
+Every new test fails by assertion.
+
+Green at 84460591 (Mac, light-ok, `timeout -s INT 90`, Python 3.13, `-B -W ignore`), all rc 0, each ending in a bare `OK`:
+- test_box_integration by class: TestGuardArmed 2, TestTheTakePath 17 (29 s), TestBoundChecks 8 (18 s), and the registry, stub and guard tests.
+- The ten witnesses, one at a time, each red by its own check with 0 errors:
+  - omit-restore B1 (3);
+  - skip-preflight B2 (1);
+  - failed-preflight-read-as-passed B3 (3);
+  - no-drive-scan B4 (1);
+  - no-finally-cleanup B5 (26);
+  - no-cap-kill B6 (3);
+  - remove-never-removes B7 (7);
+  - no-on-published B8 (1);
+  - remove-checks-the-take-alone B7 (4);
+  - timeout-not-a-refusal B3 (2).
+- test_check_take: `Ran 15 ... OK`. Five witnesses: one-mode-constant K1 (4), ledger-arm-unbound K1 (2), the-halfs-script K2 (2), nothing-lifted K3 (1), recorded-mode-unchecked K4 (5).
+- test_drive_commit TestPreflightRoad and TestCommitStep: OK. drive.py still never names the lock module.
+- `copy_manifest.py --check`: ok.
+- checks.d: w6h line 3 and w6e line 1, both rc 0.
+
+Not run on the Mac: the whole test_scaffold, test_pipeline, run_checks and the battery (athena's).
+
+Residual of R1-3 for glitch-1b: batch commits `leaked_container` as the take container's id.
+A restart's leak check (register, R4-5) therefore lists only that id, and a sidecar or proxy that leaked while the take container was removed is named in the outcome's reason but not refused at restart.
+Closing this needs batch.py (not S6's) or a leaked-id list in the outcome.
+
+## Named limit L-S6-1 (glitch-1b, 11 Oct 18:49 EDT)
+
+check4's tests pass only with the patched fake design: test_check_take.py lines 91-92 patch `prereg.load` and `prereg.task`.
+On round 4's real design, check() raises: `spec[half_name]` is a KeyError at check_take.py:1570, because round 4's halves are trap and normal.
+The halves positive and control are hard-coded in check() (the walk branch, check_take.py:1718, and the CLI's choices at 1789; the ruling cites 1681).
+The draft pre-registration lacks the round-3 keys check() reads.
+`driver_constants.permission_mode_by_arm` is never written, so every real take would carry constant-binding.
+S6's green covers the lifecycle wiring only, not the checker against the real design.
+That is S6b's acceptance (ruled; plans/gap-study-round-4/s6b-checker-body-plan-2026-10-11.md, Rulings on the S6b plan).
+
+RESUME HERE: hand-back for review round 2 at 84460591
