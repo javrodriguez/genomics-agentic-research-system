@@ -59,4 +59,25 @@ Not run on the Mac, by rule: the whole test_scaffold, test_pipeline and run_chec
 
 RESIDUAL: the merge head has not had athena's solo run_checks; it is the evidence for every slice in it under W6-merge-1.
 
-RESUME HERE: merge head 168bc1ffbe0201f4bcf21900dd141a34661e2eff; S7 to join after its review; athena run_checks owed (orchestrator)
+Superseded by the S7 addendum below.
+
+## Addendum: S7 joined (glitch-1b's word, Sun 11 Oct 2026 about 18:34 EDT)
+
+Merge 5, `--no-ff`: S7 `gap4/w6g-endstate-carries`, tip f0c4253b2af4 (verified before merging; contains code 31caf0de), ruling W6G-close-1 (`s7-endstate-interface-options-2026-10-11.md`), merge commit 97eaf2d6f982 on top of report commit 239b75c1.
+No conflicts: the S7 fragment and checks file are new, the four fragment reason edits (w2a, w3b, w4c, w5b) and the production files (box/sidecar.py, graders/endstate.py, graders/plan_gate.py, one fixture line in tests/test_pipeline.py) merged cleanly, disjoint from S5's drive.py and box/preflight.py.
+No path is claimed by more than one fragment after the merge (33 fragments).
+
+Checks on 97eaf2d6 (Mac, Python 3.13.2, each behind `mac_slot.py light-ok` and `timeout -s INT 90`, load1 under 5):
+
+| Check | Exit | Result |
+|---|---|---|
+| copy_manifest.py --check | 0 | 239 files from 33 fragments |
+| probes4.py --check | 0 | 1690 cells graded, 0 defects, 0 problems |
+| build_draft.py --check | 0 | the committed draft is what build_draft.py builds |
+| freeze.py --check | 0 | 239 owned paths checked |
+| tests/test_endstate.py | 0 | Ran 80, OK |
+| tests/test_sidecar.py | 0 | Ran 154, OK |
+| tests/test_plan_gate.py | 0 | Ran 49, OK |
+| tests/test_preflight.py | 0 | Ran 43, OK |
+
+RESUME HERE: merge head 97eaf2d6f98213943abdf7bd60f384a83d2338af; athena run_checks owed (orchestrator)
