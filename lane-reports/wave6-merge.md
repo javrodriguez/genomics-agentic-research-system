@@ -80,4 +80,23 @@ Checks on 97eaf2d6 (Mac, Python 3.13.2, each behind `mac_slot.py light-ok` and `
 | tests/test_plan_gate.py | 0 | Ran 49, OK |
 | tests/test_preflight.py | 0 | Ran 43, OK |
 
-RESUME HERE: merge head 97eaf2d6f98213943abdf7bd60f384a83d2338af; athena run_checks owed (orchestrator)
+Superseded by the S6 addendum below.
+
+## Addendum: S6 joined (glitch-1b's word, Sun 11 Oct 2026 about 19:05 EDT)
+
+Merge 6, `--no-ff`: S6 `gap4/w6h-drive-lifecycle`, tip ff073698deec (verified before merging; contains code b4146510 and S5 ddebb57e), rulings W6H-close-1 and S6-gap4-2, review round 2 PASS (`w6h-review-r1-2026-10-11.md`), merge commit 2511de8a2253.
+Production files (batch.py, check_take.py, drive.py) and the fragment edits (w1a, w1b, w6e) merged without conflict.
+One bookkeeping conflict, again in `tests/test_scaffold.py` `copied_modules()`: HEAD read w1a, w5c-draft-ci and w6e; w6h read w1a and w6h with a comment naming departures w6e-1 and w6h-1.
+Resolved by keeping w6h's comment and reading all four fragments (w1a, w5c-draft-ci, w6e-drive-commit, w6h-drive-lifecycle).
+After the merge: drive.py and check_take.py are owned by w6h (edited), batch.py by w1b, and no path is claimed twice.
+The "differs without an edited entry" test now uses denials.py, allowlist.py, lexicons/permission-stop.json and review_kit/rounds.py, all still recorded identical in w1a.
+
+Checks on 2511de8a (Mac, Python 3.13.2, `mac_slot.py light-ok`, `timeout -s INT 90`, load1 under 5):
+
+| Check | Exit | Result |
+|---|---|---|
+| copy_manifest.py --check | 0 | 36 identical, 17 edited, 190 new |
+| tests/test_box_integration.py TestTheTakePath | 0 | Ran 17, OK |
+| tests/test_check_take.py | 0 | Ran 15, OK |
+
+RESUME HERE: merge head 2511de8a225397d5195cca9da75d00fc2a845f51; athena run_checks owed (orchestrator)
