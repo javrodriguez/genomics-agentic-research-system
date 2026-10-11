@@ -1,10 +1,10 @@
-status: review-ready (hand-back for review round 1; not done)
+status: review round 1 PASS, loop closed (glitch-1b's ruling W6B-close-1); its findings folded
 
 # Lane w6b-cp6-stub-agents: CP6's stub agents, `box/stub_agents/`
 
 _Written Sun 11 Oct 2026 16:35 EDT (`date`), updated 16:46 EDT with the rulings fold, by the opus-medium builder of this lane, the sole writer in its worktree, assigned by glitch-1b (Lane-orchestrator) under Javier's standing delegation._
 
-RESUME HERE: hand-back at 57247470a228e93b3fc286fdd85bdebc3d03ca88 (the code head after the rulings fold); only the report commit follows it.
+RESUME HERE: hand-back at 41b9fd406e329a07ea23a14e1b670c3369d7fbf4 (the code head after the review round 1 fold); only the report commit follows it.
 
 Base: `89b54db4` (`gap4/cp5-pipeline-merge`).
 Branch `gap4/w6b-cp6-stub-agents`, worktree `/Users/javrodher/aegis-builds/gap4-w6b`.
@@ -17,6 +17,8 @@ No model, container, network, real box, walk or take; fakes only.
 - `84f17657cda05ef4dd28b8944c68b5f18d445cb3`: the slice's seven files (901 lines added, none changed elsewhere; `git diff --stat 89b54db4`).
 - `2cd0e6c4`: the first report.
 - `57247470a228e93b3fc286fdd85bdebc3d03ca88`: the fold of glitch-1b's rulings R1 and R2 (6 slice files, 34 insertions, 33 deletions).
+- `eb26e3f8`: the report's rulings update.
+- `41b9fd406e329a07ea23a14e1b670c3369d7fbf4`: the fold of review round 1 (W6B-R1-1 to -4).
 - The commit updating this report.
 
 ## What was built
@@ -81,6 +83,20 @@ On plan-gate's normal half the plan path is also written in turn 1 (its draft), 
 - `--witnesses`: `7 of 7 red`, rc 0; each bound method fails on its own assertion (rule B).
 - `take.py --check`: `stub_agents: 720 takes graded, 0 problems`, rc 0.
 - `copy_manifest.py --check` after `git add`: ok, 225 files / 28 fragments, rc 0; `tests/test_scaffold.py`: `Ran 49 tests in 534.124s`, `OK`, rc 0.
+
+## Review round 1 and its fold (glitch-1b's ruling W6B-close-1: round 1 PASS, loop closed)
+
+- W6B-R1-1 (MINOR), folded: a job killed at the cap now keeps the writes it made by the cap (`run_s - WRITE_LEAD_S <= cap`); only writes it would have made after the cap are lost, and the kill is still recorded.
+  New test `TestBackgroundWriter.test_writes_made_before_a_kill_land_late` (run_s = cap + 0.5: the writes land, are late and the probe turn's, the kill is recorded) and witness `kill-drops-made-writes` (the old behaviour).
+  `FakeRuntime` refuses `quiescence_cap_s > POST - ENDED` (3), tested by `test_a_cap_past_the_post_snapshot_is_refused`.
+- W6B-R1-2, folded: `test_the_stub_take_is_probes4s_own_triple` now compares the oracle stub's ledger, snapshots, access, health and blobs with the parts `probes4.build_take` hands `Evidence.from_parts` (captured by wrapping it), and the writer's ledger without its background record.
+  On the real tasks the operator writes only after turn 2 of explain-not-act's three, so an operator-on-last mutant changes nothing there; the test also drives a constructed operator that writes after every turn and compares the ledger before endstate reads it.
+  Witness `operator-on-last` (the stub passes `last=False`) is bound to that test.
+- W6B-R1-3, folded: `runtime.py`'s docstring says the evidence carries probes4's harness and model names, never the stub's identity.
+  Named residual for S6 and the CP6 box run: any persisted stub take must stamp the stub's identity into its own evidence.
+- W6B-R1-4, folded: the clock-disagreement refusal in `agents.py` is commented as defensive (no witness).
+
+Fold gates (Mac, same settings): `test_stub_agents: 18 run, 0 failures, 0 errors, 0 skipped`, rc 0; `--witnesses`: `9 of 9 red`, rc 0, each by its bound method's own assertion (rule B); `take.py --check`: 720 takes graded, 0 problems, rc 0; `copy_manifest.py --check` after `git add`: ok, 225 files, rc 0; `lint_language.py` on the seven slice files: clean, rc 0; `tests/test_scaffold.py`: `Ran 49 tests in 666.592s`, `OK`, rc 0.
 
 ## Limits
 
