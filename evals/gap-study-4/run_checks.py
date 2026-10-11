@@ -13,6 +13,11 @@ exactly
 (k passed of n run, the battery counted as one), and the exit is 0 only when k equals n and n is at least 1.
 athena's `gars-gap4` suite kind reads that line, so its wording is fixed.
 
+S4 (run_checks.py transferred from w1a to the w6c-w5c-nits lane, ruling S4-gap4-1): a PASSING command also
+echoes its witness summary lines (ECHO_ON_PASS: test_build_draft's and test_ci_job's group lines, "red without
+collateral" and "collateral totals"), as it echoes the battery's own count, so the athena log itself holds every
+witness group's collateral.
+
 Review round 3: every command runs under `bash -o pipefail`, so a pipeline fails when any stage fails (W1A3-4),
 and the battery passes only with its own closing count as its last line (W1A3-3).
 
@@ -38,6 +43,10 @@ REPO = HERE.parent.parent
 CHECKS = HERE / "checks.d"
 BATTERY = "python3 -W ignore evals/gap-study-4/test_round4.py"
 TIMEOUT_S = 3600
+# Lines a PASSING command's output keeps in the log, matched at the line start: the battery's run and skip count
+# (review round 2) and every witness group's summary and collateral lines (S4).
+ECHO_ON_PASS = ("test_round4: ", "test_build_draft witnesses", "test_ci_job witnesses", "red without collateral",
+                "collateral totals")
 LANE_FILE = re.compile(r"^[a-z0-9][a-z0-9-]*\.txt$")
 # The battery's own closing line (review round 3 W1A3-3): the battery passes only with exit 0 AND this as its last
 # line of output, at least one test run and no expected failure. A battery that exits 0 without it (a test that
@@ -110,8 +119,8 @@ def run_all(cmds: list[tuple[str, str]], cwd: Path = REPO, tally: dict | None = 
         tally["k"] += ok
         print(f"{'PASS' if ok else 'FAIL'} [{where}] exit {code} in {took:.1f}s: {cmd}", flush=True)
         for line in output.splitlines():
-            if line.startswith("test_round4: ") and ok:
-                print(f"    {line}")   # the battery's own run and skip count, on a pass too (review round 2)
+            if ok and line.startswith(ECHO_ON_PASS):
+                print(f"    {line}")   # summary lines, on a pass too (review round 2; S4)
         if not ok:
             for line in output.strip().splitlines()[-20:]:
                 print(f"    {line}")

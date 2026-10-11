@@ -690,7 +690,10 @@ class Readiness(unittest.TestCase):
         fake = fill_fake(self.get())
         pointer = "/stats_design_inputs/floors"
         phrase = stats.FLOOR_NOT_RUN.rsplit(", ", 1)[-1]
-        for text in (stats.FLOOR_NOT_RUN, phrase, "fake prefix " + phrase + " fake suffix"):
+        # W5C-R4-4: the refusal casefolds and collapses whitespace before testing.
+        variants = (phrase.upper(), phrase.title(), phrase.replace(" ", "  "), phrase.replace(" ", "\t", 1),
+                    "fake prefix " + phrase.upper().replace(" ", " \u00a0", 1) + " fake suffix")
+        for text in (stats.FLOOR_NOT_RUN, phrase, "fake prefix " + phrase + " fake suffix") + variants:
             with self.subTest(text=text):
                 floors = dict(fake["stats_design_inputs"]["floors"])
                 floors[next(iter(floors))] = text
@@ -1874,8 +1877,10 @@ def run_witnesses(group):
         got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name],
                              capture_output=True, text=True, timeout=180)
         lines = got.stdout + got.stderr
-        summary = re.search(r"test_build_draft: (\d+) run, (\d+) failures, (\d+) errors, (\d+) skipped", lines)
-        recorded = re.findall(r"^test_build_draft outcomes: (\{.*\})$", lines, re.M)
+        # W5C-R4-3: the protocol lines are printed to stdout; read them from stdout only, the last match of each.
+        summary = ([*re.finditer(r"^test_build_draft: (\d+) run, (\d+) failures, (\d+) errors, (\d+) skipped$",
+                                 got.stdout, re.M)] or [None])[-1]
+        recorded = re.findall(r"^test_build_draft outcomes: (\{.*\})$", got.stdout, re.M)
         method, clause = witness_binding(name)
         failures = re.findall(r"^FAIL: [^\n]*\(__main__\.([^)]*)\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)",
                               lines, re.M | re.S)
@@ -1904,7 +1909,7 @@ def run_witnesses(group):
             collateral[name] = other
     totals = {k: sum(len(v[k]) for v in collateral.values()) for k in ("failures", "errors", "skipped")}
     print(f"test_build_draft witnesses group {group}/{WITNESS_GROUP_COUNT}: {red}/{len(names)} red; registry {len(witness_names())}", flush=True)
-    print(f"red without collateral: {red-len(collateral)}; red with collateral (not credited, listed): {len(collateral)} {sorted(collateral)}", flush=True)
+    print(f"red without collateral: {red-len(collateral)}; red; collateral listed, never credited: {len(collateral)} {sorted(collateral)}", flush=True)
     print(f"collateral totals: {totals['failures']} failures, {totals['errors']} errors, {totals['skipped']} skipped", flush=True)
     return 0
 
@@ -1956,12 +1961,36 @@ class WitnessEvidence(unittest.TestCase):
                 self.assertEqual(code, expected)
                 if case == "collateral error":
                     self.assertIn("collateral: 0 failures [], 1 errors ['Other.unrelated'], 0 skipped []", printed)
-                    self.assertIn("red with collateral (not credited, listed): 1", printed)
+                    self.assertIn("red without collateral: 0; red; collateral listed, never credited: 1", printed)
+                    self.assertNotIn("not credited, listed", printed)
                     self.assertIn("collateral totals: 0 failures, 1 errors, 0 skipped", printed)
                 if case == "collateral failure and skip":
                     self.assertIn("1 failures ['Other.unrelated'], 0 errors [], 1 skipped ['Other.unrelated']", printed)
                 if case == "bound only":
                     self.assertIn("collateral: none", printed)
+
+    def test_protocol_lines_are_read_from_stdout_last_match(self):
+        # W5C-R4-3: the summary and outcomes lines are read from stdout only, the last match of each.
+        import json
+        name = 'n'
+        method, clause = witness_binding(name)
+        other = "Other.unrelated"
+        stale = "test_build_draft: 9 run, 0 failures, 0 errors, 0 skipped\n"
+        good = self.fake_run([method], errors=[other], clause=clause)
+        forged = "test_build_draft outcomes: " + json.dumps({"failures": [method], "errors": [], "skipped": []}) + "\n"
+        moved = self.fake_run([method], clause=clause)
+        blocks, protocol = moved.stdout.split("test_build_draft: ", 1)
+        for case, fake, expected in (
+            ("earlier stale summary on stdout", mock.Mock(stdout=stale + good.stdout, stderr="", returncode=1), 0),
+            ("forged outcomes on stderr", mock.Mock(stdout=good.stdout, stderr=forged, returncode=1), 0),
+            ("forged summary on stderr", mock.Mock(stdout=good.stdout, stderr=stale, returncode=1), 0),
+            ("protocol lines on stderr only", mock.Mock(stdout=blocks, stderr="test_build_draft: " + protocol, returncode=1), 1)):
+            with self.subTest(case=case):
+                code, printed = self.outcome(name, fake)
+                self.assertEqual(code, expected, printed)
+                if expected == 0:
+                    self.assertIn("1 errors ['Other.unrelated']", printed)
+                    self.assertIn("test_build_draft: 1 run, 1 failures, 1 errors, 0 skipped; collateral:", printed)
 
     def test_clause_tokens_are_exact(self):
         name = 'floors-null-guard'

@@ -643,8 +643,10 @@ def run_witnesses(group):
         got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name],
                              capture_output=True, text=True, timeout=180)
         lines = got.stdout + got.stderr
-        summary = re.search(r"test_ci_job: (\d+) run, (\d+) failures, (\d+) errors, (\d+) skipped", lines)
-        recorded = re.findall(r"^test_ci_job outcomes: (\{.*\})$", lines, re.M)
+        # W5C-R4-3: the protocol lines are printed to stdout; read them from stdout only, the last match of each.
+        summary = ([*re.finditer(r"^test_ci_job: (\d+) run, (\d+) failures, (\d+) errors, (\d+) skipped$",
+                                 got.stdout, re.M)] or [None])[-1]
+        recorded = re.findall(r"^test_ci_job outcomes: (\{.*\})$", got.stdout, re.M)
         method, clause = witness_binding(name)
         failures = re.findall(r"^FAIL: [^\n]*\(__main__\.([^)]*)\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)",
                               lines, re.M | re.S)
@@ -673,7 +675,7 @@ def run_witnesses(group):
             collateral[name] = other
     totals = {k: sum(len(v[k]) for v in collateral.values()) for k in ("failures", "errors", "skipped")}
     print(f"test_ci_job witnesses group {group}/3: {red}/{len(names)} red; registry {len(witness_names())}", flush=True)
-    print(f"red without collateral: {red-len(collateral)}; red with collateral (not credited, listed): {len(collateral)} {sorted(collateral)}", flush=True)
+    print(f"red without collateral: {red-len(collateral)}; red; collateral listed, never credited: {len(collateral)} {sorted(collateral)}", flush=True)
     print(f"collateral totals: {totals['failures']} failures, {totals['errors']} errors, {totals['skipped']} skipped", flush=True)
     return 0
 
@@ -725,12 +727,36 @@ class WitnessEvidence(unittest.TestCase):
                 self.assertEqual(code, expected)
                 if case == "collateral error":
                     self.assertIn("collateral: 0 failures [], 1 errors ['Other.unrelated'], 0 skipped []", printed)
-                    self.assertIn("red with collateral (not credited, listed): 1", printed)
+                    self.assertIn("red without collateral: 0; red; collateral listed, never credited: 1", printed)
+                    self.assertNotIn("not credited, listed", printed)
                     self.assertIn("collateral totals: 0 failures, 1 errors, 0 skipped", printed)
                 if case == "collateral failure and skip":
                     self.assertIn("1 failures ['Other.unrelated'], 0 errors [], 1 skipped ['Other.unrelated']", printed)
                 if case == "bound only":
                     self.assertIn("collateral: none", printed)
+
+    def test_protocol_lines_are_read_from_stdout_last_match(self):
+        # W5C-R4-3: the summary and outcomes lines are read from stdout only, the last match of each.
+        import json
+        name = 'runner'
+        method, clause = witness_binding(name)
+        other = "Other.unrelated"
+        stale = "test_ci_job: 9 run, 0 failures, 0 errors, 0 skipped\n"
+        good = self.fake_run([method], errors=[other], clause=clause)
+        forged = "test_ci_job outcomes: " + json.dumps({"failures": [method], "errors": [], "skipped": []}) + "\n"
+        moved = self.fake_run([method], clause=clause)
+        blocks, protocol = moved.stdout.split("test_ci_job: ", 1)
+        for case, fake, expected in (
+            ("earlier stale summary on stdout", mock.Mock(stdout=stale + good.stdout, stderr="", returncode=1), 0),
+            ("forged outcomes on stderr", mock.Mock(stdout=good.stdout, stderr=forged, returncode=1), 0),
+            ("forged summary on stderr", mock.Mock(stdout=good.stdout, stderr=stale, returncode=1), 0),
+            ("protocol lines on stderr only", mock.Mock(stdout=blocks, stderr="test_ci_job: " + protocol, returncode=1), 1)):
+            with self.subTest(case=case):
+                code, printed = self.outcome(name, fake)
+                self.assertEqual(code, expected, printed)
+                if expected == 0:
+                    self.assertIn("1 errors ['Other.unrelated']", printed)
+                    self.assertIn("test_ci_job: 1 run, 1 failures, 1 errors, 0 skipped; collateral:", printed)
 
     def test_clause_tokens_are_exact(self):
         name = 'run-key-env'
@@ -739,6 +765,38 @@ class WitnessEvidence(unittest.TestCase):
                              ("prefix-" + clause, 1), ("unrelated", 1)):
             with self.subTest(text=text):
                 self.assertEqual(self.outcome(name, self.fake_run([method], text=text))[0], expected)
+
+
+class RunChecksEcho(unittest.TestCase):
+    """S4 (run_checks.py transferred from w1a): a PASSING command's witness summary lines are echoed into the
+    athena log, so the log itself holds every group's collateral. No shell runs: subprocess.run is faked."""
+
+    LINES = ("test_build_draft witnesses group 1/6: 41/41 red; registry 242",
+             "test_ci_job witnesses group 2/3: 39/39 red; registry 116",
+             "red without collateral: 1; red; collateral listed, never credited: 40 ['fake']",
+             "collateral totals: 86 failures, 30 errors, 0 skipped")
+    QUIET = ("witness fake: RED; test_ci_job: 1 run, 1 failures, 0 errors, 0 skipped; collateral: none",
+             "fake prefix red without collateral: 0", " collateral totals: indented, not a summary line")
+
+    def run_fake(self, code, stdout, stderr=""):
+        import contextlib, io
+        import run_checks
+        out = io.StringIO()
+        done = subprocess.CompletedProcess(args=[], returncode=code, stdout=stdout, stderr=stderr)
+        with mock.patch.object(run_checks.subprocess, "run", return_value=done), contextlib.redirect_stdout(out):
+            k, n = run_checks.run_all([("fake.txt:1", "fake witness command")])
+        return k, n, out.getvalue().splitlines()
+
+    def test_passing_command_echoes_every_summary_line(self):
+        k, n, printed = self.run_fake(0, "\n".join(self.QUIET[:1] + self.LINES[:2]) + "\n", "\n".join(self.LINES[2:] + self.QUIET[1:]) + "\n")
+        self.assertEqual((k, n), (1, 1))
+        self.assertTrue(printed[0].startswith("PASS [fake.txt:1] exit 0"), printed)
+        self.assertEqual(printed[1:], ["    " + line for line in self.LINES], printed)
+
+    def test_failing_command_keeps_its_tail(self):
+        k, n, printed = self.run_fake(1, "\n".join(self.QUIET + self.LINES) + "\n")
+        self.assertEqual((k, n), (0, 1))
+        self.assertEqual(printed[1:], ["    " + line for line in self.QUIET + self.LINES], printed)
 
 
 if __name__ == "__main__":
