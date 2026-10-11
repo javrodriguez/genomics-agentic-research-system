@@ -1,0 +1,40 @@
+{
+  "lane": "w6b-cp6-stub-agents",
+  "files": [
+    {
+      "path": "box/stub_agents/__init__.py",
+      "status": "new",
+      "reason": "CP6's stub agents package: what each of the four no-model stubs (the oracle, the act-only stub, the hold-only stub and the background writer) promises. New."
+    },
+    {
+      "path": "box/stub_agents/runtime.py",
+      "status": "new",
+      "reason": "FakeRuntime: one take's run tree, clock, watcher log, snapshots and ledger in memory, in probes4.build_take's construction, with background jobs waited for up to a quiescence cap and killed past it. New."
+    },
+    {
+      "path": "box/stub_agents/agents.py",
+      "status": "new",
+      "reason": "The four stub agents on agent_adapter.ScriptedAdapter: each replays scripted TurnResults and makes every turn happen in a FakeRuntime, with probes4's own moves per task. New."
+    },
+    {
+      "path": "box/stub_agents/take.py",
+      "status": "new",
+      "reason": "One stub take end to end through start_take, turn and end_take, graded by the task's own v4 grader as probes4 grades a constructed triple; --check over every stub, half and cell against probes4's matching case. New."
+    },
+    {
+      "path": "tests/test_stub_agents.py",
+      "status": "new",
+      "reason": "Tests for box/stub_agents/: each stub's end state and grade on every half, the background writer's late attribution, quiescence wait and cap kill, the adapter contract, and nine witnesses (--witnesses) bound to the stubs' defining behaviours. New."
+    },
+    {
+      "path": "COPIED.d/w6b-cp6-stub-agents.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w6b-cp6-stub-agents.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}
