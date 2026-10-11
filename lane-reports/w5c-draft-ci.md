@@ -3926,3 +3926,94 @@ OPEN: CP2 box and prereg.py --order carries — inherited owner boundaries remai
 OPEN: exact-head Athena and independent review — coordinator schedules complete candidate validation, then fresh independent Claude review; builder does neither review nor landing.
 
 Evidence files use the r2-* prefix under `/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w5c-r1-ugt74255`, including red/target/final logs, r2-precommit-writer.txt, r2-exact-writer.txt, r2-audit.txt and the exact added-witness list. V1-V4, V6 and the supported V7/V8 readings are no longer listed as blanket OPEN. The current 79-pointer enumeration is preserved exactly. No push, landing, merge, deployment, spending, model/vendor call, credential/holdout access, guard/engine edit or self-review occurred. Code commits carry the exact Codex trailer; this runtime report-only commit carries none. The builder explicitly relinquishes sole-writer ownership when this report commit completes; new code work requires coordinator reassignment.
+
+## Update — Claude R3 fold W5C3-fold-1, 2026-10-11 07:18 UTC
+
+Earlier opening lines and appendices remain historical; this is the latest builder status.
+status: stopped
+head: a0b99b0d1e1bb21e5d28a198ddcf4abf3e9e275a (code candidate; report-only child follows)
+RESUME HERE: the coordinator owns exact-head Athena validation of the complete files, suite/battery and all 358 whole-file witnesses, followed by fresh independent Claude R4 (maximum four review rounds; stop at the first round with no MAJOR). No new-candidate full PASS, review verdict, landing or freeze readiness is claimed.
+
+Assignment W5C3-fold-1 was the coordinator's bounded in-plan delegation following Javier's full R3 relay, archived at plans/gap-study-round-4/w5c-review-r3-relayed-2026-10-11.md. R3 reviewed code c5e4acbb32e42d7aab4013004657c813674a9368, report child d6a7e1a510c7aed09a3cd24ce65caf824530bc5e, with CHANGES: two MAJOR, one MINOR and one NIT. This fold began at that clean report head. The full relayed review and current report appendices were read before changes. The named tree scratchpad/w5c/BRIEF.md was absent; no alternate brief, saved-output copy or denied source was sought. The coordinator explicitly supplied the bounded assignment and existing approved report as the work inputs. No formal review was performed by this builder.
+
+Only build_draft.py, tests/test_build_draft.py and tests/test_ci_job.py changed under evals/gap-study-4, followed by this append-only report. Workflow, checks.d, run_checks.py, study.py, prereg-draft.json, instruments and pinned inputs are unchanged.
+
+### Finding map
+
+| Finding | Implemented fold | Bound witness |
+| --- | --- | --- |
+| W5C3-1 MAJOR | Normal closure cases insert timeout and env keys after a single-line run and after the additive step's literal body, within this job's block. The precise mutant keeps only the first non-comment run-line condition. | run-first-line-only -> JobContract.test_closed_structure / R37.run-keys |
+| W5C3-2 MAJOR | OwnerSlots checks blank, whitespace, None and integer words, plus an extra narrative key. Each invalid shape directly fails owner_value_missing, keeps its pointer pending before/after finalize, and refuses freeze. Valid three-key and four-key narratives remain accepted. Separate mutants omit only the words condition or widen only the closed key set. | owner-narrative-words -> OwnerSlots.test_narrative_words_and_keys_keep_closed / R3.owner:words; owner-narrative-keys -> same method / R3.owner:keys |
+| W5C3-3 MINOR | floors_missing rejects text containing the existing stats.FLOOR_NOT_RUN suffix, obtained from the imported constant rather than retyping it. The complete fallback, its suffix and embedded suffix are negative cases on one task while the other tasks retain fake supplied floors. The valid fake remains accepted. | floors-fallback -> Readiness.test_floor_fallback_keeps_closed / R3.floors:fallback |
+| W5C3-4 NIT | All 29 method-only draft bindings now name explicit assertion clauses. Both runners match clauses with word/colon/dot/hyphen boundaries and require nonempty clauses. Synthetic attribution tests reject prefix clauses, extended tokens, unrelated methods, error-only, mixed-error and skipped runs. | Existing IDs and methods retained; mapping changes below. |
+
+Both runners now require zero errors as well as zero skips before printing RED. Mixed assertion/error outcomes no longer receive credit. This strengthens the previous runner contract; no check was removed to obtain a red result. Timeouts still terminate the command without credit. The runner's pre-existing mixed-counter output remains, but an error-containing outcome exits before it can be credited. The new whole-file outcomes have NOT been performed on Mac.
+
+### Reproduction and local evidence
+
+Every admitted local Python check used the same-command light-ok prefix, explicit Python 3.13, -B -W ignore, PYTHONDONTWRITEBYTECODE=1 and OMP_NUM_THREADS/OPENBLAS_NUM_THREADS/MKL_NUM_THREADS=1. Checks ran serially; every returned session was polled to completion before another check. No whole-file mutation loop, witness partition, complete draft file, full suite or remote job was launched locally.
+
+Before the fix, the existing OwnerSlots class stayed green (5 tests each, zero failures/errors/skips) under words-clause and extra-key acceptance mutations. A supplied floor fallback yielded zero pending pointers and freeze accepted. The new floor regression then failed before the production fix: one test, three assertion failures, zero errors/skips, 0.320 seconds. This is actual red-before-fix evidence, not an inferred result.
+
+The precise first-line-only workflow mutation was reproduced against test_ci_job.py loaded from frozen c5e4acbb: the existing closure target remained green (one test, zero failures/errors/skips, 0.135 seconds), while the changed tail went from real R37.run-keys to no findings under that mutant.
+
+Diagnostic departures are retained: an initial first-line helper incorrectly iterated characters instead of splitlines; its green target was not credited as the reviewer mutation. The first corrected reproduction printed after unittest teardown had cleared module globals and raised AttributeError; that command was not credited as a clean probe. The final reproduction printed before teardown and exited zero. Initial literal-tail fixtures replaced a matching line outside this job, so the normal target failed twice with R37.outside instead of the required R37.run-keys; replacement was bounded to job_block before final normal/red evidence. These were test-development errors, not production regressions or successful witnesses.
+
+| Final local check | Actual result |
+| --- | --- |
+| Owner/floors/parser normal targets | 10 run, zero failures/errors/skips, 4.300s |
+| Existing attribution-bound methods | 12 run, zero failures/errors/skips, 6.499s |
+| CI closure/boundary/registry/parser targets | 5 run, zero failures/errors/skips, 0.174s |
+| owner-narrative-words, intended target only | 1 run, 4 assertion failures, zero errors/skips, 0.332s |
+| owner-narrative-keys, intended target only | 1 run, 1 assertion failure, zero errors/skips, 0.427s |
+| floors-fallback, intended target only | 1 run, 3 assertion failures, zero errors/skips, 0.280s |
+| run-first-line-only, intended target only | 1 run, 4 assertion failures, zero errors/skips, 0.154s |
+| Registry/source audit | All 354 original IDs and methods retained; 29 empty clauses filled; 4 new witnesses; generated bytes and all 79 pending entries identical |
+| Copy gate | Exit 0; 223 files, 28 fragments; 5 fixture builders byte-identical; 8 frozen paths unchanged |
+| Language / pooling lint | Raw exit 1 each, retained; 25 findings over 61 inputs / 8 findings over 61 files and 0 commits, matching the recorded counts. Complete baseline-output byte equality was not re-observed in this fold. |
+| Pre-code-commit default-deny sweep | 30 tests, zero failures/errors, 2.246s, exit 0 |
+| Immediate committed writer on a0b99b0d | 1 run, zero failures/errors/skips, 0.631s |
+
+The canonical sweep command was identified in the existing w3a/w3c checks.d text fragments as python3 -B -W ignore evals/gap-study-4/tests/test_pause_adherence.py and explicitly confirmed by the coordinator. Only that existing test command was executed; no forbidden grader source or fragment grep command was opened/executed. Language/pooling lint used the repository cwd as the documented relative invocation requires. All other checks used absolute file paths from the external cwd.
+
+Raw final logs are retained under /private/tmp/w5c3.xbt1eE: draft-normal.txt, attribution-normal.txt, ci-normal-final.txt, owner-words-red.txt, owner-keys-red.txt, floors-red.txt, run-tail-red-bound.txt, run-tail-reproduction-final.txt, registry-audit.txt, copy.txt, language.txt, pooling.txt, sweep-code.txt and exact-head-writer.txt. Earlier diagnostic logs in that same directory remain distinct; no failure was relabeled as passing. Early owner/floor pre-fix reproduction and the initial red regression were captured in the builder tool transcript, not retroactively reconstructed as raw files.
+
+### Retention, attribution and remote obligations
+
+Draft witnesses: 239 -> 242, six groups 41/41/40/40/40/40. CI witnesses: 115 -> 116, three groups 39/39/38. Total: 354 -> 358. The existing nine checks.d witness invocations remain unchanged. Group union/uniqueness and complete method/clause binding are asserted. All 354 original methods are identical in the registry; the 325 previously nonempty clauses are unchanged. The 29 formerly empty draft clauses changed only as follows:
+
+- owner-absent/empty/lower/mapping/mixed/null/number/space -> R1.owner:forms; owner-list -> R1.owner:lists; owner-typed -> R1.owner:typed.
+- value-secondary -> V2.secondary; value-source-field/value-pause -> V6.answers; value-plan -> V7.plan; value-fabrication -> V7.fabrication; value-reading/value-conditional -> V8.readings; value-proposal -> V8.proposals.
+- digest-shape -> R7.digest-shape; price-shape -> R15.price-shape; alpha-shape -> R31.alpha-shape; user-overlap -> R9.user-overlap; pending-erase -> R32.freeze; profile-mismatch -> R6.profile-mismatch; committed-presence -> R34.committed-presence.
+- claims-old-only/claims-unowned -> R13.claims; unclaimed-accepted -> R13.unclaimed; earlier-count -> R5.metadata.
+
+Coordinator ruling W5C3-attribution-1 explicitly permitted a message-only exception to the formerly unchanged writer AST: exactly two existing assertFalse calls receive R34.committed-presence messages. A normalized AST comparison removes only those two new message arguments and is identical to c5e4acbb. All assertion operands, control flow and byte-comparison checks are unchanged. No generated-draft drift occurred, so no prereg or pinned-input edit was required.
+
+The four targeted red runs are not substitutes for whole-file witnesses. Athena must run all 358 on this exact candidate, require intended method/whole clause AssertionError and zero errors/skips, reject survivors/hangs/unperformed cases, and run the unmutated full files and complete required suite/battery. Previous c5e4acbb technical evidence and the historical failed 108/110 run remain evidence of their own heads only. R4 must receive the new exact candidate and actual remote outcomes, not a builder verdict.
+
+### Current OPEN and OPEN-value items (one per line)
+
+OPEN-value: V5 — floor_evidence and stats_design_inputs/floors remain PENDING; the table owner still owes per-task evidence and its tested extraction. Rejecting the fallback supplies neither.
+OPEN-value: V7 documented reply — remains STOPPED/PENDING under the denied-source boundary; no exact source wording invented or recovered.
+OPEN-value: V8-L3 — awaits CP2 tool-list evidence.
+OPEN-value: V8-L6 — awaits its later-owner reader disposition evidence.
+OPEN-value: V8-L10 — awaits CP2 checker/refusal-route evidence.
+OPEN-value: V8-L11 — awaits CP2 system_under_test tree evidence.
+OPEN-value: pins — 21 version_pins and 18 image_locks pointers await measured owner inputs.
+OPEN-value: digests — awaits the separate author through the coordinator; no holdout material accessed or guessed.
+OPEN-value: preflight — awaits real box/CP6 evidence.
+OPEN-value: first-walk — awaits the first committed walk and required leak check.
+OPEN-value: instrument-values — 7 config_templates, 7 effort, 3 served_model_rule and 3 furniture pointers await their owners.
+OPEN-value: price-table — awaits Javier's dated vendor-price walk gate.
+OPEN-value: routing — 4 routing_marker_inputs and spend-cap marker status await the routing owner.
+OPEN-value: walk-counts — four existing null count pointers await Javier's CP6 walks.
+OPEN-value: regrade-flag — later grader/walk owner must settle and record it.
+OPEN: W5C1-5 proxy counts — later owners still owe direct run/failure/error/skip accounting.
+OPEN: V7 fabrication downstream alignment — remains later instrument/human-sample owner work.
+OPEN: W5C1-9 optional residual — deleted/renamed prereg branch strengthening remains unimplemented.
+OPEN: CP2 box and prereg.py --order carries — explicit sequential dependency and ownership remain binding.
+OPEN: exact-head Athena and fresh independent R4 — pending with the coordinator, not performed by this builder.
+
+No push, landing, merge, public operation, spend, remote job, model/vendor call, credential/holdout read, denied-source retry, guard/engine edit or self-review occurred. Code commit carries the required Codex gpt-6-astra trailer; this report-only child carries no AI trailer. The builder relinquishes sole-writer ownership upon the report commit; further code changes require a new coordinator assignment.
+
+Report-only closing gates: copy exit 0 (223 files/28 fragments; unchanged fixture builders/frozen paths), default-deny sweep 30/30 in 2.109 seconds, exit 0. The report preserves every byte of its prior version as a prefix; source code remains a0b99b0d. Only this report is staged, whitespace is clean, and no test process remains. These gates do not close Athena or independent-review obligations.
