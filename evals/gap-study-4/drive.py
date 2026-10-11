@@ -1590,13 +1590,23 @@ class TakeRepo:
         for entry in self.history():
             if takes_mod.batch.is_ruling(entry):
                 continue
+            missing = [k for k in ("leaked_container", "leaked_containers") if k not in entry]
+            if missing:          # W6H-R2-1 (S6b): a typed refusal, never a bare KeyError
+                raise HistoryRefused(f"the committed outcome of slot {entry.get('slot')!r} attempt "
+                                     f"{entry.get('attempt')!r} carries no {', '.join(missing)}; a restart cannot "
+                                     f"read what it leaked")
             for cid in [entry["leaked_container"], *(entry["leaked_containers"] or [])]:
                 if cid is not None and cid not in ids:
                     ids.append(cid)
         return ids
 
     def refuse_restart(self) -> None:
-        _run_take.refuse_restart_if_leaked(self.runtime, self.leaked_ids(), caller_env=self.caller_env)
+        ids = self.leaked_ids()
+        _run_take.refuse_restart_if_leaked(self.runtime, [i for i in ids if not i.startswith(NETWORK_PREFIX)],
+                                           caller_env=self.caller_env)
+        nets = leaked_networks(self.runtime, ids, caller_env=self.caller_env)      # R-S6-net (S6b)
+        if nets:
+            raise _run_take.LeakedContainer(f"restart refused: leaked network(s) still present: {', '.join(nets)}")
 
     def register(self, row: dict, attempt: int) -> str:
         self.refuse_restart()
@@ -1803,11 +1813,13 @@ from box import sidecar as _sidecar  # noqa: E402
 # The take folder's files, each with its scan kind (box/scan_record.KINDS). A file outside this closed map refuses
 # the take: nothing rides a commit unscanned under a guessed kind.
 TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.log": "proxy-log",
-                   "preflight.json": "preflight", "refusal.json": "preflight", "transcript.jsonl": "transcript"}
+                   "preflight.json": "preflight", "refusal.json": "preflight", "transcript.jsonl": "transcript",
+                   "postflight.json": "preflight"}    # S6b (e)
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
 EVIDENCE_DIR, SESSION_DIR = "evidence", "session"
 EVIDENCE_KINDS = {_sidecar.SNAPSHOTS: "snapshot", _sidecar.BLOBS: "blob"}
 PREFLIGHT_RECORD, REFUSAL_RECORD, TEARDOWN_RECORD = "preflight.json", "refusal.json", "teardown.json"
+POSTFLIGHT_RECORD = "postflight.json"
 # What the checker callable returns: a closed record (the drive step's operator-side reading of the take).
 CHECKER_KEYS = ("checker_reasons", "checker_events", "unexplained_operator_diffs", "finalize_abort")
 # The checker event the scan counts itself (W6H-R1-2): the account email is a secret the scan masks, so the checker's
@@ -1869,6 +1881,7 @@ class _Take:
         self.survivors: list = []      # W6H-R1-6: {turn, pids} for each quiescence cap that found agent processes
         self.teardown = None           # run_take.teardown's record (W6H-R1-3: remove() reads its network step)
         self.driven = False
+        self.adapter_open = False      # S6b (d): set when start_take returned, cleared when end_take was called
 
 
 class TakeDriver:
@@ -1920,12 +1933,15 @@ class TakeDriver:
         self._by_id: dict = {}        # take container id -> _Take
         self._by_slot: dict = {}      # slot -> the slot's latest _Take not yet published
         self.published_takes: list = []
+        self.publish_problems: list = []   # S6b Q6: a published take whose config folder could not be deleted
 
     # ------------------------------------------------------------------------------------------- launch (R4-8)
     def launch(self, row: dict) -> str:
         """The take's config folder, record folder and containers (run_take.launch); returns the take container's id.
         A launch failure re-raises run_take's LaunchError with `container_id` set to the take container's id when its
         partial teardown did not remove it (batch records it and removes it again), else None."""
+        if self.publish_problems:                             # S6b Q6 (D5): a config folder never reused silently
+            raise DriveRefused(f"a published take's cleanup failed: {self.publish_problems[0]}")
         folder = self.take_folder(row)
         if not isinstance(folder, str) or not os.path.isabs(folder) or os.path.normpath(folder) != folder:
             raise DriveRefused(f"the take folder is not a normalised absolute path: {folder!r}")
@@ -2005,6 +2021,17 @@ class TakeDriver:
             return False
         return record["ok"] is True
 
+    def _postflight(self, take, row) -> dict | None:
+        """S6b (e): preflight.postflight on the per-take config folder (still there: it goes only after the commit),
+        written as postflight.json; a failure to run it is recorded in take.cleanup and returns None (a stop)."""
+        try:
+            post = _preflight.postflight(take.config_dir, row["agent"]["harness"])
+            self._write(take, POSTFLIGHT_RECORD, post)
+            return post
+        except Exception as e:  # noqa: BLE001 - never replaces the drive's own exception; read as a stop after
+            take.cleanup.append(f"postflight: {type(e).__name__}: {e}")
+            return None
+
     def _refused(self, take, e: BaseException) -> None:
         """R4-9: the pre-turn refusal record (its type and message; never a secret: lock, launch and reply texts)."""
         self._write(take, REFUSAL_RECORD, {"refused": type(e).__name__, "why": str(e)[:500]})
@@ -2013,7 +2040,8 @@ class TakeDriver:
         """R4-11, on every road: end the adapter, kill and poll the agent's leftover processes, remove every container
         by its recorded id. Each failure is recorded in take.cleanup and written to teardown.json; none stops the
         rest."""
-        if adapter is not None and getattr(adapter, "_state", None) == "open":
+        if adapter is not None and take.adapter_open:          # S6b (d): the driver's own flag, never the adapter's
+            take.adapter_open = False
             try:
                 adapter.end_take()
             except Exception as e:  # noqa: BLE001
@@ -2049,13 +2077,14 @@ class TakeDriver:
         if take.driven:
             raise DriveRefused(f"take {container_id} was already driven")
         take.driven = True
-        turns, unreadable, survivors, killed, adapter, state = [], [], 0, False, None, None
+        turns, unreadable, survivors, killed, adapter, state, post = [], [], 0, False, None, None, None
         try:
             ok = self._preflight(take, row["agent"]["harness"])      # W6H-R1-8a: read inside the try
             if ok:
                 try:              # W6H-R1-7: the adapter's making or start before turn 1 is a pre-turn refusal
                     adapter = self.adapter_for(row, take)
                     adapter.start_take(dict(row))
+                    take.adapter_open = True
                 except Exception as e:  # noqa: BLE001 - nothing of the agent ran: harness-side (plan, row 1)
                     self._refused(take, e)
                     ok = False
@@ -2077,6 +2106,10 @@ class TakeDriver:
             state = _run_take.container_state(self.runtime, take.launched.take_id, caller_env=self.caller_env)
         finally:
             self._cleanup(take, adapter)
+            post = self._postflight(take, row)                # S6b (e): every road, after cleanup, before the scan
+        if post is None or post.get("ok") is not True:        # a credential file left behind is a stop for a human
+            why = "the postflight check did not run" if post is None else post["checks"][0]["detail"]
+            raise DriveRefused(f"postflight: {why}; the config folder is kept for a human")
         # R4-10: scan -> mask, then the checker; routing and the commit follow in batch.py.
         scan = _scan_record.scan(self.take_files(take), list(self.secrets()), rules_scanner=self.rules_scanner,
                                  holdout_matcher=self.holdout_matcher)
@@ -2137,8 +2170,10 @@ class TakeDriver:
         steps = (take.teardown or {}).get("steps", []) if take is not None else []
         bad = [s for s in steps if s.get("step") == "network-rm" and s.get("returncode") != 0]
         if bad and launched is not None and launched.network_id:
-            raise _run_take.LeakedContainer(f"the take's network {launched.network_id} was not removed "
-                                            f"(teardown recorded network-rm {bad[0].get('returncode')!r})")
+            leak = _run_take.LeakedContainer(f"the take's network {launched.network_id} was not removed "
+                                             f"(teardown recorded network-rm {bad[0].get('returncode')!r})")
+            leak.leaked_ids = [NETWORK_PREFIX + launched.network_id]   # R-S6-net: the restart lists networks too
+            raise leak
 
     # ------------------------------------------------------------------------------------------- the repo's hooks
     def take_files(self, take) -> list:
@@ -2175,7 +2210,55 @@ class TakeDriver:
             return
         self.published_takes.append(take)
         launched = take.launched if take.launched is not None else _run_take.Launched(config_dir=take.config_dir)
-        _run_take.remove_config_dir(launched, published=True)
+        try:
+            _run_take.remove_config_dir(launched, published=True)
+        except Exception as e:  # noqa: BLE001 - recorded here (Q6) and raised for TakeRepo's publish_problems
+            self.publish_problems.append(f"slot {row.get('slot')!r} attempt {attempt}: {type(e).__name__}: {e}")
+            raise
+
+
+# =====================================================================================================================
+# ROUND 4, SLICE S6b (lane w6i; this file moved from lane w6h to lane w6i under glitch-1b's ruling S6b-gap4-1): the
+# carried items, edited in place in parts 1 and 2 above (round 3's bytes stay untouched):
+#   (d)       TakeDriver ends the adapter by its own flag (_Take.adapter_open, set when start_take returned), never by
+#             reading the adapter's private state (ruling D6).
+#   (e)       preflight.postflight runs in drive()'s finally, after the cleanup and before the scan, on every road; it
+#             is written as postflight.json (scan kind preflight). A record that is not ok (a credential-like file
+#             left in the config folder), or a postflight that could not run, raises DriveRefused: a stop for a
+#             human, and the config folder is kept (it goes only after a commit).
+#   Q6 (D5)   TakeDriver.published records a failed config-folder deletion in its own publish_problems and raises it
+#             on for TakeRepo's; launch() refuses while any is recorded, so a config folder is never reused silently.
+#   W6H-R2-1  leaked_ids() refuses an outcome without leaked_container or leaked_containers with HistoryRefused, never
+#             a bare KeyError.
+#   R-S6-net  a network the teardown failed to remove is carried as "network:<id>" in the leak's leaked_ids (batch
+#             commits it in leaked_containers), and the restart refusal lists the networks for those ids.
+# =====================================================================================================================
+
+NETWORK_PREFIX = "network:"
+_FULL_ID = re.compile(r"[0-9a-f]{64}")
+
+
+class HistoryRefused(RuntimeError):
+    """W6H-R2-1: a committed outcome the restart cannot read (a leak key missing)."""
+
+
+def leaked_networks(runtime, recorded_ids, *, caller_env=None) -> list:
+    """R-S6-net: the "network:<id>" entries of recorded_ids still in the runtime's full network listing (no listing
+    when none is recorded)."""
+    nets = [i[len(NETWORK_PREFIX):] for i in recorded_ids if isinstance(i, str) and i.startswith(NETWORK_PREFIX)]
+    if not nets:
+        return []
+    bad = [n for n in nets if not _FULL_ID.fullmatch(n)]
+    if bad:
+        raise _run_take.Refused("a recorded network id is not a full 64-hex id")
+    c = runtime.run([_run_take.RUNTIME_CLIENT, "network", "ls", "--no-trunc", "--quiet"],
+                    env=_run_take.runtime_env(caller_env), timeout=_run_take.STEP_TIMEOUT_S)
+    if c.returncode != 0:
+        raise _run_take.Refused(f"the network listing failed (exit {c.returncode}): a restart is refused unread")
+    listed = {line.strip() for line in c.stdout.splitlines() if line.strip()}
+    if any(not _FULL_ID.fullmatch(x) for x in listed):
+        raise _run_take.Refused("the network listing holds a line that is not a full id")
+    return [n for n in nets if n in listed]
 
 
 if __name__ == "__main__":

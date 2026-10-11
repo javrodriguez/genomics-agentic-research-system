@@ -34,6 +34,21 @@ What is tested, each guard with its own bound check and a whole-file witness of 
   B8-config      the per-take config folder outlives the drive and is deleted once the commit has landed
                  (TakeRepo.on_published), never after a refused commit. Witness: the on_published call removed.
 
+Lane w6i (slice S6b, ruling S6b-gap4-1) adds the carried items, each with its own bound check and witness:
+
+  B10-adapter-end  the driver ends the adapter by its own flag (set when start_take returned), so an adapter that
+                   keeps its state under another spelling is still ended once on every road. Witness: the
+                   adapter's private `_state` read again.
+  B11-postflight   preflight.postflight runs after the cleanup and before the scan: a clean config folder gives a
+                   committed postflight.json with ok true; a credential-named file left there stops the take
+                   (DriveRefused naming it), records ok false and keeps the folder. Witness: postflight skipped.
+  B12-publish      a config folder that could not be deleted after the commit is recorded, the commit stays, and
+                   the next launch refuses naming the slot (ruling D5). Witness: launch ignores the record.
+  B13-history      an outcome without leaked_container or leaked_containers is a typed HistoryRefused naming the
+                   key, never a bare KeyError (W6H-R2-1). Witness: the key check removed.
+  B14-net          a network the teardown failed to remove is committed as "network:<id>" and refuses the restart
+                   while it is listed, naming it (R-S6-net). Witness: the restart lists containers only.
+
 Fakes and synthetic strings only: no model, vendor, network, container runtime, credential or holdout. Every
 process start except `git -C <scratch>` trips the guard armed in setUpModule, which also patches prereg's readers
 (this base has no pre-registration; drive.py reads one at import) and the PENDING runtime spellings run_take needs
@@ -288,6 +303,8 @@ class FakeBox:
             return ok(cid + "\n")
         if a == [rt.RUNTIME_CLIENT, "ps", "--all", "--no-trunc", "--quiet"]:
             return ok("".join(c + "\n" for c in self.containers))
+        if a == [rt.RUNTIME_CLIENT, "network", "ls", "--no-trunc", "--quiet"]:     # S6b R-S6-net
+            return ok("".join(n + "\n" for n in sorted(self.networks)))
         raise GuardTripped(f"the fake box refuses {a!r}"[:200])
 
     def inspect(self, cid):
@@ -989,6 +1006,171 @@ def b9_restart(mod, p):
     return out
 
 
+# ------------------------------------------------------------------------------------------------ S6b's bound checks
+class DuckAdapter:
+    """S6b (d): an adapter that is not an AgentAdapter and keeps its state under another spelling (`_state` is
+    "running", never "open"), so only the driver's own flag can tell that it must be ended."""
+
+    def __init__(self, inner: "FakeAdapter"):
+        self.inner, self._state, self.ended = inner, "running", 0
+
+    def start_take(self, take):
+        return self.inner.start_take(take)
+
+    def turn(self, line, *, first, budget_s):
+        return self.inner.turn(line, first=first, budget_s=budget_s)
+
+    def end_take(self):
+        self.ended += 1
+        self.inner.end_take()
+
+
+@guarded("B10-adapter-end")
+def b10_adapter_end(mod, p):
+    out = missing_api(mod, p, "TakeDriver")
+    if out:
+        return out
+    roads = {"passed": {}, "timed out": {"turns": [{"end": labels4.TIMED_OUT}]}, "adapter raises": {"raise_at": 2}}
+    for road, kw in roads.items():
+        with scratch_repo() as root:
+            rig = Rig(mod, root, **kw)
+            ducks = []
+
+            def duck(r, take, rig=rig, ducks=ducks):
+                d = DuckAdapter(rig.adapter_for(r, take))
+                ducks.append(d)
+                return d
+            rig.driver.adapter_for = duck
+            run_batch(rig, [row(1)])
+            if [d.ended for d in ducks] != [1]:
+                out.append(f"{p}: {road}: end_take was called {[d.ended for d in ducks]} time(s), not once")
+    return out
+
+
+@guarded("B11-postflight")
+def b11_postflight(mod, p):
+    out = missing_api(mod, p, "TakeDriver", "POSTFLIGHT_RECORD")
+    if out:
+        return out
+    with scratch_repo() as root:                     # a clean config folder: postflight.json ok, committed
+        rig = Rig(mod, root)
+        _, got = run_batch(rig, [row(1)])
+        take = rig.take()
+        rec = os.path.join(take.folder, mod.POSTFLIGHT_RECORD)
+        if not os.path.isfile(rec) or json.loads(open(rec, encoding="utf-8").read()).get("ok") is not True:
+            out.append(f"{p}: a clean take has no postflight.json with ok true")
+        rel = os.path.relpath(rec, root)
+        if rel not in git(root, "show", "--name-only", "--format=", "HEAD").splitlines():
+            out.append(f"{p}: postflight.json was not committed with the take")
+    with scratch_repo() as root:                     # a planted credential-named file: a stop, the folder kept
+        rig = Rig(mod, root)
+        plain = rig.adapter_for
+
+        def planting(r, take, plain=plain):
+            with open(os.path.join(take.config_dir, "oauth_token.json"), "w", encoding="utf-8") as fh:
+                fh.write("{}")
+            return plain(r, take)
+        rig.driver.adapter_for = planting
+        r = row(1)
+        with spying(rig.spy):
+            cid = rig.driver.launch(r)
+            try:
+                rig.driver.drive(r, cid)
+                out.append(f"{p}: a credential file left in the config folder did not stop the take")
+            except mod.DriveRefused as e:
+                if "postflight" not in str(e) or "oauth_token.json" not in str(e):
+                    out.append(f"{p}: the stop does not name postflight and the file: {e}")
+            finally:
+                rig.driver.remove(cid)
+        take = rig.take()
+        rec = os.path.join(take.folder, mod.POSTFLIGHT_RECORD)
+        if not os.path.isfile(rec) or json.loads(open(rec, encoding="utf-8").read()).get("ok") is not False:
+            out.append(f"{p}: the planted take's postflight.json does not record ok false")
+        if not os.path.isdir(take.config_dir):
+            out.append(f"{p}: the config folder was deleted although the take stopped")
+    return out
+
+
+@guarded("B12-publish")
+def b12_publish(mod, p):
+    out = missing_api(mod, p, "TakeDriver", "DriveRefused")
+    if out:
+        return out
+    with scratch_repo() as root:
+        rig = Rig(mod, root)
+        calls = []
+
+        def fails(launched, *, published):
+            calls.append(launched.config_dir)
+            raise rt.Refused("synthetic: the config folder could not be deleted")
+        with mock.patch.object(rt, "remove_config_dir", fails):
+            _, got = run_batch(rig, [row(1)])
+            if not calls or not rig.repo.publish_problems:
+                return [f"{p}: the scenario is not a failed config-folder deletion after the commit"]
+            if [o["slot"] for o in rig.repo.history() if not batch.is_ruling(o)] != ["s1"]:
+                out.append(f"{p}: the take's commit is not in history")
+            try:
+                rig.driver.launch(row(2))
+                out.append(f"{p}: the next launch ran although a published take's config folder was not deleted")
+            except mod.DriveRefused as e:
+                if "'s1'" not in str(e):
+                    out.append(f"{p}: the launch refusal does not name the slot: {e}")
+    return out
+
+
+@guarded("B13-history")
+def b13_history(mod, p):
+    out = missing_api(mod, p, "TakeRepo", "HistoryRefused")
+    if out:
+        return out
+    with scratch_repo() as root:
+        repo = mod.TakeRepo(runtime=FakeBox(), record_files=lambda r, a: [], secrets=lambda: [("token", TOKEN)],
+                            rules_scanner=lambda paths: [], root=root, repo=root)
+        old = outcome(row(1))
+        for missing in ("leaked_containers", "leaked_container"):
+            entry = {k: v for k, v in old.items() if k != missing}
+            with mock.patch.object(repo, "history", lambda entry=entry: [entry]):
+                try:
+                    repo.leaked_ids()
+                    out.append(f"{p}: an outcome without {missing} was read")
+                except mod.HistoryRefused as e:
+                    if missing not in str(e):
+                        out.append(f"{p}: the refusal does not name {missing}: {e}")
+                except Exception as e:  # noqa: BLE001 - the untyped failure is this check's finding
+                    out.append(f"{p}: an outcome without {missing} raised {type(e).__name__}, not HistoryRefused")
+    return out
+
+
+@guarded("B14-net")
+def b14_net(mod, p):
+    out = missing_api(mod, p, "TakeDriver", "TakeRepo", "NETWORK_PREFIX")
+    if out:
+        return out
+    with scratch_repo() as root:
+        rig = Rig(mod, root, box=FakeBox(fail_net=True))
+        _, got = run_batch(rig, [row(1), row(2)])
+        nid = rig.take().launched.network_id
+        if nid not in rig.box.networks:
+            return [f"{p}: the scenario is not a leaked network"]
+        firsts = [o for o in rig.repo.history() if not batch.is_ruling(o)]
+        if not firsts or mod.NETWORK_PREFIX + nid not in (firsts[0].get("leaked_containers") or []):
+            out.append(f"{p}: the committed outcome does not carry the network: {firsts[:1]}")
+        restarted = mod.TakeRepo(runtime=rig.box, record_files=lambda r, a: [], secrets=lambda: [("token", TOKEN)],
+                                 rules_scanner=lambda paths: [], root=root, repo=root)
+        try:
+            restarted.register(row(2), 1)
+            out.append(f"{p}: the restart registered while the leaked network is still listed")
+        except rt.LeakedContainer as e:
+            if nid not in str(e):
+                out.append(f"{p}: the restart refusal does not name the network: {e}")
+        rig.box.networks.discard(nid)
+        try:
+            restarted.register(row(2), 1)
+        except Exception as e:  # noqa: BLE001
+            out.append(f"{p}: with the network gone the restart still refused: {type(e).__name__}: {e}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 def need(case, *names):
     """A part-2 name missing from drive.py is this test's failure (an assertion), never an error."""
@@ -1255,6 +1437,21 @@ class TestBoundChecks(unittest.TestCase):
     def test_b8_the_config_folder_goes_only_after_the_commit(self):
         self.assertEqual(b8_config(drive), [])
 
+    def test_b10_the_driver_ends_the_adapter_by_its_own_flag(self):
+        self.assertEqual(b10_adapter_end(drive), [])
+
+    def test_b11_postflight_runs_and_a_credential_file_stops(self):
+        self.assertEqual(b11_postflight(drive), [])
+
+    def test_b12_a_failed_publish_cleanup_refuses_the_next_launch(self):
+        self.assertEqual(b12_publish(drive), [])
+
+    def test_b13_an_outcome_without_its_leak_keys_is_a_typed_refusal(self):
+        self.assertEqual(b13_history(drive), [])
+
+    def test_b14_the_restart_lists_networks_too(self):
+        self.assertEqual(b14_net(drive), [])
+
     def test_b9_a_leaked_sidecar_or_proxy_refuses_the_restart(self):
         self.assertEqual(b9_restart(drive), [])
 
@@ -1329,6 +1526,19 @@ WITNESSES = {
                                 "    if isinstance(e, ValueError):\n"),), b3_preturn, "B3-preturn"),
     "no-on-published": ((("                self.on_published(row, attempt)\n", "                pass\n"),),
                         b8_config, "B8-config"),
+    # S6b (lane w6i)
+    "adapter-private-state": ((("        if adapter is not None and take.adapter_open:",
+                                "        if adapter is not None and getattr(adapter, \"_state\", None) == \"open\":"),),
+                              b10_adapter_end, "B10-adapter-end"),
+    "no-postflight": ((("            post = self._postflight(take, row)",
+                        "            post = {\"ok\": True, \"checks\": [{\"detail\": \"\"}]}"),),
+                      b11_postflight, "B11-postflight"),
+    "launch-ignores-publish-problems": ((("        if self.publish_problems:      ", "        if False:      "),),
+                                        b12_publish, "B12-publish"),
+    "bare-keyerror": ((("            if missing:          # W6H-R2-1", "            if False:          # W6H-R2-1"),),
+                      b13_history, "B13-history"),
+    "restart-lists-containers-only": ((("        nets = leaked_networks(self.runtime, ids, caller_env=self.caller_env)",
+                                        "        nets = []"),), b14_net, "B14-net"),
 }
 WITNESS_LOG: list = []
 
@@ -1385,15 +1595,33 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_timeout_not_a_refusal(self):
         self.kill("timeout-not-a-refusal")
 
+    def test_witness_adapter_private_state(self):
+        self.kill("adapter-private-state")
+
+    def test_witness_no_postflight(self):
+        self.kill("no-postflight")
+
+    def test_witness_launch_ignores_publish_problems(self):
+        self.kill("launch-ignores-publish-problems")
+
+    def test_witness_bare_keyerror(self):
+        self.kill("bare-keyerror")
+
+    def test_witness_restart_lists_containers_only(self):
+        self.kill("restart-lists-containers-only")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["omit-restore", "skip-preflight",
                                                     "failed-preflight-read-as-passed", "no-drive-scan",
                                                     "no-finally-cleanup", "no-cap-kill", "remove-never-removes",
                                                     "no-on-published", "remove-checks-the-take-alone",
-                                                    "timeout-not-a-refusal", "leaked-take-id-only"]))
-        # Eleven witnesses over nine bound checks: the fold's two (W6H-R1-1, R1-3) are bound to B3 and B7.
-        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 9)
-        self.assertEqual(len({w[2] for w in WITNESSES.values()}), 9)
+                                                    "timeout-not-a-refusal", "leaked-take-id-only",
+                                                    "adapter-private-state", "no-postflight",
+                                                    "launch-ignores-publish-problems", "bare-keyerror",
+                                                    "restart-lists-containers-only"]))
+        # Sixteen witnesses over fourteen bound checks: the fold's two (W6H-R1-1, R1-3) are bound to B3 and B7.
+        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 14)
+        self.assertEqual(len({w[2] for w in WITNESSES.values()}), 14)
 
 
 if __name__ == "__main__":
