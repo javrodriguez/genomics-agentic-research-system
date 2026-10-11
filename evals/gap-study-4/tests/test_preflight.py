@@ -1070,7 +1070,8 @@ def compose(m, w, lock_path, *, launched=None, sidecar=None, evidence_dir=None, 
             mock.patch.object(m, "_read_health", health_spy), mock.patch.object(il, "load", load_spy), \
             mock.patch.object(il, "require_ready", ready_spy), \
             mock.patch.object(os.path, "lexists", lambda p: False), \
-            mock.patch.object(rt, "launch", lifecycle("launch")), mock.patch.object(rt, "run_turn", lifecycle("run_turn")), \
+            mock.patch.object(rt, "launch", lifecycle("launch")), \
+            mock.patch.object(rt, "run_turn", lifecycle("run_turn")), \
             mock.patch.object(rt, "teardown", lifecycle("teardown")), \
             mock.patch.object(rt, "kill_agent", lifecycle("kill_agent")):
         try:
@@ -1109,7 +1110,8 @@ class LockSeam:
                 with box.active():
                     (kind, got), spies, fake = compose(m, w, path)
                 if [p for p, _ in spies["load"]] != [path]:
-                    out.append(f"C1-loader-spy {h}: image_lock.load calls {[p for p, _ in spies['load']]}, not [{path}]")
+                    calls = [p for p, _ in spies["load"]]
+                    out.append(f"C1-loader-spy {h}: image_lock.load calls {calls}, not [{path}]")
                 if len(spies["ready"]) != 1 or not spies["load"] or spies["ready"][0] is not spies["load"][0][1]:
                     out.append(f"C1-ready-spy {h}: require_ready was not called once on load's own result")
                 if kind != "record":
@@ -1324,7 +1326,8 @@ class LockSeam:
                 with box.active():
                     (kind, got), spies, fake = compose(m, w, path)
                 if [p.get("evidence_dir") for p in spies["probes"]] != [w.ev]:
-                    out.append(f"C5-probes-path {h}: probes received {[p.get('evidence_dir') for p in spies['probes']]}")
+                    got_dirs = [p.get("evidence_dir") for p in spies["probes"]]
+                    out.append(f"C5-probes-path {h}: probes received {got_dirs}")
                 if [e.get("evidence_dir") for e in spies["evaluate"]] != [w.ev]:
                     out.append(f"C5-evaluate-path {h}: evaluate received "
                                f"{[e.get('evidence_dir') for e in spies['evaluate']]}")
@@ -1534,8 +1537,8 @@ WITNESSES = {
     "drop-mount-source-comparison": ((("    _need(not _evidence_source_problems(exp, evidence_dir), ",
                                        "    _need(True or not _evidence_source_problems(exp, evidence_dir), "),),
                                      LockSeam.c4_mount, "C4-mount", None),
-    "probes-at-another-evidence-path": ((("hosts=hosts, evidence_dir=evidence_dir)\n    raw = run(",
-                                          "hosts=hosts, evidence_dir=os.path.dirname(evidence_dir))\n    raw = run("),),
+    "probes-at-another-evidence-path": ((("evidence_dir=evidence_dir)\n    raw = run(",
+                                          "evidence_dir=os.path.dirname(evidence_dir))\n    raw = run("),),
                                         LockSeam.c5_positive, "C5-probes-path", None),
     "pre-launch-spec": ((("    spec, take_id, sidecar_id = _launched_parts(launched)\n",
                           "    _, take_id, sidecar_id = _launched_parts(launched)\n    spec = PRE_LAUNCH_SPEC\n"),),

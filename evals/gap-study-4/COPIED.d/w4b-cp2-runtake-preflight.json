@@ -14,7 +14,7 @@
     {
       "path": "box/preflight.py",
       "status": "new",
-      "reason": "CP2's non-model checks before every take, as a closed ordered tuple of checks over probes the runtime collects, evaluated by a pure function, plus the after-take credential-file check. New in round 4."
+      "reason": "CP2's non-model checks before every take, as a closed ordered tuple of checks over probes the runtime collects, evaluated by a pure function, plus the after-take credential-file check. New in round 4. Owner since 11 Oct 2026: lane w6a-cp2-preflight-binding (glitch-1b's transfer, CP2-preflight-5); the entry stays here, one owner, history kept. w6a adds load_take_lock (the take lock read only through image_lock.load and require_ready, for the harness's own take image, then LOCK_KEYS projected), a required evidence_dir that the sidecar's evidence mount source must equal, and collect_and_evaluate on Launched.spec (CP2-preflight-1 to -4)."
     },
     {
       "path": "tests/test_run_take.py",
@@ -24,7 +24,7 @@
     {
       "path": "tests/test_preflight.py",
       "status": "new",
-      "reason": "Tests for box/preflight.py (interface 3) with fakes only: every check green on a passing world and red on its own breaks, missing or failed probes, the PENDING refusals, the programs' 3.11 floor and neutrality, the record's place and the after-take credential check, with their mutants."
+      "reason": "Tests for box/preflight.py (interface 3) with fakes only: every check green on a passing world and red on its own breaks, missing or failed probes, the PENDING refusals, the programs' 3.11 floor and neutrality, the record's place and the after-take credential check, with their mutants. Owner since 11 Oct 2026: lane w6a-cp2-preflight-binding (glitch-1b's transfer, CP2-preflight-5); the entry stays here, one owner, history kept. w6a adds the eight fake-only criteria of the CP2 readiness note (synthetic locks in a temporary box folder, the World with its evidence folder), two breaks, and six whole-file witnesses compiled in memory."
     },
     {
       "path": "tests/test_take_config.py",

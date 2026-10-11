@@ -6,17 +6,27 @@ Three parts, so the judgment is pure:
     `python3 -I -B -c`, which never reads under the run tree: after `begin` the watcher is armed, and anything opened
     there would be logged in turn 1's window), a host-side exec into the sidecar, an inspect, or a host-side read;
   - `run(runtime, probes)` collects the raw records, and a probe that fails to run is recorded as failed;
-  - `evaluate(raw, *, spec, lock, sidecar_expect, harness, hosts)` turns them into the preflight record
+  - `evaluate(raw, *, spec, lock, sidecar_expect, harness, hosts, evidence_dir)` turns them into the preflight record
     `{"ok", "checks": [{"id", "ok", "detail"}], "recorded"}`, one entry per id of the closed ordered tuple
     `PREFLIGHT_CHECKS`. `ok` is True only when every check ran and passed. A check whose probe is missing or failed
     fails; a check whose expected value (from `spec`, `lock`, `sidecar_expect` or a constant here) is PENDING fails.
     Any failure refuses the take before the first turn, as a rehearsal: the drive step passes `preflight_ok`.
+    `evidence_dir` is required (CP2-preflight-3): the sidecar's read-write evidence mount must have it as its source
+    and the probes must have read it, so a mount at one folder with probes at another fails.
+
+The drive step calls one entry point, `collect_and_evaluate(...)` (CP2-preflight-2): it reads the take's lock through
+`load_take_lock` (image_lock.load, the harness's own take image, image_lock.require_ready, then the five LOCK_KEYS
+projected from the validated lock), takes the spec, the take id and the sidecar id from the launch record
+(`Launched.spec`, never the pre-launch placeholder), runs the probes and evaluates them with the very same
+evidence folder and sidecar expectation. It never launches, runs a turn or tears down: the drive step's own launch
+and cleanup lifecycle stays around it, and a lock or launch-record refusal raises before any runtime call.
 
 `write(record, path)` puts the record BESIDE the evidence folder, in the take's record folder (ruling C2), never in
 it. `postflight(config_dir, harness)` checks the per-take config folder after a take (D8 B2 item 7).
 
-The lock is a dict of exactly w4a's schema paths (`LOCK_KEYS`); after the wave 4 merge it is read through
-`image_lock.load` (merge binding 8). No model, no network from the host, standard library only.
+The lock evaluate takes is a dict of exactly w4a's schema paths (`LOCK_KEYS`), projected by `load_take_lock` from a
+lock read through `image_lock.load` (merge binding 8; lane w6a). No model, no network from the host, standard library
+only.
 """
 
 from __future__ import annotations
@@ -28,6 +38,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Callable
 
+from box import image_lock
 from box import run_take
 
 PENDING = run_take.PENDING
@@ -41,6 +52,8 @@ KEEPALIVE_UID = int(run_take.KEEPALIVE_USER.split(":")[0])
 WATCHER_CAP_EFF = 1 << 2
 
 LOCK_KEYS = ("image_id", "harness.version", "users.agent.uid", "users.watcher.uid", "users.keepalive.uid")
+# Each harness's own take image (image_lock.TAKE_IMAGES; arms A and C share take-a). Merge binding 8 binds it.
+TAKE_IMAGE = {run_take.CLAUDE_CODE: "take-a", run_take.CODEX: "take-o", run_take.GEMINI: "take-g"}
 SIDECAR_EXPECT_KEYS = ("user", "network_mode", "cap_drop", "cap_add", "security_opt", "privileged", "pid_mode",
                        "mounts")
 # The take container's mount target for the sidecar's evidence folder; the agent must fail to list it.
@@ -473,7 +486,7 @@ def _int(v) -> bool:
     return isinstance(v, int) and not isinstance(v, bool)
 
 
-def _check_agent(raw, spec, lock, harness, hosts, sidecar_expect):
+def _check_agent(raw, spec, lock, harness, hosts, sidecar_expect, *_):
     who = _json_out(raw, "identity")
     _need(_lock(lock, "users.agent.uid") == AGENT_UID, "the lock's agent uid is not the agent user's")
     _need(who.get("uid") == AGENT_UID and who.get("uid") != 0, f"the exec ran as uid {who.get('uid')}")
@@ -530,10 +543,11 @@ def _check_limits(raw, spec, *_):
     return "cpu, memory and pids limits read back as set"
 
 
-def _check_evidence(raw, spec, *_):
+def _check_evidence(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, *_):
     got = _json_out(raw, "listing")
     _need(isinstance(got, dict) and len(got) == 2 and SIDECAR_EVIDENCE_MOUNT in got,
           "the listing did not try both paths")
+    _need(evidence_dir in got, f"the listing did not try the evidence folder preflight judges ({evidence_dir})")
     listed = [p for p, v in got.items() if v == "listed"]
     _need(not listed, f"the agent listed {listed}")
     return "neither the sidecar mount nor the host path lists"
@@ -554,7 +568,16 @@ def _check_watcher_invisible(raw, spec, lock, *_):
     return "only PID 1 (the keep-alive) is visible"
 
 
-def _check_sidecar(raw, spec, lock, harness, hosts, sidecar_expect):
+def _evidence_source_problems(exp: dict, evidence_dir: str) -> list:
+    """CP2-preflight-3: the sidecar's read-write evidence mount takes its source from exactly the folder preflight
+    reads (lexical, normalised absolute paths, as the probes use; no host path is resolved)."""
+    sources = [m.get("source") for m in exp["mounts"] if isinstance(m, dict) and m.get("destination")
+               == SIDECAR_EVIDENCE_MOUNT]
+    return [] if sources == [evidence_dir] else [f"the sidecar's evidence mount source {sources} is not the evidence "
+                                                 f"folder preflight reads ({evidence_dir})"]
+
+
+def _check_sidecar(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, *_):
     exp = sidecar_expect
     _need(isinstance(exp, dict) and set(exp) == set(SIDECAR_EXPECT_KEYS),
           f"sidecar_expect must name exactly {list(SIDECAR_EXPECT_KEYS)}")
@@ -573,6 +596,7 @@ def _check_sidecar(raw, spec, lock, harness, hosts, sidecar_expect):
           and [m for m in exp["mounts"] if m.get("destination") == spec.run_tree] == want_mounts
           and [m.get("rw") for m in exp["mounts"] if m.get("destination") != spec.run_tree] == [True],
           "the sidecar's mounts are not the run tree read-only and one read-write evidence folder")
+    _need(not _evidence_source_problems(exp, evidence_dir), "; ".join(_evidence_source_problems(exp, evidence_dir)))
     bad = inspect_mismatches(_inspect_obj(raw, "sidecar-inspect"), exp, kind="sidecar")
     _need(not bad, "; ".join(bad))
     return "no network, its own process space, the run tree read-only, ALL dropped and one added"
@@ -704,18 +728,23 @@ UNREADABLE_CONSEQUENTIAL_KEY = "unreadable_consequential"
 UNREADABLE_CONSEQUENTIAL_ROW = "unreadable-consequential-path"
 
 
-def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str, hosts: dict) -> dict:
-    """The preflight record, pure: every check of PREFLIGHT_CHECKS in order, `ok` only when every one passed."""
+def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str, hosts: dict,
+             evidence_dir: str) -> dict:
+    """The preflight record, pure: every check of PREFLIGHT_CHECKS in order, `ok` only when every one passed.
+
+    `evidence_dir` is required and has no default (CP2-preflight-3): the folder the probes read, which the sidecar's
+    evidence mount source must equal. A missing, relative or unnormalised one refuses (run_take.Refused)."""
     if not isinstance(lock, dict) or set(lock) != set(LOCK_KEYS):
         raise ValueError(f"lock must hold exactly {list(LOCK_KEYS)}")
     run_take._known_harness(harness)
+    evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
     checks = []
     for cid in PREFLIGHT_CHECKS:
         fn = CHECKS.get(cid)
         try:
             if fn is None:
                 raise _Fail("no check is defined")
-            detail, passed = fn(raw, spec, lock, harness, hosts, sidecar_expect), True
+            detail, passed = fn(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir), True
         except _Fail as e:
             detail, passed = str(e), False
         except Exception as e:  # a check that cannot read its records fails, never passes
@@ -736,6 +765,64 @@ def _safe(fn):
         return fn()
     except Exception:
         return None
+
+
+# ----------------------------------------------------------------------------- the lock and the composition (w6a)
+def load_take_lock(lock_path: str, *, harness: str) -> dict:
+    """The five LOCK_KEYS of the harness's take lock, read only through w4a's loader (CP2-preflight-2).
+
+    image_lock.load (the closed schema, duplicate keys refused, bound to the Dockerfile beside it), then the lock
+    must be the harness's own take image (TAKE_IMAGE: a sidecar, egress or other take's lock refuses), then
+    image_lock.require_ready (every PENDING field refuses), then the projection. A caller passes a path, never a
+    dictionary: there is no way in for a pre-flattened lock. Refusals raise (image_lock.LockError or NotReady,
+    run_take.Refused); nothing defaults."""
+    run_take._known_harness(harness)
+    lock_path = run_take._abs_path(lock_path, "lock_path")
+    lock = image_lock.load(lock_path)
+    if lock["image"] != TAKE_IMAGE[harness]:
+        raise run_take.Refused(f"the lock is the {lock['image']} image's, not {harness}'s take image "
+                               f"{TAKE_IMAGE[harness]}")
+    image_lock.require_ready(lock)
+    return {k: run_take._path_get(lock, k) for k in LOCK_KEYS}
+
+
+def _launched_parts(launched) -> tuple:
+    """(spec, take id, sidecar id) from a successful launch record, or a refusal before any runtime call."""
+    try:
+        ok, spec, network_id = launched.ok, launched.spec, launched.network_id
+        take_id, sidecar_id = launched.take_id, launched.sidecar_id
+    except AttributeError:
+        raise run_take.Refused("launched must be the launch record run_take.launch returned") from None
+    if ok is not True:
+        raise run_take.Refused("the launch did not succeed: no preflight on a failed launch")
+    if spec is None:
+        raise run_take.Refused("the launch record carries no spec (Launched.spec)")
+    run_take.check_spec(spec)
+    run_take._check_id(take_id, "the launch record's take id")
+    run_take._check_id(sidecar_id, "the launch record's sidecar id")
+    if spec.network != network_id:
+        raise run_take.Refused("Launched.spec is not on the network the launch made")
+    return spec, take_id, sidecar_id
+
+
+def collect_and_evaluate(runtime, *, launched, sidecar, lock_path: str, harness: str, hosts: dict, evidence_dir: str,
+                         begin_reply, caller_env=None) -> dict:
+    """The drive step's one preflight call (CP2-preflight-2): the lock through load_take_lock, the spec and ids from
+    the launch record (`Launched.spec`), the probes built and run, then evaluate with the very same evidence folder
+    and the sidecar's own expectation. Lock and launch-record refusals raise before any runtime call; it creates no
+    container, runs no turn, reads no login, writes no record and tears nothing down (the drive step's lifecycle)."""
+    lock = load_take_lock(lock_path, harness=harness)
+    evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
+    spec, take_id, sidecar_id = _launched_parts(launched)
+    try:
+        expect = sidecar.expect
+    except AttributeError:
+        raise run_take.Refused("sidecar must be the SidecarLaunch the launch used") from None
+    probe_list = probes(spec, take_id=take_id, sidecar_id=sidecar_id, harness=harness, hosts=hosts,
+                        evidence_dir=evidence_dir)
+    raw = run(runtime, probe_list, begin_reply=begin_reply, caller_env=caller_env)
+    return evaluate(raw, spec=spec, lock=lock, sidecar_expect=expect, harness=harness, hosts=hosts,
+                    evidence_dir=evidence_dir)
 
 
 # ------------------------------------------------------------------------------------------------ the record

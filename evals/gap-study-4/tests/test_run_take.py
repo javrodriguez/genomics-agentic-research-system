@@ -1568,12 +1568,15 @@ DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})
 # W4B3-3, derived once from the box modules and committed: every (module, name) a from-import brings in, every
 # attribute used on each allowed module, and every getattr as (base, constant name).
-IMPORT_FROM_ALLOWED = frozenset({("__future__", "annotations"), ("box", "preflight"), ("box", "run_take"),
-                                 ("dataclasses", "dataclass"), ("dataclasses", "field"), ("decimal", "Decimal"),
-                                 ("decimal", "InvalidOperation"), ("typing", "Callable")})
+# Lane w6a (CP2-preflight-2, a named departure pending glitch-1b's ruling): preflight reads the take lock through w4a's
+# image_lock (load and require_ready only), which imports no process module; the two lists below name exactly that.
+IMPORT_FROM_ALLOWED = frozenset({("__future__", "annotations"), ("box", "image_lock"), ("box", "preflight"),
+                                 ("box", "run_take"), ("dataclasses", "dataclass"), ("dataclasses", "field"),
+                                 ("decimal", "Decimal"), ("decimal", "InvalidOperation"), ("typing", "Callable")})
 MODULE_ATTRS = {
     "agent_adapter": frozenset({"COUNTER_FIELDS"}), "dataclasses": frozenset({"replace"}),
     "harness_bookkeeping": frozenset({"CLAUDE_CODE"}), "hashlib": frozenset({"sha256"}),
+    "image_lock": frozenset({"load", "require_ready"}),
     "json": frozenset({"dump", "dumps", "loads"}),
     "preflight": frozenset({"expected_take_inspect", "inspect_mismatches"}),
     "re": frozenset({"IGNORECASE", "compile", "escape", "fullmatch", "search"}),

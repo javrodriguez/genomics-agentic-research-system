@@ -555,7 +555,8 @@ class TestBinding8LockKeys(Binding):
 
 
 # Lane w6a, criterion 7: every test of this module at the base 89b54db4 (Ran 10, OK) still exists and runs.
-BASE_TESTS = ("TestBinding1Users.test_binding_1", "TestBinding2Hosts.test_binding_2", "TestBinding3Proxy.test_binding_3",
+BASE_TESTS = ("TestBinding1Users.test_binding_1", "TestBinding2Hosts.test_binding_2",
+              "TestBinding3Proxy.test_binding_3",
               "TestBinding4SidecarExpect.test_binding_4", "TestBinding5Login.test_binding_5",
               "TestBinding5Login.test_binding_5_real_path_on_both_sides",
               "TestBinding5Login.test_the_union_holds_both_outcomes", "TestBinding6Program.test_binding_6",
