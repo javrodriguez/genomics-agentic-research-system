@@ -1,4 +1,4 @@
-status: built; review and athena owed
+status: review passed (W6E-close-1), fold done; athena owed
 head: 596071c1 (code commit; this report's own commit follows it). Base 4dd1e8e6 (S1's folded head), branch gap4/w6e-drive-commit, worktree /Users/javrodher/aegis-builds/gap4-w6e.
 
 # Lane w6e-drive-commit: CP2 drive lifecycle, part 1, the commit step
@@ -118,4 +118,32 @@ The sole writer releases the worktree at this report's commit.
 The tree is clean, and no `__pycache__` is left: one, made by the commit, was removed.
 Scratch outputs are in the session scratchpad (`w6e-*.txt`), outside the repository.
 
-RESUME HERE: hand-back at 596071c1
+## Fold of review round 1 (W6E-close-1, glitch-1b, 11 Oct)
+
+Round 1 found no MAJOR, three MINORs that each loosened a check, and two NITs; all are folded at 8d0ccb02 (written 17:50 EDT, `date`).
+
+- W6E-R1-1: before the ledger is written, commit_records refuses an outcome that `batch.Batch.history_problems(history() + [outcome])` rejects. Check C7-duplicate commits the same (slot, attempt) twice: the second refuses, the ledger bytes and HEAD are unchanged, and history() still reads. Witness admit-duplicate-outcome: red by C7-duplicate (3 own, 0 collateral, 0 errors).
+- W6E-R1-2: `_take_files` refuses outcomes.json, rulings.json and takes.json, and any path already tracked at HEAD, before anything is written.
+  - C8-reserved covers an untracked rulings.json and a tracked takes.json. Witness admit-reserved-names: red by C8-reserved (1 own).
+  - C9-tracked covers a tracked source file (README). Witness admit-tracked-paths: red by C9-tracked (1 own).
+- W6E-R1-3: the commit is bound to the checked tree.
+  - `git write-tree` writes the index once. The tree's change set against HEAD must be exactly the declared files, and each blob is hash-checked from `<tree>:<name>`.
+  - The commit is then `commit-tree <tree> -p <head>` plus `update-ref HEAD <new> <head>`, so a file staged later never lands and a moved HEAD refuses.
+  - C10-bound uses the no-op `_before_commit` seam, never a second process: an interloper staging a file is never in HEAD, and an actor moving HEAD makes the commit refuse with its HEAD kept. Witness commit-the-index (back to `git commit`): red by C10-bound (2 own).
+  - Consequence: the stray-file guard now has two layers, the staged-set refusal before the scan and the tree's change set before the commit. Either alone refuses the stray, so the admit-stray-staged witness turns both off: red by C5-staged (2 own). Neither layer is credited alone.
+- W6E-R1-4: the docstring names scan_record.ScanError and NotReady passing through, failing closed.
+- W6E-R1-5: the checks.d comment states the Python 3.9 floor.
+
+Red first on c96751c5 (the four new checks and four new witnesses): `Ran 31`, `FAILED (failures=8)`, 0 errors, rc 1. The 23 earlier tests stayed green.
+
+Green at 8d0ccb02 (Mac, light-ok, Python 3.13, `-B -W ignore`), all rc 0:
+- test_drive_commit: `Ran 31 ... OK`, about 66 s for the module; every single case is under 60 s. Ten WITNESS lines, each red by its own check with 0 errors.
+- test_round4's main over this module alone: `31 run, 0 skipped, 0 expected failures`.
+- test_preflight: `Ran 43 ... OK`.
+- `copy_manifest.py --check`: ok.
+- Two single test_scaffold cases, `TheManifest.test_check_passes_on_the_folder` (15 s) and `test_a_copy_that_differs_without_an_edited_entry_is_refused` (39 s). The whole test_scaffold module is athena's.
+- The checks.d prefix line: rc 0.
+
+Owed: athena run_checks on 8d0ccb02.
+
+RESUME HERE: hand-back at 8d0ccb02
