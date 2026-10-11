@@ -4,7 +4,7 @@
     {
       "path": "tests/test_pipeline.py",
       "status": "new",
-      "reason": "R1-R33: pipeline contracts and in-memory mutants"
+      "reason": "R1-R33: pipeline contracts and in-memory mutants Edit S7-gap4-2 (glitch-1b, Sun 11 Oct 2026; no ownership transfer): lane w6g-endstate-carries added one fixture line in PublishedArtifacts that writes the synthetic evidence folder's watched.json, which S7-D3's Evidence.load now requires."
     },
     {
       "path": "COPIED.d/w5b-cp5-pipeline.json",

@@ -1683,6 +1683,7 @@ class PublishedArtifacts(unittest.TestCase):
             (evidence / endstate.LEDGER).write_text("\n".join(json.dumps(x) for x in ledger) + "\n")
             for name in (endstate.ACCESS, endstate.HEALTH):
                 (evidence / name).write_text("")
+            (evidence / endstate.WATCHED).write_text(json.dumps({"paths": ["synthetic/watched.txt"]}))
             for label, at in (("pre-1", 0), ("post-1", 3)):
                 (evidence / endstate.SNAPSHOTS / (label + ".json")).write_text(
                     json.dumps({"label": label, "taken_at": at, "entries": {}}))
