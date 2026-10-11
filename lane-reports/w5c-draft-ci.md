@@ -4017,3 +4017,62 @@ OPEN: exact-head Athena and fresh independent R4 — pending with the coordinato
 No push, landing, merge, public operation, spend, remote job, model/vendor call, credential/holdout read, denied-source retry, guard/engine edit or self-review occurred. Code commit carries the required Codex gpt-6-astra trailer; this report-only child carries no AI trailer. The builder relinquishes sole-writer ownership upon the report commit; further code changes require a new coordinator assignment.
 
 Report-only closing gates: copy exit 0 (223 files/28 fragments; unchanged fixture builders/frozen paths), default-deny sweep 30/30 in 2.109 seconds, exit 0. The report preserves every byte of its prior version as a prefix; source code remains a0b99b0d. Only this report is staged, whitespace is clean, and no test process remains. These gates do not close Athena or independent-review obligations.
+
+## Update — W5C4 rule-B repair, 2026-10-11 12:09 EDT
+
+Earlier opening lines and appendices remain historical; this is the latest builder status.
+status: stopped
+head: 16778b119181e3f75c5495fc219befd22f281540 (code; this report-only child follows)
+RESUME HERE: athena exact-head gate pending (orchestrator launches): all 358 witnesses, the unmutated files and the required suite/battery, solo on athena, then private preservation and a fresh independent R4.
+
+Writer: local Claude Opus 5.5 sub-agent, sole writer, assigned by the Lane-orchestrator glitch-1b.
+Base: dad6350d (code a0b99b0d).
+
+### Javier's ruling
+
+Verbatim, typed Sun 11 Oct 2026 11:08:17 EDT in glitch-1b's window: "gap4 witness rule B".
+Meaning, as put to him (plans/gap-study-round-4/w5c-W5C4-repair-stopped-2026-10-11.md): zero errors and zero skips apply to the witness's bound test method only; collateral errors elsewhere in the mutant run are reported, never hidden or credited as RED; plus the two clause-fill fixes.
+
+### Root cause
+
+Fold W5C3 made both runners demand zero errors across the whole-file mutant run, which R3 did not ask for, and no whole-file witness was run before that commit.
+Many mutants corrupt the builder's shared output, so sibling tests in the same file crash; under W5C3 those runs failed (athena W5C4: `agent` gave 40 run, 4 failures, 16 errors).
+Separately, two clause fills named clauses their faults never reach first: `profile-mismatch` failed at a message-less assertTrue (line 751), and `pending-erase` made b.build() raise StatsError inside Readiness.get before R32.freeze.
+
+### Runner change (both test_build_draft.py and test_ci_job.py)
+
+In `--mutant` mode the file now prints one `<file> outcomes: {json}` line listing the failing, erroring and skipped test ids (a subtest maps to its parent method).
+run_witnesses requires that line, checks its three list lengths against the printed summary counts, and counts a witness RED only when: the bound method has a FAIL block with an AssertionError carrying the whole clause token (matching unchanged), the bound method is in the failures list, and it is in neither the errors nor the skipped list.
+Failures, errors and skips of every other method are printed on the witness line (`collateral: N failures [names], N errors [names], N skipped [names]`, or `collateral: none`) and totalled in the group summary; they are neither credited nor hidden.
+A missing or inconsistent outcomes line fails the witness.
+WitnessEvidence unit tests now cover: bound only (RED), collateral error (RED, printed), collateral failure and skip (RED, printed), other method only, bound error only, bound failure plus bound error, bound skip, no outcomes line and counts disagreeing with the summary (each FAIL), plus the unchanged whole-token clause cases.
+No production code changed and no other test was changed to suppress collateral errors.
+
+### Clause-fill fixes
+
+- profile-mismatch: binding unchanged (Readiness.test_profiles_and_templates / R6.profile-mismatch); the assertTrue its fault reaches first gains the message "R6.profile-mismatch" (message only; operand unchanged).
+- pending-erase: binding unchanged (Readiness.test_freeze_closed / R32.freeze); the method's first line reads the committed prereg-draft.json instead of calling b.build(), so the fault now reaches the R32.freeze assertion. The committed draft equals build() output (guarded by Readiness.test_committed_writer).
+- Witness ids, methods and clauses are unchanged; registry 358 (draft 242, CI 116).
+
+### Local results (Mac, Python 3.13.2, each command prefixed in the same line by `mac_slot.py light-ok &&`, env -u CONDA_PREFIX -u CONDA_DEFAULT_ENV, -B -W ignore, serial)
+
+| Check | Result | Exit |
+| --- | --- | --- |
+| test_build_draft.py WitnessEvidence + Readiness.test_freeze_closed + Readiness.test_profiles_and_templates | 4 run, 0 failures, 0 errors, 0 skipped | 0 |
+| test_ci_job.py WitnessEvidence | 2 run, 0/0/0 | 0 |
+| Single witnesses (draft) agent, profile-mismatch, pending-erase, value-reading | 4/4 RED; profile-mismatch collateral none; agent 3 failures + 15 errors collateral; pending-erase 12 failures + 13 errors collateral; value-reading 1 + 1 | 0 |
+| Single witness (CI) duplicate-job | RED; collateral 1 failure, 1 error | 0 |
+| test_ci_job.py --witnesses 1 | 39/39 red; 22 without collateral, 17 with; totals 19 failures, 1 error, 0 skipped | 0 |
+| test_build_draft.py --witnesses 1 | 41/41 red; 1 without collateral, 40 with; totals 86 failures, 30 errors, 0 skipped | 0 |
+| test_build_draft.py --witnesses 4 | 40/40 red; 2 without collateral, 38 with; totals 81 failures, 15 errors, 0 skipped | 0 |
+| Sweep test_pause_adherence.py (before the code commit and before this report commit) | 30 tests OK | 0 |
+
+Single witnesses ran through the files' own run_witnesses via a scratch driver that narrows witness_groups to the named witnesses.
+Most draft collateral is Readiness.test_committed_writer and SuppliedText.test_committed_and_fresh_sources failing because any builder fault makes the build differ from the committed draft; it is recorded, not credited.
+Raw logs: /private/tmp/claude-501/-Users-javrodher-glitch/e252e76a-0bbf-4607-87ce-9da731831ab1/scratchpad/w5c4b/ (u-draft.txt, u-ci.txt, single-draft.txt, single-ci.txt, part-*.txt, sweep-*.txt).
+
+Not run locally (by assignment): draft partitions 2, 3, 5, 6; CI partitions 2, 3; the unmutated whole files; the suite/battery.
+athena exact-head gate pending (orchestrator launches).
+
+No push, spend, remote job, credential, holdout, sealed or denied-source access occurred, and no step was refused by a safety or permission check.
+The code commit carries the Claude Opus 5.5 trailer; this report-only child carries none.
