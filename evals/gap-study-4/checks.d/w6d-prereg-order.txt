@@ -1,0 +1,5 @@
+# Lane w6d-prereg-order (slice S3): prereg.py --order names freeze.planned_order's whole-row order.
+# Exit 0 binds O1-O7 on a fake-pinned copy of the draft and the committed draft's refusal; no take is ordered.
+python3 -B -W ignore evals/gap-study-4/tests/test_prereg_order.py
+# Athena: every registered mutant must fail its bound method by an AssertionError carrying its clause.
+python3 -B -W ignore evals/gap-study-4/tests/test_prereg_order.py --witnesses

@@ -1,0 +1,20 @@
+{
+  "lane": "w6d-prereg-order",
+  "files": [
+    {
+      "path": "COPIED.d/w6d-prereg-order.json",
+      "status": "new",
+      "reason": "Lane w6d-prereg-order's copy-record fragment (slice S3). It claims only this lane's new files; prereg.py, which this lane edits, stays claimed by w1a-cp1-scaffold's fragment as an edited copy of round 3's file."
+    },
+    {
+      "path": "checks.d/w6d-prereg-order.txt",
+      "status": "new",
+      "reason": "Lane w6d-prereg-order's local checks: the --order test module alone, and on athena its mutation witnesses."
+    },
+    {
+      "path": "tests/test_prereg_order.py",
+      "status": "new",
+      "reason": "Slice S3's tests: prereg.order and --order equal freeze.planned_order's whole-row order on a fake-pinned copy of the draft, the committed draft is refused while agent versions are pending, a review sha other than 40 lowercase hex is refused, a broken ownership record is never reported as the design's refusal, and twelve mutation witnesses (rule B) go red if the per-axis order or any weaker order or guard returns."
+    }
+  ]
+}
