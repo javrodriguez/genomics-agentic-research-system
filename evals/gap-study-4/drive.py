@@ -1511,9 +1511,9 @@ def main() -> int:
 #   R4-6. preflight_take is the driver's one road to preflight: S1's composition entry point, every argument passed
 #         through. The driver never reads or projects a take lock itself (CP2-preflight-2).
 #
-# Not here yet (S6 and later): launch, the turns, quiescence, routing, the sidecar's finish, teardown and the
-# finally-path cleanup on every refusal. A refused commit leaves the tree as it stands for a human to reconcile
-# (takes.py's rule for a failed commit); the next registration then refuses on the unclean tree.
+# Part 2 (lane w6h, S6; ownership of this file moved to w6h under glitch-1b's ruling S6-gap4-1) adds R4-7 to R4-12
+# in its own banner below: launch, preflight, the turns, quiescence, the drive step's scan, teardown, the
+# finally-path cleanup on every refusal, and a refused commit restoring the ledger (ruling S6-Q2).
 # =====================================================================================================================
 
 from box import preflight as _preflight  # noqa: E402
@@ -1559,10 +1559,12 @@ class TakeRepo:
     secrets          () -> [(kind, value)], read at commit time and never held by this object
     rules_scanner    scan_record's rules scanner (required; the real one refuses while it is PENDING)
     holdout_matcher  scan_record's holdout matcher, injected on the Mac (None records "not-checked")
+    on_published     (row, attempt) -> None, run once the take's commit has landed (R4-7, R4-11: TakeDriver.published
+                     deletes the per-take config folder then and only then); None runs nothing
     """
 
     def __init__(self, *, runtime, record_files, secrets, rules_scanner, holdout_matcher=None, root=HERE,
-                 repo=REPO, caller_env=None):
+                 repo=REPO, caller_env=None, on_published=None):
         if not callable(getattr(runtime, "run", None)):
             raise TypeError("runtime must offer run(argv, env=, timeout=)")
         for name, fn in (("record_files", record_files), ("secrets", secrets), ("rules_scanner", rules_scanner)):
@@ -1572,6 +1574,9 @@ class TakeRepo:
         self.rules_scanner, self.holdout_matcher, self.caller_env = rules_scanner, holdout_matcher, caller_env
         self.root, self.repo = Path(root).resolve(), Path(repo).resolve()
         self.guard = takes_mod.RegistrationGuard()
+        if on_published is not None and not callable(on_published):
+            raise TypeError("on_published must be callable")
+        self.on_published, self.publish_problems, self._touched = on_published, [], []
 
     # ------------------------------------------------------------------------------------------- history (R4-4)
     def history(self) -> list:
@@ -1638,11 +1643,11 @@ class TakeRepo:
             raise CommitRefused(f"declared but not staged: {', '.join(missing)}")
         return [n for n in staged if n in declared]
 
-    def commit_records(self, row: dict, attempt: int, outcome: dict) -> dict:
+    def _commit_step(self, row: dict, attempt: int, outcome: dict) -> dict:
         """One commit: the take's record files and its outcome, appended to the ledger. Returns the commit and the
         scan's masked count. Raises CommitRefused, takes.py's identity refusal (ValueError) or the scan's own
         scan_record.ScanError / NotReady (W6E-R1-4), each fail-closed: no commit lands, and HEAD moves only by the
-        pinned update-ref below."""
+        pinned update-ref below. Called only by commit_records (R4-7), which restores the ledger on any refusal."""
         if not isinstance(outcome, dict) or set(outcome) != set(takes_mod.batch.OUTCOME_KEYS):
             raise CommitRefused("the outcome does not hold exactly batch.OUTCOME_KEYS")
         if (outcome["slot"], outcome["attempt"]) != (row["slot"], attempt):
@@ -1664,6 +1669,7 @@ class TakeRepo:
         declared[ledger_rel] = OUTCOME_KIND
         paths = {name: path for name, (path, _) in files.items()}
         paths[ledger_rel] = str(ledger)
+        self._touched = sorted(declared)            # R4-7: what a refusal unstages
         _git_bytes(self.repo, "add", "--", *sorted(declared))
         staged = self._staged_exactly(declared)
         scan = _scan_record.scan([(paths[n], declared[n]) for n in staged], list(self.secrets()),
@@ -1703,6 +1709,397 @@ class TakeRepo:
             new = _git_bytes(self.repo, "commit-tree", tree, "-p", head, "-F", message.name).decode().strip()
         _git_bytes(self.repo, "update-ref", "-m", COMMIT_SUBJECT, "HEAD", new, head)
         return new
+
+    # ------------------------------------------------------------------------------- the refused commit (R4-7)
+    def commit_records(self, row: dict, attempt: int, outcome: dict) -> dict:
+        """batch.Batch's commit door (R4-7, ruling S6-Q2: a refused commit leaves no half state). _commit_step does
+        the work. If it refuses, for any reason, the outcome ledger is put back to HEAD's bytes (removed when HEAD has
+        none) and every name this call staged is unstaged; then the refusal is raised as it was. The masks the scan
+        wrote on the take's own files stay (masking never deletes, and a masked file is never re-exposed). Once the
+        commit has landed, on_published(row, attempt) runs; a failure there is recorded in publish_problems, never
+        raised, because the commit stands and the loop must not read it as refused."""
+        self._touched = []
+        try:
+            got = self._commit_step(row, attempt, outcome)
+        except BaseException as refused:
+            try:
+                self._restore()
+            except Exception as e:  # noqa: BLE001 - the restore's own failure is named beside the refusal
+                raise CommitRefused(f"the commit was refused ({type(refused).__name__}: {refused}), and the ledger "
+                                    f"could not be restored to HEAD: {type(e).__name__}: {e}") from refused
+            raise
+        if self.on_published is not None:
+            try:
+                self.on_published(row, attempt)
+            except Exception as e:  # noqa: BLE001 - recorded: the commit landed and stands
+                self.publish_problems.append(f"slot {row.get('slot')!r} attempt {attempt}: {type(e).__name__}: {e}")
+        return got
+
+    def _restore(self) -> None:
+        """R4-7: the ledger file back to HEAD's bytes (or gone, when HEAD tracks none), and this call's staged names
+        back to HEAD's index entries."""
+        ledger = self.root / OUTCOMES_FILE
+        rel = ledger.relative_to(self.repo).as_posix()
+        if _git_bytes(self.repo, "ls-tree", "--name-only", "HEAD", "--", rel).strip():
+            ledger.write_bytes(_git_bytes(self.repo, "show", f"HEAD:{rel}"))
+        elif os.path.lexists(ledger):
+            ledger.unlink()
+        staged = set(_staged_names(self.repo))
+        names = [n for n in self._touched if n in staged]
+        if names:
+            _git_bytes(self.repo, "reset", "-q", "--", *names)
+
+
+# =====================================================================================================================
+# ROUND 4, CP2: THE DRIVE LIFECYCLE, PART 2 -- LAUNCH, PREFLIGHT, THE DRIVE STEP AND ITS CLEANUP (lane w6h, slice S6
+# of next-slices-2026-10-11; this file's ownership moved from lane w6e to lane w6h under glitch-1b's ruling
+# S6-gap4-1). Appended after part 1, above `if __name__`, so no line other files cite by number moves.
+#
+#   R4-7.  A REFUSED COMMIT LEAVES NO HALF STATE (ruling S6-Q2). TakeRepo.commit_records (in part 1's class) wraps the
+#          commit step: on any refusal the outcome ledger goes back to HEAD's bytes and every name the call staged is
+#          unstaged, then the refusal is raised as it was. The take's own masked files stay masked.
+#   R4-8.  TakeDriver IS batch.Batch's DRIVER: launch(row) -> the take container's recorded id, drive(row, id) -> the
+#          take's harness-side records (agent_adapter.harness_records' shape), remove(id).
+#   R4-9.  PREFLIGHT THROUGH S1. drive() begins the sidecar (its one-line reply read by sidecar.parse_completed), then
+#          calls preflight_take (R4-6) with the Launched record launch returned (so Launched.spec), the sidecar's own
+#          launch record and the take's evidence folder, and writes the record beside the evidence (preflight.write).
+#          A failed check, a refused begin, or a typed refusal (ValueError or RuntimeError: a lock or launch record
+#          preflight cannot use) is a PRE-TURN REFUSAL (CP2-preflight-4): it is written to refusal.json, no turn
+#          runs, and preflight_ok is False (a rehearsal, by the table's first row).
+#   R4-10. SCAN -> MASK -> ROUTE -> COMMIT (ruling S6-Q3). Before drive() returns, every record file of the take is
+#          scanned by box/scan_record.py, which masks agent-text hits on disk; the masked hits plus the checker's
+#          events become events.outside_reach. batch.py routes those records (routing.py) and annotates them before
+#          the commit, and the commit (R4-2) scans again and binds the committed bytes. A scan refusal raises: the
+#          take is `failed` and the loop stops for a ruling.
+#   R4-11. CLEANUP ON EVERY ROAD (the run_take task's GOTCHAs). After every turn the driver polls the agent's
+#          processes (host-side) until none remain or the quiescence cap passes; at the cap (and at once after a
+#          timed-out turn) it kills them by an exec as the agent's own uid and polls again until none remain, and
+#          only then signals the snapshot. In drive()'s finally, on every road, the adapter is ended, the agent's
+#          leftover processes are killed the same way and polled to none, and every container is removed by its
+#          recorded id (run_take.teardown); what failed is written to teardown.json. remove(id) removes the take
+#          container by that id only while the full listing still holds it, and raises (A LEAK) if it is still
+#          listed after. A launch failure carries the take container's id when the partial teardown failed to remove
+#          it. The per-take config folder is deleted only once the take's records are committed (TakeRepo's
+#          on_published = TakeDriver.published), never after a refused commit.
+#   R4-12. The restart listing stays per register (ruling S6-Q4: correctness first; hoisted only if measured slow).
+# =====================================================================================================================
+
+import threading  # noqa: E402
+
+import agent_adapter as _adapter  # noqa: E402
+from box import sidecar as _sidecar  # noqa: E402
+
+# The take folder's files, each with its scan kind (box/scan_record.KINDS). A file outside this closed map refuses
+# the take: nothing rides a commit unscanned under a guessed kind.
+TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.log": "proxy-log",
+                   "preflight.json": "preflight", "refusal.json": "preflight", "transcript.jsonl": "transcript"}
+STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
+EVIDENCE_DIR, SESSION_DIR = "evidence", "session"
+EVIDENCE_KINDS = {_sidecar.SNAPSHOTS: "snapshot", _sidecar.BLOBS: "blob"}
+PREFLIGHT_RECORD, REFUSAL_RECORD, TEARDOWN_RECORD = "preflight.json", "refusal.json", "teardown.json"
+# What the checker callable returns: a closed record (the drive step's operator-side reading of the take).
+CHECKER_KEYS = ("checker_reasons", "checker_events", "unexplained_operator_diffs", "finalize_abort")
+# A pre-turn refusal (R4-9): the typed refusals of the lock, the launch record and the sidecar's reply. Anything else
+# (a TypeError, a KeyError) is a defect and is raised, never routed as a rehearsal.
+PRE_TURN_REFUSALS = (ValueError, RuntimeError)
+
+
+class DriveRefused(RuntimeError):
+    """The drive step cannot hand the take to routing: the loop records it `failed` and stops for a human."""
+
+
+def stream_path(take, n: int) -> str:
+    """Where turn n's host-captured stream is written: in the take folder, outside the run tree."""
+    return os.path.join(take.folder, f"turn-{n}.jsonl")
+
+
+def sidecar_health(evidence_dir: str) -> dict:
+    """routing.py's `sidecar` record from the sidecar's own health.jsonl, read after its finish: a watcher-start was
+    written; the last record is a watcher-stop; the exit code is the first non-zero stop's (a mid-take death), else
+    the last stop's; any queue-overflow. A missing or unreadable file reads as no start and no stop, never as
+    healthy."""
+    path = os.path.join(evidence_dir, _sidecar.HEALTH)
+    try:
+        with open(path, encoding="utf-8") as fh:
+            recs = [json.loads(line) for line in fh if line.strip()]
+    except (OSError, ValueError):
+        return {"start_record": False, "stop_record": False, "exit_code": -1, "queue_overflow": False}
+    kinds = [r.get("kind") if isinstance(r, dict) else None for r in recs]
+    stops = [r.get("exit_code") for r in recs if isinstance(r, dict) and r.get("kind") == _sidecar.WATCHER_STOP]
+    codes = [c if isinstance(c, int) and not isinstance(c, bool) else -1 for c in stops]
+    bad = [c for c in codes if c != 0]
+    return {"start_record": _sidecar.WATCHER_START in kinds,
+            "stop_record": bool(kinds) and kinds[-1] == _sidecar.WATCHER_STOP,
+            "exit_code": bad[0] if bad else (codes[-1] if codes else -1),
+            "queue_overflow": _sidecar.QUEUE_OVERFLOW in kinds}
+
+
+class _Take:
+    """One launched (or attempted) take: what the driver recorded about it, keyed by the take container's id."""
+
+    def __init__(self, row: dict, folder: str, config_dir: str):
+        self.row, self.folder, self.config_dir = row, folder, config_dir
+        self.evidence_dir = os.path.join(folder, EVIDENCE_DIR)
+        self.launched = None
+        self.sidecar = None
+        self.cleanup: list = []        # what the finally path could not do, by step
+        self.driven = False
+
+
+class TakeDriver:
+    """batch.Batch's driver (R4-8): launch, drive, remove, plus the repo's record_files and on_published hooks.
+
+    Every collaborator is injected and none is defaulted (a value only the box or a walk can tell stays the caller's):
+
+    runtime          run_take's runtime protocol (run(argv, env=, timeout=)); a fake in tests, DockerRuntime on the box
+    take_folder      (row) -> a new absolute folder inside the repository, the take's records' home (it must not exist)
+    config_parent    the folder per-take config folders are made in (outside every repository)
+    spec_for         (row, config_dir) -> run_take.TakeSpec (its network a placeholder: launch replaces it)
+    sidecar_for      (row, evidence_dir) -> run_take.SidecarLaunch
+    proxy            run_take.ProxyLaunch
+    lock_path        the take lock's absolute path (S1's load_take_lock reads it inside preflight)
+    hosts            preflight's hosts mapping
+    adapter_for      (row, take) -> agent_adapter.AgentAdapter for the take; it writes turn n's stream at
+                     stream_path(take, n)
+    script_for       (row) -> the operator lines of the take's own wording, in order
+    pin_for          (row) -> the routing pin: the registered row's pre-registered profile (batch.expected_pin)
+    checker          (row, take, turns) -> {CHECKER_KEYS}: the operator-side reading (check_take.check4's reasons and
+                     events, the operator-diff count, round 3's finalize abort)
+    secrets          () -> [(kind, value)] for the scan, read at scan time and never held
+    rules_scanner, holdout_matcher   box/scan_record.py's
+    uid_map          the runtime's uid map lines (container start, host start, length)
+    budget_s, finalize_wait_s, poll_s   the turn budget, the quiescence cap and the poll interval (pre-registered)
+    clock, sleep     the injected host clock and sleep (no real wait in a test)
+    """
+
+    def __init__(self, *, runtime, take_folder, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts,
+                 adapter_for, script_for, pin_for, checker, secrets, rules_scanner, uid_map, budget_s,
+                 finalize_wait_s, poll_s, clock, sleep, holdout_matcher=None, caller_env=None):
+        if not callable(getattr(runtime, "run", None)):
+            raise TypeError("runtime must offer run(argv, env=, timeout=)")
+        for name, fn in (("take_folder", take_folder), ("spec_for", spec_for), ("sidecar_for", sidecar_for),
+                         ("adapter_for", adapter_for), ("script_for", script_for), ("pin_for", pin_for),
+                         ("checker", checker), ("secrets", secrets), ("rules_scanner", rules_scanner),
+                         ("clock", clock), ("sleep", sleep)):
+            if not callable(fn):
+                raise TypeError(f"{name} must be callable")
+        self.runtime, self.take_folder, self.config_parent = runtime, take_folder, config_parent
+        self.spec_for, self.sidecar_for, self.proxy = spec_for, sidecar_for, proxy
+        self.lock_path, self.hosts = lock_path, hosts
+        self.adapter_for, self.script_for, self.pin_for, self.checker = adapter_for, script_for, pin_for, checker
+        self.secrets, self.rules_scanner, self.holdout_matcher = secrets, rules_scanner, holdout_matcher
+        self.uid_map, self.budget_s, self.finalize_wait_s, self.poll_s = uid_map, budget_s, finalize_wait_s, poll_s
+        self.clock, self.sleep, self.caller_env = clock, sleep, caller_env
+        self._lock = threading.Lock()
+        self._by_id: dict = {}        # take container id -> _Take
+        self._by_slot: dict = {}      # slot -> the slot's latest _Take not yet published
+        self.published_takes: list = []
+
+    # ------------------------------------------------------------------------------------------- launch (R4-8)
+    def launch(self, row: dict) -> str:
+        """The take's config folder, record folder and containers (run_take.launch); returns the take container's id.
+        A launch failure re-raises run_take's LaunchError with `container_id` set to the take container's id when its
+        partial teardown did not remove it (batch records it and removes it again), else None."""
+        folder = self.take_folder(row)
+        if not isinstance(folder, str) or not os.path.isabs(folder) or os.path.normpath(folder) != folder:
+            raise DriveRefused(f"the take folder is not a normalised absolute path: {folder!r}")
+        os.makedirs(folder)                                     # a new folder: an existing one raises
+        cfg = _run_take.make_config_dir(self.config_parent)
+        take = _Take(row, folder, cfg)
+        with self._lock:
+            self._by_slot[row["slot"]] = take
+        os.mkdir(take.evidence_dir)
+        take.sidecar = self.sidecar_for(row, take.evidence_dir)
+        spec = self.spec_for(row, cfg)
+        try:
+            take.launched = _run_take.launch(self.runtime, spec, sidecar=take.sidecar, proxy=self.proxy,
+                                             record_dir=folder, caller_env=self.caller_env)
+        except _run_take.LaunchError as e:
+            take.launched = e.launched
+            removed = any(s.get("step") == "take-rm" and s.get("returncode") == 0 for s in e.launched.torn_down)
+            e.container_id = e.launched.take_id if e.launched.take_id and not removed else None
+            if e.container_id:
+                with self._lock:
+                    self._by_id[e.container_id] = take
+            raise
+        with self._lock:
+            self._by_id[take.launched.take_id] = take
+        return take.launched.take_id
+
+    # ------------------------------------------------------------------------------------------- drive (R4-9..11)
+    def _env(self) -> dict:
+        return _run_take.runtime_env(self.caller_env)
+
+    def _ctl(self, take, command: str, label=None) -> dict:
+        argv = list(take.sidecar.ctl_argv_for(take.launched.sidecar_id, command, label))
+        return _sidecar.parse_completed(self.runtime.run(argv, env=self._env(), timeout=_run_take.STEP_TIMEOUT_S))
+
+    def _gone(self, take) -> list:
+        return _run_take.wait_gone(self.runtime, take.launched.take_id, agent_uid=_run_take._uid_of(
+            _run_take.AGENT_USER), uid_map=self.uid_map, cap_s=self.finalize_wait_s, interval_s=self.poll_s,
+            clock=self.clock, sleep=self.sleep, caller_env=self.caller_env)
+
+    def _kill(self, take) -> int:
+        """KILL to every process of the agent's uid, by an exec as that uid. Its exit status is returned, never
+        trusted: `kill -1` with nothing left to signal exits non-zero, so the poll that follows is the proof."""
+        return _run_take.kill_agent(self.runtime, take.launched.take_id, agent_user=_run_take.AGENT_USER,
+                                    caller_env=self.caller_env).returncode
+
+    def _quiesce(self, take, turn) -> tuple:
+        """After a turn: (survivors at the cap, killed). A timed-out turn's processes are killed at once; otherwise
+        the driver waits up to the cap and kills what is left. Either way it polls again until none remain."""
+        survivors, killed = [], False
+        if turn.end_reason == _adapter.END_TIMED_OUT:
+            self._kill(take)
+            killed = True
+        else:
+            survivors = self._gone(take)
+            if survivors:
+                self._kill(take)
+                killed = True
+        if killed and self._gone(take):
+            raise DriveRefused("the agent's processes outlived the kill as its own uid")
+        return survivors, killed
+
+    def _write(self, take, name: str, doc: dict) -> None:
+        _run_take._write_json(os.path.join(take.folder, name), doc)
+
+    def _preflight(self, take, harness: str) -> bool:
+        """R4-9: True when every preflight check passed; a refusal is recorded and read as False."""
+        try:
+            begin = self._ctl(take, "begin")
+            record = preflight_take(self.runtime, launched=take.launched, sidecar=take.sidecar,
+                                    lock_path=self.lock_path, harness=harness, hosts=self.hosts,
+                                    evidence_dir=take.evidence_dir, begin_reply=begin, caller_env=self.caller_env)
+            _preflight.write(record, os.path.join(take.folder, PREFLIGHT_RECORD))
+        except PRE_TURN_REFUSALS as e:
+            self._write(take, REFUSAL_RECORD, {"refused": type(e).__name__, "why": str(e)[:500]})
+            return False
+        return record["ok"] is True
+
+    def _cleanup(self, take, adapter) -> None:
+        """R4-11, on every road: end the adapter, kill and poll the agent's leftover processes, remove every container
+        by its recorded id. Each failure is recorded in take.cleanup and written to teardown.json; none stops the
+        rest."""
+        if adapter is not None and getattr(adapter, "_state", None) == "open":
+            try:
+                adapter.end_take()
+            except Exception as e:  # noqa: BLE001
+                take.cleanup.append(f"end_take: {type(e).__name__}: {e}")
+        try:
+            self._kill(take)
+            if self._gone(take):
+                take.cleanup.append("leftover agent processes survived the kill")
+        except Exception as e:  # noqa: BLE001
+            take.cleanup.append(f"leftover processes: {type(e).__name__}: {e}")
+        record = None
+        try:
+            record = _run_take.teardown(self.runtime, take.launched, sidecar=take.sidecar, record_dir=take.folder,
+                                        caller_env=self.caller_env)
+        except _run_take.TeardownError as e:
+            record = e.record
+            take.cleanup.append(f"teardown: {e}")
+        except Exception as e:  # noqa: BLE001
+            take.cleanup.append(f"teardown: {type(e).__name__}: {e}")
+        self._write(take, TEARDOWN_RECORD, {"teardown": record, "problems": list(take.cleanup)})
+
+    def drive(self, row: dict, container_id: str) -> dict:
+        """One take, from preflight to its routable records (R4-9, R4-10), cleaning up on every road (R4-11)."""
+        with self._lock:
+            take = self._by_id.get(container_id)
+        if take is None or take.launched is None or not take.launched.ok or take.row["slot"] != row["slot"]:
+            raise DriveRefused(f"no completed launch of slot {row.get('slot')!r} is recorded under {container_id}")
+        if take.driven:
+            raise DriveRefused(f"take {container_id} was already driven")
+        take.driven = True
+        harness = row["agent"]["harness"]
+        turns, unreadable, survivors, killed, adapter, state = [], [], 0, False, None, None
+        try:
+            ok = self._preflight(take, harness)
+            if ok:
+                adapter = self.adapter_for(row, take)
+                adapter.start_take(dict(row))
+                lines = list(self.script_for(row))
+                for n, line in enumerate(lines, 1):
+                    if n > 1:
+                        unreadable += self._ctl(take, "snapshot", f"pre-{n}")["unreadable_consequential"]
+                    turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
+                    turns.append(turn)
+                    left, k = self._quiesce(take, turn)
+                    survivors += len(left)
+                    killed = killed or (k and bool(left))
+                    unreadable += self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
+                    if turn.end_reason != _adapter.END_TURN:
+                        break
+            state = _run_take.container_state(self.runtime, take.launched.take_id, caller_env=self.caller_env)
+        finally:
+            self._cleanup(take, adapter)
+        # R4-10: scan -> mask, then the checker; routing and the commit follow in batch.py.
+        scan = _scan_record.scan(self.take_files(take), list(self.secrets()), rules_scanner=self.rules_scanner,
+                                 holdout_matcher=self.holdout_matcher)
+        if not _scan_record.passed(scan):
+            why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
+            raise DriveRefused(f"the drive scan refused the take: {why}")
+        checked = self.checker(row, take, list(turns))
+        if not isinstance(checked, dict) or set(checked) != set(CHECKER_KEYS):
+            raise DriveRefused(f"the checker's record is not exactly {CHECKER_KEYS}")
+        box = {"preflight_ok": ok, "container_started": True, "container_exited": not state["running"],
+               "sidecar": sidecar_health(take.evidence_dir),
+               "unexplained_operator_diffs": checked["unexplained_operator_diffs"],
+               "checker_reasons": checked["checker_reasons"], "quiescence_kill": killed,
+               "outside_reach_events": scan["events"] + checked["checker_events"],
+               "finalize_abort": checked["finalize_abort"], "committed": False,
+               "unreadable_consequential": list(dict.fromkeys(unreadable)),
+               "quiescence_cap_survivors": survivors}
+        return _adapter.harness_records(turns, pin=self.pin_for(row), box=box)
+
+    # ------------------------------------------------------------------------------------------- remove (R4-11)
+    def remove(self, container_id: str) -> None:
+        """The take container, by its recorded id: removed only while the full listing still holds it; still listed
+        after, it raises (batch records A LEAK and stops)."""
+        if not _run_take.leaked(self.runtime, [container_id], caller_env=self.caller_env):
+            return
+        self.runtime.run([_run_take.RUNTIME_CLIENT, "rm", "--force", container_id], env=self._env(),
+                         timeout=_run_take.STEP_TIMEOUT_S)
+        if _run_take.leaked(self.runtime, [container_id], caller_env=self.caller_env):
+            raise _run_take.LeakedContainer(f"container {container_id} is still listed after its removal")
+
+    # ------------------------------------------------------------------------------------------- the repo's hooks
+    def take_files(self, take) -> list:
+        """Every file in the take folder, (absolute path, scan kind), by the closed map; an unknown file refuses."""
+        out = []
+        for base, dirs, files in os.walk(take.folder, followlinks=False):
+            dirs.sort()
+            for name in sorted(files):
+                path = os.path.join(base, name)
+                rel = os.path.relpath(path, take.folder).split(os.sep)
+                if len(rel) == 1 and (name in TAKE_FILE_KINDS or STREAM_NAME.fullmatch(name)):
+                    kind = TAKE_FILE_KINDS.get(name, "stream")
+                elif rel[0] == EVIDENCE_DIR and len(rel) >= 2:
+                    kind = EVIDENCE_KINDS.get(rel[1], "evidence") if len(rel) > 2 else "evidence"
+                elif rel[0] == SESSION_DIR and len(rel) >= 2:
+                    kind = "session"
+                else:
+                    raise DriveRefused(f"{'/'.join(rel)} in the take folder has no scan kind")
+                out.append((path, kind))
+        return out
+
+    def record_files(self, row: dict, attempt: int) -> list:
+        """TakeRepo's record_files: the slot's latest unpublished take's files ([] when none was launched)."""
+        with self._lock:
+            take = self._by_slot.get(row["slot"])
+        return [] if take is None else self.take_files(take)
+
+    def published(self, row: dict, attempt: int) -> None:
+        """TakeRepo's on_published (R4-11): the take's records are committed, so its config folder is deleted (by
+        the path launch recorded), and the slot's next take starts clean."""
+        with self._lock:
+            take = self._by_slot.pop(row["slot"], None)
+        if take is None:
+            return
+        self.published_takes.append(take)
+        launched = take.launched if take.launched is not None else _run_take.Launched(config_dir=take.config_dir)
+        _run_take.remove_config_dir(launched, published=True)
 
 
 if __name__ == "__main__":

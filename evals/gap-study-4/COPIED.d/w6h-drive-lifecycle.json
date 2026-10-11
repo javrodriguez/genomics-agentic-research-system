@@ -1,0 +1,37 @@
+{
+  "lane": "w6h-drive-lifecycle",
+  "files": [
+    {
+      "path": "check_take.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/check_take.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (where it was an identical copy) under ruling S6-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026). The plan's UPDATE check_take.py task: three lines changed in place so no cited line moves (902: the permission mode is read for the take's arm, mode_for_arm; 1567 and 1604: check() takes the script of the take's own wording), and a round-4 section appended after main() with its named changes R4C-1 to R4C-5: check4, round 4's road, which lifts study-materials-reached, account-email and read-outside-the-checkout (routing.json's checker_reasons_become_events) out of the routable reasons and counts each instance as an event, refuses a refusal with no id or a reader that disagrees, and binds the mode the transcript itself records (recorded_mode_problems) to the arm's pin."
+    },
+    {
+      "path": "drive.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/drive.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (where it was an identical copy) under ruling S5-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026). CP2's drive lifecycle, part 1, the commit step, appended after round 3's main() so no line other files cite by number moves (its named changes R4-1 to R4-6 sit in the appended banner): TakeRepo, batch.Batch's repo, whose commit_records stages the take's records and the outcome ledger, scans them through box/scan_record.py, stages again after masking and refuses unless every staged blob's sha256 equals the scan's sha256_after (lane w4c's Q3); refuses any staged name outside the take; history() is takes.read_history in commit order; register refuses while a container the committed history records as leaked is still listed (run_take.refuse_restart_if_leaked); preflight_take passes straight to S1's preflight.collect_and_evaluate. Everything above the banner is round 3's file byte for byte. Transferred again from lane w6e-drive-commit to lane w6h-drive-lifecycle under ruling S6-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026). Part 2 appended after part 1, above `if __name__` (named changes R4-7 to R4-12): commit_records restores the ledger to HEAD's bytes and unstages what it staged on any refusal (ruling S6-Q2) and runs on_published once the commit landed; TakeDriver, batch.Batch's driver: launch through run_take.launch (a failed launch carries the take container's id when it was left), preflight through preflight_take with Launched.spec and the sidecar's parsed begin reply (a refusal is a pre-turn refusal: refusal.json, no turn, a rehearsal), the turns through the adapter with quiescence (poll to the cap, kill as the agent's uid, poll to none, then the snapshot), the drive step's scan and mask before routing (ruling S6-Q3), and the finally-path cleanup on every road (kill and poll, teardown by recorded ids, teardown.json); remove by the recorded id while listed; the config folder deleted only after the commit."
+    },
+    {
+      "path": "tests/test_box_integration.py",
+      "status": "new",
+      "reason": "The fake-runtime half of the plan's test_box_integration.py (lane w6h): batch.Batch driving drive.py's TakeDriver and committing through TakeRepo on scratch git repositories, over a stateful fake container runtime; eight bound checks (refused-commit rollback, preflight through S1's entry point, pre-turn refusal, scan before route, cleanup on six roads, quiescence before the snapshot, removal by recorded id, config folder after the commit), each with a whole-file witness of drive.py compiled in memory. The real-box half is a named stub (RealBoxHalf, not collected) whose method raises SkipTest naming CP2's real-box step."
+    },
+    {
+      "path": "tests/test_check_take.py",
+      "status": "new",
+      "reason": "The plan's VALIDATE module for the check_take.py UPDATE (lane w6h), on synthetic transcripts and a synthetic design: the mode keyed by arm, the wording's script, the three event reasons lifted and counted, and the recorded mode binding with its routes (graded when pinned; a rehearsal before and harness-error after the first turn otherwise), each with a whole-file witness of check_take.py compiled in memory."
+    },
+    {
+      "path": "COPIED.d/w6h-drive-lifecycle.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w6h-drive-lifecycle.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}
