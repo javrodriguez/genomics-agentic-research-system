@@ -14,7 +14,7 @@
     {
       "path": "tests/test_prereg_order.py",
       "status": "new",
-      "reason": "Slice S3's tests: prereg.order and --order equal freeze.planned_order's whole-row order on a fake-pinned copy of the draft, the committed draft is refused while agent versions are pending, and eight mutation witnesses (rule B) go red if the per-axis order or any weaker order returns."
+      "reason": "Slice S3's tests: prereg.order and --order equal freeze.planned_order's whole-row order on a fake-pinned copy of the draft, the committed draft is refused while agent versions are pending, a review sha other than 40 lowercase hex is refused, a broken ownership record is never reported as the design's refusal, and twelve mutation witnesses (rule B) go red if the per-axis order or any weaker order or guard returns."
     }
   ]
 }

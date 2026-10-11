@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """The one door to the pre-registration. Every other module reads the study's design through here.
 
-    python3 evals/gap-study-2/prereg.py --status        which file is in force, and whether it is frozen
-    python3 evals/gap-study-2/prereg.py --task <id>     one task's design
-    python3 evals/gap-study-2/prereg.py --order <sha>   the take order this seed produces (freeze.planned_order)
+    python3 evals/gap-study-4/prereg.py --status        which file is in force, and whether it is frozen
+    python3 evals/gap-study-4/prereg.py --task <id>     one task's design
+    python3 evals/gap-study-4/prereg.py --order <sha>   the take order this seed produces (freeze.planned_order;
+                                                        the sha is the full 40 lowercase hex characters)
 
 WHY A LOADER RATHER THAN json.load IN EACH FILE. The first study dispatched graders by a hard-coded
 id chain and kept each take's checks as module constants, so the definitions that decide a verdict
@@ -34,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -112,10 +114,11 @@ def n() -> int:
 
 
 def cells() -> list[tuple[str, str, str, int]]:
-    """Every (task, half, model, take) the plan calls for, in a fixed canonical order.
+    """Round 3's (task, half, model, take) set, sorted; only --status's "planned takes" count reads it.
 
-    Canonical means sorted, not shuffled. Round 4's take order is not taken over this set: it
-    permutes the design's whole rows (see order()).
+    It is not round 4's design: round 4's rows also carry arm, wording, repeat and agent, so this
+    count does not match them (a carried residual, W6D-R1-1), and the take order never uses it:
+    order() permutes the design's whole rows.
     """
     out = []
     for t in sorted(x["id"] for x in load()["tasks"]):
@@ -127,6 +130,27 @@ def cells() -> list[tuple[str, str, str, int]]:
 
 
 ORDER_FUNCTION = "freeze.planned_order"
+SEED_SHAPE = re.compile(r"[0-9a-f]{40}")
+
+
+def seed_problem(seed_sha: str) -> str | None:
+    """Why this seed cannot name the frozen order, or None.
+
+    The freeze hashes the review sha's exact string into every row's key, so an abbreviated or
+    upper-case spelling of the same commit gives a different, confident-looking order. Only the
+    full 40 lowercase hex characters are the seed.
+    """
+    if isinstance(seed_sha, str) and SEED_SHAPE.fullmatch(seed_sha):
+        return None
+    return (f"the take order needs the full sha of the pre-freeze review commit, exactly 40 lowercase hex "
+            f"characters; got {seed_sha!r}")
+
+
+def load_freeze():
+    """freeze, imported on first use (freeze imports this module). main() calls it before reading the order,
+    so a broken ownership record fails as itself, never as a refusal of the design."""
+    import freeze
+    return freeze
 
 
 def order(seed_sha: str) -> list[dict]:
@@ -137,12 +161,12 @@ def order(seed_sha: str) -> list[dict]:
     the order a frozen prereg.json carries as take_order. Each row's bytes, agent version included,
     feed the permutation, so a draft whose versions are still pending has no order yet: the
     freeze's own ledger check refuses it (ValueError), and this door does not fill or skip it.
-    Imported here, not at the top, because freeze imports this module.
+    The seed must be the full 40 lowercase hex characters (seed_problem); anything else exits.
     """
-    if not seed_sha or len(seed_sha) < 7:
-        raise SystemExit("the take order needs the full sha of the pre-freeze review commit")
-    import freeze
-    return freeze.planned_order(load(), seed_sha)
+    problem = seed_problem(seed_sha)
+    if problem:
+        raise SystemExit(problem)
+    return load_freeze().planned_order(load(), seed_sha)
 
 
 def main() -> int:
@@ -176,6 +200,11 @@ def main() -> int:
         return 0
 
     if args.order:
+        problem = seed_problem(args.order)
+        if problem:
+            print(f"take order: refused: {problem}")
+            return 1
+        load_freeze()  # outside the try: an ownership-record failure is not the design's refusal
         try:
             rows = order(args.order)
         except ValueError as e:

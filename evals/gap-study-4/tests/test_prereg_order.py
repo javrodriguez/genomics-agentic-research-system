@@ -81,7 +81,7 @@ def mutants():
         # the carry itself: the per-axis order returns
         "per-axis": ("O1.planned_order", lambda seed: per_axis(seed)),
         # a whole-row order, but not the one the freeze seeds
-        "other-seed": ("O1.planned_order", lambda seed: real(seed + "0")),
+        "other-seed": ("O1.planned_order", lambda seed: real(seed[::-1])),
         # a row lost from the permutation
         "dropped-row": ("O2.whole_rows", lambda seed: real(seed)[:-1]),
         # a row duplicated in place of another
@@ -94,6 +94,26 @@ def mutants():
                       for r in prereg.load()["rows"]]}, seed)),
         # the seed check removed
         "short-seed": ("O4.seed", lambda seed: __import__("freeze").planned_order(prereg.load(), seed)),
+        # a valid sha whose printed order is not the frozen one
+        "frozen-mismatch": ("O3.frozen", lambda seed: (lambda o: o[1:] + o[:1])(real(seed))),
+    }
+
+
+def attr_mutants():
+    """Mutants of a guard that is not order() itself: (clause, prereg attribute, replacement)."""
+    import re
+    import types
+    return {
+        # abbreviated or over-long hex accepted, as the 7-character rule did
+        "length-loose": ("O6.length", "seed_problem",
+                         lambda s: None if isinstance(s, str) and re.fullmatch(r"[0-9a-f]{7,}", s) else "refused"),
+        # upper-case hex accepted
+        "case-loose": ("O6.hex", "seed_problem",
+                       lambda s: None if isinstance(s, str) and re.fullmatch(r"[0-9a-fA-F]{40}", s) else "refused"),
+        # freeze imported inside the try again (deferred into order())
+        "import-in-try": ("O7.import", "load_freeze",
+                          lambda: types.SimpleNamespace(
+                              planned_order=lambda d, seed: __import__("freeze").planned_order(d, seed))),
     }
 
 
@@ -103,6 +123,9 @@ def setUpModule():
     PATCHES.append(mock.patch.object(prereg, "load", lambda: FAKE))
     if SELECTED is None:
         pass
+    elif SELECTED in attr_mutants():
+        _, attr, value = attr_mutants()[SELECTED]
+        PATCHES.append(mock.patch.object(prereg, attr, value))
     elif SELECTED == "cli-label":
         PATCHES.append(mock.patch.object(prereg, "ORDER_FUNCTION", "prereg.order (per axis)"))
     else:
@@ -164,6 +187,41 @@ class OrderIsPlannedOrder(unittest.TestCase):
         self.assertIn("take order: freeze.planned_order refuses the design in force (prereg-draft.json)", text,
                       "O5.pending")
 
+    def test_seed_length_refused(self):
+        for seed in (SEED[:12], SEED[:7], OTHER + "0", OTHER[:39]):
+            with self.subTest(seed=seed):
+                with self.assertRaises(SystemExit, msg="O6.length"):
+                    prereg.order(seed)
+                code, text = cli("--order", seed)
+                self.assertTrue(code == 1 and "take order: refused:" in text and "40 lowercase hex" in text,
+                                "O6.length")
+
+    def test_seed_case_and_hex_refused(self):
+        for seed in (OTHER.upper(), "g" * 40, OTHER[:-1] + "G"):
+            with self.subTest(seed=seed):
+                with self.assertRaises(SystemExit, msg="O6.hex"):
+                    prereg.order(seed)
+                code, text = cli("--order", seed)
+                self.assertTrue(code == 1 and "take order: refused:" in text and "40 lowercase hex" in text,
+                                "O6.hex")
+
+    def test_valid_sha_prints_frozen_order(self):
+        import freeze
+        frozen = dict(FAKE, take_order=freeze.planned_order(FAKE, OTHER), take_order_seed=OTHER,
+                      _frozen=True, _source="prereg.json")
+        with mock.patch.object(prereg, "load", lambda: frozen):
+            code, text = cli("--order", OTHER)
+        listed = [line.split()[-1] for line in text.splitlines() if line.startswith("  ") and " s-" in line]
+        self.assertTrue(code == 0 and listed == [r["slot"] for r in frozen["take_order"][:8]], "O3.frozen")
+
+    def test_broken_ownership_is_not_a_design_refusal(self):
+        import copy_manifest
+        with mock.patch.dict(sys.modules), \
+             mock.patch.object(copy_manifest, "load_fragments", return_value=([], ["fake broken record"])):
+            sys.modules.pop("freeze", None)
+            with self.assertRaisesRegex(ValueError, "invalid ownership record", msg="O7.import"):
+                cli("--order", SEED)
+
     def test_short_seed_refused(self):
         for seed in ("", "abc123"):
             with self.subTest(seed=seed), self.assertRaises(SystemExit, msg="O4.seed"):
@@ -172,8 +230,11 @@ class OrderIsPlannedOrder(unittest.TestCase):
 
 BOUND = {"O1.planned_order": "test_order_is_freeze_planned_order", "O2.whole_rows": "test_order_is_whole_rows",
          "O2.interleaved": "test_order_interleaves_arms", "O3.cli": "test_cli_names_planned_order",
-         "O4.seed": "test_short_seed_refused", "O5.pending": "test_committed_draft_refuses_until_versions_are_pinned"}
+         "O4.seed": "test_short_seed_refused", "O5.pending": "test_committed_draft_refuses_until_versions_are_pinned",
+         "O3.frozen": "test_valid_sha_prints_frozen_order", "O6.length": "test_seed_length_refused",
+         "O6.hex": "test_seed_case_and_hex_refused", "O7.import": "test_broken_ownership_is_not_a_design_refusal"}
 WITNESSES = {**{name: ("OrderIsPlannedOrder." + BOUND[clause], clause) for name, (clause, _) in mutants().items()},
+             **{name: ("OrderIsPlannedOrder." + BOUND[clause], clause) for name, (clause, _, _) in attr_mutants().items()},
              "cli-label": ("OrderIsPlannedOrder.test_cli_names_planned_order", "O3.cli")}
 
 
