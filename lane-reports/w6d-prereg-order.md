@@ -49,3 +49,26 @@ The order tests run on a fake-pinned copy of the draft (every version set to `0.
 OPEN carry for build_draft's owner (S4 or after): the draft's `order_carry` line ("prereg.py --order is the earlier per-axis positive/control order; CP2 must replace it.") is now stale, and test_build_draft's R3.order binds its wording. Changing it changes the draft bytes, so it goes only through the w5c owner's writer.
 OPEN, not this carry: `cells()` and `--status`'s "planned takes" count still use round 3's (task, half, model, take) shape, which does not match round 4's rows.
 Not read: grader source, sealed, holdout, brief or saved-output paths, and nothing under round 3 was opened directly.
+
+## Appendix: fold W6D-close-1 (review round 1 PASSED, no MAJOR)
+
+Written Sun 11 Oct 2026, 17:39 EDT (`date`), by the same builder, on glitch-1b's ruling W6D-close-1; review text in the Brain at `plans/gap-study-round-4/w6d-review-r1-2026-10-11.md`.
+Base `47c02eb0`; fold code commit `973c3b032eecb5bc7a95ee4cf7ebf216f849f4a8`.
+This appendix controls where it differs from the body above.
+
+Folded:
+- W6D-R1-3: `seed_problem` accepts only exactly 40 lowercase hex characters; `order()` exits on anything else, and `--order` prints `take order: refused: ...` and exits 1. `main()` calls `load_freeze()` before the `try`, so a broken ownership record raises its own ValueError instead of printing "refuses the design".
+- W6D-R1-4 (text only): the usage lines name `evals/gap-study-4/`; the `cells()` docstring says it is round 3's shape, read only by `--status`'s count.
+- New clauses: O6.length (12, 7, 39 and 41 characters), O6.hex (upper-case, `g`, a trailing `G`), O7.import (a ValueError from the ownership record propagates), O3.frozen (a valid sha prints a frozen file's `take_order`).
+- New witnesses: length-loose, case-loose, import-in-try, frozen-mismatch. other-seed now reverses the seed, since appending a character is refused before ordering. Registry 12.
+- The own fragment's reason and the checks.d comment were updated to match (twelve witnesses, O1-O7).
+
+Not touched (carried): W6D-R1-1 (`--status`) and W6D-R1-2 (the draft's `order_carry` line).
+
+Evidence (Mac, light-ok gated, Python 3.13, `env -u CONDA_PREFIX -u CONDA_DEFAULT_ENV`):
+- Red first: the fold's test file against `47c02eb0`'s prereg.py: 10 run, 8 failures (O6.length 4 subtests, O6.hex 3, O7.import 1), all `AssertionError ... not raised`, exit 1. O3.frozen passed there, as it guards against a regression rather than a new behaviour.
+- Green: 10 run, 0 failures, exit 0. `--witnesses`: 12 of 12 RED with the bound method and clause, 8.5 s, exit 0.
+- `copy_manifest.py --check`, `build_draft.py --check` (draft bytes unchanged) and `freeze.py --check`: exit 0 each.
+- `tests/test_scaffold.py TheManifest`: 29 tests OK, exit 0, in 579 s. Departure: the brief's under-60-second bound cannot hold for this class. A first try bounded at 300 s was stopped by its timeout (exit 124, no verdict), and a second, bounded at 900 s, passed.
+
+RESUME HERE: hand-back at 973c3b032eecb5bc7a95ee4cf7ebf216f849f4a8; the athena run_checks on the fold head (re-queued by glitch-1b) verifies the fold, and no further review round is planned.
