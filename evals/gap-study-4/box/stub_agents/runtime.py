@@ -9,9 +9,9 @@ exactly the parts `graders/endstate.py`'s `Evidence.from_parts` takes, in probes
 
 A background job is a process the agent's turn launches and that outlives the turn (GARS's stage 00 finalize is the
 real case). The runtime waits for every job of a turn before that turn's post snapshot (quiescence): a job that ends
-inside `QUIESCENCE_CAP_S` has its writes in the snapshot and in the watcher log, stamped after the turn's end; a job
-still running at the cap is killed there, its writes never land, and the take's box record says so
-(`quiescence_kill`, `quiescence_cap_survivors`).
+inside `FAKE_QUIESCENCE_CAP_S` has its writes in the snapshot and in the watcher log, stamped after the turn's end;
+a job still running at the cap is killed there, its writes never land, and the take's box record says so
+(`quiescence_kill`, `quiescence_cap_survivors`). The cap here is a fake test value; the real cap is CP2's.
 
 No model, no container, no network, standard library only. Writes nothing to disk.
 """
@@ -31,11 +31,12 @@ from graders import endstate as es  # noqa: E402
 
 # The offsets inside a turn (seconds after T = 100k), as probes4.build_take and tests/test_endstate.py use them.
 STARTED, AGENT, ENDED, POST, OPERATOR = 1, 2, 3, 6, 7
-# How long the runtime waits after a turn's end for its background jobs before killing them (a fake value: the real
-# cap is the box's, PENDING with CP2's drive step). Every landed write is before the post snapshot.
-QUIESCENCE_CAP_S = 2.5
-# A background job's default run time after its turn's end: it writes WRITE_LEAD_S before it exits, at end + run.
-BACKGROUND_RUN_S = 2.0
+# FAKE TEST VALUES (glitch-1b's ruling R2 on lane w6b): how long the runtime waits after a turn's end for its
+# background jobs before killing them, and a job's default run time. Both are fake values on this runtime's clock,
+# for the stub tests only; the real cap is CP2's (the drive step's), never this one.
+FAKE_QUIESCENCE_CAP_S = 2.5
+# A job writes WRITE_LEAD_S before it exits, at end + run.
+FAKE_BACKGROUND_RUN_S = 2.0
 WRITE_LEAD_S = 1
 WATCH_START = 50.0
 
@@ -49,7 +50,7 @@ class FakeRuntime:
     """One take's box, faked. `begin`, then `run_turn` once per operator line in order, then `finish`."""
 
     def __init__(self, fixture: dict, *, model: str = probes4.MODEL, harness: str = probes4.HARNESS,
-                 version: str = "0", operator=None, quiescence_cap_s: float = QUIESCENCE_CAP_S):
+                 version: str = "0", operator=None, quiescence_cap_s: float = FAKE_QUIESCENCE_CAP_S):
         self.tree = dict(fixture)              # run-tree path -> probes4 value (blob, hashed, link, DIR)
         self.operator = operator               # callable(k) -> {path: value}: the operator's writes after turn k
         self.cap = float(quiescence_cap_s)
@@ -162,7 +163,7 @@ class FakeRuntime:
     def _background(self, k: int, job: dict, ended: float) -> None:
         """Quiescence: wait for the job up to the cap. It writes WRITE_LEAD_S before it exits; past the cap it is
         killed at the cap and nothing it would still have written lands."""
-        run = float(job.get("run_s", BACKGROUND_RUN_S))
+        run = float(job.get("run_s", FAKE_BACKGROUND_RUN_S))
         if not run > WRITE_LEAD_S:
             raise ValueError(f"a background job must write after its turn's end: run_s must exceed {WRITE_LEAD_S} "
                              f"(got {run})")

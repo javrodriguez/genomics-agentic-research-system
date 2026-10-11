@@ -44,7 +44,7 @@ HALVES = [(t, h) for t in probes4.task_ids() for h in V.HALVES]
 
 def _never_killed(self, k, job, ended):
     """Mutant body: the job is waited for whatever its run time, so nothing is ever killed at the cap."""
-    run = float(job.get("run_s", rt.BACKGROUND_RUN_S))
+    run = float(job.get("run_s", rt.FAKE_BACKGROUND_RUN_S))
     self._apply(job, ended + min(run, self.cap) - rt.WRITE_LEAD_S)
     self.ledger.append({"kind": "background", "pid": 4242 + k, "stopped_at": ended + min(run, self.cap)})
 
@@ -58,10 +58,10 @@ def _turn_without_runtime(self, line, *, first, budget_s):
 MUTANTS = {
     "oracle-acts": (ag.OracleStub, "probe_move", lambda self, pr, h: probes4.act_move(pr, h),
                     "TestOracle.test_oracle_grades_right_on_every_half"),
-    "act-holds": (ag.AlwaysActStub, "probe_move", lambda self, pr, h: probes4.hold_move(pr, h),
-                  "TestAlwaysAct.test_always_act_is_right_on_the_act_half_and_wrong_on_the_hold_half"),
-    "hold-acts": (ag.AlwaysHoldStub, "probe_move", lambda self, pr, h: probes4.act_move(pr, h),
-                  "TestAlwaysHold.test_always_hold_is_right_on_the_hold_half_and_wrong_on_the_act_half"),
+    "act-holds": (ag.ActOnlyStub, "probe_move", lambda self, pr, h: probes4.hold_move(pr, h),
+                  "TestActOnly.test_act_only_is_right_on_the_act_half_and_wrong_on_the_hold_half"),
+    "hold-acts": (ag.HoldOnlyStub, "probe_move", lambda self, pr, h: probes4.act_move(pr, h),
+                  "TestHoldOnly.test_hold_only_is_right_on_the_hold_half_and_wrong_on_the_act_half"),
     "writer-in-turn": (ag.BackgroundWriterStub, "split", lambda self, k, mv: (mv, None),
                        "TestBackgroundWriter.test_late_writes_are_attributed_to_the_launching_turn"),
     "no-quiescence-wait": (rt.FakeRuntime, "_background", lambda self, k, job, ended: None,
@@ -116,8 +116,8 @@ class TestOracle(unittest.TestCase):
                 self.assertEqual(got["label"], matching(ag.ORACLE_NAME, t, h)["label"])
 
 
-class TestAlwaysAct(unittest.TestCase):
-    def test_always_act_is_right_on_the_act_half_and_wrong_on_the_hold_half(self):
+class TestActOnly(unittest.TestCase):
+    def test_act_only_is_right_on_the_act_half_and_wrong_on_the_hold_half(self):
         seen = set()
         for t, h in HALVES:
             with self.subTest(task=t, half=h):
@@ -130,8 +130,8 @@ class TestAlwaysAct(unittest.TestCase):
         self.assertEqual(seen, {V.ACT, V.HOLD})
 
 
-class TestAlwaysHold(unittest.TestCase):
-    def test_always_hold_is_right_on_the_hold_half_and_wrong_on_the_act_half(self):
+class TestHoldOnly(unittest.TestCase):
+    def test_hold_only_is_right_on_the_hold_half_and_wrong_on_the_act_half(self):
         seen = set()
         for t, h in HALVES:
             with self.subTest(task=t, half=h):
@@ -196,7 +196,7 @@ class TestBackgroundWriter(unittest.TestCase):
 
     def test_a_writer_past_the_cap_is_killed(self):
         class Slow(ag.BackgroundWriterStub):
-            run_s = rt.QUIESCENCE_CAP_S + 5.0
+            run_s = rt.FAKE_QUIESCENCE_CAP_S + 5.0
 
         for t, h in self.halves:
             with self.subTest(task=t, half=h):
@@ -299,7 +299,7 @@ class TestWitnessRegistry(unittest.TestCase):
 
     def test_every_stub_has_a_witness(self):
         bound = {b.split(".")[0] for *_x, b in MUTANTS.values()}
-        self.assertLessEqual({"TestOracle", "TestAlwaysAct", "TestAlwaysHold", "TestBackgroundWriter"}, bound)
+        self.assertLessEqual({"TestOracle", "TestActOnly", "TestHoldOnly", "TestBackgroundWriter"}, bound)
 
     def test_the_parser_reads_red_only_from_the_bound_methods_own_assertion(self):
         bound = "TestOracle.test_oracle_grades_right_on_every_half"

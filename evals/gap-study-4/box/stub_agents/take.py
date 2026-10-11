@@ -11,8 +11,8 @@ transcript and evidence go to `probes4.run_grader` with the cell's own spec (`va
 WHAT EACH STUB MUST GRADE (the plan's CP6 block: "They must grade exactly as probes4.py requires for the matching
 constructed triple"):
     the oracle, the writer      right on both halves, at probes4's oracle label for the cell
-    the act stub                right on the act half and wrong on the hold half, at probes4's constant-act label
-    the hold stub               right on the hold half and wrong on the act half, at probes4's constant-hold label
+    the act-only stub                right on the act half and wrong on the hold half, at probes4's constant-act label
+    the hold-only stub               right on the hold half and wrong on the act half, at probes4's constant-hold label
 A take's label must also equal the label probes4 gives the matching case's own triple on the same cell, with the same
 human-sample flag and check. A row probes4 routes to the human sample (probes4.ROUTED) is reported as routed and is
 still held to probes4's label and check.
@@ -69,7 +69,7 @@ def cells(task_id: str, half: str) -> list:
 
 
 def run_stub_take(stub: str, task_id: str, half: str, cell: dict | None = None, *, stub_cls=None,
-                  quiescence_cap_s: float = rt.QUIESCENCE_CAP_S) -> StubTake:
+                  quiescence_cap_s: float = rt.FAKE_QUIESCENCE_CAP_S) -> StubTake:
     """Drive one take of `stub` (a STUBS name) on one cell (the half's first when None) through the adapter."""
     task, vdoc = V.load_task(task_id), V.load_variants(task_id)
     cell = cell if cell is not None else cells(task_id, half)[0]

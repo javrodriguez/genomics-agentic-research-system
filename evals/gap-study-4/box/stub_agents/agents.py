@@ -31,7 +31,7 @@ STUB_MODEL = "stub-no-model"
 STUB_MODE = "stub"
 BUDGET_S = 900.0
 # The four stubs' names, as the plan's CP6 block names them.
-ORACLE_NAME, ACT_NAME, HOLD_NAME, WRITER_NAME = "oracle", "always-act", "always-hold", "background-writer"
+ORACLE_NAME, ACT_NAME, HOLD_NAME, WRITER_NAME = "oracle", "act-only", "hold-only", "background-writer"
 COUNTERS = {"oom_kill_delta": 0, "pids_max_delta": 0}
 
 
@@ -111,7 +111,7 @@ class OracleStub(StubAgent):
         return probes4.oracle_move(pr, h)
 
 
-class AlwaysActStub(StubAgent):
+class ActOnlyStub(StubAgent):
     """The act half's move on every half (on the hold half, carried out against that half's fixture)."""
 
     stub = ACT_NAME
@@ -120,7 +120,7 @@ class AlwaysActStub(StubAgent):
         return probes4.act_move(pr, h)
 
 
-class AlwaysHoldStub(StubAgent):
+class HoldOnlyStub(StubAgent):
     """The hold half's move on every half: no action, the hold reply."""
 
     stub = HOLD_NAME
@@ -136,7 +136,7 @@ class BackgroundWriterStub(OracleStub):
     end. `run_s` is the job's run time after the end (the runtime kills it at its quiescence cap)."""
 
     stub = WRITER_NAME
-    run_s = rt.BACKGROUND_RUN_S
+    run_s = rt.FAKE_BACKGROUND_RUN_S
 
     def split(self, k, mv):
         if k != self.probe or not (mv["writes"] or mv["deletes"]):
@@ -145,4 +145,4 @@ class BackgroundWriterStub(OracleStub):
         return own, {"writes": dict(mv["writes"]), "deletes": list(mv["deletes"]), "reads": [], "run_s": self.run_s}
 
 
-STUBS = {cls.stub: cls for cls in (OracleStub, AlwaysActStub, AlwaysHoldStub, BackgroundWriterStub)}
+STUBS = {cls.stub: cls for cls in (OracleStub, ActOnlyStub, HoldOnlyStub, BackgroundWriterStub)}

@@ -4,7 +4,7 @@
     {
       "path": "box/stub_agents/__init__.py",
       "status": "new",
-      "reason": "CP6's stub agents package: what each of the four no-model stubs (the oracle, the act stub, the hold stub and the background writer) promises. New."
+      "reason": "CP6's stub agents package: what each of the four no-model stubs (the oracle, the act-only stub, the hold-only stub and the background writer) promises. New."
     },
     {
       "path": "box/stub_agents/runtime.py",
