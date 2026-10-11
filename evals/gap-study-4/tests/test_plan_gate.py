@@ -775,7 +775,9 @@ class TheRefusals(unittest.TestCase):
                 '        except (ValueError, UnicodeDecodeError):\n'),
             "an unreadable record skipped": ("        if p in unreadable:\n            raise",
                                              "        if False:\n            raise"),
-            "an unreadable entry read as a folder": (" and path not in evidence.unreadable(label)", ""),
+            # S7-gap4-1 (ruling S7-D1): is_folder reads Evidence.kind, so the mutant reads an unreadable kind as a dir
+            "an unreadable entry read as a folder": ('evidence.kind(label, path) == "dir"',
+                                                     'evidence.kind(label, path) in ("dir", "unreadable")'),
             "a plan with no bytes read as unstamped": (
                 '    return _bytes(evidence, label, plan).decode("utf-8", errors="replace")',
                 '    return (evidence.content(label, plan) or b"").decode("utf-8", errors="replace")'),
@@ -1499,7 +1501,18 @@ def code_of(src: str) -> tuple[str, list[str]]:
 # comparison, so every other byte of the code stays bound to the base.
 # w4r-plan-gate-store (glitch-f3's ruling under Javier's delegation, 9 Oct 2026, "plan_gate (a)"): the approval store
 # itself is read as a record when it is not a folder (stage 03's PLAN.md.approved at GARS 844a4ce).
-CODE_EXCEPTIONS = {"plan_gate": (("if under(p, store) and p != store\n", "if under(p, store)\n"),)}
+# S7-gap4-1 (glitch-1b's ownership transfer to lane w6g, ruling S7-D1 = A, Sun 11 Oct 2026): is_folder reads the
+# reader's Evidence.kind, so a special file (socket, FIFO, device) is never a folder and stays in the record scan.
+CODE_EXCEPTIONS = {"plan_gate": (("if under(p, store) and p != store\n", "if under(p, store)\n"),
+                                 ('    """Is the entry at `path` a folder: no sha256, no target, and not among the '
+                                  "reader's unreadable paths (a STATE's\n    kind is never read here).\"\"\"\n"
+                                  "    st = evidence.state(label, path)\n"
+                                  '    return st is not None and "sha256" not in st and "target" not in st and path '
+                                  "not in evidence.unreadable(label)\n",
+                                  '    """Is the entry at `path` a folder: the reader\'s `kind` is "dir" (S7-gap4-1, '
+                                  "ruling S7-D1: a special file, a\n    socket, FIFO or device, is never a folder, so "
+                                  "it stays in the approval-record scan; an unreadable entry neither).\"\"\"\n"
+                                  '    return evidence.kind(label, path) == "dir"\n'))}
 
 
 def base_code_source(name: str, exceptions: dict | None = None) -> str:

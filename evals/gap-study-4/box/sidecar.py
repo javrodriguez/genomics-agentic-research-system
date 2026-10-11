@@ -26,7 +26,10 @@ agent can neither trigger nor suppress a snapshot.
 COMMANDS (interface 12).
   begin              snapshot pre-1, then arm the watcher, then write `watcher-start` once its watches are
                      established; creates the evidence layout (`snapshots/`, `blobs/`, an empty `access.jsonl` and
-                     `health.jsonl`). The evidence folder may hold only the driver's `ledger.jsonl` before it.
+                     `health.jsonl`, and `watched.json`: {"paths": the --watch list, sorted and distinct}; S7-D3,
+                     ownership transfer S7-gap4-1). The evidence folder may hold only the driver's `ledger.jsonl`
+                     before it. A consequential path that is a special file at pre-1 is a problem in its reply,
+                     so preflight refuses the take (S7-gap4-3).
   snapshot <label>   post-k (k >= 1) or pre-k (k >= 2), in the take's order only (post-1, pre-2, post-2, ...): stop
                      the watcher, drain every event it produced, write `watcher-stop` (exit code 0 for a clean
                      deliberate stop) stamped at that instant, snapshot with `taken_at` equal to that same stamp,
@@ -48,8 +51,8 @@ is ok: false. A failed re-arm is the same: no `watcher-start` is written, and th
 SNAPSHOTS (endstate's STATE and paths). A walk of the whole run tree with os.scandir and os.lstat, ignored files
 included, never following a link (a link is {"type": "link", "target": os.readlink}, nothing beneath it is listed).
 A special file (socket, FIFO, device) is told apart by its lstat mode and never opened; it is recorded as
-`unreadable` (endstate's closed STATE has no type for one: W2A2-3, CP2's decision; see the lane report for the
-pre-registration). Every regular file is opened with OPEN_FLAGS (O_NOFOLLOW | O_NONBLOCK), so a lstat-then-open
+{"type": "special", "kind": "socket" | "fifo" | "char" | "block"} (S7-D1, W2A2-3's fix; any other kind: unreadable).
+Every regular file is opened with OPEN_FLAGS (O_NOFOLLOW | O_NONBLOCK), so a lstat-then-open
 race can neither follow a link nor block, and is re-checked with fstat. A file is its sha256; a folder is
 {"type": "dir"} (one it cannot list is unreadable); anything it cannot read is {"type": "unreadable"}. Paths are
 run-tree-relative and "/"-separated (the ledger's take record says "run_tree": "", and "home": null). The bytes of
@@ -122,6 +125,8 @@ UNREADABLE_CONSEQUENTIAL_ROW = "unreadable-consequential-path"
 
 # endstate's closed evidence layout (graders/endstate.py; the tests bind each to the reader's own constant).
 LEDGER, ACCESS, HEALTH, SNAPSHOTS, BLOBS = "ledger.jsonl", "access.jsonl", "health.jsonl", "snapshots", "blobs"
+WATCHED = "watched.json"       # S7-D3: written once at begin, from the --watch list
+SPECIAL_KINDS = ("socket", "fifo", "char", "block")   # S7-D1: endstate's special STATE kinds
 WATCHER_START, WATCHER_STOP, QUEUE_OVERFLOW = "watcher-start", "watcher-stop", "queue-overflow"
 OPEN, MODIFY, DELETE = "open", "modify", "delete"
 UNREADABLE = {"type": "unreadable"}
@@ -437,14 +442,22 @@ class WatchEvent:
 
 
 def _kind(mode: int) -> str:
-    """link, dir, file, or special (socket, FIFO, device), by the lstat mode alone: a file is never opened to
-    find out what it is."""
+    """link, dir, file, a special file's kind (socket, fifo, char or block: SPECIAL_KINDS), or "special" for any
+    other kind, by the lstat mode alone: a file is never opened to find out what it is."""
     if stat.S_ISLNK(mode):
         return "link"
     if stat.S_ISDIR(mode):
         return "dir"
     if stat.S_ISREG(mode):
         return "file"
+    if stat.S_ISSOCK(mode):
+        return "socket"
+    if stat.S_ISFIFO(mode):
+        return "fifo"
+    if stat.S_ISCHR(mode):
+        return "char"
+    if stat.S_ISBLK(mode):
+        return "block"
     return "special"
 
 
@@ -511,7 +524,7 @@ def snapshot_tree(run_tree: str, consequential, *, opener=os.open) -> tuple:
                     if got[1] is not None:
                         blobs[got[0]] = got[1]
             else:
-                entries[rel] = dict(UNREADABLE)
+                entries[rel] = {"type": "special", "kind": kind} if kind in SPECIAL_KINDS else dict(UNREADABLE)
                 special.append(rel)
         return True
 
@@ -823,13 +836,19 @@ class Sidecar:
         os.mkdir(self._ev(BLOBS))
         for n in CREATED_AT_BEGIN:
             os.close(os.open(self._ev(n), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644))
+        _write_atomic(self._ev(WATCHED), (json.dumps({"paths": sorted(set(self.watch))}, separators=(",", ":"))
+                                          + "\n").encode("utf-8"), self._temps)
         taken_at = self.clock()
-        unreadable, uc, _ = self._snapshot("pre-1", taken_at)
+        unreadable, uc, special = self._snapshot("pre-1", taken_at)
         self.state = "running"
         self.next_label = "post-1"
         rearmed = self._arm()
+        # S7-gap4-3: before the first turn a consequential path that is a special file is a preflight problem (it was,
+        # as unreadable_consequential, before S7-D1); the take is not broken, and later snapshots are unchanged.
+        special_cons = sorted(p for p in special if p in self.watch)
+        found = [f"consequential paths are special files before the first turn: {special_cons}"] if special_cons else []
         return self._reply("begin", "pre-1", taken_at=taken_at, rearmed_at=rearmed, unreadable=unreadable,
-                           uc=uc, problems=list(self.problems))
+                           uc=uc, problems=list(self.problems) + found)
 
     def _snap_command(self, label) -> dict:
         if not label_ok(label):

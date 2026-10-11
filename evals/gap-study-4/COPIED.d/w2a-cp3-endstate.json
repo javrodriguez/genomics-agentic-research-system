@@ -4,7 +4,7 @@
     {
       "path": "graders/endstate.py",
       "status": "new",
-      "reason": "CP3's end-state reader, which every action-reading v4 grader imports; round 3 had none (it read no snapshots). It defines the sidecar's evidence folder as a closed layout (CP2 builds the sidecar), reads the agent's changes per turn and per stretch, the operator's changes matched to logged events, timestamped accesses per path, turn and stretch, the watcher's health in time order (a turn or access its records do not cover is a watcher gap, never \"no access\"), and re-verifies the operator-diff check; exclusions are git's, the helpers' and the take's own harness's (interface 8)."
+      "reason": "CP3's end-state reader, which every action-reading v4 grader imports; round 3 had none (it read no snapshots). It defines the sidecar's evidence folder as a closed layout (CP2 builds the sidecar), reads the agent's changes per turn and per stretch, the operator's changes matched to logged events, timestamped accesses per path, turn and stretch, the watcher's health in time order (a turn or access its records do not cover is a watcher gap, never \"no access\"), and re-verifies the operator-diff check; exclusions are git's, the helpers' and the take's own harness's (interface 8). Ownership transfer S7-gap4-1 (glitch-1b, Lane-orchestrator, under Javier's standing delegation, Sun 11 Oct 2026): lane w6g-endstate-carries owns this file for S7's rulings S7-D1 (a special STATE), S7-D2 (mode bits a named residual), S7-D3 (watched.json) and S7-D4 (the final stop after post-N); see COPIED.d/w6g-endstate-carries.json."
     },
     {
       "path": "harness_bookkeeping.py",
@@ -14,7 +14,7 @@
     {
       "path": "tests/test_endstate.py",
       "status": "new",
-      "reason": "Tests for graders/endstate.py (interface 3): the plan's CP3 fixtures and interface 8's seam tests with their mutants."
+      "reason": "Tests for graders/endstate.py (interface 3): the plan's CP3 fixtures and interface 8's seam tests with their mutants. Ownership transfer S7-gap4-1 (glitch-1b, Sun 11 Oct 2026): lane w6g-endstate-carries owns this file for S7's tests and whole-file witnesses; see COPIED.d/w6g-endstate-carries.json."
     },
     {
       "path": "tests/test_harness_bookkeeping.py",

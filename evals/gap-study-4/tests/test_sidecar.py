@@ -296,6 +296,7 @@ class TakeCase(unittest.TestCase):
         t.turn(events, late=late)
         r = t.sc.handle("snapshot", "post-1")
         self.assertTrue(r["ok"], r)
+        t.clock.tick(1.0)   # the drive step's dwell after post-N (S7-D4: the final stop strictly after post-N)
         r = t.sc.handle("finish")
         self.assertTrue(r["ok"], r)
         return t
@@ -330,7 +331,7 @@ class TestEndstateRoundTrip(TakeCase):
         acc = ev.accesses(path="plan/approved.json", turn=1)
         self.assertEqual([a["op"] for a in acc], ["open"])
         self.assertEqual(sorted(os.listdir(t.evidence)), ["access.jsonl", "blobs", "health.jsonl", "ledger.jsonl",
-                                                          "snapshots"])
+                                                          "snapshots", "watched.json"])   # S7-D3
         self.assertEqual(sorted(os.listdir(os.path.join(t.evidence, "snapshots"))), ["post-1.json", "pre-1.json"])
         self.assertEqual(temps_in(t.evidence), [])   # no temp file left behind
 
@@ -407,7 +408,7 @@ class TestRoundTrip(TakeCase):
         self.assertNotEqual(os.geteuid(), 0, "this test runs as a non-root user (chmod 000 must bite)")
         r = t.sc.handle("begin")
         self.assertTrue(r["ok"], r)
-        self.assertEqual(r["unreadable"], sorted(["data/pipe", LOCKED]))
+        self.assertEqual(r["unreadable"], [LOCKED])   # S7-D1: the FIFO is a special state, never unreadable
         self.assertEqual(r["unreadable_consequential"], [LOCKED])
         t.turn([(PLAN, ("OPEN",)), ("design.tsv", ("OPEN",))])
         r = t.sc.handle("snapshot", "post-1")
@@ -437,18 +438,23 @@ class TestRoundTrip(TakeCase):
         post = ev.entries("post-1")
         self.assertEqual(post["data/alias"], {"type": "link", "target": "real"})
         self.assertFalse([p for p in post if p.startswith("data/alias/")])
-        self.assertEqual(post["data/pipe"], {"type": "unreadable"})
+        self.assertEqual(post["data/pipe"], {"type": "special", "kind": "fifo"})   # S7-D1
         self.assertEqual(post[LOCKED], {"type": "unreadable"})
         self.assertEqual(post["data/real/one.txt"]["type"], "file")
         self.assertEqual([a["op"] for a in ev.accesses(path=PLAN, turn=1)], ["open"])
         self.assertEqual([a["op"] for a in ev.accesses(path=PLAN, turn=2)], ["open", "modify", "modify"])
-        self.assertEqual(ev.accesses(path="design.tsv"), [])           # not a consequential path
+        # S7-D3 (ruled C): design.tsv is not watched, so reading its accesses is refused, never an empty "no access"
+        with self.assertRaisesRegex(es.EvidenceError, "not a watched path"):
+            ev.accesses(path="design.tsv")
+        self.assertEqual(ev.watched(), tuple(sorted((PLAN, LOCKED))))
         self.assertEqual(ev.content("post-2", PLAN), b'{"approved": true}\n')
         self.assertEqual(ev.agent_changes(2)[PLAN].kind, "modified")
-        # The named effect of persistently unreadable paths (W2A fold 1 question 3, W2A2-3): the FIFO and the
-        # chmod-000 file read as unknown changes across the operator step, so the operator re-check counts them.
+        # The named effect of persistently unreadable paths (W2A fold 1 question 3): the chmod-000 file reads as an
+        # unknown change across the operator step, so the operator re-check counts it. The FIFO no longer does: it
+        # is a special state, compared by equality (S7-D1, W2A2-3's fix), so a lasting FIFO is no change.
         unexplained = ev.operator_matches(1)["unexplained"]
-        self.assertEqual(unexplained, sorted(["data/pipe", LOCKED]))
+        self.assertEqual(unexplained, [LOCKED])
+        self.assertNotIn("data/pipe", ev.agent_changes(1))
         self.assertEqual(sorted(os.listdir(t.evidence)), sorted(es.FILES + es.FOLDERS))
 
     def test_mutant_following_a_link_goes_red(self):
@@ -492,7 +498,7 @@ class TestSpecialFilesAndOpens(TakeCase):
 
     def test_a_fifo_is_never_opened(self):
         t, entries, special, seen, elapsed = self.snap_with_fifo()
-        self.assertEqual(entries["pipe"], {"type": "unreadable"})
+        self.assertEqual(entries["pipe"], {"type": "special", "kind": "fifo"})   # S7-D1
         self.assertEqual(special, ["pipe"])
         self.assertLess(elapsed, self.BUDGET_S)
         self.assertNotIn(os.path.join(t.run_tree, "pipe"), [p for p, _ in seen])
@@ -711,6 +717,7 @@ class TestStubs(TakeCase):
         t.sc.handle("snapshot", "pre-2")
         t.turn([(PLAN, ("OPEN",))])
         t.sc.handle("snapshot", "post-2")
+        t.clock.tick(1.0)   # S7-D4: the drive step's dwell, so the final stop falls strictly after post-N
         t.sc.handle("finish")
         ev = t.load()
         self.assertEqual(ev.accesses(turn=1), [])
@@ -723,6 +730,7 @@ class TestStubs(TakeCase):
         t.sc.handle("begin")
         t.turn(late=[(PLAN, ("MODIFY",))])
         t.sc.handle("snapshot", "post-1")
+        t.clock.tick(1.0)   # S7-D4: the drive step's dwell, so the final stop falls strictly after post-N
         t.sc.handle("finish")
         got = t.load().accesses(path=PLAN, turn=1)
         self.assertEqual([(a["op"], a["late"]) for a in got], [("modify", True)])
@@ -778,6 +786,7 @@ class TestGaps(TakeCase):
             t.sc.handle("begin")
             t.turn()
             t.sc.handle("snapshot", "post-1")
+            t.clock.tick(1.0)   # S7-D4: the exit after post-N, as its sibling above has it
             t.w.die(0)
             t.sc.pump()
             t.sc.handle("finish")
@@ -793,6 +802,7 @@ class TestGaps(TakeCase):
         os.rename(os.path.join(t.run_tree, "plan"), os.path.join(t.run_tree, "plan.old"))
         t.write(PLAN, b"x\n")
         r1 = t.sc.handle("snapshot", "post-1")
+        t.clock.tick(1.0)   # S7-D4: the drive step's dwell, so the final stop falls strictly after post-N
         r2 = t.sc.handle("finish")
         return t, r1, r2
 
@@ -827,6 +837,7 @@ class TestGaps(TakeCase):
         t.turn([("plan", ("MOVED_FROM", "ISDIR")), ("staged", ("MOVED_FROM", "ISDIR")),
                 ("plan", ("MOVED_TO", "ISDIR"))])     # mv plan old; mv staged plan
         t.sc.handle("snapshot", "post-1")
+        t.clock.tick(1.0)   # S7-D4: the drive step's dwell, so the final stop falls strictly after post-N
         t.sc.handle("finish")
         self.assertEqual([a["op"] for a in t.load().accesses(path=PLAN, turn=1)], ["delete", "modify"])
 
@@ -836,6 +847,7 @@ class TestGaps(TakeCase):
         t.turn([(PLAN, ("DELETE",)), ("plan", ("DELETE_SELF",)), ("plan", ("DELETE", "ISDIR"))])
         r = t.sc.handle("snapshot", "post-1")
         self.assertTrue(r["ok"], r)
+        t.clock.tick(1.0)   # S7-D4: the drive step's dwell, so the final stop falls strictly after post-N
         t.sc.handle("finish")
         ev = t.load()
         self.assertEqual(ev.sidecar_record(), CLEAN)
@@ -907,6 +919,7 @@ class TestGaps(TakeCase):
         t.ledger.append({"kind": "turn", "n": 1, "started_at": start, "ended_at": t.clock.time()})
         t.clock.tick(1.0)
         t.sc.handle("snapshot", "post-1")
+        t.clock.tick(1.0)   # S7-D4: the drive step's dwell, so the final stop falls strictly after post-N
         t.sc.handle("finish")
         return t, start
 
@@ -969,6 +982,7 @@ class TestGaps(TakeCase):
         t.ledger.append({"kind": "turn", "n": 1, "started_at": start, "ended_at": t.clock.time()})
         t.clock.tick(1.0)
         t.sc.handle("snapshot", "post-1")
+        t.clock.tick(1.0)   # S7-D4: the drive step's dwell, so the final stop falls strictly after post-N
         t.sc.handle("finish")
         self.assertIn({"kind": "queue-overflow", "at": at}, t.health())
         self.assertEqual(t.load().sidecar_record(),
@@ -1141,6 +1155,7 @@ class TestPauseStamps(TakeCase):
         t.sc.handle("begin")
         t.turn()
         t.sc.handle("snapshot", "post-1")
+        t.clock.tick(1.0)   # S7-D4: the drive step's dwell, so the final stop falls strictly after post-N
         t.sc.handle("finish")
         return t
 
@@ -1169,6 +1184,7 @@ class TestWatchPlan(TakeCase):
         self.assertEqual(t.factory.plans[-1], (("", True),))
         t.turn([("out/new.txt", ("CREATE",)), ("out/new.txt", ("MODIFY",)), ("out/new.txt", ("OPEN",))])
         t.sc.handle("snapshot", "post-1")
+        t.clock.tick(1.0)   # S7-D4: the drive step's dwell, so the final stop falls strictly after post-N
         t.sc.handle("finish")
         self.assertEqual([a["op"] for a in t.load().accesses(path="out/new.txt", turn=1)],
                          ["modify", "modify", "open"])
@@ -1184,6 +1200,7 @@ class TestWatchPlan(TakeCase):
         os.makedirs(os.path.join(t.run_tree, "a", "b"))
         t.write("a/b/c", b"c\n")
         t.sc.handle("snapshot", "post-1")
+        t.clock.tick(1.0)   # S7-D4: the drive step's dwell, so the final stop falls strictly after post-N
         t.sc.handle("finish")
         return t
 
@@ -1450,7 +1467,8 @@ class TestHostHalf(unittest.TestCase):
 
     def test_endstate_binding(self):
         self.assertEqual(sidecar.LABEL_PATTERN, es._LABEL.pattern)
-        self.assertEqual((sidecar.LEDGER, sidecar.ACCESS, sidecar.HEALTH), es.FILES)
+        self.assertEqual((sidecar.LEDGER, sidecar.ACCESS, sidecar.HEALTH, sidecar.WATCHED), es.FILES)
+        self.assertEqual(sidecar.SPECIAL_KINDS, es.SPECIAL_KINDS)
         self.assertEqual((sidecar.SNAPSHOTS, sidecar.BLOBS), es.FOLDERS)
         self.assertEqual((sidecar.WATCHER_START, sidecar.WATCHER_STOP, sidecar.QUEUE_OVERFLOW),
                          (es.WATCHER_START, es.WATCHER_STOP, es.QUEUE_OVERFLOW))
@@ -2114,7 +2132,7 @@ BOX_MODULES = {
             "selectors": {"DefaultSelector", "EVENT_READ"},
             "signal": {"SIGKILL", "SIGTERM", "signal"},
             "socket": {"AF_UNIX", "SOCK_STREAM", "socket"},
-            "stat": {"S_ISDIR", "S_ISLNK", "S_ISREG"},
+            "stat": {"S_ISBLK", "S_ISCHR", "S_ISDIR", "S_ISFIFO", "S_ISLNK", "S_ISREG", "S_ISSOCK"},   # S7-D1
             "subprocess": {"PIPE", "Popen"},
             "sys": {"exit", "stdout.write"},
             "time": {"sleep", "time"},
@@ -2132,7 +2150,7 @@ BOX_MODULES = {
         "attrs": {
             '_abandon', 'AF_UNIX', 'ArgumentParser', 'DefaultSelector', 'EACCES', 'ENOENT', 'EVENT_READ', 'O_CLOEXEC', 'O_CREAT',
             'O_EXCL', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'O_WRONLY', 'PIPE', 'Popen', 'SIGKILL', 'SIGTERM',
-            'SOCK_STREAM', 'S_ISDIR', 'S_ISLNK', 'S_ISREG', '_access', '_arm', '_arm_gave_up', '_begin', '_beneath',
+            'SOCK_STREAM', 'S_ISBLK', 'S_ISCHR', 'S_ISDIR', 'S_ISFIFO', 'S_ISLNK', 'S_ISREG', 'S_ISSOCK', '_access', '_arm', '_arm_gave_up', '_begin', '_beneath',
             '_break', '_drain', '_drain_stderr', '_err', '_established', '_ev', '_event', '_finish', '_floor',
             '_health', '_move_targets', '_out', '_pause', '_read', '_reply', '_setup_fault', '_setup_line_ok',
             '_snap_command', '_snapshot', '_stamp', '_stderr_events', '_stop', '_sweep_temps', '_tail_counts',
@@ -2414,6 +2432,111 @@ def process_check() -> int:
         bad += bool(got)
     print(f"process check: {'ok' if not bad else f'{bad} problem(s)'}")
     return 1 if bad else 0
+
+
+# ------------------------------------------------------------------------------------------------- S7 (lane w6g)
+class TestS7Sidecar(TakeCase):
+    """glitch-1b's rulings S7-D1 (a special STATE by kind), S7-D2 (mode bits a named residual) and S7-D3 (begin writes
+    watched.json), under ownership transfer S7-gap4-1. Each assertion carries its clause token, bound by
+    tests/test_endstate.py's whole-file witnesses."""
+
+    def test_special_files_are_recorded_by_kind(self):
+        import socket
+        t = self.take()
+        os.mkfifo(os.path.join(t.run_tree, "pipe"))
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.addCleanup(s.close)
+        try:
+            s.bind(os.path.join(t.run_tree, "s.sock"))
+        except OSError as e:   # a socket path too long for this host: the kinds below still bind by mode
+            self.skipTest(f"no unix socket here: {e}")
+        entries, special, _ = sidecar.snapshot_tree(t.run_tree, t.watch)
+        self.assertEqual((entries["pipe"], entries["s.sock"]),
+                         ({"type": "special", "kind": "fifo"}, {"type": "special", "kind": "socket"}), "S7-D1.sidecar")
+        self.assertEqual(special, ["pipe", "s.sock"], "S7-D1.sidecar")
+        modes = {stat.S_IFCHR | 0o600: "char", stat.S_IFBLK | 0o600: "block", stat.S_IFIFO: "fifo",
+                 stat.S_IFSOCK: "socket", 0o160000: "special"}
+        self.assertEqual({m: sidecar._kind(m) for m in modes}, modes, "S7-D1.sidecar")
+        # what the sidecar writes, endstate reads: a lasting FIFO and socket are no change across the take
+        t.write_ledger()
+        r = t.sc.handle("begin")
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["unreadable"], [], "S7-D1.sidecar")
+        t.turn([])
+        self.assertTrue(t.sc.handle("snapshot", "post-1")["ok"])
+        t.clock.tick(1.0)
+        self.assertTrue(t.sc.handle("finish")["ok"])
+        e = t.load()
+        self.assertEqual((e.agent_changes(1), e.kind("post-1", "pipe"), e.sidecar_record()), ({}, "special", CLEAN),
+                         "S7-D1.sidecar")
+
+    def test_begin_writes_the_watched_list(self):
+        watch = ("z/b.json", "plan/approved.json", "plan/approved.json")
+        t = self.take(watch=watch)
+        r = t.sc.handle("begin")
+        self.assertTrue(r["ok"], r)
+        path = os.path.join(t.evidence, "watched.json")
+        self.assertTrue(os.path.isfile(path), "S7-D3.begin - begin wrote no watched.json")
+        with open(path, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh), {"paths": ["plan/approved.json", "z/b.json"]}, "S7-D3.begin")
+        t.turn([("plan/approved.json", ("OPEN",))])
+        self.assertTrue(t.sc.handle("snapshot", "post-1")["ok"])
+        t.clock.tick(1.0)
+        self.assertTrue(t.sc.handle("finish")["ok"])
+        e = t.load()
+        self.assertEqual(e.watched(), ("plan/approved.json", "z/b.json"), "S7-D3.begin")
+        self.assertEqual(e.accesses(path="z/b.json"), [], "S7-D3.begin")   # watched, nothing seen
+        self.assertEqual(temps_in(t.evidence), [], "S7-D3.begin")
+
+    def test_a_special_consequential_path_fails_begin(self):
+        # S7-gap4-3 (glitch-1b's W6G-R1-2 fold): before the first turn a consequential path that is a special file is
+        # a preflight problem, as it was while special files were recorded unreadable; nothing after begin changes.
+        t = self.take(watch=(PLAN, "data/pipe"))
+        os.makedirs(os.path.join(t.run_tree, "data"), exist_ok=True)
+        os.mkfifo(os.path.join(t.run_tree, "data", "pipe"))
+        os.mkfifo(os.path.join(t.run_tree, "side.fifo"))   # a special file at a path no one watches: no problem
+        r = t.sc.handle("begin")
+        self.assertEqual(sidecar.parse_reply(json.dumps(r) + "\n"), r, "S7-D1.begin")
+        self.assertFalse(r["ok"], "S7-D1.begin - a special consequential path passed begin")
+        self.assertEqual(len(r["problems"]), 1, "S7-D1.begin")
+        self.assertIn("data/pipe", r["problems"][0], "S7-D1.begin")
+        self.assertNotIn("side.fifo", r["problems"][0], "S7-D1.begin")
+        self.assertEqual((r["unreadable"], r["unreadable_consequential"]), ([], []), "S7-D1.begin")
+        # the take itself is not broken: the watcher runs, and a special consequential path made later is graded
+        t.turn([])
+        r1 = t.sc.handle("snapshot", "post-1")
+        self.assertTrue(r1["ok"], r1)
+        clean = self.take(watch=(PLAN, "data/pipe"))
+        r0 = clean.sc.handle("begin")
+        self.assertTrue(r0["ok"], r0)
+        clean.turn([])
+        os.makedirs(os.path.join(clean.run_tree, "data"), exist_ok=True)
+        os.mkfifo(os.path.join(clean.run_tree, "data", "pipe"))
+        r2 = clean.sc.handle("snapshot", "post-1")
+        self.assertTrue(r2["ok"] and r2["problems"] == [], "S7-D1.begin - a special file after begin is a problem")
+
+    def test_a_chmod_alone_is_invisible(self):
+        # S7-D2 (ruled C): the named, pre-registered residual. A chmod that leaves the file readable changes no STATE.
+        doc = " ".join((es.__doc__ or "").split())
+        self.assertIn("Mode bits (S7-D2, ruled C).", doc, "S7-D2.residual")
+        t = self.take()
+        p = os.path.join(t.run_tree, "design.tsv")
+        os.chmod(p, 0o600)
+        before, _, _ = sidecar.snapshot_tree(t.run_tree, t.watch)
+        os.chmod(p, 0o755)
+        after, _, _ = sidecar.snapshot_tree(t.run_tree, t.watch)
+        self.assertEqual(before, after, "S7-D2.residual")
+        self.assertFalse([st for st in after.values() if "mode" in st], "S7-D2.residual")
+
+    def test_the_final_stop_at_post_n_reads_as_a_gap(self):
+        # S7-D4 (ruled A), through the real sidecar: finish at post-1's own instant leaves no interval past it.
+        t = self.take()
+        self.assertTrue(t.sc.handle("begin")["ok"])
+        t.turn([])
+        self.assertTrue(t.sc.handle("snapshot", "post-1")["ok"])
+        self.assertTrue(t.sc.handle("finish")["ok"])       # no dwell: the final stop is stamped at post-1's instant
+        e = t.load()
+        self.assertEqual(e.sidecar_record(), dict(CLEAN, stop_record=False), "S7-D4.sidecar")
 
 
 class TestProcessCheck(unittest.TestCase):
