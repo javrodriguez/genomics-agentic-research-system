@@ -4076,3 +4076,8 @@ athena exact-head gate pending (orchestrator launches).
 
 No push, spend, remote job, credential, holdout, sealed or denied-source access occurred, and no step was refused by a safety or permission check.
 The code commit carries the Claude Opus 5.5 trailer; this report-only child carries none.
+
+## Merge readiness — Sun 11 Oct 2026 16:19 EDT
+
+Merge readiness (glitch-1b's merge writer, under ruling W5C-merge-1): the OPEN items this report still lists (V1-V8, the 79 pending inputs, and the carries such as W5C1-5 proxy counts, NITs W5C-R4-2..R4-4 and the run_checks echo item for w1a) are values and carries owned elsewhere, not open decisions of this lane; review R4 closed under the cap (glitch-1b's record in plans/gap-study-round-4/w5c-review-r4-2026-10-11.md, "W5C-R4-1 closed by evidence capture", 16:15 EDT); athena run gap4-w5c-ruleb-16778b1-16778b1-20261011T161248Z PASS (commit 16778b119181, battery 110/110, 1303 ran, 0 failures, 0 errors, 82 skipped; run.log sha256 4ac37977dc387a3b…), and the collateral capture beside it (collateral-capture/, nine partitions exit 0 on 419be9f6, 358/358 RED, SHA256SUMS listing each .out). The lane is ready to merge into gap4/w5c-merge from 89b54db4.
+This report-only child carries no trailer.
