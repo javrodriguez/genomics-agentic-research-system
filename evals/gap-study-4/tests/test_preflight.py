@@ -1133,14 +1133,36 @@ class LockSeam:
             w = World()
             box = LockBox()
             path = box.put("take-a", flat(ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2])))
-            for label, arg in (("a flattened lock file", path), ("a flattened dict", w.lock),
-                               ("a relative path", os.path.relpath(path))):
+            for label, arg in (("a flattened lock file", path), ("a flattened dict", w.lock)):
                 with box.active():
                     (kind, got), spies, fake = compose(m, w, arg, script=False)
                 if kind != "refused" or fake.calls or spies["evaluate"]:
                     out.append(f"C1-flat {label}: {kind}, {len(fake.calls)} runtime calls, "
                                f"{len(spies['evaluate'])} evaluations")
         run_case(out, "C1-flat", "flat", case)
+        return out
+
+    @staticmethod
+    def c1_relative(m) -> list:
+        """Criterion 1 (W6A-R1-1): a relative path to a VALID, ready take lock refuses (run_take.Refused) before
+        the loader and the runtime, so only the absolute-path rule can refuse it."""
+        out = []
+
+        def case():
+            w = World()
+            box = LockBox()
+            path = box.put("take-a", ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2]))
+            rel = os.path.relpath(path)
+            if os.path.isabs(rel) or not os.path.isfile(rel):
+                out.append(f"C1-relative: the fixture is not a readable relative path ({rel})")
+                return
+            with box.active():
+                (kind, got), spies, fake = compose(m, w, rel, script=False)
+            if kind != "refused" or not isinstance(got, rt.Refused) or fake.calls or spies["load"] \
+                    or spies["evaluate"]:
+                out.append(f"C1-relative: {kind} ({type(got).__name__}), {len(spies['load'])} loads, "
+                           f"{len(fake.calls)} runtime calls")
+        run_case(out, "C1-relative", "relative", case)
         return out
 
     @staticmethod
@@ -1409,6 +1431,9 @@ class TestLockSeam(unittest.TestCase):
     def test_c1_no_flattened_lock(self):
         self.assertEqual(LockSeam.c1_flat(pf), [])
 
+    def test_c1_relative_path_to_a_valid_lock_refused(self):
+        self.assertEqual(LockSeam.c1_relative(pf), [])
+
     def test_c2_closed_validation_survives(self):
         self.assertEqual(LockSeam.c2_closed(pf), [])
 
@@ -1531,6 +1556,8 @@ WITNESSES = {
     "omit-load": ((("    lock = image_lock.load(lock_path)\n",
                     "    with open(lock_path, encoding=\"utf-8\") as fh:\n        lock = json.loads(fh.read())\n"),),
                   LockSeam.c1_loader, "C1-loader-spy", None),
+    "omit-absolute-path-rule": ((("    lock_path = run_take._abs_path(lock_path, \"lock_path\")\n", ""),),
+                                LockSeam.c1_relative, "C1-relative", None),
     "omit-readiness": ((("    image_lock.require_ready(lock)\n", ""),), LockSeam.c2_pending, "C2-pending", None),
     "omit-harness-image-binding": ((("    if lock[\"image\"] != TAKE_IMAGE[harness]:\n", "    if False:\n"),),
                                    LockSeam.c3_cross, "C3-cross", None),
@@ -1570,6 +1597,9 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_omit_load(self):
         self.kill("omit-load")
 
+    def test_witness_omit_absolute_path_rule(self):
+        self.kill("omit-absolute-path-rule")
+
     def test_witness_omit_readiness(self):
         self.kill("omit-readiness")
 
@@ -1585,12 +1615,14 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_pre_launch_spec(self):
         self.kill("pre-launch-spec")
 
-    def test_the_six_are_named(self):
+    def test_the_witnesses_are_named(self):
+        """The readiness note's six, plus W6A-R1-1's absolute-path witness; each bound to its own check."""
         self.assertEqual(sorted(WITNESSES), sorted(["omit-load", "omit-readiness", "omit-harness-image-binding",
                                                     "drop-mount-source-comparison",
-                                                    "probes-at-another-evidence-path", "pre-launch-spec"]))
+                                                    "probes-at-another-evidence-path", "pre-launch-spec",
+                                                    "omit-absolute-path-rule"]))
         bound = {n: w[1].__name__ for n, w in WITNESSES.items()}
-        self.assertEqual(len(set(bound.values())), 6, bound)
+        self.assertEqual(len(set(bound.values())), 7, bound)
 
 
 # Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).

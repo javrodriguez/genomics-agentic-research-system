@@ -19,7 +19,7 @@
     {
       "path": "tests/test_run_take.py",
       "status": "new",
-      "reason": "Tests for box/run_take.py (interface 3) with fakes only: the process guard, every clause with its mutants, and interface 10's ast audit. Its two audit allowlist entries for box.image_lock (IMPORT_FROM_ALLOWED and MODULE_ATTRS) are lane w6a's since 11 Oct 2026 under glitch-1b's ruling w6a-1."
+      "reason": "Tests for box/run_take.py (interface 3) with fakes only: the process guard, every clause with its mutants, and interface 10's ast audit. Its two audit allowlist entries for box.image_lock (IMPORT_FROM_ALLOWED and MODULE_ATTRS) are lane w6a's since 11 Oct 2026 under glitch-1b's ruling w6a-1. Under the same ruling (W6A-R1-2) lane w6a also owns the reach audit of what preflight now imports (REACH_MODULES, REACH_IMPORTS, reach_audit, TestReachAudit)."
     },
     {
       "path": "tests/test_preflight.py",
