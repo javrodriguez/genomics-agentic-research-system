@@ -128,4 +128,23 @@ Collateral is printed, never credited.
 The full run_checks (athena's), the whole test_round4, and the fresh opus-medium review are owed to glitch-1b; OPEN-1 first.
 No push, merge, dispatch, spend or credential read.
 
-RESUME HERE: hand-back at 963768c563d58fb6cd994ab73e935bea078c16bc
+RESUME HERE (superseded below): hand-back at 963768c563d58fb6cd994ab73e935bea078c16bc
+
+## Update: S7-gap4-2, Sun 11 Oct 2026 18:22 EDT
+
+glitch-1b's rulings (end of the options file): S7-gap4-2 authorises OPEN-1's fix; OPEN-2, OPEN-3 and OPEN-5 accepted; OPEN-4 carried to the draft-text owner (W6D-R1-2's pre-freeze item).
+Code commit `418237b10ab17664edb04d2d88281d3d734b441d`: one line in `tests/test_pipeline.py` after line 1685 writes `watched.json` = `{"paths": ["synthetic/watched.txt"]}` into the synthetic evidence folder.
+It is recorded in `COPIED.d/w5b-cp5-pipeline.json` as an edit, appended to that entry's reason with S7-gap4-2's name.
+The entry's `status` stays `new`, because the file has no round 3 source and an `edited` entry must name one; there is no ownership transfer.
+
+Gates (Mac, light-ok first, `timeout -s INT 60`):
+- `copy_manifest.py --check`: `ok: 225 files from 29 fragment(s)`, exit 0.
+- `tests/test_pipeline.py` whole: timeout, exit 124 (it took 63-76 s earlier this session).
+- `PublishedArtifacts.test_committed_artifacts_regrade_and_publish_through_cli` alone: timeout, exit 124, interrupted inside its own scratch-repository `git` setup under load about 8.
+  So test_pipeline is NOT verified green on the Mac; the whole module is left to athena, as ruled.
+- A direct check: the fixture's exact shape, with the new line, loads through `Evidence.load` (`watched()` = `('synthetic/watched.txt',)`), exit 0.
+- test_scaffold was not run again (the 606 s whole run earlier is a departure, noted by glitch-1b).
+
+OPEN-1 is closed by this line pending athena's test_pipeline; nothing else is open in this lane.
+
+RESUME HERE: hand-back at 418237b10ab17664edb04d2d88281d3d734b441d
