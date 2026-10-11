@@ -3,6 +3,4 @@
 # root. Each module prints one WITNESS line per guard. Python 3.9 or later (Path.is_relative_to).
 python3 -B -W ignore evals/gap-study-4/tests/test_box_integration.py
 python3 -B -W ignore evals/gap-study-4/tests/test_check_take.py
-# Round 3's checker stays byte for byte above the round-4 banner except the three lines changed in place (902, 1567,
-# 1604): every other line of round 3's file, in order, then the appended section.
-python3 -B -c "import subprocess,sys; o=subprocess.run(['git','show','e2979b31:evals/gap-study-3/check_take.py'],capture_output=True,check=True).stdout.split(b'\n'); n=open('evals/gap-study-4/check_take.py','rb').read().split(b'\n'); k=[i for i,l in enumerate(o) if l.startswith(b'if __name__')][-1]; keep=[i for i in range(k) if i not in (901,1566,1603)]; sys.exit(0 if len(n)>len(o) and all(n[i]==o[i] for i in keep) and n[-3:]==o[k:k+3] and all(n[i]!=o[i] for i in (901,1566,1603)) else 1)"
+# The round-3 byte binding of check_take.py moved to checks.d/w6i-checker-body.txt (ruling S6b-gap4-1), re-indexed there.

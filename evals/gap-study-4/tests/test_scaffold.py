@@ -79,9 +79,10 @@ def foreign(files: list[str]) -> list[str]:
 
 def copied_modules() -> list[str]:
     # Departures w6e-1 and w6h-1: drive.py's claim moved to lane w6e's fragment (ruling S5-gap4-1), then with
-    # check_take.py's to lane w6h's (ruling S6-gap4-1); both are still probed here.
+    # check_take.py's to lane w6h's (ruling S6-gap4-1), then both to lane w6i's (ruling S6b-gap4-1); still probed here.
     rec = {"files": [e for frag in (OWN_FRAGMENT, cm.FRAGMENTS / "w5c-draft-ci.json",
-                                    cm.FRAGMENTS / "w6e-drive-commit.json", cm.FRAGMENTS / "w6h-drive-lifecycle.json")
+                                    cm.FRAGMENTS / "w6e-drive-commit.json", cm.FRAGMENTS / "w6h-drive-lifecycle.json",
+                                    cm.FRAGMENTS / "w6i-checker-body.json")
                      for e in json.loads(frag.read_text())["files"]]}
     return [e["path"] for e in rec["files"] if e["status"] != "new" and e["path"].endswith(".py")]
 

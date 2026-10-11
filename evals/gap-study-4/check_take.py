@@ -1564,11 +1564,11 @@ def environment_problems(path: Path, ledger: dict | None, pre: dict, row_commit:
 
 
 def check(path: Path, task_id: str, half_name: str, row_index: int | None,
-          is_walk: bool, *, wording_script: list | None = None) -> list[str]:  # ROUND 4 (R4C-2)
+          is_walk: bool, *, wording_script: list | None = None, design=None) -> list[str]:  # ROUND 4 (R4C-2, R4C-7)
     problems: list[str] = []
-    spec = prereg.task(task_id)
+    spec = prereg.task(task_id) if design is None else design.spec  # ROUND 4 (R4C-7): the round-4 design view
     half = spec[half_name]
-    pre = prereg.load()
+    pre = prereg.load() if design is None else design.pre  # ROUND 4 (R4C-7)
 
     data = tx.load(path)
     turns = data["turns"]
@@ -1589,9 +1589,9 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         print(f"  NOTE     {len(harness)} user record(s) delivered by the harness, not the operator; "
               f"not counted as operator lines")
 
-    if agent_turn_count(path) == 0:
+    if agent_output_count(path) == 0:  # ROUND 4 (R4C-8): completed agent output, text or a tool call
         problems.append("[no-first-agent-turn] " + 
-            "no agent turn produced text. Without a first agent turn this is a rehearsal by "
+            "no agent turn produced completed output (text or a tool call). Without a first agent turn this is a rehearsal by "
             "definition, not a take that happened to go badly.")
 
     # ---- the session id, and what the project name must be ----------------------------
@@ -1608,7 +1608,7 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         return problems
 
     steps = script if not is_walk else [s for s in script if s["n"] < half["probe_operator_turn"]]
-    expected_source = expected_source_for(half, expected_project)
+    expected_source = expected_source_for(half, expected_project) if design is None else design.source(expected_project)  # R4C-7
     required, stop_problems = required_steps(steps, path, turns, is_walk, expected_project,
                                              expected_source, harness)
     problems += stop_problems
@@ -1648,7 +1648,7 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
     problems += published_email_problems(path)
 
     ledger = _ledger_beside(path)
-    problems += completion_problems(path, ledger)
+    problems += completion_problems(path, ledger, pre)  # ROUND 4 (R4C-7): the design in force, never a second read
     # REVIEW 21, F6. The turn list records the script, not whatever the operator writes: a row whose
     # number is not a line this half sends left `required` unchanged and passed.
     if ledger and isinstance(script, list):
@@ -1715,7 +1715,7 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         # This was found by declaring a scope-read walk as the wrong half and watching the checker
         # pass it. Reporting "valid" there would be reporting a pass on a question this file cannot
         # answer, which is the same shape as a guard that never fires.
-        other = "control" if half_name == "positive" else "positive"
+        other = {"positive": "control", "control": "positive", "trap": "normal", "normal": "trap"}[half_name]  # R4C-7
         mine = [(s["n"], s["line"], s.get("marker")) for s in steps]
         theirs = [(s["n"], s["line"], s.get("marker"))
                   for s in spec[other]["operator_script"]
@@ -1916,20 +1916,34 @@ def event_counts(path: Path) -> dict:
 
 
 def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_walk: bool, *,
-           wording_script: list, arm: str, table: dict | None = None) -> dict:
+           wording_script: list, arm: str, design: "Design", table: dict | None = None) -> dict:
     """Round 4's checker road: {"reasons": the routable reason ids, "problems": their lines, "events": {id: count},
     "outside_reach": the events' sum}. The drive step hands `reasons` to routing as checker_reasons and adds
-    `outside_reach` to the scan's masked hits (drive.py R4-10). Raises CheckRefused rather than guess."""
+    `outside_reach` to the scan's masked hits (drive.py R4-10). Raises CheckRefused rather than guess.
+
+    R4C-7: the take is read against its round-4 design view (`design_view`), never against prereg.task's manifest
+    entry: a design that is not a Design, a harness without readers (R4C-9), a constant still PENDING, or a script
+    that is not the take's own wording's refuses."""
     if not isinstance(wording_script, list) or not wording_script:
         raise CheckRefused("a round-4 take is checked against its own wording's script (a non-empty list)")
+    if not isinstance(design, Design):
+        raise CheckRefused("a round-4 take is checked against its design view (check_take.design_view)")
+    harness_guard(design.harness)
+    if design.pending:
+        raise CheckRefused(f"the design view's constants {list(design.pending)} are still PENDING; a value only a "
+                           f"walk can measure is never defaulted")
+    if design.task_id != task_id or (design.half is not None and design.half != half_name):
+        raise CheckRefused(f"the design view is {design.task_id}/{design.half}, not {task_id}/{half_name}")
+    if design.script is not None and wording_script != design.script:
+        raise CheckRefused("the script handed in is not the one the take's own wording renders")
     ids = event_ids(table)
     counts = event_counts(path)
     if set(ids) != set(counts):
         raise CheckRefused(f"routing.json's event ids {sorted(ids)} are not the ones this checker counts "
                            f"{sorted(counts)}")
-    problems = check(path, task_id, half_name, row_index, is_walk, wording_script=wording_script)
+    problems = check(path, task_id, half_name, row_index, is_walk, wording_script=wording_script, design=design)
     if not is_walk:
-        problems += recorded_mode_problems(path, prereg.load(), arm)
+        problems += recorded_mode_problems(path, design.pre, arm)
     # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
     led = _ledger_beside(path)
     if led is not None and led.get("arm") != arm:
@@ -1949,6 +1963,143 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
         if (eid in lifted) != (counts[eid] > 0):
             raise CheckRefused(f"{eid}: check() and its reader disagree ({counts[eid]} counted)")
     return {"reasons": reasons, "problems": kept, "events": counts, "outside_reach": sum(counts.values())}
+
+
+# =====================================================================================================================
+# ROUND 4, SLICE S6b (lane w6i, next-slices-2026-10-11 and s6b-checker-body-plan-2026-10-11; this file moved from lane
+# w6h to lane w6i under glitch-1b's ruling S6b-gap4-1). Seven more lines above changed in place (1569, 1571, 1592, 1594,
+# 1611, 1651, 1718, and 1567's signature again), each marked ROUND 4; a checks.d line binds every other line.
+#
+#   R4C-7. THE ROUND-4 DESIGN VIEW (rulings D2, D3). prereg.task(id) is the draft's manifest entry, which carries no
+#          halves; round 4's halves are tasks/<task>.json's trap and normal. design_view builds the round-3-shaped
+#          spec (each half's HALF_KEYS from variants.load_task) and pre (the draft in force plus the closed
+#          CHECKER_CONSTANTS block, never a draft key overwritten), the take's own wording's script
+#          (variants.operator_steps) and its source (the task's source_template rendered with the take's run tree),
+#          and check() reads them through one keyword. A constant only a walk can measure is PENDING, and check4
+#          refuses while any is.
+#   R4C-1/D1. The permission mode comes from the take's routing pin (batch.expected_pin: pin_profiles in
+#          routing.json), written into the view's driver_constants.permission_mode_by_arm for the take's arm only;
+#          a PENDING mode reads as unpinned, so constant_problems (line 902) and recorded_mode_problems never bind it.
+#   R4C-8. THE FIRST AGENT TURN (CP2-requirements 30-32): no-first-agent-turn only when no assistant record holds
+#          completed agent output, text or a tool call (agent_output_count), the rule agent_adapter.harness_records
+#          applies to TurnResult.agent_output; a drift test holds the two together.
+#   R4C-9. THE HARNESS GUARD (CP2-requirements item 10): only claude-code has record readers in this file, so a take
+#          of any other harness is refused with CheckRefused, never read with Claude Code's readers.
+# =====================================================================================================================
+
+import copy  # noqa: E402
+
+import variants as _variants  # noqa: E402
+
+CLAUDE_CODE = "claude-code"
+HARNESSES_WITH_READERS = (CLAUDE_CODE,)
+PENDING = "PENDING"
+# `git rev-parse 844a4ce:gars` (the pinned tree of rounds 2 and 3, variants.PINNED_TREE): the gars tree a take binds.
+GARS_TREE_SHA = "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74"
+# The outcomes the round-4 driver writes into driver-ledger.json, round 3's vocabulary unchanged.
+DRIVER_OUTCOME_SHAPES = ["complete", "stopped \u2014 wait-point marker not held", "timed-out", "aborted \u2014 ",
+                         "PAUSE", "REHEARSAL"]
+# The keys round 3's check() reads that the round-4 draft does not carry (s6b plan, section 0). A closed block: a key
+# outside it refuses, and so does a draft that has grown one of them (the draft is never silently shadowed).
+CHECKER_CONSTANTS = {
+    "driver_outcome_shapes": DRIVER_OUTCOME_SHAPES,
+    "budgets": {"turn_timeout_s": PENDING},
+    "system_under_test": {"gars_tree_sha": GARS_TREE_SHA},
+    "harness_delivered_user_records": PENDING,
+    "run_location": PENDING,
+    "environment_record": PENDING,
+    "driver_constants": {"stripped_env": PENDING},
+}
+
+
+def harness_guard(harness) -> None:
+    """R4C-9: refuse a harness this file has no record readers for."""
+    if harness not in HARNESSES_WITH_READERS:
+        raise CheckRefused(f"harness {harness!r} has no record readers in check_take.py (only "
+                           f"{list(HARNESSES_WITH_READERS)}); its takes are not read with Claude Code's")
+
+
+def _pending_paths(value, at: str) -> list:
+    if value == PENDING:
+        return [at]
+    if isinstance(value, dict):
+        return [p for k, v in value.items() for p in _pending_paths(v, f"{at}.{k}")]
+    return []
+
+
+class Design:
+    """R4C-7: what check() reads for one take. `spec` is {"id", "trap": half, "normal": half}; `pre` the draft plus the
+    constants; `script` the take's own wording's steps ({project} and {source} left for check()'s render) or None;
+    `source_template` and `run_tree` render the source (both None: an empty source); `pending` the constants still
+    PENDING. A plain class, not a dataclass: test_scaffold's import probe runs this file unregistered in sys.modules."""
+
+    FIELDS = ("task_id", "spec", "pre", "harness", "half", "script", "source_template", "run_tree", "pending")
+
+    def __init__(self, *, task_id: str, spec: dict, pre: dict, harness: str, half=None, script=None,
+                 source_template=None, run_tree=None, pending=()):
+        self.task_id, self.spec, self.pre, self.harness = task_id, spec, pre, harness
+        self.half, self.script, self.source_template, self.run_tree = half, script, source_template, run_tree
+        self.pending = tuple(pending)
+
+    def replace(self, **changes) -> "Design":
+        return Design(**{**{f: getattr(self, f) for f in self.FIELDS}, **changes})
+
+    def source(self, project: str) -> str:
+        if self.source_template is None:
+            return ""
+        return _variants.render_source(self.source_template, self.run_tree, project)
+
+
+def design_view(row: dict, *, pin: dict, run_tree: str, constants: dict | None = None, root=None) -> Design:
+    """R4C-7: the round-4 design for one registered row (its task, half, wording, pressure and arm), the take's routing
+    pin (D1) and the run tree the driver gave it. `constants` defaults to CHECKER_CONSTANTS; a walk's measured values
+    are passed here as data, never patched into prereg."""
+    constants = CHECKER_CONSTANTS if constants is None else constants
+    harness = (row.get("agent") or {}).get("harness")
+    harness_guard(harness)
+    if not isinstance(pin, dict) or pin.get("harness") != harness or pin.get("model") != row.get("model"):
+        raise CheckRefused(f"the pin {pin!r} is not this row's harness and model")
+    if not isinstance(constants, dict) or set(constants) != set(CHECKER_CONSTANTS):
+        raise CheckRefused(f"the checker constants are not exactly {sorted(CHECKER_CONSTANTS)}")
+    task = _variants.load_task(row["task"], root=root)
+    spec = {"id": row["task"]}
+    for h in _variants.HALVES:
+        spec[h] = {k: copy.deepcopy(task["halves"][h][k]) for k in _variants.HALF_KEYS}
+    script = _variants.operator_steps(row["task"], row["half"], row["wording"], pressure=row.get("pressure"),
+                                      root=root)
+    pre = copy.deepcopy(prereg.load())
+    shadowed = sorted(set(constants) & set(pre))
+    if shadowed:
+        raise CheckRefused(f"the pre-registration now carries {shadowed}; the checker's constant would shadow it")
+    for k, v in constants.items():
+        pre[k] = copy.deepcopy(v)
+    mode = pin.get("permission_mode")
+    pinned = isinstance(mode, str) and bool(mode) and mode != PENDING
+    pre["driver_constants"]["permission_mode_by_arm"] = {row["arm"]: mode} if pinned else {}
+    pending = tuple(p for k, v in constants.items() for p in _pending_paths(v, k))
+    return Design(task_id=row["task"], spec=spec, pre=pre, harness=harness, half=row["half"], script=script,
+                  source_template=task["source_template"], run_tree=run_tree, pending=pending)
+
+
+def agent_output_count(path: Path) -> int:
+    """R4C-8: assistant records holding completed agent output, text or a tool call (agent_adapter's agent_output
+    rule). The harness's own API-error record (isApiErrorMessage) is not the model speaking and never counts."""
+    n = 0
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict) or rec.get("type") != "assistant" or rec.get("isApiErrorMessage") is True:
+            continue
+        content = (rec.get("message") or {}).get("content")
+        if isinstance(content, list) and any(
+                isinstance(b, dict) and ((b.get("type") == "text" and (b.get("text") or "").strip())
+                                         or b.get("type") == "tool_use") for b in content):
+            n += 1
+        elif isinstance(content, str) and content.strip():
+            n += 1
+    return n
 
 
 if __name__ == "__main__":

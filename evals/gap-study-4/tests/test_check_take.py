@@ -162,6 +162,12 @@ def records(reasons, *, first_turn: bool) -> dict:
     return aa.harness_records([turn], pin=pin, box=box)
 
 
+def dsg(mod):
+    """S6b (R4C-7): check4 reads a design view; S6's synthetic design as one, built from `mod`'s own Design so a
+    witness module's isinstance check holds (the synthetic halves, PRE, claude-code, no wording script bound)."""
+    return mod.Design(task_id="synthetic-task", spec=copy.deepcopy(TASK), pre=copy.deepcopy(PRE), harness="claude-code")
+
+
 def has(problems, rid) -> bool:
     return any(p.startswith(f"[{rid}] ") for p in problems)
 
@@ -194,7 +200,7 @@ def k1_arm(mod, p):
     for led_arm, refused in (("C", True), ("A", False), (None, True)):
         path = transcript()
         (path.parent / "driver-ledger.json").write_text(json.dumps({} if led_arm is None else {"arm": led_arm}))
-        got = quiet(mod.check4, path, "synthetic-task", "positive", None, True, wording_script=WORDING, arm="A")
+        got = quiet(mod.check4, path, "synthetic-task", "positive", None, True, wording_script=WORDING, design=dsg(mod), arm="A")
         hit = any(q.startswith("[constant-binding] the driver ledger records arm") for q in got["problems"])
         if hit != refused:
             out.append(f"{p}: a ledger of arm {led_arm!r} checked as arm 'A': the arm binding "
@@ -216,7 +222,7 @@ def k2_wording(mod, p):
         out.append(f"{p}: a take that sent the half's line instead of its wording's passed the operator lines")
     for bad in (None, []):
         try:
-            quiet(mod.check4, path, "synthetic-task", "positive", None, True, wording_script=bad, arm="A")
+            quiet(mod.check4, path, "synthetic-task", "positive", None, True, wording_script=bad, design=dsg(mod), arm="A")
             out.append(f"{p}: check4 accepted a take with no wording script ({bad!r})")
         except mod.CheckRefused:
             pass
@@ -232,7 +238,7 @@ def k3_events(mod, p):
     ids = mod.event_ids()
     if not all(has(raw, eid) for eid in ids):
         return [f"{p}: the synthetic transcript does not raise all three event reasons: {mod.reason_ids(raw)}"]
-    got = quiet(mod.check4, path, "synthetic-task", "positive", None, True, wording_script=WORDING, arm="A")
+    got = quiet(mod.check4, path, "synthetic-task", "positive", None, True, wording_script=WORDING, design=dsg(mod), arm="A")
     leaked = [r for r in got["reasons"] if r in ids]
     if leaked:
         out.append(f"{p}: event ids reached the routable reasons: {leaked}")
@@ -244,7 +250,7 @@ def k3_events(mod, p):
         out.append(f"{p}: the events are not counted one per instance: {counts}")
     if got["outside_reach"] != sum(counts.values()):
         out.append(f"{p}: outside_reach {got['outside_reach']} is not the events' sum {sum(counts.values())}")
-    clean = quiet(mod.check4, transcript(), "synthetic-task", "positive", None, True, wording_script=WORDING,
+    clean = quiet(mod.check4, transcript(), "synthetic-task", "positive", None, True, wording_script=WORDING, design=dsg(mod),
                   arm="A")
     if clean["outside_reach"] != 0 or any(clean["events"].values()):
         out.append(f"{p}: a transcript with no reach counted events: {clean['events']}")
@@ -315,10 +321,10 @@ class TestRound4Edits(unittest.TestCase):
         zero = {eid: 0 for eid in ct.event_ids()}
         with mock.patch.object(ct, "event_counts", lambda p: dict(zero)):
             with self.assertRaises(ct.CheckRefused):
-                quiet(ct.check4, path, "synthetic-task", "positive", None, True, wording_script=WORDING, arm="A")
+                quiet(ct.check4, path, "synthetic-task", "positive", None, True, wording_script=WORDING, design=dsg(ct), arm="A")
         with mock.patch.object(ct, "check", lambda *a, **k: ["a refusal with no id"]):
             with self.assertRaises(ct.CheckRefused):
-                ct.check4(transcript(), "synthetic-task", "positive", None, True, wording_script=WORDING, arm="A")
+                ct.check4(transcript(), "synthetic-task", "positive", None, True, wording_script=WORDING, design=dsg(ct), arm="A")
 
     def test_the_event_ids_are_routings_never_retyped(self):
         need(self, "event_ids", "event_counts")
