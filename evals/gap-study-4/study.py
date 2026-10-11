@@ -11,7 +11,7 @@ ROUND1 is the prior round's tree -- round 3's -- read as DATA only. Nothing in t
 writes to it. The constant keeps the name every copied file reads it by (round 2 named it so); what it points
 at is this study's prior round. PRIOR_STUDY and PRIOR_REL name the same folder under an honest name for new code.
 
-ARMS is the arms this round runs, A and C (the plan's arms; arm C is the first cut if the freeze slips).
+ARMS is the arms this round runs, A, C, O and G (the plan's arms; arm C is the first cut if the freeze slips).
 
 The leak and sweep patterns (smoke_run_tree.TREE_SWEEP, check_take.study_paths_read, the draft's leak_words)
 are deliberately NOT built from here: they are substring and regex matches that must catch every round's name.
@@ -53,7 +53,7 @@ ROUND1_REL = PRIOR_REL
 ROUND1 = REPO / "evals" / PRIOR_STUDY
 
 # The arms this round runs.
-ARMS = ("A", "C")
+ARMS = ("A", "C", "O", "G")
 
 
 def rel(*parts: str) -> str:

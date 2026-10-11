@@ -22,11 +22,6 @@
       "source": "evals/gap-study-3/build_cases.py"
     },
     {
-      "path": "build_draft.py",
-      "status": "identical",
-      "source": "evals/gap-study-3/build_draft.py"
-    },
-    {
       "path": "check_checklist_names.py",
       "status": "identical",
       "source": "evals/gap-study-3/check_checklist_names.py"
@@ -213,12 +208,6 @@
       "path": "smoke_run_tree.py",
       "status": "identical",
       "source": "evals/gap-study-3/smoke_run_tree.py"
-    },
-    {
-      "path": "study.py",
-      "status": "edited",
-      "source": "evals/gap-study-3/study.py",
-      "reason": "The binding for round 4: the study's name, folder and title (gap-study-4), its published-section markers, the prior round it reads as data (ROUND1 now points at evals/gap-study-3, with PRIOR_STUDY and PRIOR_REL naming it honestly) and the arms it runs (ARMS = A and C). Every copied file builds its paths and markers from this file, so no other copied file needs to name this study."
     },
     {
       "path": "test_round4.py",

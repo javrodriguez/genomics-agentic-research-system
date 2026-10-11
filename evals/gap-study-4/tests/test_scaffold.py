@@ -37,7 +37,6 @@ OWN_FRAGMENT = cm.FRAGMENTS / f"{LANE}.json"
 # Copied modules that cannot import yet, each with the exact error it stops on. Each waits on a later
 # checkpoint's file; when that file lands this test goes red and the entry must go.
 BLOCKED = {
-    "drive.py": "SystemExit: no pre-registration: neither prereg.json nor prereg-draft.json exists.",
 }
 
 # Run in a fresh interpreter, from a folder outside the study, as `python3 <path>` would: the file's own folder is
@@ -79,7 +78,8 @@ def foreign(files: list[str]) -> list[str]:
 
 
 def copied_modules() -> list[str]:
-    rec = json.loads(OWN_FRAGMENT.read_text())
+    rec = {"files": [e for frag in (OWN_FRAGMENT, cm.FRAGMENTS / "w5c-draft-ci.json")
+                     for e in json.loads(frag.read_text())["files"]]}
     return [e["path"] for e in rec["files"] if e["status"] != "new" and e["path"].endswith(".py")]
 
 
@@ -472,7 +472,7 @@ class TheBinding(unittest.TestCase):
             out.append("round name")
         if s.ROUND1_REL != "evals/gap-study-3" or s.ROUND1 != REPO / "evals" / "gap-study-3":
             out.append("prior round")
-        if tuple(s.ARMS) != ("A", "C"):
+        if tuple(s.ARMS) != ("A", "C", "O", "G"):
             out.append("arms")
         for m in (s.SECTION_TITLE, s.SUMMARY_START, s.SUMMARY_END, s.SECTION_END):
             if "gap-study-4" not in m and "round 4" not in m:
