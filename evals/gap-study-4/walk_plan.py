@@ -221,8 +221,13 @@ def read_register(base: Path, design: dict) -> list:
         scratch = Path(tmp)
         (scratch / walk_register.REGISTER_NAME).write_bytes(raw)
         for walk in stand_in_ids(raw):
-            (scratch / walk).mkdir(exist_ok=True)
-            (scratch / walk / STAND_IN).write_text("a stand-in; coverage never reads a walk folder\n")
+            # an id that cannot be a folder here (register.json itself, a name too long for the filesystem) gets no
+            # stand-in, so the check reports its folder missing and the register is refused: fail closed, by name
+            try:
+                (scratch / walk).mkdir(exist_ok=True)
+                (scratch / walk / STAND_IN).write_text("a stand-in; coverage never reads a walk folder\n")
+            except OSError:
+                pass
         problems, _ = walk_register.check(scratch, design["register"])
         if problems:
             raise RegisterUnreadable(f"walk_register's check refuses {path}: " + "; ".join(problems[:5]) +
