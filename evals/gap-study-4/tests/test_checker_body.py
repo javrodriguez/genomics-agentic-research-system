@@ -142,6 +142,9 @@ def pinned_text(path: str) -> str:
 
 def setUpModule():
     global ct, SCRATCH
+    # Wave 6 merge (binding W6M1, tests/test_wave6_bindings.py): check_take.py puts evals/ on sys.path when
+    # imported; registered first, so the stack's close puts sys.path back, in place, last.
+    _STACK.callback(sys.path.__setitem__, slice(None), list(sys.path))
     SCRATCH = Path(_STACK.enter_context(tempfile.TemporaryDirectory(prefix="w6i-cb-"))).resolve()
     _STACK.enter_context(mock.patch.object(subprocess, "Popen", _gate))
     for name in ("call", "check_call", "check_output", "getoutput", "getstatusoutput"):

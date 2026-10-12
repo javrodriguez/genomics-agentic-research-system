@@ -162,6 +162,9 @@ def row(n=1, **kw):
 
 def setUpModule():
     global drive, SCRATCH
+    # Wave 6 merge (binding W6M1, tests/test_wave6_bindings.py): check_take.py puts evals/ on sys.path when
+    # imported; registered first, so the stack's close puts sys.path back, in place, last.
+    _STACK.callback(sys.path.__setitem__, slice(None), list(sys.path))
     SCRATCH = Path(_STACK.enter_context(tempfile.TemporaryDirectory(prefix="w6h-"))).resolve()
     home = SCRATCH / "home"
     home.mkdir()
