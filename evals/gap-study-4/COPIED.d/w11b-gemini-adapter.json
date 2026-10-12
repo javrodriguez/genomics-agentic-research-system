@@ -1,0 +1,100 @@
+{
+  "lane": "w11b-gemini-adapter",
+  "files": [
+    {
+      "path": "tests/test_gemini_adapter.py",
+      "status": "new",
+      "reason": "Lane w11b-gemini-adapter (arm G, next-slices-plan-2026-10-12 section 2; ruling Q-3): the Gemini CLI adapter and its stream parser on synthetic streams over a fake runtime: S1-S6 the closed event, key, word, stats and tool tables and the harness's error words, P1 the view vocabulary through transcript_view.events with the parser in a copy of PARSERS for the test only, A1-A9 the stream read, the harness's errors kept apart from the agent's text and output, agent output clause by clause, the stats as recorded, the model checked every turn (init.model and every stats.models key), the argv (-m and the mode's flags every call, -r after turn 1 only, no sandbox flag), the resumed session, the end reasons and exit codes (53 never end_turn), SHAPES_SOURCE documented; whole-file witnesses of gemini_adapter.py and transcript_gemini.py compiled in memory, one per guard, clause and load-bearing assignment."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/README.md",
+      "status": "new",
+      "reason": "Lane w11b: labels every Gemini fixture in its folder SYNTHETIC (none recorded; ruling Q-3), read by test_gemini_adapter A9."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/agent-says-429.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/blank-assistant.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/error-result.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/init-other-model.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/no-init.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/stats-missing.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/stats-other-model.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/tool-only.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/turn-limit.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/turn1-tools.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/turn2-other-session.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/turn2-resume.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/unknown-event.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/unknown-key.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/unknown-tool.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "COPIED.d/w11b-gemini-adapter.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (lane w11b-gemini-adapter)."
+    },
+    {
+      "path": "checks.d/w11b-gemini-adapter.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): the test module and its --witnesses."
+    }
+  ]
+}
