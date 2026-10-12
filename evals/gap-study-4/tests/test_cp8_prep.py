@@ -1,0 +1,463 @@
+#!/usr/bin/env python3
+"""CP8 prep (Gap Study round 4, lane w8d, ruling W8D-gap4-1): the walk checks in CI and four carried items.
+
+  H1  W8A-R2-2: walk_register --check binds each registered walk's folder to the ONE commit that wrote it. Exactly
+      one non-merge commit in HEAD's history touches rehearsals/<walk>/; it is a walk commit (drive.WALK_SUBJECT, one
+      parent, changing only that folder and the register, whose entry it adds); HEAD's tree at the folder is the tree
+      that commit wrote; and the folder on disk is HEAD's. A shallow history refuses. Cases: the probe (a later
+      ordinary commit edits the walk's driver ledger: refused), a later commit forged with the walk subject, a walk
+      hand-committed under an ordinary subject, a merge that edits the ledger, an uncommitted edit, a shallow clone.
+      Witnesses: history-unchecked, walk-commits-uncounted, walk-subject-unchecked, head-tree-uncompared,
+      disk-unchecked.
+  A1  W7B-R1-4: the walk driver checks the CLASS of the adapter it builds (exactly
+      claude_code_adapter.ClaudeCodeAdapter), not only its self-declared name: an object named claude-code of
+      another class, and a subclass, are refused (AdapterIdentityRefused); a later assignment of adapter_for cannot
+      lift the check. Witness: adapter-class-unchecked.
+  K1  W7B-R1-5: the take folder's k is Batch's attempt: the walk driver hands TakeRepo a take's records only from
+      <root>/takes/<slot>/<attempt>, the attempt TakeRepo.commit_records is called with; a folder whose k is not
+      that attempt (a launch refused before its folder, then a restart) is refused, never committed under the
+      wrong attempt. Witness: take-k-unbound.
+  D1  Q-w8a-1: denials.py is round 3's reader, kept byte for byte (w1a's copy record says identical) and unreachable
+      from round 4: no study module imports it or names it, no CI step, checks.d line or freeze-rehearsal command
+      runs it, and the root it reads (transcripts/) is no record root of round 4. Witnesses: denials-imported,
+      denials-in-gate.
+
+The CI step itself (W8A-R1-5) is bound by tests/test_ci_job.py's contract (R38.command for walk_register --check;
+its mutation walk-step-removed).
+
+Fakes and synthetic strings only: no walk, model, vendor, network, container runtime, credential or holdout. The
+process guard and the scratch repositories are test_box_integration's (setUpModule): every process start is refused
+except `git -C <scratch>`.
+
+--mutant NAME compiles one altered module (or swaps one read text) in memory before the bound test runs; --witnesses
+runs every registered mutant in its own process, only its bound test, and requires that test to fail by an
+AssertionError carrying its clause token, with no error (rule B).
+"""
+from __future__ import annotations
+
+import ast
+import contextlib
+import io
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import types
+import unittest
+from pathlib import Path
+from unittest import mock
+
+HERE = Path(__file__).resolve().parent.parent
+REPO = HERE.parent.parent
+for p in (HERE, HERE / "tests"):
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
+
+import test_box_integration as tbi  # noqa: E402
+
+SELECTED = None
+MODS: dict = {}
+TEXTS: dict = {}          # path -> text a witness swaps in (D1's accessor)
+LANE = "w8d-cp8-prep"
+
+
+def mutants():
+    """name -> (clause, target, old text, new text). target is a module name, or "text:<study-relative path>" for a
+    read text. Each weakens one guard; old must occur exactly once."""
+    return {
+        "history-unchecked": ("H1.walk-history", "walk_register",
+                              "            problems = history_problems(base, walks, repo)   # W8A-R2-2\n", ""),
+        "walk-commits-uncounted": ("H1.walk-history", "walk_register",
+                                   "        if len(commits) != 1:", "        if False:"),
+        "walk-subject-unchecked": ("H1.walk-history", "walk_register",
+                                   "        if subject != drive.WALK_SUBJECT:", "        if False:"),
+        "head-tree-uncompared": ("H1.walk-history", "walk_register",
+                                 "        if at_head != at_walk:", "        if False:"),
+        "disk-unchecked": ("H1.walk-history", "walk_register",
+                           "        if dirty:", "        if False:"),
+        "adapter-class-unchecked": ("A1.adapter-class", "drive",
+                                    "            adapter_class_problems(adapter)          # W7B-R1-4\n", ""),
+        "take-k-unbound": ("K1.take-k", "drive",
+                           "            take_k_problems(self.records_root, row, attempt, take)    # W7B-R1-5\n",
+                           "            pass\n"),
+        "denials-imported": ("D1.round3-only", "text:result.py", "", "import denials\n"),
+        "denials-in-gate": ("D1.round3-only", "text:checks.d/w8d-cp8-prep.txt", "",
+                            "python3 -B -W ignore evals/gap-study-4/denials.py --check\n"),
+    }
+
+
+def compile_module(name: str, source: str) -> types.ModuleType:
+    mod = types.ModuleType(name)
+    mod.__file__ = str(HERE / f"{name}.py")
+    sys.modules[name] = mod
+    exec(compile(source, mod.__file__ + " (witness)", "exec"), mod.__dict__)
+    return mod
+
+
+def setUpModule():
+    tbi.setUpModule()
+    MODS["drive"] = tbi.drive
+    for name in ("walk_register", "mode_binding", "claude_code_adapter", "freeze_rehearsal"):
+        MODS[name] = __import__(name)
+    if SELECTED is None:
+        return
+    _, target, old, new = mutants()[SELECTED]
+    if target.startswith("text:"):
+        path = HERE / target[len("text:"):]
+        TEXTS[path] = path.read_text() + new         # an added line: the anchor is the file's end
+        return
+    path = HERE / f"{target}.py"
+    text = path.read_text()
+    assert text.count(old) == 1, f"mutant {SELECTED}: its anchor occurs {text.count(old)} times"
+    if target == "drive":
+        MODS["drive"] = tbi.witness_module(((old, new),))
+    else:
+        MODS[target] = compile_module(target, text.replace(old, new))
+
+
+def tearDownModule():
+    sys.modules.pop("walk_register", None)        # a compiled witness never outlives this module
+    tbi.tearDownModule()
+
+
+def read_text(path: Path) -> str:
+    """The accessor D1 reads every text through (a witness swaps what it returns)."""
+    return TEXTS.get(path) or path.read_text()
+
+
+class Case(unittest.TestCase):
+    def must(self, clause, fn, *args, **kwargs):
+        """fn(*args, **kwargs), or a failure of `clause` naming what it raised: an interface the slice must provide
+        that is missing is a red by assertion, never an error."""
+        try:
+            return fn(*args, **kwargs)
+        except AssertionError:
+            raise
+        except (Exception, SystemExit) as e:  # noqa: BLE001
+            self.fail(f"{clause}: {type(e).__name__}: {str(e)[:300]}")
+
+
+# ------------------------------------------------------------------------------------------------- H1
+def an_entry(walk="w-0001") -> dict:
+    d = json.loads((HERE / "prereg-draft.json").read_text())
+    task = d["tasks"][0]["id"]
+    halves = list(json.loads((HERE / "tasks" / f"{task}.json").read_text())["halves"])
+    return {"walk": walk, "task": task, "half": halves[0], "wording": d["tasks"][0]["wordings"][0], "arm": "A",
+            "model": d["models"]["A"][-1], "reason": "synthetic: a fake walk for the CP8 history binding",
+            "counted": False}
+
+
+def write_walk(walks: Path, entry: dict) -> Path:
+    """A fake walk folder: driver ledger, transcript, launch record, evidence ledger, grade."""
+    folder = walks / entry["walk"]
+    (folder / "evidence").mkdir(parents=True)
+    ledger = {"kind": "take", "task": entry["task"], "half": entry["half"], "wording": entry["wording"],
+              "arm": entry["arm"], "model_requested": entry["model"], "pressure": None, "repeat": 1,
+              "agent": {"harness": "claude-code", "version": "0.0.1"}, "project": "run-0000abcd",
+              "first_agent_turn": True, "outcome": "complete"}
+    (folder / "driver-ledger.json").write_text(json.dumps(ledger, indent=2) + "\n")
+    (folder / "transcript.jsonl").write_text(json.dumps({"type": "user", "message": "synthetic"}) + "\n")
+    (folder / "launch.json").write_text("{}\n")
+    (folder / "evidence" / "ledger.jsonl").write_text("{}\n")
+    (folder / "grade.json").write_text(json.dumps({"graded": False, "why": "synthetic"}) + "\n")
+    return folder
+
+
+class Study:
+    """A scratch repository laid out as a study (root = repo): rehearsals/README.md and an empty register committed,
+    then one walk committed by drive.WalkRepo (the real road)."""
+
+    def __init__(self, stack, *, walk=True):
+        self.root = stack.enter_context(tbi.scratch_repo())
+        self.walks = self.root / MODS["mode_binding"].WALKS_DIR
+        self.walks.mkdir()
+        (self.walks / "README.md").write_text("synthetic\n")
+        (self.walks / "register.json").write_text('{\n  "schema": 1,\n  "walks": []\n}\n')
+        self.git("add", "--", self.walks.name)
+        self.git("commit", "-q", "-m", "Add the synthetic register")
+        self.entry = an_entry()
+        if walk:
+            write_walk(self.walks, self.entry)
+            repo = MODS["drive"].WalkRepo(runtime=types.SimpleNamespace(run=lambda *a, **k: None),
+                                          secrets=lambda: [("token", tbi.TOKEN)], rules_scanner=lambda paths: [],
+                                          root=self.root, repo=self.root,
+                                          design=MODS["walk_register"].design_in_force())
+            repo.commit_walk(self.entry)
+
+    def git(self, *args) -> str:
+        return tbi.git(self.root, *args)
+
+    def check(self, root=None) -> tuple[int, str]:
+        root = self.root if root is None else root
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = MODS["walk_register"].main(["--check", "--base", str(Path(root) / self.walks.name),
+                                               "--repo", str(root)])
+        return code, out.getvalue()
+
+
+class H1WalkHistory(Case):
+    OK = "ok: 1 registered walk(s), each with its folder, none counted"
+
+    def refused(self, study, why, root=None):
+        code, out = self.must("H1.walk-history", study.check, root)
+        self.assertEqual(code, 1, f"H1.walk-history: {why} passed: {out}")
+        self.assertRegex(out, r"(?m)^FAIL walk 'w-0001'", f"H1.walk-history: {why}: {out}")
+
+    def test_a_walk_folder_is_its_walk_commit(self):
+        drive = MODS["drive"]
+        # the walk as WalkRepo committed it passes
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            self.assertEqual(s.git("log", "-1", "--format=%s"), drive.WALK_SUBJECT, "H1.walk-history")
+            code, out = self.must("H1.walk-history", s.check)
+            self.assertEqual((code, out.strip()), (0, self.OK), "H1.walk-history")
+        # THE PROBE (W8A-R2-2): a later ordinary commit edits the walk's driver ledger
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            ledger = s.walks / "w-0001" / "driver-ledger.json"
+            ledger.write_text(ledger.read_text().replace('"complete"', '"refused before turn 1"'))
+            s.git("commit", "-q", "-am", "Tidy a ledger")
+            self.refused(s, "a later ordinary commit that rewrote the walk's ledger")
+        # a later commit forged with the walk subject, touching the folder and the register as a walk commit does
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            ledger = s.walks / "w-0001" / "driver-ledger.json"
+            ledger.write_text(ledger.read_text().replace('"complete"', '"refused before turn 1"'))
+            reg = s.walks / "register.json"
+            reg.write_text(reg.read_text() + "\n")
+            s.git("commit", "-q", "-am", drive.WALK_SUBJECT)
+            self.refused(s, "a second commit under the walk subject")
+        # a walk committed by hand under an ordinary subject, never by WalkRepo
+        with contextlib.ExitStack() as stack:
+            s = Study(stack, walk=False)
+            write_walk(s.walks, s.entry)
+            (s.walks / "register.json").write_text(json.dumps({"schema": 1, "walks": [s.entry]}, indent=2) + "\n")
+            s.git("add", "--", s.walks.name)
+            s.git("commit", "-q", "-m", "Add a walk")
+            self.refused(s, "a walk committed by hand under an ordinary subject")
+        # a merge that edits the ledger (no non-merge commit after the walk touches it)
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            s.git("checkout", "-q", "-b", "side")
+            (s.root / "README").write_text("synthetic scratch repository, side\n")
+            s.git("commit", "-q", "-am", "Side work")
+            s.git("checkout", "-q", "-")
+            s.git("merge", "-q", "--no-ff", "--no-commit", "side")
+            ledger = s.walks / "w-0001" / "driver-ledger.json"
+            ledger.write_text(ledger.read_text().replace('"complete"', '"refused before turn 1"'))
+            s.git("add", "--", ledger.relative_to(s.root).as_posix())
+            s.git("commit", "-q", "-m", "Merge side")
+            self.assertEqual(len(s.git("log", "-1", "--format=%P").split()), 2, "H1.walk-history: no merge made")
+            self.refused(s, "a merge commit that rewrote the walk's ledger")
+        # an edit on disk, never committed
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            (s.walks / "w-0001" / "grade.json").write_text('{"graded": true}\n')
+            self.refused(s, "an uncommitted edit in the walk folder")
+        # a shallow clone cannot show the walk's commit
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            s.git("commit", "-q", "--allow-empty", "-m", "Later work")
+            shallow = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)).resolve() / "shallow"
+            tbi.git(s.root, "clone", "-q", "--depth", "1", f"file://{s.root}", str(shallow))
+            self.assertEqual(tbi.git(shallow, "rev-parse", "--is-shallow-repository"), "true", "H1.walk-history")
+            code, out = self.must("H1.walk-history", s.check, shallow)
+            self.assertEqual(code, 1, f"H1.walk-history: a shallow clone passed: {out}")
+            self.assertIn("shallow", out, "H1.walk-history")
+        # the committed study: no walk registered, said out loud, no history read
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = MODS["walk_register"].main(["--check"])
+        self.assertEqual(code, 0, f"H1.walk-history: {out.getvalue()}")
+        self.assertRegex(out.getvalue(), r"(?m)^ok, having registered 0 walks: ", "H1.walk-history")
+
+
+# ------------------------------------------------------------------------------------------------- A1, K1
+class Posing:
+    """An adapter of another class that declares the production adapter's own name."""
+    name = None
+
+
+def build_walk_driver(drive, factory, root):
+    """walk_driver on fakes only, with claude_code_adapter_for answering `factory` (the adapter maker)."""
+    mb = MODS["mode_binding"]
+    with mock.patch.object(drive, "claude_code_adapter_for", lambda **kw: factory), \
+            mock.patch.object(mb, "HERE", Path(root)):
+        return drive.walk_driver(
+            runtime=types.SimpleNamespace(run=lambda *a, **k: None), root=str(root),
+            config_parent=str(tbi.SCRATCH), spec_for=lambda r, c: None, sidecar_for=lambda r, e: None, proxy=None,
+            lock_path="/synthetic.lock", hosts={}, login_file="/synthetic-login", counters_for=lambda t: {},
+            pin_for=lambda r: {}, design_for=lambda r, t: None, project_for=lambda r: "run-0000abcd",
+            identity_for=lambda r: {}, secrets=lambda: [], rules_scanner=lambda p: [], uid_map=[], budget_s=1,
+            finalize_wait_s=1, poll_s=1, clock=lambda: 0.0, sleep=lambda s: None)
+
+
+class A1AdapterClass(Case):
+    def test_walk_driver_checks_the_adapter_class(self):
+        drive, cc = MODS["drive"], MODS["claude_code_adapter"]
+        Posing.name = cc.ClaudeCodeAdapter.name
+        real = object.__new__(cc.ClaudeCodeAdapter)       # the production class, never started here
+
+        class Subclass(cc.ClaudeCodeAdapter):
+            pass
+        sub = object.__new__(Subclass)
+        made = {"adapter": real}
+        root = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)).resolve()
+        drv = self.must("A1.adapter-class", build_walk_driver, drive, lambda row, take: made["adapter"], root)
+        row = {"agent": {"harness": cc.ClaudeCodeAdapter.name}}
+        self.assertIs(self.must("A1.adapter-class", drv.adapter_for, row, None), real, "A1.adapter-class")
+        for posing, why in ((Posing(), "an object of another class named claude-code"), (sub, "a subclass")):
+            made["adapter"] = posing
+            try:
+                drv.adapter_for(row, None)
+                self.fail(f"A1.adapter-class: {why} was accepted by the walk driver")
+            except AssertionError:
+                raise
+            except drive.AdapterIdentityRefused as e:
+                self.assertIn("class", str(e), "A1.adapter-class")
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"A1.adapter-class: {why}: {type(e).__name__}: {e}")
+        # a later assignment cannot lift the check
+        drv.adapter_for = lambda row, take: Posing()
+        with self.assertRaises(drive.AdapterIdentityRefused, msg="A1.adapter-class: a reassigned maker"):
+            drv.adapter_for(row, None)
+
+
+class K1TakeK(Case):
+    def test_take_folder_k_is_batch_attempt(self):
+        drive, mb = MODS["drive"], MODS["mode_binding"]
+        root = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)).resolve()
+        drv = self.must("K1.take-k", build_walk_driver, drive, lambda row, take: None, root)
+        row = {"slot": "s-k"}
+        # the production take folder: k is the next unused folder (take_folder_in), here 1
+        folder = drv.take_folder(row)
+        self.assertEqual(folder, str(root / mb.TAKES_DIR / "s-k" / "1"), "K1.take-k")
+        os.makedirs(folder)
+        Path(folder, "launch.json").write_text("{}\n")
+        drv._by_slot["s-k"] = drive._Take(row, folder, str(root / "cfg"))
+        got = self.must("K1.take-k", drv.record_files, row, 1)
+        self.assertEqual(got, [(str(Path(folder, "launch.json")), "launch")], "K1.take-k")
+        # Batch's attempt 2 (attempt 1 refused before its folder was made, then a restart): folder 1 is refused
+        try:
+            drv.record_files(row, 2)
+            self.fail("K1.take-k: a take in takes/s-k/1 was handed over as attempt 2")
+        except AssertionError:
+            raise
+        except drive.DriveRefused as e:
+            self.assertIn("attempt 2", str(e), "K1.take-k")
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"K1.take-k: {type(e).__name__}: {e}")
+        # a folder outside takes/<slot>/ (a walk folder, another slot, another root) is refused for any attempt
+        for other in (root / mb.WALKS_DIR / "w-0001", root / mb.TAKES_DIR / "s-other" / "1",
+                      root / "elsewhere" / mb.TAKES_DIR / "s-k" / "1"):
+            drv._by_slot["s-k"] = drive._Take(row, str(other), str(root / "cfg"))
+            with self.assertRaises(drive.DriveRefused, msg=f"K1.take-k: {other}"):
+                drv.record_files(row, 1)
+
+
+# ------------------------------------------------------------------------------------------------- D1
+def study_modules() -> dict:
+    """{study-relative path: text} for every non-test .py of round 4, denials.py itself aside."""
+    out = {}
+    for path in sorted(HERE.rglob("*.py")):
+        rel = path.relative_to(HERE).as_posix()
+        if rel.startswith("tests/") or rel == "denials.py" or "__pycache__" in rel:
+            continue
+        out[rel] = read_text(path)
+    return out
+
+
+def names_denials(text: str) -> bool:
+    tree = ast.parse(text)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import) and any(a.name.split(".")[-1] == "denials" for a in node.names):
+            return True
+        if isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[-1] == "denials":
+            return True
+        if isinstance(node, ast.ImportFrom) and any(a.name == "denials" for a in node.names):
+            return True
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and \
+                (node.value == "denials" or re.search(r"(?<![\w.-])denials\.py(?![\w])", node.value)):
+            return True       # importlib.import_module("denials"), __import__("denials"), a path to the file
+    return False
+
+
+class D1Denials(Case):
+    def test_denials_is_round3_only_and_unreachable(self):
+        mb = MODS["mode_binding"]
+        # the mark: the copy record holds denials.py as round 3's file, byte for byte
+        frag = json.loads((HERE / "COPIED.d" / "w1a-cp1-scaffold.json").read_text())
+        entry = [e for e in frag["files"] if e["path"] == "denials.py"]
+        self.assertEqual(entry, [{"path": "denials.py", "status": "identical",
+                                  "source": "evals/gap-study-3/denials.py"}], "D1.round3-only")
+        self.assertIn("evals/gap-study-3/denials.py --check", (HERE / "denials.py").read_text(), "D1.round3-only")
+        # no study module imports or names it
+        named = sorted(rel for rel, text in study_modules().items() if names_denials(text))
+        self.assertEqual(named, [], "D1.round3-only: round 4 modules reach denials.py")
+        # no gate runs it: the CI job, every checks.d line, the freeze rehearsal's commands
+        ci = read_text(REPO / ".github" / "workflows" / "ci.yml")
+        job = ci[ci.index("  gap-study-4:\n"):]
+        gates = {"ci.yml": job}
+        for path in sorted((HERE / "checks.d").glob("*.txt")):
+            gates[f"checks.d/{path.name}"] = read_text(path)
+        gates["freeze_rehearsal.COMMANDS"] = "\n".join(" ".join(c) for c in MODS["freeze_rehearsal"].COMMANDS)
+        ran = sorted(name for name, text in gates.items() if "denials.py" in text)
+        self.assertEqual(ran, [], "D1.round3-only: a gate runs denials.py")
+        # the root it reads is no record root of round 4, and the round 3 road that wrote it is shadowed
+        self.assertNotIn("transcripts", mb.RECORD_ROOTS, "D1.round3-only")
+        drive = MODS["drive"]
+        self.assertIsNot(drive.main, drive.ROUND3_ONLY["main"], "D1.round3-only")
+
+
+BOUND = {"H1.walk-history": "H1WalkHistory.test_a_walk_folder_is_its_walk_commit",
+         "A1.adapter-class": "A1AdapterClass.test_walk_driver_checks_the_adapter_class",
+         "K1.take-k": "K1TakeK.test_take_folder_k_is_batch_attempt",
+         "D1.round3-only": "D1Denials.test_denials_is_round3_only_and_unreachable"}
+WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _, _) in mutants().items()}
+
+
+def run_witnesses(names) -> int:
+    red = 0
+    chosen = names or sorted(WITNESSES)
+    for name in chosen:
+        method, clause = WITNESSES[name]
+        got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name,
+                              method], capture_output=True, text=True, timeout=110)
+        record = re.findall(r"^test_cp8_prep outcomes: (\{.*\})$", got.stdout, re.M)
+        outcome = json.loads(record[-1]) if record else None
+        blocks = re.findall(r"^FAIL: (\w+) \(__main__\.(\w+)\.\w+\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)", got.stderr,
+                            re.M | re.S)
+        attributed = any(f"{cls}.{test}" == method and "AssertionError" in body and
+                         re.search(r"(?<![\w:.-])" + re.escape(clause) + r"(?![\w.-])", body)
+                         for test, cls, body in blocks)
+        clean = bool(outcome) and outcome["failures"] == [method] and outcome["errors"] == [] \
+            and outcome["skipped"] == []
+        passed = attributed and clean and got.returncode != 0
+        print(f"witness {name} -> {method} {clause}: {'RED' if passed else 'FAIL'}", flush=True)
+        if not passed:
+            print(got.stdout[-3000:] + got.stderr[-3000:], flush=True)
+            return 1
+        red += 1
+    print(f"test_cp8_prep witnesses: {red}/{len(chosen)} red; registry {len(WITNESSES)}", flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    if "--witnesses" in sys.argv:
+        raise SystemExit(run_witnesses(sys.argv[sys.argv.index("--witnesses") + 1:]))
+    if "--mutant" in sys.argv:
+        index = sys.argv.index("--mutant")
+        SELECTED = sys.argv[index + 1]
+        if SELECTED not in WITNESSES:
+            raise SystemExit(f"unknown mutant {SELECTED!r}")
+        del sys.argv[index:index + 2]
+    result = unittest.main(verbosity=2, exit=False).result
+    ids = lambda pairs: [t.id().removeprefix("__main__.").split(" ")[0] for t, _ in pairs]  # noqa: E731
+    print(f"test_cp8_prep: {result.testsRun} run, {len(result.failures)} failures, "
+          f"{len(result.errors)} errors, {len(result.skipped)} skipped")
+    print("test_cp8_prep outcomes: " + json.dumps({"failures": ids(result.failures), "errors": ids(result.errors),
+                                                   "skipped": ids(result.skipped)}))
+    raise SystemExit(0 if result.wasSuccessful() else 1)

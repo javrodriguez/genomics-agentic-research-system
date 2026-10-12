@@ -28,6 +28,16 @@ plus grade.json (run.regrade()'s output, or why the walk was not graded), and it
 grade.json. The road that writes here is drive.walk_driver(records="walks"), and drive.WalkRepo commits the folder
 with its register entry in one commit. The folder's name comes from mode_binding.WALKS_DIR.
 
+ONE WALK, ONE COMMIT, NEVER REWRITTEN (lane w8d, ruling W8D-gap4-1, from W8A-R2-2; this file moved from lane w8a
+to lane w8d). The CLI's --check also reads the repository's history (history_problems): for each registered walk,
+exactly one non-merge commit in HEAD's history touches rehearsals/<walk>/, and it is a walk commit (drive.WALK_SUBJECT,
+one parent, changing only that folder and the register, whose entry for the walk it adds); HEAD's tree at the folder
+is the tree that commit wrote (so a merge cannot rewrite it either); and the folder on disk is HEAD's. A later
+ordinary commit that edits a walk's ledger is refused. A shallow history refuses (the walk's commit cannot be read;
+CI checks out with fetch-depth 0). With no walk registered no history is read. The test-only --base reads the
+history only when --repo names the repository; the gates (CI, freeze_rehearsal) run the bare --check, which reads
+this repository's.
+
 WHAT THIS DOES NOT CHECK (open questions in rehearsals/README.md): whether the walks cover what CP6 asks for (every
 wording on the smallest model, every task and half on each model), and whether the walks are published at CP8.
 
@@ -38,6 +48,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 import unicodedata
 from pathlib import Path
@@ -228,16 +239,91 @@ def check(base: Path = REHEARSALS, design: dict | None = None) -> tuple[list[str
     return problems, len(walks)
 
 
+def history_problems(base: Path, walks, repo: Path) -> list[str]:
+    """W8A-R2-2 (ruling W8D-gap4-1): each named walk's folder is the tree its one walk commit wrote, unrewritten since.
+    git is read only when there is a walk to bind; [] for none."""
+    walks = list(walks)
+    if not walks:
+        return []
+    import drive  # WALK_SUBJECT lives with WalkRepo, which writes the commit; imported here, never at module load
+    repo, base = Path(repo).resolve(), Path(base).resolve()
+    try:
+        rel_base = base.relative_to(repo).as_posix()
+    except ValueError:
+        return [f"{mode_binding.WALKS_DIR}/ ({base}) is not inside the repository {repo}; a walk's commit cannot be read"]
+
+    def git(*args):
+        return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+    got = git("rev-parse", "--is-shallow-repository")
+    if got.returncode != 0:
+        return [f"the repository's history cannot be read ({got.stderr.strip()[:200]}); each walk is bound to the "
+                f"commit that wrote it"]
+    if got.stdout.strip() != "false":
+        return [f"the repository is a shallow clone: a walk's commit is not in it, so no walk can be bound to the "
+                f"commit that wrote it (check out with full history, fetch-depth: 0)"]
+    reg_rel = f"{rel_base}/{REGISTER_NAME}"
+    out = []
+    for walk in walks:
+        rel = f"{rel_base}/{walk}"
+        where = f"walk {walk!r}: {mode_binding.WALKS_DIR}/{walk}/"
+        log = git("log", "--no-merges", "--format=%H%x1f%P%x1f%s", "HEAD", "--", rel + "/")
+        if log.returncode != 0:
+            out.append(f"{where}: its history cannot be read ({log.stderr.strip()[:200]})")
+            continue
+        commits = [line.split("\x1f", 2) for line in log.stdout.splitlines() if line]
+        if len(commits) != 1:
+            out.append(f"{where} is touched by {len(commits)} commits; a walk folder is written once, by its walk "
+                       f"commit, and no later commit rewrites it")
+            continue
+        sha, parents, subject = commits[0]
+        if subject != drive.WALK_SUBJECT:
+            out.append(f"{where} was written by {sha[:12]} ({subject!r}), not by a walk commit "
+                       f"({drive.WALK_SUBJECT!r}, drive.WalkRepo)")
+            continue
+        changed = git("diff-tree", "-r", "--name-only", "--no-renames", "--no-commit-id", sha)
+        names = changed.stdout.splitlines()
+        if len(parents.split()) != 1 or changed.returncode != 0 or reg_rel not in names or \
+                any(n != reg_rel and not n.startswith(rel + "/") for n in names):
+            out.append(f"{where}: its commit {sha[:12]} is not one walk's commit (one parent, changing only the "
+                       f"walk's folder and {REGISTER_NAME})")
+            continue
+        try:
+            hook = no_duplicate_keys        # (spelled once as a keyword argument, in check(), which R7's witness edits)
+            listed = json.loads(git("show", f"{sha}:{reg_rel}").stdout, object_pairs_hook=hook)
+            listed = [e.get("walk") for e in listed["walks"] if isinstance(e, dict)]
+        except (ValueError, KeyError, TypeError):
+            listed = []
+        if walk not in listed:
+            out.append(f"{where}: its commit {sha[:12]} does not register the walk in {REGISTER_NAME}")
+            continue
+        at_head = git("rev-parse", "--verify", "-q", f"HEAD:{rel}").stdout.strip()
+        at_walk = git("rev-parse", "--verify", "-q", f"{sha}:{rel}").stdout.strip()
+        if at_head != at_walk:
+            out.append(f"{where} at HEAD is not the tree its walk commit {sha[:12]} wrote; a walk's records are "
+                       f"never rewritten, by a commit or a merge")
+            continue
+        dirty = git("status", "--porcelain", "--untracked-files=all", "--", rel + "/").stdout.strip()
+        if dirty:
+            out.append(f"{where} on disk differs from HEAD: {dirty.splitlines()[0]}")
+    return out
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Check the walk register against rehearsals/.")
     ap.add_argument("--check", action="store_true", required=True)
     ap.add_argument("--base", help=argparse.SUPPRESS)
+    ap.add_argument("--repo", help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
     base = Path(args.base) if args.base else REHEARSALS
+    # W8A-R2-2: the history is this repository's; under the test-only --base, only the one --repo names
+    repo = Path(args.repo) if args.repo else (None if args.base else mode_binding.REPO)
     try:
         problems, n = check(base)
         if not problems:                     # W8A: the content rule, on a register and folders that bind both ways
             problems = content_problems(base, [e["walk"] for e in registered(base)])
+        if not problems and repo is not None:
+            walks = [e["walk"] for e in registered(base)]
+            problems = history_problems(base, walks, repo)   # W8A-R2-2
     except OSError as exc:
         problems, n = [f"rehearsals/ cannot be read: {exc}"], 0
     for p in problems:

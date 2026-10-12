@@ -509,6 +509,9 @@ jobs:
       - name: Review register
         # Binds each registered review to its committed report.
         run: python3 evals/gap-study-4/review_kit/rounds.py --check
+      - name: Walk register
+        # Binds each registered walk to the one walk commit that wrote it; zero walks is said, not passed.
+        run: python3 evals/gap-study-4/walk_register.py --check
       - name: Frozen pins
         # Binds frozen bytes and publication; zero records after the freeze fails.
         run: |
