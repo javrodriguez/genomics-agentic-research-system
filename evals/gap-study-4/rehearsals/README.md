@@ -34,6 +34,7 @@ The word "rehearsal" has a second, older meaning in this study, and the two are 
 - `grade.json` is the v4 grader's output for the walk (`run.py`'s `regrade()`, through `grade_walk()`), or `{"graded": false, "why": ...}` when the walk had no first agent turn, its reason read from the driver ledger.
 - `check.json` is the checker's reading of the walk and the route routing gives its records (ruling D1, lane w10-walk-runner): a walk is read by check4's round-4 walk road, with no takes.json row and its own session id (ruling D2: uuid5 of `walk/<walk id>`), never as a take.
 - A walk that died before its first turn, so before the driver wrote its ledger, holds `preflight.json` or `refusal.json` in the ledger's place, and its `grade.json` says "not graded, because ..." (ruling D3).
+  A folder that holds a transcript or a turn record but no driver ledger is refused: a turn ran, so its ledger is missing, not unwritten (W10-R2-3).
 - The folder names are defined once, in `mode_binding.py` (`WALKS_DIR` for walks, `TAKES_DIR` for the graded takes under `takes/<slot>/<k>/`), and every reader and writer imports them.
 - A walk folder can never be graded into results: `run.py` grades only folders under `takes/`.
 - Until publication nothing of round 4 is pushed beyond the two narrow early-piece commits: "no lane branch, no walk and no transcript reaches GitHub" (line 862).

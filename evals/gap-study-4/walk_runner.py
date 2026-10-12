@@ -16,9 +16,9 @@ one at a time:
   4. write grade.json (run.write_walk_grade: the v4 grade, or "not graded, because ..." for a walk that died before
      its first turn, D3);
   5. commit the walk folder and its register entry in one commit (WalkRepo.commit_walk);
-  6. delete the per-take config folder (driver.published), on every road but one: when the drive recorded a
-     postflight that was not ok (a credential-like file left behind), the config folder is kept for a human, as the
-     driver's own postflight stop says (S6b (e)).
+  6. delete the per-take config folder (driver.published) only on positive proof of a clean drive (its postflight
+     record present and ok, its teardown record present with no problem: clean_drive); every other state keeps it
+     for a human, as the driver's own postflight stop says (S6b (e)), and fails closed (W10-R2-2).
 
 WHAT STOPS IT. A walk refused before launch (LaunchRefused, or a slot that is not its walk id) made nothing; it is
 reported and the runner moves on (D3). A walk whose launch failed after making things, whose drive raised (a drive
@@ -87,25 +87,33 @@ def write_check(folder: Path, doc: dict) -> Path:
     return path
 
 
-def postflight_ok(folder: Path) -> bool:
-    """Whether the drive's postflight record says the config folder holds no credential file."""
+def _record(path: Path):
     try:
-        return json.loads((Path(folder) / POSTFLIGHT_FILE).read_text()).get("ok") is True
-    except (OSError, ValueError, AttributeError):
-        return False
+        return json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def clean_drive(folder: Path) -> bool:
+    """W10-R2-2 (fail closed): the drive is proven clean only by both of its records: postflight.json present,
+    readable and ok, and teardown.json present, readable, recording a teardown with no problem. Any other state (a
+    record missing, unreadable, not ok, or a teardown problem) is not proof."""
+    post, tear = _record(Path(folder) / POSTFLIGHT_FILE), _record(Path(folder) / TEARDOWN_FILE)
+    post_ok = isinstance(post, dict) and post.get("ok") is True
+    tear_ok = isinstance(tear, dict) and tear.get("teardown") is not None and tear.get("problems") == []
+    return post_ok and tear_ok
 
 
 def _publish(driver, row: dict, folder: Path) -> str | None:
     """Delete the walk's config folder (driver.published), called only once driver.launch was reached for this row
-    (W10-R1-2: never for the runner's own pre-launch refusals, whose slot may name another walk's kept take). Kept
-    for a human instead when the drive's postflight record exists and is not ok, or when the drive ran (teardown.json)
-    and no postflight record was written (the driver's own stop: "the postflight check did not run"). Returns why it
+    (W10-R1-2: never for the runner's own pre-launch refusals, whose slot may name another walk's kept take), and
+    only on positive proof of a clean drive (W10-R2-2, clean_drive); every other state keeps it for a human. A row
+    whose launch made no walk folder made no config folder either, and nothing is touched. Returns why the folder
     was kept or could not be deleted, or None."""
-    post = Path(folder) / POSTFLIGHT_FILE
-    if post.exists() and not postflight_ok(folder):
-        return "the config folder is kept for a human: the postflight did not pass"
-    if (Path(folder) / TEARDOWN_FILE).is_file() and not post.exists():
-        return "the config folder is kept for a human: the postflight did not run"
+    if not Path(folder).is_dir():
+        return None
+    if not clean_drive(folder):
+        return "the config folder is kept for a human: no clean postflight and teardown record proves the drive clean"
     try:
         driver.published(row, 0)
     except Exception as e:  # noqa: BLE001 - recorded beside the walk's state, never over it

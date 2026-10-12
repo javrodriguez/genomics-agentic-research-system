@@ -287,9 +287,15 @@ def grade_walk(entry: dict, folder, cell: dict | None = None, grade=None) -> dic
 
 
 def died_before_turn_one(folder: Path) -> str:
-    """W10 (ruling D3; this file moved from lane w8a to lane w10): why a walk with no driver ledger was not graded,
-    read from its own records: the pre-turn refusal (refusal.json), else the preflight checks that failed
-    (preflight.json). A folder with neither raises: it is not a walk WalkRepo commits (drive.walk_files)."""
+    """W10 (ruling D3; this file edited by lane w10, departure w10-1): why a walk with no driver ledger was not
+    graded, read from its own records: the pre-turn refusal (refusal.json), else the preflight checks that failed
+    (preflight.json). A folder with neither, or one holding a transcript or a turn record (W10-R2-3: a turn ran),
+    raises: it is not a walk WalkRepo commits (drive.walk_files)."""
+    ran = sorted(p.name for p in folder.iterdir() if p.name == "transcript.jsonl"
+                 or (p.name.startswith("turn-") and p.name.endswith(".jsonl")))
+    if ran:                                              # W10-R2-3: a turn ran; its ledger is missing, not unwritten
+        raise ValueError(f"{folder} holds {', '.join(ran)} and no driver-ledger.json: a walk whose turn ran is never "
+                         f"read as one that died before turn 1")
     refusal, pre = folder / "refusal.json", folder / "preflight.json"
     if refusal.is_file():
         doc = json.loads(refusal.read_text())

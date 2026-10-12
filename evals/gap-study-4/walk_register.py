@@ -170,7 +170,8 @@ def registered(base: Path = REHEARSALS) -> list[dict]:
 def content_problems(base: Path, walks) -> list[str]:
     """W8A (README Q2): each named walk's folder holds only a take folder's records plus grade.json and check.json, and
     holds grade.json, check.json and driver-ledger.json, or preflight.json or refusal.json for a walk that died before
-    its first turn (W10; drive.walk_files, the same rule WalkRepo commits by). A folder that does not
+    its first turn and holds no transcript or turn record (W10, W10-R2-3; drive.walk_files, the same rule WalkRepo
+    commits by). A folder that does not
     exist is check()'s to report, not this rule's."""
     import drive  # the closed map lives with the driver that writes it; imported here, never at module load
     out = []

@@ -2887,7 +2887,8 @@ WALK_GRADE = _mode_binding.WALK_GRADE
 WALK_CHECK = "check.json"     # W10 (D1): the walk's checker reading and its route, beside grade.json
 WALK_FILE_KINDS = {WALK_GRADE: "ledger", WALK_CHECK: "ledger"}
 WALK_REQUIRED = (WALK_GRADE, WALK_CHECK)
-WALK_PRE_TURN = (PREFLIGHT_RECORD, REFUSAL_RECORD)    # W10 (D3): what says why a walk died before its driver ledger
+WALK_PRE_TURN = (PREFLIGHT_RECORD, REFUSAL_RECORD)
+WALK_TRANSCRIPT = "transcript.jsonl"          # W10-R2-3: with a turn record, the sign that a turn ran    # W10 (D3): what says why a walk died before its driver ledger
 WALK_SUBJECT = "Commit one walk; never counted"
 WALK_REGISTER_KIND = "ledger"
 FROZEN_NAME = prereg.FROZEN.name               # prereg.json: once it exists, no walk is committed
@@ -2928,6 +2929,11 @@ def walk_files(folder) -> list:
     missing = [n for n in WALK_REQUIRED if n not in tops]
     if LEDGER_FILE not in tops and not (tops & set(WALK_PRE_TURN)):
         missing.insert(0, f"{LEDGER_FILE} (nor, for a walk that died before turn 1, {' or '.join(WALK_PRE_TURN)})")
+    ran = sorted(n for n in tops if n == WALK_TRANSCRIPT or STREAM_NAME.fullmatch(n))
+    if LEDGER_FILE not in tops and ran:                  # W10-R2-3: a turn ran, so the driver wrote its ledger
+        raise DriveRefused(f"the walk folder holds {', '.join(ran)} and no {LEDGER_FILE}: a walk whose agent turn ran "
+                           f"is committed with its driver ledger; only a walk with no transcript and no turn record "
+                           f"died before turn 1")
     if missing:
         raise DriveRefused(f"the walk folder holds no {', '.join(missing)}; a walk is committed with its driver ledger "
                            f"(or the record of why it died before turn 1), its checker reading and its grade (or why "
