@@ -49,7 +49,9 @@ from a typed number, and bind:
   P14.cli           (W11C-R1-3) run as a script, walk_plan exits with main's code; --list with --require-complete is
                     refused; the "ok" line prints only under --require-complete with nothing missing; without --base
                     the register is walk_register.REHEARSALS'; witnesses script-entry-dropped, list-require-admitted,
-                    ok-always, default-base-ignored
+                    ok-unconditional, default-base-ignored
+  P15.sweep         the generated sweep is armed (mutants generated, ids unique) and its EQUIVALENT registry is current:
+                    an entry on a changed line, with no such mutant, or without a reason is reported
 
 Red first: before walk_plan.py exists every test fails by its own assertion (P0.module), with no error. The helpers
 that call walk_plan (plan, cover, cli) turn any exception other than the documented refusal into a failure carrying
@@ -63,7 +65,9 @@ carrying its clause token, with no error (rule B).
 mutant of a closed operator set (below), each runs the whole suite in its own process, and each must be killed by an
 assertion (failures only, no error) or be listed in EQUIVALENT with its line and a reason; a listed mutant that is
 killed, or an entry whose mutant is no longer generated on that line, fails the sweep (a stale entry). The
-unmutated module, re-emitted the same way, must pass first, so the sweep is armed. String constants and f-strings are
+unmutated module, re-emitted the same way, must pass first, so the sweep is armed. Each mutant's suite runs with
+--failfast: the first failing test decides, and it must fail by an assertion. --only ID[,ID] runs named mutants and
+prints the run of any not killed. String constants and f-strings are
 never mutated (the one message rule: every printed line the gate depends on is bound by an assertion above); the
 operators are a comparison negated, an if or conditional test set to True and to False, and/or swapped, each
 operand of an and/or dropped, a `not` removed, each branch of a conditional expression taken, a slice's upper bound
@@ -176,8 +180,8 @@ def mutants():
         "script-entry-dropped": ("P14.cli", "    raise SystemExit(main())", "    main()"),
         "list-require-admitted": ("P14.cli", "    if args.require_complete and not args.coverage:",
                                   "    if False:"),
-        "ok-always": ("P14.cli", "    if args.require_complete:\n        print(\"ok",
-                      "    if True:\n        print(\"ok"),
+        "ok-unconditional": ("P14.cli", "    if args.require_complete:\n        print(\"ok",
+                             "    if True:\n        print(\"ok"),
         "default-base-ignored": ("P14.cli", "else walk_register.REHEARSALS", "else HERE / \"rehearsals\""),
     }
 
@@ -225,7 +229,7 @@ def setUpModule():
         else:
             import walk_plan
             MODS["walk_plan"] = walk_plan
-    except Exception as exc:                   # a module that does not load fails every test by P0.module
+    except (Exception, SystemExit) as exc:     # a module that does not load (or exits on import) fails by P0.module
         MODS["walk_plan"] = None
         MODS["load_error"] = repr(exc)
     MODS["walk_plan_source"] = text
@@ -310,14 +314,19 @@ class Base(unittest.TestCase):
         except Exception as exc:
             self.fail(f"{clause}: {getattr(fn, '__name__', fn)} raised {exc!r}")
 
+    def typed(self, kind, fn, *args):
+        got = self.call(self.CLAUSE, getattr(self.wp(self.CLAUSE), fn), *args)
+        self.assertIsInstance(got, kind, f"{self.CLAUSE}: {fn} returned {got!r}")
+        return got
+
     def key(self, *args):
-        return self.call(self.CLAUSE, self.wp(self.CLAUSE).cover_key, *args)
+        return self.typed(tuple, "cover_key", *args)
 
     def sline(self, spec):
-        return self.call(self.CLAUSE, self.wp(self.CLAUSE).spec_line, spec)
+        return self.typed(str, "spec_line", spec)
 
     def counts(self, specs):
-        return self.call(self.CLAUSE, self.wp(self.CLAUSE).counts, specs)
+        return self.typed(dict, "counts", specs)
 
     def refuses(self, clause: str, call, *args):
         """call(*args) must raise walk_plan.PlanRefused, and nothing else (W11C-R1-4)."""
@@ -453,6 +462,8 @@ class P3Halves(Base):
             self.assertIsNone(s["walk"], f"P3.halves spec {i}: the walk id is the runner's")
             self.assertIs(s["counted"], False, f"P3.halves spec {i}: counted")
             self.assertTrue(isinstance(s["reason"], str) and s["reason"].strip(), f"P3.halves spec {i}: reason")
+            rule = "every wording of every task" if (s["arm"], s["model"]) == every else "with at least one wording"
+            self.assertIn(rule, s["reason"], f"P3.halves spec {i}: the reason names its rule")
             self.assertEqual({s["agent"]}, harness[(s["arm"], s["model"])], f"P3.halves spec {i}: agent")
             self.assertEqual(wr.entry_problems(i, entry(s, f"probe-{i}"), reg), [], f"P3.halves spec {i}")
         optional = {spec["model"] for spec in (draft.get("optional_arms") or {}).values()}
@@ -617,7 +628,13 @@ class P8SpecChecked(Base):
         # a planned cell that is not a row of the design
         bent = copy.deepcopy(design)
         bent["cells"] = {c for c in bent["cells"] if c[1] != models[0]}
-        self.refuses("P8.spec-checked: a cell with no row", wp.plan_walks, bent)
+        exc = self.refuses("P8.spec-checked: a cell with no row", wp.plan_walks, bent)
+        self.assertRegex(str(exc), r"; and \d+ more$", "P8.spec-checked: a long refusal says how many it left out")
+        # one planned cell with no row: one problem, named, and nothing said to be left out
+        bent = copy.deepcopy(design)
+        bent["cells"].discard(next(c for c in sorted(bent["cells"]) if c[1] == models[0]))
+        exc = self.refuses("P8.spec-checked: one cell with no row", wp.plan_walks, bent)
+        self.assertNotIn(" more", str(exc), "P8.spec-checked: a short refusal leaves nothing out")
         # a planned model whose rows name two harnesses
         study = self.study_copy()
 
@@ -650,9 +667,16 @@ class P9Prose(Base):
                 if re.search(r"\d", line):
                     self.assertTrue(named or line.startswith(("# ", "outside the plan, not counted: walk ")),
                                     f"P9.prose {name}: a figure not bound to one model: {line!r}")
+        walk_lines = [line for line in listed.splitlines() if line.startswith("walk  ")]
+        self.assertEqual(walk_lines, [f"walk  {s['arm']} {s['model']} {s['agent']} {s['task']} {s['half']} "
+                                      f"{s['wording']}" for s in specs], "P9.prose: one line per required walk")
+        every = every_wording_model(draft)
         for arm, models in draft["models"].items():
             for m in models:
-                self.assertRegex(listed, rf"(?m)^arm {arm}, {re.escape(m)} \(", f"P9.prose: a line for {m}")
+                rule = "every wording of each task and half" if (arm, m) == every else \
+                    "each task and half, any one wording"
+                self.assertRegex(listed, rf"(?m)^arm {arm}, {re.escape(m)} \(.*\): \d+ required walks, {rule}$",
+                                 f"P9.prose: a line for {m}")
 
 
 class P10EveryRule(Base):
@@ -760,6 +784,9 @@ class P12Register(Base):
             "an off-design entry": json.dumps({"schema": 1, "walks": good + [
                 entry(specs[3], "walk-d", wording="w-not-in-design")]}),
             "a duplicate JSON key": '{"schema": 1, "walks": [], "walks": ' + json.dumps(good) + "}",
+            "a walk id that is not a string": json.dumps({"schema": 1, "walks": good + [entry(specs[3], 7)]}),
+            "a walk id of two path segments": json.dumps({"schema": 1, "walks": good + [
+                entry(specs[3], "nested/walk")]}),
         }
         for label, text in cases.items():
             base = self.raw_register(text)
@@ -775,6 +802,10 @@ class P12Register(Base):
         code, out = self.cli("P12.register", ["--coverage", "--base", str(self.raw_register(cases[
             "one walk id for every spec"]))])
         self.assertIn("registered twice", out, "P12.register: the check's own words")
+        self.assertRegex(out, r"; and \d+ more", "P12.register: a long refusal says how many it left out")
+        code, out = self.cli("P12.register", ["--coverage", "--base", str(self.raw_register(cases["a wrong schema"]))])
+        self.assertIn("schema is 99", out, "P12.register: the check's own words")
+        self.assertNotIn(" more", out, "P12.register: a short refusal leaves nothing out")
         # a register the check accepts is read
         code, out = self.cli("P12.register", ["--coverage", "--base", str(self.rehearsals(good))])
         self.assertEqual(code, 0, f"P12.register: a good register: {out[-300:]}")
@@ -868,12 +899,37 @@ class P14Cli(Base):
         self.assertNotIn("ok:", out, "P14.cli: no ok line without --require-complete")
         code, out = self.cli("P14.cli", ["--coverage", "--require-complete", "--base", str(full)])
         self.assertEqual(out.splitlines()[-1], "ok: every required walk is covered", "P14.cli")
+        # a design that cannot be derived exits 2, saying so
+        wp = self.wp("P14.cli")
+        with mock.patch.object(wp, "design_in_force", side_effect=wp.PlanRefused("synthetic refusal")):
+            for argv in (["--list"], ["--coverage", "--base", str(full)]):
+                code, out = self.cli("P14.cli", argv)
+                self.assertEqual((code, out.strip()), (2, "FAIL the walk plan cannot be derived: synthetic refusal"),
+                                 f"P14.cli {argv}")
         # without --base the register is walk_register.REHEARSALS'
         one = self.rehearsals([entry(specs[0], "walk-default")])
         with mock.patch.object(wr, "REHEARSALS", one):
             code, out = self.cli("P14.cli", ["--coverage"])
         self.assertEqual(code, 0, f"P14.cli: {out[-300:]}")
         self.assertRegex(out, r"(?m)^covered  .* by walk-default$", "P14.cli: the default register is read")
+
+
+class P15Sweep(Base):
+    CLAUSE = "P15.sweep"
+
+    def test_the_sweep_generates_and_its_registry_is_current(self):
+        self.wp("P15.sweep")
+        made = generated_mutants(MODS["walk_plan_source"])
+        self.assertTrue(made, "P15.sweep: the mutator generates mutants (the sweep is armed)")
+        self.assertEqual(len({m["id"] for m in made}), len(made), "P15.sweep: mutant ids are unique")
+        self.assertEqual(equivalent_problems(made, EQUIVALENT), [], "P15.sweep: the EQUIVALENT registry is current")
+        first = made[0]
+        self.assertEqual(len(equivalent_problems(made, {first["id"]: (first["line"] + " changed", "a reason")})), 1,
+                         "P15.sweep: an entry on a changed line is stale")
+        self.assertEqual(len(equivalent_problems(made, {"L0.pass.0": ("x", "a reason")})), 1,
+                         "P15.sweep: an entry with no such mutant is stale")
+        self.assertEqual(len(equivalent_problems(made, {first["id"]: (first["line"], " ")})), 1,
+                         "P15.sweep: an entry needs a reason")
 
 
 BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_figures",
@@ -1029,17 +1085,33 @@ class Mutator(ast.NodeTransformer):
 
 
 def generated_mutants(source: str) -> list[dict]:
+    """Every mutant's id, its line's text and its index k; the source is made on demand by mutant_source(source, k)."""
     collector = Mutator()
     collector.visit(ast.parse(source))
     lines = source.splitlines()
     out, seen = [], {}
     for k, (lineno, kind) in enumerate(collector.sites):
-        tree = Mutator(target=k).visit(ast.parse(source))
         n = seen.get((lineno, kind), 0)
         seen[(lineno, kind)] = n + 1
-        out.append({"id": f"L{lineno}.{kind}.{n}", "line": lines[lineno - 1].strip(),
-                    "source": ast.unparse(ast.fix_missing_locations(tree))})
+        out.append({"id": f"L{lineno}.{kind}.{n}", "line": lines[lineno - 1].strip(), "k": k})
     return out
+
+
+def mutant_source(source: str, k: int) -> str:
+    tree = Mutator(target=k).visit(ast.parse(source))
+    return ast.unparse(ast.fix_missing_locations(tree))
+
+
+def equivalent_problems(made: list, equivalent: dict) -> list[str]:
+    """A listed entry whose id is not generated on exactly its line is stale; an entry without a reason is refused."""
+    by_id = {m["id"]: m for m in made}
+    bad = []
+    for mid, (line, why) in sorted(equivalent.items()):
+        if mid not in by_id or by_id[mid]["line"] != line:
+            bad.append(f"STALE equivalent entry {mid}: no such mutant on the line {line!r}")
+        elif not (isinstance(why, str) and why.strip()):
+            bad.append(f"equivalent entry {mid} gives no reason")
+    return bad
 
 
 def run_generated(argv: list) -> int:
@@ -1051,11 +1123,7 @@ def run_generated(argv: list) -> int:
             return 2
     source = (HERE / "walk_plan.py").read_text()
     made = generated_mutants(source)
-    by_id = {m["id"]: m for m in made}
-    bad = []
-    for mid, (line, _) in sorted(EQUIVALENT.items()):
-        if mid not in by_id or by_id[mid]["line"] != line:
-            bad.append(f"STALE equivalent entry {mid}: no such mutant on the line {line!r}")
+    bad = equivalent_problems(made, EQUIVALENT)
     work = Path(tempfile.mkdtemp(prefix="w11c-sweep-"))
     try:
         armed = work / "unmutated.py"
@@ -1066,12 +1134,15 @@ def run_generated(argv: list) -> int:
             print(stdout[-2000:] + stderr[-2000:])
             return 1
         chosen = [m for i, m in enumerate(made) if i % of == shard - 1]
+        if "--only" in argv:                   # one or more ids, comma-separated: to read one mutant's run
+            only = set(argv[argv.index("--only") + 1].split(","))
+            chosen = [m for m in made if m["id"] in only]
         killed = equivalent = 0
         for m in chosen:
             path = work / "mutant.py"
-            path.write_text(m["source"])
+            path.write_text(mutant_source(source, m["k"]))
             try:
-                code, outcome, stdout, stderr = child(["--mutant-source", str(path)], timeout=100)
+                code, outcome, stdout, stderr = child(["--mutant-source", str(path), "--failfast"], timeout=105)
             except subprocess.TimeoutExpired:
                 code, outcome = None, None
             by_assertion = code not in (0, None) and bool(outcome) and bool(outcome["failures"]) \
@@ -1090,6 +1161,8 @@ def run_generated(argv: list) -> int:
                 bad.append(f"{m['id']} ({m['line']!r}) {verdict.lower()}: "
                            f"{(outcome or {}).get('errors') or 'no failing assertion'}")
             print(f"mutant {m['id']} {verdict}: {m['line'][:90]}", flush=True)
+            if "--only" in argv and verdict != "KILLED":
+                print(stdout[-2500:] + stderr[-2500:], flush=True)
     finally:
         shutil.rmtree(work, ignore_errors=True)
     for line in bad:
@@ -1114,7 +1187,10 @@ if __name__ == "__main__":
         index = sys.argv.index("--mutant-source")
         MUTANT_SOURCE = sys.argv[index + 1]
         del sys.argv[index:index + 2]
-    result = unittest.main(verbosity=2, exit=False).result
+    failfast = "--failfast" in sys.argv               # the sweep: the first failing test decides the verdict
+    if failfast:
+        sys.argv.remove("--failfast")
+    result = unittest.main(verbosity=2, exit=False, failfast=failfast).result
     ids = lambda pairs: [t.id().removeprefix("__main__.").split(" ")[0] for t, _ in pairs]  # noqa: E731
     print(f"test_walk_plan: {result.testsRun} run, {len(result.failures)} failures, "
           f"{len(result.errors)} errors, {len(result.skipped)} skipped")

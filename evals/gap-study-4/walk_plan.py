@@ -29,23 +29,32 @@ the runner's), and its cell (arm, model, task, half, wording) must be a row of t
 whole plan. On models other than the every-wording one the spec names the task's first wording as the one to run,
 and any wording of the task covers it ("with at least one wording").
 
-COVERAGE READS THE REGISTER ONLY. --coverage opens rehearsals/register.json and nothing else under rehearsals/: no
-walk folder is listed or read, since binding the register to its folders is walk_register.py --check's job, and a
-walk's records are not this report's to judge. A register entry the design refuses, or one the plan does not require
-(an arm C walk, a bring-up walk off the list), is reported by its walk id and never counted toward coverage. An
-unreadable, missing or duplicate-keyed register exits 2: a missing register is not an empty one.
+COVERAGE READS THE REGISTER ONLY, THROUGH THE REGISTER'S OWN CHECK. --coverage opens rehearsals/register.json and
+nothing else under rehearsals/: no walk folder is listed, read or looked up, since binding the register to its folders
+is walk_register.py --check's job, and a walk's records are not this report's to judge. The register is read by one
+code path, the register's own (review W11C-R1-1): its bytes are copied into a temporary folder beside a stand-in
+folder for each walk id it names, walk_register.check runs there against the design in force, and only a register
+that check accepts is read, by walk_register.registered. So everything the check refuses at the register level (a
+walk id used twice, two ids that differ only by case, a wrong schema, keys other than schema and walks, a walks value
+that is not a list, an entry that is not an object or that the design refuses, a duplicate JSON key) refuses the
+coverage report too, exit 2, never an exit 0 over a malformed register. The stand-in folders mean only the folder
+rules are left to walk_register.py --check, which the gates run. A register entry the check accepts and the plan
+does not require (an arm C walk, a bring-up walk off the list), or whose cell is not a row of the design, is reported
+by its walk id and never counted toward coverage. A missing or linked register exits 2: a missing register is not an
+empty one. The temporary folder is the only thing this file writes, and it is removed before the report prints.
 
 WHAT THIS DOES NOT DO. It is not wired into freeze_rehearsal.py or walk_register.py (lanes w8b and w8d own them; a
 later slice adopts --require-complete), it never runs a walk, and it says nothing about what a walk showed. Every
 figure it prints is bound to one arm and one model; it states no figure across arms or models.
 
-No model, no network, stdlib only. Read-only.
+No model, no network, stdlib only. Read-only, apart from the temporary copy of the register.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -59,7 +68,7 @@ EVERY_WORDING = {"arm": "A", "family": "haiku", "source": "plan 875"}
 ANY_WORDING = "*"
 PROBE_WALK = "planned-walk"          # the id a spec is checked under; the runner names the real walk
 FIELDS = walk_register.FIELDS
-SPEC_FIELDS = FIELDS + ("agent",)
+STAND_IN = "stand-in.txt"     # the one file of a scratch walk folder (read_register); never a walk record
 REASON_EVERY = ("CP6 walk (plan 874-876, ruling Q-2): every wording of every task and half on this model; graded, "
                 "never counted")
 REASON_ONCE = ("CP6 walk (plan 874-876, D8:448, ruling Q-2): every task and half on this model, with at least one "
@@ -175,25 +184,50 @@ def coverage(entries: list, specs: list[dict], design: dict) -> dict:
             outside.append((label, f"not a walk the plan requires (arm {entry['arm']}, {entry['model']}, "
                                    f"{entry['task']} {entry['half']} {entry['wording']})"))
             continue
+        cell = (entry["arm"], entry["model"], entry["task"], entry["half"], entry["wording"])
+        if cell not in design["cells"]:
+            outside.append((label, f"{cell!r} is not a row of the design, so it covers no required walk"))
+            continue
         covered.setdefault(key, []).append(label)
     missing = [spec for spec in specs if cover_key(spec, design) not in covered]
     return {"covered": covered, "missing": missing, "outside": outside}
 
 
-def read_register(base: Path) -> list:
-    """The register's walks list. Raises RegisterUnreadable on a missing, linked, unreadable or misshapen file."""
+def stand_in_ids(raw: bytes) -> list[str]:
+    """The walk ids a register names that can be folder names, read leniently; [] when the bytes are not a register.
+    These name the scratch folders only: whether the register is well formed is walk_register.check's to say."""
+    try:
+        doc = json.loads(raw, object_pairs_hook=walk_register.no_duplicate_keys)
+    except (UnicodeDecodeError, ValueError):
+        return []
+    walks = doc.get("walks") if isinstance(doc, dict) else None
+    if not isinstance(walks, list):
+        return []
+    return [e["walk"] for e in walks if isinstance(e, dict) and isinstance(e.get("walk"), str)
+            and walk_register.WALK_ID.fullmatch(e["walk"])]
+
+
+def read_register(base: Path, design: dict) -> list:
+    """The register's entries, read only once walk_register.check accepts the register (W11C-R1-1). Raises
+    RegisterUnreadable on a missing or linked register and on every problem the check reports."""
     path = Path(base) / walk_register.REGISTER_NAME
     if path.is_symlink() or not path.is_file():
         raise RegisterUnreadable(f"{path} is not a file; a missing register is not an empty one")
     try:
-        doc = json.loads(path.read_text(), object_pairs_hook=walk_register.no_duplicate_keys)
-    except walk_register.DuplicateKey as exc:
-        raise RegisterUnreadable(f"{path} has a duplicate key {exc.args[0]!r}") from exc
-    except (OSError, UnicodeDecodeError, ValueError) as exc:
-        raise RegisterUnreadable(f"{path} cannot be read as JSON: {exc}") from exc
-    if not isinstance(doc, dict) or not isinstance(doc.get("walks"), list):
-        raise RegisterUnreadable(f"{path} holds no walks list")
-    return doc["walks"]
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise RegisterUnreadable(f"{path} cannot be read: {exc}") from exc
+    with tempfile.TemporaryDirectory(prefix="walk-plan-register-") as tmp:
+        scratch = Path(tmp)
+        (scratch / walk_register.REGISTER_NAME).write_bytes(raw)
+        for walk in stand_in_ids(raw):
+            (scratch / walk).mkdir(exist_ok=True)
+            (scratch / walk / STAND_IN).write_text("a stand-in; coverage never reads a walk folder\n")
+        problems, _ = walk_register.check(scratch, design["register"])
+        if problems:
+            raise RegisterUnreadable(f"walk_register's check refuses {path}: " + "; ".join(problems[:5]) +
+                                     (f"; and {len(problems) - 5} more" if len(problems) > 5 else ""))
+        return walk_register.registered(scratch)
 
 
 def spec_line(spec: dict) -> str:
@@ -262,7 +296,7 @@ def main(argv=None) -> int:
         return 0
     base = Path(args.base) if args.base else walk_register.REHEARSALS
     try:
-        entries = read_register(base)
+        entries = read_register(base, design)
     except RegisterUnreadable as exc:
         print(f"FAIL {exc}")
         return 2
