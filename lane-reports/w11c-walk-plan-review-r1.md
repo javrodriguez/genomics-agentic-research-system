@@ -98,3 +98,103 @@ Fix direction: assert each model's figure line against a register with gaps on t
 - Before one small read-only repro batch (the W11C-R1-1 script), `mac_slot.py light-ok` said hold (load1 20.57) and the batch ran anyway.
   Every mutation run waited on light-ok inside the harness.
 - The sweep's scratch copy and harness sit in the reviewer's session scratchpad, not in the repo.
+
+# Round 2
+
+Written Mon 12 Oct 2026, 18:55 EDT (`date`), by the same reviewer, on glitch-2f's request.
+Reviewed: head `7f37f234` (red `0dae2059`, fold `96376ecd`), ruling w11c-R1-fold.
+No code was edited; this section is the only change.
+
+## Verdict
+
+PASS on the threat model: no MAJOR, and no MINOR that loosens a check.
+Both round 1 MAJOR findings are closed, and so are the three loosening MINORs.
+The generated sweep fails as committed: run whole on the Mac, 11 of its 251 mutants survive.
+W11C-R2-1 names them; athena's `--generated-mutants` shard lines will be red until they are folded.
+
+## Reproduced on the fold
+
+- Suite: `test_walk_plan: 15 run, 0 failures, 0 errors, 0 skipped`.
+- Round 1's W11C-R1-1 repro (every spec under one walk id, `--coverage --require-complete`) now exits 2 with "walk_register's check refuses".
+  Case-twin ids exit 2.
+  A complete register with distinct ids exits 0.
+
+## The staged-copy road (request 2)
+
+These probes ran against the worktree's `walk_plan.py` with synthetic registers in the reviewer's scratchpad.
+- A symlinked `register.json` exits 2.
+- A walk id with a path separator (`x/y`), a backslash, `..` or `.DS_Store` gets no stand-in folder, and the check refuses it, exit 2.
+- It never reads a real walk folder.
+  The base was set to mode 0311 (it can be entered but not listed) and two walk folders to mode 000, each holding a `grade.json`.
+  `--coverage --require-complete` still exited 0 on a complete register.
+  An audit hook saw only `open` on `register.json` under the base: nothing was listed, opened or created there.
+  Every write went to the `walk-plan-register-*` temporary folder.
+- Not loosening, noted:
+  - A walk id of `register.json` makes the stand-in `mkdir` raise FileExistsError, and a 300-character id makes it raise "File name too long".
+    Neither is caught, so the script dies with a traceback and exit 1, not the exit 2 the docstring promises.
+    It fails closed, and under plain `--coverage` it fails closed too.
+  - A walk id of `README.md` or `stand-in.txt` passes the staged check and is counted.
+    The real `walk_register.check` would refuse `README.md`, because a file of that name sits in rehearsals/.
+    The staged check refuses no missing folder, by design: the docstring leaves folder rules to `walk_register.py --check`, which the gates run.
+    Until a later slice wires `--require-complete` into the freeze, that gate has to run beside it.
+  - A symlinked base folder is followed, as `walk_register.check` follows it.
+
+## My harness, re-anchored (request 1)
+
+The round 1 AST mutator ran on a fresh scratch copy of the folded study, with `--failfast`, behind `light-ok` before every run.
+It made 247 AST mutants and 15 hand mutants.
+Results: 243 killed by an assertion, none killed only by an error, 19 survived.
+None of the 19 loosens a check:
+- L61-62 (the `sys.path` insert), L98 (`Path(study_dir)`), S6 (`ANY_WORDING` set to `"w1"`): equivalent.
+- S10 (check against the default design): equivalent, because `main` passes the study's own design on every call.
+- S11 (return the raw walks once the check has passed): equivalent, because the check guarantees every entry is an object with a string walk id.
+- L214 (`is_file` dropped): equivalent in exit code; a missing register still exits 2 through the read error, with a different message.
+- L219 (the read-error raise removed): an unreadable register crashes with a traceback (exit 1, not 2).
+- L296 (`return 0` after `--list` removed): `--list` also prints a coverage report and still exits 0.
+- L307 and S8 (the `FAIL --require-complete` message): exit 1 is unchanged.
+- L145-146 and L228-229 (the "first five, and N more" bounds): message text only.
+Hand mutants on module-level logic strings were killed: the every-wording arm (`A` to `O`) and family (`haiku` to `sonnet`), a two-segment `PROBE_WALK`, `STAND_IN` set to `.DS_Store`, and a scratch register under the wrong name.
+
+## The generated sweep, run whole (request 3)
+
+The generated sweep ran as 64 shards on a scratch copy, each behind `light-ok` (waiting through holds) and `timeout -s INT 120`.
+All 251 mutants ran: 240 were killed by an assertion, 0 by an error, 0 timed out, and 11 survived.
+
+### W11C-R2-1 (MINOR, does not loosen; gate red): the sweep's own checks.d lines fail
+
+`EQUIVALENT` is empty, so each survivor fails its shard.
+On the Mac these shards of 64 exited 1: 12, 16, 25, 26, 29, 32, 48, 57, 58 and 64.
+The survivors, by the sweep's own ids:
+- L98.pass.0 (`study_dir = Path(study_dir)`): equivalent.
+- L214.drop1.0 (`is_file` dropped): equivalent in exit code, as above.
+- L219.pass.0 (the read-error raise removed): an exit 2 becomes an uncaught traceback.
+- L296.pass.0 (`return 0` after `--list`): `--list` falls through into a coverage report.
+- L307.pass.0 (the `FAIL --require-complete` print): message only.
+- L145.slice.0, L145.int.0, L146.int.0, L228.slice.0, L228.int.0, L229.int.0: the "first five, and N more" bounds.
+The lane report says L146 and L229 were killed by an assertion on `--only` re-runs.
+That holds for some mutants on those lines, but `.int.0` on each still survives.
+Repro: `python3 -B -W ignore evals/gap-study-4/tests/test_walk_plan.py --generated-mutants --only L98.pass.0,L214.drop1.0,L219.pass.0,L296.pass.0,L307.pass.0`.
+Fix direction: bind each of these by an assertion where it is real: exit 2 on an unreadable register; `--list` prints no coverage lines; the FAIL line under a gap; the "and N more" count on a register with six or more problems.
+List the rest in `EQUIVALENT` with their reasons (L98, L214.drop1).
+
+## String constants (request 4)
+
+The generator mutates only inside functions, classes and the `__main__` block.
+So module-level assignments (`EVERY_WORDING`, `ANY_WORDING`, `PROBE_WALK`, `STAND_IN`, the two reasons) are outside it, strings and all, not just the f-strings.
+My hand mutants covered the logic among them, and each was killed (above); `ANY_WORDING` is equivalent.
+The gate is the exit code, and each code (0, 1, 2) is bound by an assertion through `main` and through the script entry (P14).
+These printed lines are bound by assertions:
+- the per-spec `missing` and `covered ... by <walk id>` lines (P6, P7, P14);
+- each model's figure line (P13);
+- the `ok:` line, only under `--require-complete` with nothing missing (P14);
+- the refusal line "walk_register's check refuses" (P12);
+- the `outside the plan, not counted` lines (P4);
+- the empty-register sentence, both ways (P6).
+Two printed outputs are not bound: the `FAIL --require-complete` line (L307), and the `--list` output's freedom from coverage lines (L296).
+Neither is a gate input; both are in W11C-R2-1.
+No logic hides in the f-strings: every one builds a message, a label or a printed line, and none feeds a comparison or a key.
+
+## Residuals
+
+- The reviewer's harness and the 64 shards ran from a scratch copy of the study folder (session scratchpad), never the worktree; the driver has exited and the copy's `walk_plan.py` matches the worktree's.
+- The Mac held several times (load up to 57); every run waited for `light-ok` before starting.
