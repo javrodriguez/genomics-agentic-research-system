@@ -4,6 +4,8 @@ streams over a fake runtime.
 
     python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py               every test
     python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py --witnesses   the witnesses only, one line each
+    python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py --generated-mutants [--shard i/n]
+                                                    the generated mutation sweep of both modules (see its section)
 
 Fixtures: tests/fixtures/codex-streams/, every file SYNTHETIC (its README labels each one): written from the event
 types, item types and usage keys D8 section 1 names, plus the keys transcript_codex.py lists as "NOT in D8". No Codex
@@ -38,6 +40,11 @@ transcript_codex.py compiled in memory (the registry pattern of lane w6j):
                other-thread-resumed.
   A7-source    SHAPES_SOURCE is "documented" while no fixture is labelled RECORDED, every fixture carries a label,
                and the adapter reports it in its harness record and every turn record. Witness: shapes-recorded.
+
+Review round 1 fold (ruling w11a-R1-fold): B1-end, B2-thread, B3-required and B3-stream, B4-rollout, B5-usage,
+B6-empty, B7-blank, B8-types, B9-record, B10-cut and B11-version bind each condition and clause one case at a time
+(W11A-R1-1 to R1-8, R1-10); A7 requires a RECORDED label's walk id and harness version (R1-9). The generated mutation
+sweep binds the class: every mutant killed or listed EQUIVALENT with its reason.
 
 Fakes only: no model, vendor, network, container runtime, credential or holdout. setUpModule arms a process guard
 that refuses every process start, clears this process's environment to a fixed few names, and fills run_take's
@@ -294,6 +301,16 @@ def s3_key(mod, p):
     out = _both_refuse(mod, p, lines("unknown-key.jsonl")[2], "an agent_message carrying `phase`")
     failed = json.dumps({"type": "turn.failed", "error": {"message": "m", "code": "rate_limit"}})
     out += _both_refuse(mod, p, failed, "a turn.failed error carrying `code`")
+    full = [{"type": "item.completed", "item": {"id": "x1", "type": "mcp_tool_call", "server": "s", "tool": "t",
+                                                "arguments": {"q": 1}, "result": None, "error": None,
+                                                "status": "completed"}},
+            {"type": "item.completed", "item": {"id": "c1", "type": "command_execution", "command": "ls",
+                                                "aggregated_output": "", "exit_code": None, "status": "failed"}}]
+    for rec in full:
+        try:
+            mod.decode(json.dumps(rec))
+        except mod.ShapeError as e:
+            out.append(f"{p}: a record carrying every allowed key was refused: {e}")
     for name in ("turn1-tools.jsonl", "turn-failed.jsonl", "mcp-call.jsonl", "agent-says-429.jsonl"):
         for ln in lines(name):
             try:
@@ -654,6 +671,7 @@ TYPE_BREAKS = (
                                                              "changes": [{"path": 5, "kind": "add"}]}}),
     ("error message 5", {"type": "error", "message": 5}),
     ("turn.failed error not an object", {"type": "turn.failed", "error": "x"}),
+    ("turn.failed error 5", {"type": "turn.failed", "error": 5}),
     ("turn.failed message 5", {"type": "turn.failed", "error": {"message": 5}}),
     ("usage not an object", {"type": "turn.completed", "usage": [1, 2]}),
     ("status 5", {"type": "item.completed", "item": {"id": "i1", "type": "file_change", "status": 5,
@@ -1055,12 +1073,12 @@ def witness_module(target, edits: tuple) -> types.ModuleType:
 
 WITNESSES = {
     # transcript_codex.py
-    "unknown-event-accepted": ("tc", (("    if t not in EVENT_KEYS:\n        raise ShapeError(f\"unknown event type: "
-                                       "{t!r}\")\n    _keys(f\"event {t}\", rec, *EVENT_KEYS[t])\n",
+    "unknown-event-accepted": ("tc", (("    if not isinstance(t, str) or t not in EVENT_KEYS:\n        raise ShapeError("
+                                       "f\"unknown event type: {t!r}\")\n    _keys(f\"event {t}\", rec, *EVENT_KEYS[t])\n",
                                        "    if t in EVENT_KEYS:\n        _keys(f\"event {t}\", rec, *EVENT_KEYS[t])\n"),),
                                s1_event, "S1-event"),
-    "unknown-item-accepted": ("tc", (("    if it not in ITEM_KEYS:\n        raise ShapeError(f\"unknown item type: "
-                                      "{it!r}\")\n    _keys(f\"item {it}\", item, *ITEM_KEYS[it])\n",
+    "unknown-item-accepted": ("tc", (("    if not isinstance(it, str) or it not in ITEM_KEYS:\n        raise ShapeError("
+                                      "f\"unknown item type: {it!r}\")\n    _keys(f\"item {it}\", item, *ITEM_KEYS[it])\n",
                                       "    if it in ITEM_KEYS:\n        _keys(f\"item {it}\", item, *ITEM_KEYS[it])\n"),),
                               s2_item, "S2-item"),
     "unknown-key-accepted": ("tc", (("    unknown = sorted(set(rec) - set(allowed))\n", "    unknown = []\n"),),
@@ -1184,8 +1202,48 @@ CA_CHECKS = (a1_stream, a2_error, a3_usage, a4_argv, a5_model, a6_turn, a7_sourc
              b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version)
 
 _PREAMBLE = "the import preamble: this test puts the module folder on sys.path before it imports either module"
-_EMPTY = "a refusal's own words: an empty or changed message is still the same typed refusal"
-EQUIVALENT = {}
+_LABEL = "a what-label passed to _keys or _types, which use it only in their refusal's words"
+_REASON = ("why_no_init's words: a reason the turn record carries for a reader; no logic reads it, and B4 and B9 "
+           "assert only that it is a non-empty string when init is None")
+_SAME_NONE = "the attribute's starting value is None already: emptying it to None changes nothing"
+EQUIVALENT = {
+    "tc del <module>: _HERE not in sys.path #1": _PREAMBLE,
+    "tc del <module>: from __future__ import annotations #1": _PREAMBLE,
+    "tc del <module>: sys.path.insert(0, _HERE) #1": _PREAMBLE,
+    "tc false <module>: _HERE not in sys.path #1": _PREAMBLE,
+    "tc neg0 <module>: _HERE not in sys.path #1": _PREAMBLE,
+    "tc none <module>: _HERE = os.path.dirname(os.path.abspath(__file__)) #1": _PREAMBLE,
+    "tc true <module>: _HERE not in sys.path #1": _PREAMBLE,
+    "ca del <module>: _HERE not in sys.path #1": _PREAMBLE,
+    "ca del <module>: from __future__ import annotations #1": _PREAMBLE,
+    "ca del <module>: sys.path.insert(0, _HERE) #1": _PREAMBLE,
+    "ca false <module>: _HERE not in sys.path #1": _PREAMBLE,
+    "ca neg0 <module>: _HERE not in sys.path #1": _PREAMBLE,
+    "ca none <module>: _HERE = os.path.dirname(os.path.abspath(__file__)) #1": _PREAMBLE,
+    "ca true <module>: _HERE not in sys.path #1": _PREAMBLE,
+    "tc str check_record: ' change' in check_record #1": _LABEL,
+    "tc str check_record: ' change' in check_record #2": _LABEL,
+    "tc str check_record: 'event ' in check_record #1": _LABEL,
+    "tc str check_record: 'event ' in check_record #2": _LABEL,
+    "tc str check_record: 'item ' in check_record #1": _LABEL,
+    "tc str check_record: 'item ' in check_record #2": _LABEL,
+    "tc str check_record: 'item ' in check_record #3": _LABEL,
+    "tc str check_record: 'item ' in check_record #4": _LABEL,
+    "tc str check_record: 'turn.failed.error' in check_record #1": _LABEL,
+    "tc str check_record: 'turn.failed.error' in check_record #2": _LABEL,
+    "tc str CodexParser._file_change: '#' in CodexParser._file_change #1": "the ref joiner: a ref is read only to pair a result with its call (transcript_view.events), and any spelling keeps each change's ref unique",
+    "ca str CodexAdapter.__init__: 'clock' in CodexAdapter.__init__ #1": "a what-label used only in the TypeError's words for a callable that is not one",
+    "ca str CodexAdapter.__init__: 'counters_for' in CodexAdapter.__init__ #1": "a what-label used only in the TypeError's words for a callable that is not one",
+    "ca str CodexAdapter.__init__: 'rollout_for' in CodexAdapter.__init__ #1": "a what-label used only in the TypeError's words for a callable that is not one",
+    "ca str CodexAdapter.__init__: 'stream_path_for' in CodexAdapter.__init__ #1": "a what-label used only in the TypeError's words for a callable that is not one",
+    "ca str argv: 'line' in argv #1": "a what-label used only in the StreamError's words",
+    "ca str argv: 'model' in argv #1": "a what-label used only in the StreamError's words",
+    "ca str read_rollout: 'the rollout gained no turn_context during this turn' in read_rollout #1": _REASON,
+    "ca str read_rollout: 'the turn_context or the one session_meta lacks a model, appr' in read_rollout #1": _REASON,
+    "ca none CodexAdapter.__init__: self._version = None #1": _SAME_NONE,
+    "ca none CodexAdapter.__init__: self.thread_id = None #1": _SAME_NONE,
+    "ca none CodexAdapter.__init__: self._contexts = 0 #1": "read only as read_rollout's `seen`, a slice start: ctxs[None:] is ctxs[0:]",
+}
 
 
 def _parents(tree) -> dict:
@@ -1311,8 +1369,9 @@ def _build(tree, name: str, path: str, swap=None) -> types.ModuleType:
     return mod
 
 
-def mutant_killed(target: str, kind: str, idx: int, i) -> bool:
-    """True when the mutant does not build or any bound check of its file returns a line."""
+def mutant_killed(target: str, kind: str, idx: int, i):
+    """How the mutant was killed: "build" (it does not compile or import), "line" (a bound check returned its own
+    line), "error" (only ERROR lines: a check crashed on it); None when it survived."""
     src_tc, src_ca = (Path(m.__file__).read_text(encoding="utf-8") for m in (tc, ca))
     try:
         if target == "tc":
@@ -1323,13 +1382,15 @@ def mutant_killed(target: str, kind: str, idx: int, i) -> bool:
             cam = _build(_mutate(src_ca, kind, idx, i), "codex_adapter", ca.__file__)
             checks = [(f, cam) for f in CA_CHECKS]
     except Exception:  # noqa: BLE001 - a mutant that does not build is killed
-        return True
-    sink = io.StringIO()
+        return "build"
+    sink, crashed = io.StringIO(), False
     with contextlib.redirect_stdout(sink), contextlib.redirect_stderr(sink):
         for f, m in checks:
-            if f(m):
-                return True
-    return False
+            got = f(m)
+            if any(not x.startswith("ERROR") for x in got):
+                return "line"
+            crashed = crashed or bool(got)
+    return "error" if crashed else None
 
 
 def all_mutants() -> list:
@@ -1345,9 +1406,11 @@ def run_generated(shard: int, of: int) -> int:
     keys = {m[0] for m in muts}
     stale = sorted(k for k in EQUIVALENT if k not in keys)
     mine = [m for n, m in enumerate(muts) if n % of == shard - 1]
-    killed, equivalent, survivors, wrongly_listed = 0, 0, [], []
+    killed, equivalent, survivors, wrongly_listed, how = 0, 0, [], [], {"build": 0, "line": 0, "error": 0}
     for key, target, kind, idx, i in mine:
         dead = mutant_killed(target, kind, idx, i)
+        if dead:
+            how[dead] += 1
         if key in EQUIVALENT:
             equivalent += 1
             if dead:
@@ -1363,7 +1426,8 @@ def run_generated(shard: int, of: int) -> int:
     for k in wrongly_listed:
         print(f"STALE (listed EQUIVALENT but killed) {k}", flush=True)
     print(f"test_codex_adapter generated mutants: shard {shard} of {of}: {len(mine)} mutants of {len(muts)}, "
-          f"{killed} killed, {equivalent} equivalent, {len(survivors)} survivors, "
+          f"{killed} killed ({how['line']} by a check's own line, {how['error']} by a crash, {how['build']} at "
+          f"build), {equivalent} equivalent, {len(survivors)} survivors, "
           f"{len(stale) + len(wrongly_listed)} stale", flush=True)
     return 0 if not survivors and not stale and not wrongly_listed else 1
 

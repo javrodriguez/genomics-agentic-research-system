@@ -113,7 +113,7 @@ def read_stream(text: str) -> dict:
                   JSON anywhere before it refuses (W11A-R1-10), and so does a decoded record off the tables
     """
     thread_ids, said, output, api, usage, completed, failed, tools, bad = [], [], False, [], None, 0, 0, [], 0
-    lines = [raw.strip() for raw in (text or "").splitlines() if raw.strip()]
+    lines = [raw.strip() for raw in text.splitlines() if raw.strip()]
     for n, raw in enumerate(lines, 1):
         try:
             rec = json.loads(raw)
@@ -163,9 +163,8 @@ def read_stream(text: str) -> dict:
 
 def _rollout_records(text: str) -> list:
     out = []
-    for raw in (text or "").splitlines():
-        raw = raw.strip()
-        if not raw:
+    for raw in text.splitlines():
+        if not raw.strip():
             continue
         try:
             rec = json.loads(raw)
@@ -283,7 +282,7 @@ class CodexAdapter(aa.AgentAdapter):
         if self._version is None:
             c = self.runtime.run(rt.agent_exec_argv(self.take_id, list(VERSION_ARGV)),
                                  env=rt.runtime_env(self.caller_env), timeout=rt.STEP_TIMEOUT_S)
-            m = VERSION_FORM.fullmatch((c.stdout or "").strip()) if c.returncode == 0 else None
+            m = VERSION_FORM.fullmatch(c.stdout.strip()) if c.returncode == 0 and isinstance(c.stdout, str) else None
             if m is None:
                 raise rt.NotReady(f"`codex --version` exited {c.returncode} with no version in its documented form")
             self._version = m.group(1)
@@ -327,4 +326,3 @@ class CodexAdapter(aa.AgentAdapter):
 
     def _end(self) -> None:
         """Nothing of the adapter's own to tear down: the driver removes the container by its recorded id."""
-        return None

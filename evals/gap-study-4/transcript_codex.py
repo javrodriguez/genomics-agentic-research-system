@@ -71,8 +71,6 @@ EVENT_KEYS = {
 }
 EVENT_TYPES = tuple(EVENT_KEYS)
 ITEM_EVENTS = (ITEM_STARTED, ITEM_COMPLETED)
-# The two events whose text is the harness's own error words (never the agent's).
-ERROR_EVENTS = (TURN_FAILED, ERROR)
 TURN_FAILED_ERROR_KEYS = ("message",)
 
 # ---- the item types (D8 section 1) and each one's keys: (required, allowed) ----------------------------------------
@@ -105,11 +103,12 @@ CHANGE_KEYS = ("path", "kind")
 CHANGE_KINDS = {"add": tv.WRITE, "update": tv.EDIT}
 
 # ---- each key's value type (W11A-R1-8); a key not listed here (mcp_tool_call's arguments, result, error) is untyped,
-# its shape not documented. A bool is never an int.
+# its shape not documented. No entry lists bool, and a bool is never read as an int. A record's `type` is checked
+# against its table before these are read.
 _NONE = type(None)
-EVENT_VALUE_TYPES = {"type": (str,), "thread_id": (str,), "item": (dict,), "usage": (dict,), "error": (dict,),
+EVENT_VALUE_TYPES = {"thread_id": (str,), "item": (dict,), "usage": (dict,), "error": (dict,),
                      "message": (str,)}
-ITEM_VALUE_TYPES = {"id": (str,), "type": (str,), "text": (str,), "command": (str,), "aggregated_output": (str,),
+ITEM_VALUE_TYPES = {"id": (str,), "text": (str,), "command": (str,), "aggregated_output": (str,),
                     "exit_code": (int, _NONE), "status": (str,), "changes": (list,), "server": (str,), "tool": (str,)}
 CHANGE_VALUE_TYPES = {"path": (str,), "kind": (str,)}
 
@@ -129,7 +128,7 @@ def _keys(what: str, rec: dict, required, allowed) -> None:
 
 def _types(what: str, rec: dict, table: dict) -> None:
     for k, v in rec.items():
-        if k in table and (not isinstance(v, table[k]) or (isinstance(v, bool) and bool not in table[k])):
+        if k in table and (not isinstance(v, table[k]) or isinstance(v, bool)):
             raise ShapeError(f"{what}: {k} is not {' or '.join(t.__name__ for t in table[k])}")
 
 
@@ -142,7 +141,7 @@ def check_record(rec) -> tuple:
     if not isinstance(rec, dict):
         raise ShapeError("a record that is not an object")
     t = rec.get("type")
-    if t not in EVENT_KEYS:
+    if not isinstance(t, str) or t not in EVENT_KEYS:
         raise ShapeError(f"unknown event type: {t!r}")
     _keys(f"event {t}", rec, *EVENT_KEYS[t])
     _types(f"event {t}", rec, EVENT_VALUE_TYPES)
@@ -153,7 +152,7 @@ def check_record(rec) -> tuple:
         return t, None
     item = rec["item"]
     it = item.get("type")
-    if it not in ITEM_KEYS:
+    if not isinstance(it, str) or it not in ITEM_KEYS:
         raise ShapeError(f"unknown item type: {it!r}")
     _keys(f"item {it}", item, *ITEM_KEYS[it])
     _types(f"item {it}", item, ITEM_VALUE_TYPES)
@@ -186,9 +185,6 @@ def decode(line: str) -> dict:
 
 class CodexParser:
     """Codex's host-captured `codex exec --json` stream, one JSON record per line (never the rollout file)."""
-
-    event_types = EVENT_TYPES
-    item_types = ITEM_TYPES
 
     def items(self, line: str) -> list:
         rec = decode(line)
