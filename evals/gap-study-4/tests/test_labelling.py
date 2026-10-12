@@ -281,6 +281,7 @@ def d1_design(sm, sh, ag):
         "harness_models a list": design(harness_models=[["claude-code", ["m-alpha"]]]),
         "a harness with no models": design(harness_models={"claude-code": [], "codex": ["m-gamma"]}),
         "a model list not a list": design(harness_models={"claude-code": "m-alpha", "codex": ["m-gamma"]}),
+        "a model list a tuple": design(harness_models={"claude-code": ("m-alpha", "m-beta"), "codex": ["m-gamma"]}),
         "a harness name off the id shape": design(harness_models={"-bad": ["m-alpha"]}),
         "a model off the id shape": design(harness_models={"claude-code": ["m alpha"]}),
         "a model twice in one harness": design(harness_models={"claude-code": ["m-alpha", "m-alpha"]}),
@@ -977,10 +978,16 @@ def g4_pool(sm, sh, ag):
         if not ag.pool_problems(r, FRAME):
             out.append(f"G4: a row whose takes are of another {what} passed")
     text = ag.render(rs, FRAME)
+    fmt = stats.intervals.fmt
     for r in rs:
-        line = f"| {r['arm']} | {r['harness']} | {r['model']} | {r['task']} | {r['agree']} of {r['n']} |"
-        if line not in text:
-            out.append(f"G4: the row for {r['model']} {r['task']} is not printed with its labels")
+        cb = r["carried"]
+        back = "a stratum unsampled |  |" if cb is None else f"{fmt(cb[0])} | {fmt(cb[1])} to {fmt(cb[2])} |"
+        line = (f"| {r['arm']} | {r['harness']} | {r['model']} | {r['task']} | {r['agree']} of {r['n']} | "
+                f"{r['bounds'][0]} to {r['bounds'][1]} | {back}")
+        if line not in text.splitlines():
+            out.append(f"G4: the row for {r['model']} {r['task']} is not printed with its labels and figures")
+    if not any(r["carried"] is None for r in rs):
+        out.append("G4: no row here has an unsampled stratum, so its words are untested")
     body = [ln for ln in text.splitlines() if ln.startswith("| ") and " of " in ln]
     if len(body) != len(rs):
         out.append(f"G4: {len(body)} figure lines for {len(rs)} rows")
