@@ -160,6 +160,20 @@ review round 2, W4H2-1); every other status keeps the loop from starting. Every 
 and a model that has a profile under that harness, and its agent's version must be that profile's
 (a row that fails any of these is refused before it is registered).
 
+THE MONEY GATE (lane w7c, ruling W7C-gap4-1, glitch-1b under Javier's standing delegation, 12 Oct 2026). The
+round's two money checks, costs.month_turn_allowed (the month-turn hold: no OpenAI or Google take from 23:30 UTC on a
+month's last day until Javier's "caps trimmed" is recorded) and costs.walk_gate (spend since the round began, plus
+what the remaining tries project, against the $260 / $140 / $400 caps), are called by the loop itself, never left to
+a driver. Before each block is registered, every row of the block whose harness bills money per call (any harness
+but routing.NO_MONEY_HARNESSES; routing.PAID_HARNESSES names each one's arm) is put through both, on one reading of
+the spend ledger (`ledger.read()`, exactly LEDGER_KEYS: now, walks, spend, start, trimmed). When either refuses, or
+the ledger cannot be read or is not that shape, or the harness has no arm, nothing of the block is registered or
+launched: the loop stops (`stopped`, state blocked) with the named reason, for Javier's word, and the frozen order is
+kept (the block's Claude rows wait too). Nothing is committed, so a restart puts the block through the gate again. A
+row of a harness that bills money, handed to a loop given no ledger, is refused before anything runs. Rows of
+claude-code (arms A and C, a subscription login that bills no money per call) never read the ledger and never call
+either check. The ledger is CP2's (the vendor spend reads and the recorded trim); none is built here.
+
 A REPO OR WINDOW FAILURE STOPS, never sinks (review round 2, W1B2-5). If `register` raises, every
 row of the block already registered is committed `failed` (masked fail-closed, nothing launched),
 the loop records why in `stopped` and returns; if `wait_reset` raises, nothing of the next block
@@ -180,7 +194,8 @@ object with three methods,
 
 and a repo object with `register(row, attempt)` and `commit_records(row, attempt, outcome)`, each
 one commit, and `history()` (the committed outcomes and rulings), and a usage window with
-`wait_reset()`. CP2 supplies the real three; CP5's tooling commits the rulings a human makes.
+`wait_reset()`, and (for arms O and G only) a spend ledger with `read()` (THE MONEY GATE). CP2 supplies the real
+four; CP5's tooling commits the rulings a human makes.
 
 THE USAGE WINDOW (glitch-f3's ruling, in-plan, 6 Oct 2026; recorded as glitch-f3's, not the
 owner's). The loop calls `window.wait_reset()` before its next launch after a committed pause, and
@@ -378,10 +393,66 @@ def version_problems(row: dict, table: dict) -> list[str]:
     return []
 
 
+# THE MONEY GATE (W7C, ruling W7C-gap4-1): one reading of the spend ledger, a closed key set.
+LEDGER_KEYS = ("now", "walks", "spend", "start", "trimmed")
+
+
+def bills_money(row: dict) -> bool:
+    """W7C: a row whose harness bills money per call: every harness but routing's no-money one (claude-code)."""
+    return row["agent"]["harness"] not in routing.NO_MONEY_HARNESSES
+
+
+def money_gate_problems(rows: list[dict], ledger) -> list[str]:
+    """W7C (THE MONEY GATE): why these rows may not be launched now (empty when they may). Rows that bill no money are
+    never put through it: with none that bills money the ledger is not read and neither check is called. Otherwise one
+    reading of the ledger feeds costs.month_turn_allowed, per row with its harness's arm, and costs.walk_gate, once;
+    anything but an explicit allow from each, or a ledger that cannot be read or is not exactly LEDGER_KEYS, refuses."""
+    paid = [r for r in rows if bills_money(r)]
+    if not paid:
+        return []
+    if ledger is None:
+        return [f"the loop was given no spend ledger, and slot {paid[0]['slot']}'s harness "
+                f"{paid[0]['agent']['harness']!r} bills money per call"]
+    import costs   # costs imports this module: read at call time, never at import
+    try:
+        snap = ledger.read()
+    except Exception as e:  # noqa: BLE001 - an unreadable ledger refuses, never lets a paid take run
+        return [f"the spend ledger could not be read: {type(e).__name__}: {e}"]
+    if not isinstance(snap, dict) or set(snap) != set(LEDGER_KEYS):
+        got = sorted(snap) if isinstance(snap, dict) else type(snap).__name__
+        return [f"the spend ledger's reading is not exactly {list(LEDGER_KEYS)}: {got}"]
+    p = []
+    for r in paid:
+        harness = r["agent"]["harness"]
+        arm = routing.PAID_HARNESSES.get(harness, {}).get("arm")
+        if arm is None:
+            p.append(f"slot {r['slot']}: harness {harness!r} bills money and has no arm in routing.PAID_HARNESSES")
+            continue
+        try:
+            allowed = costs.month_turn_allowed(arm, snap["now"], snap["trimmed"])
+        except Exception as e:  # noqa: BLE001 - a clock or trim the hold cannot read refuses
+            allowed = f"{type(e).__name__}: {e}"
+        if allowed is not True:
+            p.append(f"slot {r['slot']}: arm {arm} ({harness}): the month-turn hold refuses at {snap['now']!r} "
+                     f"(costs.month_turn_allowed: {allowed}): no OpenAI or Google take until Javier's 'caps trimmed' "
+                     f"is recorded")
+    try:
+        gate = costs.walk_gate(snap["walks"], snap["spend"], snap["start"])
+    except Exception as e:  # noqa: BLE001 - inputs the gate refuses refuse the takes
+        return p + [f"the walk gate refused its inputs: {type(e).__name__}: {e}"]
+    if not isinstance(gate, dict):
+        return p + [f"the walk gate returned no decision: {gate!r}"]
+    if gate.get("decision") != costs.PROCEED:
+        p.append(f"the walk gate says {gate.get('decision')!r}, not {costs.PROCEED!r} (spent and projected against "
+                 f"the round caps: {gate.get('projected')})")
+    return p
+
+
 class Batch:
     def __init__(self, driver, repo, window, *, table: dict | None = None, serial: bool = False,
-                 route_fn=None, annotate_fn=None, history: list | None = None):
+                 route_fn=None, annotate_fn=None, history: list | None = None, ledger=None):
         self.driver, self.repo, self.window = driver, repo, window
+        self.ledger = ledger                 # W7C: the spend ledger (THE MONEY GATE), read before each paid block
         self.table = table if table is not None else routing.load_table()
         self.route_fn = route_fn or routing.route
         self.annotate_fn = annotate_fn or routing.annotate
@@ -660,6 +731,9 @@ class Batch:
                          f"{r['agent']['harness']!r}")
             elif version_problems(r, self.table):
                 p += version_problems(r, self.table)
+            elif bills_money(r) and self.ledger is None:
+                p.append(f"row {r['slot']}: harness {r['agent']['harness']!r} bills money per call, and the loop was "
+                         f"given no spend ledger: refused before anything runs (W7C, THE MONEY GATE)")
             elif self.slot_cell.get(r["slot"], r["half_cell"]) != r["half_cell"]:
                 p.append(f"row {r['slot']}: committed under half-cell {self.slot_cell[r['slot']]!r}, "
                          f"not {r['half_cell']!r}")
@@ -694,6 +768,8 @@ class Batch:
                     return self.outcomes
                 self.paused = False
             block = [queue.popleft() for _ in range(min(self.block, len(queue)))]
+            if self._money_gate(block):                     # W7C: before the block is registered
+                return self.outcomes
             if not self._register(block):                    # serial: one commit each
                 return self.outcomes
             launched = [(row, attempt) + self._launch(row, attempt) for row, attempt in block]   # ids recorded
@@ -722,6 +798,18 @@ class Batch:
             else:
                 kept.append((row, attempt))
         return kept
+
+    def _money_gate(self, block) -> bool:
+        """W7C (THE MONEY GATE): True when the block may not be launched. Nothing of it is registered or launched; the
+        loop stops blocked, naming the first row that bills money and every reason, for Javier's word."""
+        problems = money_gate_problems([r for r, _ in block], self.ledger)
+        if not problems:
+            return False
+        row, attempt = next((r, a) for r, a in block if bills_money(r))
+        self.stopped = {"slot": row["slot"], "attempt": attempt, "state": labels4.BLOCKED,
+                        "reason": "the money gate refuses the block (nothing registered or launched): "
+                                  + "; ".join(problems)}
+        return True
 
     def _wait_window(self) -> bool:
         """Wait for the usage window (THE USAGE WINDOW: wait_reset() returns at once if the window has already reset,
