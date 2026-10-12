@@ -21,6 +21,18 @@ then nothing about the holdout leaves aegis. Each clause below is one guard, wit
   H7 check     freeze.py --check refuses a committed draft that carries either field. Witness: check-skips-draft.
   H8 rehearsal a disposable rehearsal given no source writes neither field and says so. Witness: rehearsal-silent.
 
+Fold (glitch-1b's rulings Q7 and Q8 at the w8b hand-back, Mon 12 Oct 2026 09:08 EDT): freeze_rehearsal.main, driven
+with its clone, git and steps replaced by fakes:
+
+  H9 rehearsal the rehearsal's freeze gets a synthetic digest file (hex digests of fake strings, one list per task of
+               the cloned draft) and its "holdout digests" step passes; only --no-holdout-digests leaves the file out,
+               and then the step fails with NOT REHEARSED and the run is never all green. Witnesses:
+               rehearsal-skips-file, no-file-silent.
+  H10 written  holdout_written_problems passes the real freeze's output for that synthetic file and names a missing
+               or wrong field or count. Witness: written-unchecked.
+  H11 owed     the holdout.py --check step is never run in the clone: it fails, naming itself OWED to aegis (C4,
+               S9), so the rehearsal is not all green. Witnesses: owed-passes, owed-runs.
+
 Synthetic strings only: every digest is the sha256 of an obviously fake string, and no holdout wording, digest, salt or
 count is read or created. freeze.main runs against a temporary folder with git, the review, the pins and the writer
 replaced by in-memory fakes; no process starts except --witnesses' own children.
@@ -90,6 +102,17 @@ def mutants() -> dict:
         "check-skips-draft": ("H7.check", "freeze", "            problem = draft_holdout_problem(json.loads(DRAFT.read_text()))\n",
                               "            problem = None\n"),
         "rehearsal-silent": ("H8.rehearsal", "freeze", "            print(HOLDOUT_NOT_REHEARSED)\n", "            pass\n"),
+        "rehearsal-skips-file": ("H9.rehearsal", "freeze_rehearsal",
+                                 "        holdout_file = None if args.no_holdout_digests else scratch / HOLDOUT_FILE\n",
+                                 "        holdout_file = None\n"),
+        "no-file-silent": ("H9.rehearsal", "freeze_rehearsal",
+                           '                steps.append(("holdout digests", 1, NO_FILE_LINE))\n',
+                           "                pass\n"),
+        "written-unchecked": ("H10.written", "freeze_rehearsal", "    return problems\n\n\ndef freeze_command",
+                              "    return []\n\n\ndef freeze_command"),
+        "owed-passes": ("H11.owed", "freeze_rehearsal", "    return (1, OWED[script]) if",
+                        "    return (0, OWED[script]) if"),
+        "owed-runs": ("H11.owed", "freeze_rehearsal", "        owed = owed_step(command)\n", "        owed = None\n"),
     }
 
 
@@ -101,8 +124,11 @@ def compile_module(name: str, source: str) -> types.ModuleType:
     return mod
 
 
+NAMES = ("build_draft", "freeze", "freeze_rehearsal")
+
+
 def setUpModule():
-    for name in ("build_draft", "freeze"):
+    for name in NAMES:
         MODS[name] = __import__(name)
     if SELECTED is not None:
         _, target, old, new = mutants()[SELECTED]
@@ -111,10 +137,12 @@ def setUpModule():
         MODS[target] = compile_module(target, text.replace(old, new))
         if target == "build_draft":      # freeze imports build_draft lazily; it must meet the compiled one
             MODS["freeze"] = compile_module("freeze", (HERE / "freeze.py").read_text())
+        if target in ("build_draft", "freeze"):  # freeze_rehearsal imports freeze at import
+            MODS["freeze_rehearsal"] = compile_module("freeze_rehearsal", (HERE / "freeze_rehearsal.py").read_text())
 
 
 def tearDownModule():
-    for name in ("build_draft", "freeze"):  # a compiled witness never outlives this module
+    for name in NAMES:  # a compiled witness never outlives this module
         sys.modules.pop(name, None)
 
 
@@ -326,6 +354,112 @@ class H8Rehearsal(Case):
         self.assertNotIn("NOT REHEARSED", out, "H8.rehearsal with a source")
 
 
+# ------------------------------------------------------------------------------------------------- H9-H11
+class RehearsalHarness:
+    """freeze_rehearsal.main with the clone, git, the review and every step replaced by fakes; the fake freeze step
+    writes the frozen file from the digest file it is handed, as freeze.py does."""
+
+    def __init__(self, tmp: Path):
+        self.tmp, self.commands = tmp, []
+        self.draft = tmp / "prereg-draft.json"
+        self.draft.write_text(json.dumps(synthetic_draft()))
+        self.scratch = tmp / "scratch"
+
+    def sh(self, argv, cwd, env=None, timeout=3600):
+        if argv[:2] == ["git", "clone"]:
+            target = Path(argv[-1])
+            (target / "evals" / "gap-study-4").mkdir(parents=True)
+            (target / "evals" / "gap-study-4" / "prereg-draft.json").write_bytes(self.draft.read_bytes())
+        return 0, ""
+
+    def run_step(self, command, clone):
+        self.commands.append(list(command))
+        if command[4].endswith("freeze.py"):
+            frozen = dict(synthetic_draft(), status="FROZEN", take_order=[{}])
+            if "--holdout-digests" in command:
+                source = json.loads(Path(command[command.index("--holdout-digests") + 1]).read_text())
+                counts = {len(v) for v in source["salted_sha256"].values()}
+                frozen.update(holdout_salted_digests=source["salted_sha256"],
+                              holdout_wordings_per_task_version=counts.pop())
+            (Path(clone) / "evals" / "gap-study-4" / "prereg.json").write_text(json.dumps(frozen))
+            return 0, "freeze: wrote prereg.json"
+        return 0, "ok"
+
+    def run(self, argv):
+        r, f = MODS["freeze_rehearsal"], MODS["freeze"]
+        self.scratch.mkdir()
+        patches = ((r, "DRAFT", self.draft), (r, "git", lambda *a, **k: (0, "")), (r, "sh", self.sh),
+                   (r, "run_step", self.run_step), (r, "rehearsal_plan", lambda pre, row: ({}, ())),
+                   (r.tempfile, "mkdtemp", lambda *a, **k: str(self.scratch)),
+                   (r.freeze, "outputs_exist", lambda *a: False),
+                   (r.freeze, "review_file_problems", lambda commit: ([], "review/prefreeze-1.md")),
+                   (r.freeze, "study_tree_sha", lambda *a, **k: "c" * 64))
+        out = io.StringIO()
+        with contextlib.ExitStack() as stack:
+            for module, name, value in patches:
+                stack.enter_context(mock.patch.object(module, name, value))
+            stack.enter_context(contextlib.redirect_stdout(out))
+            code = r.main(argv)
+        report = (self.scratch / "freeze-rehearsal-1.txt").read_text()
+        return code, report
+
+    def freeze_commands(self):
+        return [c for c in self.commands if c[4].endswith("freeze.py")]
+
+
+class H9Rehearsal(Case):
+    def test_the_rehearsal_freeze_exercises_the_digest_path(self):
+        self.assertTrue(hasattr(MODS["freeze_rehearsal"], "synthetic_holdout_source"), "H9.rehearsal: the fold")
+        h = RehearsalHarness(self.tmpdir())
+        code, report = h.run(["--review-commit", "a" * 40])
+        [command] = h.freeze_commands()
+        self.assertIn("--holdout-digests", command, "H9.rehearsal: the freeze got no digest file")
+        source = json.loads(Path(command[command.index("--holdout-digests") + 1]).read_text())
+        self.assertEqual(set(source), {"salted_sha256"}, "H9.rehearsal: digest-only file")
+        self.assertEqual(sorted(source["salted_sha256"]), sorted(TASKS), "H9.rehearsal: one list per task")
+        self.assertTrue(all(re.fullmatch(r"[0-9a-f]{64}", d) for v in source["salted_sha256"].values() for d in v),
+                        "H9.rehearsal: hex digests")
+        self.assertIn("[0] holdout digests\n    both fields written from the synthetic digest file", report,
+                      "H9.rehearsal: the step checks both fields")
+        self.assertNotIn("NOT REHEARSED", report, "H9.rehearsal")
+        h = RehearsalHarness(self.tmpdir())
+        code, report = h.run(["--review-commit", "a" * 40, "--no-holdout-digests"])
+        [command] = h.freeze_commands()
+        self.assertNotIn("--holdout-digests", command, "H9.rehearsal: --no-holdout-digests passed a file")
+        self.assertIn("[1] holdout digests\n    NOT REHEARSED: the holdout digests", report,
+                      "H9.rehearsal: a no-file rehearsal must say so and fail its step")
+        self.assertEqual((code, report.rstrip().splitlines()[-1]), (1, "NOT all green"), "H9.rehearsal")
+
+
+class H10Written(Case):
+    def test_the_written_check_reads_the_real_freeze(self):
+        r = MODS["freeze_rehearsal"]
+        self.assertTrue(hasattr(r, "holdout_written_problems"), "H10.written: the fold")
+        h = self.harness()
+        source_file = self.tmpdir() / "synthetic.json"
+        source = r.synthetic_holdout_source(h.tmp / "prereg-draft.json", source_file)
+        code, out = h.run(["--review-commit", "a" * 40, "--rehearsal", "--write", "--holdout-digests", str(source_file)])
+        self.assertEqual(code, 0, f"H10.written {out}")
+        self.assertEqual(r.holdout_written_problems(h.written[0], source), [], "H10.written: the real freeze's output")
+        frozen = h.written[0]
+        for name, bad in (("missing", {k: v for k, v in frozen.items() if k not in FIELDS}),
+                          ("count", dict(frozen, holdout_wordings_per_task_version=3)),
+                          ("digests", dict(frozen, holdout_salted_digests={t: [fake(t, 9)] * 2 for t in TASKS}))):
+            with self.subTest(name=name):
+                self.assertNotEqual(r.holdout_written_problems(bad, source), [], f"H10.written {name}")
+
+
+class H11Owed(Case):
+    def test_the_holdout_check_names_itself_owed(self):
+        h = RehearsalHarness(self.tmpdir())
+        code, report = h.run(["--review-commit", "a" * 40])
+        self.assertEqual([c for c in h.commands if c[4].endswith("holdout.py")], [],
+                         "H11.owed: holdout.py was run in the clone")
+        self.assertIn("[1] holdout.py --check\n    OWED: holdout.py --check lives in private aegis (ruling C4)", report,
+                      "H11.owed: the step must fail and name itself owed")
+        self.assertEqual((code, report.rstrip().splitlines()[-1]), (1, "NOT all green"), "H11.owed")
+
+
 BOUND = {"H1.draft": "H1Draft.test_no_pre_freeze_draft_carries_the_holdout",
          "H2.writer": "H2Writer.test_the_writer_refuses_the_freeze_fields",
          "H3.write": "H3Write.test_the_freeze_writes_digests_and_count",
@@ -333,7 +467,10 @@ BOUND = {"H1.draft": "H1Draft.test_no_pre_freeze_draft_carries_the_holdout",
          "H5.shape": "H5Shape.test_a_malformed_source_is_refused",
          "H6.allowed": "H6Allowed.test_the_fields_are_freeze_written",
          "H7.check": "H7Check.test_check_refuses_a_draft_carrying_the_fields",
-         "H8.rehearsal": "H8Rehearsal.test_a_rehearsal_without_a_source_writes_neither_field_and_says_so"}
+         "H8.rehearsal": "H8Rehearsal.test_a_rehearsal_without_a_source_writes_neither_field_and_says_so",
+         "H9.rehearsal": "H9Rehearsal.test_the_rehearsal_freeze_exercises_the_digest_path",
+         "H10.written": "H10Written.test_the_written_check_reads_the_real_freeze",
+         "H11.owed": "H11Owed.test_the_holdout_check_names_itself_owed"}
 WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _, _) in mutants().items()}
 
 

@@ -54,6 +54,53 @@ COMMANDS = (
 ) + WALK_COMMANDS
 
 
+# W8B fold (lane w8b-holdout-digests; glitch-1b's rulings Q7 and Q8 at the w8b hand-back, Mon 12 Oct 2026 09:08 EDT,
+# under ruling W8B-gap4-1). Q7: the rehearsal's freeze exercises the digest path. A synthetic digest file (the sha256 of
+# obviously fake strings, one list per task of the cloned draft, never a holdout) is written in the rehearsal's temporary
+# folder, beside the clone so the clone stays committed, and handed to freeze.py --holdout-digests; the step "holdout
+# digests" then checks that the frozen file carries both fields exactly. Only --no-holdout-digests leaves it out, and that
+# rehearsal records NOT REHEARSED as a failing step, so it is never all green. Q8: holdout.py --check lives in private
+# aegis (ruling C4) and is wired with S9's landing; until then its step names itself as owed and fails, never passes.
+SYNTHETIC_PER_TASK = 2
+HOLDOUT_FILE = "synthetic-holdout-digests.json"
+OWED = {"holdout.py": "OWED: holdout.py --check lives in private aegis (ruling C4) and is wired with S9's landing; "
+                      "not run here, so this rehearsal is not all green"}
+NO_FILE_LINE = ("NOT REHEARSED: the holdout digests (--no-holdout-digests: the freeze ran without a digest file, so "
+                "this rehearsal is not all green)")
+
+
+def synthetic_holdout_source(draft_file, out_file) -> dict:
+    """A digest-only source for the rehearsal's freeze: synthetic hex digests, one list per task of the cloned draft."""
+    tasks = [task["id"] for task in json.loads(Path(draft_file).read_text())["tasks"]]
+    source = {"salted_sha256": {task: [hashlib.sha256(f"synthetic-rehearsal-not-a-wording-{task}-{i}".encode())
+                                        .hexdigest() for i in range(SYNTHETIC_PER_TASK)] for task in tasks}}
+    Path(out_file).write_text(json.dumps(source, indent=2) + "\n")
+    return source
+
+
+def holdout_written_problems(frozen: dict, source: dict) -> list[str]:
+    """What the rehearsal's frozen file got wrong about the two freeze-written holdout fields; empty when both match."""
+    problems = []
+    if frozen.get("holdout_salted_digests") != source["salted_sha256"]:
+        problems.append("holdout_salted_digests is not the digest file's")
+    counts = {len(digests) for digests in source["salted_sha256"].values()}
+    if [frozen.get("holdout_wordings_per_task_version")] != sorted(counts):
+        problems.append("holdout_wordings_per_task_version is not the digest file's count")
+    return problems
+
+
+def freeze_command(review, holdout_file):
+    return ("freeze.py", "--review-commit", review, "--rehearsal", "--write") + (
+        () if holdout_file is None else ("--holdout-digests", str(holdout_file)))
+
+
+def owed_step(command):
+    """(1, why) for a gate that is owed elsewhere, or None for a gate this clone runs. `command` is the interpreter
+    argv a step is handed; the script is the first argument that names a .py file."""
+    script = next((Path(part).name for part in command if str(part).endswith(".py")), None)
+    return (1, OWED[script]) if script in OWED else None
+
+
 def rehearsal_plan(pre, row_file):
     """A full frozen row and the runtime commands; never another copy gate."""
     first = copy.deepcopy(pre["take_order"][0])
@@ -98,6 +145,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--keep", action="store_true")
     ap.add_argument("--review-commit")
+    ap.add_argument("--no-holdout-digests", action="store_true")
     args = ap.parse_args(argv)
     if freeze.outputs_exist(HERE):
         print("refusing: a freeze output already exists here")
@@ -124,7 +172,8 @@ def main(argv=None):
     steps = []
 
     def step(name, command):
-        code, output = run_step(command, clone)
+        owed = owed_step(command)
+        code, output = owed if owed else run_step(command, clone)
         tail = " | ".join(output.strip().splitlines()[-3:])
         steps.append((name, code, tail))
         print(f"[{code}] {name}: {tail}", flush=True)
@@ -140,8 +189,10 @@ def main(argv=None):
         code, output = git(clone, "remote", "remove", "origin")
         if code:
             raise ValueError("cannot remove clone remote: " + output)
-        fz = step("freeze", python_command(("freeze.py", "--review-commit", review,
-                                               "--rehearsal", "--write")))
+        holdout_file = None if args.no_holdout_digests else scratch / HOLDOUT_FILE
+        source = (None if holdout_file is None else
+                  synthetic_holdout_source(clone / study.rel("prereg-draft.json"), holdout_file))
+        fz = step("freeze", python_command(freeze_command(review, holdout_file)))
         if fz == 0:
             code, output = git(clone, "add", "--", *(study.rel(p) for p in
                                    ("prereg.json", "COPIED.json", "COPIED.d/freeze.json")))
@@ -153,6 +204,12 @@ def main(argv=None):
                 code, output = git(clone, "commit", "-F", message.name)
             if code:
                 raise ValueError("freeze commit failed: " + output)
+            if source is None:
+                steps.append(("holdout digests", 1, NO_FILE_LINE))
+            else:
+                wrong = holdout_written_problems(json.loads((clone / study.rel("prereg.json")).read_text()), source)
+                steps.append(("holdout digests", 1 if wrong else 0,
+                              "; ".join(wrong) or "both fields written from the synthetic digest file"))
         for command in COMMANDS:
             step(" ".join(command), python_command(command))
         if fz == 0 and all(code == 0 for _, code, _ in steps):
