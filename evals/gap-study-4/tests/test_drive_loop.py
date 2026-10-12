@@ -41,6 +41,8 @@ What is tested, each guard with its own bound check and a whole-file witness of 
              design view (the real round-4 design, test_checker_body's synthetic clean take); a cross-check that
              failed adds readers-disagree; no transcript at all is readers-disagree; the production constants
              (PENDING) refuse, never a default. Witnesses: cross-check-unrouted, missing-transcript-graded.
+  D10-start  Q-w6i-3: an adapter whose start_take raises after it opened is ended once on the cleanup road, and the
+             take rehearses (nothing of the agent ran). Witness: open-after-start (the flag set after start_take).
 
 Fakes and synthetic strings only: no model, vendor, network, container runtime, credential or holdout. The process
 guard, the prereg patches and the PENDING runtime spellings are test_box_integration's own setUpModule.
@@ -534,6 +536,38 @@ def d8_checker(mod, p):
     return out
 
 
+class OpensThenRaises(LoopAdapter):
+    """start_take opens (the base class's _enter) and then fails in _start: a harness that died while starting."""
+
+    def _start(self, take):
+        raise RuntimeError("synthetic: the harness died while starting")
+
+
+@guarded("D10-start")
+def d10_start(mod, p):
+    out = tbi.missing_api(mod, p, "TakeDriver")
+    if out:
+        return out
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+        made = []
+
+        def adapter_for(r, take):
+            made.append(OpensThenRaises(rig.box, take, [{"text": "x"}]))
+            return made[-1]
+        rig.driver.adapter_for = adapter_for
+        r = tbi.row(1)
+        with tbi.spying(rig.spy):
+            cid = rig.driver.launch(r)
+            rec = rig.driver.drive(r, cid)
+            rig.driver.remove(cid)
+    if [a.ended for a in made] != [1] or made[0].lines:
+        out.append(f"{p}: an adapter whose start raised was ended {[a.ended for a in made]} time(s)")
+    if rec["preflight"]["ok"] is not False or rec["ledger"]["turns"] != 0:
+        out.append(f"{p}: the failed start is not a pre-turn refusal: {rec['preflight']}, {rec['ledger']['turns']}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestStage1Carried(unittest.TestCase):
     def test_d1_the_copy_writes_the_hashed_bytes(self):
@@ -563,6 +597,11 @@ class TestStage5Records(unittest.TestCase):
 
     def test_d8_the_production_checker_is_check4(self):
         self.assertEqual(d8_checker(tbi.drive), [])
+
+
+class TestStage6Carried(unittest.TestCase):
+    def test_d10_a_start_that_raises_is_ended(self):
+        self.assertEqual(d10_start(tbi.drive), [])
 
 
 # name: (edits to drive.py, the bound check, the line prefix that is its own assertion)
@@ -598,6 +637,10 @@ WITNESSES = {
                                     "dict.fromkeys(ids, 0)}",
                                     "            return {\"checker_reasons\": [], \"checker_events\": "
                                     "dict.fromkeys(ids, 0)}"),), d8_checker, "D8-checker"),
+    "open-after-start": ((("                    take.adapter_open = True                  # S6c Q-w6i-3: a start that "
+                           "raises is still ended\n                    adapter.start_take(dict(row))\n",
+                           "                    adapter.start_take(dict(row))\n                    take.adapter_open = "
+                           "True\n"),), d10_start, "D10-start"),
 }
 WITNESS_LOG: list = []
 
@@ -656,12 +699,15 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_missing_transcript_graded(self):
         self.kill("missing-transcript-graded")
 
+    def test_witness_open_after_start(self):
+        self.kill("open-after-start")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["table-reread", "continued-past-unheld-marker",
                                                     "recovery-never-sent", "recovery-unbounded", "marker-casefold",
                                                     "abort-before-output", "turn-ends-dropped", "no-cross-check",
                                                     "session-raw", "env-per-turn-dropped", "cross-check-unrouted",
-                                                    "missing-transcript-graded"]))
+                                                    "missing-transcript-graded", "open-after-start"]))
 
 
 if __name__ == "__main__":

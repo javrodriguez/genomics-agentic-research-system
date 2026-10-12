@@ -28,6 +28,10 @@ Bound checks, each with whole-file witnesses of check_take.py compiled in memory
               driver_constants.permission_mode_by_arm, S6's key, which the draft never writes).
   R3-first    the first-turn rule (R4C-8) agrees with agent_adapter.harness_records on five cases: text only, tool call
               only, both, neither, a silent timed-out turn. Witness: text-only-first-turn (line 1592 back to round 3).
+  R8-parser   (lane w6j, W6I-R1-5) R3 again with agent_output read by the Claude Code adapter's own stream parser
+              (claude_code_adapter.read_stream) from a stream in the recorded probes' shape, never hand-written: the
+              parser, the checker and harness_records agree on all five cases. Witness: parser-blank-text (a blank
+              text block read as output), compiled from claude_code_adapter.py.
   R4-guard    the harness guard (R4C-9): a codex or gemini row is refused by design_view and by check4. Witness:
               no-harness-guard.
 
@@ -367,6 +371,46 @@ def r3_first(mod, p):
     return out
 
 
+def stream_of(replies, end) -> str:
+    """One turn's stream-json in the recorded probes' shape (evals/haiku-prestudy/verification/probes): the init, one
+    assistant record per reply, a result record when the turn ended."""
+    recs = [{"type": "system", "subtype": "init", "session_id": sid(), "apiKeySource": "none", "model": row()["model"],
+             "permissionMode": BYPASS, "claude_code_version": VERSION, "tools": ["Bash"]}]
+    for i, r in enumerate(replies, 1):
+        content = [{"type": "text", "text": r["text"]}] if r.get("text") is not None else []
+        if r.get("tool"):
+            content.append({"type": "tool_use", "id": f"toolu_{i}", "name": "Bash", "input": {"command": "ls"}})
+        recs.append({"type": "assistant", "session_id": sid(), "request_id": f"req_{i}",
+                     "message": {"id": f"msg_{i}", "model": row()["model"], "role": "assistant", "content": content}})
+    if end == labels4.END_TURN:
+        recs.append({"type": "result", "subtype": "success", "is_error": False, "session_id": sid(),
+                     "total_cost_usd": 0.0, "num_turns": 1, "permission_denials": []})
+    return "".join(json.dumps(r) + "\n" for r in recs)
+
+
+def r8_parser(mod, parser):
+    """W6I-R1-5: R3 with agent_output from the parser. A bound check over two modules (check_take, the parser)."""
+    p = "R8-parser"
+    try:
+        out = []
+        script = variants.operator_steps(TASK, HALF, WORDING)
+        for case, (replies, end, written) in FIRST_TURN_CASES.items():
+            output = parser.read_stream(stream_of(replies, end))["agent_output"]
+            recs = [user(rendered(script[0]["line"]))]
+            recs += [assistant(r.get("text"), r.get("tool", False)) for r in replies]
+            path = take_folder(script[:1], records=recs)
+            refused = "no-first-agent-turn" in mod.reason_ids(quiet(mod.check, path, TASK, HALF, 0, False,
+                                                                    wording_script=script, design=view(mod)))
+            started = first_turn_started(output, end)
+            if refused == started or output != written:
+                out.append(f"{p}: {case}: the parser reads agent_output={output} (the case says {written}), the "
+                           f"checker {'refuses' if refused else 'admits'} the first turn, harness_records reads "
+                           f"{started}")
+        return out
+    except Exception as e:  # noqa: BLE001
+        return [f"ERROR {p}: {type(e).__name__}: {str(e)[:240]}"]
+
+
 @guarded("R4-guard")
 def r4_guard(mod, p):
     out = []
@@ -460,6 +504,10 @@ class TestTheRealDesign(unittest.TestCase):
 
     def test_r3_the_first_turn_rule_agrees_with_harness_records(self):
         self.assertEqual(r3_first(ct), [])
+
+    def test_r8_the_parsers_first_turn_rule_agrees(self):
+        import claude_code_adapter as cca
+        self.assertEqual(r8_parser(ct, cca), [])
 
     def test_r4_only_claude_code_is_read(self):
         self.assertEqual(r4_guard(ct), [])
@@ -632,6 +680,27 @@ class TestWitnesses(unittest.TestCase):
 
     def test_witness_walk_instructions_from_head(self):
         self.kill("walk-instructions-from-head")
+
+    def test_witness_parser_blank_text(self):
+        """W6I-R1-5: claude_code_adapter.py with a blank text block read as agent output, compiled in memory."""
+        import claude_code_adapter as cca
+        self.assertEqual(r8_parser(ct, cca), [], "R8-parser is not green on the real parser")
+        with open(cca.__file__, encoding="utf-8") as fh:
+            src = fh.read()
+        old = '(b.get("type") == "text" and (b.get("text") or "").strip())'
+        self.assertEqual(src.count(old), 1, "the witness anchor is not in claude_code_adapter.py once")
+        mod = types.ModuleType("claude_code_adapter_w6j_witness")
+        mod.__file__ = cca.__file__
+        exec(compile(src.replace(old, '(b.get("type") == "text" and b.get("text") is not None)'),
+                     cca.__file__ + " (witness)", "exec"), mod.__dict__)
+        got = r8_parser(ct, mod)
+        errors = [x for x in got if x.startswith("ERROR")]
+        own = [x for x in got if x.startswith("R8-parser:")]
+        line = (f"WITNESS parser-blank-text: {'red' if own and not errors else 'NOT KILLED'} by R8-parser "
+                f"({len(own)} own, {len(got) - len(own) - len(errors)} collateral, {len(errors)} errors)")
+        print(f"\n{line}", end=" ", file=sys.stderr, flush=True)
+        self.assertEqual(errors, [])
+        self.assertTrue(own, got)
 
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["no-design-view", "first-wording-always", "pending-ignored",

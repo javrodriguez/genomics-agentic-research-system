@@ -2262,8 +2262,8 @@ class TakeDriver:
             if ok:
                 try:              # W6H-R1-7: the adapter's making or start before turn 1 is a pre-turn refusal
                     adapter = self.adapter_for(row, take)
+                    take.adapter_open = True                  # S6c Q-w6i-3: a start that raises is still ended
                     adapter.start_take(dict(row))
-                    take.adapter_open = True
                     money = self._environment(take, row, adapter)   # S6c C8: written before the first turn
                 except Exception as e:  # noqa: BLE001 - nothing of the agent ran: harness-side (plan, row 1)
                     self._refused(take, e)
@@ -2488,6 +2488,8 @@ def leaked_networks(runtime, recorded_ids, *, caller_env=None) -> list:
 # ROUND 4, SLICE S6c (lane w6j; drive.py moved from lane w6i to lane w6j under glitch-1b's ruling S6c-gap4-1): the
 # drive loop's agent side. In-place edits in part 2 above are marked "S6c"; round 3's bytes stay untouched.
 #   W6I-R2-2  confounded-design's finalize copy writes the bytes whose md5 it checked, never a second read.
+#   Q-w6i-3   the driver's adapter-open flag is set before start_take, so an adapter whose start raised after it
+#             opened is still ended on the cleanup road (an end_take that finds nothing open is a cleanup record).
 #   C13       the marker / recovery / stop loop (round 3's drive.py:1347-1402, the same file's main()): TakeDriver
 #             sends each step's line, reads the reply against the step's marker (exact and case-sensitive: round 3's
 #             marker_holds), sends the step's pre-registered recovery (at most `at_most` times, once by default)
