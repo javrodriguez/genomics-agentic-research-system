@@ -1,6 +1,6 @@
-Status: built on glitch-2f's rulings D1, D2, D3 (see the build section at the end); ready for review
+Status: review round 1 CHANGES folded (ruling w10-R1-fold, f0af28ee); ready for review round 2
 
-RESUME HERE: review round 1, then athena
+RESUME HERE: review round 2
 
 # Lane w10-walk-runner: Gap Study round 4, the CP6 walk runner (proposal)
 
@@ -187,3 +187,76 @@ Evidence (Mac, each run behind `mac_slot.py light-ok` and `timeout -s INT 115/12
 - tests/test_walk_layout.py, test_cp8_prep.py, test_cp6_wiring.py and test_rehearsals.py, each with `--witnesses`
 - tests/test_walk_wiring.py, test_check_take.py, test_checker_body.py, test_drive_commit.py, test_drive_loop.py, test_mode_binding.py and test_wave6_bindings.py
 - The gates: copy_manifest --check, build_draft --check, freeze.py --check, walk_register --check, run.py --walks --check, mode_binding.py --walks --check, fixture_walk.py --check, the checks.d byte bindings (w6j check_take, w6e drive), and lint_language and lint_pooling over the folder
+
+## Fold w10-R1-fold, Mon 12 Oct 2026 14:07 EDT (`date`)
+
+Review round 1 (866586d4, lane-reports/w10-walk-runner-review-r1.md) found CHANGES: W10-R1-1 (MAJOR) and W10-R1-2 (MINOR).
+Ruling w10-R1-fold (glitch-2f) asked for both folds, check.json's "checked", and Q-w10-1's real-grader test.
+Code commit `f0af28ee`; this report is in its own commit.
+
+What changed:
+- W10-R1-1, root cause 2: new class R8WalkRoad.
+  It runs one clean walk, then for each guard copies the folder and changes ONE fact.
+  Where another record cross-binds that fact, the other record is forged to agree: the environment record for the ledger's half and model, and the instruction paths for the working directory.
+  `check4_walk` reads the copy, and the lines it adds over the clean copy must all be the bound guard's.
+  A baseline test proves the clean copy reads clean.
+  check_walk's tail now reads through `walk_pre` with a `D1` comment per line, so every guard has a unique anchor; behaviour is unchanged.
+  R2 gains the walk's own session id with row 0 alone, and with a row commit alone, each refused at launch.
+- W10-R1-1, root cause 1: I could not reproduce it.
+  A scratch probe (`.../scratchpad/w10/probe_machinery.py`) compiled a check_take mutant that raises at the top of `check4_walk` through the test module's own machinery and ran R1.
+  The walk was held: "drive raised RuntimeError: PROBE: the mutant reached".
+  So the drive's call-time `import check_take` already resolves to the compiled witness (compile_module puts it in sys.modules).
+  The reviewer's nine mutants survived because no test fed a bad walk (root cause 2), not because the machinery missed the drive.
+  It is now bound anyway: `test_the_design_tree_through_the_drive` asserts that `sys.modules["check_take"]` is the module under test, then drives a walk in another tree.
+  Witness `walk-tree-unchecked-through-drive` goes red through the drive path.
+- W10-R1-2: `_publish` runs only once `driver.launch` was reached for this row (a `reached` marker set just before the call).
+  The config folder is kept whenever `postflight.json` exists and is not ok, or when the drive ran (teardown.json written) and no postflight record exists.
+  New tests: the reviewer's slot probe (a refused w-0002 with slot w-0001 leaves w-0001's kept folder alone), and a failed `teardown.json` write under a failing postflight still keeps the folder.
+- Note → done: check.json carries `"checked"`, true exactly when the driver wrote its ledger (that is, when the checker ran). R1 asserts true and R3 asserts false.
+- Q-w10-1: new class R9RealGrade.
+  The fake sidecar's `watched.json` lists the half's planted paths (`variants.grader_spec(...)["planted"]`).
+  The REAL v4 grader (graders/scope_read.py) grades the fake walk, the walk is committed, and `run.walk_problems` (the real grader again) gives `([], 1)`.
+  Without the watched paths the same walk was held on `EvidenceError ... not a watched path` (the earlier scratch run).
+
+The reviewer's nine guards, each removed (the 2278-2280 group is three guards):
+
+| Reviewer line | Guard | Witness | Bound test | Result |
+|---|---|---|---|---|
+| check_take 2241 | row-needed assertion | walk-row-needed-unasserted | R8 test_the_row_needed_line_is_asserted | RED |
+| check_take 2257 | ledger task/half | walk-ledger-cell-unbound | R8 test_the_ledger_cell | RED |
+| check_take 2263 | ledger row | walk-ledger-row-unbound | R8 test_the_ledger_row | RED |
+| check_take 2263 | ledger row_commit | walk-ledger-row-commit-unbound | R8 test_the_ledger_row_commit | RED |
+| check_take 2265 | environment_problems | walk-environment-unread | R8 test_the_environment_record | RED |
+| check_take 2271 | environment row | walk-environment-row-unbound | R8 test_the_environment_row | RED |
+| check_take 2271 | environment row_commit | walk-environment-row-commit-unbound | R8 test_the_environment_row_commit | RED |
+| check_take 2275 | model_problems | walk-model-unbound | R8 test_the_model | RED |
+| (beside 2275) | no model in the ledger | walk-model-missing-admitted | R8 test_no_model | RED |
+| check_take 2278 | constant_problems | walk-constants-unread | R8 test_the_constants | RED |
+| check_take 2279 | checkout_problems | walk-checkout-unread | R8 test_the_checkout | RED |
+| check_take 2280 | pinned_instruction_problems | walk-instructions-unread | R8 test_the_instructions | RED |
+| check_take 2321 | recorded_mode_problems | walk-mode-unread | R8 test_the_permission_mode | RED |
+| check_take 2322 | design_tree_problems | walk-tree-unchecked | R8 test_the_design_tree | RED |
+| check_take 2322 | the same, through the drive | walk-tree-unchecked-through-drive | R8 test_the_design_tree_through_the_drive | RED |
+| check4_walk | ledger arm | walk-arm-unbound | R8 test_the_arm | RED |
+| drive 3295 | identity row | walk-identity-row-admitted | R2 test_a_walk_identity_with_a_row_is_refused | RED |
+| drive 3296 | identity row_commit | walk-identity-row-commit-admitted | R2 test_a_walk_identity_with_a_row_is_refused | RED |
+
+Every witness above is red by AssertionError carrying its clause, only its bound method run.
+
+Evidence (Mac, each run behind `mac_slot.py light-ok` and `timeout -s INT 100/115`, python3.13):
+- Red first: the new test file against 866586d4's code (a detached scratch worktree, test file only) gave `test_walk_runner: 31 run, 4 failures, 0 errors`, each by assertion:
+  - R1 and R3: `"checked"` absent;
+  - R4 slot probe: "0 != 1 ... deleted another walk's kept config folder";
+  - R4 teardown: "0 != 1 ... the config folder was not kept".
+  The R8 and R9 tests pass on the old code by design: the guards existed but were unbound. Their red is their witnesses (the table above). R9's red is the unwatched run.
+- Green: `test_walk_runner: 31 run, 0 failures, 0 errors, 0 skipped`.
+- Witnesses: 38/38 RED in five batches (8, 8, 8, 7, 7), exit 0 each; the registry is 38.
+- Neighbours:
+  - test_check_take: Ran 15, OK. test_checker_body: Ran 29, OK. test_walk_wiring: Ran 20, OK.
+  - test_cp6_wiring, test_cp8_prep, test_walk_layout and test_rehearsals: each 0 failures.
+  - Anchor sweep: no test anchor that occurred once at the base now occurs twice (the known exceptions are the file name 'driver-ledger.json' and test_endstate's assertRaisesRegex text).
+  - check_take's round-3 byte binding (w6j) still holds.
+- Gates: copy_manifest --check exit 0 (299 files, 48 fragments); build_draft --check exit 0 (no input moved); freeze.py --check exit 0; walk_register --check exit 0; run.py --walks --check exit 0.
+- Lints: lint_language clean (92 inputs); lint_pooling clean (92 files).
+
+Athena's module list is unchanged; test_walk_runner now runs 31 tests with 38 witnesses.
