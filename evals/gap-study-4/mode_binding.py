@@ -60,9 +60,10 @@ import study  # noqa: E402
 # The same reading drive.py makes, spelled here independently: a re-derivation that imported the driver's
 # reader would be checking the driver against itself.
 ROOTS = ("transcripts", "rehearsals", "pauses")
-# ROUND 4: the folders round 4's take records are committed under (drive.py's take_folder; named question Q-w6i-1:
-# the production take_folder is not fixed yet, so this is the reading the plan supports, to be confirmed).
-TAKE_ROOTS = ("takes",)
+# ROUND 4: the folder round 4's take records are committed under. W7B (Q-w6i-1, lane w7b): named here once;
+# drive.py's production take folder (take_folder_in: <study>/TAKES_DIR/<slot>/<k>) reads this same name.
+TAKES_DIR = "takes"
+TAKE_ROOTS = (TAKES_DIR,)
 PENDING = "PENDING"
 
 
@@ -124,6 +125,14 @@ def attempts(walks: bool = False, base: Path | None = None) -> list[Path]:
     return out
 
 
+def ledger_harness(ledger: dict) -> str:
+    """W7B (lane w7b): the harness a driver ledger records, where drive.py writes it (`agent.harness`, round 4's
+    driver-ledger.json); '?' when it records none, which judge() reports as a take no pin covers."""
+    agent = ledger.get("agent")
+    harness = agent.get("harness") if isinstance(agent, dict) else None
+    return harness if isinstance(harness, str) and harness else "?"
+
+
 def judge(ledger: dict, derived: str, exp: dict, walks: bool) -> tuple[bool, list[str]]:
     """The whole per-session judgement, as a pure function of the ledger and the derived mode.
 
@@ -133,7 +142,7 @@ def judge(ledger: dict, derived: str, exp: dict, walks: bool) -> tuple[bool, lis
     that made two of them pass over nothing.
     """
     model = ledger.get("model_requested") or "?"
-    harness = ledger.get("harness") or "?"
+    harness = ledger_harness(ledger)           # W7B: the driver ledger's own shape, agent.harness
     if walks and ledger.get("permission_mode_expected") is None:
         return True, []
     want = exp.get((harness, model))           # ROUND 4 (Q2): keyed by the harness and the model the take ran
@@ -171,9 +180,9 @@ def rows(walks: bool = False, base: Path | None = None, table: dict | None = Non
         out.append({
             "attempt": str(t.parent.relative_to(base)),
             "task": ledger.get("task"), "half": ledger.get("half"), "model": model,
-            "harness": ledger.get("harness"),
+            "harness": ledger_harness(ledger),
             "passed": ledger.get("permission_mode_passed") or ledger.get("permission_mode"),
-            "recorded": derived, "expected": None if superseded else exp.get((ledger.get("harness") or "?", model)),
+            "recorded": derived, "expected": None if superseded else exp.get((ledger_harness(ledger), model)),
             "ledger_agrees": recorded is None or recorded == derived,
             "superseded": superseded, "problems": problems,
         })

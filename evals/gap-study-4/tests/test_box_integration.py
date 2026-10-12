@@ -1064,6 +1064,8 @@ class DuckAdapter:
     """S6b (d): an adapter that is not an AgentAdapter and keeps its state under another spelling (`_state` is
     "running", never "open"), so only the driver's own flag can tell that it must be ended."""
 
+    name = hb.CLAUDE_CODE       # lane w7b (W6B-R1-3): the driver refuses an adapter that names no harness
+
     def __init__(self, inner: "FakeAdapter"):
         self.inner, self._state, self.ended = inner, "running", 0
 

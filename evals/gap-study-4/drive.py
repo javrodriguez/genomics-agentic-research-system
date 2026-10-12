@@ -2270,9 +2270,12 @@ class TakeDriver:
             if ok:
                 try:              # W6H-R1-7: the adapter's making or start before turn 1 is a pre-turn refusal
                     adapter = self.adapter_for(row, take)
+                    adapter_identity_problems(adapter, row)   # W7B (W6B-R1-3): the row's harness is the adapter's
                     take.adapter_open = True                  # S6c Q-w6i-3: a start that raises is still ended
                     adapter.start_take(dict(row))
                     money = self._environment(take, row, adapter)   # S6c C8: written before the first turn
+                except AdapterIdentityRefused:                # W7B (W6B-R1-3): a mis-wired driver stops, never rehearses
+                    raise
                 except Exception as e:  # noqa: BLE001 - nothing of the agent ran: harness-side (plan, row 1)
                     self._refused(take, e)
                     ok = False
@@ -2686,6 +2689,106 @@ def take_checker(*, design_for):
             reasons.append(READERS_DISAGREE)
         return {"checker_reasons": reasons, "checker_events": dict(got["events"])}
     return checker
+
+
+# =====================================================================================================================
+# ROUND 4, WAVE 7 PIECE P2 (lane w7b; this file moved from lane w6j to lane w7b under glitch-1b's ruling W7B-gap4-1):
+# the CP6 walk wiring, appended here, and one line edited in place in TakeDriver.drive (the adapter identity):
+#   C6-strict  walk_driver() is the one road a walk or a take builds its driver by: WalkDriver, whose script is strict
+#              (a bare operator line refuses) and whose strictness cannot be set False, neither by an argument (the
+#              factory takes none) nor afterwards (the attribute refuses any value but True).
+#   Q-w6i-1    the take folder is fixed: <root>/<mode_binding.TAKES_DIR>/<slot>/<k>, k the next unused attempt
+#              number; mode_binding.py reads its takes from the same TAKES_DIR (one name, both readers).
+#   W6B-R1-3   a take's records name the harness its row names, and the driver refuses (AdapterIdentityRefused, a
+#              stop, never a rehearsal) an adapter whose own name is not that harness: a stub's persisted take carries
+#              the stub's identity, never probes4's or claude-code's.
+#   L-S6-1     one design view per take feeds both the lines sent (script_from_design) and the checker (take_checker),
+#              each read with the take's own run tree.
+# =====================================================================================================================
+
+import mode_binding as _mode_binding  # noqa: E402
+
+TAKES_DIR = _mode_binding.TAKES_DIR           # Q-w6i-1: named once, in mode_binding.py, and read by both
+_SLOT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+class AdapterIdentityRefused(DriveRefused):
+    """W6B-R1-3: the adapter the driver was handed is not the harness the take's row names."""
+
+
+def adapter_identity_problems(adapter, row: dict) -> None:
+    """W6B-R1-3: the adapter's own `name` (agent_adapter's class attribute) must be the row's harness, so every record
+    the take persists (the evidence ledger's take record, driver-ledger.json, the routing pin) names the identity that
+    actually ran. An adapter without a name refuses as well."""
+    want = (row.get("agent") or {}).get("harness")
+    got = getattr(adapter, "name", None)
+    if not isinstance(got, str) or got != want:
+        raise AdapterIdentityRefused(f"the take's row names harness {want!r} and its adapter is {got!r}; a take's "
+                                     f"records carry the identity that ran, never another's")
+
+
+def take_folder_in(root):
+    """Q-w6i-1: TakeDriver's take_folder in production: (row) -> <root>/takes/<slot>/<k>, k = 1 + the attempts the
+    slot already holds (a new folder each launch; launch() refuses one that exists). The slot is one path segment."""
+    base = Path(root).resolve() / TAKES_DIR
+
+    def take_folder(row: dict) -> str:
+        slot = row.get("slot")
+        if not isinstance(slot, str) or not _SLOT.fullmatch(slot):
+            raise DriveRefused(f"the row's slot {slot!r} is not one path segment")
+        folder = base / slot
+        used = [int(p.name) for p in folder.iterdir() if p.name.isdigit()] if folder.is_dir() else []
+        return str(folder / str(max(used, default=0) + 1))
+    return take_folder
+
+
+class WalkDriver(TakeDriver):
+    """C6-strict (W6J-close-1's CP6 checklist item): the production driver. Its script is strict by construction: the
+    production script (script_from_design) hands steps with their markers, and a bare line is refused, never sent."""
+
+    def __init__(self, **kw):
+        if "strict_script" in kw:
+            raise TypeError("the walk driver's script is strict by construction; it takes no strict_script")
+        super().__init__(strict_script=True, **kw)
+
+    @property
+    def strict_script(self) -> bool:
+        return True
+
+    @strict_script.setter
+    def strict_script(self, value) -> None:
+        if value is not True:
+            raise DriveRefused("the walk driver's script is strict; it is never relaxed")
+
+
+def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts, login_file,
+                counters_for, pin_for, design_for, project_for, identity_for, secrets, rules_scanner, uid_map,
+                budget_s, finalize_wait_s, poll_s, clock, sleep, holdout_matcher=None, caller_env=None) -> WalkDriver:
+    """The CP6 production wiring (cp6-readiness row 3): batch's driver for a walk or a take of claude-code.
+
+    design_for  (row, run_tree) -> check_take.design_view(row, pin=pin_for(row), run_tree=run_tree, constants=...):
+                the script is read with run_tree None (its lines carry {project} and {source}, rendered here from the
+                take's identity), the checker with the take's own run tree (TakeSpec.run_tree)
+    root        the study folder the take records are committed under (take_folder_in)
+    Everything else is TakeDriver's (its docstring) or claude_code_adapter_for's. The constants only a walk can
+    measure stay the caller's: design_for hands them to design_view, and check4 refuses while any is PENDING."""
+    if not callable(design_for):
+        raise TypeError("design_for must be callable")
+
+    def script_for(row):
+        ident = identity_for(row)
+        return script_from_design(design_for(row, None), project_for(row), ident["source"])
+
+    return WalkDriver(
+        runtime=runtime, take_folder=take_folder_in(root), config_parent=config_parent, spec_for=spec_for,
+        sidecar_for=sidecar_for, proxy=proxy, lock_path=lock_path, hosts=hosts,
+        adapter_for=claude_code_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
+                                            pin_for=pin_for, clock=clock, caller_env=caller_env),
+        script_for=script_for, pin_for=pin_for,
+        checker=take_checker(design_for=lambda row, take: design_for(row, take.launched.spec.run_tree)),
+        secrets=secrets, rules_scanner=rules_scanner, holdout_matcher=holdout_matcher, uid_map=uid_map,
+        budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s, clock=clock, sleep=sleep,
+        project_for=project_for, identity_for=identity_for, caller_env=caller_env)
 
 
 if __name__ == "__main__":

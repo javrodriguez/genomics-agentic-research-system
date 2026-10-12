@@ -8,6 +8,12 @@ take's routing pin, keyed by the harness and the model it ran, on synthetic take
   M2-pending a PENDING (or absent) pin is never an expectation: the take is a problem naming it and --check exits 1;
             with no take committed the empty gate still says nothing was graded (exit 0).
 
+Lane w7b (wave 7 P2, Q-w6i-1; this module moved from lane w6i to lane w7b under ruling W7B-gap4-1):
+  M3-folder the takes are read from mode_binding.TAKES_DIR, the one name drive.py's production take folder reads
+            (take_folder_in, bound in test_walk_wiring.py), laid out <TAKES_DIR>/<slot>/<k>; the harness is read from
+            the driver ledger's own shape (driver-ledger.json's agent.harness), which every synthetic ledger here now
+            carries. Witness: top-level-harness (round 3's top-level key, which the round-4 driver never writes).
+
 Fakes and synthetic strings only: no model, vendor, network, credential or holdout. setUpModule arms a process guard
 that refuses every process start before mode_binding.py is imported.
 """
@@ -78,7 +84,8 @@ def base_with(takes: list) -> Path:
         recs = [{"type": "user", "permissionMode": mode, "message": {"role": "user", "content": "a synthetic line"}},
                 {"type": "assistant", "message": {"role": "assistant", "content": "a synthetic reply"}}]
         (folder / "transcript.jsonl").write_text("".join(json.dumps(r) + "\n" for r in recs))
-        (folder / "driver-ledger.json").write_text(json.dumps({"harness": harness, "model_requested": model,
+        (folder / "driver-ledger.json").write_text(json.dumps({"agent": {"harness": harness, "version": "0.0.1"},
+                                                               "model_requested": model,
                                                                "task": "synthetic-task", "half": "trap"}))
     return base
 
@@ -135,6 +142,24 @@ def m2_pending(mod, p):
     return out
 
 
+@guarded("M3-folder")
+def m3_folder(mod, p):
+    """W7B (Q-w6i-1): one folder name, the driver ledger's own harness key."""
+    out = []
+    if getattr(mod, "TAKES_DIR", None) != "takes" or tuple(getattr(mod, "TAKE_ROOTS", ())) != ("takes",):
+        out.append(f"{p}: mode_binding names no TAKES_DIR read by TAKE_ROOTS: "
+                   f"{getattr(mod, 'TAKES_DIR', None)!r}, {getattr(mod, 'TAKE_ROOTS', None)!r}")
+    base = base_with([("claude-code", "m-a", BYPASS)])
+    found = mod.attempts(base=base)
+    if [f.relative_to(base).as_posix() for f in found] != ["takes/s1/1/transcript.jsonl"]:
+        out.append(f"{p}: the takes read are {found}")
+    got = mod.rows(base=base, table=TABLE)
+    if [r["harness"] for r in got] != ["claude-code"] or got[0]["problems"]:
+        out.append(f"{p}: a driver ledger's agent.harness was read as {[r['harness'] for r in got]}: "
+                   f"{[r['problems'] for r in got]}")
+    return out
+
+
 class TestGuardArmed(unittest.TestCase):
     def test_a_process_start_trips(self):
         with self.assertRaises(GuardTripped):
@@ -147,6 +172,9 @@ class TestModeBinding(unittest.TestCase):
 
     def test_m2_a_pending_pin_is_never_an_expectation(self):
         self.assertEqual(m2_pending(mb), [])
+
+    def test_m3_the_take_folder_and_the_ledgers_harness(self):
+        self.assertEqual(m3_folder(mb), [])
 
     def test_the_expectation_comes_from_routings_pin_profiles(self):
         self.assertIn("table", inspect.signature(mb.expected).parameters, "expected() does not read a routing table")
@@ -182,6 +210,9 @@ def witness_module(edits: tuple) -> types.ModuleType:
 WITNESSES = {
     "model-only": ((("    want = exp.get((harness, model))",
                      "    want = {m: v for (h, m), v in exp.items()}.get(model)"),), m1_pin, "M1-pin"),
+    # W7B (Q-w6i-1)
+    "top-level-harness": ((("    harness = ledger_harness(ledger)           # W7B: the driver ledger's own shape, agent.harness",
+                            "    harness = ledger.get(\"harness\") or \"?\""),), m1_pin, "M1-pin"),
 }
 
 
@@ -201,8 +232,11 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_model_only(self):
         self.kill("model-only")
 
+    def test_witness_top_level_harness(self):
+        self.kill("top-level-harness")
+
     def test_the_witnesses_are_named(self):
-        self.assertEqual(sorted(WITNESSES), ["model-only"])
+        self.assertEqual(sorted(WITNESSES), ["model-only", "top-level-harness"])
 
 
 if __name__ == "__main__":

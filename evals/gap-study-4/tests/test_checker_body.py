@@ -32,6 +32,9 @@ Bound checks, each with whole-file witnesses of check_take.py compiled in memory
               (claude_code_adapter.read_stream) from a stream in the recorded probes' shape, never hand-written: the
               parser, the checker and harness_records agree on all five cases. Witness: parser-blank-text (a blank
               text block read as output), compiled from claude_code_adapter.py.
+  R9-tree     (lane w7b, Q-w6i-5) the session's own working directory is the view's run tree: read against its own
+              tree a clean take carries no readers-disagree, against a view of another tree it is readers-disagree
+              naming both, and a view naming no run tree is refused. Witnesses: tree-unchecked, tree-none-admitted.
   R4-guard    the harness guard (R4C-9): a codex or gemini row is refused by design_view and by check4. Witness:
               no-harness-guard.
 
@@ -489,6 +492,34 @@ def r7_pinned(mod, p):
     return out
 
 
+@guarded("R9-tree")
+def r9_tree(mod, p):
+    """W7B (Q-w6i-5, lane w7b): the run tree the view was built with is the one the session records it opened in.
+    A clean take read against its own tree carries no readers-disagree; the same take read against a view built with
+    another tree is readers-disagree, naming the two trees; a view with no run tree is refused (CheckRefused)."""
+    out = []
+    d = view(mod)
+    path = take_folder(d.script)
+    got = run4(mod, path, d, d.script)
+    if "readers-disagree" in got["reasons"]:
+        out.append(f"{p}: a take read against its own run tree is readers-disagree: {got['problems'][:1]}")
+    other = d.replace(run_tree="/work/elsewhere")
+    got = run4(mod, path, other, other.script)
+    named = [x for x in got["problems"] if x.startswith("[readers-disagree]") and "/work/elsewhere" in x
+             and RUN_TREE in x]
+    if "readers-disagree" not in got["reasons"] or not named:
+        out.append(f"{p}: a session that opened in {RUN_TREE} read against a view of /work/elsewhere is not "
+                   f"readers-disagree naming both: {got['reasons']}")
+    try:
+        run4(mod, path, d.replace(run_tree=None), d.script)
+        out.append(f"{p}: check4 read a take against a view with no run tree")
+    except mod.CheckRefused:
+        pass
+    except Exception as e:  # noqa: BLE001 - a crash is not the refusal
+        out.append(f"{p}: a view with no run tree raised {type(e).__name__}, not CheckRefused")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestGuardArmed(unittest.TestCase):
     def test_a_process_start_trips(self):
@@ -520,6 +551,9 @@ class TestTheRealDesign(unittest.TestCase):
 
     def test_r6_the_scratch_folder_is_the_views(self):
         self.assertEqual(r6_tmpdir(ct), [])
+
+    def test_r9_the_sessions_tree_is_the_views(self):
+        self.assertEqual(r9_tree(ct), [])
 
     def test_r7_the_instruction_file_binds_the_pinned_tree(self):
         self.assertEqual(r7_pinned(ct), [])
@@ -635,6 +669,11 @@ WITNESSES = {
                                       "pinned_instruction_problems(path, design)",
                                       "        problems += instruction_content_problems(path)"),), r7_pinned,
                                     "R7-pinned"),
+    # W7B (Q-w6i-5, lane w7b)
+    "tree-unchecked": ((("    problems += design_tree_problems(path, design)               # W7B (Q-w6i-5)\n", ""),),
+                       r9_tree, "R9-tree"),
+    "tree-none-admitted": ((("    if not isinstance(design.run_tree, str) or not design.run_tree:      # W7B (Q-w6i-5)",
+                             "    if False:"),), r9_tree, "R9-tree"),
 }
 WITNESS_LOG: list = []
 
@@ -684,6 +723,12 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_walk_instructions_from_head(self):
         self.kill("walk-instructions-from-head")
 
+    def test_witness_tree_unchecked(self):
+        self.kill("tree-unchecked")
+
+    def test_witness_tree_none_admitted(self):
+        self.kill("tree-none-admitted")
+
     def test_witness_parser_blank_text(self):
         """W6I-R1-5: claude_code_adapter.py with a blank text block read as agent output, compiled in memory."""
         import claude_code_adapter as cca
@@ -709,8 +754,9 @@ class TestWitnesses(unittest.TestCase):
         self.assertEqual(sorted(WITNESSES), sorted(["no-design-view", "first-wording-always", "pending-ignored",
                                                     "draft-mode-table", "text-only-first-turn", "no-harness-guard",
                                                     "partial-view-admitted", "tmpdir-from-the-draft",
-                                                    "instructions-from-head", "walk-instructions-from-head"]))
-        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 7)
+                                                    "instructions-from-head", "walk-instructions-from-head",
+                                                    "tree-unchecked", "tree-none-admitted"]))
+        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 8)
 
 
 if __name__ == "__main__":

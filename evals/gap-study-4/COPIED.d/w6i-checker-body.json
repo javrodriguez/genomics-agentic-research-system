@@ -2,25 +2,9 @@
   "lane": "w6i-checker-body",
   "files": [
     {
-      "path": "mode_binding.py",
-      "status": "edited",
-      "source": "evals/gap-study-3/mode_binding.py",
-      "reason": "Transferred from lane w1a-cp1-scaffold (where it was an identical copy) under ruling S6b-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026). Slice S6b, Q2 (plan 583, 'mode_binding.py's expectations by arm and model'): expected() reads the pin per (harness, model) from routing.json's pin_profiles (ruling D1, the routing pin), a PENDING or absent mode is never an expectation (the take is a problem naming it and --check exits 1), judge() keys by the take's harness and model, attempts() reads round 4's take folders (TAKE_ROOTS, named question Q-w6i-1), and the empty gate still says it graded nothing."
-    },
-    {
-      "path": "tests/test_check_take.py",
-      "status": "new",
-      "reason": "The plan's VALIDATE module for the check_take.py UPDATE (lane w6h), on synthetic transcripts and a synthetic design: the mode keyed by arm, the wording's script, the three event reasons lifted and counted, and the recorded mode binding with its routes (graded when pinned; a rehearsal before and harness-error after the first turn otherwise), each with a whole-file witness of check_take.py compiled in memory. Transferred from lane w6h-drive-lifecycle to lane w6i-checker-body under ruling S6b-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026). S6b: check4's callers pass a synthetic Design built from the module under test (dsg), so S6's witnesses keep running on a design view."
-    },
-    {
-      "path": "tests/test_mode_binding.py",
-      "status": "new",
-      "reason": "Lane w6i (slice S6b, Q2): mode_binding.py on synthetic take folders: the pin keyed by harness and model, a PENDING pin a --check failure naming it, the empty gate; a whole-file witness (the expectation looked up by the model alone)."
-    },
-    {
       "path": "COPIED.d/w6i-checker-body.json",
       "status": "new",
-      "reason": "This lane's copy-record fragment (interface 1). Transfers under ruling S6b-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026): check_take.py, drive.py, tests/test_box_integration.py and tests/test_check_take.py from lane w6h-drive-lifecycle. Transfer (ruling S6c-gap4-1, glitch-1b under Javier's standing delegation, 11 Oct 2026): drive.py, check_take.py and tests/test_checker_body.py moved on to lane w6j-claude-adapter, which claims them in COPIED.d/w6j-claude-adapter.json. Then tests/test_box_integration.py moved on to lane w6j-claude-adapter as well (ruling S6c-gap4-1, slice S6c stage 5)."
+      "reason": "This lane's copy-record fragment (interface 1). Transfers under ruling S6b-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026): check_take.py, drive.py, tests/test_box_integration.py and tests/test_check_take.py from lane w6h-drive-lifecycle. Transfer (ruling S6c-gap4-1, glitch-1b under Javier's standing delegation, 11 Oct 2026): drive.py, check_take.py and tests/test_checker_body.py moved on to lane w6j-claude-adapter, which claims them in COPIED.d/w6j-claude-adapter.json. Then tests/test_box_integration.py moved on to lane w6j-claude-adapter as well (ruling S6c-gap4-1, slice S6c stage 5). Transfer (ruling W7B-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026; wave 7 piece P2, the CP6 walk wiring)): mode_binding.py, tests/test_mode_binding.py, tests/test_check_take.py moved on to lane w7b-walk-wiring, which claims them in COPIED.d/w7b-walk-wiring.json."
     },
     {
       "path": "checks.d/w6i-checker-body.txt",

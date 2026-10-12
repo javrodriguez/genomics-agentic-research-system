@@ -906,7 +906,8 @@ class Claims(unittest.TestCase):
         # reads those fragments too, so the expected set follows it. Floor unchanged.
         fragments = [HERE / 'COPIED.d' / name for name in
                      ('w1a-cp1-scaffold.json', 'w5c-draft-ci.json', 'w6e-drive-commit.json',
-                      'w6h-drive-lifecycle.json', 'w6i-checker-body.json', 'w6j-claude-adapter.json')]
+                      'w6h-drive-lifecycle.json', 'w6i-checker-body.json', 'w6j-claude-adapter.json',
+                      'w7b-walk-wiring.json')]   # W7B-gap4-1 (departure w7b-1); W6-claims-1 derives this list
         expected = [entry['path'] for path in fragments for entry in json.loads(path.read_text())['files']
                     if entry['status'] != 'new' and entry['path'].endswith('.py')]
         self.assertGreater(len(expected), 30)

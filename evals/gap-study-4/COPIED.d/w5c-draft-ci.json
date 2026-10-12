@@ -19,7 +19,7 @@
     {
       "path": "tests/test_build_draft.py",
       "status": "new",
-      "reason": "R1-R34: derived draft commitments and accessor mutations."
+      "reason": "R1-R34: derived draft commitments and accessor mutations. Departure w7b-1 (lane w7b, under ruling W7B-gap4-1, for glitch-1b to ratify): Claims.test_relocated_claims's hand list of fragments also reads COPIED.d/w7b-walk-wiring.json, matching copied_modules(); the floor of more than 30 is unchanged (W6-claims-1, lane w7a, replaces the hand list with a derived one)."
     },
     {
       "path": "build_draft.py",

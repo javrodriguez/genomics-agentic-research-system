@@ -1,0 +1,7 @@
+# Lane w7b-walk-wiring: Gap Study round 4, wave 7 piece P2, the CP6 walk wiring (C6-strict, Q-w6i-1, Q-w6i-5,
+# W6B-R1-3) and one end-to-end take on a fake runtime with the real check4 on round 4's real design. One command per
+# line, run from the repository root. The module prints one WITNESS line per guard. The commands for the modules this
+# lane took over (test_box_integration, test_check_take, test_checker_body, test_mode_binding, the check_take.py byte
+# binding) stay in checks.d/w6h-drive-lifecycle.txt, w6i-checker-body.txt and w6j-claude-adapter.txt.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_wiring.py
+python3 -B -W ignore evals/gap-study-4/mode_binding.py --check
