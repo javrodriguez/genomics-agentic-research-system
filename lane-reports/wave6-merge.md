@@ -138,4 +138,32 @@ Checks on 104fa58d (Mac, Python 3.13.2, `mac_slot.py light-ok`, `timeout -s INT 
 
 RESIDUAL: the full test_round4 battery and build_draft witness groups 3 and 4 run on athena only.
 
-RESUME HERE: merge head 104fa58db183143b10a7e7c0d4a755613baa1ad3; athena run_checks owed (orchestrator)
+Superseded by the S6b/S6c addendum below.
+
+## Addendum: S6b and S6c joined (glitch-1b's word, Sun 11 Oct 2026, 21:47 to 21:50 EDT)
+
+Merge 7, `--no-ff`: S6c `gap4/w6j-claude-adapter`, tip aac82148804b (verified before merging; contains code ea091e59, S6b `gap4/w6i-checker-body` at d56f87081, and 48ca93fa), rulings W6J-close-1 and W6I-close-1, merge commit 77996eb4.
+No textual conflict.
+w6j had already updated `tests/test_scaffold.py` copied_modules() to read six fragments (w1a, w5c-draft-ci, w6e, w6h, w6i, w6j), and that change merged cleanly over this branch's version.
+Production files (check_take.py, drive.py, mode_binding.py, claude_code_adapter.py) merged cleanly.
+Ownership now: drive.py and check_take.py → w6j, and mode_binding.py → w6i (all edited); no path is claimed twice (36 fragments).
+
+There was one semantic follow-on, and it is bookkeeping: test_build_draft Claims.test_relocated_claims read only four fragments, so it would have counted 28 against its floor of more than 30.
+Fix commit 66e1ede1: its fragment list now matches copied_modules()'s six; the floor is unchanged and holds at 31 (26 + 2 + 0 + 0 + 1 + 2).
+
+Checks on 66e1ede1 (Mac, Python 3.13.2, `mac_slot.py light-ok`, `timeout -s INT 120`):
+
+| Check | Exit | Result |
+|---|---|---|
+| copy_manifest.py --check | 0 | 252 files from 36 fragments |
+| probes4.py --check | 0 | 1690 cells graded, 0 defects, 0 problems |
+| build_draft.py --check | 0 | the committed draft is what build_draft.py builds |
+| freeze.py --check | 0 | 252 owned paths checked |
+| mode_binding.py --check | 0 | graded 0 attempts; none committed yet |
+| tests/test_ci_job.py | 0 | Ran 23, OK |
+| tests/test_build_draft.py Claims | 0 | Ran 2, OK |
+| tests/test_drive_loop.py | 0 | Ran 27, OK |
+| tests/test_checker_body.py | 0 | Ran 26, OK |
+| tests/test_claude_code_adapter.py | 0 | Ran 19, OK |
+
+RESUME HERE: merge head 66e1ede15ebf3f9d81d57a2822f341a0a30107ea; athena run_checks owed (orchestrator)
