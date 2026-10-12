@@ -841,9 +841,8 @@ def describe(root=None):
     d["routing"] = {"sha256": sha((root / "routing.json").read_bytes()), "about": table["about"]}
     d["predictions_rule"] = copy.deepcopy(PREDICTIONS_RULE)
     d["predictions"] = prediction_rows(d["rows"])
-    d["holdout_salted_digests"] = PENDING
-    d["holdout_rule"] = {"wordings_per_task_version": 3, "separate_author": True, "run_in_this_round": False,
-                          "publish": "salted_sha256", "salt_in_draft": False, "source": SOURCES["plan"] + " line 175"}
+    # W8B (lane w8b-holdout-digests, ruling W8B-gap4-1): no holdout digest, count or stand-in before the freeze.
+    d["holdout_rule"] = copy.deepcopy(HOLDOUT_RULE)
     d["limitations"] = [{"text": text, "round_4_reading": PENDING} for text in prior["limitations_lines"]]
     d["box_residuals"] = [
         {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True, "finding": PENDING},
@@ -899,7 +898,6 @@ VENDORS = {CLAUDE: "anthropic", CODEX: "openai", GEMINI: "google"}
 PENDING_REASONS = {
     "image_locks": "R6 plan 828: CP2 supplies built image and version pins.",
     "version_pins": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
-    "holdout_salted_digests": "R7 plan 175 and 829: the separate author supplies only the published digests through glitch-f3.",
     "limitations": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
     "box_residuals": "R8 plan 830: the real box supplies the conditional preflight finding.",
     "checked_against": "R9 plan 831, PL-4: the first committed walk supplies the session check.",
@@ -962,18 +960,41 @@ def validate_alpha(value):
         raise ValueError("alpha must use its shortest decimal spelling")
 
 
+# W8B (lane w8b-holdout-digests), ruling W8B-gap4-1, Javier's own decision ("holdout digests A", Mon 12 Oct 2026
+# 08:51 EDT): the holdout's salted digests and its per-version count enter this repository only in the freeze
+# commit's frozen file (freeze.holdout_fields, from a digest-only source in private aegis). Until then nothing about
+# the holdout leaves aegis: the draft carries neither field, no PENDING stand-in for them, and a holdout_rule that
+# states no count, and finalize (so write_draft and build) refuses a draft that does.
+HOLDOUT_FREEZE_KEYS = ("holdout_salted_digests", "holdout_wordings_per_task_version")
+HOLDOUT_RULE = {"separate_author": True, "run_in_this_round": False, "publish": "salted_sha256",
+                "salt_in_draft": False, "digests_and_count_enter": "the freeze commit only", "ruling": "W8B-gap4-1",
+                "source": SOURCES["plan"] + " line 175"}
+
+
+def prefreeze_holdout_problems(draft):
+    """The freeze-only holdout fields a pre-freeze draft carries (W8B-gap4-1): either field, or a holdout_rule other
+    than HOLDOUT_RULE (a count inside it, above all). Empty means the draft may be written."""
+    bad = [key for key in HOLDOUT_FREEZE_KEYS if key in draft]
+    if "holdout_rule" in draft and draft["holdout_rule"] != HOLDOUT_RULE:
+        bad.append("holdout_rule")
+    return bad
+
+
 def validate_digests(value, task_ids):
-    """Published digests only: no file reader, salt, extra task or duplicate."""
-    if not isinstance(value, dict) or set(value) != set(task_ids):
+    """Published digests only: no file reader, salt, extra task or duplicate, and one positive count for every task
+    version, which is returned. Called by the freeze alone (W8B-gap4-1); the count is the source's, never fixed here."""
+    if not isinstance(value, dict) or not value or set(value) != set(task_ids):
         raise ValueError("one digest list per task; no other keys")
+    counts = {len(digests) if isinstance(digests, list) else 0 for digests in value.values()}
+    if len(counts) != 1 or min(counts) < 1:
+        raise ValueError("the same positive number of published digests per task version")
     seen = set()
     for digests in value.values():
-        if not isinstance(digests, list) or len(digests) != 3:
-            raise ValueError("three published digests per task version")
         for digest in digests:
             if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or digest in seen:
                 raise ValueError("distinct lowercase sha256 digests are required")
             seen.add(digest)
+    return counts.pop()
 
 
 def validate_prices(value, harness_models):
@@ -1160,6 +1181,10 @@ are excluded to avoid self-reference. The five walk counts use null as required.
 def finalize(draft):
     """Re-close a document after in-memory inputs; never an owner-input CLI."""
     d = copy.deepcopy(draft)
+    early = prefreeze_holdout_problems(d)
+    if early:
+        raise ValueError("a pre-freeze draft carries no holdout digest or count; they enter at the freeze commit only "
+                         "(ruling W8B-gap4-1): refusing " + ", ".join(early))
     malformed = owner_list_problems(d)
     if malformed:
         raise ValueError("required owner list shape: " + ", ".join(malformed))
@@ -1167,8 +1192,6 @@ def finalize(draft):
     validate_alpha(d.get("alpha_secondary"))
     if design["alpha"] != PENDING:
         validate_alpha(design["alpha"])
-    if d["holdout_salted_digests"] != PENDING:
-        validate_digests(d["holdout_salted_digests"], [t["id"] for t in d["tasks"]])
     if d["price_table"] != PENDING:
         validate_prices(d["price_table"], design["harness_models"])
     d["pending"] = pending(d)

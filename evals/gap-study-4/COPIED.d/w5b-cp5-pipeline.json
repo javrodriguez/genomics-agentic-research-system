@@ -4,18 +4,12 @@
     {
       "path": "COPIED.d/w5b-cp5-pipeline.json",
       "status": "new",
-      "reason": "R1, R18: pipeline ownership. Transfer (ruling W8A-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8a, the walk layout, from ruling W8-layout-1)): run.py, freeze_rehearsal.py, tests/test_pipeline.py moved to lane w8a-walk-layout, which edits them for the walk layout and claims them in COPIED.d/w8a-walk-layout.json."
+      "reason": "R1, R18: pipeline ownership. Transfer (ruling W8A-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8a, the walk layout, from ruling W8-layout-1)): run.py, freeze_rehearsal.py, tests/test_pipeline.py moved to lane w8a-walk-layout, which edits them for the walk layout and claims them in COPIED.d/w8a-walk-layout.json. Transfer (ruling W8B-gap4-1 (Javier's own decision, typed in glitch-1b's window Mon 12 Oct 2026 08:51 EDT, \"holdout digests A\"; slice w8b, assigned by glitch-1b)): freeze.py moved to lane w8b-holdout-digests, which edits them so the holdout's salted digests and count enter at the freeze commit only, and claims them in COPIED.d/w8b-holdout-digests.json."
     },
     {
       "path": "checks.d/w5b-cp5-pipeline.txt",
       "status": "new",
       "reason": "R10: pipeline checks"
-    },
-    {
-      "path": "freeze.py",
-      "status": "edited",
-      "source": "evals/gap-study-3/freeze.py",
-      "reason": "R7, R18 and ruling w5b-3: freeze pins and one-time generated record claims"
     },
     {
       "path": "takes.py",

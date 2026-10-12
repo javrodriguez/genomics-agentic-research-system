@@ -372,10 +372,11 @@ class PipelineOwnership(unittest.TestCase):
                  "costs.py", "freeze.py", "freeze_rehearsal.py")
         entries, bad = cm.load_fragments()
         self.assertEqual(bad, [])
-        # W8A (ruling W8A-gap4-1): run.py and freeze_rehearsal.py moved to lane w8a-walk-layout; the other six stay
-        moved = ("run.py", "freeze_rehearsal.py")
-        own = {e["path"]: e for lane, e in entries
-               if lane == ("w8a-walk-layout" if e["path"] in moved else "w5b-cp5-pipeline")}
+        # W8A (ruling W8A-gap4-1): run.py moved to lane w8a-walk-layout; W8B (ruling W8B-gap4-1 and glitch-1b's Q7/Q8):
+        # freeze.py and freeze_rehearsal.py moved to lane w8b-holdout-digests; the other five stay
+        moved = {"run.py": "w8a-walk-layout", "freeze.py": "w8b-holdout-digests",
+                 "freeze_rehearsal.py": "w8b-holdout-digests"}
+        own = {e["path"]: e for lane, e in entries if lane == moved.get(e["path"], "w5b-cp5-pipeline")}
         self.assertTrue(set(names) <= set(own))
         for name in names:
             self.assertEqual(own[name]["status"], "edited")
