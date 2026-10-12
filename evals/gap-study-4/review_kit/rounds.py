@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """The round register: a review is pre-registered before it opens, exactly as a take is.
 
-    python3 evals/gap-study-3/review_kit/rounds.py --add --kind prefreeze --folder <review folder>
-    python3 evals/gap-study-3/review_kit/rounds.py --add --kind verify --folder <verifier folder>
-    python3 evals/gap-study-3/review_kit/rounds.py --session-id <row-index>   the uuid for a committed row
-    python3 evals/gap-study-3/review_kit/rounds.py --audit                    every row, its commit, its uuid
-    python3 evals/gap-study-3/review_kit/rounds.py --check                    open rounds, and what blocks
+    python3 evals/gap-study-4/review_kit/rounds.py --add --kind prefreeze --folder <review folder>
+    python3 evals/gap-study-4/review_kit/rounds.py --add --kind verify --folder <verifier folder>
+    python3 evals/gap-study-4/review_kit/rounds.py --session-id <row-index>   the uuid for a committed row
+    python3 evals/gap-study-4/review_kit/rounds.py --audit                    every row, its commit, its uuid
+    python3 evals/gap-study-4/review_kit/rounds.py --check                    open rounds, and what blocks
 
 THE PROBLEM THIS SOLVES. A round of blind review is only evidence if every round that ran is in the record.
 A run that opened four reviewers and committed the two it liked can produce a folder of reports afterwards
