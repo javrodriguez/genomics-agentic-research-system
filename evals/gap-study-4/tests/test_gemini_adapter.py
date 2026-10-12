@@ -58,7 +58,11 @@ sys.path.
 
 from __future__ import annotations
 
+import ast
 import contextlib
+import copy
+import hashlib
+import io
 import json
 import os
 import re
@@ -238,7 +242,7 @@ class Clock:
         self.now = 100.0
 
     def __call__(self):
-        self.now += 1.0
+        self.now += 1
         return self.now
 
 
@@ -249,10 +253,13 @@ def login_file() -> str:
     return str(path)
 
 
-def adapter(mod, runtime, *, mode=MODE, counters=None, pin=None):
+_DEFAULT_PIN = object()
+
+
+def adapter(mod, runtime, *, mode=MODE, counters=None, pin=_DEFAULT_PIN):
     folder = Path(tempfile.mkdtemp(dir=SCRATCH))
     return mod.GeminiAdapter(runtime=runtime, take_id=TAKE, run_tree=str(SCRATCH / "tree"), login_file=login_file(),
-                             model=MODEL, pin={"permission_mode": mode, "version": VERSION} if pin is None else pin,
+                             model=MODEL, pin={"permission_mode": mode, "version": VERSION} if pin is _DEFAULT_PIN else pin,
                              stream_path_for=lambda n: str(folder / f"turn-{n}.jsonl"),
                              counters_for=counters or Counters(), clock=Clock())
 
@@ -418,6 +425,27 @@ def s5_tools(mod, p):
             "glob": tv.SEARCH, "search_file_content": tv.SEARCH, "list_directory": tv.OTHER, "write_todos": tv.OTHER}
     if kinds != want:
         out.append(f"{p}: the tool table's kinds are {kinds}")
+    full = {"run_shell_command": ({"command": "ls", "description": "d", "dir_path": "src", "is_background": True},
+                                  tv.SHELL, {"command": "ls", "background": True}),
+            "read_file": ({"file_path": "a.txt", "offset": 1, "limit": 5}, tv.READ, {"path": "a.txt"}),
+            "write_file": ({"file_path": "a.txt", "content": "x"}, tv.WRITE, {"path": "a.txt"}),
+            "replace": ({"file_path": "b.py", "old_string": "a", "new_string": "b", "expected_replacements": 1,
+                         "instruction": "i"}, tv.EDIT, {"path": "b.py"}),
+            "glob": ({"pattern": "*.py", "dir_path": "src", "case_sensitive": False, "respect_git_ignore": True,
+                      "respect_gemini_ignore": True}, tv.SEARCH, {"pattern": "*.py", "path": "src"}),
+            "search_file_content": ({"pattern": "def", "dir_path": "src", "include": "*.py"}, tv.SEARCH,
+                                    {"pattern": "def", "path": "src"}),
+            "list_directory": ({"dir_path": ".", "ignore": ["x"], "file_filtering_options": {}}, tv.OTHER, {}),
+            "write_todos": ({"todos": []}, tv.OTHER, {})}
+    for name, (params, kind, args) in full.items():
+        line = json.dumps(ev("tool_use", tool_name=name, tool_id="t1", parameters=params))
+        got = accepted(lambda: mod.GeminiParser().items(line))
+        if got:
+            out.append(f"{p}: {name} with every pre-registered key {got}")
+            continue
+        item = mod.GeminiParser().items(line)[0]
+        if (item.tool, item.args) != (kind, args):
+            out.append(f"{p}: {name} maps to {item.tool} {item.args}, not {kind} {args}")
     out += _both_refuse(mod, p, lines("unknown-tool.jsonl")[2], "a web_fetch call")
     out += _both_refuse(mod, p, ev("tool_use", tool_name="read_many_files", tool_id="t1", parameters={"paths": ["a"]}),
                         "a read_many_files call")
@@ -469,6 +497,10 @@ def p1_view(mod, p):
             (tv.TOOL_CALL, tv.SEARCH, {"pattern": "def ", "path": "src"})]
     if got != want:
         out.append(f"{p}: turn2-resume's calls read as {got}")
+    with mock.patch.dict(tv.PARSERS, {"gemini": mod.GeminiParser()}):
+        counts = tv.harness_types("gemini", lines("error-result.jsonl"))
+    if counts != {"init": 1, "error": 1, "result": 1}:
+        out.append(f"{p}: error-result's harness types read as {counts}")
     got = [e.kind for e in view_events(mod, "error-result.jsonl")]
     if got != [h, tv.OPERATOR, h, h]:
         out.append(f"{p}: error-result reads as {got}")
@@ -511,6 +543,15 @@ def a1_stream(mod, p):
     r = mod.read_stream(cut, model=MODEL)
     if (r["undecoded"], r["results"], r["status"], r["stats"]) != (1, 0, None, None):
         out.append(f"{p}: a cut stream reads undecoded {r['undecoded']}, results {r['results']}, stats {r['stats']}")
+    after_tool = jl([ev("tool_use", tool_name="list_directory", tool_id="t1", parameters={"dir_path": "."})]) + "{cut\n"
+    got = accepted(lambda: mod.read_stream(after_tool, model=MODEL))
+    r = None if got else mod.read_stream(after_tool, model=MODEL)
+    if got or (r["tool_ids"], r["undecoded"]) != (["t1"], 1):
+        out.append(f"{p}: a cut line after a tool call reads {got or (r['tool_ids'], r['undecoded'])}")
+    for bad_text in (None, b"{}"):
+        got = refusal(lambda: mod.read_stream(bad_text, model=MODEL), mod.StreamError)
+        if got:
+            out.append(f"{p}: a stream that is {type(bad_text).__name__} {got}")
     two_inits = jl(recs("turn1-tools.jsonl")[:1] * 2)
     got = refusal(lambda: mod.read_stream(two_inits, model=MODEL), mod.StreamError)
     if got:
@@ -537,6 +578,11 @@ def a2_error(mod, p):
             {"status": None, "type": "synthetic_api_error", "text": "synthetic harness error: quota exhausted"}]
     if r["api_errors"] != want or r["agent_output"] is not False or r["agent_text"] != "":
         out.append(f"{p}: the failed call reads {r['api_errors']}, output {r['agent_output']}, text {r['agent_text']!r}")
+    bare_fail = jl([ev("result", status="error")])
+    got = accepted(lambda: mod.read_stream(bare_fail, model=MODEL))
+    r = None if got else mod.read_stream(bare_fail, model=MODEL)
+    if got or r["api_errors"] != [{"status": None, "type": None, "text": None}]:
+        out.append(f"{p}: a failed result with no error object reads {got or r['api_errors']}")
     r = mod.read_stream(fixture("no-init.jsonl"), model=MODEL)
     if r["agent_output"] is not False or r["agent_text"] != "" or len(r["api_errors"]) != 1:
         out.append(f"{p}: an error event alone reads output {r['agent_output']}, text {r['agent_text']!r}")
@@ -657,6 +703,10 @@ def a6_argv(mod, p):
         got = refusal(lambda: mod.GeminiAdapter(**base), err)
         if got:
             out.append(f"{p}: an adapter made with {what} {got}")
+    for pin in (None, "yolo", ["yolo"], {"mode": "yolo"}):
+        got = refusal(lambda: adapter(mod, FakeRuntime([]), pin=pin), rt.NotReady)
+        if got:
+            out.append(f"{p}: an adapter whose pin is {pin!r} {got}")
     for bad in ("PENDING", "default", "", None, ["yolo"]):
         got = refusal(lambda: adapter(mod, FakeRuntime([]), mode=bad), rt.NotReady)
         if got:
@@ -738,6 +788,27 @@ def a8_turn(mod, p):
             (aa.END_ERROR, 42, "input-error", 0), (aa.END_TIMED_OUT, None, None, 0)]
     if got != want:
         out.append(f"{p}: the turns read as {got}, not {want}")
+    if [r.get("n") for r in a.turn_records] != list(range(1, len(streams) + 1)):
+        out.append(f"{p}: the turn records are numbered {[r.get('n') for r in a.turn_records]}")
+    want_first = {"n": 1, "first": True, "exit_code": 0, "exit_meaning": "success", "timed_out": False,
+                  "init_model": MODEL, "session_id": SID, "status": "success", "stats": STATS,
+                  "served_models": [MODEL], "tool_ids": ["tool-1", "tool-2", "tool-3"], "undecoded": 0,
+                  "why_no_init": getattr(mod, "NO_INIT_MODE", None), "shapes_source": "documented"}
+    if a.turn_records[:1] != [want_first]:
+        out.append(f"{p}: turn 1's record is {a.turn_records[:1]}")
+    want_second = dict(want_first, n=2, first=False, exit_code=1, exit_meaning="general-or-api-error", status="error",
+                       stats=json.loads(fixture("error-result.jsonl").splitlines()[-1])["stats"], served_models=[],
+                       tool_ids=[])
+    if a.turn_records[1:2] != [want_second]:
+        out.append(f"{p}: turn 2's record is {a.turn_records[1:2]}")
+    a, _ = take(mod, [ok, resume])
+    names = [Path(a.turn(f"line {n}", first=n == 0, budget_s=60).stream_path).name for n in range(2)]
+    if names != ["turn-1.jsonl", "turn-2.jsonl"]:
+        out.append(f"{p}: the streams were written at {names}")
+    a, _ = take(mod, [ok.replace("\n", "\n\udcff\udcfe\n", 1)])
+    got = accepted(lambda: a.turn("one", first=True, budget_s=60))
+    if got or a.turn_records[0]["undecoded"] != 1:
+        out.append(f"{p}: a stream holding bytes that are not UTF-8 {got or a.turn_records[0]['undecoded']}")
     for code in (2, 137, True, None):
         a, _ = take(mod, [ok], exit_codes=[code])
         got = refusal(lambda: a.turn("one", first=True, budget_s=60), mod.StreamError)
@@ -749,7 +820,7 @@ def a8_turn(mod, p):
     asked = [c for c in box.calls if c[-2:] == ["gemini", "--version"]]
     if len(asked) != 1 or "-e" in asked[0]:
         out.append(f"{p}: `gemini --version` ran {len(asked)} time(s), or with a variable: {asked}")
-    for printed, code in (("Gemini CLI 0.63.0\n", 0), ("0.63\n", 0), ("v0.63.0\n", 0), (f"{VERSION}\n", 1)):
+    for printed, code in (("Gemini CLI 0.63.0\n", 0), ("0.63\n", 0), ("v0.63.0\n", 0), (f"{VERSION}\n", 1), (None, 0)):
         a, _ = take(mod, [], version_out=printed, version_code=code)
         got = refusal(a.version, rt.NotReady)
         if got:
@@ -982,7 +1053,7 @@ WITNESSES = {
         "            if rec.get(\"delta\") is True and joining:\n", "            if joining:\n")),
     "joining-clause-dropped": _w("ga", a1_stream, "A1-stream", (
         "            if rec.get(\"delta\") is True and joining:\n", "            if rec.get(\"delta\") is True and pieces:\n")),
-    "joining-always": _w("ga", a1_stream, "A1-stream", (
+    "joining-forced": _w("ga", a1_stream, "A1-stream", (
         "            joining = rec.get(\"delta\") is True\n", "            joining = True\n")),
     "failed-result-type-dropped": _w("ga", a2_error, "A2-error", (
         "api.append({\"status\": None, \"type\": err.get(\"type\"),", "api.append({\"status\": None, \"type\": t,")),
@@ -1154,7 +1225,346 @@ for _name in WITNESSES:
     setattr(TestWitnesses, "test_witness_" + _name.replace("-", "_"), _witness_test(_name))
 
 
+# ------------------------------------------------------------------------------------------------ generated mutants
+# glitch-2f's added requirement (12 Oct 2026, from w11a's review: hand-picked witnesses all red, 143 of 452 generated
+# mutants alive). `--generated-mutants [--shard i/n]` builds every mutant of the kinds below over gemini_adapter.py and
+# transcript_gemini.py, in memory only, and runs every bound check against it (a transcript_gemini mutant is also
+# loaded under gemini_adapter). A mutant is killed when any check prints a line (an ERROR line counts: on the files as
+# they stand every check is silent, test_generated_mutants_baseline). Every survivor must be in EQUIVALENT with a
+# reason from EQUIVALENT_CATEGORIES; an entry that no longer names a generated mutant, or whose mutant is killed, is
+# stale and fails. One listed rule skips mutants rather than allow-listing them one by one: MESSAGE_TEXT_RULE, a string
+# literal inside a `raise` statement, which only the refusal's message reads (no code or test reads those words).
+MUTANT_KINDS = ("stmt-delete", "if-true", "if-false", "bool-drop", "bool-swap", "not-drop", "cmp-negate",
+                "assign-empty", "return-none", "str-change", "int-change", "call-true")
+MESSAGE_TEXT_RULE = "a string literal inside a raise statement is the refusal's message text, read by no logic"
+EQUIVALENT_CATEGORIES = {
+    "import-plumbing": "the sys.path insert or the __future__ import: the module imports the same either way under "
+                       "the test's own sys.path, and Python 3.13 evaluates no annotation here",
+    "falsy-alike": "the mutant swaps one falsy value for another where the only reader tests truthiness",
+    "identical-mutant": "the mutant behaves as the line does: a None written as None, or a method's last "
+                        "`return None` deleted (it falls off and returns None)",
+    "message-label": "a label string passed only into a refusal's message text, never read by a condition (the "
+                     "MESSAGE_TEXT_RULE's words, one step removed from the raise)",
+}
+# What each category's line must hold (checked against the named line of the file, so a reason cannot drift from it).
+EQUIVALENT_TOKENS = {"import-plumbing": ("_HERE", "__future__"), "falsy-alike": ("joining = False",),
+                     "identical-mutant": ("None",), "message-label": None}
+CMP_NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: ast.In, ast.Lt: ast.GtE,
+              ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt, ast.Is: ast.IsNot, ast.IsNot: ast.Is}
+# {mutant key: (category, why, a token its source line holds)}; the key is printed by the sweep for each survivor.
+EQUIVALENT = {
+    'gemini_adapter: stmt-delete L65 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
+    'gemini_adapter: assign-empty L72 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'gemini_adapter: cmp-negate#0 L73 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'gemini_adapter: if-false L73 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'gemini_adapter: if-true L73 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'gemini_adapter: stmt-delete L73 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'gemini_adapter: int-change L74 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'gemini_adapter: stmt-delete L74 7baa5234 sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'gemini_adapter: assign-empty L125 f8f68722 joining = False': ('falsy-alike', 'joining is read only as `and joining`; None and False read alike', 'joining = False'),
+    'gemini_adapter: assign-empty L141 f8f68722 joining = False': ('falsy-alike', 'joining is read only as `and joining`; None and False read alike', 'joining = False'),
+    "gemini_adapter: str-change L185 02b1093d 'line'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'line'),
+    "gemini_adapter: str-change L185 8bd2e950 'model'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'model'),
+    'gemini_adapter: return-none L203 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    "gemini_adapter: str-change L246 3a445bda 'stream_path_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'stream_path_for'),
+    "gemini_adapter: str-change L246 5a98356f 'counters_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'counters_for'),
+    "gemini_adapter: str-change L246 8c8bd4c2 'clock'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'clock'),
+    'gemini_adapter: assign-empty L255 65756fc1 self._version = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: assign-empty L256 7f1bf958 self.session_id = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: return-none L306 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: stmt-delete L306 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
+    'transcript_gemini: stmt-delete L45 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
+    'transcript_gemini: assign-empty L51 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'transcript_gemini: cmp-negate#0 L52 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'transcript_gemini: if-false L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'transcript_gemini: if-true L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'transcript_gemini: stmt-delete L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'transcript_gemini: int-change L53 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    'transcript_gemini: stmt-delete L53 7baa5234 sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
+    "transcript_gemini: str-change L127 b2437d2e '.error'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", '.error'),
+    "transcript_gemini: str-change L135 934526e8 'result.stats'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'result.stats'),
+    "transcript_gemini: str-change L145 10c989f3 'result.stats.models['": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'result.stats.models['),
+    "transcript_gemini: str-change L145 cb8092dd ']'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", ']'),
+    "transcript_gemini: str-change L171 e8f80b17 'event '": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'event '),
+    'transcript_gemini: return-none L212 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+}
+MUTANT_FILES = (("tg", "transcript_gemini.py"), ("ga", "gemini_adapter.py"))
+
+
+def _in_raise(tree) -> set:
+    inside = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Raise):
+            inside.update(id(n) for n in ast.walk(node))
+    return inside
+
+
+def _docstrings(tree) -> set:
+    out = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.ClassDef)) and node.body:
+            first = node.body[0]
+            if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
+                out.add(id(first))
+                out.add(id(first.value))
+    return out
+
+
+def mutant_sites(tree) -> tuple:
+    """([(walk index, kind, operand index)], message-text strings skipped), in ast.walk order of `tree`."""
+    raised, docs = _in_raise(tree), _docstrings(tree)
+    out, skipped = [], 0
+    for w, node in enumerate(ast.walk(tree)):
+        if id(node) in docs:
+            continue
+        if isinstance(node, ast.stmt) and not isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            out.append((w, "stmt-delete", None))
+        if isinstance(node, (ast.If, ast.While, ast.IfExp)):
+            out += [(w, "if-true", None), (w, "if-false", None)]
+        if isinstance(node, ast.BoolOp):
+            out += [(w, "bool-drop", i) for i in range(len(node.values))] + [(w, "bool-swap", None)]
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+            out.append((w, "not-drop", None))
+        if isinstance(node, ast.Compare):
+            out += [(w, "cmp-negate", i) for i, op in enumerate(node.ops) if type(op) in CMP_NEGATE]
+        if isinstance(node, (ast.Assign, ast.AugAssign, ast.AnnAssign)) and node.value is not None:
+            out.append((w, "assign-empty", None))
+        if isinstance(node, ast.Return) and node.value is not None:
+            out.append((w, "return-none", None))
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value:
+            if id(node) in raised:
+                skipped += 1
+            else:
+                out.append((w, "str-change", None))
+        if isinstance(node, ast.Constant) and type(node.value) is int:
+            out.append((w, "int-change", None))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in (
+                "isinstance", "callable", "all", "any"):
+            out.append((w, "call-true", None))
+    return out, skipped
+
+
+def _mutate(node, kind, i):
+    if kind == "stmt-delete":
+        return ast.Pass()
+    if kind in ("if-true", "if-false"):
+        node.test = ast.Constant(kind == "if-true")
+        return node
+    if kind == "bool-drop":
+        vals = node.values[:i] + node.values[i + 1:]
+        return vals[0] if len(vals) == 1 else ast.BoolOp(op=node.op, values=vals)
+    if kind == "bool-swap":
+        node.op = ast.Or() if isinstance(node.op, ast.And) else ast.And()
+        return node
+    if kind == "not-drop":
+        return node.operand
+    if kind == "cmp-negate":
+        node.ops[i] = CMP_NEGATE[type(node.ops[i])]()
+        return node
+    if kind in ("assign-empty", "return-none"):
+        node.value = ast.Constant(None)
+        return node
+    if kind == "str-change":
+        node.value = "__mutant__"
+        return node
+    if kind == "int-change":
+        node.value = node.value + 1
+        return node
+    return ast.Constant(True)                        # call-true
+
+
+class _Replace(ast.NodeTransformer):
+    def __init__(self, target, kind, i):
+        self.target, self.kind, self.i = target, kind, i
+
+    def visit(self, node):
+        node = self.generic_visit(node)
+        return _mutate(node, self.kind, self.i) if node is self.target else node
+
+
+def mutant_key(src: str, node, kind: str, i, seen: dict) -> str:
+    text = ast.unparse(node)
+    digest = hashlib.sha256(text.encode()).hexdigest()[:8]
+    base = f"{kind}{'' if i is None else f'#{i}'} L{node.lineno} {digest} {' '.join(text.split())[:70]}"
+    seen[base] = seen.get(base, 0) + 1
+    return base if seen[base] == 1 else f"{base} @{seen[base]}"
+
+
+def generated_mutants() -> tuple:
+    """([(key, target, walk index, kind, operand index)] sorted by file and position, message-text strings skipped).
+    Keys carry the line number, so an edit above a site renames its key: a stale EQUIVALENT entry then fails."""
+    out, skipped = [], 0
+    for target, fname in MUTANT_FILES:
+        src = (HERE / fname).read_text(encoding="utf-8")
+        tree = ast.parse(src)
+        walk = list(ast.walk(tree))
+        sites, sk = mutant_sites(tree)
+        skipped += sk
+        seen: dict = {}
+        for w, kind, i in sites:
+            out.append((f"{fname[:-3]}: {mutant_key(src, walk[w], kind, i, seen)}", target, w, kind, i))
+    return out, skipped
+
+
+def _build(tree, name: str, path: Path, inject=None) -> types.ModuleType:
+    mod = types.ModuleType(name)
+    mod.__file__ = str(path)
+    code = compile(ast.fix_missing_locations(tree), str(path) + " (generated mutant)", "exec")
+    saved = {}
+    for k, v in (inject or {}).items():
+        saved[k] = sys.modules.get(k)
+        sys.modules[k] = v
+    try:
+        exec(code, mod.__dict__)
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = v
+    return mod
+
+
+TG_CHECKS = (s1_event, s2_key, s3_words, s4_stats, s5_tools, s6_error_text, p1_view)
+GA_CHECKS = (a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source)
+
+
+def all_checks(tgm, gam) -> list:
+    out = []
+    with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
+        for c in TG_CHECKS:
+            out += c(tgm)
+        for c in GA_CHECKS:
+            out += c(gam)
+    if getattr(getattr(gam, "GeminiAdapter", None), "name", None) != rt.GEMINI:
+        out.append("NAME: the adapter's name is not run_take.GEMINI")
+    return out
+
+
+def run_mutant(target: str, w: int, kind: str, i) -> list:
+    """The checks' lines against one mutant (["IMPORT ..."] when it does not even load: killed)."""
+    fname = dict(MUTANT_FILES)[target]
+    tree = ast.parse((HERE / fname).read_text(encoding="utf-8"))
+    node = list(ast.walk(tree))[w]
+    try:
+        new = _Replace(node, kind, i).visit(tree)
+        if target == "tg":
+            tgm = _build(new, "transcript_gemini", HERE / fname)
+            gam = _build(ast.parse((HERE / "gemini_adapter.py").read_text(encoding="utf-8")), "gemini_adapter",
+                         HERE / "gemini_adapter.py", {"transcript_gemini": tgm})
+        else:
+            tgm, gam = tg, _build(new, "gemini_adapter", HERE / fname, {"transcript_gemini": tg})
+    except Exception as e:  # noqa: BLE001
+        return [f"IMPORT {type(e).__name__}: {str(e)[:120]}"]
+    return all_checks(tgm, gam)
+
+
+def mutation_sweep(shard: int = 0, of: int = 1) -> dict:
+    mutants, skipped = generated_mutants()
+    keys = [m[0] for m in mutants]
+    mine = [m for n, m in enumerate(mutants) if n % of == shard]
+    survived, killed, equivalent, stale = [], 0, 0, []
+    for key, target, w, kind, i in mine:
+        got = run_mutant(target, w, kind, i)
+        if key in EQUIVALENT:
+            if got:
+                stale.append(f"{key}: listed EQUIVALENT but killed by {got[0][:96]}")
+            else:
+                equivalent += 1
+        elif got:
+            killed += 1
+        else:
+            survived.append(key)
+    stale += [f"{k}: listed EQUIVALENT but no such generated mutant" for k in EQUIVALENT if k not in keys]
+    stale += [f"{k}: {why}" for k, why in equivalent_problems()]
+    return {"generated": len(mutants), "shard": f"{shard + 1}/{of}", "ran": len(mine), "killed": killed,
+            "equivalent": equivalent, "survived": survived, "stale": stale, "message_text_skipped": skipped}
+
+
+def equivalent_problems() -> list:
+    """(key, why) for every EQUIVALENT entry whose reason does not hold on the file as it stands: its category is off
+    the list, its sentence is blank, or the line its key names does not hold the category's token."""
+    out = []
+    files = {fname[:-3]: (HERE / fname).read_text(encoding="utf-8").split("\n") for _, fname in MUTANT_FILES}
+    for key, v in EQUIVALENT.items():
+        if not (isinstance(v, tuple) and len(v) == 3 and v[0] in EQUIVALENT_CATEGORIES and isinstance(v[1], str)
+                and v[1].strip() and isinstance(v[2], str) and v[2]):
+            out.append((key, "its reason is not (a category of EQUIVALENT_CATEGORIES, a sentence, a token)"))
+            continue
+        m = re.match(r"^(\w+): \S+ L(\d+) ", key)
+        lines_ = files.get(m.group(1)) if m else None
+        if lines_ is None or not 0 < int(m.group(2)) <= len(lines_):
+            out.append((key, "its key names no line of the two files"))
+            continue
+        line = lines_[int(m.group(2)) - 1]
+        allowed = EQUIVALENT_TOKENS[v[0]]
+        if (allowed is not None and v[2] not in allowed) or v[2] not in line:
+            out.append((key, f"line {m.group(2)} does not hold the {v[0]} token {v[2]!r}"))
+        if v[0] == "message-label" and not key.endswith(f"'{v[2]}'"):
+            out.append((key, "a message label's token is not the mutated literal"))
+    return out
+
+
+class TestGeneratedMutants(unittest.TestCase):
+    """Cheap parts of the sweep, in the normal suite; the sweep itself is `--generated-mutants` (athena)."""
+
+    def setUp(self):
+        for _, fname in MUTANT_FILES:
+            self.assertTrue((HERE / fname).is_file(), f"{fname} does not exist: nothing to mutate")
+
+    def test_generated_mutants_baseline(self):
+        self.assertEqual(all_checks(tg, ga), [])
+
+    def test_every_kind_is_generated(self):
+        mutants, _ = generated_mutants()
+        self.assertEqual({m[3] for m in mutants}, set(MUTANT_KINDS))
+
+    def test_the_equivalent_list_is_not_stale(self):
+        keys = {m[0] for m in generated_mutants()[0]}
+        for key in EQUIVALENT:
+            self.assertIn(key, keys, f"stale EQUIVALENT entry: {key}")
+        self.assertEqual(equivalent_problems(), [])
+
+    def test_a_drifted_or_malformed_entry_is_refused(self):
+        key = next(iter(EQUIVALENT))
+        line_no = int(re.match(r"^\w+: \S+ L(\d+) ", key).group(1))
+        moved = key.replace(f" L{line_no} ", f" L{line_no + 7} ", 1)
+        for bad in ({moved: EQUIVALENT[key]}, {key: ("import-plumbing", "x")}, {key: ("unlisted", "x", "_HERE")},
+                    {key: ("import-plumbing", " ", "_HERE")}, {key: ("falsy-alike", "x", "_HERE")}):
+            with mock.patch.dict(EQUIVALENT, bad, clear=True):
+                self.assertTrue(equivalent_problems(), f"{bad} passed")
+
+    def test_one_mutant_of_each_file_is_killed(self):
+        mutants, _ = generated_mutants()
+        for target in ("tg", "ga"):
+            key, t, w, kind, i = next(m for m in mutants if m[1] == target and m[3] == "if-false"
+                                      and ("t not in EVENT_KEYS" in m[0] or "if timed_out" in m[0]))
+            self.assertTrue(run_mutant(t, w, kind, i), f"{key} survived")
+
+
 if __name__ == "__main__":
+    if "--generated-mutants" in sys.argv:
+        shard, of = 0, 1
+        if "--shard" in sys.argv:
+            spec = sys.argv[sys.argv.index("--shard") + 1]
+            a, _, b = spec.partition("/")
+            shard, of = int(a) - 1, int(b)
+            if not 0 <= shard < of:
+                raise SystemExit(f"--shard {spec}: i must be 1..n")
+        setUpModule()
+        try:
+            got = mutation_sweep(shard, of)
+        finally:
+            tearDownModule()
+        for key in got["survived"]:
+            print(f"SURVIVED {key}")
+        for line in got["stale"]:
+            print(f"STALE {line}")
+        print(f"test_gemini_adapter generated mutants (shard {got['shard']}): generated {got['generated']}, ran "
+              f"{got['ran']}, killed {got['killed']}, equivalent {got['equivalent']}, survived {len(got['survived'])}, "
+              f"stale {len(got['stale'])}; message-text strings skipped by rule: {got['message_text_skipped']}",
+              flush=True)
+        raise SystemExit(0 if not got["survived"] and not got["stale"] else 1)
     if "--witnesses" in sys.argv:
         sys.argv.remove("--witnesses")
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestWitnesses)

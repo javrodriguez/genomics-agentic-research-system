@@ -95,6 +95,16 @@
       "path": "checks.d/w11b-gemini-adapter.txt",
       "status": "new",
       "reason": "This lane's local checks (interface 2): the test module and its --witnesses."
+    },
+    {
+      "path": "gemini_adapter.py",
+      "status": "new",
+      "reason": "Lane w11b-gemini-adapter (arm G; D8 sections 1 and 3, D8:461-472; ruling Q-3): GeminiAdapter, agent_adapter's interface for gemini: one `gemini -p <line> -o stream-json` per turn through box/run_take.run_turn, `-m <model>` and the pinned mode's `--approval-mode yolo` on every call, no sandbox flag, `-r <session id>` after the first turn only (the id read from turn 1's init; a later init naming another session refused), the version from `gemini --version`; read_stream maps the documented events into the seam's records (api_errors from error events and failed results only, never the agent's text; agent output from assistant messages with words and tool_use only; stats as recorded, a missing count refused, never 0), checks init.model and every key of result.stats.models against the row's model on every turn, maps exit codes 0, 1, 42, 53 (53 never end_turn) and refuses any other; the TurnResult's init is None because the stream records no permission mode (Q-w11b-2). SHAPES_SOURCE = documented, reported in the harness record and every turn record. Not registered in any seam table (a later seam slice)."
+    },
+    {
+      "path": "transcript_gemini.py",
+      "status": "new",
+      "reason": "Lane w11b-gemini-adapter: the pre-registered Gemini CLI stream-json tables (D8 section 1's event types, init and result keys and stats counts, and the keys, words and tool table it names as not in D8), check_record and check_stats (anything off the tables refused, never guessed) and GeminiParser into transcript_view.RawItem's closed vocabulary (user message -> operator, assistant message -> agent-text, tool_use -> tool-call of its GEMINI_TOOLS kind, tool_result -> tool-result, init/error/result -> harness). NOT registered in transcript_view.PARSERS."
     }
   ]
 }

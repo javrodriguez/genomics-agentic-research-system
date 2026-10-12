@@ -1,0 +1,306 @@
+#!/usr/bin/env python3
+"""The Gemini CLI adapter for round 4's box, arm G (lane w11b-gemini-adapter; D8 sections 1 and 3, D8:461-472).
+
+`GeminiAdapter` is agent_adapter's interface for `gemini` (run_take.GEMINI): one `docker exec` per turn into the
+kept-alive take container (box/run_take.run_turn), the turn's `gemini -p ... -o stream-json` stdout written host-side
+at the driver's stream path, and a `TurnResult` read from that stream's harness-side records. It never calls a model
+itself: every test drives it on a fake runtime with synthetic streams.
+
+SHAPES_SOURCE. Every stream shape this module reads is DOCUMENTED, never recorded: no Gemini CLI stream can be recorded
+before J3's keys (D8:131-133). Ruling Q-3 (glitch-2f, 12 Oct 2026): build on the documented shapes now; the freeze
+refuses any arm whose adapter has not been re-tested on a stream recorded at its first real walk. So `SHAPES_SOURCE`
+is "documented", the adapter reports it in its harness record and in every turn record, and a test holds it at
+"documented" while no recorded-stream fixture exists. The freeze-side refusal is owed to a later slice (freeze.py is
+outside this lane's file list).
+
+THE ARGV (D8:134-141):
+
+    gemini -p <line> -o stream-json -m <the row's model> <the mode's flags>                   the take's first turn
+    gemini -p <line> -o stream-json -m <the row's model> <the mode's flags> -r <session id>   every turn after it
+
+  G-1  `-m <model>` on every call (D8's per-harness table, "Model pin, every turn"; the default `auto` routes between
+       models, D8:141).
+  G-2  `-r <session id>` after the first turn only. Gemini CLI mints the session id, so it is read from turn 1's
+       `init.session_id`. Resuming by id is shown in secondary sources only (D8:138), so a later turn whose init names
+       another session is refused: the walk confirms the flag, and this check catches it if it does not hold.
+  G-3  The approvals flags are the take's routing pin's permission mode looked up in MODE_FLAGS (D8:139:
+       `--approval-mode yolo`); a PENDING, absent or unknown mode refuses the adapter's making. No `--sandbox` flag is
+       ever passed: Gemini's own sandbox stays off because the box is the sandbox (D8:139). The pin's word for arm G is
+       this lane's ("yolo", the harness's own), Q-w11b-3.
+  G-4  A line that starts with "-" is refused (it would be read as a flag); the study's lines never do.
+
+THE RECORDS READ (the tables are transcript_gemini's; see its docstring for which are D8's and which are not):
+
+  stream     every record checked by transcript_gemini.check_record; a record off the tables refuses the turn
+             (StreamError), never read on a guess. One init and one result per call at most (a second refuses).
+             api_errors   one per `error` event and per result whose status is `error`, in order: {status None, type
+                          the event type or the result's error.type, text the harness's own message}. The agent's
+                          words (assistant messages) are never an API error.
+             agent_output True when an assistant message holds non-blank content or a tool_use exists, read from event
+                          types and roles, never from what the words say; an error event is never output.
+             stats        result.stats as recorded (transcript_gemini.check_stats: a missing count is refused, never
+                          0); a call with no result record has no stats (None, unmeasured).
+  model      D8:168: `init.model` and every key of `result.stats.models` are checked against the row's model on every
+             turn; one that differs refuses the turn (StreamError). The stream carries no served-model record (D8:166).
+  init       the seam's init needs the model, the permission mode and the version (agent_adapter.INIT_FIELDS). The
+             Gemini stream records no permission mode, so the TurnResult's init is None on every turn, with its reason
+             in the turn record, never filled from the argv the adapter itself passed (Q-w11b-2). The init event's
+             model and session id are kept in the turn record.
+  exit       0, 1, 42 and 53 (D8:137) are the pre-registered exit codes, each with its meaning in EXIT_MEANINGS; any
+             other code from a call that did not time out refuses the turn (StreamError).
+  version    `gemini --version`, printed as the bare "X.Y.Z" (this lane's reading, Q-w11b-1); anything else refuses.
+
+end_reason: timed-out when the call timed out; end_turn only on exit 0 with exactly one result whose status is
+`success`; error otherwise. Exit 53 (turn limit exceeded) is error, never end_turn, and its meaning
+"turn-limit" is kept in the turn record (agent_adapter's END_REASONS hold no turn-limit end).
+
+Not in this lane (named as carried): the PARSERS / harness_bookkeeping / agent_adapter tables, drive.py's admission,
+check_take readers, mode_binding expectations, routing markers, per-call cost (price_table is PENDING), the real-box
+stub `gemini`, run_take's billing-route variables for Gemini (PENDING: every real exec refuses until named), and the
+freeze's refusal of an arm whose adapter is not re-tested on a recorded stream.
+
+Standard library only. No model, vendor, network or credential is touched by anything in this module.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import sys
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+import agent_adapter as aa  # noqa: E402
+import transcript_gemini as tg  # noqa: E402
+from box import run_take as rt  # noqa: E402
+
+NAME = rt.GEMINI
+CLIENT = "gemini"
+PROMPT_FLAG = "-p"
+OUTPUT_FLAGS = ("-o", "stream-json")
+MODEL_FLAG = "-m"
+RESUME_FLAG = "-r"
+VERSION_ARGV = (CLIENT, "--version")
+VERSION_FORM = re.compile(r"([0-9]+\.[0-9]+\.[0-9]+)")
+# The routing pin's permission mode for arm G -> the call's approvals flags (D8:139).
+MODE_FLAGS = {"yolo": ("--approval-mode", "yolo")}
+# D8:137's exit codes and what each means.
+TURN_LIMIT = "turn-limit"
+EXIT_MEANINGS = {0: "success", 1: "general-or-api-error", 42: "input-error", 53: TURN_LIMIT}
+SHAPES_SOURCE = "documented"
+SHAPES_SOURCES = ("documented", "recorded")
+NO_INIT_MODE = "the Gemini stream records no permission mode (Q-w11b-2)"
+_SESSION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
+
+
+class StreamError(ValueError):
+    """A stream or exit the reader cannot use as it stands (a typed refusal, never a guess)."""
+
+
+def read_stream(text: str, *, model: str) -> dict:
+    """One call's `-o stream-json` stdout, read for its harness-side records and the agent's words, kept apart.
+
+    init_model    the init event's model, or None when the call has no init
+    session_id    the init event's session id, or None when the call has no init
+    agent_text    the assistant messages' content: delta chunks joined as they came, messages joined by newlines
+                  (graders read it; routing never does)
+    agent_output  True when an assistant message holds non-blank content or a tool_use exists
+    api_errors    [{status, type, text}] per error event and per failed result, in order
+    status        the result's status, or None when the call has no result
+    stats         the result's stats as recorded, or None when the call has none
+    served_models the keys of result.stats.models, in order ([] when none)
+    results       how many result records (0 or 1)
+    tool_ids      the tool_use ids, in order
+    undecoded     lines that were not JSON (a cut stream's last line); a decoded record off the tables refuses
+    """
+    if not isinstance(text, str):
+        raise StreamError("the stream must be text")
+    if not isinstance(model, str) or not model:
+        raise StreamError("the row's model must be a non-empty string")
+    init_model, session_id, inits, pieces, output, api = None, None, 0, [], False, []
+    status, stats, served, results, tools, bad = None, None, [], 0, [], 0
+    joining = False
+    for raw in text.splitlines():
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            rec = json.loads(raw)
+        except ValueError:
+            bad += 1
+            continue
+        try:
+            t = tg.check_record(rec)
+        except tg.ShapeError as e:
+            raise StreamError(f"the stream holds a record off the pre-registered tables: {e}") from None
+        said = t == tg.MESSAGE and rec["role"] == tg.ASSISTANT
+        if not said:
+            joining = False
+        if t == tg.ERROR:
+            api.append({"status": None, "type": t, "text": tg.error_text(rec)})
+        elif t == tg.INIT:
+            inits += 1
+            if inits > 1:
+                raise StreamError("one call's stream holds two init records")
+            init_model, session_id = rec["model"], rec["session_id"]
+            if init_model != model:
+                raise StreamError(f"the init names model {init_model!r}, not the row's {model!r}")
+            if not isinstance(session_id, str) or not _SESSION_ID.fullmatch(session_id):
+                raise StreamError("the init carries a session id off its shape")
+        elif said:
+            if rec.get("delta") is True and joining:
+                pieces[-1] += rec["content"]
+            else:
+                pieces.append(rec["content"])
+            joining = rec.get("delta") is True
+            if rec["content"].strip():
+                output = True
+        elif t == tg.TOOL_USE:
+            tools.append(rec["tool_id"])
+            output = True
+        elif t == tg.RESULT:
+            results += 1
+            if results > 1:
+                raise StreamError("one call's stream holds two result records")
+            status = rec["status"]
+            if status == tg.FAILED:
+                err = rec.get("error") or {}
+                api.append({"status": None, "type": err.get("type"), "text": tg.error_text(rec)})
+            if "stats" in rec:
+                stats = rec["stats"]
+                served = list(stats[tg.STATS_MODELS])
+                other = [m for m in served if m != model]
+                if other:
+                    raise StreamError(f"result.stats.models names {other}, not only the row's {model!r}")
+    return {"init_model": init_model, "session_id": session_id, "agent_text": "\n".join(pieces),
+            "agent_output": output, "api_errors": api, "status": status, "stats": stats, "served_models": served,
+            "results": results, "tool_ids": tools, "undecoded": bad}
+
+
+def argv(line: str, *, model: str, mode: str, session_id, first: bool) -> list:
+    """The call's argv inside the box (G-1..G-4)."""
+    for what, v in (("line", line), ("model", model)):
+        if not isinstance(v, str) or not v:
+            raise StreamError(f"the turn's {what} must be a non-empty string")
+    if line.startswith("-"):
+        raise StreamError("a line that starts with '-' would be read as a flag")
+    if mode not in MODE_FLAGS:
+        raise StreamError(f"no flags pre-registered for mode {mode!r}")
+    out = [CLIENT, PROMPT_FLAG, line, *OUTPUT_FLAGS, MODEL_FLAG, model, *MODE_FLAGS[mode]]
+    if not first:
+        if not isinstance(session_id, str) or not _SESSION_ID.fullmatch(session_id):
+            raise StreamError("a later turn needs the session id turn 1's init named")
+        out += [RESUME_FLAG, session_id]
+    return out
+
+
+def exit_meaning(exit_code, timed_out: bool):
+    """D8:137's meaning of the exit code (None for a timed-out call); any other code refuses."""
+    if timed_out:
+        return None
+    if isinstance(exit_code, bool) or exit_code not in EXIT_MEANINGS:
+        raise StreamError(f"exit code {exit_code!r} is not one of the pre-registered {sorted(EXIT_MEANINGS)}")
+    return EXIT_MEANINGS[exit_code]
+
+
+def end_reason(exit_code, timed_out: bool, read: dict) -> str:
+    """timed-out; end_turn on exit 0 with a result whose status is success (read_stream refuses a second result);
+    else error (exit 53 included)."""
+    if timed_out:
+        return aa.END_TIMED_OUT
+    if exit_code == 0 and read["status"] == tg.SUCCESS:
+        return aa.END_TURN
+    return aa.END_ERROR
+
+
+class GeminiAdapter(aa.AgentAdapter):
+    """One take's Gemini CLI turns in the box.
+
+    runtime          run_take's runtime protocol
+    take_id          the take container's recorded id
+    run_tree         the take's run tree (the call's working folder)
+    login_file       the login file run_take.read_login reads at exec time (its value never reaches argv)
+    model            the row's model
+    pin              the take's routing pin: its permission_mode is looked up in MODE_FLAGS (G-3)
+    stream_path_for  (n) -> the host-side path turn n's stream is written at
+    counters_for     () -> run_take.counters(cgroup_dir), read host-side
+    clock            the injected host clock
+
+    `turn_records` holds, per turn, what the TurnResult has no field for: the exit, its meaning and the timeout, the
+    init's model and session id, the result's status, stats and served models, the tool ids, the undecoded line
+    count, why the init is None, and SHAPES_SOURCE.
+    """
+
+    name = NAME
+
+    def __init__(self, *, runtime, take_id: str, run_tree: str, login_file: str, model: str, pin: dict,
+                 stream_path_for, counters_for, clock, caller_env=None):
+        super().__init__()
+        mode = pin.get("permission_mode") if isinstance(pin, dict) else None
+        if not isinstance(mode, str) or mode not in MODE_FLAGS:
+            raise rt.NotReady(f"the take's routing pin holds no pre-registered Gemini mode ({mode!r}): no take runs "
+                              f"under a mode nobody pinned")
+        for what, fn in (("stream_path_for", stream_path_for), ("counters_for", counters_for), ("clock", clock)):
+            if not callable(fn):
+                raise TypeError(f"{what} must be callable")
+        if not isinstance(model, str) or not model:
+            raise StreamError("the row's model must be a non-empty string")
+        self.runtime, self.take_id, self.run_tree, self.login_file = runtime, take_id, run_tree, login_file
+        self.model, self.mode = model, mode
+        self.stream_path_for, self.counters_for = stream_path_for, counters_for
+        self.clock, self.caller_env = clock, caller_env
+        self._version = None
+        self.session_id = None
+        self.turn_records: list = []
+
+    def version(self) -> str:
+        """`gemini --version` in the take container, as the agent (a plain exec: no login), parsed; cached."""
+        if self._version is None:
+            c = self.runtime.run(rt.agent_exec_argv(self.take_id, list(VERSION_ARGV)),
+                                 env=rt.runtime_env(self.caller_env), timeout=rt.STEP_TIMEOUT_S)
+            m = VERSION_FORM.fullmatch((c.stdout or "").strip()) if c.returncode == 0 else None
+            if m is None:
+                raise rt.NotReady(f"`gemini --version` exited {c.returncode} with no version in its documented form")
+            self._version = m.group(1)
+        return self._version
+
+    def harness_record(self) -> dict:
+        """What this adapter says about itself beside every take: the harness name and where its shapes came from."""
+        return {"harness": NAME, "shapes_source": SHAPES_SOURCE}
+
+    def _start(self, take: dict) -> dict:
+        return {"container_id": self.take_id}
+
+    def _turn(self, line: str, *, first: bool, budget_s: float) -> aa.TurnResult:
+        n = self._turns + 1
+        inner = argv(line, model=self.model, mode=self.mode, session_id=self.session_id, first=first)
+        before = self.counters_for()
+        got = rt.run_turn(self.runtime, self.take_id, inner, harness=NAME, run_tree=self.run_tree,
+                          login_file=self.login_file, stream_path=self.stream_path_for(n), budget_s=budget_s,
+                          clock=self.clock, caller_env=self.caller_env)
+        after = self.counters_for()
+        meaning = exit_meaning(got["exit_code"], got["timed_out"])
+        with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
+            read = read_stream(fh.read(), model=self.model)
+        if first:
+            self.session_id = read["session_id"]
+        elif read["session_id"] is not None and read["session_id"] != self.session_id:
+            raise StreamError(f"turn {n} resumed another session than turn 1's")
+        self.turn_records.append({
+            "n": n, "first": first, "exit_code": got["exit_code"], "exit_meaning": meaning,
+            "timed_out": got["timed_out"], "init_model": read["init_model"], "session_id": read["session_id"],
+            "status": read["status"], "stats": read["stats"], "served_models": read["served_models"],
+            "tool_ids": read["tool_ids"], "undecoded": read["undecoded"], "why_no_init": NO_INIT_MODE,
+            "shapes_source": SHAPES_SOURCE})
+        return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
+                             end_reason=end_reason(got["exit_code"], got["timed_out"], read), init=None,
+                             api_errors=read["api_errors"], counters=rt.counter_delta(before, after),
+                             started_at=got["started_at"], ended_at=got["ended_at"],
+                             agent_output=read["agent_output"])
+
+    def _end(self) -> None:
+        """Nothing of the adapter's own to tear down: the driver removes the container by its recorded id."""
+        return None
