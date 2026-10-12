@@ -1,0 +1,6 @@
+# Lane w10-walk-runner: Gap Study round 4, the CP6 walk runner (glitch-2f's rulings D1, D2, D3): walks driven through
+# the walk arm one at a time, read by check4's round-4 walk road, graded and committed by WalkRepo with check.json.
+# One command per line, run from the repository root. --witnesses prints one witness line per mutant (rule B).
+# No walk, model, container, network, salt or holdout.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --witnesses
