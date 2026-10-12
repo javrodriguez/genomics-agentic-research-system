@@ -2889,10 +2889,17 @@ def spend_gate_problems() -> list[str]:
                 p.append(f"{name}: refused for another reason ({e})")
         except Exception as e:  # noqa: BLE001 - a crash is not a refusal
             p.append(f"{name}: crashed ({type(e).__name__}: {e})")
+    # Lane w8c (ruling W8C-gap4-1): Javier ruled the real table's spend status ("spend markers: 1A 2A 3A", 12 Oct
+    # 2026), so the real table gives no spend line; set back to PENDING, the same table is refused naming it.
     try:
-        found = batch.start_problems(routing.load_table())
+        real = routing.load_table()
+        found = batch.start_problems(real)
+        if any(x.startswith("spend_cap_markers_status") for x in found):
+            p.append(f"the real table's ruled spend-cap status is refused: {found}")
+        real["spend_cap_markers_status"] = "PENDING (glitch-f3): x"
+        found = batch.start_problems(real)
         if not any(x.startswith("spend_cap_markers_status") for x in found):
-            p.append(f"the real table's PENDING spend-cap list is not refused: {found}")
+            p.append(f"the real table with a PENDING spend-cap status is not refused: {found}")
     except Exception as e:  # noqa: BLE001
         p.append(f"start_problems crashed on the real table ({type(e).__name__}: {e})")
     return p
@@ -2911,6 +2918,8 @@ class TestNextTouchSpendGate(unittest.TestCase):
             found = spend_gate_problems()
         self.assertIn("spend_cap_markers_status PENDING: the loop would start", found)
         self.assertIn("spend_cap_markers_status missing: the loop would start", found)
+        self.assertTrue(any(x.startswith("the real table with a PENDING spend-cap status is not refused")
+                            for x in found), found)
 
 
 
