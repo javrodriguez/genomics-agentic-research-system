@@ -1,0 +1,4 @@
+{"type": "thread.started", "thread_id": "synthetic-thread-0001"}
+{"type": "turn.started"}
+{"type": "error", "message": "synthetic harness error: stream disconnected"}
+{"type": "turn.failed", "error": {"message": "synthetic harness error: 429 Too Many Requests"}}
