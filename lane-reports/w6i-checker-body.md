@@ -1,5 +1,5 @@
-status: handed back for review round 1, partly complete (see "Not built")
-head: ef41fb8e (code). Base 48ca93fa (the wave 6 merge head carrying S1-S7), branch gap4/w6i-checker-body, worktree /Users/javrodher/aegis-builds/gap4-w6i.
+status: review round 1 folded (W6I-close-1); review round 2 owed; partly complete (see "Not built")
+head: 8ac5fa6d (code; round 1 was ef41fb8e). Base 48ca93fa (the wave 6 merge head carrying S1-S7), branch gap4/w6i-checker-body, worktree /Users/javrodher/aegis-builds/gap4-w6i.
 
 # Lane w6i-checker-body: Gap Study round 4, slice S6b, the checker body (records side)
 
@@ -52,6 +52,9 @@ The test supplies, as data:
 - the routing pin (pin_profiles are still PENDING), as the driver passes pin_for(row);
 - the five walk-measured constants, whose production value is PENDING and refuses (tested);
 - the row ledger and commit (takes.load_rows and takes.row_commits run git, which the guard refuses); the session id is takes.session_id_for of that sha.
+
+Correction (review round 1, W6I-R1-1): at ef41fb8e the clean take graded only because its instruction file was a stand-in (LICENSE) compared with HEAD's working tree; a take loading the pinned tree's real gars/CLAUDE.md was refused with checkout-binding, and one loading HEAD's passed.
+Since the fold at 8ac5fa6d the test loads gars/CLAUDE.md: a take carrying the pinned tree's (844a4ce) bytes grades clean on the real design, and one carrying HEAD's bytes gets checkout-binding.
 
 A probe, not committed, showed the real-design path is live.
 One mutation each of the fixture hash, source, budget, gars tree, outcome, environment.json, a missing operator line, a leak word, the model id and a study read raised its own reason or event.
@@ -136,7 +139,7 @@ Not run on the Mac: the whole test_scaffold, test_pipeline and run_checks (athen
   The round-4 fixture layout must confirm this.
 - Q-w6i-3: the DuckAdapter ending rule only sets the flag when start_take returned, so a start_take that raises after opening is not ended.
   Teardown still removes the containers.
-- Q-w6i-4, named limit: instruction_content_problems binds loaded files to the repository's working tree, not to the pinned tree 844a4ce; this has to be settled before CP6.
+- Q-w6i-4: folded as W6I-R1-1 (below).
   The round-3 CLI (`main`, choices positive/control) is unchanged and unused by round 4.
 - Q-w6i-5: design_view takes the run tree from the caller, so it is not cross-checked against the transcript's working directory.
 
@@ -161,4 +164,50 @@ Not run on the Mac: the whole test_scaffold, test_pipeline and run_checks (athen
 The tree is clean at this report's commit, and no `__pycache__` was written.
 Scratch outputs are in the session scratchpad under `w6i/`.
 
-RESUME HERE: hand-back at ef41fb8e
+## Fold of review round 1 (W6I-close-1, glitch-1b, 11 Oct)
+
+Round 1 (w6i-review-r1-2026-10-11.md) found 1 MAJOR and 4 MINOR. R1-1 to R1-4 are folded at 8ac5fa6d (written 20:12 EDT, `date`), and R1-5 is carried to S6c by name.
+
+- W6I-R1-1 (MAJOR): instruction files are bound to the pinned tree.
+  design_view reads every CLAUDE.md and CLAUDE.local.md the pinned tree (variants.PINNED_TREE, 844a4ce) carries, with `git show`, and holds their text.
+  pinned_instruction_problems compares each loaded file with that text, never with HEAD's working tree.
+  Two in-place lines (1733 walk, 1775 take), not the one the ruling named, because the walk branch reads the same rule.
+  R7-pinned works in both directions: the pinned bytes grade clean, HEAD's get checkout-binding (they differ: `git diff --stat 844a4ce HEAD -- gars/CLAUDE.md` gives 5 lines).
+  The test's process guard admits only `git -C <repo> ls-tree -r --name-only <pinned>` and `git -C <repo> show <pinned>:<path>`.
+  Witness instructions-from-head: red by R7 (2 own, 0, 0).
+- W6I-R1-2: check4 refuses a view with no half or no wording script, and compares both strictly.
+  dsg() in test_check_take now carries half and script.
+  Witness partial-view-admitted, the round-1 code restored whole: red by R5 (2 own, 0, 0).
+- W6I-R1-3: driver_constants.run_tree_tmpdir is a sixth PENDING constant.
+  Line 546 reads the design in force: a context variable that check4 sets around its readers, so parallel takes never share it; otherwise prereg.load(), as in round 3.
+  R6: a `$TMPDIR/x` read under the view's `.tmp` is no outside read.
+  Witness tmpdir-from-the-draft: red by R6 (1 own, 0, 0).
+- W6I-R1-4: the finalize copy raises DriveRefused when the design table (DESIGN_TABLE, data/staging/{project}/samples.csv) is missing, or when its md5 is not the fixture's design_table.md5.
+  A test binds DESIGN_TABLE to gen_confounded_seed2's layout (<out>/src/..., <out>/samples.csv, with the source template's folder above src) and to the pinned md5.
+  B17 gains the missing and off-md5 cases.
+  Witness design-unbound: red by B17 (1 own, 0, 0).
+- W6I-R1-5 is an S6c item: S6c re-runs R3-first with agent_output from its own stream parser, so a parser that drifts from the first-turn rule shows there.
+  No code here.
+
+The checks.d byte binding is re-indexed to 13 in-place lines (545, 901, 1566, 1568, 1570, 1591, 1593, 1603, 1610, 1650, 1717, 1732, 1774), rc 0.
+
+Red first: byte backups, restored, `shasum -c` OK, and every red was by assertion with 0 errors.
+- test_checker_body on 6f11bc6c's check_take.py: `Ran 23`, failures 12, 0 errors, rc 1.
+  R1 and R7 show the inverted binding.
+- B17 and the layout test on 6f11bc6c's drive.py: `Ran 2`, failures 2, 0 errors, rc 1.
+  The missing-table case was a bare FileNotFoundError, and the off-md5 table graded.
+
+Green at 8ac5fa6d (Mac, light-ok, `timeout -s INT 90`, Python 3.13.2), all rc 0, each ending in a bare `OK`:
+- test_checker_body 23 (9 witnesses);
+- test_check_take 15 (5);
+- test_mode_binding 6 (1);
+- test_drive_commit 31 (10);
+- test_box_integration by class: TestBoundChecks 19, TestTheTakePath 17, guard and stub 3;
+- all 21 drive.py witnesses, in six groups, each red by its own check with 0 collateral and 0 errors.
+  The S6 counts are unchanged.
+  The no-finalize-wait group took 67 s, close to the 90 s cap.
+- test_scaffold TheManifest.test_check_passes_on_the_folder and TheImports;
+- copy_manifest --check, probes4 --check (0 defects), build_draft --check, freeze --check;
+- both checks.d bindings.
+
+RESUME HERE: hand-back for review round 2 at 8ac5fa6d
