@@ -1,0 +1,5 @@
+# Lane w6i-checker-body: Gap Study round 4, slice S6b, the checker body (records side), on fakes and synthetic
+# transcripts. One command per line, run from the repository root. Each module prints one WITNESS line per guard.
+# test_checker_body.py and the round-3 byte binding of check_take.py moved to checks.d/w6j-claude-adapter.txt with
+# their files (ruling S6c-gap4-1).
+python3 -B -W ignore evals/gap-study-4/tests/test_mode_binding.py

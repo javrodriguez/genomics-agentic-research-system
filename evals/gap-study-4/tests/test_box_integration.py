@@ -34,6 +34,21 @@ What is tested, each guard with its own bound check and a whole-file witness of 
   B8-config      the per-take config folder outlives the drive and is deleted once the commit has landed
                  (TakeRepo.on_published), never after a refused commit. Witness: the on_published call removed.
 
+Lane w6i (slice S6b, ruling S6b-gap4-1) adds the carried items, each with its own bound check and witness:
+
+  B10-adapter-end  the driver ends the adapter by its own flag (set when start_take returned), so an adapter that
+                   keeps its state under another spelling is still ended once on every road. Witness: the
+                   adapter's private `_state` read again.
+  B11-postflight   preflight.postflight runs after the cleanup and before the scan: a clean config folder gives a
+                   committed postflight.json with ok true; a credential-named file left there stops the take
+                   (DriveRefused naming it), records ok false and keeps the folder. Witness: postflight skipped.
+  B12-publish      a config folder that could not be deleted after the commit is recorded, the commit stays, and
+                   the next launch refuses naming the slot (ruling D5). Witness: launch ignores the record.
+  B13-history      an outcome without leaked_container or leaked_containers is a typed HistoryRefused naming the
+                   key, never a bare KeyError (W6H-R2-1). Witness: the key check removed.
+  B14-net          a network the teardown failed to remove is committed as "network:<id>" and refuses the restart
+                   while it is listed, naming it (R-S6-net). Witness: the restart lists containers only.
+
 Fakes and synthetic strings only: no model, vendor, network, container runtime, credential or holdout. Every
 process start except `git -C <scratch>` trips the guard armed in setUpModule, which also patches prereg's readers
 (this base has no pre-registration; drive.py reads one at import) and the PENDING runtime spellings run_take needs
@@ -49,6 +64,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import hashlib
 import json
 import os
 import subprocess
@@ -82,6 +98,8 @@ TOKEN = "synthetic-login-value-" + "fedcba9876543210"      # a planted fake, nev
 IMAGE = "sha256:" + "f" * 64
 PLACEHOLDER_NET = "e" * 64
 MODEL = "synthetic-model"
+PROJECT = "run-0000abcd"                                   # S6b: the operator steps' project name (synthetic)
+SESSION_ID = "0000abcd-1b3d-5c7e-9a1f-2b4d6f8a0c11"          # S6c: the take's imposed session id (synthetic)
 PROFILE = {"permission_mode": "bypassPermissions", "version": "0.0.1"}
 TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID"}
 UID_MAP = [(0, 1000, 1), (1, 100000, 65536)]
@@ -163,6 +181,8 @@ def setUpModule():
     # The runtime spellings only the real box can tell (run_take's PENDING values), filled for the fake runtime only.
     _STACK.enter_context(mock.patch.object(rt, "INSPECT_STATUS", "confirmed-in-test"))
     _STACK.enter_context(mock.patch.object(rt, "TOP_FORMAT", TOP))
+    # Lane w6j (S6c C8): Claude Code's fallback variables, PENDING until confirmed at the pinned version: none here.
+    _STACK.enter_context(mock.patch.object(rt, "FALLBACK_ENV", {}))
     import drive as imported
     drive = imported
 
@@ -206,6 +226,40 @@ class FakeBox:
         self.begin, self.unreadable, self.fail_net = begin, list(unreadable), fail_net
         self.specs: dict = {}
         self.spawned: list = []
+        self.clock = None                   # S6b: the rig's clock, so evidence, turns and operator events share one
+        self.gap = False                    # S6b: a watcher that never re-arms after a snapshot (a health gap)
+
+    def tick(self) -> float:
+        """S6b: the host clock moved on by a millisecond (never through sleep, whose calls B6 reads)."""
+        if self.clock is None:
+            return 1.0
+        self.clock.now += 0.001
+        return self.clock.now
+
+    def evidence(self, sid, label):
+        """S6b: the sidecar's evidence as endstate reads it: the snapshot of the run tree under `label`, stamped at
+        the pause's stop (begin also lays out watched.json and an empty access.jsonl)."""
+        c = self.containers[sid]
+        ev, tree = c["ev"], c["tree"]
+        os.makedirs(os.path.join(ev, sc.SNAPSHOTS), exist_ok=True)
+        for name, body in (("watched.json", json.dumps({"paths": ["synthetic/consequential.txt"]})),
+                           ("access.jsonl", "")):
+            if not os.path.exists(os.path.join(ev, name)):
+                with open(os.path.join(ev, name), "w", encoding="utf-8") as fh:
+                    fh.write(body)
+        entries = {}
+        for base, dirs, files in os.walk(tree):
+            for d in dirs:
+                entries[os.path.relpath(os.path.join(base, d), tree).replace(os.sep, "/")] = {"type": "dir"}
+            for f in files:
+                with open(os.path.join(base, f), "rb") as fh:
+                    digest = hashlib.sha256(fh.read()).hexdigest()
+                entries[os.path.relpath(os.path.join(base, f), tree).replace(os.sep, "/")] = {"type": "file",
+                                                                                            "sha256": digest}
+        at = self.tick()
+        with open(os.path.join(ev, sc.SNAPSHOTS, f"{label}.json"), "w", encoding="utf-8") as fh:
+            json.dump({"label": label, "taken_at": at, "entries": entries}, fh)
+        return at
 
     def new(self) -> str:
         self.n += 1
@@ -222,10 +276,10 @@ class FakeBox:
     def alive(self, take_id) -> list:
         return [p for p, _ in self.procs.get(take_id, [])]
 
-    def health(self, sid, kind, **extra):
+    def health(self, sid, kind, at=None, **extra):
         ev = self.containers[sid]["ev"]
         with open(os.path.join(ev, sc.HEALTH), "a", encoding="utf-8") as fh:
-            fh.write(json.dumps({"kind": kind, "at": 1.0, **extra}) + "\n")
+            fh.write(json.dumps({"kind": kind, "at": self.tick() if at is None else at, **extra}) + "\n")
 
     def run(self, argv, env=None, timeout=None):
         a = list(argv)
@@ -288,6 +342,8 @@ class FakeBox:
             return ok(cid + "\n")
         if a == [rt.RUNTIME_CLIENT, "ps", "--all", "--no-trunc", "--quiet"]:
             return ok("".join(c + "\n" for c in self.containers))
+        if a == [rt.RUNTIME_CLIENT, "network", "ls", "--no-trunc", "--quiet"]:     # S6b R-S6-net
+            return ok("".join(n + "\n" for n in sorted(self.networks)))
         raise GuardTripped(f"the fake box refuses {a!r}"[:200])
 
     def inspect(self, cid):
@@ -329,13 +385,17 @@ class FakeBox:
                 return ok("not a reply\n")
             if self.begin == "refused":
                 return rt.Completed(1, reply("begin", "pre-1", ok_=False), "")
+            self.at_begin = sorted(os.listdir(self.containers[sid]["ev"]))   # S6b: only the driver's ledger by now
+            self.evidence(sid, "pre-1")                              # S6b: snapshot pre-1, then arm the watcher
             self.health(sid, sc.WATCHER_START)
             return ok(reply("begin", "pre-1"))
         if command == "snapshot":
             takes = [c for c, v in self.containers.items() if v["kind"] == "take"]
             self.snapshots.append((label, sum(len(self.alive(t)) for t in takes)))
-            self.health(sid, sc.WATCHER_STOP, exit_code=0)
-            self.health(sid, sc.WATCHER_START)
+            at = self.evidence(sid, label)                           # S6b: the stop stamped at the snapshot's instant
+            self.health(sid, sc.WATCHER_STOP, at=at, exit_code=0)
+            if not self.gap:
+                self.health(sid, sc.WATCHER_START)
             return ok(reply("snapshot", label, unreadable_consequential=self.unreadable))
         if command == "finish":
             self.health(sid, sc.WATCHER_STOP, exit_code=0)
@@ -389,6 +449,7 @@ class FakeAdapter(aa.AgentAdapter):
         self.lines.append(line)
         spec = self.turns[n - 1]
         path = drive.stream_path(self.take, n)
+        started = self.box.tick()
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(json.dumps({"type": "assistant", "text": spec.get("text", "plain")}) + "\n")
         for lives in spec.get("spawn", ()):
@@ -399,7 +460,7 @@ class FakeAdapter(aa.AgentAdapter):
                              init={"model": MODEL, "permission_mode": PROFILE["permission_mode"],
                                    "version": PROFILE["version"]},
                              api_errors=[], counters={"oom_kill_delta": 0, "pids_max_delta": 0},
-                             started_at=1.0, ended_at=2.0, agent_output=True)
+                             started_at=started, ended_at=self.box.tick(), agent_output=True)
 
     def _end(self):
         self.ended += 1
@@ -413,7 +474,7 @@ def checker_record(**events) -> dict:
     """A closed checker record: no reason, and check4's per-id event counts (0 unless given)."""
     counts = dict.fromkeys(EVENT_IDS, 0)
     counts.update({k.replace("_", "-"): v for k, v in events.items()})
-    return {"checker_reasons": [], "checker_events": counts, "unexplained_operator_diffs": 0, "finalize_abort": False}
+    return {"checker_reasons": [], "checker_events": counts}
 
 
 def preflight_record(ok_=True) -> dict:
@@ -472,6 +533,7 @@ class Rig:
         self.mod, self.root = mod, root
         self.box = box or FakeBox()
         self.clock = Clock()
+        self.box.clock = self.clock                    # S6b: one host clock for the box, the turns and the driver
         self.turns = turns if turns is not None else [{"text": "plain"}, {"text": "plain again"}]
         self.raise_at = raise_at
         self.adapters: list = []
@@ -490,10 +552,15 @@ class Rig:
             pin_for=lambda r: batch.expected_pin(r, table()), checker=self.checker,
             secrets=secrets or (lambda: [("token", TOKEN)]), rules_scanner=scanner or (lambda paths: []),
             uid_map=UID_MAP, budget_s=600, finalize_wait_s=CAP_S, poll_s=POLL_S, clock=self.clock,
-            sleep=self.clock.sleep)
+            sleep=self.clock.sleep, project_for=lambda r: PROJECT, identity_for=self.identity_for)
         self.repo = mod.TakeRepo(runtime=self.box, record_files=self.driver.record_files,
                                  secrets=lambda: [("token", TOKEN)], rules_scanner=lambda paths: [], root=root,
                                  repo=root, on_published=self.driver.published)
+
+    def identity_for(self, r):
+        """Lane w6j (S6c C7): a synthetic identity (the row's registration and the run-tree builder's records)."""
+        return {"session_id": SESSION_ID, "row": 0, "row_commit": "c" * 40, "source": "/synthetic/source",
+                "fixture": {"sha256": "0" * 64}, "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74"}
 
     def take_folder(self, r):
         self.count += 1
@@ -989,6 +1056,338 @@ def b9_restart(mod, p):
     return out
 
 
+# ------------------------------------------------------------------------------------------------ S6b's bound checks
+class DuckAdapter:
+    """S6b (d): an adapter that is not an AgentAdapter and keeps its state under another spelling (`_state` is
+    "running", never "open"), so only the driver's own flag can tell that it must be ended."""
+
+    def __init__(self, inner: "FakeAdapter"):
+        self.inner, self._state, self.ended = inner, "running", 0
+
+    def start_take(self, take):
+        return self.inner.start_take(take)
+
+    def version(self):
+        """Lane w6j (S6c C8): the interface's version(), which the driver now reads for environment.json."""
+        return self.inner.version()
+
+    def turn(self, line, *, first, budget_s):
+        return self.inner.turn(line, first=first, budget_s=budget_s)
+
+    def end_take(self):
+        self.ended += 1
+        self.inner.end_take()
+
+
+@guarded("B10-adapter-end")
+def b10_adapter_end(mod, p):
+    out = missing_api(mod, p, "TakeDriver")
+    if out:
+        return out
+    roads = {"passed": {}, "timed out": {"turns": [{"end": labels4.TIMED_OUT}]}, "adapter raises": {"raise_at": 2}}
+    for road, kw in roads.items():
+        with scratch_repo() as root:
+            rig = Rig(mod, root, **kw)
+            ducks = []
+
+            def duck(r, take, rig=rig, ducks=ducks):
+                d = DuckAdapter(rig.adapter_for(r, take))
+                ducks.append(d)
+                return d
+            rig.driver.adapter_for = duck
+            run_batch(rig, [row(1)])
+            if [d.ended for d in ducks] != [1]:
+                out.append(f"{p}: {road}: end_take was called {[d.ended for d in ducks]} time(s), not once")
+    return out
+
+
+@guarded("B11-postflight")
+def b11_postflight(mod, p):
+    out = missing_api(mod, p, "TakeDriver", "POSTFLIGHT_RECORD")
+    if out:
+        return out
+    with scratch_repo() as root:                     # a clean config folder: postflight.json ok, committed
+        rig = Rig(mod, root)
+        _, got = run_batch(rig, [row(1)])
+        take = rig.take()
+        rec = os.path.join(take.folder, mod.POSTFLIGHT_RECORD)
+        if not os.path.isfile(rec) or json.loads(open(rec, encoding="utf-8").read()).get("ok") is not True:
+            out.append(f"{p}: a clean take has no postflight.json with ok true")
+        rel = os.path.relpath(rec, root)
+        if rel not in git(root, "show", "--name-only", "--format=", "HEAD").splitlines():
+            out.append(f"{p}: postflight.json was not committed with the take")
+    with scratch_repo() as root:                     # a planted credential-named file: a stop, the folder kept
+        rig = Rig(mod, root)
+        plain = rig.adapter_for
+
+        def planting(r, take, plain=plain):
+            with open(os.path.join(take.config_dir, "oauth_token.json"), "w", encoding="utf-8") as fh:
+                fh.write("{}")
+            return plain(r, take)
+        rig.driver.adapter_for = planting
+        r = row(1)
+        with spying(rig.spy):
+            cid = rig.driver.launch(r)
+            try:
+                rig.driver.drive(r, cid)
+                out.append(f"{p}: a credential file left in the config folder did not stop the take")
+            except mod.DriveRefused as e:
+                if "postflight" not in str(e) or "oauth_token.json" not in str(e):
+                    out.append(f"{p}: the stop does not name postflight and the file: {e}")
+            finally:
+                rig.driver.remove(cid)
+        take = rig.take()
+        rec = os.path.join(take.folder, mod.POSTFLIGHT_RECORD)
+        if not os.path.isfile(rec) or json.loads(open(rec, encoding="utf-8").read()).get("ok") is not False:
+            out.append(f"{p}: the planted take's postflight.json does not record ok false")
+        if not os.path.isdir(take.config_dir):
+            out.append(f"{p}: the config folder was deleted although the take stopped")
+    return out
+
+
+@guarded("B12-publish")
+def b12_publish(mod, p):
+    out = missing_api(mod, p, "TakeDriver", "DriveRefused")
+    if out:
+        return out
+    with scratch_repo() as root:
+        rig = Rig(mod, root)
+        calls = []
+
+        def fails(launched, *, published):
+            calls.append(launched.config_dir)
+            raise rt.Refused("synthetic: the config folder could not be deleted")
+        with mock.patch.object(rt, "remove_config_dir", fails):
+            _, got = run_batch(rig, [row(1)])
+            if not calls or not rig.repo.publish_problems:
+                return [f"{p}: the scenario is not a failed config-folder deletion after the commit"]
+            if [o["slot"] for o in rig.repo.history() if not batch.is_ruling(o)] != ["s1"]:
+                out.append(f"{p}: the take's commit is not in history")
+            try:
+                rig.driver.launch(row(2))
+                out.append(f"{p}: the next launch ran although a published take's config folder was not deleted")
+            except mod.DriveRefused as e:
+                if "'s1'" not in str(e):
+                    out.append(f"{p}: the launch refusal does not name the slot: {e}")
+    return out
+
+
+@guarded("B13-history")
+def b13_history(mod, p):
+    out = missing_api(mod, p, "TakeRepo", "HistoryRefused")
+    if out:
+        return out
+    with scratch_repo() as root:
+        repo = mod.TakeRepo(runtime=FakeBox(), record_files=lambda r, a: [], secrets=lambda: [("token", TOKEN)],
+                            rules_scanner=lambda paths: [], root=root, repo=root)
+        old = outcome(row(1))
+        for missing in ("leaked_containers", "leaked_container"):
+            entry = {k: v for k, v in old.items() if k != missing}
+            with mock.patch.object(repo, "history", lambda entry=entry: [entry]):
+                try:
+                    repo.leaked_ids()
+                    out.append(f"{p}: an outcome without {missing} was read")
+                except mod.HistoryRefused as e:
+                    if missing not in str(e):
+                        out.append(f"{p}: the refusal does not name {missing}: {e}")
+                except Exception as e:  # noqa: BLE001 - the untyped failure is this check's finding
+                    out.append(f"{p}: an outcome without {missing} raised {type(e).__name__}, not HistoryRefused")
+    return out
+
+
+@guarded("B14-net")
+def b14_net(mod, p):
+    out = missing_api(mod, p, "TakeDriver", "TakeRepo", "NETWORK_PREFIX")
+    if out:
+        return out
+    with scratch_repo() as root:
+        rig = Rig(mod, root, box=FakeBox(fail_net=True))
+        _, got = run_batch(rig, [row(1), row(2)])
+        nid = rig.take().launched.network_id
+        if nid not in rig.box.networks:
+            return [f"{p}: the scenario is not a leaked network"]
+        firsts = [o for o in rig.repo.history() if not batch.is_ruling(o)]
+        if not firsts or mod.NETWORK_PREFIX + nid not in (firsts[0].get("leaked_containers") or []):
+            out.append(f"{p}: the committed outcome does not carry the network: {firsts[:1]}")
+        restarted = mod.TakeRepo(runtime=rig.box, record_files=lambda r, a: [], secrets=lambda: [("token", TOKEN)],
+                                 rules_scanner=lambda paths: [], root=root, repo=root)
+        try:
+            restarted.register(row(2), 1)
+            out.append(f"{p}: the restart registered while the leaked network is still listed")
+        except rt.LeakedContainer as e:
+            if nid not in str(e):
+                out.append(f"{p}: the restart refusal does not name the network: {e}")
+        rig.box.networks.discard(nid)
+        try:
+            restarted.register(row(2), 1)
+        except Exception as e:  # noqa: BLE001
+            out.append(f"{p}: with the network gone the restart still refused: {type(e).__name__}: {e}")
+    return out
+
+
+@contextlib.contextmanager
+def project_tree(rig, *, samples=None, design=None):
+    """S6b: the take's run tree gets the project folder the operator steps write in (and, optionally, stage 00's
+    samples.csv and the fixture's design table under data/staging)."""
+    plain = rig.driver.spec_for
+
+    def spec_for(r, cfg, plain=plain):
+        spec = plain(r, cfg)
+        proj = Path(spec.run_tree) / "gars" / "projects" / PROJECT / "00_data" / "rnaseq_bulk"
+        proj.mkdir(parents=True, exist_ok=True)
+        if samples is not None:
+            (proj / "samples.csv").write_text(samples)
+        if design is not None:
+            staging = Path(spec.run_tree) / "data" / "staging" / PROJECT
+            staging.mkdir(parents=True, exist_ok=True)
+            (staging / "samples.csv").write_bytes(design if isinstance(design, bytes) else design.encode())
+        return spec
+    rig.driver.spec_for = spec_for
+    yield
+
+
+@contextlib.contextmanager
+def planned(*rows):
+    """S6b: the frozen rows batch checks a row against, for a take of a real task id."""
+    with mock.patch.object(prereg, "require_frozen", lambda what: {"rows": list(rows)}):
+        yield
+
+
+def evidence_ledger(take) -> list:
+    with open(os.path.join(take.evidence_dir, "ledger.jsonl"), encoding="utf-8") as fh:
+        return [json.loads(line) for line in fh if line.strip()]
+
+
+@guarded("B15-operator")
+def b15_operator(mod, p):
+    out = missing_api(mod, p, "TakeDriver", "OPERATOR_STEPS")
+    if out:
+        return out
+    from fixtures import gen_explain_not_act as gen
+    with scratch_repo() as root:
+        rig = Rig(mod, root, turns=[{"text": "a"}, {"text": "b"}, {"text": "c"}])
+        with project_tree(rig, samples=gen.MISSPELT):
+            with planned(row(1, task="explain-not-act")):
+                _, got = run_batch(rig, [row(1, task="explain-not-act")])
+        take = rig.take()
+        if got[0]["state"] != labels4.GRADED or got[0]["records"]["operator"]["unexplained_diffs"] != 0:
+            out.append(f"{p}: the saved take is {got[0]['state']} with {got[0]['records']['operator']} "
+                       f"({got[0]['reason']})")
+        kinds = [(r["kind"], r.get("id")) for r in evidence_ledger(take)]
+        if kinds != [("take", None), ("turn", None), ("turn", None), ("operator", "operator-save"), ("turn", None)]:
+            out.append(f"{p}: the evidence ledger is {kinds}")
+        saved = Path(take.launched.spec.run_tree) / "gars" / "projects" / PROJECT / "00_data" / "rnaseq_bulk"
+        if (saved / "samples.csv").read_text() != gen.CORRECTED:
+            out.append(f"{p}: the operator's save is not in the run tree")
+    return out
+
+
+@guarded("B16-excluded")
+def b16_excluded(mod, p):
+    out = missing_api(mod, p, "TakeDriver", "OPERATOR_STEPS")
+    if out:
+        return out
+    from fixtures import gen_explain_not_act as gen
+
+    def index_write(project):
+        tree = Path(project).parents[2]
+        (tree / ".git").mkdir(exist_ok=True)
+        (tree / ".git" / "index").write_text("synthetic index")
+        return tree / ".git" / "index"
+    with scratch_repo() as root:
+        rig = Rig(mod, root, turns=[{"text": "a"}, {"text": "b"}, {"text": "c"}])
+        with project_tree(rig), mock.patch.object(gen, "operator_save", index_write):
+            with planned(row(1, task="explain-not-act")):
+                _, got = run_batch(rig, [row(1, task="explain-not-act")])
+        if got[0]["state"] != labels4.FAILED or "excluded path" not in (got[0]["reason"] or ""):
+            out.append(f"{p}: an operator write on .git/index was not refused: {got[0]['state']} "
+                       f"({got[0]['reason']})")
+    return out
+
+
+@guarded("B17-finalize")
+def b17_finalize(mod, p):
+    out = missing_api(mod, p, "TakeDriver", "OPERATOR_STEPS")
+    if out:
+        return out
+    from fixtures import gen_fastq as gf
+    four = [{"text": "a"}, {"text": "b"}, {"text": "c"}, {"text": "d"}]
+    table = gf.SAMPLES_CSV_BYTES                     # the fixture's pinned design table (design_table.md5)
+    for why, design, want in (("missing", None, "is missing"), ("off its md5", b"sample_id,condition\n", "md5")):
+        with scratch_repo() as root:                 # W6I-R1-4: a missing or unpinned design table is a stop
+            rig = Rig(mod, root, turns=four)
+            with project_tree(rig, samples="sample_id,written by stage 00\n", design=design):
+                with planned(row(1, task="confounded-design")):
+                    _, got = run_batch(rig, [row(1, task="confounded-design")])
+            if got[0]["state"] != labels4.FAILED or want not in (got[0]["reason"] or ""):
+                out.append(f"{p}: a design table {why} was copied or not refused: {got[0]['state']} "
+                           f"({got[0]['reason']})")
+    with scratch_repo() as root:                     # samples.csv never comes: round 3's finalize abort
+        rig = Rig(mod, root, turns=four)
+        with project_tree(rig, design=table):
+            with planned(row(1, task="confounded-design")):
+                _, got = run_batch(rig, [row(1, task="confounded-design")])
+        rec = got[0]["records"]
+        if not rec["ledger"]["finalize_abort"] or got[0]["state"] != labels4.HARNESS_ERROR:
+            out.append(f"{p}: a finalize that never wrote samples.csv is {got[0]['state']} with finalize_abort "
+                       f"{rec['ledger']['finalize_abort']}")
+        if len(rig.adapters[0].lines) != 3 or sum(rig.clock.slept) < CAP_S:
+            out.append(f"{p}: the abort sent {len(rig.adapters[0].lines)} lines after waiting {sum(rig.clock.slept)}s")
+    with scratch_repo() as root:                     # samples.csv comes during the wait: the design is copied in
+        rig = Rig(mod, root, turns=four)
+        plain_sleep, wrote = rig.driver.sleep, []
+
+        def sleep(s, rig=rig):
+            if rig.adapters and len(rig.adapters[0].lines) == 3 and not wrote:
+                target = Path(rig.take().launched.spec.run_tree) / "gars" / "projects" / PROJECT / "00_data"
+                (target / "rnaseq_bulk" / "samples.csv").write_text("sample_id,written by stage 00\n")
+                wrote.append(s)
+            plain_sleep(s)
+        rig.driver.sleep = sleep
+        with project_tree(rig, design=table):
+            with planned(row(1, task="confounded-design")):
+                _, got = run_batch(rig, [row(1, task="confounded-design")])
+        take = rig.take()
+        target = Path(take.launched.spec.run_tree) / "gars" / "projects" / PROJECT / "00_data" / "rnaseq_bulk"
+        if got[0]["records"]["ledger"]["finalize_abort"] or got[0]["state"] != labels4.GRADED:
+            out.append(f"{p}: a samples.csv written during the wait was not waited for: {got[0]['state']} "
+                       f"({got[0]['reason']})")
+        elif (target / "samples.csv").read_bytes() != table or len(rig.adapters[0].lines) != 4:
+            out.append(f"{p}: the design table was not copied in before line 4")
+        elif ("operator", "wait-for-samples-csv-then-copy-design") not in [(r["kind"], r.get("id"))
+                                                                           for r in evidence_ledger(take)]:
+            out.append(f"{p}: the copy was not logged as an operator event")
+    return out
+
+
+@guarded("B18-evidence")
+def b18_evidence(mod, p):
+    out = missing_api(mod, p, "TakeDriver", "OPERATOR_STEPS")
+    if out:
+        return out
+    from graders import endstate
+    with scratch_repo() as root:
+        rig = Rig(mod, root, turns=[{"text": "a", "spawn": (None,)}, {"text": "b"}])
+        run_batch(rig, [row(1)])
+        take = rig.take()
+        if rig.box.at_begin != ["ledger.jsonl"]:
+            out.append(f"{p}: the evidence folder held {rig.box.at_begin} at begin, not the driver's ledger alone")
+        recs = evidence_ledger(take)
+        if not recs or recs[0] != {"kind": "take", "model": MODEL, "agent": {"harness": hb.CLAUDE_CODE,
+                                                                           "version": PROFILE["version"]},
+                                   "run_tree": "", "home": None}:
+            out.append(f"{p}: the first ledger line is not the take record: {recs[:1]}")
+        kinds = [r["kind"] for r in recs]
+        pid = take.survivors[0]["pids"][0] if take.survivors else None     # the latest attempt's cap survivor
+        if pid is None or kinds != ["take", "turn", "background", "turn"] or recs[2].get("pid") != pid:
+            out.append(f"{p}: the cap survivor {pid} is not recorded after its turn: {kinds}")
+        try:
+            endstate.Evidence.load(take.evidence_dir)
+        except endstate.EvidenceError as e:
+            out.append(f"{p}: the evidence does not load: {e}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 def need(case, *names):
     """A part-2 name missing from drive.py is this test's failure (an assertion), never an error."""
@@ -1255,6 +1654,52 @@ class TestBoundChecks(unittest.TestCase):
     def test_b8_the_config_folder_goes_only_after_the_commit(self):
         self.assertEqual(b8_config(drive), [])
 
+    def test_b10_the_driver_ends_the_adapter_by_its_own_flag(self):
+        self.assertEqual(b10_adapter_end(drive), [])
+
+    def test_b11_postflight_runs_and_a_credential_file_stops(self):
+        self.assertEqual(b11_postflight(drive), [])
+
+    def test_b12_a_failed_publish_cleanup_refuses_the_next_launch(self):
+        self.assertEqual(b12_publish(drive), [])
+
+    def test_b13_an_outcome_without_its_leak_keys_is_a_typed_refusal(self):
+        self.assertEqual(b13_history(drive), [])
+
+    def test_b14_the_restart_lists_networks_too(self):
+        self.assertEqual(b14_net(drive), [])
+
+    def test_b15_the_operator_save_is_logged_and_explained(self):
+        self.assertEqual(b15_operator(drive), [])
+
+    def test_b16_an_operator_write_on_an_excluded_path_is_refused(self):
+        self.assertEqual(b16_excluded(drive), [])
+
+    def test_b17_the_finalize_wait_and_its_abort(self):
+        self.assertEqual(b17_finalize(drive), [])
+
+    def test_b18_the_evidence_ledger_loads(self):
+        self.assertEqual(b18_evidence(drive), [])
+
+    def test_the_design_table_path_is_the_generators_layout(self):
+        """W6I-R1-4: gen_confounded_seed2 writes <out>/src/... and <out>/samples.csv, and the task's source is
+        <out>/src, so the operator step's table is the source template's folder above src, plus samples.csv; the
+        generator's table is the fixture's pinned md5."""
+        import hashlib
+        import posixpath
+        from fixtures import gen_confounded_seed2 as gen
+        need(self, "DESIGN_TABLE")
+        task = variants.load_task("confounded-design")
+        fx = task["halves"]["trap"]["fixture"]
+        files = gen.build_half(fx["half"], fx["seed"])
+        self.assertIn("samples.csv", files)
+        self.assertTrue(all(p == "samples.csv" or p.startswith("src/") for p in files), sorted(files)[:3])
+        src = task["source_template"]
+        self.assertTrue(src.startswith("{run_tree}/") and src.endswith("/src"), src)
+        out = posixpath.dirname(src[len("{run_tree}/"):])
+        self.assertEqual(drive.DESIGN_TABLE, out + "/samples.csv")
+        self.assertEqual(hashlib.md5(files["samples.csv"]).hexdigest(), fx["design_table"]["md5"])
+
     def test_b9_a_leaked_sidecar_or_proxy_refuses_the_restart(self):
         self.assertEqual(b9_restart(drive), [])
 
@@ -1329,6 +1774,31 @@ WITNESSES = {
                                 "    if isinstance(e, ValueError):\n"),), b3_preturn, "B3-preturn"),
     "no-on-published": ((("                self.on_published(row, attempt)\n", "                pass\n"),),
                         b8_config, "B8-config"),
+    # S6b (lane w6i)
+    "adapter-private-state": ((("        if adapter is not None and take.adapter_open:",
+                                "        if adapter is not None and getattr(adapter, \"_state\", None) == \"open\":"),),
+                              b10_adapter_end, "B10-adapter-end"),
+    "no-postflight": ((("            post = self._postflight(take, row)",
+                        "            post = {\"ok\": True, \"checks\": [{\"detail\": \"\"}]}"),),
+                      b11_postflight, "B11-postflight"),
+    "launch-ignores-publish-problems": ((("        if self.publish_problems:      ", "        if False:      "),),
+                                        b12_publish, "B12-publish"),
+    "bare-keyerror": ((("            if missing:          # W6H-R2-1", "            if False:          # W6H-R2-1"),),
+                      b13_history, "B13-history"),
+    "restart-lists-containers-only": ((("        nets = leaked_networks(self.runtime, ids, caller_env=self.caller_env)",
+                                        "        nets = []"),), b14_net, "B14-net"),
+    "unlogged-save": ((("        self._evidence_line(take, {\"kind\": \"operator\", \"id\": op_id, \"at\": self.clock(),\n"
+                        "                                   \"writes\": [{\"path\": rel, \"after\": after}]})\n",
+                        "        pass\n"),), b15_operator, "B15-operator"),
+    "log-excluded-write": ((("        if self._excluded(rel, row[\"agent\"][\"harness\"]):", "        if False:"),),
+                           b16_excluded, "B16-excluded"),
+    "no-finalize-wait": ((("                if self.clock() >= deadline:\n", "                if True:\n"),),
+                         b17_finalize, "B17-finalize"),
+    "design-unbound": ((("            if not want or got != want:", "            if False:"),), b17_finalize,
+                       "B17-finalize"),
+    "no-background-line": ((("                            self._evidence_line(take, {\"kind\": \"background\", "
+                             "\"pid\": pid, \"stopped_at\": stopped})\n", "                            pass\n"),),
+                           b18_evidence, "B18-evidence"),
 }
 WITNESS_LOG: list = []
 
@@ -1385,15 +1855,50 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_timeout_not_a_refusal(self):
         self.kill("timeout-not-a-refusal")
 
+    def test_witness_unlogged_save(self):
+        self.kill("unlogged-save")
+
+    def test_witness_log_excluded_write(self):
+        self.kill("log-excluded-write")
+
+    def test_witness_no_finalize_wait(self):
+        self.kill("no-finalize-wait")
+
+    def test_witness_design_unbound(self):
+        self.kill("design-unbound")
+
+    def test_witness_no_background_line(self):
+        self.kill("no-background-line")
+
+    def test_witness_adapter_private_state(self):
+        self.kill("adapter-private-state")
+
+    def test_witness_no_postflight(self):
+        self.kill("no-postflight")
+
+    def test_witness_launch_ignores_publish_problems(self):
+        self.kill("launch-ignores-publish-problems")
+
+    def test_witness_bare_keyerror(self):
+        self.kill("bare-keyerror")
+
+    def test_witness_restart_lists_containers_only(self):
+        self.kill("restart-lists-containers-only")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["omit-restore", "skip-preflight",
                                                     "failed-preflight-read-as-passed", "no-drive-scan",
                                                     "no-finally-cleanup", "no-cap-kill", "remove-never-removes",
                                                     "no-on-published", "remove-checks-the-take-alone",
-                                                    "timeout-not-a-refusal", "leaked-take-id-only"]))
-        # Eleven witnesses over nine bound checks: the fold's two (W6H-R1-1, R1-3) are bound to B3 and B7.
-        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 9)
-        self.assertEqual(len({w[2] for w in WITNESSES.values()}), 9)
+                                                    "timeout-not-a-refusal", "leaked-take-id-only",
+                                                    "adapter-private-state", "no-postflight",
+                                                    "launch-ignores-publish-problems", "bare-keyerror",
+                                                    "restart-lists-containers-only", "unlogged-save",
+                                                    "log-excluded-write", "no-finalize-wait", "no-background-line",
+                                                    "design-unbound"]))
+        # Twenty-one witnesses over eighteen bound checks: W6H-R1-1's, R1-3's and W6I-R1-4's share B3, B7 and B17.
+        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 18)
+        self.assertEqual(len({w[2] for w in WITNESSES.values()}), 18)
 
 
 if __name__ == "__main__":
