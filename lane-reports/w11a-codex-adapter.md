@@ -124,3 +124,85 @@ RESUME HERE: review round 1 (fresh opus-medium, construction) on 6a410c07; then 
 - tests/test_scaffold.py (whole)
 - test_round4.py
 - the gates: copy_manifest.py --check, build_draft.py --check, freeze.py --check, walk_register.py --check; lint_language.py evals/gap-study-4/ and lint_pooling.py evals/gap-study-4/
+
+---
+
+# Review round 1 fold (ruling w11a-R1-fold, glitch-2f)
+
+_Appended Mon 12 Oct 2026 16:08 EDT (`date`) by the slice's builder. Review: lane-reports/w11a-codex-adapter-review-r1.md (bf52ad2d), CHANGES, 4 MAJOR and 6 MINOR. This section supersedes the Status line, the RESUME HERE line and the athena list above; nothing above is rewritten._
+
+Status: review round 1 folded, red first then green; awaiting review round 2.
+head: f61fd4af.
+
+## Commits
+
+| sha | stage |
+|---|---|
+| 65e38285 | 4: one bound check per finding, each case changing one thing (red) |
+| 32de8b98 | 5: the fold code for stage 4 (green for it), the generated mutation sweep, B9, B11 and cases for the sweep's first survivors (red on this commit's code) |
+| f61fd4af | 6: the fold code for stage 5 (green); the sweep at 0 survivors |
+| (this append) | 7: the report |
+
+## Red first
+
+- Stage 4 on 3cd99ebb's code: 39 tests, 4 failures by assertion, 0 errors; 37 red lines (kept in the untracked `.scratch/red-r1-fold.txt`): the record check typed no value (agent_message text 5, reasoning text 5, command 5, exit_code "0" or true, error message 5, turn.failed message 5, status 5, server 5), did not check a file_change's changes (empty, not a list, an entry not an object, a path of 5, an entry without kind), read_stream raised AttributeError on a text of 5, and read_stream accepted a line that is not JSON as the first line, a middle line and the second of two last lines.
+- Stage 5 on its own code: 6 red lines, each by assertion: an event or item type that is a list raised TypeError, not a typed refusal, in the record check, the parser and read_stream (`.scratch/red-r1-fold-2.txt`).
+- The other new cases bind code that already refused (the review's point: the guards were right and unbound).
+
+## Each finding, folded
+
+| finding | bound by |
+|---|---|
+| W11A-R1-1 end_reason's three conditions, the turn.failed count | B1-end: a non-zero exit with a clean stream, exit 0 with no turn.completed, exit 0 with a turn.failed, no exit code, the clean case, a timed-out exec; a stream with turn.failed and turn.completed counts both and ends error through the adapter |
+| W11A-R1-2 the thread id at three seats | B2-thread: read_stream refuses "--last", "", "a b", 5; argv refuses a later turn's id of None, "--last", "", 5; turn 1 with no thread.started and turn 1 with two thread ids each refuse turn 2 before its exec; turn 1 naming "--last" is refused with no resume exec; one thread named twice still resumes; a later turn whose stream names no thread is accepted (Q-w11a-5) |
+| W11A-R1-3 the missing-key check | B3-required (record check) and B3-stream (read_stream): 14 records, each dropping one required key |
+| W11A-R1-4 the rollout init | B4-rollout: two models in one turn refused; no or non-string or empty approval_policy or model, no or two session_metas, a session_meta without cli_version or not an object, each init None with its reason; the last of one turn's turn_contexts is the one read; blank lines skipped; a line that is not JSON or not an object refused |
+| W11A-R1-5 usage values, two turn.completed | B5-usage: output_tokens true, -5, a float, "3", None each refused; 0 read as 0; two turn.completed refused |
+| W11A-R1-6 empty model and line | B6-empty: argv with model "", None, 5 and line "", None, 5; the adapter's making with model "", None, 5; each callable that is not one; a pin that is not an object |
+| W11A-R1-7 a blank agent_message | B7-blank: "", "   " and a newline-tab message are not output; each output item type alone is; a started, never completed call is not; texts join without the empty one |
+| W11A-R1-8 value types; text 5 | B8-types (record check and parser) and B3-stream (read_stream): 27 values off their type, each a typed refusal; `text: 5` is now a StreamError |
+| W11A-R1-9 A7 and the report line | A7 counts a fixture as recorded only when its label reads "RECORDED at walk <id>, codex-cli <X.Y.Z>."; a RECORDED word without both is a problem line; test_a7_a_recorded_label_needs_its_provenance drives both shapes |
+| W11A-R1-10 undecoded lines | B10-cut: a line that is not JSON is accepted only as the last non-blank line (undecoded 1); as the first line, a middle line or the second of two last lines it refuses; B9 a cut last line holding an undecodable byte |
+
+Correction to the section "Ruling Q-3 and the freeze" above: the parenthesis "(A7 already refuses "recorded" without one)" overclaimed at 3cd99ebb, where A7 counted any RECORDED word.
+From f61fd4af it holds: A7 refuses "recorded" unless a fixture's label names the walk and the harness version.
+
+## The generated mutation sweep (ruling item 2)
+
+`tests/test_codex_adapter.py --generated-mutants [--shard i/n]`, self-contained in the test file, built from the reviewer's harness.
+Kinds: a statement replaced by `pass`; an if, elif, while or conditional test forced True and False; one operand of an and/or dropped; a `not` dropped; one comparison negated; an assignment's value emptied to None; a string literal changed.
+A transcript_codex mutant also rebuilds codex_adapter on it.
+A mutant is killed when it does not build or any bound check of its file returns a line.
+One rule instead of entries: string literals inside a `raise` are not mutated (message words; every refusal is told apart by its exception type).
+Everything else not killed is in `EQUIVALENT` with a reason: 36 entries (14 the import preamble in the two files, 10 what-labels passed to `_keys`/`_types`, 4 labels in the callable check's TypeError, 2 in argv's StreamError, 2 why_no_init reason words, the change ref's `#` joiner, 2 attributes whose starting value is already None, and `_contexts = 0`, read only as a slice start).
+An entry that names no generated mutant fails, in the sweep and in the plain suite (TestGeneratedMutantRegistry); an entry whose mutant is killed fails in the sweep.
+Result on f61fd4af (four shards on the Mac): 867 mutants (the review counted 789 under a wider set of kinds), 831 killed, 36 equivalent, 0 survivors, 0 stale.
+Of the 831: 581 killed by a bound check's own line, 220 by a crash inside a check (an ERROR line, for example a deleted assignment leaving a name unbound), 30 at build.
+The reviewer's `.scratch/repro.py` no longer runs to its end on the fold (its text anchors name the old code, and its `suite` calls only the checks S1-S3, P1, A1-A7); the sweep runs every check, B1-B11 included.
+
+## Checks on f61fd4af (Mac, each behind `light-ok`, `timeout -s INT 120`, python3.13)
+
+- tests/test_codex_adapter.py: 42 tests, OK. --witnesses: the summary line counts 13 witnesses red in a registry of 13. --generated-mutants in four shards: each exit 0, as above.
+- Gates: copy_manifest, build_draft, freeze and walk_register --check, each exit 0. lint_language and lint_pooling on evals/gap-study-4/: clean.
+- test_transcript_view.py OK (20), test_agent_adapter.py OK (35), test_harness_bookkeeping.py OK (14).
+
+## For the seam slice (ruling item 3)
+
+- Compare `CodexAdapter.version()` (`codex --version` in the take container) with the pin's `version`, and with the init's version (the rollout's cli_version), on every take; today nothing calls version() from a turn and nothing compares the three.
+- Compare the init's permission_mode (the rollout's approval_policy, "never" under the bypass flag) with the pin's mode ("bypass") through a pre-registered map, on every turn (Q-w11a-4).
+
+## Questions added
+
+- Q-w11a-9: should a mutant killed only by a crash inside a check (220 of 831) be required to die by a bound check's own line instead? Proposed: no for this round; a crash is a check that did not return clean, it prints as an ERROR line, and the sweep counts it separately so a reviewer can see the split; turning crash kills into own-line kills case by case is a later tightening, not a merge gate.
+
+RESUME HERE: review round 2 (fresh opus-medium, construction) on f61fd4af, re-running the generated sweep; then athena --solo on the head with the list below; then merge after the wave 10 merge.
+
+## Modules athena must run (supersedes the list above)
+
+- tests/test_codex_adapter.py; tests/test_codex_adapter.py --witnesses; tests/test_codex_adapter.py --generated-mutants (whole)
+- tests/test_agent_adapter.py
+- tests/test_transcript_view.py
+- tests/test_walk_wiring.py (timed out on the loaded Mac at 3cd99ebb; no verdict here)
+- tests/test_scaffold.py (whole)
+- test_round4.py
+- the gates: copy_manifest.py --check, build_draft.py --check, freeze.py --check, walk_register.py --check; lint_language.py evals/gap-study-4/ and lint_pooling.py evals/gap-study-4/
