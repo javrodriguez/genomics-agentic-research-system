@@ -113,4 +113,41 @@ Checks on the merge head 765cb16a (Mac, Python 3.13.2, each behind `mac_slot.py 
 
 Not run here: the whole test_scaffold, test_pipeline (w8a edited it) and run_checks; athena's.
 
-RESUME HERE: merge head 765cb16a30fad54aaf06b40e9c750280ccf46a16; athena run_checks owed (orchestrator)
+Superseded by the addendum below (athena's run on 22b320be: 144 of 145).
+
+## Addendum: the R5.case fix after athena's run on 22b320be (Mon 12 Oct 2026, 03:39 to 05:16 EDT, clock read with `date`)
+
+Asked by glitch-1b. athena passed 144 of 145 on 22b320be; the one failure was `checks.d/w7d-rehearsals.txt:5`, `tests/test_rehearsals.py --witnesses`, witness `folder-by-path` FAIL (not RED).
+Cause: the mutant looks a walk's folder up by path, `(base / walk).exists()`; R5.case registered "W-1" beside a folder "w-1/", which a path lookup finds only on a case-blind filesystem (APFS), so on athena's case-sensitive ext4 the mutant behaved like the guard and survived.
+
+Fix, test-only, commit 5cd1056d: `tests/test_rehearsals.py` gains `case_blind(base)`, which patches Path.exists, is_dir, is_file, is_symlink and rglob so a path under the rig resolves its name by case (read through os.listdir, never the patched methods), as APFS does, while iterdir stays exact.
+R5.case keeps its real-filesystem leg and adds a second leg under `case_blind`, with a non-vacuity assertion that `W-1` is a directory under the simulation and the listing is unchanged; its assertions carry `R5.case (case-blind)`.
+The guard is not weakened: walk_register.py is unchanged, and the exact-name match must refuse "W-1" under both legs.
+Recorded in `COPIED.d/w7d-rehearsals.json` (the owning fragment's reason for tests/test_rehearsals.py).
+
+Checks on the Mac (Python 3.13.2, `mac_slot.py light-ok`, `timeout -s INT 120`):
+
+| Check | Exit | Result |
+|---|---|---|
+| tests/test_rehearsals.py | 0 | Ran 9, OK, 0 skipped |
+| tests/test_rehearsals.py --witnesses | 0 | 20/20 red; folder-by-path RED by R5.case, collateral none |
+| walk_register.py --check | 0 | 0 walks registered |
+| copy_manifest.py --check | 0 | 273 files from 42 fragments |
+| freeze.py --check | 0 | 273 owned paths checked |
+
+How it was shown to bite on a case-sensitive filesystem: a case-sensitive disk image could not be made (hdiutil create timed out), so a scratch driver (not committed) emulated one on the Mac by making Path.exists, is_dir, is_file and is_symlink answer False under a w7d- rig unless every component is listed by its exact name (armed check: `w-1` found, `W-1` not).
+Under that emulation, with mutant folder-by-path:
+
+| Test text | Run | Exit | Result |
+|---|---|---|---|
+| 22b320be (before the fix) | whole module | 0 | no failures: the mutant survives, athena's FAIL reproduced |
+| 22b320be | R5.case's method only | 0 | Ran 1, OK: the mutant survives |
+| 5cd1056d (the fix) | R5.case's method only | 1 | FAIL with AssertionError `R5.case (case-blind)`: RED |
+| 5cd1056d, no mutant | whole module | 0 | Ran 9, OK |
+
+A sweep of all 20 mutants under the emulation found 16 RED by the strict rule. In the other four (folder-by-path, round3-usage, schema-by-value, silent-empty), the bound method FAILed in three and the run then hit the 120 s cap in a later test; in schema-by-value the cap came before its bound method ran. That timeout comes from the emulator, not the suite: it lists the Mac's temp folder (about 266,000 entries) on every path query.
+The emulated sweep is not counted as evidence beyond the folder-by-path rows above; athena's run_checks on this head is the authority for ext4.
+
+RESIDUAL: diskimages-helper pid 97343 (started 03:39:52, parent 1) is most likely left from the failed hdiutil create; not killed, since it is a system helper and its owner is not proven.
+
+RESUME HERE: merge head 5cd1056d474f95c448d9d05f6c95a4f946b605b6; athena run_checks owed (orchestrator)
