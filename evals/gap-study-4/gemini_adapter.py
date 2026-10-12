@@ -93,7 +93,10 @@ EXIT_MEANINGS = {0: "success", 1: "general-or-api-error", 42: "input-error", 53:
 SHAPES_SOURCE = "documented"
 SHAPES_SOURCES = ("documented", "recorded")
 NO_INIT_MODE = "the Gemini stream records no permission mode (Q-w11b-2)"
-_SESSION_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
+# A session id: never one of -r's non-id selectors, `latest` or an index (D8:138; W11B-R1-8).
+_SESSION_ID = re.compile(r"(?!latest$)(?![0-9]+$)[A-Za-z0-9][A-Za-z0-9-]{0,127}")
+# A model id: box/take_config.py's _MODEL shape, so it can never be read as a flag (W11B-R1-6).
+_MODEL_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")
 
 
 class StreamError(ValueError):
@@ -114,23 +117,28 @@ def read_stream(text: str, *, model: str) -> dict:
     served_models the keys of result.stats.models, in order ([] when none)
     results       how many result records (0 or 1)
     tool_ids      the tool_use ids, in order
-    undecoded     lines that were not JSON (a cut stream's last line); a decoded record off the tables refuses
+    undecoded     1 when the stream's last non-blank line is not JSON (a cut stream), else 0; a line that is not JSON
+                  anywhere before it refuses, and so does a decoded record off the tables
+
+    The stream is split on "\n" only, never str.splitlines: Node writes U+2028 and U+0085 raw inside JSON strings,
+    and splitting on them would drop the record that holds them (W11B-R1-1). A stream whose stats name no model and
+    whose init is missing refuses: no record would name the model (W11B-R1-3).
     """
     if not isinstance(text, str):
         raise StreamError("the stream must be text")
-    if not isinstance(model, str) or not model:
-        raise StreamError("the row's model must be a non-empty string")
+    if not isinstance(model, str) or not _MODEL_ID.fullmatch(model):
+        raise StreamError("the row's model is off the model-id shape")
     init_model, session_id, inits, pieces, output, api = None, None, 0, [], False, []
     status, stats, served, results, tools, bad = None, None, [], 0, [], 0
     joining = False
-    for raw in text.splitlines():
-        raw = raw.strip()
-        if not raw:
-            continue
+    lines = [raw for raw in text.split("\n") if raw.strip()]
+    for n, raw in enumerate(lines, 1):
         try:
             rec = json.loads(raw)
         except ValueError:
-            bad += 1
+            if n != len(lines):
+                raise StreamError(f"line {n} of {len(lines)} is not JSON: only a cut stream's last line may be") from None
+            bad = 1
             continue
         try:
             t = tg.check_record(rec)
@@ -148,7 +156,7 @@ def read_stream(text: str, *, model: str) -> dict:
             init_model, session_id = rec["model"], rec["session_id"]
             if init_model != model:
                 raise StreamError(f"the init names model {init_model!r}, not the row's {model!r}")
-            if not isinstance(session_id, str) or not _SESSION_ID.fullmatch(session_id):
+            if not _SESSION_ID.fullmatch(session_id):
                 raise StreamError("the init carries a session id off its shape")
         elif said:
             if rec.get("delta") is True and joining:
@@ -167,14 +175,16 @@ def read_stream(text: str, *, model: str) -> dict:
                 raise StreamError("one call's stream holds two result records")
             status = rec["status"]
             if status == tg.FAILED:
-                err = rec.get("error") or {}
-                api.append({"status": None, "type": err.get("type"), "text": tg.error_text(rec)})
+                api.append({"status": None, "type": rec["error"]["type"] if "error" in rec else None,
+                            "text": tg.error_text(rec)})
             if "stats" in rec:
                 stats = rec["stats"]
                 served = list(stats[tg.STATS_MODELS])
                 other = [m for m in served if m != model]
                 if other:
                     raise StreamError(f"result.stats.models names {other}, not only the row's {model!r}")
+    if stats is not None and not served and init_model is None:
+        raise StreamError("the result's stats name no model and the call has no init: no record names the model")
     return {"init_model": init_model, "session_id": session_id, "agent_text": "\n".join(pieces),
             "agent_output": output, "api_errors": api, "status": status, "stats": stats, "served_models": served,
             "results": results, "tool_ids": tools, "undecoded": bad}
@@ -182,9 +192,10 @@ def read_stream(text: str, *, model: str) -> dict:
 
 def argv(line: str, *, model: str, mode: str, session_id, first: bool) -> list:
     """The call's argv inside the box (G-1..G-4)."""
-    for what, v in (("line", line), ("model", model)):
-        if not isinstance(v, str) or not v:
-            raise StreamError(f"the turn's {what} must be a non-empty string")
+    if not isinstance(line, str) or not line:
+        raise StreamError("the turn's line must be a non-empty string")
+    if not isinstance(model, str) or not _MODEL_ID.fullmatch(model):
+        raise StreamError("the turn's model is off the model-id shape: it could be read as a flag")
     if line.startswith("-"):
         raise StreamError("a line that starts with '-' would be read as a flag")
     if mode not in MODE_FLAGS:
@@ -246,8 +257,8 @@ class GeminiAdapter(aa.AgentAdapter):
         for what, fn in (("stream_path_for", stream_path_for), ("counters_for", counters_for), ("clock", clock)):
             if not callable(fn):
                 raise TypeError(f"{what} must be callable")
-        if not isinstance(model, str) or not model:
-            raise StreamError("the row's model must be a non-empty string")
+        if not isinstance(model, str) or not _MODEL_ID.fullmatch(model):
+            raise StreamError("the row's model is off the model-id shape")
         self.runtime, self.take_id, self.run_tree, self.login_file = runtime, take_id, run_tree, login_file
         self.model, self.mode = model, mode
         self.stream_path_for, self.counters_for = stream_path_for, counters_for

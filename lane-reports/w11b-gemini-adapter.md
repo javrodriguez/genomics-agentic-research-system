@@ -72,3 +72,34 @@ Each finding red by its own check's line on the pre-fold code:
 - W11B-R1-9: RECORDED_LABEL, as w11a's, fullmatch "RECORDED at walk <id>, gemini-cli <X.Y.Z>."; a unit test refuses five partial labels; the README now says exactly that.
 
 The generated sweep gained the reviewer's operators where they apply: boundary swaps, `is True` to truthy, fullmatch to match and to search, regex loosening, one element of a literal tuple or list dropped, one dict-literal entry dropped, `.strip()` dropped, list/sorted/set unwrapped (21 kinds in all).
+
+Correction: the stage 3 heading says 17:58; `date` read 17:43 when it was committed (26a26789). The heading stands as committed; this line is the record.
+
+## Stage 4: review round 1 fold, the code (Mon 12 Oct 2026 17:45 EDT, `date`)
+
+What changed, by finding:
+
+- W11B-R1-1 (MAJOR): read_stream splits on "\n" only (never str.splitlines); a line that is not JSON refuses unless it is the stream's last non-blank line (a cut stream, undecoded 1).
+- W11B-R1-2 (MAJOR): check_record refuses a result whose status is success and which carries no stats, so end_turn never reads with usage unmeasured; a failed result may still carry none.
+- W11B-R1-3: read_stream refuses a stream whose stats name no model while the call has no init.
+- W11B-R1-4: VALUE_TYPES, one exact type per key (`type(v) is`), and ERROR_OBJECT_TYPES for the error object; delta is a bool; the content and tool-id string checks and the error-object and stats object checks it replaces were removed; error_text reads checked records by index.
+- W11B-R1-5: `type` left the required tuples (the event lookup refuses a record without it); tool_kind reads tool_name and parameters by index, so dropping either from the required tuple fails instead of passing.
+- W11B-R1-6: _MODEL_ID (box/take_config.py's _MODEL shape, alphanumeric first) at the three seats: read_stream, argv (before the argv is built) and the constructor.
+- W11B-R1-8: _SESSION_ID refuses `latest` and an all-digit id, in the init and in argv.
+- W11B-R1-7 and W11B-R1-9: test-side only (above).
+
+Green on this head, /usr/local/bin/python3.13, every batch behind mac_slot light-ok and `timeout -s INT 120`:
+
+- `test_gemini_adapter.py`: Ran 135 tests, OK.
+- `--witnesses`: 111 red, each by its own check, 0 errors (registry 111; 19 entries were replaced or removed with the code they named, one dropped as equivalent on JSON input: exact type against isinstance differs only for a bool or a subclass, and no VALUE_TYPES entry is an int).
+- `--generated-mutants`, 16 shards (each under the 120-second cap): generated 1154 over the two files, killed 1114, EQUIVALENT 40, survived 0, stale 0; 50 strings inside `raise` statements skipped by the one listed rule. Re-sampled after the allow-list went in: shard 3 of 16 (68 killed, 4 equivalent) and shard 11 of 16 (72 killed).
+- EQUIVALENT, 40 entries in seven categories, each naming a token its line must hold: import-plumbing 16, message-label 10, identical-mutant 7, falsy-alike 2, typed-bool 2 (`delta is True` where VALUE_TYPES makes delta a bool), message-order 2 (sorted() only orders a refusal's message), sequence-alike 1 (list(VERSION_ARGV), which run_take takes as a tuple too).
+- Gates: copy_manifest, build_draft, freeze, walk_register `--check` exit 0; lint_language and lint_pooling clean over evals/gap-study-4/ and over the three new Python files named explicitly.
+  lint_language flags two ratio shapes in this report's stage 2 section (lines 22 and 27); the report is outside the gated folder and append-only, so they stand, and later sections avoid the shape.
+
+Residual for the seam slice (not this lane's files): claude_code_adapter.py:100 and codex_adapter.py:116 also split their streams with str.splitlines.
+Observations from the review carried as they stand: an error event followed by a success result under exit 0 reads end_turn with the error in api_errors; duplicate JSON keys read last-wins; tool_result ids are not paired against tool_use ids in read_stream; GEMINI_SETTINGS does not pin Gemini's sandbox off (it is off by default, and nothing in argv or the exec environment turns it on).
+
+RESUME HERE: review round 2 (fresh opus-medium; re-run the sampled shards and the reviewer's operator set on the fold, and confirm each finding red by its own check's line).
+
+Athena module list: tests/test_gemini_adapter.py; --witnesses; --generated-mutants (whole, or --shard i/n, 16 shards keep each under 120 s on the Mac); test_agent_adapter.py; test_transcript_view.py; test_scaffold.py (whole); test_round4.py; the gates (copy_manifest, build_draft, freeze, walk_register --check; lint_language and lint_pooling over evals/gap-study-4/).

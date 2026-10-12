@@ -61,14 +61,14 @@ TOOL_USE = "tool_use"
 TOOL_RESULT = "tool_result"
 ERROR = "error"
 RESULT = "result"
+# `type` is allowed on every event and required by the lookup itself (a record without it is an unknown event).
 EVENT_KEYS = {
-    INIT: (("type", "session_id", "model"), ("type", "timestamp", "session_id", "model")),
-    MESSAGE: (("type", "role", "content"), ("type", "timestamp", "role", "content", "delta")),
-    TOOL_USE: (("type", "tool_name", "tool_id", "parameters"), ("type", "timestamp", "tool_name", "tool_id",
-                                                                "parameters")),
-    TOOL_RESULT: (("type", "tool_id", "status"), ("type", "timestamp", "tool_id", "status", "output", "error")),
-    ERROR: (("type", "message"), ("type", "timestamp", "severity", "message")),
-    RESULT: (("type", "status"), ("type", "timestamp", "status", "error", "stats")),
+    INIT: (("session_id", "model"), ("type", "timestamp", "session_id", "model")),
+    MESSAGE: (("role", "content"), ("type", "timestamp", "role", "content", "delta")),
+    TOOL_USE: (("tool_name", "tool_id", "parameters"), ("type", "timestamp", "tool_name", "tool_id", "parameters")),
+    TOOL_RESULT: (("tool_id", "status"), ("type", "timestamp", "tool_id", "status", "output", "error")),
+    ERROR: (("message",), ("type", "timestamp", "severity", "message")),
+    RESULT: (("status",), ("type", "timestamp", "status", "error", "stats")),
 }
 EVENT_TYPES = tuple(EVENT_KEYS)
 
@@ -78,6 +78,11 @@ ROLES = (USER, ASSISTANT)
 SUCCESS, FAILED = "success", "error"
 STATUSES = (SUCCESS, FAILED)
 SEVERITIES = ("warning", "error")
+# Each key's value type, exact (`type(v) is`, so a bool is never an int and a subclass never passes): W11B-R1-4.
+VALUE_TYPES = {"type": str, "timestamp": str, "session_id": str, "model": str, "role": str, "content": str,
+               "delta": bool, "tool_name": str, "tool_id": str, "parameters": dict, "status": str, "output": str,
+               "error": dict, "severity": str, "message": str, "stats": dict}
+ERROR_OBJECT_TYPES = {"type": str, "message": str}
 ERROR_OBJECT_KEYS = ("type", "message")
 
 # ---- result.stats (D8 section 1 and the per-harness table, D8:175) -------------------------------------------------
@@ -107,6 +112,12 @@ class ShapeError(tv.ViewError):
     """A Gemini CLI stream record outside the pre-registered tables: refused, never read on a guess."""
 
 
+def _types(what: str, rec: dict, table: dict) -> None:
+    bad = sorted(k for k in rec if type(rec[k]) is not table[k])
+    if bad:
+        raise ShapeError(f"{what}: value(s) off their type: {bad}")
+
+
 def _keys(what: str, rec: dict, required, allowed) -> None:
     missing = [k for k in required if k not in rec]
     if missing:
@@ -122,16 +133,13 @@ def count(v) -> bool:
 
 
 def _error_object(what: str, err) -> None:
-    if not isinstance(err, dict):
-        raise ShapeError(f"{what}: its error is not an object")
     _keys(f"{what}.error", err, ERROR_OBJECT_KEYS, ERROR_OBJECT_KEYS)
+    _types(f"{what}.error", err, ERROR_OBJECT_TYPES)
 
 
 def check_stats(stats) -> None:
     """result.stats against D8's keys: every count present and a count (missing is refused, never read as 0), no key
     off the table, and stats.models an object of model id -> its entry, each entry's keys and counts as above."""
-    if not isinstance(stats, dict):
-        raise ShapeError("result.stats is not an object")
     _keys("result.stats", stats, STATS_KEYS, STATS_KEYS)
     bad = [k for k in STATS_COUNTS if not count(stats[k])]
     if bad:
@@ -151,7 +159,7 @@ def check_stats(stats) -> None:
 def tool_kind(rec: dict) -> tuple:
     """(view kind, view args) of a tool_use by GEMINI_TOOLS: a tool name or argument key with no entry is refused."""
     try:
-        return tv.map_tool(GEMINI_TOOLS, rec.get("tool_name"), rec.get("parameters"))
+        return tv.map_tool(GEMINI_TOOLS, rec["tool_name"], rec["parameters"])
     except tv.ViewError as e:
         raise ShapeError(f"tool_use: {e}") from None
 
@@ -160,21 +168,20 @@ def check_record(rec) -> str:
     """The event type of one decoded stream record, after checking it against the tables.
 
     Refuses (ShapeError) a record that is not an object, an event type with no entry, any key, required or extra, off
-    its entry, a role, status or severity off its words, a message whose content is not a string, a tool id that is
-    not a non-empty string, a tool name or argument key off GEMINI_TOOLS, an error object off its keys, and
-    result.stats off check_stats."""
+    its entry, a value off its VALUE_TYPES type, a role, status or severity off its words, an empty tool id, a tool
+    name or argument key off GEMINI_TOOLS, an error object off its keys or types, result.stats off check_stats, and a
+    successful result with no stats."""
     if not isinstance(rec, dict):
         raise ShapeError("a record that is not an object")
     t = rec.get("type")
     if t not in EVENT_KEYS:
         raise ShapeError(f"unknown event type: {t!r}")
     _keys(f"event {t}", rec, *EVENT_KEYS[t])
+    _types(f"event {t}", rec, VALUE_TYPES)
     if t == MESSAGE and rec["role"] not in ROLES:
         raise ShapeError(f"message: role with no entry: {rec['role']!r}")
-    if t == MESSAGE and not isinstance(rec["content"], str):
-        raise ShapeError("message: its content is not a string")
-    if t in (TOOL_USE, TOOL_RESULT) and (not isinstance(rec["tool_id"], str) or not rec["tool_id"]):
-        raise ShapeError(f"{t}: its tool_id is not a non-empty string")
+    if t in (TOOL_USE, TOOL_RESULT) and not rec["tool_id"]:
+        raise ShapeError(f"{t}: its tool_id is empty")
     if t == TOOL_USE:
         tool_kind(rec)
     if t in (TOOL_RESULT, RESULT) and rec["status"] not in STATUSES:
@@ -187,6 +194,8 @@ def check_record(rec) -> str:
         _error_object(t, rec["error"])
     if "stats" in rec:
         check_stats(rec["stats"])
+    elif t == RESULT and rec["status"] == SUCCESS:
+        raise ShapeError("result: a successful result carries no stats (usage unmeasured is refused, W11B-R1-2)")
     return t
 
 
@@ -201,16 +210,14 @@ def decode(line: str) -> dict:
 
 
 def error_text(rec: dict):
-    """The harness's own error words on an error event or a failed result (None when not a string), never the
-    agent's."""
+    """The harness's own error words on a checked error event or failed result (None when a result carries no error
+    object, or for any other record), never the agent's."""
     t = rec.get("type")
     if t == ERROR:
-        words = rec.get("message")
-    elif t == RESULT:
-        words = (rec.get("error") or {}).get("message")
-    else:
-        return None
-    return words if isinstance(words, str) else None
+        return rec["message"]
+    if t == RESULT and "error" in rec:
+        return rec["error"]["message"]
+    return None
 
 
 class GeminiParser:
