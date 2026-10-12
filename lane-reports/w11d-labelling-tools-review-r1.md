@@ -36,3 +36,58 @@ VERDICT: CHANGES
 - frame.json's `readers` flag and each take id's link to its record are not bound to anything here (the frame binds only its records to the results); this belongs to Q-w11d-2's reader slice, which should bind the take id to the record's try key.
 - A (arm, harness, model, task) cell with no drawn take gets no row at all, not an "unmeasured" row; the page does not say rows are missing. Worth one sentence on the page.
 - Not run on the Mac (rule): the whole generated sweep, test_round4.py, test_scaffold.py, and the gates; athena's.
+
+# Round 2
+
+Written Mon 12 Oct 2026, 19:12 EDT (`date`), by the same reviewer, on head `5958190f` (fold of ruling w11d-R1-fold; tests first at `60b114bf`).
+Every run used `timeout -s INT 120` and python3.13 behind `mac_slot.py light-ok` (the reviewer waited whenever it held), and only targeted mutants and two sweep shards were run (the Mac reached load 57 this evening).
+
+VERDICT: CHANGES
+
+## Findings
+
+| ID | Severity | Path:line | Requirement | Evidence | Bounded fix | Loosens a check |
+|---|---|---|---|---|---|---|
+| R2-1 | MAJOR | evals/gap-study-4/labelling/sheet.py:92-95, 125-127 | (a) the text must not reveal the model (R1-2 not yet closed) | The fold lists its separators (`[-_. ]?`) in `id_pattern`, `VERSION_AFTER` and `NEIGHBOURS`, so the next spelling of a model's name gets through. Run on prereg-draft's real harness_models, each of these renders with an empty leak list: "GPT‑6.1‑Sol" with U+2011 non-breaking hyphens (the way GPT models usually typeset their names) gives "[hidden]‑6.1‑[hidden]", which names gpt-6.1-sol exactly; "GPT‑6‑Luna" gives "[hidden]‑6‑[hidden]"; "Gemini" + U+00A0 + "3.8" gives "[hidden] 3.8"; "Haiku v4.5" gives "[hidden] v4.5"; "Haiku: 4.5", "I am Haiku, version 4.5" and "Sonnet (5.5)" keep the version beside the mask; and "Opus\n5.5" and "I am CLAUDE\nHAIKU\n4.5" (an id split across lines) keep "4.5" or "5.5" after a masked line break. The ASCII spellings ("GPT-6.1 Sol", "Opus 5.5", "haiku4.5") are now masked or refused, as the fold report says. | NFKC-normalise the text before masking, and fold the Unicode dash and space classes into one separator class. Make the separator in `id_pattern` any short run of non-alphanumeric characters (`[\W_]{0,3}` with whitespace and newlines included). Let `VERSION_AFTER` and `NEIGHBOURS` allow up to about 12 non-alphanumeric characters or words such as "v", "version" and "ver" between the mask and a digit, so that a human rewrites the take. Add K2 cases for each string above. | Yes |
+| R2-2 | MINOR | evals/gap-study-4/labelling/sheet.py:78, 158 | R1-3: every harness tool name is refused in an action; the sweep is clean | Shard 24/40 prints "SURVIVED sheet: str-change L78 'glob'": Gemini's `glob` can be renamed and "run glob" is then accepted, so not every listed name is bound by a test. The same shard prints "SURVIVED sheet: return-none L158 return False", which is equivalent in use (`None` is falsy) but is not listed, so athena's whole sweep exits 1. | Add a K4 loop that refuses "run <w>" for every w in every HARNESS_WORDS list (the same loop binds Q-w11d-6's lists at the merge). List the L158 mutant as an identical-mutant entry, or make `harness_word` return the `any(...)`. | Yes |
+| R2-3 | MINOR | evals/gap-study-4/labelling/agreement.py:123 | (d) unmeasured stays unmeasured: every empty frame cell prints its unsampled line | Reviewer mutant `cells = sorted({... for e in frame if sample.verdict(e) == "wrong"})` survives every check. A cell left empty whose frame takes are all "right" then gets no row, silently. G9 checks that some unsampled line is printed, never that the set of rows equals the set of frame cells. | Have G9 assert that the rendered rows' keys equal `{stratum[:4] for e in frame}`, using a fixture that leaves an all-right cell empty. | Yes |
+| R2-4 | MINOR | evals/gap-study-4/labelling/sheet.py:140, 252 | R1-2 and R1-4 as folded | Two reviewer mutants survive. The first narrows the neighbour rule to residual parts that are digits (dropping `.lower()`), so a short non-digit id part beside the mask is never tested; the real ids' residual parts are all digits today, so it is latent. The second makes `inside_study` use `abspath` instead of `realpath`, so the symlink half of the fix is never exercised. | Add a K2 case with a short alphabetic id part (the synthetic ids' "m") beside the mask, and a K6 case whose `--out` passes through a symlink into the study folder. | Yes |
+
+## Round-1 findings, re-checked
+
+- R1-1: closed. G5 and G6R refuse three cases: a standing page without labels, labels that were committed and then deleted, and a shallow clone. The reviewer's `if len(shas) > 1`, `isfile(PAGE)` and `isfile(SAMPLE)` mutants are all killed.
+- R1-2: closed for ASCII spellings. "GPT-6.1 Sol" and "Gemini 3.5 Flash-Lite" are masked whole; "Claude Haiku 4.5", "GPT 6.1", "Opus 5.5", "haiku4.5", "Sol-6.1" and "3.8 flash" are refused; "I am Luna" is masked. Open for the spellings in R2-1.
+- R1-3: closed in the main. "run apply_patch", "read agents.md", "write Edit" and "run Bash" are refused in actions, and apply_patch, TodoWrite, run_shell_command and AGENTS.md are refused in text. The one gap is R2-2.
+- R1-4: closed. The reviewer's `_HERE` mutant is killed, and so is the drop of casefold. The symlink half is R2-4.
+- R1-5, R1-6 and R1-7: closed. The pool-task witness and the n = 1 literal bounds are red when removed, and a G6 case kills the bool-drop at agreement.py L214 (now moved).
+
+## Test expectations changed after the red run (60b114bf to 5958190f), each checked
+
+- In K2, the expected outputs for "GPT-6.1 Sol" and "Gemini 3.5 Flash-Lite" went from a version-number refusal to masked whole. This is a true reason: with separators interchangeable, the whole id matches before any part does. A new "GPT 6.1 here" case keeps a refusal for a version after a mask.
+- In K2, the expected leak lists gained the id-part line. This is a true reason: a digit beside the mask is both a version and a residual id part, and both rules fire.
+- In G5, the committed-and-deleted message is now checked by prefix and suffix rather than exactly. This is a true reason: the temporary labels path, relative to the repository, varies per run. The exit code and both ends are still bound, and the reviewer's `len(shas) > 1` mutant is killed.
+- In G9, about_n went from 6 to 4. This is plausible: it leaves a frame cell empty so that the unsampled line is drawn. Both witnesses, one-take-bounds-widened and unsampled-cells-dropped, are red.
+- In G3 and G6, two cases were added to kill two sweep survivors. These are additions, not loosenings.
+
+## What holds
+
+- Tests: 89 run, OK.
+- Witnesses: 48 of 48 red.
+- Sweep shards: 8/40, 48 ran and 48 killed; 24/40 is R2-2.
+- Reviewer mutants, re-anchored and extended to 50, with one anchor that is ambiguous now: survivors are R2-3, R2-4, and four that do not loosen a check.
+  - The cap `>=` to `>` in `split` is near-equivalent, as in round 1.
+  - `sorted(out)` to `out` in `rows` is now equivalent, because the rows are seeded in sorted order.
+  - Dropping the left word boundary of an id part only masks more.
+  - Printing the first row's confusion block when it is unsampled adds no figure.
+- EQUIVALENT: 27 entries at their new lines, the same two kinds as round 1, and still honest.
+
+## Residuals (not findings)
+
+- A version number on its own is not refused: "I'm version 4.5 of my family", "I am the 4.5 model" and "model: 6.1" pass. Each is a weak signal without a family word, and refusing every digit pair would refuse ordinary content. Javier's call whether the CP8 reader should flag the design's version strings ("4.5", "5.5", "6.1", "3.5", "3.8") for a human pass.
+- Harness furniture outside the tool lists passes and is left to the CP8 reader (Q-w11d-2):
+  - "[hidden]-cli 0.144";
+  - "~/.[hidden]/config.toml" (a Codex-only file);
+  - "[hidden]_ENTRYPOINT";
+  - "[hidden] CLI", which separates the two non-Claude harnesses from Claude Code.
+  The new acceptance-test sentence in the docstring is the right place to name them.
+- "run shell_command ls" is accepted. Whether `shell_command` is a Codex tool name is for Q-w11d-6's binding to the Codex module, which the reviewer could not check on this base.
