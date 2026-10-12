@@ -99,6 +99,7 @@ IMAGE = "sha256:" + "f" * 64
 PLACEHOLDER_NET = "e" * 64
 MODEL = "synthetic-model"
 PROJECT = "run-0000abcd"                                   # S6b: the operator steps' project name (synthetic)
+SESSION_ID = "0000abcd-1b3d-5c7e-9a1f-2b4d6f8a0c11"          # S6c: the take's imposed session id (synthetic)
 PROFILE = {"permission_mode": "bypassPermissions", "version": "0.0.1"}
 TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID"}
 UID_MAP = [(0, 1000, 1), (1, 100000, 65536)]
@@ -180,6 +181,8 @@ def setUpModule():
     # The runtime spellings only the real box can tell (run_take's PENDING values), filled for the fake runtime only.
     _STACK.enter_context(mock.patch.object(rt, "INSPECT_STATUS", "confirmed-in-test"))
     _STACK.enter_context(mock.patch.object(rt, "TOP_FORMAT", TOP))
+    # Lane w6j (S6c C8): Claude Code's fallback variables, PENDING until confirmed at the pinned version: none here.
+    _STACK.enter_context(mock.patch.object(rt, "FALLBACK_ENV", {}))
     import drive as imported
     drive = imported
 
@@ -549,10 +552,15 @@ class Rig:
             pin_for=lambda r: batch.expected_pin(r, table()), checker=self.checker,
             secrets=secrets or (lambda: [("token", TOKEN)]), rules_scanner=scanner or (lambda paths: []),
             uid_map=UID_MAP, budget_s=600, finalize_wait_s=CAP_S, poll_s=POLL_S, clock=self.clock,
-            sleep=self.clock.sleep, project_for=lambda r: PROJECT)
+            sleep=self.clock.sleep, project_for=lambda r: PROJECT, identity_for=self.identity_for)
         self.repo = mod.TakeRepo(runtime=self.box, record_files=self.driver.record_files,
                                  secrets=lambda: [("token", TOKEN)], rules_scanner=lambda paths: [], root=root,
                                  repo=root, on_published=self.driver.published)
+
+    def identity_for(self, r):
+        """Lane w6j (S6c C7): a synthetic identity (the row's registration and the run-tree builder's records)."""
+        return {"session_id": SESSION_ID, "row": 0, "row_commit": "c" * 40, "source": "/synthetic/source",
+                "fixture": {"sha256": "0" * 64}, "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74"}
 
     def take_folder(self, r):
         self.count += 1
@@ -1058,6 +1066,10 @@ class DuckAdapter:
 
     def start_take(self, take):
         return self.inner.start_take(take)
+
+    def version(self):
+        """Lane w6j (S6c C8): the interface's version(), which the driver now reads for environment.json."""
+        return self.inner.version()
 
     def turn(self, line, *, first, budget_s):
         return self.inner.turn(line, first=first, budget_s=budget_s)

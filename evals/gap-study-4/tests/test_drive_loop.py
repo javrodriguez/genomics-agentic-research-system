@@ -28,6 +28,19 @@ What is tested, each guard with its own bound check and a whole-file witness of 
   D6-taxonomy  C13: the stop is classified by pause_adherence (labels4's taxonomy) from the driver's own rows
              (pause_evidence): a reply short of the marker is `stalled`, a turn cut at the budget `timed-out`.
              Witness: turn-ends-dropped (the evidence's turn ends all read end_turn).
+  D7-records C6, C7, C8, C14 through the REAL Claude Code adapter on a fake box that answers its execs with
+             synthetic streams in the recorded shape and writes a session file into the take's config folder:
+             transcript.jsonl is the session file through scrub.py (the planted account email removed, scrub.json
+             beside it); driver-ledger.json is round 3's schema (rows, outcome, the recorded and passed modes, the
+             harness version, the cost per call, the cross-check) and binds environment.json's bytes;
+             environment.json was written before the first turn and carries each turn's credential source. A
+             session file that drops a turn's call, carries another model, or holds an extra tool call fails the
+             cross-check; no session file at all is recorded as such. Witnesses: no-cross-check, session-raw,
+             env-per-turn-dropped.
+  D8-checker the production checker callable (take_checker): check4 on the take's published transcript against its
+             design view (the real round-4 design, test_checker_body's synthetic clean take); a cross-check that
+             failed adds readers-disagree; no transcript at all is readers-disagree; the production constants
+             (PENDING) refuse, never a default. Witnesses: cross-check-unrouted, missing-transcript-graded.
 
 Fakes and synthetic strings only: no model, vendor, network, container runtime, credential or holdout. The process
 guard, the prereg patches and the PENDING runtime spellings are test_box_integration's own setUpModule.
@@ -35,8 +48,14 @@ guard, the prereg patches and the PENDING runtime spellings are test_box_integra
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import json
+import subprocess
+import types
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -47,10 +66,16 @@ for p in (HERE, HERE / "tests"):
         sys.path.insert(0, str(p))
 
 import agent_adapter as aa  # noqa: E402
+import prereg  # noqa: E402
+import takes  # noqa: E402
 import test_box_integration as tbi  # noqa: E402
+import test_checker_body as tcb  # noqa: E402
 import transcript_view as view  # noqa: E402
 from graders import labels4  # noqa: E402
 from graders import pause_adherence  # noqa: E402
+
+
+REAL_LOAD = prereg.load            # captured before test_box_integration patches it for drive.py's import
 
 
 def setUpModule():
@@ -288,6 +313,227 @@ def d6_taxonomy(mod, p):
     return out
 
 
+CC_VERSION = tbi.PROFILE["version"]
+USAGE = {"input_tokens": 7, "output_tokens": 120, "cache_read_input_tokens": 1000, "cache_creation_input_tokens": 50}
+
+
+class ClaudeBox(tbi.FakeBox):
+    """FakeBox, plus the Claude Code adapter's two execs: `claude --version` and a turn. Each turn answers with a
+    synthetic stream in the recorded probes' shape (init, one call, result) and appends that turn's records to a
+    session file under the take's config folder (projects/<folder>/<session id>.jsonl), as the harness does.
+
+    replies: [{text, tool?, model?}]; session: per-turn edits of the session file ("drop": the call is not written,
+    "model": another model id, "extra_tool": one more tool call), or no_session for no file at all."""
+
+    def __init__(self, replies, *, session=None, no_session=False, **kw):
+        super().__init__(**kw)
+        self.replies, self.session, self.no_session, self.turn_argv = list(replies), dict(session or {}), \
+            no_session, []
+
+    def cfg_of(self, cid):
+        a = self.specs[cid]
+        m = [x for x in a if x.startswith("type=bind,source=") and x.endswith("target=" + tbi.rt.CONFIG_MOUNT)][0]
+        return m[len("type=bind,source="):-len(",target=" + tbi.rt.CONFIG_MOUNT)]
+
+    def run(self, argv, env=None, timeout=None):
+        a = list(argv)
+        if a[:2] == ["docker", "exec"] and a[-2:] == ["claude", "--version"]:
+            self.calls.append(a)
+            return tbi.ok(f"{CC_VERSION} (Claude Code)\n")
+        if a[:2] == ["docker", "exec"] and "claude" in a and "-p" in a:
+            self.calls.append(a)
+            self.turn_argv.append(a)
+            return self.turn(a)
+        return super().run(argv, env=env, timeout=timeout)
+
+    def turn(self, a):
+        n = len(self.turn_argv)
+        cid, line = a[a.index("claude") - 1], a[a.index("-p") + 1]
+        sid = a[-1]
+        spec = self.replies[n - 1]
+        msg, req, model = f"msg_s{n}", f"req_s{n}", tbi.MODEL
+        content = [{"type": "text", "text": spec.get("text", "")}]
+        if spec.get("tool"):
+            content.append({"type": "tool_use", "id": f"toolu_s{n}", "name": "Bash", "input": {"command": "ls"}})
+        stream = [{"type": "system", "subtype": "init", "session_id": sid, "apiKeySource": "none", "model": model,
+                   "permissionMode": tbi.PROFILE["permission_mode"], "claude_code_version": CC_VERSION,
+                   "tools": ["Bash", "Read"]},
+                  {"type": "assistant", "session_id": sid, "request_id": req,
+                   "message": {"id": msg, "model": model, "role": "assistant", "content": content,
+                               "usage": {"input_tokens": 7, "output_tokens": 2}}},
+                  {"type": "result", "subtype": "success", "is_error": False, "session_id": sid,
+                   "total_cost_usd": 0.01 * n, "num_turns": 1, "permission_denials": [],
+                   "usage": dict(USAGE), "modelUsage": {model: {"costUSD": 0.01 * n}}}]
+        if not self.no_session:
+            edit = self.session.get(n)
+            recs = []
+            if n == 1:
+                recs.append({"type": "attachment", "sessionId": sid, "attachment": {
+                    "type": "session_context", "context": {"userEmail": tbi.EMAIL, "gitStatus": "clean"}}})
+            recs.append({"type": "user", "sessionId": sid, "permissionMode": tbi.PROFILE["permission_mode"],
+                         "message": {"role": "user", "content": line}})
+            body = list(content) + ([{"type": "tool_use", "id": "toolu_extra", "name": "Bash",
+                                      "input": {"command": "pwd"}}] if edit == "extra_tool" else [])
+            if edit != "drop":
+                for block in body:      # one record per content block, each with the whole call's usage
+                    recs.append({"type": "assistant", "sessionId": sid, "requestId": req, "message": {
+                        "id": msg, "model": "another-model" if edit == "model" else model, "role": "assistant",
+                        "content": [block], "usage": dict(USAGE), "stop_reason": "end_turn"}})
+            folder = Path(self.cfg_of(cid)) / "projects" / "-work-run"
+            folder.mkdir(parents=True, exist_ok=True)
+            with open(folder / f"{sid}.jsonl", "a", encoding="utf-8") as fh:
+                fh.write("".join(json.dumps(r) + "\n" for r in recs))
+        return tbi.ok("".join(json.dumps(r) + "\n" for r in stream))
+
+
+def drive_claude(mod, steps, replies, **box_kw):
+    """One take driven straight through the driver with the production Claude Code adapter factory on ClaudeBox:
+    (its _Take, the records drive() returned, the box)."""
+    with tbi.scratch_repo() as root:
+        box = ClaudeBox(replies, **box_kw)
+        rig = tbi.Rig(mod, root, box=box, turns=[{}] * max(1, len(replies)))
+        login = tbi.SCRATCH / f"login-{root.name}"
+        login.write_text(f"CLAUDE_CODE_OAUTH_TOKEN={tbi.TOKEN}\n")
+        os.chmod(login, 0o600)
+        rig.driver.adapter_for = mod.claude_code_adapter_for(
+            runtime=box, login_file=str(login), counters_for=lambda take: {"oom_kill": 0, "pids_max": 0},
+            pin_for=rig.driver.pin_for, clock=rig.clock)
+        rig.driver.script_for = lambda r: [dict(x) for x in steps]
+        r = tbi.row(1)
+        with tbi.spying(rig.spy):
+            cid = rig.driver.launch(r)
+            records = rig.driver.drive(r, cid)
+            rig.driver.remove(cid)
+        return rig.driver._by_slot[r["slot"]], records, box
+
+
+def read_json(take, name):
+    with open(os.path.join(take.folder, name), encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+TWO = [step(1, "MARKER ONE"), step(2)]
+TWO_REPLIES = [{"text": "Read it. MARKER ONE", "tool": True}, {"text": "The answer."}]
+
+
+@guarded("D7-records")
+def d7_records(mod, p):
+    out = tbi.missing_api(mod, p, "TakeDriver", "claude_code_adapter_for", "LEDGER_FILE", "IDENTITY_KEYS")
+    if out:
+        return out
+    take, rec, box = drive_claude(mod, TWO, TWO_REPLIES)
+    names = sorted(os.listdir(take.folder))
+    for want in ("driver-ledger.json", "environment.json", "transcript.jsonl", "scrub.json"):
+        if want not in names:
+            out.append(f"{p}: the take folder holds no {want}: {names}")
+    if out:
+        return out
+    led, env = read_json(take, "driver-ledger.json"), read_json(take, "environment.json")
+    with open(os.path.join(take.folder, "environment.json"), "rb") as fh:
+        sha = hashlib.sha256(fh.read()).hexdigest()
+    if led["environment"] != {"file": "environment.json", "sha256": sha}:
+        out.append(f"{p}: the ledger does not bind environment.json's bytes: {led['environment']}")
+    rows = [(r["n"], r["sent"], r.get("held"), r["exit"]) for r in led["turns"]]
+    if rows != [(1, "operator line 1", True, 0), (2, "operator line 2", True, 0)] or led["outcome"] != "complete":
+        out.append(f"{p}: the ledger's rows read {rows}, outcome {led['outcome']!r}")
+    mode = tbi.PROFILE["permission_mode"]
+    if (led["permission_mode"], led["permission_mode_passed"], led["claude_version"], led["session_id"]) != (
+            mode, mode, CC_VERSION, tbi.SESSION_ID):
+        out.append(f"{p}: the ledger records mode {led['permission_mode']!r} (passed "
+                   f"{led['permission_mode_passed']!r}), version {led['claude_version']!r}, session {led['session_id']}")
+    if led["cross_check"] != [] or led["transcript"] != "transcript.jsonl" or not led["first_agent_turn"]:
+        out.append(f"{p}: a clean take's cross-check reads {led['cross_check']}")
+    cost = led["cost"] or {}
+    if ([c["usage"] for c in cost.get("calls", [])] != [USAGE, USAGE]
+            or [t["total_cost_usd"] for t in cost.get("turns", [])] != [0.01, 0.02]):
+        out.append(f"{p}: the cost record reads {cost}")
+    per = env["credential_source"]["per_turn"]
+    if (env["written_before_first_turn"] is not True or env["credential_source"]["reported"] != "none"
+            or per != [{"n": 1, "recovery": False, "exit": 0, "apiKeySource": "none"},
+                       {"n": 2, "recovery": False, "exit": 0, "apiKeySource": "none"}]):
+        out.append(f"{p}: environment.json's credential source reads {env['credential_source']}")
+    if env["api_key_set"] or [e["name"] for e in env["names_present"]] != ["CLAUDE_CODE_OAUTH_TOKEN"]:
+        out.append(f"{p}: environment.json lists {env['names_present']} (api key set {env['api_key_set']})")
+    with open(os.path.join(take.folder, "transcript.jsonl"), encoding="utf-8") as fh:
+        text = fh.read()
+    if tbi.EMAIL in text or read_json(take, "scrub.json")["removed"] != ["session_context.userEmail"]:
+        out.append(f"{p}: the transcript was not published through scrub.py (the account email is still there)")
+    for case, kw in (("a dropped turn", {"session": {2: "drop"}}), ("another model id", {"session": {1: "model"}}),
+                     ("an extra tool call", {"session": {1: "extra_tool"}})):
+        take, _, _ = drive_claude(mod, TWO, TWO_REPLIES, **kw)
+        if not read_json(take, "driver-ledger.json")["cross_check"]:
+            out.append(f"{p}: {case} in the session file passed the cross-check")
+    take, _, _ = drive_claude(mod, TWO, TWO_REPLIES, no_session=True)
+    led = read_json(take, "driver-ledger.json")
+    if led["transcript"] is not None or not led["outcome"].endswith(f"no session file for {tbi.SESSION_ID}") \
+            or led["permission_mode"] != "unrecorded" or not led["cross_check"]:
+        out.append(f"{p}: a take with no session file reads transcript {led['transcript']!r}, outcome "
+                   f"{led['outcome']!r}, mode {led['permission_mode']!r}")
+    return out
+
+
+@contextlib.contextmanager
+def checker_world():
+    """test_checker_body's world for check4 on the REAL design, inside test_box_integration's process guard: the
+    real pre-registration draft (test_box_integration patches prereg.load only for drive.py's import), one draft row
+    committed by one synthetic sha (takes' readers run git), and the pinned tree's read-only git admitted."""
+    run, popen = subprocess.run, subprocess.Popen
+
+    def gate_popen(*args, **kw):
+        if args and tcb._pinned_git(args[0]):
+            return tcb._REAL_POPEN(*args, **kw)
+        return popen(*args, **kw)
+
+    def gate_run(*args, **kw):
+        if args and tcb._pinned_git(args[0]):
+            return tcb._REAL_RUN(*args, **kw)
+        return run(*args, **kw)
+    with contextlib.ExitStack() as st:
+        st.enter_context(mock.patch.object(prereg, "load", REAL_LOAD))
+        st.enter_context(mock.patch.object(takes, "load_rows", lambda **kw: [tcb.row()]))
+        st.enter_context(mock.patch.object(takes, "row_commits", lambda **kw: {0: tcb.COMMIT}))
+        st.enter_context(mock.patch.object(subprocess, "Popen", gate_popen))
+        st.enter_context(mock.patch.object(subprocess, "run", gate_run))
+        import check_take as ct
+        home = tbi.SCRATCH / "check-home"
+        home.mkdir(exist_ok=True)
+        st.enter_context(mock.patch.object(ct, "CHECK_HOME", home))
+        st.enter_context(mock.patch.object(tcb, "SCRATCH", tbi.SCRATCH))
+        yield ct
+
+
+@guarded("D8-checker")
+def d8_checker(mod, p):
+    out = tbi.missing_api(mod, p, "take_checker", "READERS_DISAGREE")
+    if out:
+        return out
+    with checker_world() as ct:
+        design = tcb.view(ct)
+        clean = tcb.take_folder(design.script)            # transcript, ledger and environment of a clean take
+        r = tcb.row()
+
+        def take(folder, cross):
+            return types.SimpleNamespace(folder=str(folder), identity={"row": 0}, cross_check=cross)
+        checker = mod.take_checker(design_for=lambda row, t: design)
+        got = checker(r, take(clean.parent, []), [])
+        if got["checker_reasons"] != [] or any(got["checker_events"].values()):
+            out.append(f"{p}: a clean take on the real design reads {got['checker_reasons']} {got['checker_events']}")
+        got = checker(r, take(clean.parent, ["the streams and the session file hold different model calls"]), [])
+        if got["checker_reasons"] != [mod.READERS_DISAGREE]:
+            out.append(f"{p}: a failed cross-check reads {got['checker_reasons']}, not readers-disagree")
+        empty = Path(tempfile.mkdtemp(dir=tbi.SCRATCH))
+        got = checker(r, take(empty, ["no session file"]), [])
+        if got["checker_reasons"] != [mod.READERS_DISAGREE]:
+            out.append(f"{p}: a take with no transcript reads {got['checker_reasons']}, not readers-disagree")
+        production = mod.take_checker(design_for=lambda row, t: ct.design_view(row, pin=tcb.pin(), run_tree=tcb.RUN_TREE))
+        try:
+            production(r, take(clean.parent, []), [])
+            out.append(f"{p}: the production constants (PENDING) did not refuse")
+        except ct.CheckRefused:
+            pass
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestStage1Carried(unittest.TestCase):
     def test_d1_the_copy_writes_the_hashed_bytes(self):
@@ -311,6 +557,14 @@ class TestStage3MarkerLoop(unittest.TestCase):
         self.assertEqual(d6_taxonomy(tbi.drive), [])
 
 
+class TestStage5Records(unittest.TestCase):
+    def test_d7_the_takes_records_through_the_claude_code_adapter(self):
+        self.assertEqual(d7_records(tbi.drive), [])
+
+    def test_d8_the_production_checker_is_check4(self):
+        self.assertEqual(d8_checker(tbi.drive), [])
+
+
 # name: (edits to drive.py, the bound check, the line prefix that is its own assertion)
 WITNESSES = {
     "table-reread": ((("            with open(target, \"wb\") as fh:                  # the hashed bytes, never a "
@@ -330,6 +584,20 @@ WITNESSES = {
                               "            if False:"),), d5_outcome, "D5-outcome"),
     "turn-ends-dropped": ((("            \"turn_ends\": [r[\"end\"] for r in rows]}",
                             "            \"turn_ends\": [\"end_turn\" for r in rows]}"),), d6_taxonomy, "D6-taxonomy"),
+    "no-cross-check": ((("            take.cross_check = _cc.cross_check(recs, text, session_id=ident[\"session_id\"]) if cc "
+                         "else []",
+                         "            take.cross_check = []"),), d7_records, "D7-records"),
+    "session-raw": ((("                published = publish_transcript(Path(src), Path(take.folder))",
+                      "                published = shutil.copyfile(src, os.path.join(take.folder, "
+                      "\"transcript.jsonl\"))"),), d7_records, "D7-records"),
+    "env-per-turn-dropped": ((("        env = with_turns(take.environment, rows, sources)",
+                               "        env = take.environment"),), d7_records, "D7-records"),
+    "cross-check-unrouted": ((("        if take.cross_check and READERS_DISAGREE not in reasons:",
+                               "        if False:"),), d8_checker, "D8-checker"),
+    "missing-transcript-graded": ((("            return {\"checker_reasons\": [READERS_DISAGREE], \"checker_events\": "
+                                    "dict.fromkeys(ids, 0)}",
+                                    "            return {\"checker_reasons\": [], \"checker_events\": "
+                                    "dict.fromkeys(ids, 0)}"),), d8_checker, "D8-checker"),
 }
 WITNESS_LOG: list = []
 
@@ -373,10 +641,27 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_turn_ends_dropped(self):
         self.kill("turn-ends-dropped")
 
+    def test_witness_no_cross_check(self):
+        self.kill("no-cross-check")
+
+    def test_witness_session_raw(self):
+        self.kill("session-raw")
+
+    def test_witness_env_per_turn_dropped(self):
+        self.kill("env-per-turn-dropped")
+
+    def test_witness_cross_check_unrouted(self):
+        self.kill("cross-check-unrouted")
+
+    def test_witness_missing_transcript_graded(self):
+        self.kill("missing-transcript-graded")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["table-reread", "continued-past-unheld-marker",
                                                     "recovery-never-sent", "recovery-unbounded", "marker-casefold",
-                                                    "abort-before-output", "turn-ends-dropped"]))
+                                                    "abort-before-output", "turn-ends-dropped", "no-cross-check",
+                                                    "session-raw", "env-per-turn-dropped", "cross-check-unrouted",
+                                                    "missing-transcript-graded"]))
 
 
 if __name__ == "__main__":

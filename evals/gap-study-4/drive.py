@@ -1818,7 +1818,8 @@ from box import sidecar as _sidecar  # noqa: E402
 TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.log": "proxy-log",
                    "preflight.json": "preflight", "refusal.json": "preflight", "transcript.jsonl": "transcript",
                    "postflight.json": "preflight",    # S6b (e)
-                   "operator-check.json": "launch"}   # S6b C11
+                   "operator-check.json": "launch",   # S6b C11
+                   "driver-ledger.json": "ledger", "environment.json": "launch", "scrub.json": "launch"}   # S6c C6-C8
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
 EVIDENCE_DIR, SESSION_DIR = "evidence", "session"
 EVIDENCE_KINDS = {_sidecar.SNAPSHOTS: "snapshot", _sidecar.BLOBS: "blob"}
@@ -1890,6 +1891,9 @@ class _Take:
         self.adapter_open = False      # S6b (d): set when start_take returned, cleared when end_take was called
         self.ledger_rows: list = []    # S6c C13: one row per line sent (round 3's ledger turns[]), recovery rows too
         self.outcome = None            # S6c C13: round 3's ledger outcome (check_take's driver_outcome_shapes)
+        self.identity = None           # S6c C7: identity_for(row), checked closed
+        self.environment = None        # S6c C8: environment.json as written before the first turn
+        self.cross_check = None        # S6c C6: the streams against the session file (problems; [] when they agree)
 
 
 class TakeDriver:
@@ -1913,6 +1917,9 @@ class TakeDriver:
                      its per-id events dict as checker_events); not called when preflight failed or no turn ran
                      (W6H-R1-4). The operator-diff count and the finalize abort are the driver's own (S6b C11, C12)
     project_for      (row) -> the take's project name (the neutral name of its session), for the operator steps
+    identity_for     (row) -> the take's identity as the row's registration and the run-tree builder know it, exactly
+                     IDENTITY_KEYS: session_id (takes.session_id_for of the row's commit), row, row_commit, source
+                     (the absolute source handed in), fixture (the fixture builder's record), gars_tree_sha (S6c C7)
     secrets          () -> [(kind, value)] for the scan, read at scan time and never held
     rules_scanner, holdout_matcher   box/scan_record.py's
     uid_map          the runtime's uid map lines (container start, host start, length)
@@ -1922,13 +1929,15 @@ class TakeDriver:
 
     def __init__(self, *, runtime, take_folder, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts,
                  adapter_for, script_for, pin_for, checker, secrets, rules_scanner, uid_map, budget_s,
-                 finalize_wait_s, poll_s, clock, sleep, project_for, holdout_matcher=None, caller_env=None):
+                 finalize_wait_s, poll_s, clock, sleep, project_for, identity_for, holdout_matcher=None,
+                 caller_env=None):
         if not callable(getattr(runtime, "run", None)):
             raise TypeError("runtime must offer run(argv, env=, timeout=)")
         for name, fn in (("take_folder", take_folder), ("spec_for", spec_for), ("sidecar_for", sidecar_for),
                          ("adapter_for", adapter_for), ("script_for", script_for), ("pin_for", pin_for),
                          ("checker", checker), ("secrets", secrets), ("rules_scanner", rules_scanner),
-                         ("clock", clock), ("sleep", sleep), ("project_for", project_for)):
+                         ("clock", clock), ("sleep", sleep), ("project_for", project_for),
+                         ("identity_for", identity_for)):
             if not callable(fn):
                 raise TypeError(f"{name} must be callable")
         self.runtime, self.take_folder, self.config_parent = runtime, take_folder, config_parent
@@ -1939,6 +1948,7 @@ class TakeDriver:
         self.uid_map, self.budget_s, self.finalize_wait_s, self.poll_s = uid_map, budget_s, finalize_wait_s, poll_s
         self.clock, self.sleep, self.caller_env = clock, sleep, caller_env
         self.project_for = project_for
+        self.identity_for = identity_for                  # S6c C7
         self._lock = threading.Lock()
         self._by_id: dict = {}        # take container id -> _Take
         self._by_slot: dict = {}      # slot -> the slot's latest _Take not yet published
@@ -2109,6 +2119,78 @@ class TakeDriver:
             take.cleanup.append(f"postflight: {type(e).__name__}: {e}")
             return None
 
+    def _identity(self, row) -> dict:
+        """S6c C7: identity_for(row), exactly IDENTITY_KEYS, its session id a string; anything else refuses."""
+        ident = self.identity_for(row)
+        if not isinstance(ident, dict) or set(ident) != set(IDENTITY_KEYS):
+            raise DriveRefused(f"identity_for must give exactly {list(IDENTITY_KEYS)}")
+        if not isinstance(ident["session_id"], str) or not ident["session_id"]:
+            raise DriveRefused("the take's identity names no session id")
+        return dict(ident)
+
+    def _environment(self, take, row, adapter) -> list:
+        """S6c C8 (ruling D4): environment.json in round 3's schema, before the first turn: the names the take's exec
+        gives the agent (run_take.exec_values and the harness's login variable, never a value; the image's own
+        environment is preflight's record), the stripped names against this process's environment, and an empty
+        per-turn credential source. Written again with every turn's source once the take is done."""
+        harness = row["agent"]["harness"]
+        child = dict(_run_take.exec_values(harness, take.launched.spec.run_tree))
+        child[_run_take.LOGIN_VARIABLE[harness]] = "set"          # read and checked by run_take at exec time
+        ident = take.identity
+        take.environment = environment_record(child, os.environ, session_id=ident["session_id"], row=ident["row"],
+                                              row_commit=ident["row_commit"], task=row["task"], half=row["half"],
+                                              model=row["model"], claude_version=adapter.version())
+        write_record_atomically(Path(take.folder) / ENVIRONMENT_RECORD_FILE, take.environment)   # rewritten at the end
+        return money_line_names(take.environment)   # round 3's money line: the caller stops the take on any
+
+    def _take_records(self, take, row, adapter, turns) -> None:
+        """S6c C6, C7, C8, C14, once the agent's processes are gone and before the scan: the session file copied out
+        of the config folder through scrub.py as transcript.jsonl (round 3's publish_transcript, Ruling 10) and
+        cross-checked against the streams; environment.json with every turn's credential source; the cost record;
+        and driver-ledger.json in round 3's schema, binding environment.json's bytes."""
+        ident, rows = take.identity, take.ledger_rows
+        cc = isinstance(adapter, _cc.ClaudeCodeAdapter)
+        recs = list(adapter.turn_records) if cc else []
+        src = take_session_file(take.config_dir, ident["session_id"])
+        published, text, recorded = None, None, "unrecorded"
+        if src is not None:
+            try:
+                published = publish_transcript(Path(src), Path(take.folder))
+            except SystemExit as e:              # scrub.py refuses by SystemExit: a stop here, never an exit
+                raise DriveRefused(f"the session file could not be published: {e}") from None
+            path = Path(take.folder) / "transcript.jsonl"
+            text = path.read_text(encoding="utf-8", errors="replace")
+            recorded = mode_recorded(path)
+            take.cross_check = _cc.cross_check(recs, text, session_id=ident["session_id"]) if cc else []
+        else:
+            take.cross_check = [f"no session file for {ident['session_id']} in the take's config folder"]
+        sources = {id(r): (recs[k]["api_key_source"] if k < len(recs) else None) for k, r in enumerate(rows)}
+        env = with_turns(take.environment, rows, sources)
+        write_record_atomically(Path(take.folder) / ENVIRONMENT_RECORD_FILE, env)    # replaced whole, never merged
+        with open(os.path.join(take.folder, ENVIRONMENT_RECORD_FILE), "rb") as fh:
+            env_sha = hashlib.sha256(fh.read()).hexdigest()
+        version = adapter.version()
+        outcome = take.outcome if src is not None else (
+            f"{take.outcome} \u2014 no session file for {ident['session_id']}")
+        pin = self.pin_for(row)
+        ledger = {"kind": "take", "task": row["task"], "half": row["half"], "wording": row.get("wording"),
+                  "arm": row["arm"], "model_requested": row["model"],
+                  "agent": {"harness": row["agent"]["harness"], "version": version},
+                  "session_id": ident["session_id"], "project": self.project_for(row), "source": ident["source"],
+                  "row": ident["row"], "row_commit": ident["row_commit"],
+                  "permission_mode": recorded, "permission_mode_passed": pin.get("permission_mode"),
+                  "permission_mode_recorded": recorded, "budget_s": self.budget_s,
+                  "gars_tree_sha": ident["gars_tree_sha"], "fixture": ident["fixture"], "claude_version": version,
+                  "turns": [dict(r) for r in rows], "outcome": outcome,
+                  "first_agent_turn": any(t.agent_output for t in turns),
+                  "environment": {"file": ENVIRONMENT_RECORD_FILE, "sha256": env_sha},
+                  "transcript": "transcript.jsonl" if src is not None else None, "published": published,
+                  "cross_check": list(take.cross_check),
+                  "cost": (_cc.cost_record(recs, text, model=row["model"], version=version)
+                           if cc and text is not None else None),
+                  "streams": [os.path.basename(t.stream_path) for t in turns if t.stream_path]}
+        self._write(take, LEDGER_FILE, ledger)
+
     @staticmethod
     def _rate_limited(row, turns) -> bool:
         """S6c C13: whether an API-error record of the take carries one of routing.json's rate-limit markers for the
@@ -2169,7 +2251,8 @@ class TakeDriver:
             raise DriveRefused(f"take {container_id} was already driven")
         take.driven = True
         turns, unreadable, survivors, killed, adapter, state, post = [], [], 0, False, None, None, None
-        finalize_abort = False
+        finalize_abort, money = False, []
+        take.identity = self._identity(row)                   # S6c C7: refused before anything starts
         try:
             self._evidence_line(take, {"kind": "take", "model": row["model"],     # S6b C10: before begin
                                        "agent": {"harness": row["agent"]["harness"],
@@ -2181,9 +2264,12 @@ class TakeDriver:
                     adapter = self.adapter_for(row, take)
                     adapter.start_take(dict(row))
                     take.adapter_open = True
+                    money = self._environment(take, row, adapter)   # S6c C8: written before the first turn
                 except Exception as e:  # noqa: BLE001 - nothing of the agent ran: harness-side (plan, row 1)
                     self._refused(take, e)
                     ok = False
+            if ok and money:                                  # S6c C8: round 3's money line stops the driver
+                raise DriveRefused(f"the exec would give the agent {money}: an API key or a billing route")
             if ok:
                 script = _Script(self.script_for(row), take.ledger_rows)        # S6c C13: markers, recovery, stop
                 for n, line in enumerate(script, 1):
@@ -2220,6 +2306,8 @@ class TakeDriver:
         if post is None or post.get("ok") is not True:        # a credential file left behind is a stop for a human
             why = "the postflight check did not run" if post is None else post["checks"][0]["detail"]
             raise DriveRefused(f"postflight: {why}; the config folder is kept for a human")
+        if ok and turns:                                       # S6c C6, C7, C8, C14: before the scan reads them
+            self._take_records(take, row, adapter, turns)
         # R4-10: scan -> mask, then the checker; routing and the commit follow in batch.py.
         scan = _scan_record.scan(self.take_files(take), list(self.secrets()), rules_scanner=self.rules_scanner,
                                  holdout_matcher=self.holdout_matcher)
@@ -2413,7 +2501,22 @@ def leaked_networks(runtime, recorded_ids, *, caller_env=None) -> list:
 #             from pause_evidence(rows), never by the driver: the driver reads only whether the marker is there.
 # =====================================================================================================================
 
+import claude_code_adapter as _cc  # noqa: E402
+
 TIMED_OUT_EXIT = 124      # round 3's exit for a turn cut at the budget (check_take.completion_problems reads it)
+LEDGER_FILE = "driver-ledger.json"
+IDENTITY_KEYS = ("session_id", "row", "row_commit", "source", "fixture", "gars_tree_sha")
+
+
+def take_session_file(config_dir: str, session_id: str) -> str | None:
+    """S6c C6: the session file Claude Code wrote for this id under the take's config folder (the container's
+    CLAUDE_CONFIG_DIR): <config>/projects/*/<id>.jsonl, round 3's session_file rule (review 11, blocker 3: found by
+    the imposed id, never by predicting the folder's name). More than one refuses; none is None."""
+    base = Path(config_dir) / "projects"
+    hits = sorted(base.glob(f"*/{session_id}.jsonl")) if base.is_dir() else []
+    if len(hits) > 1:
+        raise DriveRefused(f"{len(hits)} session files carry the id {session_id}")
+    return str(hits[0]) if hits else None
 OUTCOME_COMPLETE = "complete"
 OUTCOME_STOPPED = "stopped \u2014 wait-point marker not held; graded as it stands"
 OUTCOME_TIMED_OUT = "timed-out"
@@ -2509,6 +2612,64 @@ def pause_evidence(rows: list) -> dict:
     host's end of its turn (graders/pause_adherence.py INPUTS: turns[].sent, turns[].expects, turn_ends)."""
     return {"turns": [{"sent": r["sent"], "expects": r["expects"]} for r in rows],
             "turn_ends": [r["end"] for r in rows]}
+
+
+# ---- S6c: the production wiring (the Claude Code adapter, the take's own script, check4 as the checker) ---------
+def script_from_design(design, project: str, source: str) -> list:
+    """TakeDriver's script_for in production: the take's own wording's steps (check_take.design_view's script, from
+    variants.operator_steps) with {project} and {source} rendered as check_take renders them, markers and
+    recoveries kept, so the driver's lines are the ones check4 binds."""
+    def render(line: str) -> str:
+        return line.replace("{project}", project).replace("{source}", source)
+    out = []
+    for s in design.script:
+        step = {"n": s["n"], "line": render(s["line"])}
+        if s.get("marker") is not None:
+            step["marker"] = s["marker"]
+        if s.get("recovery"):
+            step["recovery"] = dict(s["recovery"], send=render(s["recovery"]["send"]))
+        out.append(step)
+    return out
+
+
+def claude_code_adapter_for(*, runtime, login_file: str, counters_for, pin_for, clock, caller_env=None):
+    """TakeDriver's adapter_for in production: (row, take) -> claude_code_adapter.ClaudeCodeAdapter on the take's
+    container and run tree, with the take's imposed session id, the row's model, its routing pin, the driver's stream
+    path and counters_for(take) (run_take.counters of the take container's cgroup folder: CALLER_PENDING until the box
+    measures it)."""
+    def make(row, take):
+        return _cc.ClaudeCodeAdapter(runtime=runtime, take_id=take.launched.take_id,
+                                     run_tree=take.launched.spec.run_tree, login_file=login_file,
+                                     session_id=take.identity["session_id"], model=row["model"], pin=pin_for(row),
+                                     stream_path_for=lambda n, take=take: stream_path(take, n),
+                                     counters_for=lambda take=take: counters_for(take), clock=clock,
+                                     caller_env=caller_env)
+    return make
+
+
+READERS_DISAGREE = "readers-disagree"
+
+
+def take_checker(*, design_for):
+    """TakeDriver's checker in production (S6c): check4 on the take's published transcript against its design view
+    (design_for(row, take): check_take.design_view with the routing pin and the take's run tree; its PENDING
+    constants refuse until a walk measures them). The streams and the session file disagreeing (C6), or no session
+    file at all, adds round 3's readers-disagree: the two readers of one take do not agree, a rehearsal before the
+    first agent turn and harness-error after it."""
+    def checker(row, take, turns):
+        import check_take as _ct
+        ids = tuple(_routing.load_table()["checker_reasons_become_events"]["ids"])
+        path = Path(take.folder) / "transcript.jsonl"
+        if not path.is_file():
+            return {"checker_reasons": [READERS_DISAGREE], "checker_events": dict.fromkeys(ids, 0)}
+        design = design_for(row, take)
+        got = _ct.check4(path, row["task"], row["half"], take.identity["row"], False, wording_script=design.script,
+                         arm=row["arm"], design=design)
+        reasons = list(got["reasons"])
+        if take.cross_check and READERS_DISAGREE not in reasons:
+            reasons.append(READERS_DISAGREE)
+        return {"checker_reasons": reasons, "checker_events": dict(got["events"])}
+    return checker
 
 
 if __name__ == "__main__":
