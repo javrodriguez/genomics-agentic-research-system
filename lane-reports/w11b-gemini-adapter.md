@@ -105,3 +105,4 @@ RESUME HERE: review round 2 (fresh opus-medium; re-run the sampled shards and th
 Athena module list: tests/test_gemini_adapter.py; --witnesses; --generated-mutants (whole, or --shard i/n, 16 shards keep each under 120 s on the Mac); test_agent_adapter.py; test_transcript_view.py; test_scaffold.py (whole); test_round4.py; the gates (copy_manifest, build_draft, freeze, walk_register --check; lint_language and lint_pooling over evals/gap-study-4/).
 
 Correction (Mon 12 Oct 2026 17:46 EDT, `date`): lint_language over this report flags four lines, not two: the ratio shapes at lines 14, 22 and 27 (stages 1 and 2), and the residual line in stage 4, where the line number of claude_code_adapter.py reads as the banned hundred. The report stays outside the gated folder and append-only.
+That correction's own stamp should read 17:45 (`date` printed 17:45:43).
