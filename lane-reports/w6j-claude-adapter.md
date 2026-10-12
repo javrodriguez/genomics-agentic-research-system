@@ -1,5 +1,5 @@
-Status: built; review round 1 owed
-head: e0a76110 (code). Base d56f8708 (S6b's closed head on the wave 6 merge), branch gap4/w6j-claude-adapter, worktree /Users/javrodher/aegis-builds/gap4-w6j.
+Status: review round 1 passed (W6J-close-1), fold done; to merge with wave 6
+head: ea091e59 (code; round 1 reviewed e0a76110). Base d56f8708 (S6b's closed head on the wave 6 merge), branch gap4/w6j-claude-adapter, worktree /Users/javrodher/aegis-builds/gap4-w6j.
 
 # Lane w6j-claude-adapter: Gap Study round 4, slice S6c, the drive loop's agent side
 
@@ -84,4 +84,15 @@ Not run on the Mac: the whole test_scaffold, test_pipeline and run_checks (athen
 - The full end-to-end acceptance (a take through TakeDriver with the real check4, no spy, routing end-turn) is covered in two halves: D7 drives the real adapter and writes every record, D8 runs take_checker with the real check4. Joining them needs walk-measured constants whose environment_record equals the driver's published name patterns, and a fixture record from a fixture builder that is not built; both are CP6 inputs, not guessed here.
 - The version-specific record shapes and the isMeta scan stay CP2 real-box / CP6 items (s6b plan, section 1).
 
-RESUME HERE: hand-back at e0a76110
+## Fold of review round 1 (W6J-close-1, glitch-1b, 11 Oct)
+
+Round 1 passed with no MAJOR (plans/gap-study-round-4/w6j-review-r1-2026-10-11.md). All four items are folded at ea091e59 (written 21:46 EDT, `date`).
+- W6J-R1-1: a session file the cost reader refuses is a cross-check problem: cost None, readers-disagree from take_checker, and the take still reaches its ledger, scan and checker. D7 now covers one call written twice (output 3 then 286) and a usage record with no requestId. Witness cost-refusal-raises.
+- W6J-R1-2: a session record whose sessionId is not a string is a cross-check problem, never a TypeError. A6; witness null-id-unreported.
+- W6J-R1-3: _Script refuses steps not numbered exactly 1..k in order; TakeDriver's strict_script (True in the CP6 production wiring) refuses bare lines. D11; witnesses any-numbering, strict-ignored.
+- W6J-R1-4: the result record's error branch and `error` key are named unevidenced in the adapter's docstring until CP6 records an error result.
+
+Red first on e83910cf's bytes (byte backups restored, `shasum -c` OK), by assertion with 0 errors: D7 and D11 2 failures, A6 1 failure.
+Green at ea091e59, each rc 0 with a bare OK: test_drive_loop 27 (16 witnesses), test_checker_body 26 (11), test_claude_code_adapter 19 (9), test_box_integration bound checks 22 and take path 17, test_check_take 15, test_mode_binding 6, test_drive_commit 31 (10); all 21 S6/S6b witnesses red with their counts; copy_manifest, probes4 (0 defects), build_draft, freeze, mode_binding checks; both binding lines.
+
+RESUME HERE: hand-back at ea091e59; merge with wave6 (orchestrator)
