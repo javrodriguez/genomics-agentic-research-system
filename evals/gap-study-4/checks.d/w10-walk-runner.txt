@@ -4,6 +4,18 @@
 # No walk, model, container, network, salt or holdout.
 python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py
 python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --witnesses
-# The generated mutation run (ruling w10-R3-fold) is long and is run by hand on athena, sharded, not by run_checks:
-#   python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard i/n
-# for i in 1..n; each shard prints its generated / killed / equivalent counts and fails on an unlisted survivor.
+# The generated mutation sweep (ruling w10-R3-fold): 533 mutants in 12 shards (about 45 each), each mutant capped at
+# 240 s so a line stays well under run_checks' 3600 s; each shard prints generated / killed / equivalent / survived
+# and fails on an unlisted survivor, a listed one killed, or a timeout.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 1/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 2/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 3/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 4/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 5/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 6/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 7/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 8/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 9/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 10/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 11/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 12/12 --timeout 240
