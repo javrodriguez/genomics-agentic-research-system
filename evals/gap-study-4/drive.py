@@ -2060,11 +2060,13 @@ class TakeDriver:
             want = (((_variants.load_task(row["task"])["halves"][row["half"]].get("fixture") or {})
                      .get("design_table") or {}).get("md5"))
             with open(design, "rb") as fh:
-                got = hashlib.md5(fh.read()).hexdigest()
+                table = fh.read()                           # S6c (W6I-R2-2): read once; these bytes are written
+            got = hashlib.md5(table).hexdigest()
             if not want or got != want:                     # the table copied in is the fixture's pinned one
                 raise DriveRefused(f"operator step {op_id!r}: the design table's md5 {got} is not the fixture's "
                                    f"pinned {want!r}")
-            shutil.copyfile(design, target)
+            with open(target, "wb") as fh:                  # the hashed bytes, never a second read of the file
+                fh.write(table)
             written = target
         else:
             raise DriveRefused(f"operator step {op_id!r} has no action this driver knows ({action!r})")

@@ -36,7 +36,7 @@ Nothing was pushed, merged or dispatched.
 - The round-3 byte binding moved from w6h's checks.d to `checks.d/w6i-checker-body.txt`, re-indexed to (901, 1566, 1568, 1570, 1591, 1593, 1603, 1610, 1650, 1717), rc 0.
 - CHECKER_CONSTANTS:
   - known values: driver_outcome_shapes (round 3's vocabulary), and system_under_test.gars_tree_sha = 8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74 (`git rev-parse 844a4ce:gars`, run on this worktree);
-  - PENDING: budgets.turn_timeout_s, driver_constants.stripped_env, run_location, harness_delivered_user_records and environment_record.
+  - PENDING: budgets.turn_timeout_s, driver_constants.stripped_env, run_location, harness_delivered_user_records and environment_record (five at ef41fb8e; the fold at 8ac5fa6d added driver_constants.run_tree_tmpdir as the sixth, W6I-R1-3; this line corrected by lane w6j under W6I-R2-3).
   - check4 raises CheckRefused naming every PENDING constant; nothing is defaulted.
   - A draft that grows one of these keys is refused, never shadowed.
 - D1: the permission mode is the take's routing pin, written into the view's driver_constants.permission_mode_by_arm for the take's arm only.
@@ -50,7 +50,7 @@ Nothing was pushed, merged or dispatched.
 It uses scope-read / trap / w3 / arm A, the draft's own row, and the real tasks, variants, draft and source template.
 The test supplies, as data:
 - the routing pin (pin_profiles are still PENDING), as the driver passes pin_for(row);
-- the five walk-measured constants, whose production value is PENDING and refuses (tested);
+- the six walk-measured constants (five at ef41fb8e, six since the fold's W6I-R1-3; corrected by lane w6j, W6I-R2-3), whose production value is PENDING and refuses (tested);
 - the row ledger and commit (takes.load_rows and takes.row_commits run git, which the guard refuses); the session id is takes.session_id_for of that sha.
 
 Correction (review round 1, W6I-R1-1): at ef41fb8e the clean take graded only because its instruction file was a stand-in (LICENSE) compared with HEAD's working tree; a take loading the pinned tree's real gars/CLAUDE.md was refused with checkout-binding, and one loading HEAD's passed.
@@ -114,7 +114,7 @@ Witnesses: each was red by its own check, with 0 collateral and 0 errors.
 
 | file | witnesses (own lines) |
 |---|---|
-| check_take.py, new | no-design-view R1 (1); first-wording-always R1 (1); pending-ignored R1 (1); draft-mode-table R2 (1); text-only-first-turn R3 (1); no-harness-guard R4 (4) |
+| check_take.py, new | no-design-view R1 (1); first-wording-always R1 (1); pending-ignored R1 (1); draft-mode-table R2 (1); text-only-first-turn R3 (1); no-harness-guard R4 (4); these six at ef41fb8e, nine since the fold at 8ac5fa6d (partial-view-admitted R5, tmpdir-from-the-draft R6, instructions-from-head R7; see the fold section; corrected by lane w6j, W6I-R2-3) |
 | check_take.py, S6's, unchanged counts | one-mode-constant K1 (4); ledger-arm-unbound K1 (2); the-halfs-script K2 (2); nothing-lifted K3 (1); recorded-mode-unchecked K4 (5) |
 | drive.py, new | adapter-private-state B10 (3); no-postflight B11 (4); launch-ignores-publish-problems B12 (1); bare-keyerror B13 (2); restart-lists-containers-only B14 (2); unlogged-save B15 (2); log-excluded-write B16 (1); no-finalize-wait B17 (2); no-background-line B18 (1) |
 | drive.py, S6's eleven, unchanged counts | 3, 1, 3, 1, 26, 3, 7, 1, 4, 2, 2 |

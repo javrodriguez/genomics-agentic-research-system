@@ -10,8 +10,9 @@ excusals) and the task's real source template and fixture pin, read through chec
 What is supplied by the test, and why it is not a patched design:
   - the take's routing pin (D1: pin_for(row)); routing.json's pin_profiles are still PENDING, so a synthetic
     claude-code pin with a bypass mode stands in, passed as data exactly as the driver passes pin_for(row);
-  - the five checker constants only a walk can measure (the turn budget, the stripped-env list, the run location,
-    the harness-delivered origin kinds, the environment-record block): their production value is PENDING, which
+  - the six checker constants only a walk can measure (the turn budget, the stripped-env list, the run location,
+    the harness-delivered origin kinds, the environment-record block, and since W6I-R1-3 the run tree's scratch
+    folder; W6I-R2-3, corrected by lane w6j): their production value is PENDING, which
     check4 refuses (tested here); a walk's values are passed to design_view as data;
   - the row ledger and its commit (takes.load_rows and takes.row_commits read git, which the process guard refuses):
     one draft row and one synthetic commit sha; the session id is takes.session_id_for(that sha), the real derivation.
@@ -431,6 +432,13 @@ def r7_pinned(mod, p):
     got = run4(mod, take_folder(d.script, instruction=head), d, d.script)
     if "checkout-binding" not in got["reasons"]:
         out.append(f"{p}: a take loading HEAD's {INSTRUCTION}, not the pinned tree's, passed")
+    # W6I-R2-1 (lane w6j): the walk branch reads the same rule (check_take.py 1733), so a walk is driven through it
+    # too, both ways; check() on a walk returns its problems, read here by reason id only.
+    for instruction, want, what in ((None, False, "the pinned tree's"), (head, True, "HEAD's")):
+        walk = mod.reason_ids(quiet(mod.check, take_folder(d.script, instruction=instruction), TASK, HALF, None, True,
+                                    wording_script=d.script, design=d))
+        if ("checkout-binding" in walk) != want:
+            out.append(f"{p}: a walk loading {what} {INSTRUCTION} {'passed' if want else 'was refused'}: {walk}")
     return out
 
 
@@ -571,6 +579,11 @@ WITNESSES = {
                                 ("    problems += instruction_content_problems(path) if design is None else "
                                  "pinned_instruction_problems(path, design)",
                                  "    problems += instruction_content_problems(path)")), r7_pinned, "R7-pinned"),
+    # Lane w6j, W6I-R2-1: the walk branch's line alone reverted (the take's line stays pinned).
+    "walk-instructions-from-head": ((("        problems += instruction_content_problems(path) if design is None else "
+                                      "pinned_instruction_problems(path, design)",
+                                      "        problems += instruction_content_problems(path)"),), r7_pinned,
+                                    "R7-pinned"),
 }
 WITNESS_LOG: list = []
 
@@ -617,11 +630,14 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_instructions_from_head(self):
         self.kill("instructions-from-head")
 
+    def test_witness_walk_instructions_from_head(self):
+        self.kill("walk-instructions-from-head")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["no-design-view", "first-wording-always", "pending-ignored",
                                                     "draft-mode-table", "text-only-first-turn", "no-harness-guard",
                                                     "partial-view-admitted", "tmpdir-from-the-draft",
-                                                    "instructions-from-head"]))
+                                                    "instructions-from-head", "walk-instructions-from-head"]))
         self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 7)
 
 
