@@ -22422,13 +22422,13 @@
       "informed_by": "nothing: round 4 is a fresh baseline (plan line 140), so no earlier round's count may inform a round 4 cell, and no round 4 take exists before the freeze"
     }
   ],
-  "holdout_salted_digests": "PENDING",
   "holdout_rule": {
-    "wordings_per_task_version": 3,
     "separate_author": true,
     "run_in_this_round": false,
     "publish": "salted_sha256",
     "salt_in_draft": false,
+    "digests_and_count_enter": "the freeze commit only",
+    "ruling": "W8B-gap4-1",
     "source": "plans/gap-study-round-4.md line 175"
   },
   "limitations": [
@@ -23643,7 +23643,6 @@
     "/furniture/claude-code": "R15 CP5-req 56: CP6 walks supply each harness's list.",
     "/furniture/codex": "R15 CP5-req 56: CP6 walks supply each harness's list.",
     "/furniture/gemini": "R15 CP5-req 56: CP6 walks supply each harness's list.",
-    "/holdout_salted_digests": "R7 plan 175 and 829: the separate author supplies only the published digests through glitch-f3.",
     "/image_locks/0/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
     "/image_locks/0/lock/harness/version": "R6 plan 828: CP2 supplies built image and version pins.",
     "/image_locks/0/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
@@ -23725,7 +23724,6 @@
       "/furniture/claude-code",
       "/furniture/codex",
       "/furniture/gemini",
-      "/holdout_salted_digests",
       "/image_locks/0/lock/base",
       "/image_locks/0/lock/harness/version",
       "/image_locks/0/lock/image_id",

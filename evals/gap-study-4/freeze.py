@@ -144,6 +144,7 @@ FREEZE_WRITTEN_KEYS = (
     "status", "frozen_at", "frozen_at_commit_parent", "draft_sha256_at_freeze", "pre_freeze_review_commit",
     "pre_freeze_review_file", "pre_freeze_review_sha256", "take_order_seed", "take_order", "pinned_files",
     "nulls_at_freeze", "rehearsal_record", "rehearsed_study_tree_sha256",
+    "holdout_salted_digests", "holdout_wordings_per_task_version",
 )
 FREEZE_FILLED_INSIDE = (
     "system_under_test.gars_tree_sha_at_freeze", "harness.claude_version_at_freeze",
@@ -228,6 +229,55 @@ def study_tree_sha(rev: str = "HEAD", also_excluded: tuple[str, ...] = ()) -> st
     return hashlib.sha256("\n".join(kept).encode("utf-8")).hexdigest()
 
 
+# W8B (lane w8b-holdout-digests), ruling W8B-gap4-1, Javier's own decision ("holdout digests A", Mon 12 Oct 2026
+# 08:51 EDT): the holdout's salted digests and its per-version count enter this repository only here, in the freeze
+# commit's frozen file, read from a digest-only source that lives in private aegis (--holdout-digests). The freeze
+# refuses by name when that source is not given or is not a file, rather than write empty values; only a disposable
+# rehearsal may go without it, and then writes neither field and says so. The draft never carries them
+# (build_draft.prefreeze_holdout_problems, applied again here and by --check).
+HOLDOUT_KEYS = ("holdout_salted_digests", "holdout_wordings_per_task_version")
+HOLDOUT_SOURCE_KEY = "salted_sha256"
+HOLDOUT_ABSENT = ("the holdout digest source is absent: the salted digests and their count live only in private aegis "
+                  "until the freeze commit (ruling W8B-gap4-1); give --holdout-digests <file>. Nothing was written.")
+HOLDOUT_NOT_REHEARSED = ("NOT REHEARSED: the holdout digests (a disposable rehearsal given no --holdout-digests writes "
+                         "neither field)")
+
+
+def holdout_source_problem(source, rehearsal: bool):
+    """Why the freeze cannot read its holdout source, or None. Only a disposable rehearsal may go without one."""
+    if source is None:
+        return None if rehearsal else HOLDOUT_ABSENT
+    if not Path(source).is_file():
+        return HOLDOUT_ABSENT
+    return None
+
+
+def _unique_pairs(pairs):
+    keys = [key for key, _ in pairs]
+    if len(keys) != len(set(keys)):
+        raise ValueError("the holdout digest source repeats a key")
+    return dict(pairs)
+
+
+def holdout_fields(source, task_ids) -> dict:
+    """The two freeze-written holdout fields, from a source holding exactly {"salted_sha256": {task: [digest, ...]}}:
+    no salt, wording or other key. The count is the source's, the same for every task version."""
+    data = json.loads(Path(source).read_text(encoding="utf-8"), object_pairs_hook=_unique_pairs)
+    if not isinstance(data, dict) or set(data) != {HOLDOUT_SOURCE_KEY}:
+        raise ValueError(f"the holdout digest source holds exactly {HOLDOUT_SOURCE_KEY}: no salt, wording or other key")
+    import build_draft
+    count = build_draft.validate_digests(data[HOLDOUT_SOURCE_KEY], list(task_ids))
+    return {"holdout_salted_digests": data[HOLDOUT_SOURCE_KEY], "holdout_wordings_per_task_version": count}
+
+
+def draft_holdout_problem(draft):
+    """A pre-freeze draft carrying a freeze-only holdout field is refused, here as in the writer."""
+    import build_draft
+    bad = build_draft.prefreeze_holdout_problems(draft)
+    return ("the draft carries " + ", ".join(bad) + " before the freeze; they enter at the freeze commit only "
+            "(ruling W8B-gap4-1)") if bad else None
+
+
 def rehearsal_evidence(record, digest: str, tree: str) -> dict:
     """Bind an external rehearsal output without changing the rehearsed tree."""
     if record is None:
@@ -295,14 +345,21 @@ def main(argv=None) -> int:
     parser.add_argument("--rehearsal", action="store_true")
     parser.add_argument("--rehearsal-record", type=Path)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--holdout-digests", type=Path)
     args = parser.parse_args(argv)
     try:
         problems = copy_manifest.problems()
         if problems:
             raise ValueError("; ".join(problems))
         if args.check:
+            problem = draft_holdout_problem(json.loads(DRAFT.read_text()))
+            if problem:
+                raise ValueError(problem)
             print(f"freeze: {len(owned_paths())} owned paths checked; no takes or freeze performed")
             return 0
+        problem = holdout_source_problem(args.holdout_digests, args.rehearsal)
+        if problem:
+            raise ValueError(problem)
         if not args.review_commit:
             raise ValueError("a committed pre-freeze review is required")
         if outputs_exist(HERE):
@@ -318,6 +375,11 @@ def main(argv=None) -> int:
         if bad:
             raise ValueError("; ".join(bad))
         draft = json.loads(DRAFT.read_text())
+        problem = draft_holdout_problem(draft)
+        if problem:
+            raise ValueError(problem)
+        holdout = ({} if args.holdout_digests is None else
+                   holdout_fields(args.holdout_digests, [task["id"] for task in draft["tasks"]]))
         digest = hashlib.sha256(DRAFT.read_bytes()).hexdigest()
         tree = study_tree_sha()
         record = None
@@ -333,6 +395,9 @@ def main(argv=None) -> int:
                       pre_freeze_review_sha256=hashlib.sha256((REPO / review_file).read_bytes()).hexdigest(),
                       rehearsal_record=record if record else "rehearsal or preview",
                       rehearsed_study_tree_sha256=tree)
+        frozen.update(holdout)
+        if not holdout:
+            print(HOLDOUT_NOT_REHEARSED)
         if keys_outside_the_freeze(draft, frozen):
             raise ValueError("freeze changed the registered design")
         if args.write:

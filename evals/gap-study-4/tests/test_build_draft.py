@@ -440,7 +440,9 @@ def description_problems(d):
                          "basis": "no informed basis", "informed_by": INFORMED}
     need(d["predictions"] == list(expected.values()) and d["predictions_rule"] ==
          {"predicted": None, "basis": "no informed basis", "informed_by": INFORMED}, "R5.predictions")
-    need(d["holdout_salted_digests"] == "PENDING", "R7.pending")
+    # W8B (ruling W8B-gap4-1, Javier's "holdout digests A"): no holdout digest, count or stand-in before the freeze.
+    need(not any(key in d for key in ("holdout_salted_digests", "holdout_wordings_per_task_version")) and
+         d["holdout_rule"] == b.HOLDOUT_RULE and "wordings_per_task_version" not in d["holdout_rule"], "R7.absent")
     old = b.prior_metadata()
     need(len(old["limitations_lines"]) == 11 and d["limitations"] == [
         {"text": line, "round_4_reading": reading} for line,reading in zip(old["limitations_lines"],expected_readings())], "R8.carried")
@@ -503,7 +505,8 @@ DESCRIPTION_MUTANTS = {
     "vocabulary": ("R4.vocabulary", ("views",), []),
     "routing": ("R4.routing", ("routing", "sha256"), "0" * 64),
     "prediction": ("R5.predictions", ("predictions", 0, "predicted"), 1),
-    "digests-pending": ("R7.pending", ("holdout_salted_digests",), {}),
+    "digests-pending": ("R7.absent", ("holdout_salted_digests",), "PENDING"),
+    "digests-count": ("R7.absent", ("holdout_rule", "wordings_per_task_version"), 3),
     "limitation": ("R8.carried", ("limitations", 0, "text"), "fake text"),
     "residual": ("R8.residuals", ("box_residuals", 0, "conditional_on_preflight"), False),
     "final-stop": ("R8.final-stop", ("final_stop",), {}),
@@ -637,7 +640,6 @@ def fill_fake(d):
     design.update(alpha="0.05", bootstrap={"seed": 0, "reps": 1},
                   power={"seed": 0, "sims": 1, "bootstrap_reps": 1, "wordings": variants.N_WORDINGS,
                          "repeats": variants.REPEATS, "grid": [{k: "0.1" for k in stats.GRID_FIELDS}]}, floors={task["id"]: "fake floor for " + task["id"] for task in d["tasks"]})
-    out["holdout_salted_digests"] = fake_digests(t["id"] for t in d["tasks"])
     out["price_table"] = fake_price(d)
     out["walk_counts"].update(on_path_closers=0, off_path_offers=0, inherited_shapes=[0,0])
     for row in out["rows"]:
@@ -934,8 +936,8 @@ class Readiness(unittest.TestCase):
             out.write_bytes(out.read_bytes()+b' ')
             self.assertFalse(b.committed_matches(d,out,repo))
             self.assertFalse(b.committed_matches(dict(d,status='fake'),out,repo))
-        # Q-w7a-2 (ruled): the draft is claimed with its writer, by lane w7a-draft-text.
-        manifest=json.loads((HERE/'COPIED.d/w7a-draft-text.json').read_text())
+        # Q-w7a-2 (ruled): the draft is claimed with its writer, by lane w8b-holdout-digests since W8B-gap4-1.
+        manifest=json.loads((HERE/'COPIED.d/w8b-holdout-digests.json').read_text())
         self.assertEqual(next((f['status'] for f in manifest['files'] if f['path']=='prereg-draft.json'),None),'new',
                          "R34.committed-presence")
 
@@ -1518,7 +1520,7 @@ class OwnerSlots(unittest.TestCase):
         d = b.build()
         unvalidated = {k for k in d["pending"] if not k.startswith(
             ("/stats_design_inputs/", "/version_pins/", "/walk_counts/"))
-            and k not in ("/holdout_salted_digests", "/price_table")}
+            and k != "/price_table"}
         self.assertTrue(unvalidated <= set(b.OWNER_SLOTS))
         self.assertTrue(set(b.OWNER_SLOTS) <= set(b.pending({})))
 
