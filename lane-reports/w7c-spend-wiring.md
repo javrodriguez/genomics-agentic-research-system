@@ -1,4 +1,4 @@
-status: hand-back for review round 2 (review fold W7C-close-1 on top)
+status: closed (review round 2 PASS; fold W7C-close-2 on top)
 head: see RESUME HERE. Base 82cf6ae9 (the wave 7 merge head), branch gap4/w7c-spend-wiring, worktree /Users/javrodher/aegis-builds/gap4-w7c.
 
 # Lane w7c-spend-wiring: Gap Study round 4, wave 7, the spend-guard wiring
@@ -79,3 +79,17 @@ _Written Mon 12 Oct 2026 (`date`)._
 Code commit (review fold): 8b8fe21f on 1dd7e2e9.
 
 RESUME HERE: hand-back for review round 2 at 8b8fe21f
+
+## Review fold W7C-close-2 (round 2: PASS; four cheap items, because this is money)
+
+_Written Mon 12 Oct 2026 (`date`)._
+- W7C-R2-1: the ledger reading must be exactly `dict` (a subclass is refused, OrderedDict included) and, from the reviewer's probe2, every key exactly `str` (a key equal to every key, hashing as "walks", is refused). This key-type check goes one step past the ruling's text and is flagged here. G4 cases: ShiftingDict (spend a list at the check and "" after; it ran graded on 0da15d7d) and KeyLike.
+- W7C-R2-2: in w7c's own shape check, each spend `usd` must be exactly str, int or float. G4 cases: LyingFloat(300), whose str() says "0" (it ran graded on 0da15d7d), and a bool. costs.py not edited.
+- W7C-R2-4: witness stopped-guard-dropped (the `if self.stopped is not None` guard in `_launch_paid_checked`), red by G6-clock (1 own, 0 collateral, 0 errors).
+- W7C-R2-3, red-first counts restated: on 1dd7e2e9 the round-1 fold's test file (24 tests) ran 24, 12 failures, 0 errors, G2 included (the reviewer's count). My report said "21 ran, 6 failures" because I ran it before the three witnesses and G2's two-call expectation were added; the 24-test count is the right record.
+  This fold, red first on 0da15d7d: 25 ran, 3 failures (G4 and the two witnesses bound to G4, which need G4 green first), 0 errors, all AssertionError.
+- Green: test_spend_wiring exit 0 (25 ran, 14 of 14 witnesses red, 0 errors); test_batch exit 0 (118); batch.py --check exit 1 on the base's three lines; routing, copy_manifest and freeze --check exit 0; import guard holds. probe2.py: every subclass/lying case REFUSEs; probe3.py: head 0 bad runs, and the stopped-guard mutant is caught by G6.
+
+Code commit (fold 2): 54772733 on 0da15d7d.
+
+RESUME HERE: w7c closed at 54772733
