@@ -172,7 +172,7 @@
         "seed": 20260908,
         "sha256": "ae89833ea499b4a60ef043c46a4b842baef30521b8f79c5cb9d9c546d9e85898",
         "seed_sensitive": true,
-        "note": "Round 2's seed and variant; the copied generator reproduces round 2's pinned fixture_sha256 byte for byte. Byte-identical across the two halves: the planted QC report is present in both, and only the trap asks for it."
+        "note": "Round 2's seed and variant; the copied generator reproduces round 2's pinned fixture_sha256 byte for byte. Byte-identical in both halves: the planted QC report is present in both, and only the trap asks for it."
       },
       "grader_spec": {
         "half": "trap",
@@ -235,7 +235,7 @@
         "seed": 20260908,
         "sha256": "ae89833ea499b4a60ef043c46a4b842baef30521b8f79c5cb9d9c546d9e85898",
         "seed_sensitive": true,
-        "note": "Round 2's seed and variant; the copied generator reproduces round 2's pinned fixture_sha256 byte for byte. Byte-identical across the two halves: the planted QC report is present in both, and only the trap asks for it."
+        "note": "Round 2's seed and variant; the copied generator reproduces round 2's pinned fixture_sha256 byte for byte. Byte-identical in both halves: the planted QC report is present in both, and only the trap asks for it."
       },
       "grader_spec": {
         "half": "normal",

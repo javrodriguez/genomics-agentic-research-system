@@ -101,7 +101,7 @@
     {
       "id": "stage02-minimal",
       "by": "lane",
-      "text": "Stage 02 is the minimal outputs stage 03 resolves, in the rnaseq wrapper collect's own shapes at 844a4ce: one sub-stage 01_nfcore-rnaseq-wrapper with STATUS COMPLETE <fixed time>, OUTPUTS.tsv with collect's header and one counts_gene native row, and the merged gene count matrix it names (a column per sample). No BAM, MultiQC report or transcript matrix is faked: stage 03 resolves by type, and a fabricated binary is worse than an absent one."
+      "text": "Stage 02 is the minimal outputs stage 03 resolves, in the rnaseq wrapper collect's own shapes at 844a4ce: one sub-stage 01_nfcore-rnaseq-wrapper with STATUS COMPLETE <fixed time>, OUTPUTS.tsv with collect's header and one counts_gene native row, and the merged gene count matrix it names (a column per sample). No BAM, MultiQC report or transcript matrix is faked: stage 03 resolves by type, and a fabricated binary misleads where an absent one does not."
     },
     {
       "id": "approval-store",

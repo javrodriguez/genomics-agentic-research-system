@@ -14,7 +14,7 @@ Line numbers cite the private round 4 plan (`plans/gap-study-round-4.md`) as it 
 
 ## A walk is never a data take
 
-A walk is not a row of the design, is never part of a result, a count, a rate or a pooled number, and never fills a slot of the frozen take order.
+A walk is not a row of the design, is never part of a result, a count, a rate or a figure joined across takes, and never fills a slot of the frozen take order.
 Each register entry carries `"counted": false`, and the check refuses any other value.
 Walks run before the freeze (CP6); the graded takes run after it (CP7, line 895 on).
 

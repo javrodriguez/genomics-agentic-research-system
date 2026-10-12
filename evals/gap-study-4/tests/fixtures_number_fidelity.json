@@ -301,7 +301,7 @@
   },
   {
    "id": "lane-identifiers",
-   "reply": "Files A1_S1_L001_R1_001.fastq.gz to B3_S6_L001_R2_001.fastq.gz, 2.4 KB in total.",
+   "reply": "Files A1_S1_L001_R1_001.fastq.gz to B3_S6_L001_R2_001.fastq.gz, 2.4 KB all told.",
    "expect": {
     "trap probe": "unanswered"
    },
