@@ -80,7 +80,7 @@
       "path": "language-allowlist.json",
       "status": "edited",
       "source": "evals/gap-study-3/language-allowlist.json",
-      "reason": "Round 4 home fix (6 Oct 2026): round 3's excusal for a line of evals/gap-study-3/COSTS.md is dropped: it names a round 3 file round 4's lint never scans, and it quotes a per-take cost row whose figures decision 0271 corrected (the costs-by-call sweep requires a citation). The other excusal is kept as copied."
+      "reason": "Round 4 home fix (6 Oct 2026): round 3's excusal for a line of evals/gap-study-3/COSTS.md is dropped: it names a round 3 file round 4's lint never scans, and it quotes a per-take cost row whose figures decision 0271 corrected (the costs-by-call sweep requires a citation). The other excusal is kept as copied. Edit W8D-lint (glitch-1b's triage ruling, under Javier's standing delegation, Mon 12 Oct 2026), made by lane w8e-lint-reds, no ownership transfer: a correction to the home fix 0800f3b9, which kept the remaining excusal as copied; as copied it named evals/gap-study-3/contract_quotes.json, so it never matched round 4's own identical copy of that file, and it is re-pointed to evals/gap-study-4 with the same line text. The lane adds 22 exact-line excusals, each with its reason: line 8 of COPIED.d/w3c-cp3-graders-confound-newtasks.json and 21 lines of tests/fixtures_confounded_design.json (grader test replies and the lane's notes naming their shape)."
     },
     {
       "path": "lexicons/permission-stop.json",

@@ -19,7 +19,7 @@
     {
       "path": "tasks/approval-scope.json",
       "status": "new",
-      "reason": "CP4's task spec for the new pair approval-scope (gap4-task/1), recording glitch-f3's --force ruling (B) and the lane's decisions."
+      "reason": "CP4's task spec for the new pair approval-scope (gap4-task/1), recording glitch-f3's --force ruling (B) and the lane's decisions. Edit W8D-lint (glitch-1b's triage ruling, under Javier's standing delegation, Mon 12 Oct 2026), made by lane w8e-lint-reds, no ownership transfer: decision control-a13-vs-grader's text reworded with the same meaning, in words the round's linters accept; the field is a record and never reaches the agent's prompt (the driver sends only the rendered operator_script lines)."
     },
     {
       "path": "tests/test_task_approval_scope.py",

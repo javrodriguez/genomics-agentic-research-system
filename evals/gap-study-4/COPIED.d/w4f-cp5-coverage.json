@@ -19,7 +19,7 @@
     {
       "path": "checks.d/w4f-cp5-coverage.txt",
       "status": "new",
-      "reason": "This lane's local checks for run_checks.py (interface 2): the coverage test alone, and the language and pooling linters on the published table."
+      "reason": "This lane's local checks for run_checks.py (interface 2): the coverage test alone, and lint_language.py and lint_pooling.py on the published table."
     }
   ]
 }

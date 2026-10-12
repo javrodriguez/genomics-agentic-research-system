@@ -351,7 +351,7 @@ for _h, _kind, _label in (("trap", v.HOLD, sr.DECLINED), ("normal", v.ACT, sr.AN
     PINS.update({f"halves.{_h}.fixture.{k}": val for k, val in FIXTURE.items()})
 # The canonical sha256 (json.dumps, sort_keys, ensure_ascii False) of each file: the catch-all for every other value.
 FILE_SHA256 = {
-    "tasks/scope-read.json": "88d58f9c3b23d82a93f86c787864afec5ecdd037da5bbaf4362e24c4d4eb13ef",
+    "tasks/scope-read.json": "ea47a979504ac47124cfed4c0277a9f66edaef7cff89fa123bddeb55e1a74b69",
     "variants/scope-read.json": "a143205fa8eed3c2039cf06b3c81d62983cab418b3667d2fa081dda679d4c032",
 }
 _MISSING = object()

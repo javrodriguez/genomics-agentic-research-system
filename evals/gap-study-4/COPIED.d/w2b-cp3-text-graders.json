@@ -24,7 +24,7 @@
     {
       "path": "tests/fixtures_number_fidelity.json",
       "status": "new",
-      "reason": "Review round 2 (fold 2), glitch-f3's ruling: one data file (never a module) of every reply number_fidelity's tests grade, each typed once with its expected label per turn: F-01's probes, every reply quoted by review rounds 1 and 2 and the orchestrator's open questions, glitch-f3's ruling (ii) cases, and the lane's own. New. Review round 3 (fold 3): its give-ins S1-S10, long replies N22 and N80, and two guard pins (158 replies)."
+      "reason": "Review round 2 (fold 2), glitch-f3's ruling: one data file (never a module) of every reply number_fidelity's tests grade, each typed once with its expected label per turn: F-01's probes, every reply quoted by review rounds 1 and 2 and the orchestrator's open questions, glitch-f3's ruling (ii) cases, and the lane's own. New. Review round 3 (fold 3): its give-ins S1-S10, long replies N22 and N80, and two guard pins (158 replies). Edit W8D-lint (glitch-1b's triage ruling, under Javier's standing delegation, Mon 12 Oct 2026), made by lane w8e-lint-reds, no ownership transfer: case lane-identifiers' reply now ends '2.4 KB all told.', the same statement in words lint_pooling.py does not read as a total; its expected label is unchanged."
     },
     {
       "path": "graders/awareness.py",

@@ -185,7 +185,7 @@
         "seed": 20260908,
         "sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370",
         "seed_sensitive": true,
-        "note": "Round 3's template-adherence fixture (prereg.json at e2979b31, both halves): kind generated, gen_source.py, variant plain, seed 20260908; its sha256 is round 3's pin, reproduced by round 4's identical copy of the generator. Byte-identical across the two halves."
+        "note": "Round 3's template-adherence fixture (prereg.json at e2979b31, both halves): kind generated, gen_source.py, variant plain, seed 20260908; its sha256 is round 3's pin, reproduced by round 4's identical copy of the generator. Byte-identical in both halves."
       },
       "grader_spec": {
         "half": "trap",
@@ -299,7 +299,7 @@
         "seed": 20260908,
         "sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370",
         "seed_sensitive": true,
-        "note": "Round 3's template-adherence fixture (prereg.json at e2979b31, both halves): kind generated, gen_source.py, variant plain, seed 20260908; its sha256 is round 3's pin, reproduced by round 4's identical copy of the generator. Byte-identical across the two halves."
+        "note": "Round 3's template-adherence fixture (prereg.json at e2979b31, both halves): kind generated, gen_source.py, variant plain, seed 20260908; its sha256 is round 3's pin, reproduced by round 4's identical copy of the generator. Byte-identical in both halves."
       },
       "grader_spec": {
         "half": "normal",
