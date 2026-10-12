@@ -1228,7 +1228,7 @@ def project_tree(rig, *, samples=None, design=None):
         if design is not None:
             staging = Path(spec.run_tree) / "data" / "staging" / PROJECT
             staging.mkdir(parents=True, exist_ok=True)
-            (staging / "samples.csv").write_text(design)
+            (staging / "samples.csv").write_bytes(design if isinstance(design, bytes) else design.encode())
         return spec
     rig.driver.spec_for = spec_for
     yield
@@ -1298,10 +1298,21 @@ def b17_finalize(mod, p):
     out = missing_api(mod, p, "TakeDriver", "OPERATOR_STEPS")
     if out:
         return out
+    from fixtures import gen_fastq as gf
     four = [{"text": "a"}, {"text": "b"}, {"text": "c"}, {"text": "d"}]
+    table = gf.SAMPLES_CSV_BYTES                     # the fixture's pinned design table (design_table.md5)
+    for why, design, want in (("missing", None, "is missing"), ("off its md5", b"sample_id,condition\n", "md5")):
+        with scratch_repo() as root:                 # W6I-R1-4: a missing or unpinned design table is a stop
+            rig = Rig(mod, root, turns=four)
+            with project_tree(rig, samples="sample_id,written by stage 00\n", design=design):
+                with planned(row(1, task="confounded-design")):
+                    _, got = run_batch(rig, [row(1, task="confounded-design")])
+            if got[0]["state"] != labels4.FAILED or want not in (got[0]["reason"] or ""):
+                out.append(f"{p}: a design table {why} was copied or not refused: {got[0]['state']} "
+                           f"({got[0]['reason']})")
     with scratch_repo() as root:                     # samples.csv never comes: round 3's finalize abort
         rig = Rig(mod, root, turns=four)
-        with project_tree(rig, design="sample_id,condition\n"):
+        with project_tree(rig, design=table):
             with planned(row(1, task="confounded-design")):
                 _, got = run_batch(rig, [row(1, task="confounded-design")])
         rec = got[0]["records"]
@@ -1321,7 +1332,7 @@ def b17_finalize(mod, p):
                 wrote.append(s)
             plain_sleep(s)
         rig.driver.sleep = sleep
-        with project_tree(rig, design="sample_id,condition\n"):
+        with project_tree(rig, design=table):
             with planned(row(1, task="confounded-design")):
                 _, got = run_batch(rig, [row(1, task="confounded-design")])
         take = rig.take()
@@ -1329,7 +1340,7 @@ def b17_finalize(mod, p):
         if got[0]["records"]["ledger"]["finalize_abort"] or got[0]["state"] != labels4.GRADED:
             out.append(f"{p}: a samples.csv written during the wait was not waited for: {got[0]['state']} "
                        f"({got[0]['reason']})")
-        elif (target / "samples.csv").read_text() != "sample_id,condition\n" or len(rig.adapters[0].lines) != 4:
+        elif (target / "samples.csv").read_bytes() != table or len(rig.adapters[0].lines) != 4:
             out.append(f"{p}: the design table was not copied in before line 4")
         elif ("operator", "wait-for-samples-csv-then-copy-design") not in [(r["kind"], r.get("id"))
                                                                            for r in evidence_ledger(take)]:
@@ -1658,6 +1669,25 @@ class TestBoundChecks(unittest.TestCase):
     def test_b18_the_evidence_ledger_loads(self):
         self.assertEqual(b18_evidence(drive), [])
 
+    def test_the_design_table_path_is_the_generators_layout(self):
+        """W6I-R1-4: gen_confounded_seed2 writes <out>/src/... and <out>/samples.csv, and the task's source is
+        <out>/src, so the operator step's table is the source template's folder above src, plus samples.csv; the
+        generator's table is the fixture's pinned md5."""
+        import hashlib
+        import posixpath
+        from fixtures import gen_confounded_seed2 as gen
+        need(self, "DESIGN_TABLE")
+        task = variants.load_task("confounded-design")
+        fx = task["halves"]["trap"]["fixture"]
+        files = gen.build_half(fx["half"], fx["seed"])
+        self.assertIn("samples.csv", files)
+        self.assertTrue(all(p == "samples.csv" or p.startswith("src/") for p in files), sorted(files)[:3])
+        src = task["source_template"]
+        self.assertTrue(src.startswith("{run_tree}/") and src.endswith("/src"), src)
+        out = posixpath.dirname(src[len("{run_tree}/"):])
+        self.assertEqual(drive.DESIGN_TABLE, out + "/samples.csv")
+        self.assertEqual(hashlib.md5(files["samples.csv"]).hexdigest(), fx["design_table"]["md5"])
+
     def test_b9_a_leaked_sidecar_or_proxy_refuses_the_restart(self):
         self.assertEqual(b9_restart(drive), [])
 
@@ -1752,6 +1782,8 @@ WITNESSES = {
                            b16_excluded, "B16-excluded"),
     "no-finalize-wait": ((("                if self.clock() >= deadline:\n", "                if True:\n"),),
                          b17_finalize, "B17-finalize"),
+    "design-unbound": ((("            if not want or got != want:", "            if False:"),), b17_finalize,
+                       "B17-finalize"),
     "no-background-line": ((("                            self._evidence_line(take, {\"kind\": \"background\", "
                              "\"pid\": pid, \"stopped_at\": stopped})\n", "                            pass\n"),),
                            b18_evidence, "B18-evidence"),
@@ -1820,6 +1852,9 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_no_finalize_wait(self):
         self.kill("no-finalize-wait")
 
+    def test_witness_design_unbound(self):
+        self.kill("design-unbound")
+
     def test_witness_no_background_line(self):
         self.kill("no-background-line")
 
@@ -1847,8 +1882,9 @@ class TestWitnesses(unittest.TestCase):
                                                     "adapter-private-state", "no-postflight",
                                                     "launch-ignores-publish-problems", "bare-keyerror",
                                                     "restart-lists-containers-only", "unlogged-save",
-                                                    "log-excluded-write", "no-finalize-wait", "no-background-line"]))
-        # Twenty witnesses over eighteen bound checks: the fold's two (W6H-R1-1, R1-3) are bound to B3 and B7.
+                                                    "log-excluded-write", "no-finalize-wait", "no-background-line",
+                                                    "design-unbound"]))
+        # Twenty-one witnesses over eighteen bound checks: W6H-R1-1's, R1-3's and W6I-R1-4's share B3, B7 and B17.
         self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 18)
         self.assertEqual(len({w[2] for w in WITNESSES.values()}), 18)
 

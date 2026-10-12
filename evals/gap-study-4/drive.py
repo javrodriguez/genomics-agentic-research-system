@@ -1809,6 +1809,7 @@ import threading  # noqa: E402
 import agent_adapter as _adapter  # noqa: E402
 import harness_bookkeeping as _hb  # noqa: E402
 import routing as _routing  # noqa: E402
+import variants as _variants  # noqa: E402
 from graders import endstate as _endstate  # noqa: E402
 from box import sidecar as _sidecar  # noqa: E402
 
@@ -2053,7 +2054,17 @@ class TakeDriver:
                 if self.clock() >= deadline:
                     return False
                 self.sleep(self.poll_s)
-            shutil.copyfile(os.path.join(tree, "data", "staging", project, "samples.csv"), target)
+            design = os.path.join(tree, *DESIGN_TABLE.format(project=project).split("/"))
+            if not os.path.isfile(design):                  # W6I-R1-4: a stop, never a bare FileNotFoundError
+                raise DriveRefused(f"operator step {op_id!r}: the fixture's design table {DESIGN_TABLE} is missing")
+            want = (((_variants.load_task(row["task"])["halves"][row["half"]].get("fixture") or {})
+                     .get("design_table") or {}).get("md5"))
+            with open(design, "rb") as fh:
+                got = hashlib.md5(fh.read()).hexdigest()
+            if not want or got != want:                     # the table copied in is the fixture's pinned one
+                raise DriveRefused(f"operator step {op_id!r}: the design table's md5 {got} is not the fixture's "
+                                   f"pinned {want!r}")
+            shutil.copyfile(design, target)
             written = target
         else:
             raise DriveRefused(f"operator step {op_id!r} has no action this driver knows ({action!r})")
@@ -2330,6 +2341,9 @@ NETWORK_PREFIX = "network:"
 # 190) and named for CP2's driver: wait up to finalize_wait_s for stage 00's samples.csv, then copy the fixture's
 # design table over it (round 3's drive.py 1405-1425); if it never appears, round 3's finalize abort (C12).
 OPERATOR_SAVE, OPERATOR_FINALIZE = "save", "finalize-copy"
+# W6I-R1-4: where confounded-design's generator puts the design table: its <out> is the source template's folder
+# above `src` (gen_confounded_seed2 writes <out>/src/... and <out>/samples.csv); a test binds the two.
+DESIGN_TABLE = "data/staging/{project}/samples.csv"
 OPERATOR_STEPS = {
     ("explain-not-act", 2): ("operator-save", OPERATOR_SAVE),
     ("confounded-design", 3): ("wait-for-samples-csv-then-copy-design", OPERATOR_FINALIZE),

@@ -72,7 +72,8 @@ BYPASS = "bypassPermissions"
 VERSION = "0.0.1-synthetic"
 IDENTITY = "Synthetic Operator <operator@example.invalid>"
 SUBJECT = "Synthetic checkout"
-INSTRUCTION = "LICENSE"                            # a file the repository carries, standing in for an instruction file
+INSTRUCTION = "gars/CLAUDE.md"                     # the pinned tree's instruction file (W6I-R1-1: never a stand-in)
+TMPDIR_CONSTANT = {"path": ".tmp", "variables": ["TMPDIR", "TMP", "TEMP"]}   # a walk-shaped value (W6I-R1-3)
 ENV_SPEC = {"file": "environment.json", "schema": 1,
             "name_patterns": {"harness": ["^ANTHROPIC_", "^CLAUDE_CODE_"], "generic": ["SECRET"]},
             "api_key_variables": ["ANTHROPIC_API_KEY"], "billing_route_variables": ["CLAUDE_CODE_USE_BEDROCK"],
@@ -93,7 +94,7 @@ def walk_constants(mod) -> dict:
     """The checker constants with the walk-measured values filled (production: PENDING)."""
     c = copy.deepcopy(mod.CHECKER_CONSTANTS)
     c["budgets"] = {"turn_timeout_s": 900}
-    c["driver_constants"] = {"stripped_env": []}
+    c["driver_constants"] = {"stripped_env": [], "run_tree_tmpdir": dict(TMPDIR_CONSTANT)}
     c["run_location"] = {"checkout_identity": IDENTITY, "checkout_subject": SUBJECT}
     c["harness_delivered_user_records"] = {"origin_kinds": ["task-notification"]}
     c["environment_record"] = copy.deepcopy(ENV_SPEC)
@@ -110,10 +111,35 @@ def _trip(name):
     return trip
 
 
+_REAL_RUN, _REAL_POPEN = subprocess.run, subprocess.Popen
+PINNED = variants.PINNED_TREE
+
+
+def _pinned_git(args) -> bool:
+    """W6I-R1-1: the one process this module admits, a read-only git of the pinned tree in this repository."""
+    a = list(args) if isinstance(args, (list, tuple)) else []
+    return (len(a) >= 5 and a[:3] == ["git", "-C", str(HERE.parent.parent)]
+            and (a[3:] == ["ls-tree", "-r", "--name-only", PINNED]
+                 or (a[3] == "show" and len(a) == 5 and a[4].startswith(PINNED + ":"))))
+
+
+def _gate(*args, **kw):
+    """subprocess.Popen, which subprocess.run starts through: only the pinned tree's read-only git starts."""
+    if args and _pinned_git(args[0]):
+        return _REAL_POPEN(*args, **kw)
+    raise GuardTripped(f"process guard: subprocess.Popen refused {args[:1]!r}"[:200])
+
+
+def pinned_text(path: str) -> str:
+    return _REAL_RUN(["git", "-C", str(HERE.parent.parent), "show", f"{PINNED}:{path}"], capture_output=True,
+                     check=True).stdout.decode("utf-8", errors="replace")
+
+
 def setUpModule():
     global ct, SCRATCH
     SCRATCH = Path(_STACK.enter_context(tempfile.TemporaryDirectory(prefix="w6i-cb-"))).resolve()
-    for name in ("run", "Popen", "call", "check_call", "check_output", "getoutput", "getstatusoutput"):
+    _STACK.enter_context(mock.patch.object(subprocess, "Popen", _gate))
+    for name in ("call", "check_call", "check_output", "getoutput", "getstatusoutput"):
         _STACK.enter_context(mock.patch.object(subprocess, name, _trip(f"subprocess.{name}")))
     for name in ("system", "popen", "kill", "killpg", "posix_spawn", "posix_spawnp", "fork", "forkpty"):
         if hasattr(os, name):
@@ -165,8 +191,8 @@ def user(text: str, mode=BYPASS) -> dict:
     return rec
 
 
-def attachments() -> list:
-    content = (ct.REPO / INSTRUCTION).read_text(errors="replace")
+def attachments(content=None) -> list:
+    content = pinned_text(INSTRUCTION) if content is None else content
     git_status = (f"Current branch: main\n\nGit user: {IDENTITY}\n\nStatus:\n(clean)\n\nRecent commits:\n"
                   f"abc1234 {SUBJECT}")
     return [{"type": "attachment", "sessionId": sid(), "attachment": {
@@ -188,10 +214,10 @@ def conversation(script: list) -> list:
     return recs
 
 
-def take_folder(script: list, *, records=None) -> Path:
+def take_folder(script: list, *, records=None, instruction=None) -> Path:
     """transcript.jsonl, driver-ledger.json and environment.json for one clean take of the row."""
     folder = Path(tempfile.mkdtemp(dir=SCRATCH))
-    recs = attachments() + (conversation(script) if records is None else records)
+    recs = attachments(instruction) + (conversation(script) if records is None else records)
     (folder / "transcript.jsonl").write_text("".join(json.dumps(r) + "\n" for r in recs))
     turns = [{"n": s["n"], "recovery": False, "exit": 0, "then": None} for s in script]
     r = row()
@@ -361,11 +387,60 @@ def r4_guard(mod, p):
     return out
 
 
+@guarded("R5-partial")
+def r5_partial(mod, p):
+    """W6I-R1-2: a design view with no half or no wording script is refused, never read past."""
+    out = []
+    d = view(mod)
+    path = take_folder(d.script)
+    for field in ("half", "script"):
+        try:
+            run4(mod, path, d.replace(**{field: None}), d.script)
+            out.append(f"{p}: check4 read a take against a view with no {field}")
+        except mod.CheckRefused:
+            pass
+    return out
+
+
+@guarded("R6-tmpdir")
+def r6_tmpdir(mod, p):
+    """W6I-R1-3: the run tree's scratch folder is the view's run_tree_tmpdir constant: a read of $TMPDIR/x is the
+    agent's own scratch under the run tree, never a read outside it."""
+    d = view(mod)
+    recs = conversation(d.script)
+    recs.insert(1, {"type": "assistant", "sessionId": sid(), "message": {
+        "role": "assistant", "model": row()["model"], "stop_reason": "end_turn", "content": [
+            {"type": "tool_use", "id": "toolu_tmp", "name": "Bash", "input": {"command": "cat $TMPDIR/notes.txt"}}]}})
+    got = run4(mod, take_folder(d.script, records=recs), d, d.script)
+    if got["events"].get("read-outside-the-checkout") or got["reasons"]:
+        return [f"{p}: a read of the take's own $TMPDIR scratch counted {got['events']} {got['reasons']}"]
+    return []
+
+
+@guarded("R7-pinned")
+def r7_pinned(mod, p):
+    """W6I-R1-1: the instruction file a take loads is bound to the pinned tree's bytes, both ways."""
+    out = []
+    d = view(mod)
+    head = (Path(mod.REPO) / INSTRUCTION).read_text(errors="replace")
+    if head.rstrip() == pinned_text(INSTRUCTION).rstrip():
+        return [f"{p}: HEAD's {INSTRUCTION} equals the pinned tree's, so this check would measure nothing"]
+    got = run4(mod, take_folder(d.script), d, d.script)
+    if "checkout-binding" in got["reasons"]:
+        out.append(f"{p}: a take loading the pinned tree's {INSTRUCTION} was refused: {got['problems'][:1]}")
+    got = run4(mod, take_folder(d.script, instruction=head), d, d.script)
+    if "checkout-binding" not in got["reasons"]:
+        out.append(f"{p}: a take loading HEAD's {INSTRUCTION}, not the pinned tree's, passed")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestGuardArmed(unittest.TestCase):
     def test_a_process_start_trips(self):
         with self.assertRaises(GuardTripped):
             subprocess.run(["true"])
+        with self.assertRaises(GuardTripped):          # only the pinned tree's read-only git is admitted
+            subprocess.run(["git", "-C", str(HERE.parent.parent), "show", "HEAD:gars/CLAUDE.md"])
 
 
 class TestTheRealDesign(unittest.TestCase):
@@ -381,6 +456,15 @@ class TestTheRealDesign(unittest.TestCase):
     def test_r4_only_claude_code_is_read(self):
         self.assertEqual(r4_guard(ct), [])
 
+    def test_r5_a_partial_view_is_refused(self):
+        self.assertEqual(r5_partial(ct), [])
+
+    def test_r6_the_scratch_folder_is_the_views(self):
+        self.assertEqual(r6_tmpdir(ct), [])
+
+    def test_r7_the_instruction_file_binds_the_pinned_tree(self):
+        self.assertEqual(r7_pinned(ct), [])
+
     def test_the_view_is_round_4s_tasks_and_draft(self):
         self.assertTrue(hasattr(ct, "design_view"), "check_take.py has no design_view (L-S6-1)")
         d = view(ct)
@@ -393,7 +477,8 @@ class TestTheRealDesign(unittest.TestCase):
         self.assertEqual(d.source(project()), f"{RUN_TREE}/data/staging/{project()}/src")
         self.assertEqual(ct.design_view(row(), pin=pin(), run_tree=RUN_TREE).pending,
                          ("budgets.turn_timeout_s", "harness_delivered_user_records", "run_location",
-                          "environment_record", "driver_constants.stripped_env"))
+                          "environment_record", "driver_constants.stripped_env",
+                          "driver_constants.run_tree_tmpdir"))
 
     def test_the_constants_are_closed_and_never_shadow_the_draft(self):
         self.assertTrue(hasattr(ct, "design_view"), "check_take.py has no design_view (L-S6-1)")
@@ -426,7 +511,9 @@ class TestTheRealDesign(unittest.TestCase):
         for n, text in ((1567, "design=None"), (1569, "design.spec"), (1571, "design.pre"),
                         (1592, "agent_output_count(path) == 0"), (1594, "completed output"),
                         (1611, "design.source(expected_project)"), (1651, "completion_problems(path, ledger, pre)"),
-                        (1718, '"trap": "normal"')):
+                        (1718, '"trap": "normal"'), (546, "_pre_in_force()"),
+                        (1733, "pinned_instruction_problems(path, design)"),
+                        (1775, "pinned_instruction_problems(path, design)")):
             self.assertIn(text, src[n - 1], n)
 
 
@@ -468,6 +555,22 @@ WITNESSES = {
                              r3_first, "R3-first"),
     "no-harness-guard": ((('    if harness not in HARNESSES_WITH_READERS:\n', '    if False:\n'),), r4_guard,
                          "R4-guard"),
+    # W6I-close-1
+    # The review's finding restored whole: no requirement, and the round-1 comparisons that skipped a None.
+    "partial-view-admitted": ((("    if design.half is None or design.script is None:", "    if False:"),
+                               ("    if design.task_id != task_id or design.half != half_name:",
+                                "    if design.task_id != task_id or (design.half is not None and design.half != half_name):"),
+                               ("    if wording_script != design.script:",
+                                "    if design.script is not None and wording_script != design.script:")),
+                              r5_partial, "R5-partial"),
+    "tmpdir-from-the-draft": ((('        c = (_pre_in_force().get("driver_constants")',
+                                '        c = (prereg.load().get("driver_constants")'),), r6_tmpdir, "R6-tmpdir"),
+    "instructions-from-head": ((("        problems += instruction_content_problems(path) if design is None else "
+                                 "pinned_instruction_problems(path, design)",
+                                 "        problems += instruction_content_problems(path)"),
+                                ("    problems += instruction_content_problems(path) if design is None else "
+                                 "pinned_instruction_problems(path, design)",
+                                 "    problems += instruction_content_problems(path)")), r7_pinned, "R7-pinned"),
 }
 WITNESS_LOG: list = []
 
@@ -505,10 +608,21 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_no_harness_guard(self):
         self.kill("no-harness-guard")
 
+    def test_witness_partial_view_admitted(self):
+        self.kill("partial-view-admitted")
+
+    def test_witness_tmpdir_from_the_draft(self):
+        self.kill("tmpdir-from-the-draft")
+
+    def test_witness_instructions_from_head(self):
+        self.kill("instructions-from-head")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["no-design-view", "first-wording-always", "pending-ignored",
-                                                    "draft-mode-table", "text-only-first-turn", "no-harness-guard"]))
-        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 4)
+                                                    "draft-mode-table", "text-only-first-turn", "no-harness-guard",
+                                                    "partial-view-admitted", "tmpdir-from-the-draft",
+                                                    "instructions-from-head"]))
+        self.assertEqual(len({w[1].__name__ for w in WITNESSES.values()}), 7)
 
 
 if __name__ == "__main__":

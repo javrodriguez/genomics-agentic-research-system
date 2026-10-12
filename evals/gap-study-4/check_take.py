@@ -543,7 +543,7 @@ def run_tree_tmpdir() -> tuple[str, tuple[str, ...]] | None:
     """The driver's scratch folder inside the run tree and the variables it points there, from the pre-registration
     (`driver_constants.run_tree_tmpdir`); None when it records none."""
     try:
-        c = (prereg.load().get("driver_constants") or {}).get("run_tree_tmpdir") or {}
+        c = (_pre_in_force().get("driver_constants") or {}).get("run_tree_tmpdir") or {}  # ROUND 4 (R4C-10)
     except Exception:
         return None
     path, names = c.get("path"), c.get("variables")
@@ -1730,7 +1730,7 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
             print(f"  NOTE     {task_id}'s two halves send identical lines before the probe and "
                   f"differ in fixture, so the half is decided by the fixture binding above.")
         problems += checkout_problems(path, pre)
-        problems += instruction_content_problems(path)
+        problems += instruction_content_problems(path) if design is None else pinned_instruction_problems(path, design)  # R4C-11
         wanted_model = (ledger or {}).get("model_requested")
         if wanted_model:
             problems += model_problems(path, wanted_model)
@@ -1772,7 +1772,7 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
     problems += model_problems(path, row["model"])
     problems += constant_problems(ledger, pre)
     problems += checkout_problems(path, pre)
-    problems += instruction_content_problems(path)
+    problems += instruction_content_problems(path) if design is None else pinned_instruction_problems(path, design)  # R4C-11
     if not prompt_snapshot_present(path):
         problems.append("[inherited-context] the session recorded no system-prompt snapshot, so whether the "
                         "harness offered its memory folder could not be read")
@@ -1928,20 +1928,27 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
         raise CheckRefused("a round-4 take is checked against its own wording's script (a non-empty list)")
     if not isinstance(design, Design):
         raise CheckRefused("a round-4 take is checked against its design view (check_take.design_view)")
+    if design.half is None or design.script is None:          # W6I-R1-2: a partial view is never admitted
+        raise CheckRefused("the design view names no half or no wording script; both are the take's own")
     harness_guard(design.harness)
     if design.pending:
         raise CheckRefused(f"the design view's constants {list(design.pending)} are still PENDING; a value only a "
                            f"walk can measure is never defaulted")
-    if design.task_id != task_id or (design.half is not None and design.half != half_name):
+    if design.task_id != task_id or design.half != half_name:
         raise CheckRefused(f"the design view is {design.task_id}/{design.half}, not {task_id}/{half_name}")
-    if design.script is not None and wording_script != design.script:
+    if wording_script != design.script:
         raise CheckRefused("the script handed in is not the one the take's own wording renders")
     ids = event_ids(table)
-    counts = event_counts(path)
-    if set(ids) != set(counts):
-        raise CheckRefused(f"routing.json's event ids {sorted(ids)} are not the ones this checker counts "
-                           f"{sorted(counts)}")
-    problems = check(path, task_id, half_name, row_index, is_walk, wording_script=wording_script, design=design)
+    token = _PRE_IN_FORCE.set(design.pre)                 # R4C-10: the readers that take no pre read the view's
+    try:
+        counts = event_counts(path)
+        if set(ids) != set(counts):
+            raise CheckRefused(f"routing.json's event ids {sorted(ids)} are not the ones this checker counts "
+                               f"{sorted(counts)}")
+        problems = check(path, task_id, half_name, row_index, is_walk, wording_script=wording_script,
+                         design=design)
+    finally:
+        _PRE_IN_FORCE.reset(token)
     if not is_walk:
         problems += recorded_mode_problems(path, design.pre, arm)
     # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
@@ -1967,8 +1974,9 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
 
 # =====================================================================================================================
 # ROUND 4, SLICE S6b (lane w6i, next-slices-2026-10-11 and s6b-checker-body-plan-2026-10-11; this file moved from lane
-# w6h to lane w6i under glitch-1b's ruling S6b-gap4-1). Seven more lines above changed in place (1569, 1571, 1592, 1594,
-# 1611, 1651, 1718, and 1567's signature again), each marked ROUND 4; a checks.d line binds every other line.
+# w6h to lane w6i under glitch-1b's ruling S6b-gap4-1). Ten more lines above changed in place (546, 1569, 1571, 1592,
+# 1594, 1611, 1651, 1718, 1733, 1775, and 1567's signature again; 546, 1733 and 1775 by the review fold W6I-close-1),
+# each marked ROUND 4; a checks.d line binds every other line.
 #
 #   R4C-7. THE ROUND-4 DESIGN VIEW (rulings D2, D3). prereg.task(id) is the draft's manifest entry, which carries no
 #          halves; round 4's halves are tasks/<task>.json's trap and normal. design_view builds the round-3-shaped
@@ -2008,7 +2016,7 @@ CHECKER_CONSTANTS = {
     "harness_delivered_user_records": PENDING,
     "run_location": PENDING,
     "environment_record": PENDING,
-    "driver_constants": {"stripped_env": PENDING},
+    "driver_constants": {"stripped_env": PENDING, "run_tree_tmpdir": PENDING},   # W6I-R1-3
 }
 
 
@@ -2033,13 +2041,15 @@ class Design:
     `source_template` and `run_tree` render the source (both None: an empty source); `pending` the constants still
     PENDING. A plain class, not a dataclass: test_scaffold's import probe runs this file unregistered in sys.modules."""
 
-    FIELDS = ("task_id", "spec", "pre", "harness", "half", "script", "source_template", "run_tree", "pending")
+    FIELDS = ("task_id", "spec", "pre", "harness", "half", "script", "source_template", "run_tree", "pending",
+              "instructions")
 
     def __init__(self, *, task_id: str, spec: dict, pre: dict, harness: str, half=None, script=None,
-                 source_template=None, run_tree=None, pending=()):
+                 source_template=None, run_tree=None, pending=(), instructions=None):
         self.task_id, self.spec, self.pre, self.harness = task_id, spec, pre, harness
         self.half, self.script, self.source_template, self.run_tree = half, script, source_template, run_tree
         self.pending = tuple(pending)
+        self.instructions = dict(instructions or {})   # R4C-11: {pinned-tree path: its text at PINNED_TREE}
 
     def replace(self, **changes) -> "Design":
         return Design(**{**{f: getattr(self, f) for f in self.FIELDS}, **changes})
@@ -2078,7 +2088,8 @@ def design_view(row: dict, *, pin: dict, run_tree: str, constants: dict | None =
     pre["driver_constants"]["permission_mode_by_arm"] = {row["arm"]: mode} if pinned else {}
     pending = tuple(p for k, v in constants.items() for p in _pending_paths(v, k))
     return Design(task_id=row["task"], spec=spec, pre=pre, harness=harness, half=row["half"], script=script,
-                  source_template=task["source_template"], run_tree=run_tree, pending=pending)
+                  source_template=task["source_template"], run_tree=run_tree, pending=pending,
+                  instructions=pinned_instructions())
 
 
 def agent_output_count(path: Path) -> int:
@@ -2100,6 +2111,78 @@ def agent_output_count(path: Path) -> int:
         elif isinstance(content, str) and content.strip():
             n += 1
     return n
+
+
+# ---- R4C-10, R4C-11 (W6I-R1-3, W6I-R1-1) ---------------------------------------------------------------------------
+#   R4C-10. run_tree_tmpdir (line 546) reads the design in force: check4 sets the view's pre for the readers that take
+#           none (a context variable, so parallel takes never see each other's), else prereg.load() as in round 3.
+#           driver_constants.run_tree_tmpdir is a PENDING constant until a walk measures it.
+#   R4C-11. The run tree is a checkout of the PINNED tree (844a4ce), so the instruction files a take loads are bound
+#           to that tree's bytes, read with `git show <PINNED_TREE>:<path>` when the view is built, never to this
+#           repository's working tree (round 3's rule, which read HEAD's files and refused every pinned take).
+
+import contextvars as _contextvars  # noqa: E402
+import subprocess as _subprocess  # noqa: E402
+
+_PRE_IN_FORCE: "_contextvars.ContextVar" = _contextvars.ContextVar("check_take_pre_in_force", default=None)
+INSTRUCTION_NAMES = ("CLAUDE.md", "CLAUDE.local.md")
+
+
+def _pre_in_force() -> dict:
+    pre = _PRE_IN_FORCE.get()
+    return prereg.load() if pre is None else pre
+
+
+def _git_pinned(*args: str) -> bytes:
+    got = _subprocess.run(["git", "-C", str(REPO), *args], capture_output=True)
+    if got.returncode != 0:
+        raise CheckRefused(f"git {args[0]} at the pinned tree failed (exit {got.returncode})")
+    return got.stdout
+
+
+def pinned_instructions() -> dict:
+    """R4C-11: {path: text} for every instruction file (INSTRUCTION_NAMES) the pinned tree carries."""
+    tree = _variants.PINNED_TREE
+    names = _git_pinned("ls-tree", "-r", "--name-only", tree).decode("utf-8").splitlines()
+    return {n: _git_pinned("show", f"{tree}:{n}").decode("utf-8", errors="replace")
+            for n in names if posixpath.basename(n) in INSTRUCTION_NAMES}
+
+
+def pinned_instruction_problems(path: Path, design: "Design") -> list[str]:
+    """R4C-11: instruction_content_problems' reading, against the pinned tree's bytes the view carries."""
+    wd = None
+    files: list[dict] = []
+    for line in path.read_text(errors="replace").splitlines():
+        if '"attachment"' not in line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        att = rec.get("attachment") if isinstance(rec, dict) else None
+        if not isinstance(att, dict):
+            continue
+        if att.get("type") == "environment" and wd is None:
+            wd = (att.get("snapshot") or {}).get("workingDirectory")
+        elif att.get("type") == "instructions":
+            files.extend(att.get("files") or [])
+    if not files:
+        return ["[checkout-binding] the session recorded no instruction file, so what it was told cannot be shown"]
+    if wd is None:
+        return ["[checkout-binding] the session recorded no working directory, so its instruction files cannot be placed"]
+    out: list[str] = []
+    for f in files:
+        try:
+            rel = Path(f.get("path") or "").relative_to(Path(wd)).as_posix()
+        except ValueError:
+            continue  # outside the checkout: inherited_context reports it
+        pinned = design.instructions.get(rel)
+        if pinned is None:
+            out.append(f"[checkout-binding] the session loaded {rel}, which the pinned tree does not carry")
+        elif pinned.rstrip() != (f.get("content") or "").rstrip():
+            out.append(f"[checkout-binding] the session loaded {rel} with content other than the pinned tree's; "
+                       f"the agent was told something the study did not pin")
+    return out
 
 
 if __name__ == "__main__":

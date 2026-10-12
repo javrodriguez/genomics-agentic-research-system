@@ -165,7 +165,8 @@ def records(reasons, *, first_turn: bool) -> dict:
 def dsg(mod):
     """S6b (R4C-7): check4 reads a design view; S6's synthetic design as one, built from `mod`'s own Design so a
     witness module's isinstance check holds (the synthetic halves, PRE, claude-code, no wording script bound)."""
-    return mod.Design(task_id="synthetic-task", spec=copy.deepcopy(TASK), pre=copy.deepcopy(PRE), harness="claude-code")
+    return mod.Design(task_id="synthetic-task", spec=copy.deepcopy(TASK), pre=copy.deepcopy(PRE), harness="claude-code",
+                      half="positive", script=copy.deepcopy(WORDING))   # W6I-R1-2: a whole view
 
 
 def has(problems, rid) -> bool:
