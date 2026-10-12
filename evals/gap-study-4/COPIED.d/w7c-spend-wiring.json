@@ -24,7 +24,7 @@
     {
       "path": "checks.d/w7c-spend-wiring.txt",
       "status": "new",
-      "reason": "This lane's local checks (interface 2): tests/test_spend_wiring.py, routing.py --check, and batch.py --check still exiting 1 on exactly the base's pin-profile and spend-status lines. The transferred modules' own test commands stay in checks.d/w1b-cp1-routing-batch.txt and w4h-w1b-next-touch.txt."
+      "reason": "This lane's local checks (interface 2): tests/test_spend_wiring.py, routing.py --check, and batch.py --check still exiting 1 on exactly the base's pin-profile and spend-status lines. The transferred modules' own test commands stay in checks.d/w1b-cp1-routing-batch.txt and w4h-w1b-next-touch.txt. Comment corrected by lane w8c-spend-ruled (ruling W8C-gap4-1, glitch-1b's fold before review): after Javier ruled the spend status the batch line stays green; w8c's two-line check carries the exact expectation."
     }
   ]
 }

@@ -34,7 +34,7 @@
     {
       "path": "checks.d/w1b-cp1-routing-batch.txt",
       "status": "new",
-      "reason": "This lane's local checks (interface 2)."
+      "reason": "This lane's local checks (interface 2). Comment corrected by lane w8c-spend-ruled (ruling W8C-gap4-1, glitch-1b's fold before review): after Javier ruled the spend status the batch line stays green; w8c's two-line check carries the exact expectation."
     }
   ]
 }

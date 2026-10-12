@@ -2502,8 +2502,10 @@ class TestNextTouchSpendCap(unittest.TestCase):
         in, word for word; it was PENDING (glitch-f3) before."""
         entry = REAL["spend_cap_markers"][TEST_HARNESS]
         self.assertEqual({k: entry[k] for k in ("status", "type", "text")}, {"status": [], "type": [], "text": []})
-        for cite in ("subscription login", "D4 A", "glitch-f3"):
+        for cite in ("subscription login", "D4 A", "glitch-f3", '"spend markers: 1A 2A 3A"', "RULED"):
             self.assertIn(cite, entry["source"])
+        self.assertTrue(entry["source"].startswith("Empty on purpose, ruled by Javier on 12 Oct 2026"), entry["source"])
+        self.assertNotIn("PENDING status", entry["source"])
         status = REAL["spend_cap_markers_status"]
         self.assertEqual(status, SPEND_STATUS_RULED)
         self.assertTrue(status.startswith("RULED 2026-10-12 by Javier"), status)
