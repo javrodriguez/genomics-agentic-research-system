@@ -17,6 +17,12 @@ and the end-to-end take S6c covered only in halves (D7 the records, D8 the check
   W3-identity W6B-R1-3: an adapter whose own name is not the row's harness (a stub under a claude-code row, or an
              adapter with no name) is refused before it starts (AdapterIdentityRefused, a stop, never a rehearsal);
              under its own row a stub's persisted evidence ledger names the stub. Witness: identity-unchecked.
+  W4-root    W7B-R1-2: walk_driver refuses a root that is not mode_binding.HERE, the folder its --check reads.
+             Witness: root-unchecked.
+  W5-one-road W7B-R1-1: by AST, no non-test module under evals/gap-study-4 calls TakeDriver( or derives from it
+             except WalkDriver. Witnesses: added-construction, added-subclass (one module's source extended).
+  W6-pending W7B-R1-6: every walk-measured checker constant is PENDING (the two known values aside) and routing.json's
+             pin_profiles are empty. Witnesses: constant-filled, pin-filled.
   E1-take    the end-to-end take: batch.Batch drives the walk driver (TakeDriver through walk_driver, the REAL Claude
              Code adapter on a fake box that answers in the recorded stream shape and writes a session file, the
              REAL check4 on round 4's REAL design through take_checker), routing labels it, TakeRepo commits it into
@@ -235,7 +241,15 @@ class Wired:
         login = tbi.SCRATCH / f"login-{root.name}"
         login.write_text(f"{LOGIN_NAME}={tbi.TOKEN}\n")
         os.chmod(login, 0o600)
-        self.driver = mod.walk_driver(
+        with mock.patch.object(mod._mode_binding, "HERE", Path(root)):   # W7B-R1-2: the study folder (the module
+            self.driver = self._build(mod, login)                         # drive.py reads) is the scratch repository
+        self.repo = mod.TakeRepo(runtime=self.box, record_files=self.driver.record_files,
+                                 secrets=lambda: [("token", tbi.TOKEN)], rules_scanner=lambda paths: [], root=root,
+                                 repo=root, on_published=self.driver.published)
+
+    def _build(self, mod, login, root=None):
+        root = self.root if root is None else root
+        return mod.walk_driver(
             runtime=self.box, root=str(root), config_parent=str(self.cfg_parent), spec_for=self.spec_for,
             sidecar_for=self.sidecar_for, proxy=rt.ProxyLaunch(
                 image="sha256:" + "9" * 64, conf_source=str(tbi.SCRATCH / "proxy.conf"),
@@ -245,9 +259,6 @@ class Wired:
             design_for=self.design_for, project_for=lambda row: self.project, identity_for=self.identity_for,
             secrets=lambda: [("token", tbi.TOKEN)], rules_scanner=lambda paths: [], uid_map=tbi.UID_MAP,
             budget_s=600, finalize_wait_s=tbi.CAP_S, poll_s=tbi.POLL_S, clock=self.clock, sleep=self.clock.sleep)
-        self.repo = mod.TakeRepo(runtime=self.box, record_files=self.driver.record_files,
-                                 secrets=lambda: [("token", tbi.TOKEN)], rules_scanner=lambda paths: [], root=root,
-                                 repo=root, on_published=self.driver.published)
 
     def pin_for(self, row):
         return batch.expected_pin(row, self.table)
@@ -489,6 +500,88 @@ def e2_tree(mod, p):
     return out
 
 
+@guarded("W4-root")
+def w4_root(mod, p):
+    """W7B-R1-2: walk_driver writes take records only under the study folder mode_binding --check reads; any other
+    root is refused (a gate reading an empty folder would pass having graded nothing)."""
+    out = tbi.missing_api(mod, p, "walk_driver")
+    if out:
+        return out
+    import mode_binding as mb
+    with world() as ct, tbi.scratch_repo() as root:
+        w = Wired(mod, ct, root)                       # built with mode_binding.HERE at the scratch repository
+        login = tbi.SCRATCH / f"login-{root.name}"
+        for other in (tbi.SCRATCH, root / "takes", Path(tempfile.mkdtemp(dir=tbi.SCRATCH))):
+            try:
+                with mock.patch.object(mod._mode_binding, "HERE", Path(root)):
+                    w._build(mod, login, root=other)
+                out.append(f"{p}: walk_driver accepted the root {other}, which mode_binding does not read")
+            except mod.DriveRefused:
+                pass
+        try:
+            w._build(mod, login)                        # the real HERE, and the scratch root: refused too
+            out.append(f"{p}: walk_driver accepted a root other than the real study folder {mb.HERE}")
+        except mod.DriveRefused:
+            pass
+    return out
+
+
+def constructions(sources: dict) -> list:
+    """W7B-R1-1: every place non-test code builds a driver other than the walk driver, by AST: a call of TakeDriver
+    (by name or attribute), or a class deriving from TakeDriver other than WalkDriver."""
+    import ast
+    out = []
+    for path, src in sorted(sources.items()):
+        for node in ast.walk(ast.parse(src, filename=path)):
+            if isinstance(node, ast.Call):
+                f = node.func
+                name = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
+                if name == "TakeDriver":
+                    out.append(f"{path}:{node.lineno} constructs TakeDriver")
+            elif isinstance(node, ast.ClassDef) and node.name != "WalkDriver":
+                for b in node.bases:
+                    bn = b.id if isinstance(b, ast.Name) else b.attr if isinstance(b, ast.Attribute) else None
+                    if bn == "TakeDriver":
+                        out.append(f"{path}:{node.lineno} class {node.name} derives from TakeDriver")
+    return out
+
+
+def production_sources() -> dict:
+    """Every non-test .py under evals/gap-study-4 (tests/ excluded), by its path relative to the study folder."""
+    return {f.relative_to(HERE).as_posix(): f.read_text(encoding="utf-8") for f in sorted(HERE.rglob("*.py"))
+            if "tests" not in f.relative_to(HERE).parts and "__pycache__" not in f.parts}
+
+
+@guarded("W5-one-road")
+def w5_one_road(sources, p):
+    """W7B-R1-1: walk_driver (WalkDriver) is the only driver non-test code builds."""
+    if "drive.py" not in sources or "class WalkDriver(TakeDriver)" not in sources["drive.py"]:
+        return [f"{p}: the scan did not read drive.py's WalkDriver"]
+    return [f"{p}: {x}" for x in constructions(sources)]
+
+
+PENDING_PATHS = ["budgets.turn_timeout_s", "driver_constants.run_tree_tmpdir", "driver_constants.stripped_env",
+                 "environment_record", "harness_delivered_user_records", "run_location"]
+KNOWN_VALUES = ("driver_outcome_shapes", "system_under_test")       # check_take names these two as known values
+
+
+@guarded("W6-pending")
+def w6_pending(world_, p):
+    """W7B-R1-6: every checker constant a walk measures is PENDING in production (the two known values aside), and
+    routing.json's pin_profiles are empty: the end-to-end take's values are test data only."""
+    ct, table = world_
+    out = []
+    got = sorted(x for k, v in ct.CHECKER_CONSTANTS.items() for x in ct._pending_paths(v, k))
+    if got != PENDING_PATHS:
+        out.append(f"{p}: the PENDING checker constants are {got}, not {PENDING_PATHS}")
+    others = sorted(set(ct.CHECKER_CONSTANTS) - set(KNOWN_VALUES) - {x.split('.')[0] for x in got})
+    if others:
+        out.append(f"{p}: checker constants {others} hold values a walk has not measured")
+    if table.get("pin_profiles") != {}:
+        out.append(f"{p}: routing.json's pin_profiles are {table.get('pin_profiles')!r}, not empty")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheWalkWiring(unittest.TestCase):
     def test_w1_the_walk_driver_is_strict_and_stays_strict(self):
@@ -500,6 +593,25 @@ class TestTheWalkWiring(unittest.TestCase):
     def test_w3_the_adapter_is_the_rows_harness(self):
         self.assertEqual(w3_identity(tbi.drive), [])
 
+    def test_w4_the_root_is_the_folder_the_gate_reads(self):
+        self.assertEqual(w4_root(tbi.drive), [])
+
+    def test_w5_the_walk_driver_is_the_only_driver_built(self):
+        self.assertEqual(w5_one_road(production_sources()), [])
+
+    def test_w5_witness_an_added_construction_is_red(self):
+        """Rule B for W5: the bound check is green on the tree, and red by its own line when one module builds a
+        TakeDriver or derives from it."""
+        real = production_sources()
+        self.assertEqual(w5_one_road(real), [])
+        for name, extra in (("added-construction", "\n\ndef _another():\n    return TakeDriver(**{})\n"),
+                            ("added-subclass", "\n\nclass LooseDriver(TakeDriver):\n    pass\n")):
+            got = w5_one_road(dict(real, **{"batch.py": real["batch.py"] + extra}))
+            own = [x for x in got if x.startswith("W5-one-road:")]
+            print(f"\nWITNESS {name}: {'red' if own else 'NOT KILLED'} by W5-one-road ({len(own)} own, 0 collateral, "
+                  f"{len([x for x in got if x.startswith('ERROR')])} errors)", end=" ", file=sys.stderr, flush=True)
+            self.assertTrue(own and not [x for x in got if x.startswith("ERROR")], f"{name}: {got}")
+
 
 class TestTheEndToEndTake(unittest.TestCase):
     def test_e1_one_take_is_graded_and_leaves_every_record(self):
@@ -510,8 +622,27 @@ class TestTheEndToEndTake(unittest.TestCase):
 
     def test_the_production_constants_stay_pending(self):
         import check_take as ct
-        self.assertEqual(ct.CHECKER_CONSTANTS["budgets"]["turn_timeout_s"], "PENDING")
-        self.assertEqual(ct.CHECKER_CONSTANTS["environment_record"], "PENDING")
+        import routing
+        self.assertEqual(w6_pending((ct, routing.load_table())), [])
+
+    def test_w6_witness_a_filled_constant_or_pin_is_red(self):
+        """Rule B for W6 (W7B-R1-6): one walk constant filled, or one routing pin profile, is red by its own line."""
+        import check_take as ct
+        import routing
+        table = routing.load_table()
+        self.assertEqual(w6_pending((ct, table)), [])
+        filled = copy.deepcopy(ct.CHECKER_CONSTANTS)
+        filled["run_location"] = {"checkout_identity": "x", "checkout_subject": "y"}
+        cases = (("constant-filled", types.SimpleNamespace(CHECKER_CONSTANTS=filled, _pending_paths=ct._pending_paths),
+                  table),
+                 ("pin-filled", ct, dict(table, pin_profiles={"claude-code": {"m": {"permission_mode": "x",
+                                                                                     "version": "0"}}})))
+        for name, mod, t in cases:
+            got = w6_pending((mod, t))
+            own = [x for x in got if x.startswith("W6-pending:")]
+            print(f"\nWITNESS {name}: {'red' if own else 'NOT KILLED'} by W6-pending ({len(own)} own, 0 collateral, "
+                  f"0 errors)", end=" ", file=sys.stderr, flush=True)
+            self.assertTrue(own, f"{name}: {got}")
 
 
 class TestSysPath(unittest.TestCase):
@@ -546,6 +677,8 @@ WITNESSES = {
                                        "shape, agent.harness",
                                        "    harness = ledger.get(\"harness\") or \"?\""),), "mode_binding", e1_take,
                                      "E1-take"),
+    "root-unchecked": ((("    if Path(root).resolve() != Path(_mode_binding.HERE).resolve():    # W7B-R1-2: the root the gate reads",
+                         "    if False:"),), "drive", w4_root, "W4-root"),
     "tree-unchecked-end-to-end": ((("    problems += design_tree_problems(path, design)               # W7B "
                                     "(Q-w6i-5)\n", ""),), "check_take", e2_tree, "E2-tree"),
 }
@@ -615,13 +748,17 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_top_level_harness_end_to_end(self):
         self.kill("top-level-harness-end-to-end")
 
+    def test_witness_root_unchecked(self):
+        self.kill("root-unchecked")
+
     def test_witness_tree_unchecked_end_to_end(self):
         self.kill("tree-unchecked-end-to-end")
 
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted([
             "walk-not-strict", "walk-strict-settable", "folder-renamed", "identity-unchecked",
-            "folder-renamed-end-to-end", "top-level-harness-end-to-end", "tree-unchecked-end-to-end"]))
+            "folder-renamed-end-to-end", "top-level-harness-end-to-end", "tree-unchecked-end-to-end",
+            "root-unchecked"]))
 
 
 if __name__ == "__main__":

@@ -2774,6 +2774,9 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
     measure stay the caller's: design_for hands them to design_view, and check4 refuses while any is PENDING."""
     if not callable(design_for):
         raise TypeError("design_for must be callable")
+    if Path(root).resolve() != Path(_mode_binding.HERE).resolve():    # W7B-R1-2: the root the gate reads
+        raise DriveRefused(f"the take records' root {str(root)!r} is not the study folder mode_binding reads "
+                           f"({_mode_binding.HERE}); takes written anywhere else leave its --check grading nothing")
 
     def script_for(row):
         ident = identity_for(row)
