@@ -119,3 +119,64 @@ Needed: the same fullmatch for `gemini-cli X.Y.Z`, or the README line corrected.
 
 Two MAJORs, so not a PASS.
 Round 2 should re-run the sampled shards, re-run my operator set on the fold, and confirm each finding above is red by its own check's line.
+
+---
+
+# Round 2
+
+_Written Mon 12 Oct 2026 18:02 EDT (`date`) by the same reviewer, on the fold: head 4b17b3c6 (tests 26a26789, code ad5aefce), under ruling w11b-R1-fold (glitch-2f)._
+
+VERDICT: PASS
+
+## Findings
+
+| ID | Severity | Path:line | Requirement | Evidence | Bounded fix | Loosens a check |
+|---|---|---|---|---|---|---|
+| W11B-R2-1 | MINOR | evals/gap-study-4/gemini_adapter.py:134-139 | Nothing undocumented accepted: a stream with no decoded record is not a cut documented stream | `read_stream('Error: quota exceeded\n', model=M)` and `read_stream('{"type": "ini', model=M)` both return a read (undecoded 1, api_errors [], status None) on the head, not a StreamError. End_reason is then `error`, never `end_turn`, so nothing is invented; a plain-text harness message on stdout is read as an error with no api error. w11a's fold has the same rule (codex_adapter.py:122). | Refuse when the non-JSON line is the stream's only non-blank line (`bad` and `len(lines) == 1`), the driver taking the StreamError as a harness-side stop (Q-w11b-5); one A1 case and a witness. | Yes |
+
+## What I ran (Mac, each batch behind `mac_slot.py light-ok`, `timeout -s INT 120`, python3.13; the load held me several times and every batch waited for light-ok)
+
+- `tests/test_gemini_adapter.py`: Ran 135 tests, OK.
+- `--witnesses`: "111/111 red; registry 111".
+- The builder's sweep, sampled: `--shard 6/16`: generated 1154, ran 72, killed 67, equivalent 5, survived 0, stale 0; `--shard 14/16`: ran 72, killed 69, equivalent 3, survived 0, stale 0; 50 raise strings skipped by the rule. (Shards of a tenth hit the 120-second cap under load and were dropped, not counted.) Consistent with the claim of 1154 / 1114 / 40 / 0 / 0.
+
+## (1) The nine round-1 repros, and my harness re-anchored
+
+Each repro from round 1, re-run on the head:
+- R1: a tool_use with U+2028 now reads tool_ids ["t1"], agent_output True; a failed result with U+2028 keeps its api_error; an assistant message with U+0085 keeps its text; a mid-stream non-JSON line refuses ("line 2 of 3 is not JSON").
+- R2: a success result with no stats refuses (check_record); a failed result with no stats is still read (allowed by the ruling's wording, "on success").
+- R3: a stream whose stats name no model and has no init refuses.
+- R4: error message 5, delta "yes", object timestamp, dict error.type, list output each refuse; a float count refuses.
+- R5: an error without message, an init without session_id, a message without role or content, a tool_result without tool_id and a result without status each refuse with a ShapeError.
+- R6: `-m --sandbox` refuses at argv and read_stream (and the constructor, per its A6 case).
+- R7: `0.63.0-nightly.1` does not fullmatch.
+- R8: `latest`, `1` and `007` refuse in the init and at argv.
+- R9: RECORDED_LABEL fullmatch is in label_problems (test lines 933-946).
+
+One targeted mutant per finding, each red by its own check's line: splitlines back ("A1-stream: a stream holding ' ' ..."), mid-line tolerated ("A1-stream: a line that is not JSON before the last accepted it"), stats optional on success ("S4-stats: ... a successful result with no stats"), the no-model-record rule dropped ("A5-model: stats naming no model and no init accepted it"), event value types dropped (29 lines, S2/S3), error-object types dropped ("S3-words: ... error.type is {'a': 1}"), error message optional and init session_id optional ("S2-key: ... accepted it"), argv model shape loosened ("A6-argv: an argv with the model --sandbox ... accepted it"), fullmatch to match ("A8-turn: a version printed '0.63.0-nightly.20261012' ... accepted it"), each session lookahead dropped ("A6-argv: a later turn with session id 'latest' / '1' accepted it").
+
+My harness re-run on the fold with two more operators the builder's set lacks (`.split("\n")` back to `.splitlines()`, and each regex lookahead dropped): 988 mutants. Every survivor that is not a raise string is on the EQUIVALENT list: `sorted(EXIT_MEANINGS)` (L216), `sorted(set(rec) - set(allowed))` (tg L125), `delta is True` to truthy (L162, L166), `list(VERSION_ARGV)` (L273). Both new operators are killed. No survivor outside the list.
+
+## (2) The 40 EQUIVALENT reasons, audited (all hold)
+
+- import-plumbing 16, falsy-alike 2, message-label 10, identical-mutant 7: as round 1, re-anchored to the new lines; the new labels (tg L137 `'.error'` and L180 `'event '`, the `_types` calls) reach only the `_types` raise message; the identical-mutant set gained tg L220 (`return None` replaced or deleted at error_text's end, falling off returns None) and L214 (exit_meaning's timed-out `return None`).
+- typed-bool 2 (L162, L166): check_record runs `_types` with `"delta": bool` (exact `type is`) before read_stream reaches these lines, so delta is absent (`get` gives None) or a bool; `is True` and truthiness agree on {None, False, True}. Holds.
+- message-order 2: `sorted(EXIT_MEANINGS)` at L216 is only inside the f-string of the raise; `sorted(set(rec) - set(allowed))` at tg L125 is read by `if unknown:` (a set and its sorted list have the same truthiness) and by the message. Holds.
+- sequence-alike 1: `list(VERSION_ARGV)` at L273 goes to `agent_exec_argv`, whose `_check_argv` accepts a list or tuple and returns `list(argv)` (run_take.py:220-225, :455, :464). Holds.
+
+## (3) The "\n"-only split
+
+- A `\r\n` stream reads in full (status success, tool_ids ["t1"], undecoded 0): JSON whitespace includes `\r`, so each line's trailing `\r` decodes. Trailing `\r\n\r\n` lines are blank and skipped.
+- A lone `\r` between two records mid-stream refuses ("line 1 of 2 is not JSON").
+- A lone `\r` (or a form feed) inside the LAST line is read as a cut line: the complete record before it is dropped as `undecoded 1` (a tool_use vanished in my repro; with the result in that line, status reads None and the turn ends `error`). Node's JSON.stringify never writes a raw `\r` or form feed (it escapes control characters), so no documented producer makes this; not a finding. A tighter rule, if wanted: accept a last non-JSON line only when json's error position is at the end of the line (a true prefix).
+- A cut line that is the ONLY line is accepted, not refused: W11B-R2-1.
+
+## Observations (not findings)
+
+- `_SESSION_ID` refuses `latest` but admits `LATEST` and `Latest`; whether Gemini CLI's `-r` reads its selector case-blind is unverified, and its minted ids are not known to be words. For the bring-up walk.
+- The round-1 observations stand as the builder carried them (error event then success reads end_turn; duplicate keys last-wins; tool_result ids unpaired; GEMINI_SETTINGS does not pin sandbox off).
+- The cross-arm `splitlines` residual (claude_code_adapter.py:100, codex_adapter.py:116) is carried to the seam slice in the lane report.
+
+## Stop rule
+
+No MAJOR: PASS. One MINOR that loosens a check (W11B-R2-1), for the fold or the seam slice at glitch-2f's call.
