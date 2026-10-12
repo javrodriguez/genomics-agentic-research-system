@@ -1,6 +1,6 @@
-Status: built and w9-Q1 folded, waiting on review
+Status: review round 1 PASS (d5b181fa); w9-close-1 folded; ready for athena
 
-RESUME HERE: review
+RESUME HERE: athena
 
 # Lane w9-cp6: Gap Study round 4, CP6 wiring
 
@@ -134,5 +134,34 @@ Evidence (Mac, `mac_slot.py light-ok` and `timeout -s INT 120`, python3.13):
 - Gates: copy_manifest --check exit 0 (295 files, 47 fragments); build_draft --check exit 0; freeze.py --check exit 0; walk_register --check exit 0 (0-walk line).
 - lint_language: clean, 91 inputs. lint_pooling: clean, 91 files.
 
-RESUME HERE: review.
-The athena module list above is unchanged; test_cp6_wiring's witnesses now number 18.
+The athena module list above is unchanged; test_cp6_wiring's witnesses now number 18 (20 after the w9-close-1 fold below).
+
+## Fold w9-close-1, Mon 12 Oct 2026 12:31 EDT (`date`)
+
+Review round 1 passed at d5b181fa (lane-reports/w9-cp6-review-r1.md).
+Ruling w9-close-1 (glitch-2f) asked for two cheap items, then athena.
+
+- W9-R1-1: K1 gains case 2c.
+  takes.json is appended by hand, one row per commit, with attempts 1 and 2 of slot s1; only attempt 2 has a committed outcome.
+  The launch is refused: the open registration (attempt 1) is not the slot's latest.
+  Batch cannot reach this state (`takes.guard_registration` refuses it), so the guard is defence in depth, now bound.
+  New witness: launch-latest-unchecked.
+- Honesty of the record: with `--holdout-tool`, freeze_rehearsal names the step `HOLDOUT_STEP_LABEL`.
+  The label reads "holdout.py --check on the synthetic fixture evals/gap-study-4/fixtures/holdout-rehearsal, not the real holdout".
+  It is used in both places the step is written: stdout, and the report that a freeze records as its rehearsal record.
+  R1 asserts the label in both, and that no line names the step without it.
+  New witness: tool-label-dropped.
+  Without `--holdout-tool` the OWED step keeps its plain name, so H11 is unchanged.
+
+Evidence (Mac, `mac_slot.py light-ok` and `timeout -s INT 120`, python3.13):
+- Red first, label: the new R1 assertions against the unfolded freeze_rehearsal.py gave `test_cp6_wiring: 5 run, 1 failures, 0 errors`.
+  The failure was by assertion: "'[0] holdout.py --check on the synthetic fixture ..., not the real holdout\n    ok' not found".
+- Red first, latest guard: the guard already existed, so the new case passed on the unfolded code.
+  Its red is the mutant: launch-latest-unchecked (the guard set to `if False:`) gave "K1.launch: RED", 1/1. The reviewer had reported SURVIVED before this case.
+- Green: `test_cp6_wiring: 5 run, 0 failures, 0 errors, 0 skipped`.
+  Witnesses: 20/20 RED in three batches (7/7, 7/7, 6/6), exit 0 each; the registry is 20.
+- test_rehearsals: 9 run, 0 failures; witnesses 20/20 red. test_holdout_digests: 12 run, 0 failures.
+- Gates: copy_manifest --check exit 0 (295 files, 47 fragments); build_draft --check exit 0; freeze.py --check exit 0; walk_register --check exit 0 (0-walk line).
+- lint_language: clean, 91 inputs. lint_pooling: clean, 91 files.
+
+Athena runs the module list above; test_cp6_wiring's witnesses now number 20.
