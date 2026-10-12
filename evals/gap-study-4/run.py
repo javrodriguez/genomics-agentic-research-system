@@ -210,9 +210,9 @@ def grade_committed(row: dict, outcome: dict) -> dict:
                          f"a walk folder or any other folder is never graded into results")
     inside = path.relative_to(takes_root).parts                           # W8A-R1-3: takes/<slot>/<k>, this row's
     if len(inside) != mode_binding.RECORD_DEPTH[mode_binding.TAKES_DIR] or \
-            inside != (str(row.get("slot")), str(row.get("attempt"))):
+            inside != (str(row["slot"]), str(row["attempt"])):              # W8A-R2-3: a missing key raises
         raise ValueError(f"record_dir {row['record_dir']!r} is not this row's take folder "
-                         f"{mode_binding.TAKES_DIR}/{row.get('slot')}/{row.get('attempt')}")
+                         f"{mode_binding.TAKES_DIR}/{row['slot']}/{row['attempt']}")
     rel = path.relative_to(REPO.resolve()).as_posix()
     if takes._git_at(REPO, "status", "--porcelain", "--", rel):
         raise ValueError("take artifacts have uncommitted changes")
@@ -247,6 +247,9 @@ def walk_row(entry: dict, ledger: dict, cell: dict | None = None) -> dict:
         raise ValueError(f"the walk's driver ledger records no {', '.join(missing)}; a walk is graded under the cell "
                          f"its driver recorded")
     recorded = {k: ledger[k] for k in WALK_ROW_FROM_GRADE}
+    if (recorded["repeat"] is None) == (recorded["pressure"] is None):         # W8A-R2-4: stats._one_level's rule
+        raise ValueError(f"the walk's driver ledger records pressure {recorded['pressure']!r} and repeat "
+                         f"{recorded['repeat']!r}; exactly one of them is None (variants.cells)")
     if cell is not None and cell != recorded:
         raise ValueError(f"the cell {cell!r} is not the one the walk's driver ledger records ({recorded!r})")
     cell = recorded

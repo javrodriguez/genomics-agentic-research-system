@@ -2923,6 +2923,16 @@ class WalkRepo(TakeRepo):
         got = subprocess.run(["git", "-C", str(self.repo), "cat-file", "-e", f"{rev}:{rel}"], capture_output=True)
         return got.returncode == 0
 
+    def _refuse_ever_frozen(self, head: str) -> None:
+        """W8A-R2-1: un-freezing is never legitimate (prereg.py's docstring), so a walk is refused when any commit in
+        HEAD's history ever held this study's prereg.json, even one removed since. A history git cannot read refuses."""
+        rel = (self.root / FROZEN_NAME).relative_to(self.repo).as_posix()
+        got = subprocess.run(["git", "-C", str(self.repo), "log", "-1", "--format=%H", head, "--", rel],
+                             capture_output=True, text=True)
+        if got.returncode != 0 or got.stdout.strip():
+            raise CommitRefused(f"{FROZEN_NAME} is in this branch's history: the design was frozen, and walks run "
+                                f"before the freeze (plan CP6); a freeze removed later is still a freeze")
+
     def _refuse_frozen_at(self, rev: str, where: str) -> None:
         if self._holds_freeze(rev):
             raise CommitRefused(f"{FROZEN_NAME} is in {where}: the design is frozen, and walks run before the freeze "
@@ -2997,6 +3007,7 @@ class WalkRepo(TakeRepo):
         staged = self._staged_exactly(declared)
         head = _git_bytes(self.repo, "rev-parse", "--verify", "HEAD").decode().strip()
         self._refuse_frozen_at(head, "the commit the walk would follow")          # W8A-R1-1: HEAD
+        self._refuse_ever_frozen(head)                                            # W8A-R2-1: any ancestor
         tree = _git_bytes(self.repo, "write-tree").decode().strip()
         self._refuse_frozen_at(tree, "the tree the walk's commit would hold")     # W8A-R1-1: the written tree
         changed = sorted(n.decode("utf-8") for n in _git_bytes(

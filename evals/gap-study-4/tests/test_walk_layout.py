@@ -117,6 +117,17 @@ def mutants():
                                         "    if False and \\"),
         "module-constant-root": ("L1.one-name", "leak_grep", "ROOTS = mode_binding.RECORD_ROOTS",
                                  "ROOTS = mode_binding.RECORD_ROOTS\nWALKS_HOME = \"rehearsals/\""),
+        "history-unchecked": ("L3.time-fence", "drive",
+                              "        self._refuse_ever_frozen(head)                                            "
+                              "# W8A-R2-1: any ancestor\n", ""),
+        "slot-defaulted": ("L5.never-results", "run",
+                           "            inside != (str(row[\"slot\"]), str(row[\"attempt\"])):",
+                           "            inside != (str(row.get(\"slot\")), str(row.get(\"attempt\"))):"),
+        "cell-level-unchecked": ("L6.grade-bound", "run",
+                                 "    if (recorded[\"repeat\"] is None) == (recorded[\"pressure\"] is None):",
+                                 "    if False:"),
+        "bare-root-constant": ("L1.one-name", "leak_grep", "ROOTS = mode_binding.RECORD_ROOTS",
+                               "ROOTS = mode_binding.RECORD_ROOTS\nWALKS_NAME: str = \"rehearsals\""),
         "gate-dropped": ("L11.gates", "freeze_rehearsal",
                          "    (\"fixture_walk.py\", \"--check\"), (\"run.py\", \"--walks\", \"--check\"),",
                          "    (\"fixture_walk.py\", \"--check\"),"),
@@ -281,15 +292,15 @@ def root_spellings(rel: str, text: str) -> set:
             first_defs.setdefault(top.name, top)
     sites = set()
 
-    def is_root_text(node) -> bool:
+    def is_root_text(node) -> bool:          # W8A-R2-4: "<root>" itself or "<root>/..."
         return (isinstance(node, ast.Constant) and isinstance(node.value, str)
-                and any(node.value.startswith(r + "/") for r in ROOT_NAMES))
+                and any(node.value == r or node.value.startswith(r + "/") for r in ROOT_NAMES))
 
     def is_root(node) -> bool:
         return (isinstance(node, ast.Constant) and isinstance(node.value, str)
                 and any(node.value == r or node.value.startswith(r + "/") for r in ROOT_NAMES))
     for top in tree.body:              # W8A-R1-4: a module-level path constant joined later through its name
-        if isinstance(top, ast.Assign) and is_root_text(top.value):
+        if isinstance(top, (ast.Assign, ast.AnnAssign)) and top.value is not None and is_root_text(top.value):
             sites.add((rel, scope_of(tree, top)))
     for node in ast.walk(tree):
         hit = False
@@ -469,6 +480,27 @@ class L3TimeFence(Case):
             self.assertEqual(tbi.git(r.root, "rev-parse", "HEAD"), frozen, "L3.time-fence")
             self.assertEqual(tbi.git(r.root, "diff", "--cached", "--name-only"), "", "L3.time-fence")
             self.assertEqual(json.loads((r.walks / "register.json").read_text())["walks"], [], "L3.time-fence")
+        # W8A-R2-1: a freeze committed and then removed by a commit is still in the history: refused
+        with contextlib.ExitStack() as stack:
+            r = Repo(stack)
+            (r.root / "prereg.json").write_text("{}\n")
+            tbi.git(r.root, "add", "--", "prereg.json")
+            tbi.git(r.root, "commit", "-q", "-m", "Freeze (synthetic)")
+            tbi.git(r.root, "rm", "-q", "--", "prereg.json")
+            tbi.git(r.root, "commit", "-q", "-m", "Unfreeze (synthetic)")
+            unfrozen = tbi.git(r.root, "rev-parse", "HEAD")
+            entry = an_entry()
+            write_walk(r.walks, entry)
+            try:
+                r.walk_repo(drive).commit_walk(entry)
+                self.fail("L3.time-fence: a walk was committed after a freeze that a later commit removed")
+            except AssertionError:
+                raise
+            except drive.CommitRefused as e:
+                self.assertIn("history", str(e), f"L3.time-fence: {e}")
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"L3.time-fence: {type(e).__name__}: {e}")
+            self.assertEqual(tbi.git(r.root, "rev-parse", "HEAD"), unfrozen, "L3.time-fence")
         # TakeRepo stays post-freeze: registration needs the frozen pre-registration (this study has none)
         with mock.patch.object(prereg, "load", REAL_LOAD), mock.patch.object(prereg, "require_frozen", REAL_REQUIRE):
             self.assertFalse(REAL_LOAD()["_frozen"], "L3.time-fence")
@@ -537,6 +569,19 @@ class L5NeverResults(Case):
                     self.fail(f"L5.never-results: {record_dir} reached the grader")
                 except ValueError as e:
                     self.assertIn("take folder", str(e), f"L5.never-results: {record_dir}: {e}")
+            for missing in ("slot", "attempt"):            # W8A-R2-3: a row without its slot or attempt raises
+                row = {"record_dir": "takes/None/1" if missing == "slot" else "takes/s1/None",
+                       "task": "synthetic-task", "slot": "s1", "attempt": 1}
+                del row[missing]
+                try:
+                    run.grade_committed(row, {})
+                    self.fail(f"L5.never-results: a row without {missing} returned a grade")
+                except KeyError:
+                    pass
+                except Reached:
+                    self.fail(f"L5.never-results: a row without {missing} reached the grader")
+                except ValueError as e:
+                    self.fail(f"L5.never-results: a row without {missing} was read as None: {e}")
             with self.assertRaises(Reached, msg="L5.never-results: a take folder no longer reaches the grader"):
                 run.grade_committed({"record_dir": "takes/s1/1", "task": "synthetic-task", "slot": "s1",
                                      "attempt": 1}, {})
@@ -593,6 +638,10 @@ class L6GradeBound(Case):
         (folder / "driver-ledger.json").write_text(json.dumps({k: v for k, v in ledger.items() if k != "pressure"}))
         bad, _ = run.walk_problems(base, fake_grade)
         self.assertTrue(any("records no pressure" in b for b in bad), f"L6.grade-bound {bad}")
+        for pressure, repeat in ((None, None), (True, 1)):        # W8A-R2-4: exactly one of them is None
+            (folder / "driver-ledger.json").write_text(json.dumps(dict(ledger, pressure=pressure, repeat=repeat)))
+            bad, _ = run.walk_problems(base, fake_grade)
+            self.assertTrue(any("exactly one of them is None" in b for b in bad), f"L6.grade-bound {bad}")
 
 
 # ------------------------------------------------------------------------------------------------- L7
