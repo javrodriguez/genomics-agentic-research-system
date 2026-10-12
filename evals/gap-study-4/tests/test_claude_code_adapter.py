@@ -24,6 +24,12 @@ memory (the registry pattern of the earlier gap4 lanes):
   A4-turn      a turn on a fake runtime returns a TurnResult read from its stream: init, end reason (end_turn, error,
                timed-out), counters as the cgroup rise, agent_output; turn_records keeps the apiKeySource, the calls
                and the result. Witness: exit-ignored (every exit read as end_turn).
+  A5-cost      C14: tokens per call, once per (message.id, requestId), from the session file (the recorded env-smoke
+               session: two records, one call, 195 output tokens); the harness's API-error records are no call; two
+               records of one call that disagree refuse; a call whose usage lacks a class is unmeasured, never 0;
+               total_cost_usd is the turn's printed figure, never a per-call one; costs.py accounts the calls as
+               given (its printed total unmeasured, its usage the per-call sum). Witnesses: count-records,
+               missing-class-as-zero, zero-dollars-per-call.
 
 Fakes only: no model, vendor, network, container runtime, credential or holdout. setUpModule arms a process guard
 that refuses every process start, and clears this process's environment to a fixed few names (run_take refuses a
@@ -336,6 +342,81 @@ def a4_turn(mod, p):
     return out
 
 
+def session_record(msg, req, block, usage, *, sid=SID, error=False) -> dict:
+    rec = {"type": "assistant", "sessionId": sid, "requestId": req,
+           "message": {"id": msg, "model": "<synthetic>" if error else MODEL, "role": "assistant",
+                       "content": [block], "usage": dict(usage)}}
+    if error:
+        rec["isApiErrorMessage"] = True
+    return rec
+
+
+USAGE_1 = {"input_tokens": 10, "output_tokens": 195, "cache_read_input_tokens": 13607,
+           "cache_creation_input_tokens": 6458}
+USAGE_2 = {"input_tokens": 8, "output_tokens": 91, "cache_read_input_tokens": 17805, "cache_creation_input_tokens": 360}
+TEXT, THINK = {"type": "text", "text": "Synthetic reply."}, {"type": "thinking", "thinking": "synthetic"}
+TOOL = {"type": "tool_use", "id": "toolu_s1", "name": "Bash", "input": {"command": "ls"}}
+PRICES = {"as_of": "2026-10-11", "vendors": {"anthropic": {MODEL: {c: "1" for c in ("input_tokens", "output_tokens",
+                                                                                      "cache_read_input_tokens",
+                                                                                      "cache_creation_input_tokens")}}}}
+
+
+def jsonl(recs) -> str:
+    return "".join(json.dumps(r) + "\n" for r in recs)
+
+
+@guarded("A5-cost")
+def a5_cost(mod, p):
+    import costs
+    out = []
+    smoke = mod.session_calls(SESSION_SMOKE.read_text(encoding="utf-8"))
+    if [c["usage"] for c in smoke] != [USAGE_1]:
+        out.append(f"{p}: the recorded session reads as {len(smoke)} call(s) with {[c['usage'] for c in smoke]}")
+    session = jsonl([session_record("m1", "r1", THINK, USAGE_1), session_record("m1", "r1", TEXT, USAGE_1),
+                     session_record("m1", "r1", TOOL, USAGE_1), session_record("m2", "r2", TEXT, USAGE_2),
+                     session_record("m2", "r2", THINK, USAGE_2),
+                     session_record("e1", "re", TEXT, {"input_tokens": 0, "output_tokens": 0}, error=True)])
+    calls = mod.session_calls(session)
+    if [(c["message_id"], c["usage"]) for c in calls] != [("m1", USAGE_1), ("m2", USAGE_2)]:
+        out.append(f"{p}: five records of two calls (and an API-error record) read as "
+                   f"{[(c['message_id'], c['usage']) for c in calls]}")
+    try:
+        mod.session_calls(jsonl([session_record("m1", "r1", THINK, USAGE_1),
+                                 session_record("m1", "r1", TEXT, dict(USAGE_1, output_tokens=3))]))
+        out.append(f"{p}: two records of one call with different usage were read")
+    except mod.StreamError:
+        pass
+    partial = mod.session_calls(jsonl([session_record("m3", "r3", TEXT, {"input_tokens": 2, "output_tokens": 5})]))
+    if [c["usage"] for c in partial] != [None]:
+        out.append(f"{p}: a call missing two usage classes reads as {[c['usage'] for c in partial]}")
+    turns = [{"n": 1, "calls": [{"message_id": "m1", "request_id": "r1"}], "result": {
+        "total_cost_usd": 0.0147, "usage": {"input_tokens": 18}, "modelUsage": {MODEL: {"costUSD": 0.0147}},
+        "num_turns": 2, "permission_denials": [{"tool_name": "Bash", "tool_use_id": "toolu_x"}]}},
+             {"n": 2, "calls": [{"message_id": "m2", "request_id": "r2"}], "result": None}]
+    rec = mod.cost_record(turns, session, model=MODEL, version=VERSION)
+    if any(c["total_cost_usd"] is not None for c in rec["calls"]):
+        out.append(f"{p}: a per-call dollar figure was written: {[c['total_cost_usd'] for c in rec['calls']]}")
+    if [(t["n"], t["total_cost_usd"], len(t["permission_denials"] or [])) for t in rec["turns"]] != [
+            (1, 0.0147, 1), (2, None, 0)]:
+        out.append(f"{p}: the turns' printed costs read {rec['turns']}")
+    try:
+        acct = costs.account(rec["calls"], PRICES)
+    except ValueError as e:
+        return out + [f"{p}: costs.py refused the calls: {e}"]
+    want = {c: USAGE_1[c] + USAGE_2[c] for c in USAGE_1}
+    if acct["calls"] != 2 or acct["usage"] != want or acct["total_cost_usd"] is not None:
+        out.append(f"{p}: costs.py accounts {acct['calls']} call(s), usage {acct['usage']}, printed "
+                   f"{acct['total_cost_usd']}")
+    try:
+        acct = costs.account(mod.cost_record([], jsonl([session_record("m3", "r3", TEXT, {"input_tokens": 2})]),
+                                             model=MODEL, version=VERSION)["calls"], PRICES)
+    except ValueError as e:
+        return out + [f"{p}: costs.py refused a call missing a usage class ({e}), where it is unmeasured"]
+    if acct["measured"] is not False or acct["usage"] is not None:
+        out.append(f"{p}: a call with a missing usage class was accounted as measured: {acct['usage']}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheReaders(unittest.TestCase):
     def test_a1_the_recorded_streams_read_as_recorded(self):
@@ -349,6 +430,9 @@ class TestTheReaders(unittest.TestCase):
 
     def test_a4_a_turn_on_the_fake_runtime(self):
         self.assertEqual(a4_turn(cca), [])
+
+    def test_a5_the_cost_is_read_per_call(self):
+        self.assertEqual(a5_cost(cca), [])
 
     def test_the_isolation_flags_are_round_3s(self):
         tree = ast.parse((HERE / "drive.py").read_text(encoding="utf-8"))
@@ -406,6 +490,13 @@ WITNESSES = {
                       a3_argv, "A3-argv"),
     "exit-ignored": ((("    return aa.END_TURN if exit_code == 0 else aa.END_ERROR",
                        "    return aa.END_TURN"),), a4_turn, "A4-turn"),
+    # C14
+    "count-records": ((("        if key in by_key:\n", "        if False:\n"),), a5_cost, "A5-cost"),
+    "missing-class-as-zero": ((("        counts = {c: usage.get(c) for c in USAGE_CLASSES}",
+                                "        counts = {c: usage.get(c) or 0 for c in USAGE_CLASSES}"),), a5_cost,
+                              "A5-cost"),
+    "zero-dollars-per-call": ((("\"usage\": c[\"usage\"], \"total_cost_usd\": None,",
+                                "\"usage\": c[\"usage\"], \"total_cost_usd\": 0,"),), a5_cost, "A5-cost"),
 }
 WITNESS_LOG: list = []
 
@@ -440,9 +531,19 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_exit_ignored(self):
         self.kill("exit-ignored")
 
+    def test_witness_count_records(self):
+        self.kill("count-records")
+
+    def test_witness_missing_class_as_zero(self):
+        self.kill("missing-class-as-zero")
+
+    def test_witness_zero_dollars_per_call(self):
+        self.kill("zero-dollars-per-call")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["init-any-record", "api-error-as-agent", "allowed-tools-back",
-                                                    "mode-constant", "exit-ignored"]))
+                                                    "mode-constant", "exit-ignored", "count-records",
+                                                    "missing-class-as-zero", "zero-dollars-per-call"]))
 
 
 if __name__ == "__main__":

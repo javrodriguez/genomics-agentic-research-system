@@ -21,12 +21,12 @@
     {
       "path": "claude_code_adapter.py",
       "status": "new",
-      "reason": "Lane w6j (slice S6c, C15): the Claude Code adapter for the box, agent_adapter's interface for claude-code: one docker exec per turn through box/run_take.run_turn (round 3's one_turn argv with the plan's named changes for arms A and C: the routing pin's permission mode, no --allowedTools, --disallowedTools WebFetch WebSearch; --session-id then --resume of the imposed id), the version from `claude --version`, and readers of the recorded stream-json and session-file shapes (harness 2.1.267): read_stream (init, credential source, agent text and output kept apart from the harness's API-error record, calls, tool ids, the result record), session_calls (one call per (message.id, requestId)), cross_check (C6) and cost_record (C14)."
+      "reason": "Lane w6j (slice S6c, C15): the Claude Code adapter for the box, agent_adapter's interface for claude-code: one docker exec per turn through box/run_take.run_turn (round 3's one_turn argv with the plan's named changes for arms A and C: the routing pin's permission mode, no --allowedTools, --disallowedTools WebFetch WebSearch; --session-id then --resume of the imposed id), the version from `claude --version`, and readers of the recorded stream-json and session-file shapes (harness 2.1.267): read_stream (init, credential source, agent text and output kept apart from the harness's API-error record, calls, tool ids, the result record), session_calls (one call per (message.id, requestId)), cross_check (C6) and cost_record (C14). C14: a call whose usage lacks a class is unmeasured (None), never 0, so costs.py accounts it as unmeasured."
     },
     {
       "path": "tests/test_claude_code_adapter.py",
       "status": "new",
-      "reason": "Lane w6j (slice S6c): the Claude Code adapter on the recorded haiku-prestudy stream probes, the recorded API-error probe's fields, the recorded env-smoke session file and synthetic streams over a fake runtime: A1 recorded reads, A2 the API-error record never the agent's, A3 the argv, A4 a turn's TurnResult; whole-file witnesses of claude_code_adapter.py compiled in memory."
+      "reason": "Lane w6j (slice S6c): the Claude Code adapter on the recorded haiku-prestudy stream probes, the recorded API-error probe's fields, the recorded env-smoke session file and synthetic streams over a fake runtime: A1 recorded reads, A2 the API-error record never the agent's, A3 the argv, A4 a turn's TurnResult; whole-file witnesses of claude_code_adapter.py compiled in memory. C14: A5 tokens once per call from the session file, the turn's printed total_cost_usd, costs.py's account of the calls; witnesses count-records, missing-class-as-zero, zero-dollars-per-call."
     },
     {
       "path": "tests/test_drive_loop.py",

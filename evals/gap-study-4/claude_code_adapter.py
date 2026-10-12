@@ -311,9 +311,10 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
 # ---- C14: the calls, counted once each, from the session file ---------------------------------------------------
 def session_calls(text: str) -> list:
     """The session file's model calls, one per (message.id, requestId), in order: {message_id, request_id, model,
-    usage} with the four USAGE_CLASSES (an absent class is None, never 0). The harness's API-error records are not
-    calls of the model. Two records of one call with different usage, or a usage record with no call key, refuse
-    (StreamError): the reader never picks one."""
+    usage}. usage holds the four USAGE_CLASSES as recorded, or is None when any of them is not a count (unmeasured,
+    never 0: costs.py reads None as unmeasured). The harness's API-error records are not calls of the model. Two
+    records of one call with different usage, or a usage record with no call key, refuse (StreamError): the reader
+    never picks one."""
     recs, _ = _records(text)
     out, by_key = [], {}
     for rec in recs:
@@ -326,7 +327,9 @@ def session_calls(text: str) -> list:
         key = (msg.get("id"), rec.get("requestId"))
         if not all(isinstance(k, str) and k for k in key):
             raise StreamError("a session record carries usage with no (message.id, requestId) key")
-        counts = {c: usage[c] if _int(usage.get(c)) and usage[c] >= 0 else None for c in USAGE_CLASSES}
+        counts = {c: usage.get(c) for c in USAGE_CLASSES}
+        if not all(_int(v) and v >= 0 for v in counts.values()):
+            counts = None
         if key in by_key:
             if by_key[key]["usage"] != counts or by_key[key]["model"] != msg.get("model"):
                 raise StreamError(f"call {key[0]} carries two different usages or models in the session file")
