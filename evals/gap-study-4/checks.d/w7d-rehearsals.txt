@@ -1,0 +1,7 @@
+# Lane w7d-rehearsals: Gap Study round 4, wave 7 piece P3, the rehearsal register (plan CP6: rehearsals/README.md and
+# the walk register) and review_kit/rounds.py on round 4's paths. One command per line, run from the repository root.
+# --witnesses prints one witness line per mutant (rule B). No walk, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_rehearsals.py
+python3 -B -W ignore evals/gap-study-4/tests/test_rehearsals.py --witnesses
+python3 -B -W ignore evals/gap-study-4/walk_register.py --check
+python3 -B -W ignore evals/gap-study-4/review_kit/rounds.py --check
