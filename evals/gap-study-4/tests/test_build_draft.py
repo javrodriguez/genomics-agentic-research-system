@@ -506,7 +506,7 @@ DESCRIPTION_MUTANTS = {
     "routing": ("R4.routing", ("routing", "sha256"), "0" * 64),
     "prediction": ("R5.predictions", ("predictions", 0, "predicted"), 1),
     "digests-pending": ("R7.absent", ("holdout_salted_digests",), "PENDING"),
-    "digests-count": ("R7.absent", ("holdout_rule", "wordings_per_task_version"), 3),
+    "digests-count": ("R7.absent", ("holdout_rule", "wordings_per_task_version"), 7),  # never the real count
     "limitation": ("R8.carried", ("limitations", 0, "text"), "fake text"),
     "residual": ("R8.residuals", ("box_residuals", 0, "conditional_on_preflight"), False),
     "final-stop": ("R8.final-stop", ("final_stop",), {}),
@@ -615,7 +615,7 @@ from box import take_config
 
 
 def fake_digests(ids):
-    return {task: [hashlib.sha256(f"fake-{task}-{i}".encode()).hexdigest() for i in range(3)] for task in ids}
+    return {task: [hashlib.sha256(f"fake-{task}-{i}".encode()).hexdigest() for i in range(7)] for task in ids}  # not the real count
 
 
 def fake_price(d):
@@ -783,8 +783,8 @@ class Readiness(unittest.TestCase):
     def test_digest_shapes(self):
         d=self.get(); ids=[t['id'] for t in d['tasks']]; fake=fake_digests(ids)
         b.validate_digests(fake,ids)
-        changes=[{},dict(fake,salt='fake'),dict(fake,unknown=fake[ids[0]]),dict(fake,**{ids[0]:['g'*64]*3}),
-                 dict(fake,**{ids[0]:[fake[ids[0]][0]]*3}),dict(fake,**{ids[0]:['A'*64]*3}),
+        changes=[{},dict(fake,salt='fake'),dict(fake,unknown=fake[ids[0]]),dict(fake,**{ids[0]:['g'*64]*7}),
+                 dict(fake,**{ids[0]:[fake[ids[0]][0]]*7}),dict(fake,**{ids[0]:['A'*64]*7}),
                  dict(fake,**{ids[0]:fake[ids[1]]}),dict(fake,**{ids[0]:fake[ids[0]][:2]})]
         for bad in changes:
             with self.subTest(value=bad),self.assertRaises(ValueError, msg="R7.digest-shape"): b.validate_digests(bad,ids)

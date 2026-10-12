@@ -61,7 +61,6 @@ COMMANDS = (
 # digests" then checks that the frozen file carries both fields exactly. Only --no-holdout-digests leaves it out, and that
 # rehearsal records NOT REHEARSED as a failing step, so it is never all green. Q8: holdout.py --check lives in private
 # aegis (ruling C4) and is wired with S9's landing; until then its step names itself as owed and fails, never passes.
-SYNTHETIC_PER_TASK = 2
 HOLDOUT_FILE = "synthetic-holdout-digests.json"
 OWED = {"holdout.py": "OWED: holdout.py --check lives in private aegis (ruling C4) and is wired with S9's landing; "
                       "not run here, so this rehearsal is not all green"}
@@ -70,12 +69,9 @@ NO_FILE_LINE = ("NOT REHEARSED: the holdout digests (--no-holdout-digests: the f
 
 
 def synthetic_holdout_source(draft_file, out_file) -> dict:
-    """A digest-only source for the rehearsal's freeze: synthetic hex digests, one list per task of the cloned draft."""
-    tasks = [task["id"] for task in json.loads(Path(draft_file).read_text())["tasks"]]
-    source = {"salted_sha256": {task: [hashlib.sha256(f"synthetic-rehearsal-not-a-wording-{task}-{i}".encode())
-                                        .hexdigest() for i in range(SYNTHETIC_PER_TASK)] for task in tasks}}
-    Path(out_file).write_text(json.dumps(source, indent=2) + "\n")
-    return source
+    """freeze.synthetic_holdout_source (W8B-R1-1: the generator lives in freeze.py, so a real freeze refuses its
+    digests); the file is deleted in main's finally unless --keep."""
+    return freeze.synthetic_holdout_source(draft_file, out_file)
 
 
 def holdout_written_problems(frozen: dict, source: dict) -> list[str]:
@@ -170,6 +166,7 @@ def main(argv=None):
     report = scratch / "freeze-rehearsal-1.txt"
     env = step_environment()
     steps = []
+    holdout_file = None
 
     def step(name, command):
         owed = owed_step(command)
@@ -225,6 +222,9 @@ def main(argv=None):
     finally:
         if not args.keep and clone.exists():
             shutil.rmtree(clone)
+        # W8B-R1-1: the synthetic digest file never outlives the rehearsal unless --keep keeps its clone too
+        if holdout_file is not None and not args.keep:
+            holdout_file.unlink(missing_ok=True)
     green = bool(steps) and all(code == 0 for _, code, _ in steps)
     lines = [digest, "Disposable rehearsal; no takes driven.", freeze.REHEARSAL_TREE_PREFIX + tree]
     for name, code, tail in steps:

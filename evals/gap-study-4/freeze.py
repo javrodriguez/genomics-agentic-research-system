@@ -259,14 +259,47 @@ def _unique_pairs(pairs):
     return dict(pairs)
 
 
-def holdout_fields(source, task_ids) -> dict:
+# W8B-R1-1 (ruling W8B-close-1): the rehearsal's synthetic digests are made here, so the real freeze knows them: the
+# sha256 of SYNTHETIC_PREFIX + task + "-" + index, index below SYNTHETIC_BOUND. A freeze that is not a disposable
+# rehearsal refuses a source holding any of them, for any task of that source.
+SYNTHETIC_PREFIX = "synthetic-rehearsal-not-a-wording-"
+SYNTHETIC_BOUND = 8
+SYNTHETIC_PER_TASK = 2
+
+
+def synthetic_digest(task: str, index: int) -> str:
+    return hashlib.sha256(f"{SYNTHETIC_PREFIX}{task}-{index}".encode()).hexdigest()
+
+
+def synthetic_holdout_source(draft_file, out_file, per_task: int = SYNTHETIC_PER_TASK) -> dict:
+    """A digest-only source for a rehearsal's freeze: synthetic hex digests, one list per task of the draft."""
+    if not 0 < per_task <= SYNTHETIC_BOUND:
+        raise ValueError(f"a synthetic source holds 1 to {SYNTHETIC_BOUND} digests per task")
+    tasks = [task["id"] for task in json.loads(Path(draft_file).read_text())["tasks"]]
+    source = {HOLDOUT_SOURCE_KEY: {task: [synthetic_digest(task, i) for i in range(per_task)] for task in tasks}}
+    Path(out_file).write_text(json.dumps(source, indent=2) + "\n")
+    return source
+
+
+def synthetic_tasks(digests: dict) -> list[str]:
+    """The tasks of a digest map whose list holds a synthetic digest of any of its tasks."""
+    known = {synthetic_digest(task, i) for task in digests for i in range(SYNTHETIC_BOUND)}
+    return sorted(task for task, values in digests.items() if isinstance(values, list) and known & set(values))
+
+
+def holdout_fields(source, task_ids, *, rehearsal: bool = False) -> dict:
     """The two freeze-written holdout fields, from a source holding exactly {"salted_sha256": {task: [digest, ...]}}:
-    no salt, wording or other key. The count is the source's, the same for every task version."""
+    no salt, wording or other key. The count is the source's, the same for every task version. Outside a disposable
+    rehearsal, a source holding the rehearsal's synthetic digests is refused (W8B-R1-1)."""
     data = json.loads(Path(source).read_text(encoding="utf-8"), object_pairs_hook=_unique_pairs)
     if not isinstance(data, dict) or set(data) != {HOLDOUT_SOURCE_KEY}:
         raise ValueError(f"the holdout digest source holds exactly {HOLDOUT_SOURCE_KEY}: no salt, wording or other key")
     import build_draft
     count = build_draft.validate_digests(data[HOLDOUT_SOURCE_KEY], list(task_ids))
+    synthetic = synthetic_tasks(data[HOLDOUT_SOURCE_KEY])
+    if not rehearsal and synthetic:
+        raise ValueError("the holdout digest source holds the rehearsal's synthetic digests (" + ", ".join(synthetic)
+                         + "); a real freeze takes only the salted digests from private aegis (ruling W8B-gap4-1)")
     return {"holdout_salted_digests": data[HOLDOUT_SOURCE_KEY], "holdout_wordings_per_task_version": count}
 
 
@@ -379,7 +412,8 @@ def main(argv=None) -> int:
         if problem:
             raise ValueError(problem)
         holdout = ({} if args.holdout_digests is None else
-                   holdout_fields(args.holdout_digests, [task["id"] for task in draft["tasks"]]))
+                   holdout_fields(args.holdout_digests, [task["id"] for task in draft["tasks"]],
+                                  rehearsal=args.rehearsal))
         digest = hashlib.sha256(DRAFT.read_bytes()).hexdigest()
         tree = study_tree_sha()
         record = None
