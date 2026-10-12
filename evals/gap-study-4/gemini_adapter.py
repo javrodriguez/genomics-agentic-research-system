@@ -93,8 +93,8 @@ EXIT_MEANINGS = {0: "success", 1: "general-or-api-error", 42: "input-error", 53:
 SHAPES_SOURCE = "documented"
 SHAPES_SOURCES = ("documented", "recorded")
 NO_INIT_MODE = "the Gemini stream records no permission mode (Q-w11b-2)"
-# A session id: never one of -r's non-id selectors, `latest` or an index (D8:138; W11B-R1-8).
-_SESSION_ID = re.compile(r"(?!latest$)(?![0-9]+$)[A-Za-z0-9][A-Za-z0-9-]{0,127}")
+# A session id: never one of -r's non-id selectors, `latest` in any case or an index (D8:138; W11B-R1-8, w11b-close-1).
+_SESSION_ID = re.compile(r"(?!(?i:latest)$)(?![0-9]+$)[A-Za-z0-9][A-Za-z0-9-]{0,127}")
 # A model id: box/take_config.py's _MODEL shape, so it can never be read as a flag (W11B-R1-6).
 _MODEL_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")
 
@@ -118,7 +118,8 @@ def read_stream(text: str, *, model: str) -> dict:
     results       how many result records (0 or 1)
     tool_ids      the tool_use ids, in order
     undecoded     1 when the stream's last non-blank line is not JSON (a cut stream), else 0; a line that is not JSON
-                  anywhere before it refuses, and so does a decoded record off the tables
+                  anywhere before it refuses, so does a stream whose only non-blank line is not JSON (W11B-R2-1: a
+                  harness-side stop, Q-w11b-5), and so does a decoded record off the tables
 
     The stream is split on "\n" only, never str.splitlines: Node writes U+2028 and U+0085 raw inside JSON strings,
     and splitting on them would drop the record that holds them (W11B-R1-1). A stream whose stats name no model and
@@ -136,8 +137,9 @@ def read_stream(text: str, *, model: str) -> dict:
         try:
             rec = json.loads(raw)
         except ValueError:
-            if n != len(lines):
-                raise StreamError(f"line {n} of {len(lines)} is not JSON: only a cut stream's last line may be") from None
+            if n != len(lines) or n == 1:
+                raise StreamError(f"line {n} of {len(lines)} is not JSON: only a cut stream's last line may be, and "
+                                  f"never its only line (W11B-R2-1)") from None
             bad = 1
             continue
         try:

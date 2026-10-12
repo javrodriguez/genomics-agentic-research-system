@@ -115,3 +115,21 @@ Own lines:
 
 - W11B-R2-1: "A1-stream: a stream whose only non-blank line is not JSON accepted it", for 'Error: quota exceeded\n', a lone cut '{"type": "ini' and a junk line among blank lines.
 - The case observation: "A6-argv: a later turn with session id 'LATEST' accepted it" and 'Latest'; "A7-session: an init session id 'LATEST' accepted it" and 'lAtEsT'.
+
+## Stage 6: ruling w11b-close-1, the code (Mon 12 Oct 2026 18:38 EDT, `date`)
+
+- W11B-R2-1: read_stream refuses a stream whose only non-blank line is not JSON (`n != len(lines) or n == 1`), so the driver treats it as a harness-side stop (Q-w11b-5); a cut last line after real records still reads undecoded 1.
+- _SESSION_ID refuses `latest` in any case (`(?!(?i:latest)$)`), in the init and in argv.
+- Witnesses added: lone-junk-accepted, midstream-clause-dropped (each clause of the new condition on its own), session-latest-case-sensitive.
+- The stage 4 EQUIVALENT keys whose line numbers moved were re-keyed by kind, digest and text; one was first re-keyed onto the wrong `return None` (exit_meaning's, which the suite kills); the sweep reported it STALE, and it was corrected to the `_end` method's.
+
+Green on this head, every batch behind mac_slot light-ok and `timeout -s INT 120`:
+
+- `test_gemini_adapter.py`: Ran 138 tests, OK.
+- `--witnesses`: 114 red, registry 114, 0 errors.
+- `--generated-mutants`, 16 shards: generated 1159, killed 1119, EQUIVALENT 40, survived 0, stale 0 (shards 4 and 5 re-run after the re-key fix; 50 raise strings skipped by the rule).
+- Gates: copy_manifest, build_draft, freeze, walk_register `--check` exit 0; lint_language and lint_pooling clean over evals/gap-study-4/ and over the three Python files named explicitly.
+
+RESUME HERE: athena on this head (glitch-2f re-runs it), then the merge after wave 10.
+
+Athena module list: tests/test_gemini_adapter.py; --witnesses; --generated-mutants (whole, or --shard i/n); test_agent_adapter.py; test_transcript_view.py; test_scaffold.py (whole); test_round4.py; the gates (copy_manifest, build_draft, freeze, walk_register --check; lint_language and lint_pooling over evals/gap-study-4/).
