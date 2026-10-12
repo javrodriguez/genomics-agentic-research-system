@@ -2663,7 +2663,7 @@ def claude_code_adapter_for(*, runtime, login_file: str, counters_for, pin_for, 
 READERS_DISAGREE = "readers-disagree"
 
 
-def take_checker(*, design_for):
+def take_checker(*, design_for, records="takes"):
     """TakeDriver's checker in production (S6c): check4 on the take's published transcript against its design view
     (design_for(row, take): check_take.design_view with the routing pin and the take's run tree; its PENDING
     constants refuse until a walk measures them). The streams and the session file disagreeing (C6), or no session
@@ -2676,8 +2676,12 @@ def take_checker(*, design_for):
         if not path.is_file():
             return {"checker_reasons": [READERS_DISAGREE], "checker_events": dict.fromkeys(ids, 0)}
         design = design_for(row, take)
-        got = _ct.check4(path, row["task"], row["half"], take.identity["row"], False, wording_script=design.script,
-                         arm=row["arm"], design=design)
+        if records == "walks":                    # D1: the round-4 walk road
+            got = _ct.check4_walk(path, row["task"], row["half"], row["walk"], wording_script=design.script,
+                                  arm=row["arm"], design=design)
+        else:
+            got = _ct.check4(path, row["task"], row["half"], take.identity["row"], False, wording_script=design.script,
+                             arm=row["arm"], design=design)
         reasons = list(got["reasons"])
         if take.cross_check and READERS_DISAGREE not in reasons:
             reasons.append(READERS_DISAGREE)
@@ -2852,7 +2856,8 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
         adapter_for=claude_code_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
                                             pin_for=pin_for, clock=clock, caller_env=caller_env),
         script_for=script_for, pin_for=pin_for,
-        checker=take_checker(design_for=lambda row, take: design_for(row, take.launched.spec.run_tree)),
+        checker=take_checker(design_for=lambda row, take: design_for(row, take.launched.spec.run_tree),
+                             records=records),
         secrets=secrets, rules_scanner=rules_scanner, holdout_matcher=holdout_matcher, uid_map=uid_map,
         budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s, clock=clock, sleep=sleep,
         project_for=project_for, identity_for=identity_for, caller_env=caller_env)
@@ -2879,8 +2884,10 @@ WALKS_DIR = _mode_binding.WALKS_DIR           # W8A: named once, in mode_binding
 WALK_GRADE = _mode_binding.WALK_GRADE
 # grade.json's scan kind: a machine record the driver side writes, scanned as the ledgers are (w4c's KINDS; whether
 # it deserves a kind of its own is w4c's call, named in lane-reports/w8a-walk-layout.md).
-WALK_FILE_KINDS = {WALK_GRADE: "ledger"}
-WALK_REQUIRED = (LEDGER_FILE, WALK_GRADE)
+WALK_CHECK = "check.json"     # W10 (D1): the walk's checker reading and its route, beside grade.json
+WALK_FILE_KINDS = {WALK_GRADE: "ledger", WALK_CHECK: "ledger"}
+WALK_REQUIRED = (WALK_GRADE, WALK_CHECK)
+WALK_PRE_TURN = (PREFLIGHT_RECORD, REFUSAL_RECORD)    # W10 (D3): what says why a walk died before its driver ledger
 WALK_SUBJECT = "Commit one walk; never counted"
 WALK_REGISTER_KIND = "ledger"
 FROZEN_NAME = prereg.FROZEN.name               # prereg.json: once it exists, no walk is committed
@@ -2919,9 +2926,12 @@ def walk_files(folder) -> list:
             out.append((path, record_kind(rel, WALK_FILE_KINDS)))
     tops = {os.path.relpath(p, folder) for p, _ in out}
     missing = [n for n in WALK_REQUIRED if n not in tops]
+    if LEDGER_FILE not in tops and not (tops & set(WALK_PRE_TURN)):
+        missing.insert(0, f"{LEDGER_FILE} (nor, for a walk that died before turn 1, {' or '.join(WALK_PRE_TURN)})")
     if missing:
         raise DriveRefused(f"the walk folder holds no {', '.join(missing)}; a walk is committed with its driver ledger "
-                           f"and its grade (or why it was not graded)")
+                           f"(or the record of why it died before turn 1), its checker reading and its grade (or why "
+                           f"it was not graded)")
     return out
 
 
@@ -3241,6 +3251,7 @@ def walk_launch_problems(driver, row: dict) -> None:
                             f"nothing was launched") from None
     if row["walk"].casefold() in ids:
         raise LaunchRefused(f"walk {row['walk']!r} is already registered; a retry is a new walk id")
+    walk_identity_problems(driver, row)           # D2, before anything is made
 
 
 def launch_problems(driver, row: dict):
@@ -3255,6 +3266,37 @@ def launch_problems(driver, row: dict):
         return None
     else:
         raise LaunchRefused(f"records {driver.records!r} is neither 'takes' nor 'walks'")
+
+
+# =====================================================================================================================
+# ROUND 4, THE WALK RUNNER'S DRIVER SIDE (lane w10-walk-runner; this file moved from lane w9-cp6 to lane w10 under
+# glitch-2f's rulings D1, D2 and D3, the Lane-orchestrator under Javier's standing delegation, Mon 12 Oct 2026).
+# Appended above `if __name__`; the in-place edits are take_checker's records argument (walk_driver passes its own),
+# the walk folder's closed map (WALK_CHECK, WALK_REQUIRED, WALK_PRE_TURN in walk_files) and one line in
+# walk_launch_problems.
+#   D1  take_checker reads a walk by check_take.check4_walk (no takes.json row, the full script, the walk's own
+#       session), never as a take; the runner (walk_runner.py) writes its reading as check.json, which a walk folder
+#       must hold.
+#   D2  a walk launches only under its own identity: identity_for(row) gives session id
+#       check_take.walk_session_id(<walk id>) and row and row_commit None, else LaunchRefused before anything is made.
+#   D3  a walk that died before its driver ledger is committed with preflight.json or refusal.json in its place (and
+#       grade.json saying why it was not graded); a folder with neither still refuses.
+# =====================================================================================================================
+
+def walk_identity_problems(driver, row: dict) -> None:
+    """D2: the walk's identity, as the driver will stamp it on every record, is the walk's own."""
+    import check_take as _ct
+    try:
+        ident = driver.identity_for(row)
+        want = _ct.walk_session_id(row["walk"])
+    except Exception as e:  # noqa: BLE001 - an identity that cannot be built is refused, never guessed
+        raise LaunchRefused(f"the walk's identity cannot be read ({type(e).__name__}: {e}); nothing was launched") \
+            from None
+    if not isinstance(ident, dict) or ident.get("session_id") != want or ident.get("row") is not None \
+            or ident.get("row_commit") is not None:
+        got = ident if not isinstance(ident, dict) else {k: ident.get(k) for k in ("session_id", "row", "row_commit")}
+        raise LaunchRefused(f"the walk's identity is not its own (ruling D2): {got!r}; a walk has no ledger row or row "
+                            f"commit, and its session id is {want} (uuid5 of 'walk/{row['walk']}')")
 
 
 if __name__ == "__main__":

@@ -276,12 +276,32 @@ def grade_walk(entry: dict, folder, cell: dict | None = None, grade=None) -> dic
     agent turn, else {"graded": false, "why"} with the ledger's own outcome. `grade` stands in for
     grade_walk_folder (tests); `cell` ({pressure, repeat}) is optional and must equal the driver ledger's."""
     folder = Path(folder)
+    if not (folder / "driver-ledger.json").is_file():         # D3
+        return {"graded": False, "why": "not graded, because " + died_before_turn_one(folder)}
     ledger = json.loads((folder / "driver-ledger.json").read_text())
     if ledger.get("first_agent_turn") is not True:
         return {"graded": False, "why": f"no first agent turn, so a rehearsal before the agent's first turn "
                                         f"(the routing table's first row): {ledger.get('outcome')}"}
     row = walk_row(entry, ledger, cell)
     return {"graded": True, "row": row, "grade": (grade_walk_folder if grade is None else grade)(row, folder)}
+
+
+def died_before_turn_one(folder: Path) -> str:
+    """W10 (ruling D3; this file moved from lane w8a to lane w10): why a walk with no driver ledger was not graded,
+    read from its own records: the pre-turn refusal (refusal.json), else the preflight checks that failed
+    (preflight.json). A folder with neither raises: it is not a walk WalkRepo commits (drive.walk_files)."""
+    refusal, pre = folder / "refusal.json", folder / "preflight.json"
+    if refusal.is_file():
+        doc = json.loads(refusal.read_text())
+        return f"the walk was refused before its first turn ({doc.get('refused')}: {doc.get('why')})"
+    if pre.is_file():
+        doc = json.loads(pre.read_text())
+        failed = [f"{c.get('id')}: {c.get('detail')}" for c in doc.get("checks") or [] if c.get("ok") is not True]
+        if doc.get("ok") is not True:
+            return f"its preflight failed before the first turn ({'; '.join(failed) or 'no check named'})"
+        return "its preflight passed and no turn ran, so the driver wrote no ledger"
+    raise ValueError(f"{folder} holds no driver-ledger.json, refusal.json or preflight.json; nothing says why the "
+                     f"walk was not graded")
 
 
 def walk_grade_bytes(doc: dict) -> bytes:
