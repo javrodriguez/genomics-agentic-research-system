@@ -99,4 +99,43 @@ Checks on 2511de8a (Mac, Python 3.13.2, `mac_slot.py light-ok`, `timeout -s INT 
 | tests/test_box_integration.py TestTheTakePath | 0 | Ran 17, OK |
 | tests/test_check_take.py | 0 | Ran 15, OK |
 
-RESUME HERE: merge head 2511de8a225397d5195cca9da75d00fc2a845f51; athena run_checks owed (orchestrator)
+Superseded by the integration-fix addendum below.
+
+## Addendum: integration fixes after athena's run on 48ca93fa (Sun 11 Oct 2026, 20:26 to 20:37 EDT)
+
+athena's run_checks on 48ca93fa (run `gap4-wave6-merge-48ca93fa-48ca93f-20261011T231424Z`) passed 116 of 124.
+The 8 failures had two causes, and both came from slices meeting in this merge.
+Fix commit: 104fa58db183.
+
+Cause 1, R38 (test_ci_job.py and its witnesses 1 to 3, and test_round4 through it).
+S6 added `tests/test_box_integration.py`, but `.github/workflows/ci.yml` still carried the "omitted until it exists" comment in place of its step.
+Fix: ci.yml now runs `python3 -W ignore evals/gap-study-4/tests/test_box_integration.py` as its own step ("Box integration", the contract's exact BOX_STEP), before Pipeline integration, as the plan's Level 3 list orders it.
+Lines removed from the workflow since the kickoff: still 0, because the two comment lines postdate ad88d14d.
+The contract and its mutation cases are unchanged.
+One witness needed the present state: `box-landed` had built its mutant from the old deferred workflow, so with the step in place it was not red.
+It now takes the step back out (file present, workflow deferred) and is red by R38.command again; the change is in test_ci_job.py setUpModule.
+The four box-deferred mutants (box-owner, box-ruling, box-premature, box-indented) drop out, because the test itself skips them once the comment is gone; command-05 enters.
+The witness registry now holds 113.
+
+Cause 2, test_build_draft Claims.test_relocated_claims (and witness groups 3 and 4, which run it first).
+The test read only the w1a and w5c fragments.
+drive.py moved to w6e (S5-gap4-1) and then, with check_take.py, to w6h (S6-gap4-1), so those two fragments counted 29.
+copied_modules() now reads four fragments (w1a, w5c-draft-ci, w6e-drive-commit, w6h-drive-lifecycle).
+Fix: the test's expected fragment list now matches copied_modules(); the floor of more than 30 is unchanged and holds at 31 (27 + 2 + 0 + 2).
+No claim was lost.
+
+Checks on 104fa58d (Mac, Python 3.13.2, `mac_slot.py light-ok`, `timeout -s INT 120`):
+
+| Check | Exit | Result |
+|---|---|---|
+| copy_manifest.py --check | 0 | 34 fragments |
+| build_draft.py --check | 0 | the committed draft is what build_draft.py builds |
+| tests/test_ci_job.py | 0 | Ran 23, OK |
+| tests/test_ci_job.py --witnesses 1 / 2 / 3 | 0 / 0 / 0 | 38/38, 38/38, 37/37 red; registry 113 (before the box-landed fix, group 2 exited 1 on box-landed) |
+| tests/test_build_draft.py | 0 | Ran 41, OK |
+| tests/test_build_draft.py Claims | 0 | Ran 2, OK |
+| tests/test_build_draft.py --witnesses 3 / 4 | 124 / 124 | the 120 s cap cut each off after 3 witnesses, all red with none failed; athena takes about 350 s per group, so these two are athena's |
+
+RESIDUAL: the full test_round4 battery and build_draft witness groups 3 and 4 run on athena only.
+
+RESUME HERE: merge head 104fa58db183143b10a7e7c0d4a755613baa1ad3; athena run_checks owed (orchestrator)
