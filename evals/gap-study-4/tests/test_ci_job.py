@@ -445,6 +445,10 @@ def setUpModule():
     RAW = (REPO / WORKFLOW).read_text(encoding="utf-8")
     CURRENT_BOX_PRESENT = True if SELECTED in ("box-landed", "before-box") else None
     CURRENT = altered(RAW, SELECTED) if SELECTED and SELECTED != "box-landed" else RAW
+    if SELECTED == "box-landed" and BOX_STEP in RAW:
+        # Wave 6 merge: the box step is in ci.yml now that S6 landed the file, so the witness takes it out
+        # again: the file present and the workflow deferred must still be red by R38.command.
+        CURRENT = replace_once(RAW, BOX_STEP, BOX_DEFERRED)
     if SELECTED == "run-first-line-only":
         def first_line_only(body):
             lines = [line for line in body.splitlines() if line.strip() and not line.lstrip().startswith("#")]

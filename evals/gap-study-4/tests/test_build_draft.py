@@ -901,8 +901,11 @@ def setUpModule():
 
 class Claims(unittest.TestCase):
     def test_relocated_claims(self):
+        # Wave 6 merge: drive.py's claim moved to w6e (S5-gap4-1) and then, with check_take.py's, to w6h
+        # (S6-gap4-1); copied_modules() reads those fragments too, so the expected set follows it. Floor unchanged.
         fragments = [HERE / 'COPIED.d' / name for name in
-                     ('w1a-cp1-scaffold.json', 'w5c-draft-ci.json')]
+                     ('w1a-cp1-scaffold.json', 'w5c-draft-ci.json', 'w6e-drive-commit.json',
+                      'w6h-drive-lifecycle.json')]
         expected = [entry['path'] for path in fragments for entry in json.loads(path.read_text())['files']
                     if entry['status'] != 'new' and entry['path'].endswith('.py')]
         self.assertGreater(len(expected), 30)

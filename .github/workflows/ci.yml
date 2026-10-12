@@ -488,8 +488,9 @@ jobs:
                     | awk '{s+=$2} END {print s+0}')
           echo "workflow lines removed since the kickoff: $removed"
           test "$removed" -eq 0
-      # CP2 owns tests/test_box_integration.py; omitted until it exists
-      # under glitch-f3's section 10 box-integration ruling.
+      - name: Box integration
+        # Binds the integrated box interface supplied by CP2.
+        run: python3 -W ignore evals/gap-study-4/tests/test_box_integration.py
       - name: Pipeline integration
         # Binds registration, identity, freeze and publication contracts.
         run: python3 -W ignore evals/gap-study-4/tests/test_pipeline.py
