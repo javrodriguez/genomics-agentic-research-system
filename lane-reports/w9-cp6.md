@@ -1,4 +1,4 @@
-Status: built, waiting on review
+Status: built and w9-Q1 folded, waiting on review
 
 RESUME HERE: review
 
@@ -76,14 +76,14 @@ No model, walk, network, Docker, credential, salt or real holdout folder was use
 
 ## Open questions
 
-- Q-w9-1, the stuck slot: take_folder_in still counts the folders on disk (Q-w6i-1).
+- Q-w9-1 (RULED w9-Q1, folded below), the stuck slot: take_folder_in still counts the folders on disk (Q-w6i-1).
   After a launch is refused before its folder exists (W7C-R1-3's month-turn hold), every later attempt of that slot is now refused before launch. Before this lane, it ran (paid) and was refused at the commit.
   The slot stays blocked, at no cost, until someone rules.
   Proposed answer: make the production take folder `takes/<slot>/<registered attempt>`, read from the open registration this lane already reads, and refuse when that folder exists.
   That is a one-line change to how the folder is chosen. It needs a ruling because it reverses Q-w6i-1's "next unused k".
-- Q-w9-2: the walk arm is wired, but nothing drives walks through it yet: WalkRepo refuses `register`, so no Batch drives a walk.
+- Q-w9-2 (RULED, accepted: no change now; owed to the walk-runner slice, which gets the check through `walk_driver(records="walks")`): the walk arm is wired, but nothing drives walks through it yet: WalkRepo refuses `register`, so no Batch drives a walk.
   Proposed answer: the walk runner (CP6) calls `walk_driver(records="walks")` and gets this check for free; no change now.
-- Q-w9-3: the synthetic fixture is static.
+- Q-w9-3 (RULED, accepted: regenerated only when the aegis tool refuses it, and that red is correct): the synthetic fixture is static.
   If a task's wording shape or word band changes, the rehearsal's holdout step goes red. That is a correct red, and the fix is to re-derive the fixture.
   Proposed answer: keep it static; regenerate it only when the aegis tool refuses it.
 
@@ -98,3 +98,41 @@ No model, walk, network, Docker, credential, salt or real holdout folder was use
 - tests/test_drive_commit.py, tests/test_drive_loop.py and tests/test_build_draft.py (with `--witnesses` 1 to 6)
 - The gates: copy_manifest --check, build_draft --check, freeze.py --check, walk_register --check, lint_language and lint_pooling over the folder
 - Optional, where aegis is present: freeze_rehearsal.py with `--holdout-tool <aegis>/holdout/tools/holdout.py`
+
+## Rulings (glitch-2f, the Lane-orchestrator under Javier's delegation, Mon 12 Oct 2026)
+
+- w9-Q1: Q-w9-1 accepted as proposed. A take's folder comes from the open registration's attempt, and the launch is refused by name if that folder already exists.
+  This reverses Q-w6i-1 because the facts changed: a launch is now refused before its folder exists, so counting folders on disk would strand the slot.
+  The ruling said to fold it in this slice.
+- Q-w9-2 accepted: no change now; owed to the walk-runner slice.
+- Q-w9-3 accepted: the fixture is regenerated only when the aegis tool refuses it.
+- Departures w9-1 and w9-2, and the change to test_walk_wiring's W1 check, are accepted.
+
+## Fold w9-Q1, Mon 12 Oct 2026 12:20 EDT (`date`)
+
+- `take_launch_problems` now returns `<root>/takes/<slot>/<the open registration's attempt>` and refuses it by name ("... already exists ... (ruling w9-Q1)") when it exists.
+  The comparison with the counting `take_folder` is gone.
+- `WalkDriver.launch` hands that folder to `TakeDriver.launch` through one in-place edit: a private `_folder` keyword, where None still reads `take_folder`.
+  A walk keeps `walk_folder_in`'s folder.
+- `take_folder_in` itself is unchanged, so its readers (test_walk_wiring W2, test_walk_layout L2, test_cp8_prep K1) are untouched.
+  K1 at the commit (`take_k_problems`) stays as the second guard.
+- Tests: K1 case 2 is now the stuck slot.
+  Attempt 1 is committed `failed` with `drive_started` false, then attempt 2 is registered and launches into takes/s1/2, and takes/s1/1 is never made.
+  New case 2b: when the registered attempt's folder already exists, the launch is refused by name with nothing made or launched.
+  Case 5 (through a real Batch) now asserts "already exists".
+  The swapped-take_folder case is gone, because launch no longer reads take_folder for a take.
+- Witnesses: launch-folder-unchecked is replaced by launch-folder-counted (the folder taken from the count again) and launch-folder-exists-admitted.
+  launch-unchecked was re-anchored. The registry is now 18.
+
+Evidence (Mac, `mac_slot.py light-ok` and `timeout -s INT 120`, python3.13):
+- Red first: the new tests against 09fd22d0's code gave `test_cp6_wiring: 1 run, 1 failures, 0 errors` (K1Launch only).
+  The failure was by assertion: "K1.launch: the stuck slot's attempt 2 was refused: LaunchRefused: the take folder would be .../takes/s1/1, and slot 's1''s open registration is attempt 2 ...".
+- Green: `test_cp6_wiring: 5 run, 0 failures, 0 errors, 0 skipped`.
+  Witnesses: 18/18 RED in three batches (6/6 each), exit 0.
+- test_walk_wiring: Ran 20, OK. test_drive_commit: Ran 31, OK. test_drive_loop: Ran 27, OK.
+- test_cp8_prep: 4 run, 0 failures, with 15/15 witnesses red. test_walk_layout: 14 run, 0 failures.
+- Gates: copy_manifest --check exit 0 (295 files, 47 fragments); build_draft --check exit 0; freeze.py --check exit 0; walk_register --check exit 0 (0-walk line).
+- lint_language: clean, 91 inputs. lint_pooling: clean, 91 files.
+
+RESUME HERE: review.
+The athena module list above is unchanged; test_cp6_wiring's witnesses now number 18.
