@@ -19,14 +19,17 @@ from a typed number, and bind:
                     id and never counted toward coverage; a retry covers its spec once; witnesses off-design-counted,
                     outside-counted
   P5.exact-wording  on the every-wording model a walk covers only its own wording; on every other model any wording
-                    of the task covers the task and half; witness exact-wording-unchecked
+                    of the task covers the task and half; two specs on one key refuse; witnesses
+                    exact-wording-unchecked, spec-key-shared
   P6.require        --coverage exits 0 while walks are missing and names each; --require-complete exits 1 on any
-                    gap and 0 only on a register that covers every spec; an unreadable register exits 2; witness
-                    require-complete-gap
+                    gap and 0 only on a register that covers every spec; a missing, duplicate-keyed or symlinked
+                    register exits 2; witnesses require-complete-gap, register-duplicate-admitted,
+                    register-link-admitted
   P7.register-only  --coverage opens the register and the design files and nothing else under rehearsals/: no walk
                     folder is listed or read; witness folder-listed
   P8.spec-checked   a spec the register's design refuses, or one whose cell is not a row of the design, refuses the
-                    whole plan; witnesses spec-unchecked, cell-unchecked
+                    whole plan, and so does a planned model whose rows name two harnesses; witnesses spec-unchecked,
+                    cell-unchecked, harness-mixed-admitted
   P9.prose          the printed plan and coverage report are clean under lint_language's and lint_pooling's
                     patterns, and no printed line states a figure across arms or models; witness figure-across-arms
   P10.every-rule    the every-wording model is resolved from the plan's rule against the design's arm, and zero or
@@ -93,10 +96,11 @@ def mutants():
         "exact-wording-unchecked": ("P5.exact-wording",
                                     "    exact = (entry[\"arm\"], entry[\"model\"]) == design[\"every_wording\"]",
                                     "    exact = False"),
-        "require-complete-gap": ("P6.require", "        if args.require_complete and missing:",
-                                 "        if False:"),
-        "folder-listed": ("P7.register-only", "    entries = read_register(base)\n",
-                          "    entries = read_register(base)\n    _ = sorted(p.name for p in base.iterdir())\n"),
+        "require-complete-gap": ("P6.require", "    if args.require_complete and missing:",
+                                 "    if False:"),
+        "folder-listed": ("P7.register-only", "        entries = read_register(base)\n",
+                          "        entries = read_register(base)\n"
+                          "        _ = sorted(p.name for p in base.iterdir())\n"),
         "spec-unchecked": ("P8.spec-checked", "    if problems:\n        raise PlanRefused(",
                            "    if False:\n        raise PlanRefused("),
         "cell-unchecked": ("P8.spec-checked", "        if cell not in design[\"cells\"]:",
@@ -105,6 +109,15 @@ def mutants():
                                "    lines.append(f\"{len(specs)} required walks on every arm and model\")\n"
                                "    return lines\n\n\ndef coverage_lines("),
         "every-rule-first-match": ("P10.every-rule", "    if len(found) != 1:\n", "    if not found:\n"),
+        "register-duplicate-admitted": ("P6.require",
+                                        "json.loads(path.read_text(), "
+                                        "object_pairs_hook=walk_register.no_duplicate_keys)",
+                                        "json.loads(path.read_text())"),
+        "register-link-admitted": ("P6.require", "    if path.is_symlink() or not path.is_file():",
+                                   "    if not path.is_file():"),
+        "harness-mixed-admitted": ("P8.spec-checked", "            if len(got) != 1:\n", "            if not got:\n"),
+        "spec-key-shared": ("P5.exact-wording", "        if key in by_key:\n            raise PlanRefused(",
+                            "        if False:\n            raise PlanRefused("),
     }
 
 
@@ -209,6 +222,13 @@ class Base(unittest.TestCase):
             return design, wp.plan_walks(design)
         except wp.PlanRefused as exc:
             self.fail(f"{clause}: the plan was refused: {exc}")
+
+    def cover(self, clause: str, entries: list, specs: list, design: dict) -> dict:
+        wp = self.wp(clause)
+        try:
+            return wp.coverage(entries, specs, design)
+        except wp.PlanRefused as exc:
+            self.fail(f"{clause}: coverage was refused: {exc}")
 
     def tmpdir(self) -> Path:
         d = Path(tempfile.mkdtemp(prefix="w11c-"))
@@ -332,7 +352,7 @@ class P4OffDesign(Base):
             entry(other, "w-wrong-arm", arm="O" if other["arm"] != "O" else "G"),
             entry(other, "w-arm-c", arm=c_arm, model=c_spec["model"]),   # in the design, not in the plan
         ]
-        got = wp.coverage(entries, specs, design)
+        got = self.cover("P4.off-design", entries, specs, design)
         key = wp.cover_key(other, design)
         self.assertEqual(list(got["covered"]), [key], "P4.off-design: only the plan's spec is covered")
         self.assertEqual(got["covered"][key], ["w-ok", "w-retry"], "P4.off-design: a retry covers the spec once")
@@ -355,11 +375,14 @@ class P5ExactWording(Base):
         every = [s for s in specs if (s["arm"], s["model"]) == design["every_wording"]]
         first, second = every[0], next(s for s in every[1:] if (s["task"], s["half"]) == (every[0]["task"],
                                                                                           every[0]["half"]))
-        got = wp.coverage([entry(second, "h-second")], specs, design)
+        got = self.cover("P5.exact-wording", [entry(second, "h-second")], specs, design)
         self.assertEqual(list(got["covered"]), [wp.cover_key(second, design)], "P5.exact-wording")
         self.assertIn(first, got["missing"], "P5.exact-wording: another wording does not cover this one")
         self.assertNotEqual(wp.cover_key(first, design), wp.cover_key(second, design), "P5.exact-wording")
         other = next(s for s in specs if (s["arm"], s["model"]) != design["every_wording"])
+        twin = dict(other, wording=first["wording"] if other["wording"] != first["wording"] else "w2")
+        with self.assertRaises(wp.PlanRefused, msg="P5.exact-wording: two specs for one task and half"):
+            wp.coverage([], [other, twin], design)
         self.assertEqual(sum(1 for s in specs if wp.cover_key(s, design) == wp.cover_key(other, design)), 1,
                          "P5.exact-wording: one spec per task and half on every other model")
 
@@ -392,6 +415,11 @@ class P6Require(Base):
         self.assertEqual(code, 2, f"P6.require: a register with a duplicate key: {out}")
         code, out = self.cli("P6.require", ["--coverage", "--base", str(self.tmpdir())])
         self.assertEqual(code, 2, f"P6.require: a missing register is not an empty one: {out}")
+        linked = self.tmpdir() / "rehearsals"
+        linked.mkdir()
+        (linked / "register.json").symlink_to(full / "register.json")
+        code, out = self.cli("P6.require", ["--coverage", "--base", str(linked)])
+        self.assertEqual(code, 2, f"P6.require: a symlinked register is refused: {out[-300:]}")
 
 
 class P7RegisterOnly(Base):
@@ -439,6 +467,15 @@ class P8SpecChecked(Base):
         bent["cells"] = {c for c in bent["cells"] if c[1] != models[0]}
         with self.assertRaises(wp.PlanRefused, msg="P8.spec-checked: a cell with no row"):
             wp.plan_walks(bent)
+        # a planned model whose rows name two harnesses
+        study = self.study_copy()
+
+        def mixed(d):
+            row = next(r for r in d["rows"] if r["model"] == models[0])
+            row["agent"] = dict(row["agent"], harness=row["agent"]["harness"] + "-other")
+        self.edit_draft(study, mixed)
+        with self.assertRaises(wp.PlanRefused, msg="P8.spec-checked: two harnesses for one model"):
+            wp.design_in_force(study)
 
 
 class P9Prose(Base):
@@ -452,8 +489,8 @@ class P9Prose(Base):
         self.assertEqual(code, 0, "P9.prose")
         draft, _ = read_design(HERE)
         for name, text in (("--list", listed), ("--coverage", covered)):
-            found = lp.scan_text(text, f"walk_plan {name}") + ll.scan_text(text, f"walk_plan {name}",
-                                                                          ll.load_allowlist())
+            found = lp.scan_text(text, f"walk_plan {name}")
+            found += ll.scan_text(text, f"walk_plan {name}", ll.load_allowlist())
             self.assertEqual(found, [], f"P9.prose {name}")
             for line in text.splitlines():
                 # a figure sits on a line that names one model, on a citation header, or on one register entry
@@ -472,13 +509,19 @@ class P10EveryRule(Base):
         design, _ = self.plan("P10.every-rule")
         draft, _ = read_design(HERE)
         self.assertEqual(design["every_wording"], every_wording_model(draft), "P10.every-rule")
+
+        def two(d):
+            # a second haiku model with rows of its own, so only the every-wording rule can refuse it
+            d["models"]["A"] = d["models"]["A"] + ["claude-haiku-x"]
+            d["rows"] = d["rows"] + [dict(r, model="claude-haiku-x") for r in d["rows"] if "haiku" in r["model"]]
         for label, edit in (("none", lambda d: d["models"].__setitem__(
                                 "A", [m for m in d["models"]["A"] if "haiku" not in m])),
-                            ("two", lambda d: d["models"].__setitem__("A", d["models"]["A"] + ["claude-haiku-x"]))):
+                            ("two", two)):
             study = self.study_copy()
             self.edit_draft(study, edit)
-            with self.assertRaises(wp.PlanRefused, msg=f"P10.every-rule: {label}"):
+            with self.assertRaises(wp.PlanRefused, msg=f"P10.every-rule: {label}") as caught:
                 wp.design_in_force(study)
+            self.assertIn("for every wording", str(caught.exception), f"P10.every-rule: {label}")
 
 
 BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_figures",

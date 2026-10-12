@@ -15,6 +15,11 @@
       "path": "COPIED.d/w11c-walk-plan.json",
       "status": "new",
       "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "walk_plan.py",
+      "status": "new",
+      "reason": "Lane w11c-walk-plan (slice of the 12 Oct next-slices plan, section 2; rehearsals/README.md question 3; ruling Q-2 as glitch-2f applies it): plan_walks(design) lists the walks CP6 requires (plan 874-876: every wording of every task and half on the every-wording model, each task and half with one wording on every other model of arm A; arms O and G, D8:448: each task and half once per model), derived from prereg-draft.json, tasks/<task>.json (through walk_register.design_in_force) and the draft's rows, never typed; each spec holds exactly the register entry's fields plus the agent and is checked by walk_register.entry_problems and against the design's cells, any refusal refusing the plan. EVERY_WORDING carries the plan's one rule (arm A, the haiku family; exactly one model or refused). --list prints the plan and a figure per arm and model; --coverage reads rehearsals/register.json only (no walk folder listed or read) and prints each required walk covered or missing, entries the design refuses or the plan does not require reported by walk id and never counted, a retry covering its spec once; exit 0 with gaps, 1 under --require-complete with a gap, 2 on a missing, linked or duplicate-keyed register. Not wired into freeze_rehearsal.py or walk_register.py. Bound by tests/test_walk_plan.py P1-P10, 18 witnesses."
     }
   ]
 }
