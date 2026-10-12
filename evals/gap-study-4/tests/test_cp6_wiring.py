@@ -6,12 +6,14 @@
       container exists and before run_take.launch is reached, so nothing is spent. For a take (records "takes"): the
       slot's one open registration in the committed takes.json (registered, no committed outcome); every field of the
       allow-list drive.LAUNCH_FIELDS (stats.TAKE_FIELDS[:8], slot, half_cell) equal to the row's; the row the frozen
-      pre-registration's planned row; the take folder <root>/takes/<slot>/<that attempt>. Cases: a registered planned
-      take passes and reaches run_take.launch; a drifted k (attempt 1 refused before its folder, then attempt 2) is
-      refused naming the attempt; each allow-listed field changed, in turn, is refused naming that field; an
-      unregistered slot; a row the frozen rows do not plan, and no freeze at all; a swapped take folder; and through a
-      real batch.Batch with TakeRepo, a drifted take is committed failed with drive_started false and nothing launched.
-      Witnesses: launch-unchecked, launch-fields-unchecked, launch-prereg-unchecked, launch-folder-unchecked,
+      pre-registration's planned row; the take folder <root>/takes/<slot>/<that attempt> (ruling w9-Q1: the folder is
+      the registered attempt, never a count of folders on disk), refused by name when it already exists. Cases: a
+      registered planned take passes and reaches run_take.launch; the stuck slot (attempt 1 refused before its folder,
+      then attempt 2) launches into takes/<slot>/2; a registered attempt whose folder exists is refused by name; each
+      allow-listed field changed, in turn, is refused naming that field; an unregistered slot; a row the frozen rows
+      do not plan, and no freeze at all; and through a real batch.Batch with TakeRepo, a take whose folder exists is
+      committed failed with drive_started false and nothing launched. Witnesses: launch-unchecked,
+      launch-fields-unchecked, launch-prereg-unchecked, launch-folder-counted, launch-folder-exists-admitted,
       launch-unregistered-admitted.
   W1  K1-launch, the walk arm (records "walks"): a walk is refused before launch when prereg.json exists, when its
       task, half, wording, arm or model is not one the design in force admits (walk_register.entry_problems), and when
@@ -73,14 +75,18 @@ def mutants():
     """name -> (clause, target module, old text, new text). Each weakens one guard; old must occur exactly once."""
     return {
         "launch-unchecked": ("K1.launch", "drive",
-                             "        launch_problems(self, row)          # W9 K1-launch (Q-w8d-1): before any folder, "
-                             "container or spend\n", ""),
+                             "        folder = launch_problems(self, row)          # W9 K1-launch (Q-w8d-1): before any "
+                             "folder, container or spend\n", "        folder = None\n"),
         "launch-fields-unchecked": ("K1.launch", "drive", "    if wrong:\n        raise LaunchRefused(",
                                     "    if False:\n        raise LaunchRefused("),
         "launch-prereg-unchecked": ("K1.launch", "drive", "        takes_mod.require_planned_row(row, pre)\n",
                                     "        pass\n"),
-        "launch-folder-unchecked": ("K1.launch", "drive", "    if folder != want:\n        raise LaunchRefused(",
-                                    "    if False:\n        raise LaunchRefused("),
+        "launch-folder-counted": ("K1.launch", "drive",
+                                  "    folder = root / TAKES_DIR / str(slot) / str(attempt)        # ruling w9-Q1",
+                                  "    folder = Path(driver.take_folder(row))        # ruling w9-Q1"),
+        "launch-folder-exists-admitted": ("K1.launch", "drive",
+                                          "    if os.path.lexists(folder):\n        raise LaunchRefused(f\"{folder} already",
+                                          "    if False:\n        raise LaunchRefused(f\"{folder} already"),
         "launch-unregistered-admitted": ("K1.launch", "drive", "    if len(open_) != 1:\n",
                                          "    if len(open_) > 1:\n"),
         "walk-launch-unchecked": ("W1.walk-launch", "drive",
@@ -268,8 +274,9 @@ class K1Launch(Case):
                     self.fail(f"K1.launch: a registered planned take was refused: {type(e).__name__}: {e}")
             self.assertEqual(sc.spy.calls, 1, "K1.launch")
             self.assertTrue((sc.root / "takes" / "s1" / "1").is_dir(), "K1.launch: takes/s1/1")
-        # 2. the drift Q-w8d-1 names: attempt 1 refused before its folder existed, then attempt 2 registered; the
-        #    folder count still gives k = 1, so the launch is refused, naming the attempt, before anything is made
+        # 2. the stuck slot (ruling w9-Q1): attempt 1 refused before its folder existed, then attempt 2 registered.
+        #    Counting folders on disk would give k = 1 for ever; the folder is the open registration's attempt, so
+        #    attempt 2 launches into takes/s1/2, and takes/s1/1 is never made
         with contextlib.ExitStack() as st:
             sc = self.must("K1.launch", Scene, st)
             register(sc.root, row, 1)
@@ -277,8 +284,29 @@ class K1Launch(Case):
                                                 reason="synthetic: refused before its folder", drive_started=False))
             register(sc.root, row, 2)
             with tbi.planned(row):
-                self.refused("K1.launch", sc.launch, row, words=("attempt 2", "takes/s1/2", "takes/s1/1"))
-            sc.nothing_made(self, "K1.launch")
+                try:
+                    sc.launch(row)
+                    self.fail("K1.launch: the fake run_take.launch was not reached")
+                except AssertionError:
+                    raise
+                except Reached:
+                    pass
+                except Exception as e:  # noqa: BLE001
+                    self.fail(f"K1.launch: the stuck slot's attempt 2 was refused: {type(e).__name__}: {e}")
+            self.assertEqual(sc.spy.calls, 1, "K1.launch: stuck slot")
+            self.assertEqual(sorted(p.name for p in (sc.root / "takes" / "s1").iterdir()), ["2"],
+                             "K1.launch: attempt 2's folder is takes/s1/2")
+        # 2b. the registered attempt's folder already exists: refused by name, before anything is made
+        with contextlib.ExitStack() as st:
+            sc = self.must("K1.launch", Scene, st)
+            register(sc.root, row, 1)
+            (sc.root / "takes" / "s1" / "1").mkdir(parents=True)        # an empty folder: git sees nothing
+            with tbi.planned(row):
+                self.refused("K1.launch: existing folder", sc.launch, row,
+                             words=("takes/s1/1", "already exists", "attempt 1"))
+            self.assertEqual((sc.spy.calls, sorted(os.listdir(sc.cfg)),
+                              list((sc.root / "takes" / "s1" / "1").iterdir())), (0, [], []),
+                             "K1.launch: existing folder: something was made or launched")
         # 3. each allow-listed field changed in turn is refused, naming that field (slot: the other slot has no
         #    registration, so it is refused as unregistered)
         with contextlib.ExitStack() as st:
@@ -290,7 +318,7 @@ class K1Launch(Case):
                     words = ("slot 's9'", "0 open registrations") if field == "slot" else (field,)
                     self.refused(f"K1.launch: {field}", sc.launch, bad, words=words)
             sc.nothing_made(self, "K1.launch")
-        # 4. an unregistered slot, a row the frozen rows do not plan, no freeze, a swapped take folder
+        # 4. an unregistered slot, a row the frozen rows do not plan, no freeze
         with contextlib.ExitStack() as st:
             sc = self.must("K1.launch", Scene, st)
             with tbi.planned(row):
@@ -303,11 +331,8 @@ class K1Launch(Case):
                 raise SystemExit(f"{what} needs a FROZEN pre-registration (synthetic)")
             with mock.patch.object(MODS["prereg"], "require_frozen", unfrozen):
                 self.refused("K1.launch: no freeze", sc.launch, row, words=("planned row", "FROZEN"))
-            with tbi.planned(row):
-                sc.driver.take_folder = lambda r: str(sc.root / "takes" / "s1" / "elsewhere")
-                self.refused("K1.launch: swapped folder", sc.launch, row, words=("attempt 1",))
             sc.nothing_made(self, "K1.launch")
-        # 5. through a real batch.Batch and TakeRepo: a take whose folder count drifted is committed failed, with
+        # 5. through a real batch.Batch and TakeRepo: a take whose registered folder already exists is committed failed, with
         #    drive_started false (a restart re-drives it), and nothing is launched
         with contextlib.ExitStack() as st:
             sc = self.must("K1.launch", Scene, st)
@@ -324,7 +349,7 @@ class K1Launch(Case):
             self.assertEqual(sc.spy.calls, 0, "K1.launch: Batch reached run_take.launch")
             self.assertEqual([(o["slot"], o["attempt"], o["state"], o["drive_started"]) for o in got],
                              [("s1", 1, "failed", False)], f"K1.launch: {got}")
-            self.assertIn("a take folder's k is its attempt", got[0]["reason"], "K1.launch")
+            self.assertIn("already exists", got[0]["reason"], "K1.launch")
             history = MODS["takes"].read_history(root=sc.root, repo=sc.root)
             self.assertEqual([(o["slot"], o["attempt"], o["drive_started"]) for o in history],
                              [("s1", 1, False)], "K1.launch: the refusal is committed")

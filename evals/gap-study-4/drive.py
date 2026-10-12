@@ -1959,13 +1959,14 @@ class TakeDriver:
         self.publish_problems: list = []   # S6b Q6: a published take whose config folder could not be deleted
 
     # ------------------------------------------------------------------------------------------- launch (R4-8)
-    def launch(self, row: dict) -> str:
+    def launch(self, row: dict, *, _folder=None) -> str:
         """The take's config folder, record folder and containers (run_take.launch); returns the take container's id.
+        _folder (W9, ruling w9-Q1) is the record folder WalkDriver.launch has already checked; None reads take_folder.
         A launch failure re-raises run_take's LaunchError with `container_id` set to the take container's id when its
         partial teardown did not remove it (batch records it and removes it again), else None."""
         if self.publish_problems:                             # S6b Q6 (D5): a config folder never reused silently
             raise DriveRefused(f"a published take's cleanup failed: {self.publish_problems[0]}")
-        folder = self.take_folder(row)
+        folder = self.take_folder(row) if _folder is None else _folder
         if not isinstance(folder, str) or not os.path.isabs(folder) or os.path.normpath(folder) != folder:
             raise DriveRefused(f"the take folder is not a normalised absolute path: {folder!r}")
         os.makedirs(folder)                                     # a new folder: an existing one raises
@@ -2787,8 +2788,8 @@ class WalkDriver(TakeDriver):
         super().__init__(strict_script=True, **kw)
 
     def launch(self, row: dict) -> str:
-        launch_problems(self, row)          # W9 K1-launch (Q-w8d-1): before any folder, container or spend
-        return super().launch(row)
+        folder = launch_problems(self, row)          # W9 K1-launch (Q-w8d-1): before any folder, container or spend
+        return super().launch(row, _folder=folder)   # ruling w9-Q1: a take's folder is its registered attempt
 
     @property
     def adapter_for(self):
@@ -3139,13 +3140,17 @@ def main() -> int:  # noqa: F811 - L1: round 3's CLI, retired
 #                       committed outcome, read with takes.load_rows and takes.read_history): every field of
 #                       LAUNCH_FIELDS (the allow-list) present in both and equal; the row the frozen
 #                       pre-registration's planned row (takes.require_planned_row, every key of it bound); and the
-#                       take folder the driver would make <root>/takes/<slot>/<that registration's attempt>.
+#                       take folder <root>/takes/<slot>/<that registration's attempt> not yet existing (ruling w9-Q1:
+#                       launch makes exactly that folder).
 #                walks  no freeze (prereg.json absent: walks are pre-freeze, as WalkRepo refuses at the commit);
 #                       WALK_LAUNCH_FIELDS read as a register entry the design in force accepts
 #                       (walk_register.entry_problems on prereg-draft.json and tasks/); its id not in register.json.
-#              Not changed: take_folder_in still counts the folders on disk (Q-w6i-1), so after a launch refused
-#              before its folder the slot's next attempt is refused here too, before launch, until a ruling moves the
-#              folder rule (named in lane-reports/w9-cp6.md); K1 at the commit stays as the second guard.
+#   w9-Q1      ruling w9-Q1 (glitch-2f, Mon 12 Oct 2026; reverses Q-w6i-1 because the facts changed): a take's folder
+#              is <root>/takes/<slot>/<the open registration's attempt>, refused by name when it already exists; it is
+#              never a count of the folders on disk. A launch is now refused before its folder exists, so a count would
+#              give attempt - 1 for ever after and strand the slot. take_folder_in (the count) still names a WalkDriver's
+#              take_folder for other readers, but WalkDriver.launch never reads it for a take; K1 at the commit
+#              (take_k_problems) stays as the second guard.
 # =====================================================================================================================
 
 import stats as _stats  # noqa: E402
@@ -3189,7 +3194,7 @@ def open_registration(root: Path, repo: Path, slot) -> dict:
     return reg
 
 
-def take_launch_problems(driver, row: dict) -> None:
+def take_launch_problems(driver, row: dict) -> str:
     root = driver.records_root
     slot = row.get("slot")
     reg = open_registration(root, records_repo(root), slot)
@@ -3204,14 +3209,15 @@ def take_launch_problems(driver, row: dict) -> None:
     except (SystemExit, ValueError, KeyError, TypeError) as e:
         raise LaunchRefused(f"the take (slot {slot!r}, attempt {attempt}) is not the frozen pre-registration's "
                             f"planned row: {e}") from None
-    want = str(root / TAKES_DIR / str(slot) / str(attempt))
-    folder = driver.take_folder(row)
-    if folder != want:
-        raise LaunchRefused(f"the take folder would be {folder}, and slot {slot!r}'s open registration is attempt "
-                            f"{attempt}, whose folder is {want}; a take folder's k is its attempt (Q-w8d-1)")
+    folder = root / TAKES_DIR / str(slot) / str(attempt)        # ruling w9-Q1: the registered attempt, never a count
+    if os.path.lexists(folder):
+        raise LaunchRefused(f"{folder} already exists: slot {slot!r}'s open registration is attempt {attempt}, and a "
+                            f"take folder is made once, by its own launch (ruling w9-Q1)")
+    return str(folder)
 
 
 def walk_launch_problems(driver, row: dict) -> None:
+    """The walk arm; the walk's folder stays walk_folder_in's (rehearsals/<walk>/, an existing one refused)."""
     import walk_register as _walk_register
     root = driver.records_root
     if os.path.lexists(root / FROZEN_NAME):
@@ -3237,14 +3243,16 @@ def walk_launch_problems(driver, row: dict) -> None:
         raise LaunchRefused(f"walk {row['walk']!r} is already registered; a retry is a new walk id")
 
 
-def launch_problems(driver, row: dict) -> None:
-    """K1-launch (Q-w8d-1): refuse (LaunchRefused) a take or walk that does not match its records, before launch."""
+def launch_problems(driver, row: dict):
+    """K1-launch (Q-w8d-1): refuse (LaunchRefused) a take or walk that does not match its records, before launch.
+    Returns the take's record folder (ruling w9-Q1), or None for a walk (its folder is take_folder's)."""
     if not isinstance(row, dict):
         raise LaunchRefused("the row is not an object")
     if driver.records == "takes":
-        take_launch_problems(driver, row)
+        return take_launch_problems(driver, row)
     elif driver.records == "walks":
         walk_launch_problems(driver, row)
+        return None
     else:
         raise LaunchRefused(f"records {driver.records!r} is neither 'takes' nor 'walks'")
 
