@@ -1,4 +1,4 @@
-status: built, awaiting review
+status: built and folded, awaiting review
 head: see RESUME HERE. Base 98424794, branch gap4/w8c-spend-ruled, worktree /Users/javrodher/aegis-builds/gap4-w8c.
 
 # Lane w8c-spend-ruled: Gap Study round 4, Javier's spend-marker ruling
@@ -38,6 +38,15 @@ All 14 of test_spend_wiring's witnesses red by their own check, 0 collateral, 0 
 routing.json and tests/test_routing.py move from w1b-cp1-routing-batch to COPIED.d/w8c-spend-ruled.json; w1b's own fragment entry names the transfer.
 Edits without transfer, recorded in their owners' entries: tests/test_batch.py (w1b), tests/test_spend_wiring.py (w7c), prereg-draft.json (w7a).
 New: COPIED.d/w8c-spend-ruled.json, checks.d/w8c-spend-ruled.txt.
+
+## Fold before review (glitch-1b, Mon 12 Oct 2026; code commit 9b3e2ac9)
+
+- routing.json: only `spend_cap_markers.claude-code.source` changed. It now opens "Empty on purpose, ruled by Javier on 12 Oct 2026 ("spend markers: 1A 2A 3A", choice 1A; see spend_cap_markers_status, which reads RULED)" in place of "Open ... with a PENDING status", and keeps its glitch-f3, subscription-login and D4 A citations. A scripted check refused any other change to routing.json.
+- test_routing binds the new text: it cites Javier's words and RULED, opens with "Empty on purpose, ruled by Javier on 12 Oct 2026", and no longer says "PENDING status". Red against the previous commit's source, green now.
+- The comments in checks.d/w7c-spend-wiring.txt and checks.d/w1b-cp1-routing-batch.txt now say the batch line stayed green after the spend ruling and that w8c's two-line check carries the exact expectation; each turns red only once CP5 fills pin_profiles and rules its status. The edits are recorded in the w7c and w1b fragment entries. prereg-draft.json was regenerated through build_draft.py's writer.
+- Gate: test_routing 0 (276), test_spend_wiring 0 (25, 14 witnesses killed), test_batch 0 (118); routing --check 0; batch --check 1 on the two pin-profile lines; copy_manifest --check 0 (275 files, 43 fragments); freeze --check 0; build_draft --check 0 after the commit; the w7c, w1b and w8c checks.d batch lines 0.
+
+The two items listed below as left were fixed by this fold.
 
 ## Left as found, for the reviewer
 
