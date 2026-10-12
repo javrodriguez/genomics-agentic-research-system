@@ -258,9 +258,9 @@ def _g2(mod) -> list[str]:
         with mock.patch.object(costs, "month_turn_allowed", spy):
             b, w = run(mod, [row(1, h)], Ledger(snapshot(now=OUT_OF_HOLD)))
         p += _ran("G2-month", b, w, f"{h} outside the hold")
-        if seen != [(arm, at(OUT_OF_HOLD), None)]:
-            p.append(f"G2-month: {h}: costs.month_turn_allowed was called {seen}, want once with ({arm!r}, batch's "
-                     f"clock, the ledger's trim)")
+        if seen != [(arm, at(OUT_OF_HOLD), None)] * 2:   # at the block's gate, and again just before the launch (R1-3)
+            p.append(f"G2-month: {h}: costs.month_turn_allowed was called {seen}, want twice (gate, launch) with "
+                     f"({arm!r}, batch's clock, the ledger's trim)")
         with mock.patch.object(costs, "month_turn_allowed", lambda a, now, trimmed: False):
             b, w = run(mod, [row(1, h)], Ledger(snapshot(now=OUT_OF_HOLD)))
         p += _refused("G2-month", b, w, f"{h} when costs' own hold refuses", ("month-turn",))
@@ -274,6 +274,11 @@ def _g3(mod) -> list[str]:
         p += _refused("G3-walk", b, w, f"{h} after OpenAI's cap was spent", ("walk gate", costs.STOP_FOR_WORD))
         b, w = run(mod, [row(1, h)], Ledger(snapshot(walks=[walk(CODEX, tries=1000)])))
         p += _refused("G3-walk", b, w, f"{h} when the remaining tries project past a cap", ("walk gate",))
+        # W7C-R1-2: a start after the loop's clock would exclude every dollar spent ($300 OpenAI here)
+        b, w = run(mod, [row(1, h)], Ledger(snapshot(spend=[{"vendor": "openai", "at": "2026-10-10T00:00:00Z",
+                                                               "usd": "300"}]) | {"start": "2027-01-01T00:00:00Z"}),
+                   clock=lambda: at(OUT_OF_HOLD))
+        p += _refused("G3-walk", b, w, f"{h} when the ledger's start is after the loop's clock", ("start",))
         b, w = run(mod, [row(1, h)], Ledger(snapshot(walks=[dict(walk(CODEX), vendor="anthropic")])))
         p += _refused("G3-walk", b, w, f"{h} when the walk gate refuses its inputs", ("walk gate",))
         for decision, refused in ((costs.STOP_FOR_WORD, True), ("anything else", True), (costs.PROCEED, False)):
@@ -297,7 +302,18 @@ def _g4(mod) -> list[str]:
         for why, ledger in (("an unreadable ledger", Ledger(raises=OSError("ledger file gone"))),
                             ("a ledger that is no dict", Ledger(["not", "a", "snapshot"])),
                             ("a ledger missing its trim", Ledger({k: v for k, v in snapshot().items() if k != "trimmed"})),
-                            ("a ledger with an extra key", Ledger(dict(snapshot(), note="x")))):
+                            ("a ledger with an extra key", Ledger(dict(snapshot(), note="x"))),
+                            # W7C-R1-1 (MAJOR, money fail-open): an empty string or dict iterates as nothing spent
+                            ("walks as an empty string", Ledger(snapshot(walks=""))),
+                            ("walks as an empty dict", Ledger(snapshot(walks={}))),
+                            ("spend as an empty string", Ledger(snapshot(spend=""))),
+                            ("spend as an empty dict", Ledger(snapshot(spend={}))),
+                            ("spend as a tuple", Ledger(snapshot(spend=tuple(snapshot()["spend"])))),
+                            ("a spend element that is no dict", Ledger(snapshot(spend=["openai 300"]))),
+                            ("a walk that is no dict", Ledger(snapshot(walks=[1]))),
+                            ("start as an int", Ledger(snapshot() | {"start": 0})),
+                            ("start as a naive datetime", Ledger(snapshot() | {"start": datetime(2026, 10, 1)})),
+                            ("start as None", Ledger(snapshot() | {"start": None}))):
             b, w = run(mod, [row(1, h)], ledger)
             p += _refused("G4-ledger", b, w, f"{h}, {why}", ("ledger",))
         b, w = run(mod, [row(1, h)], Ledger(snapshot()), clock=lambda: datetime(2026, 10, 15, 12))   # no zone
@@ -336,6 +352,28 @@ def _g6(mod) -> list[str]:
                       ("month-turn",))
         b, w = run(mod, [row(1, h)], Ledger(snapshot(now=IN_HOLD)), clock=lambda: at(OUT_OF_HOLD))
         p += _ran("G6-clock", b, w, f"{h}: the ledger says inside the hold, batch's clock says 15 Oct")
+    # W7C-R1-3: the clock passes 23:30 UTC Sat 31 Oct between the block's gate and a paid launch
+    for rows_, paid_slot in (([row(1, CODEX)], 1), ([row(1, CLAUDE), row(2, GEMINI), row(3, CLAUDE)], 2)):
+        ticks = [at("2026-10-31T23:29:59Z")]
+
+        def ticking():
+            reading = ticks[0]
+            ticks[0] = at("2026-10-31T23:30:30Z")   # every later reading is past 23:30
+            return reading
+        b, w = run(mod, copy.deepcopy(rows_), Ledger(snapshot()), clock=ticking)
+        launched = [e[2] for e in kinds(w, "launch")]
+        mine = [o for o in b.outcomes if o["slot"] == paid_slot]
+        if paid_slot in launched:
+            p.append(f"G6-clock: slot {paid_slot} launched after 23:30 UTC 31 Oct (gated at 23:29:59): {w.events}")
+        if [(o["state"], o["drive_started"]) for o in mine] != [(labels4.FAILED, False)]:
+            p.append(f"G6-clock: the held launch is not committed failed with drive_started false: {mine}")
+        if not isinstance(b.stopped, dict) or b.stopped.get("state") != labels4.BLOCKED \
+                or "month-turn" not in str(b.stopped.get("reason")) or b.stopped.get("slot") != paid_slot:
+            p.append(f"G6-clock: the loop did not stop blocked on slot {paid_slot}'s month-turn hold: {b.stopped}")
+        if [o["slot"] for o in b.outcomes] != [r["slot"] for r in rows_]:
+            p.append(f"G6-clock: not every registered take of the block was committed: {b.outcomes}")
+        if any(s > paid_slot for s in launched):
+            p.append(f"G6-clock: a take after the held one was launched: {launched}")
     calls = []
     b, w = run(mod, [row(1, CODEX)], Ledger(snapshot()), clock=lambda: calls.append(1) or at(OUT_OF_HOLD))
     if not calls:
@@ -496,6 +534,11 @@ WITNESSES = {
     "ledger-clock": ((("            allowed = costs.month_turn_allowed(arm, now, snap[\"trimmed\"])",
                        "            allowed = costs.month_turn_allowed(arm, snap[\"now\"], snap[\"trimmed\"])"),),
                      "batch", "G6-clock"),
+    "shape-unchecked": ((("    p = ledger_shape_problems(snap)\n", "    p = []\n"),), "batch", "G4-ledger"),
+    "start-after-clock-admitted": ((("        if costs.utc(snap[\"start\"]) > costs.utc(now):",
+                                     "        if False:"),), "batch", "G3-walk"),
+    "launch-recheck-dropped": ((("        if bills_money(row):\n            why = hold_problem(",
+                                 "        if False:\n            why = hold_problem("),), "batch", "G6-clock"),
     "paid-arm-renamed": ((("    \"codex\": {\"arm\": \"O\", \"vendor\": \"openai\"},",
                            "    \"codex\": {\"arm\": \"C\", \"vendor\": \"openai\"},"),), "routing", "B1-names"),
 }
@@ -565,13 +608,23 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_ledger_clock(self):
         self.kill("ledger-clock")
 
+    def test_witness_shape_unchecked(self):
+        self.kill("shape-unchecked")
+
+    def test_witness_start_after_clock_admitted(self):
+        self.kill("start-after-clock-admitted")
+
+    def test_witness_launch_recheck_dropped(self):
+        self.kill("launch-recheck-dropped")
+
     def test_witness_paid_arm_renamed(self):
         self.kill("paid-arm-renamed")
 
     def test_the_witnesses_are_named_and_bound(self):
         self.assertEqual(sorted(WITNESSES), sorted([
             "gate-never-called", "month-check-dropped", "walk-check-dropped", "claude-gated", "no-ledger-passes",
-            "gate-after-register", "empty-paid-list-admitted", "paid-arm-renamed", "spend-status-ungated", "ledger-clock"]))
+            "gate-after-register", "empty-paid-list-admitted", "paid-arm-renamed", "spend-status-ungated", "ledger-clock",
+            "shape-unchecked", "start-after-clock-admitted", "launch-recheck-dropped"]))
         self.assertTrue(all(w[2] in CHECKS for w in WITNESSES.values()))
 
 
