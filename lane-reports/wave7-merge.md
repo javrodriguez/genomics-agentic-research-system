@@ -83,4 +83,34 @@ Checks on the merge head 611ea72c (Mac, Python 3.13.2, each behind `mac_slot.py 
 
 Not run here: the whole test_scaffold, test_pipeline and run_checks; athena's.
 
-RESUME HERE: merge head 611ea72c8c8b25acc5f097456e144a54605647e3; athena run_checks owed (orchestrator)
+Superseded by the addendum below.
+
+## Addendum: merge 5 (Mon 12 Oct 2026, 02:08 to 02:10 EDT, clock read with `date`)
+
+Asked by glitch-1b on head 818ccb70. The lane branched from 818ccb70; the tip equalled the assigned sha and the code head is its ancestor.
+
+| # | Lane | Tip merged | Code head | Close ruling | Merge commit | Conflicts |
+|---|---|---|---|---|---|---|
+| 5 | gap4/w8a-walk-layout | 82a2bbc7 | 98c3a3a2 | W8A-close-1 and W8A-close-2 (`plans/gap-study-round-4/w8a-review-r1-2026-10-12.md`) | 765cb16a | none |
+
+Clean merge (20 files); no resolution needed.
+
+Checks on the merge head 765cb16a (Mac, Python 3.13.2, each behind `mac_slot.py light-ok` and `timeout -s INT 120`):
+
+| Check | Exit | Result |
+|---|---|---|
+| copy_manifest.py --check | 0 | 273 files from 42 fragments |
+| freeze.py --check | 0 | 273 owned paths checked; no takes or freeze performed |
+| walk_register.py --check | 0 | 0 walks registered; nothing here is evidence about any walk |
+| routing.py --check | 0 | routing.json: 22 rows, 3 annotations, sound |
+| batch.py --check | 1 (expected) | the same three not-ready lines: pin_profiles empty, pin_profiles_status and spend_cap_markers_status not ruled (PENDING) |
+| probes4.py --check | 0 | 9 tasks, 18 halves, 169 rows, 1690 cells graded, 0 defects, 0 problems |
+| tests/test_walk_layout.py | 0 | Ran 14, OK, 0 skipped |
+| tests/test_rehearsals.py | 0 | Ran 9, OK, 0 skipped |
+| tests/test_spend_wiring.py | 0 | Ran 25, OK |
+| tests/test_walk_wiring.py | 0 | Ran 20, OK |
+| tests/test_drive_commit.py | 0 | Ran 31, OK |
+
+Not run here: the whole test_scaffold, test_pipeline (w8a edited it) and run_checks; athena's.
+
+RESUME HERE: merge head 765cb16a30fad54aaf06b40e9c750280ccf46a16; athena run_checks owed (orchestrator)
