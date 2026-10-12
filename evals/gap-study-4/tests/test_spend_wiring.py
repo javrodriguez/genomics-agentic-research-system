@@ -17,6 +17,8 @@ batch.py called them; and routing.py accepted an empty spend-cap list for any ha
               any harness but the no-money one; claude-code's may stay empty
   B1-names    routing's paid harnesses are the seam's names (box/run_take.py), their arms the draft's
               (build_draft.HARNESSES), their vendors costs.CAPS's; the no-money harness is the seam's claude-code
+  G6-clock    the hold reads batch's OWN clock (UTC, at check time), never the ledger's `now` (glitch-1b, Q-w7c-1): a
+              ledger saying "before the hold" while the clock is inside it is refused, and the converse runs
   P3-pending  spend_cap_markers_status and pin_profiles_status stay PENDING, and batch.py refuses to start exactly as
               it did at 82cf6ae9 (the same three lines, exit 1)
 
@@ -36,6 +38,7 @@ import sys
 import tempfile
 import types
 import unittest
+from datetime import datetime, timezone
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
@@ -146,15 +149,28 @@ class Driver:
         self.world.log("remove", cid)
 
 
-def run(mod, rows, ledger, serial=False, table=None):
-    """One loop of `mod` (batch.py, or a witness of it) on in-memory doubles; the route and annotations are stubs."""
+def at(text):
+    """An aware UTC clock reading, from the same strings the ledger carries."""
+    return datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+def run(mod, rows, ledger, serial=False, table=None, clock=None):
+    """One loop of `mod` (batch.py, or a witness of it) on in-memory doubles; the route and annotations are stubs.
+    `clock` is batch's own clock; when none is given it reads the same moment as the ledger's `now` (G6-clock is the
+    check that sets the two apart)."""
     w = tb.World()
+    if clock is None:
+        snap = getattr(ledger, "snap", None)
+        moment = at(snap["now"]) if isinstance(snap, dict) and isinstance(snap.get("now"), str) \
+            and snap["now"].endswith("Z") else at(OUT_OF_HOLD)
+        clock = lambda: moment  # noqa: E731
     if isinstance(ledger, Ledger):
         ledger.world = w
     t = table or paid_table()
     b = mod.Batch(Driver(w, mod, t), tb.FakeRepo(w), tb.FakeWindow(w), table=t, serial=serial,
                   route_fn=lambda records, table: {"route": labels4.GRADED},
-                  annotate_fn=lambda records, table: {"events": [], "mask": False}, ledger=ledger)
+                  annotate_fn=lambda records, table: {"events": [], "mask": False}, ledger=ledger,
+                  clock=clock)
     b.run(rows)
     return b, w
 
@@ -242,9 +258,9 @@ def _g2(mod) -> list[str]:
         with mock.patch.object(costs, "month_turn_allowed", spy):
             b, w = run(mod, [row(1, h)], Ledger(snapshot(now=OUT_OF_HOLD)))
         p += _ran("G2-month", b, w, f"{h} outside the hold")
-        if seen != [(arm, OUT_OF_HOLD, None)]:
-            p.append(f"G2-month: {h}: costs.month_turn_allowed was called {seen}, want once with ({arm!r}, the "
-                     f"ledger's now, its trim)")
+        if seen != [(arm, at(OUT_OF_HOLD), None)]:
+            p.append(f"G2-month: {h}: costs.month_turn_allowed was called {seen}, want once with ({arm!r}, batch's "
+                     f"clock, the ledger's trim)")
         with mock.patch.object(costs, "month_turn_allowed", lambda a, now, trimmed: False):
             b, w = run(mod, [row(1, h)], Ledger(snapshot(now=OUT_OF_HOLD)))
         p += _refused("G2-month", b, w, f"{h} when costs' own hold refuses", ("month-turn",))
@@ -284,7 +300,7 @@ def _g4(mod) -> list[str]:
                             ("a ledger with an extra key", Ledger(dict(snapshot(), note="x")))):
             b, w = run(mod, [row(1, h)], ledger)
             p += _refused("G4-ledger", b, w, f"{h}, {why}", ("ledger",))
-        b, w = run(mod, [row(1, h)], Ledger(snapshot(now="2026-10-15T12:00:00")))   # a clock with no zone
+        b, w = run(mod, [row(1, h)], Ledger(snapshot()), clock=lambda: datetime(2026, 10, 15, 12))   # no zone
         p += _refused("G4-ledger", b, w, f"{h}, a clock the hold cannot read", ("month-turn",))
     b, w = run(mod, [row(1, "fake-paid")], Ledger(snapshot()))
     p += _refused("G4-ledger", b, w, "a paid harness with no arm", ("fake-paid", "no arm"))
@@ -309,6 +325,21 @@ def _g5(mod) -> list[str]:
     order = [e[1] for e in w.events if e[1] in ("ledger-read", "register")]
     if order != ["ledger-read", "register", "ledger-read", "register"]:
         p.append(f"G5-order: the ledger is not read before each block's registration: {order}")
+    return p
+
+
+def _g6(mod) -> list[str]:
+    p = []
+    for h in PAID:
+        b, w = run(mod, [row(1, h)], Ledger(snapshot(now=OUT_OF_HOLD)), clock=lambda: at(IN_HOLD))
+        p += _refused("G6-clock", b, w, f"{h}: the ledger says 15 Oct, batch's clock is inside the hold",
+                      ("month-turn",))
+        b, w = run(mod, [row(1, h)], Ledger(snapshot(now=IN_HOLD)), clock=lambda: at(OUT_OF_HOLD))
+        p += _ran("G6-clock", b, w, f"{h}: the ledger says inside the hold, batch's clock says 15 Oct")
+    calls = []
+    b, w = run(mod, [row(1, CODEX)], Ledger(snapshot()), clock=lambda: calls.append(1) or at(OUT_OF_HOLD))
+    if not calls:
+        p.append("G6-clock: batch's clock was never read for a paid block")
     return p
 
 
@@ -395,7 +426,7 @@ def _p3(mod) -> list[str]:
     return p
 
 
-CHECKS = {"G1-claude": _g1, "G2-month": _g2, "G3-walk": _g3, "G4-ledger": _g4, "G5-order": _g5,
+CHECKS = {"G1-claude": _g1, "G2-month": _g2, "G3-walk": _g3, "G4-ledger": _g4, "G5-order": _g5, "G6-clock": _g6,
           "R1-nonempty": _r1, "B1-names": _b1, "P3-pending": _p3}
 CHECKS = {k: guarded(k, f) for k, f in CHECKS.items()}
 
@@ -415,6 +446,9 @@ class TestTheMoneyGate(unittest.TestCase):
 
     def test_g5_the_gate_holds_the_whole_block_before_registration(self):
         self.assertEqual(CHECKS["G5-order"](batch), [])
+
+    def test_g6_the_hold_reads_batchs_own_clock(self):
+        self.assertEqual(CHECKS["G6-clock"](batch), [])
 
 
 class TestTheSpendLists(unittest.TestCase):
@@ -437,7 +471,7 @@ class TestStillPending(unittest.TestCase):
 WITNESSES = {
     "gate-never-called": ((("            if self._money_gate(block):                     # W7C: before the block is "
                             "registered\n                return self.outcomes\n", ""),), "batch", "G2-month"),
-    "month-check-dropped": ((("            allowed = costs.month_turn_allowed(arm, snap[\"now\"], snap[\"trimmed\"])",
+    "month-check-dropped": ((("            allowed = costs.month_turn_allowed(arm, now, snap[\"trimmed\"])",
                               "            allowed = True"),), "batch", "G2-month"),
     "walk-check-dropped": ((("    if gate.get(\"decision\") != costs.PROCEED:",
                              "    if gate.get(\"decision\") == \"never\":"),), "batch", "G3-walk"),
@@ -459,6 +493,9 @@ WITNESSES = {
                                    "        if False"),), "routing", "R1-nonempty"),
     "spend-status-ungated": ((("    if is_pending(table.get(\"spend_cap_markers_status\", PENDING)):",
                                "    if False:"),), "batch", "P3-pending"),
+    "ledger-clock": ((("            allowed = costs.month_turn_allowed(arm, now, snap[\"trimmed\"])",
+                       "            allowed = costs.month_turn_allowed(arm, snap[\"now\"], snap[\"trimmed\"])"),),
+                     "batch", "G6-clock"),
     "paid-arm-renamed": ((("    \"codex\": {\"arm\": \"O\", \"vendor\": \"openai\"},",
                            "    \"codex\": {\"arm\": \"C\", \"vendor\": \"openai\"},"),), "routing", "B1-names"),
 }
@@ -525,13 +562,16 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_spend_status_ungated(self):
         self.kill("spend-status-ungated")
 
+    def test_witness_ledger_clock(self):
+        self.kill("ledger-clock")
+
     def test_witness_paid_arm_renamed(self):
         self.kill("paid-arm-renamed")
 
     def test_the_witnesses_are_named_and_bound(self):
         self.assertEqual(sorted(WITNESSES), sorted([
             "gate-never-called", "month-check-dropped", "walk-check-dropped", "claude-gated", "no-ledger-passes",
-            "gate-after-register", "empty-paid-list-admitted", "paid-arm-renamed", "spend-status-ungated"]))
+            "gate-after-register", "empty-paid-list-admitted", "paid-arm-renamed", "spend-status-ungated", "ledger-clock"]))
         self.assertTrue(all(w[2] in CHECKS for w in WITNESSES.values()))
 
 

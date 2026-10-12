@@ -166,7 +166,9 @@ month's last day until Javier's "caps trimmed" is recorded) and costs.walk_gate 
 what the remaining tries project, against the $260 / $140 / $400 caps), are called by the loop itself, never left to
 a driver. Before each block is registered, every row of the block whose harness bills money per call (any harness
 but routing.NO_MONEY_HARNESSES; routing.PAID_HARNESSES names each one's arm) is put through both, on one reading of
-the spend ledger (`ledger.read()`, exactly LEDGER_KEYS: now, walks, spend, start, trimmed). When either refuses, or
+the spend ledger (`ledger.read()`, exactly LEDGER_KEYS: now, walks, spend, start, trimmed). The hold reads the
+loop's OWN clock (`clock()`, aware UTC, read at check time; injectable for tests), never the ledger's `now`, which
+may be recorded but never decides the hold (glitch-1b's ruling on Q-w7c-1, 12 Oct 2026). When either refuses, or
 the ledger cannot be read or is not that shape, or the harness has no arm, nothing of the block is registered or
 launched: the loop stops (`stopped`, state blocked) with the named reason, for Javier's word, and the frozen order is
 kept (the block's Claude rows wait too). Nothing is committed, so a restart puts the block through the gate again. A
@@ -216,6 +218,7 @@ from __future__ import annotations
 import argparse
 import collections
 import concurrent.futures
+import datetime
 import json
 import os
 import signal
@@ -402,10 +405,16 @@ def bills_money(row: dict) -> bool:
     return row["agent"]["harness"] not in routing.NO_MONEY_HARNESSES
 
 
-def money_gate_problems(rows: list[dict], ledger) -> list[str]:
+def utc_now() -> datetime.datetime:
+    """W7C (Q-w7c-1): the loop's own clock, aware UTC."""
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def money_gate_problems(rows: list[dict], ledger, clock=utc_now) -> list[str]:
     """W7C (THE MONEY GATE): why these rows may not be launched now (empty when they may). Rows that bill no money are
     never put through it: with none that bills money the ledger is not read and neither check is called. Otherwise one
-    reading of the ledger feeds costs.month_turn_allowed, per row with its harness's arm, and costs.walk_gate, once;
+    reading of the ledger feeds costs.month_turn_allowed, per row with its harness's arm and the loop's own clock
+    (`clock()`, read once here; never the ledger's `now`, Q-w7c-1), and costs.walk_gate, once;
     anything but an explicit allow from each, or a ledger that cannot be read or is not exactly LEDGER_KEYS, refuses."""
     paid = [r for r in rows if bills_money(r)]
     if not paid:
@@ -421,6 +430,10 @@ def money_gate_problems(rows: list[dict], ledger) -> list[str]:
     if not isinstance(snap, dict) or set(snap) != set(LEDGER_KEYS):
         got = sorted(snap) if isinstance(snap, dict) else type(snap).__name__
         return [f"the spend ledger's reading is not exactly {list(LEDGER_KEYS)}: {got}"]
+    try:
+        now = clock()
+    except Exception as e:  # noqa: BLE001 - a clock that cannot be read refuses
+        now = f"<clock unreadable: {type(e).__name__}: {e}>"
     p = []
     for r in paid:
         harness = r["agent"]["harness"]
@@ -429,11 +442,11 @@ def money_gate_problems(rows: list[dict], ledger) -> list[str]:
             p.append(f"slot {r['slot']}: harness {harness!r} bills money and has no arm in routing.PAID_HARNESSES")
             continue
         try:
-            allowed = costs.month_turn_allowed(arm, snap["now"], snap["trimmed"])
+            allowed = costs.month_turn_allowed(arm, now, snap["trimmed"])
         except Exception as e:  # noqa: BLE001 - a clock or trim the hold cannot read refuses
             allowed = f"{type(e).__name__}: {e}"
         if allowed is not True:
-            p.append(f"slot {r['slot']}: arm {arm} ({harness}): the month-turn hold refuses at {snap['now']!r} "
+            p.append(f"slot {r['slot']}: arm {arm} ({harness}): the month-turn hold refuses at {now!r} (the loop's clock) "
                      f"(costs.month_turn_allowed: {allowed}): no OpenAI or Google take until Javier's 'caps trimmed' "
                      f"is recorded")
     try:
@@ -450,9 +463,11 @@ def money_gate_problems(rows: list[dict], ledger) -> list[str]:
 
 class Batch:
     def __init__(self, driver, repo, window, *, table: dict | None = None, serial: bool = False,
-                 route_fn=None, annotate_fn=None, history: list | None = None, ledger=None):
+                 route_fn=None, annotate_fn=None, history: list | None = None, ledger=None,
+                 clock=utc_now):
         self.driver, self.repo, self.window = driver, repo, window
         self.ledger = ledger                 # W7C: the spend ledger (THE MONEY GATE), read before each paid block
+        self.clock = clock                   # W7C (Q-w7c-1): the loop's own UTC clock, the one the hold reads
         self.table = table if table is not None else routing.load_table()
         self.route_fn = route_fn or routing.route
         self.annotate_fn = annotate_fn or routing.annotate
@@ -802,7 +817,7 @@ class Batch:
     def _money_gate(self, block) -> bool:
         """W7C (THE MONEY GATE): True when the block may not be launched. Nothing of it is registered or launched; the
         loop stops blocked, naming the first row that bills money and every reason, for Javier's word."""
-        problems = money_gate_problems([r for r, _ in block], self.ledger)
+        problems = money_gate_problems([r for r, _ in block], self.ledger, self.clock)
         if not problems:
             return False
         row, attempt = next((r, a) for r, a in block if bills_money(r))
