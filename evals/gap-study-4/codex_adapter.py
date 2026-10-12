@@ -109,29 +109,31 @@ def read_stream(text: str) -> dict:
     usage         turn.completed.usage's USAGE_KEYS, or None when the turn has no turn.completed
     completed     how many turn.completed records; failed: how many turn.failed records
     tool_ids      the ids of the completed tool items, in order
-    undecoded     lines that were not JSON (a cut stream's last line); a decoded record off the tables refuses
+    undecoded     1 when the stream's last non-blank line is not JSON (a cut stream), else 0; a line that is not
+                  JSON anywhere before it refuses (W11A-R1-10), and so does a decoded record off the tables
     """
     thread_ids, said, output, api, usage, completed, failed, tools, bad = [], [], False, [], None, 0, 0, [], 0
-    for raw in (text or "").splitlines():
-        raw = raw.strip()
-        if not raw:
-            continue
+    lines = [raw.strip() for raw in (text or "").splitlines() if raw.strip()]
+    for n, raw in enumerate(lines, 1):
         try:
             rec = json.loads(raw)
         except ValueError:
-            bad += 1
+            if n != len(lines):
+                raise StreamError(f"line {n} of {len(lines)} is not JSON: only a cut stream's last line may be") from None
+            bad = 1
             continue
         try:
             t, it = tc.check_record(rec)
         except tc.ShapeError as e:
             raise StreamError(f"the stream holds a record off the pre-registered tables: {e}") from None
-        if t in tc.ERROR_EVENTS:
-            api.append({"status": None, "type": t, "text": tc.error_text(rec)})
-        if t == tc.TURN_FAILED:
+        if t == tc.ERROR:
+            api.append({"status": None, "type": t, "text": rec["message"]})
+        elif t == tc.TURN_FAILED:
+            api.append({"status": None, "type": t, "text": rec["error"]["message"]})
             failed += 1
         elif t == tc.THREAD_STARTED:
             tid = rec["thread_id"]
-            if not isinstance(tid, str) or not _THREAD_ID.fullmatch(tid):
+            if not _THREAD_ID.fullmatch(tid):
                 raise StreamError("thread.started carries a thread id off its shape")
             if tid not in thread_ids:
                 thread_ids.append(tid)
@@ -149,9 +151,9 @@ def read_stream(text: str) -> dict:
             usage = vals
         elif t == tc.ITEM_COMPLETED:
             item = rec["item"]
-            if it == tc.AGENT_MESSAGE and isinstance(item.get("text"), str) and item["text"]:
+            if it == tc.AGENT_MESSAGE and item["text"]:
                 said.append(item["text"])
-            if it in tc.OUTPUT_ITEM_TYPES and (it != tc.AGENT_MESSAGE or (item.get("text") or "").strip()):
+            if it in tc.OUTPUT_ITEM_TYPES and (it != tc.AGENT_MESSAGE or item["text"].strip()):
                 output = True
             if it in tc.TOOL_ITEM_TYPES:
                 tools.append(item["id"])
@@ -258,7 +260,7 @@ class CodexAdapter(aa.AgentAdapter):
                  stream_path_for, rollout_for, counters_for, clock, caller_env=None):
         super().__init__()
         mode = pin.get("permission_mode") if isinstance(pin, dict) else None
-        if not isinstance(mode, str) or not mode or rt._is_pending(mode) or mode not in MODE_FLAGS:
+        if not isinstance(mode, str) or mode not in MODE_FLAGS:      # PENDING and the empty word are not keys
             raise rt.NotReady(f"the take's routing pin holds no pre-registered Codex mode ({mode!r}): no take runs "
                               f"under a mode nobody pinned")
         for what, fn in (("stream_path_for", stream_path_for), ("rollout_for", rollout_for),

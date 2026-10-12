@@ -47,7 +47,9 @@ sys.path.
 
 from __future__ import annotations
 
+import ast
 import contextlib
+import io
 import json
 import os
 import re
@@ -155,8 +157,9 @@ def labels() -> dict:
 class FakeRuntime:
     """Answers the adapter's execs: `codex --version` and a turn (`codex exec --json ...`), from a queue of streams."""
 
-    def __init__(self, streams, *, version_out=f"codex-cli {VERSION}\n", exit_codes=None, timeout_at=None):
-        self.streams, self.exit_codes = list(streams), list(exit_codes or [])
+    def __init__(self, streams, *, version_out=f"codex-cli {VERSION}\n", exit_codes=None, timeout_at=None,
+                 version_code=0):
+        self.streams, self.exit_codes, self.version_code = list(streams), list(exit_codes or []), version_code
         self.version_out, self.timeout_at = version_out, timeout_at
         self.calls: list = []
 
@@ -164,7 +167,7 @@ class FakeRuntime:
         a = list(argv)
         self.calls.append(a)
         if a[-2:] == ["codex", "--version"]:
-            return rt.Completed(0, self.version_out, "")
+            return rt.Completed(self.version_code, self.version_out, "")
         if a[:2] == ["docker", "exec"] and "codex" in a and a[a.index("codex") + 1:a.index("codex") + 3] == [
                 "exec", "--json"]:
             n = len(turn_calls(self))
@@ -271,6 +274,7 @@ def s1_event(mod, p):
         out.append(f"{p}: the event table is {mod.EVENT_TYPES}, not D8's {D8_EVENTS}")
     out += _both_refuse(mod, p, lines("unknown-event.jsonl")[2], "an item.updated event")
     out += _both_refuse(mod, p, json.dumps({"type": "session.configured"}), "an event type D8 does not name")
+    out += _both_refuse(mod, p, "not json", "a line that is not JSON")
     return out
 
 
@@ -323,6 +327,12 @@ def p1_view(mod, p):
     got = refusal(lambda: view_events(mod, "file-delete.jsonl"), tv.ViewError)
     if got:
         out.append(f"{p}: a file_change delete {got}")
+    raws = [it.raw_type for ln in lines("turn1-tools.jsonl") for it in mod.CodexParser().items(ln)]
+    if raws != ["thread.started", "turn.started", "item.completed:reasoning", "item.started:command_execution",
+                "item.completed:command_execution", "item.completed:file_change", "item.completed:file_change",
+                "item.completed:file_change", "item.completed:file_change", "item.completed:agent_message",
+                "turn.completed"]:
+        out.append(f"{p}: the parser's raw types read {raws}")
     if "codex" in tv.PARSERS:
         out.append(f"{p}: the parser was registered in transcript_view.PARSERS")
     return out
@@ -390,7 +400,7 @@ def a4_argv(mod, p):
             out.append(f"{p}: the {name} turn's argv opens {a[:5]}")
     if refusal(lambda: mod.argv("-x", model=MODEL, mode=MODE, session_id=TID, first=True), mod.StreamError):
         out.append(f"{p}: a line starting with '-' was not refused")
-    for bad in ("PENDING", "default", None):
+    for bad in ("PENDING", "default", "", None, ["bypass"]):
         got = refusal(lambda: adapter(mod, FakeRuntime([]), mode=bad), rt.NotReady)
         if got:
             out.append(f"{p}: an adapter under mode {bad!r} {got}")
@@ -575,6 +585,12 @@ def b2_thread(mod, p):
         if got:
             out.append(f"{p}: argv for a later turn with session id {bad!r} {got}")
     second = jl(T_START, TURN_START, say("two"), DONE)
+    a, box = take_with(mod, [jl(T_START, T_START, TURN_START, say("one"), DONE), second])
+    a.turn("one", first=True, budget_s=60)
+    if a.turn_records[0]["thread_ids"] != [TID]:
+        out.append(f"{p}: one thread named twice reads {a.turn_records[0]['thread_ids']}")
+    if refusal(lambda: a.turn("two", first=False, budget_s=60), mod.StreamError) is None or len(turn_calls(box)) != 2:
+        out.append(f"{p}: turn 1 naming its one thread twice did not let turn 2 resume it")
     for what, first in (("no thread.started", jl(TURN_START, say("one"), DONE)),
                         ("two thread ids", jl(T_START, {"type": "thread.started", "thread_id": "synthetic-thread-0009"},
                                               TURN_START, say("one"), DONE))):
@@ -583,6 +599,15 @@ def b2_thread(mod, p):
         got = refusal(lambda: a.turn("two", first=False, budget_s=60), mod.StreamError)
         if got or len(turn_calls(box)) != 1:
             out.append(f"{p}: turn 1 with {what}: turn 2 {got or 'refused'} after {len(turn_calls(box))} exec(s)")
+    a, box = take_with(mod, [jl(T_START, TURN_START, say("one"), DONE), jl(TURN_START, say("two"), DONE)])
+    a.turn("one", first=True, budget_s=60)
+    try:
+        a.turn("two", first=False, budget_s=60)
+        refused = False
+    except mod.StreamError:
+        refused = True
+    if refused or len(turn_calls(box)) != 2:
+        out.append(f"{p}: a later turn whose stream names no thread was refused (Q-w11a-5: it is accepted)")
     a, box = take_with(mod, [jl({"type": "thread.started", "thread_id": "--last"}, TURN_START, say("one"), DONE),
                              second])
     got = refusal(lambda: a.turn("one", first=True, budget_s=60), mod.StreamError)
@@ -635,6 +660,15 @@ TYPE_BREAKS = (
                                                       "changes": [{"path": "a", "kind": "add"}]}}),
     ("server 5", {"type": "item.started", "item": {"id": "i1", "type": "mcp_tool_call", "server": 5, "tool": "t"}}),
     ("a record not an object", [1]),
+    ("aggregated_output 5", {"type": "item.completed", "item": {"id": "i1", "type": "command_execution",
+                                                                 "command": "ls", "aggregated_output": 5}}),
+    ("tool 5", {"type": "item.started", "item": {"id": "i1", "type": "mcp_tool_call", "server": "s", "tool": 5}}),
+    ("changes 5", {"type": "item.completed", "item": {"id": "i1", "type": "file_change", "changes": 5}}),
+    ("a change 5", {"type": "item.completed", "item": {"id": "i1", "type": "file_change", "changes": [5]}}),
+    ("a change kind [1]", {"type": "item.completed", "item": {"id": "i1", "type": "file_change",
+                                                               "changes": [{"path": "a", "kind": [1]}]}}),
+    ("an event type [1]", {"type": [1]}),
+    ("an item type [1]", {"type": "item.completed", "item": {"id": "i1", "type": [1]}}),
 )
 
 
@@ -723,6 +757,13 @@ def b4_rollout(mod, p):
                             ctx(model=MODEL, approval_policy="never")), seen=1)
     if r["init"] != good:
         out.append(f"{p}: the turn_contexts before `seen` were read: {r}")
+    r = mod.read_rollout(jl(ROLLOUT_META_OK, ctx(model=MODEL, approval_policy="on-request"),
+                            ctx(model=MODEL, approval_policy="never")), seen=0)
+    if r["init"] != good:
+        out.append(f"{p}: of one turn's two turn_contexts, the last is not the one read: {r['init']}")
+    r = mod.read_rollout(jl(ROLLOUT_META_OK, "", "   ", ctx(model=MODEL, approval_policy="never")), seen=0)
+    if r["init"] != good:
+        out.append(f"{p}: a rollout with blank lines reads {r}")
     r = mod.read_rollout(jl(ROLLOUT_META_OK), seen=0)
     if r["init"] is not None or r["turn_contexts"] != 0:
         out.append(f"{p}: a rollout with no turn_context reads {r}")
@@ -752,6 +793,7 @@ def b6_empty(mod, p):
     """W11A-R1-6: an empty or absent model and an empty line, at argv and at the adapter's making."""
     out = []
     for what, kw in (("model ''", {"line": "x", "model": ""}), ("model None", {"line": "x", "model": None}),
+                     ("model 5", {"line": "x", "model": 5}), ("line 5", {"line": 5, "model": MODEL}),
                      ("line ''", {"line": "", "model": MODEL}), ("line None", {"line": None, "model": MODEL})):
         got = refusal(lambda: mod.argv(kw["line"], model=kw["model"], mode=MODE, session_id=TID, first=True),
                       mod.StreamError)
@@ -838,6 +880,60 @@ def b10_cut(mod, p):
     return out
 
 
+@guarded("B9-record", CA_API)
+def b9_record(mod, p):
+    """The turn record and the TurnResult, field by field, for one clean turn and one failed turn."""
+    out = []
+    a, box = take_with(mod, [fixture("turn1-tools.jsonl"), fixture("turn-failed.jsonl")], exit_codes=[0, 1])
+    t1 = a.turn("one", first=True, budget_s=60)
+    t2 = a.turn("two", first=False, budget_s=60)
+    want = [{"n": 1, "first": True, "exit_code": 0, "timed_out": False, "thread_ids": [TID], "usage": USAGE,
+             "tool_ids": ["item_1", "item_2"], "completed": 1, "failed": 0, "undecoded": 0, "why_no_init": None,
+             "shapes_source": mod.SHAPES_SOURCE},
+            {"n": 2, "first": False, "exit_code": 1, "timed_out": False, "thread_ids": [TID], "usage": None,
+             "tool_ids": [], "completed": 0, "failed": 1, "undecoded": 0,
+             "why_no_init": a.turn_records[1]["why_no_init"], "shapes_source": mod.SHAPES_SOURCE}]
+    if a.turn_records != want or not a.turn_records[1]["why_no_init"]:
+        out.append(f"{p}: the turn records read {a.turn_records}")
+    if (t1.text, t1.exit_code, t1.started_at, t1.ended_at) != ("Synthetic reply one.", 0, 101.0, 102.0):
+        out.append(f"{p}: turn 1's result reads {(t1.text, t1.exit_code, t1.started_at, t1.ended_at)}")
+    if not (t1.stream_path.endswith("turn-1.jsonl") and t2.stream_path.endswith("turn-2.jsonl")):
+        out.append(f"{p}: the stream paths are {t1.stream_path}, {t2.stream_path}")
+    if Path(t1.stream_path).read_text(encoding="utf-8") != fixture("turn1-tools.jsonl"):
+        out.append(f"{p}: turn 1's stream file is not the exec's stdout")
+    if (t2.text, t2.agent_output, len(t2.api_errors), t2.init) != ("", False, 2, None):
+        out.append(f"{p}: turn 2's result reads {(t2.text, t2.agent_output, t2.api_errors, t2.init)}")
+    cut = jl(T_START, TURN_START, say("x")) + '{"type": "turn.compl\udcff'
+    a2, _ = take_with(mod, [cut])
+    t = a2.turn("one", first=True, budget_s=60)
+    if a2.turn_records[0]["undecoded"] != 1 or "\udcff" not in Path(t.stream_path).read_text(
+            encoding="utf-8", errors="surrogateescape"):
+        out.append(f"{p}: a cut last line holding an undecodable byte reads {a2.turn_records[0]['undecoded']}")
+    if a._start({"row_id": 1}) != {"container_id": TAKE} or a.end_take() is not None:
+        out.append(f"{p}: the take's start or end is off")
+    return out
+
+
+@guarded("B11-version", CA_API)
+def b11_version(mod, p):
+    """The version exec: its exit code and its form are read, and it runs once per adapter."""
+    out = []
+    box = FakeRuntime([])
+    a = adapter(mod, box)
+    if (a.version(), a.version()) != (VERSION, VERSION) or len(box.calls) != 1:
+        out.append(f"{p}: two version reads made {len(box.calls)} exec(s)")
+    if box.calls and box.calls[0][-2:] != ["codex", "--version"]:
+        out.append(f"{p}: the version exec is {box.calls[0]}")
+    if mod.CodexAdapter.name != rt.CODEX or mod.NAME != "codex":
+        out.append(f"{p}: the adapter is named {mod.CodexAdapter.name!r}")
+    for what, kw in (("exit 1", {"version_code": 1}), ("a trailing word", {"version_out": f"codex-cli {VERSION} x"}),
+                     ("another client", {"version_out": f"claude {VERSION}"}), ("no stdout", {"version_out": None})):
+        got = refusal(lambda: adapter(mod, FakeRuntime([], **kw)).version(), rt.NotReady)
+        if got:
+            out.append(f"{p}: a version exec with {what} {got}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheShapes(unittest.TestCase):
     def test_s1_an_unknown_event_is_refused(self):
@@ -905,6 +1001,12 @@ class TestTheAdapter(unittest.TestCase):
     def test_b7_a_blank_message_is_not_output(self):
         self.assertEqual(b7_blank(ca), [])
 
+    def test_b9_the_turn_record_field_by_field(self):
+        self.assertEqual(b9_record(ca), [])
+
+    def test_b11_the_version_exec(self):
+        self.assertEqual(b11_version(ca), [])
+
     def test_b10_a_cut_line_only_last(self):
         self.assertEqual(b10_cut(ca), [])
 
@@ -969,8 +1071,10 @@ WITNESSES = {
                                 "CHANGE_KINDS = {\"add\": tv.WRITE, \"update\": tv.EDIT, \"delete\": tv.WRITE}"),),
                         p1_view, "P1-view"),
     # codex_adapter.py
-    "agent-text-as-error": ("ca", (("        if t in tc.ERROR_EVENTS:\n",
-                                    "        if t in tc.ERROR_EVENTS or it == tc.AGENT_MESSAGE:\n"),), a2_error,
+    "agent-text-as-error": ("ca", (("        if t == tc.ERROR:\n            api.append({\"status\": None, \"type\": t, "
+                                    "\"text\": rec[\"message\"]})\n",
+                                    "        if t == tc.ERROR or it == tc.AGENT_MESSAGE:\n            api.append({"
+                                    "\"status\": None, \"type\": t, \"text\": rec.get(\"message\")})\n"),), a2_error,
                             "A2-error"),
     "usage-zero": ("ca", (("vals = {k: rec[\"usage\"].get(k) for k in tc.USAGE_KEYS}",
                            "vals = {k: rec[\"usage\"].get(k, 0) for k in tc.USAGE_KEYS}"),), a3_usage, "A3-usage"),
@@ -1058,7 +1162,237 @@ class TestWitnesses(unittest.TestCase):
                 self.assertEqual(src.count(old), 1, f"{name}: its anchor occurs {src.count(old)} times")
 
 
+# ------------------------------------------------------------------------------------------------ generated mutants
+# Ruling w11a-R1-fold item 2: the class of guard, bound by a generated sweep (built from review round 1's harness).
+# Every mutant of codex_adapter.py and transcript_codex.py below is compiled in memory (never written to disk) and run
+# against every bound check of its file (a transcript_codex mutant also rebuilds codex_adapter on it, so the adapter's
+# checks see it). Each must be killed (a check returns a line, or the module does not build), or be listed in
+# EQUIVALENT with a reason a reader can check against the source; an EQUIVALENT entry that names no generated mutant,
+# or whose mutant is killed, is stale and fails.
+#
+# The mutation kinds: `del` a statement replaced by `pass`; `true` and `false` an if/elif/while/conditional test
+# forced; `drop<i>` one operand of an and/or dropped; `not` a `not` dropped; `neg<i>` one comparison negated
+# (== and !=, in and not in, is and is not, < and >=, > and <=); `none` an assignment's value emptied to None;
+# `str` a string literal changed.
+#
+# ONE RULE instead of entries: string literals inside a `raise` statement are not mutated. They are message strings,
+# not asserted verbatim, and no logic reads them: every refusal is told apart by its exception type, never its words.
+NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: ast.In, ast.Is: ast.IsNot,
+          ast.IsNot: ast.Is, ast.Lt: ast.GtE, ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt}
+TC_CHECKS = (s1_event, s2_item, s3_key, p1_view, b3_required, b8_types)
+CA_CHECKS = (a1_stream, a2_error, a3_usage, a4_argv, a5_model, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
+             b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version)
+
+_PREAMBLE = "the import preamble: this test puts the module folder on sys.path before it imports either module"
+_EMPTY = "a refusal's own words: an empty or changed message is still the same typed refusal"
+EQUIVALENT = {}
+
+
+def _parents(tree) -> dict:
+    return {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+
+
+def _docstring(node, parents) -> bool:
+    par = parents.get(node)
+    return (isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)
+            and isinstance(par, (ast.Module, ast.FunctionDef, ast.ClassDef)) and par.body[0] is node)
+
+
+def _in(node, parents, kinds) -> bool:
+    while node in parents:
+        node = parents[node]
+        if isinstance(node, kinds):
+            return True
+    return False
+
+
+def _qual(node, parents) -> str:
+    names = []
+    while node in parents:
+        node = parents[node]
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            names.append(node.name)
+    return ".".join(reversed(names)) or "<module>"
+
+
+def mutant_sites(src: str) -> list:
+    """[(key, kind, walk index, operand index)] in ast.walk order; the key is stable across line moves."""
+    tree = ast.parse(src)
+    parents = _parents(tree)
+    raw = []
+    for idx, node in enumerate(ast.walk(tree)):
+        if _in(node, parents, ast.Raise) and isinstance(node, ast.Constant):
+            continue
+        seg = " ".join((ast.get_source_segment(src, node) or "").split())[:110]
+        here = []
+        if isinstance(node, ast.stmt) and not isinstance(node, ast.Pass) and not _docstring(node, parents) \
+                and not isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+            here.append(("del", None))
+        if isinstance(node, (ast.If, ast.While, ast.IfExp)):
+            here += [("true", None), ("false", None)]
+            seg = " ".join((ast.get_source_segment(src, node.test) or "").split())[:110]
+        if isinstance(node, ast.BoolOp):
+            here += [(f"drop{i}", i) for i in range(len(node.values))]
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+            here.append(("not", None))
+        if isinstance(node, ast.Compare):
+            here += [(f"neg{i}", i) for i, op in enumerate(node.ops) if type(op) in NEGATE]
+        if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
+            here.append(("none", None))
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and not _docstring(parents.get(node),
+                                                                                           parents):
+            here.append(("str", None))
+            seg = f"{node.value[:60]!r} in {_qual(node, parents)}"
+        for kind, i in here:
+            raw.append((f"{kind} {_qual(node, parents)}: {seg}", kind, idx, i))
+    seen, out = {}, []
+    for key, kind, idx, i in raw:
+        seen[key] = seen.get(key, 0) + 1
+        out.append((f"{key} #{seen[key]}", kind, idx, i))
+    return out
+
+
+def _mutate(src: str, kind: str, idx: int, i):
+    tree = ast.parse(src)
+    nodes = list(ast.walk(tree))
+    node = nodes[idx]
+    parents = _parents(tree)
+    if kind == "del":
+        par = parents[node]
+        for field, value in ast.iter_fields(par):
+            if isinstance(value, list) and any(v is node for v in value):
+                value[[j for j, v in enumerate(value) if v is node][0]] = ast.Pass()
+    elif kind in ("true", "false"):
+        node.test = ast.Constant(kind == "true")
+    elif kind.startswith("drop"):
+        rest = node.values[:i] + node.values[i + 1:]
+        if len(rest) == 1:
+            _replace(parents, node, rest[0])
+        else:
+            node.values = rest
+    elif kind == "not":
+        _replace(parents, node, node.operand)
+    elif kind.startswith("neg"):
+        node.ops[i] = NEGATE[type(node.ops[i])]()
+    elif kind == "none":
+        node.value = ast.Constant(None)
+    elif kind == "str":
+        node.value = node.value + "X"
+    return ast.fix_missing_locations(tree)
+
+
+def _replace(parents, old, new):
+    par = parents[old]
+    for field, value in ast.iter_fields(par):
+        if value is old:
+            setattr(par, field, new)
+            return
+        if isinstance(value, list):
+            for j, v in enumerate(value):
+                if v is old:
+                    value[j] = new
+                    return
+    raise WitnessNotPerformed(f"no parent slot for {type(old).__name__}")
+
+
+def _build(tree, name: str, path: str, swap=None) -> types.ModuleType:
+    mod = types.ModuleType(name)
+    mod.__file__ = path
+    saved = {k: sys.modules.get(k) for k in (swap or {})}
+    sys.modules.update(swap or {})
+    try:
+        exec(compile(tree, path + " (generated mutant)", "exec"), mod.__dict__)
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = v
+    return mod
+
+
+def mutant_killed(target: str, kind: str, idx: int, i) -> bool:
+    """True when the mutant does not build or any bound check of its file returns a line."""
+    src_tc, src_ca = (Path(m.__file__).read_text(encoding="utf-8") for m in (tc, ca))
+    try:
+        if target == "tc":
+            tcm = _build(_mutate(src_tc, kind, idx, i), "transcript_codex", tc.__file__)
+            cam = _build(ast.parse(src_ca), "codex_adapter", ca.__file__, {"transcript_codex": tcm})
+            checks = [(f, tcm) for f in TC_CHECKS] + [(f, cam) for f in CA_CHECKS]
+        else:
+            cam = _build(_mutate(src_ca, kind, idx, i), "codex_adapter", ca.__file__)
+            checks = [(f, cam) for f in CA_CHECKS]
+    except Exception:  # noqa: BLE001 - a mutant that does not build is killed
+        return True
+    sink = io.StringIO()
+    with contextlib.redirect_stdout(sink), contextlib.redirect_stderr(sink):
+        for f, m in checks:
+            if f(m):
+                return True
+    return False
+
+
+def all_mutants() -> list:
+    out = []
+    for target, mod in (("tc", tc), ("ca", ca)):
+        for key, kind, idx, i in mutant_sites(Path(mod.__file__).read_text(encoding="utf-8")):
+            out.append((f"{target} {key}", target, kind, idx, i))
+    return out
+
+
+def run_generated(shard: int, of: int) -> int:
+    muts = all_mutants()
+    keys = {m[0] for m in muts}
+    stale = sorted(k for k in EQUIVALENT if k not in keys)
+    mine = [m for n, m in enumerate(muts) if n % of == shard - 1]
+    killed, equivalent, survivors, wrongly_listed = 0, 0, [], []
+    for key, target, kind, idx, i in mine:
+        dead = mutant_killed(target, kind, idx, i)
+        if key in EQUIVALENT:
+            equivalent += 1
+            if dead:
+                wrongly_listed.append(key)
+        elif dead:
+            killed += 1
+        else:
+            survivors.append(key)
+    for k in survivors:
+        print(f"SURVIVOR {k}", flush=True)
+    for k in stale:
+        print(f"STALE (names no generated mutant) {k}", flush=True)
+    for k in wrongly_listed:
+        print(f"STALE (listed EQUIVALENT but killed) {k}", flush=True)
+    print(f"test_codex_adapter generated mutants: shard {shard} of {of}: {len(mine)} mutants of {len(muts)}, "
+          f"{killed} killed, {equivalent} equivalent, {len(survivors)} survivors, "
+          f"{len(stale) + len(wrongly_listed)} stale", flush=True)
+    return 0 if not survivors and not stale and not wrongly_listed else 1
+
+
+class TestGeneratedMutantRegistry(unittest.TestCase):
+    """The cheap half of the sweep, run with every suite: the generator finds sites in both files, and every
+    EQUIVALENT entry names a generated mutant (the killing half runs under --generated-mutants)."""
+
+    def test_the_equivalent_list_names_generated_mutants(self):
+        for mod in (tc, ca):
+            self.assertTrue(Path(mod.__file__).is_file(), f"{Path(mod.__file__).name} does not exist")
+        muts = all_mutants()
+        self.assertGreater(len([m for m in muts if m[1] == "tc"]), 100)
+        self.assertGreater(len([m for m in muts if m[1] == "ca"]), 100)
+        self.assertEqual(sorted(k for k in EQUIVALENT if k not in {m[0] for m in muts}), [])
+        self.assertTrue(all(isinstance(r, str) and len(r) > 20 for r in EQUIVALENT.values()))
+
+
 if __name__ == "__main__":
+    if "--generated-mutants" in sys.argv:
+        shard, of = 1, 1
+        if "--shard" in sys.argv:
+            shard, of = (int(x) for x in sys.argv[sys.argv.index("--shard") + 1].split("/"))
+        setUpModule()
+        try:
+            code = run_generated(shard, of)
+        finally:
+            tearDownModule()
+        raise SystemExit(code)
     if "--witnesses" in sys.argv:
         sys.argv.remove("--witnesses")
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestWitnesses)

@@ -104,6 +104,15 @@ USAGE_KEYS = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning
 CHANGE_KEYS = ("path", "kind")
 CHANGE_KINDS = {"add": tv.WRITE, "update": tv.EDIT}
 
+# ---- each key's value type (W11A-R1-8); a key not listed here (mcp_tool_call's arguments, result, error) is untyped,
+# its shape not documented. A bool is never an int.
+_NONE = type(None)
+EVENT_VALUE_TYPES = {"type": (str,), "thread_id": (str,), "item": (dict,), "usage": (dict,), "error": (dict,),
+                     "message": (str,)}
+ITEM_VALUE_TYPES = {"id": (str,), "type": (str,), "text": (str,), "command": (str,), "aggregated_output": (str,),
+                    "exit_code": (int, _NONE), "status": (str,), "changes": (list,), "server": (str,), "tool": (str,)}
+CHANGE_VALUE_TYPES = {"path": (str,), "kind": (str,)}
+
 
 class ShapeError(tv.ViewError):
     """A Codex stream record outside the pre-registered tables: refused, never read on a guess."""
@@ -118,37 +127,50 @@ def _keys(what: str, rec: dict, required, allowed) -> None:
         raise ShapeError(f"{what}: key(s) with no entry in the tables: {unknown}")
 
 
+def _types(what: str, rec: dict, table: dict) -> None:
+    for k, v in rec.items():
+        if k in table and (not isinstance(v, table[k]) or (isinstance(v, bool) and bool not in table[k])):
+            raise ShapeError(f"{what}: {k} is not {' or '.join(t.__name__ for t in table[k])}")
+
+
 def check_record(rec) -> tuple:
     """(event type, item type or None) of one decoded stream record, after checking it against the tables.
 
     Refuses (ShapeError) a record that is not an object, an event type with no entry, an item type with no entry, an
-    item type an item.started may not carry, and any key, required or extra, off its entry."""
+    item type an item.started may not carry, any key, required or extra, off its entry, and any value off its type
+    (a file_change's changes too: a non-empty list of {path, kind} with kind in CHANGE_KINDS)."""
     if not isinstance(rec, dict):
         raise ShapeError("a record that is not an object")
     t = rec.get("type")
     if t not in EVENT_KEYS:
         raise ShapeError(f"unknown event type: {t!r}")
     _keys(f"event {t}", rec, *EVENT_KEYS[t])
+    _types(f"event {t}", rec, EVENT_VALUE_TYPES)
     if t == TURN_FAILED:
-        err = rec["error"]
-        if not isinstance(err, dict):
-            raise ShapeError("turn.failed: its error is not an object")
-        _keys("turn.failed.error", err, TURN_FAILED_ERROR_KEYS, TURN_FAILED_ERROR_KEYS)
-    if t == TURN_COMPLETED and not isinstance(rec["usage"], dict):
-        raise ShapeError("turn.completed: its usage is not an object")
+        _keys("turn.failed.error", rec["error"], TURN_FAILED_ERROR_KEYS, TURN_FAILED_ERROR_KEYS)
+        _types("turn.failed.error", rec["error"], EVENT_VALUE_TYPES)
     if t not in ITEM_EVENTS:
         return t, None
     item = rec["item"]
-    if not isinstance(item, dict):
-        raise ShapeError(f"{t}: its item is not an object")
     it = item.get("type")
     if it not in ITEM_KEYS:
         raise ShapeError(f"unknown item type: {it!r}")
     _keys(f"item {it}", item, *ITEM_KEYS[it])
-    if not isinstance(item["id"], str) or not item["id"]:
-        raise ShapeError(f"item {it}: its id is not a non-empty string")
+    _types(f"item {it}", item, ITEM_VALUE_TYPES)
+    if not item["id"]:
+        raise ShapeError(f"item {it}: its id is empty")
     if t == ITEM_STARTED and it not in STARTED_ITEM_TYPES:
         raise ShapeError(f"item.started carrying {it!r}: only {STARTED_ITEM_TYPES} are pre-registered there")
+    if it == FILE_CHANGE:
+        if not item["changes"]:
+            raise ShapeError(f"item {it}: its changes are empty")
+        for ch in item["changes"]:
+            if not isinstance(ch, dict):
+                raise ShapeError(f"item {it}: a change that is not an object")
+            _keys(f"item {it} change", ch, CHANGE_KEYS, CHANGE_KEYS)
+            _types(f"item {it} change", ch, CHANGE_VALUE_TYPES)
+            if ch["kind"] not in CHANGE_KINDS:
+                raise ShapeError(f"item {it}: change kind with no entry: {ch['kind']!r}")
     return t, it
 
 
@@ -162,25 +184,6 @@ def decode(line: str) -> dict:
     return rec
 
 
-def error_text(rec: dict):
-    """The harness's own error words on an error event or a turn.failed (None when not a string), never the agent's."""
-    t = rec.get("type")
-    if t == ERROR:
-        words = rec.get("message")
-    elif t == TURN_FAILED:
-        words = (rec.get("error") or {}).get("message")
-    else:
-        return None
-    return words if isinstance(words, str) else None
-
-
-def _string(item: dict, key: str, what: str) -> str:
-    v = item.get(key)
-    if not isinstance(v, str):
-        raise ShapeError(f"{what}: its {key} is not a string")
-    return v
-
-
 class CodexParser:
     """Codex's host-captured `codex exec --json` stream, one JSON record per line (never the rollout file)."""
 
@@ -189,43 +192,32 @@ class CodexParser:
 
     def items(self, line: str) -> list:
         rec = decode(line)
-        t, it = check_record(rec)
+        t, it = check_record(rec)      # every key and value below has passed the tables
         if t not in ITEM_EVENTS:
             return [tv.RawItem(t, tv.HARNESS, text=tv._joined({k: v for k, v in rec.items() if k != "type"}))]
         item = rec["item"]
         raw = f"{t}:{it}"
         if t == ITEM_STARTED:
             if it == COMMAND_EXECUTION:
-                kind, args = tv.SHELL, {"command": _string(item, "command", raw), "background": False}
+                kind, args = tv.SHELL, {"command": item["command"], "background": False}
             else:
                 kind, args = tv.OTHER, {}
             return [tv.RawItem(raw, tv.TOOL_CALL, tool=kind, args=args, ref=item["id"])]
         if it == AGENT_MESSAGE:
-            return [tv.RawItem(raw, tv.AGENT_TEXT, text=_string(item, "text", raw))]
+            return [tv.RawItem(raw, tv.AGENT_TEXT, text=item["text"])]
         if it == REASONING:
-            return [tv.RawItem(raw, tv.AGENT_REASONING, text=_string(item, "text", raw))]
+            return [tv.RawItem(raw, tv.AGENT_REASONING, text=item["text"])]
         if it == COMMAND_EXECUTION:
-            out = item.get("aggregated_output")
-            return [tv.RawItem(raw, tv.TOOL_RESULT, text=out if isinstance(out, str) else None, ref=item["id"])]
+            return [tv.RawItem(raw, tv.TOOL_RESULT, text=item.get("aggregated_output"), ref=item["id"])]
         if it == MCP_TOOL_CALL:
             return [tv.RawItem(raw, tv.TOOL_RESULT, text=tv._joined(item.get("result")), ref=item["id"])]
         return self._file_change(item, raw)
 
     @staticmethod
     def _file_change(item: dict, raw: str) -> list:
-        changes = item["changes"]
-        if not isinstance(changes, list) or not changes:
-            raise ShapeError(f"{raw}: its changes are not a non-empty list")
         out = []
-        for i, ch in enumerate(changes):
-            if not isinstance(ch, dict):
-                raise ShapeError(f"{raw}: a change that is not an object")
-            _keys(f"{raw} change", ch, CHANGE_KEYS, CHANGE_KEYS)
-            if ch["kind"] not in CHANGE_KINDS:
-                raise ShapeError(f"{raw}: change kind with no entry: {ch['kind']!r}")
+        for i, ch in enumerate(item["changes"]):
             ref = f"{item['id']}#{i}"
-            out.append(tv.RawItem(raw, tv.TOOL_CALL, tool=CHANGE_KINDS[ch["kind"]],
-                                  args={"path": _string(ch, "path", raw)}, ref=ref))
-            status = item.get("status")
-            out.append(tv.RawItem(raw, tv.TOOL_RESULT, text=status if isinstance(status, str) else None, ref=ref))
+            out.append(tv.RawItem(raw, tv.TOOL_CALL, tool=CHANGE_KINDS[ch["kind"]], args={"path": ch["path"]}, ref=ref))
+            out.append(tv.RawItem(raw, tv.TOOL_RESULT, text=item.get("status"), ref=ref))
         return out
