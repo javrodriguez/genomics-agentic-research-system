@@ -44,3 +44,31 @@ RESUME HERE: hand-back at 7eef1417; athena owns the exact-head run_checks (test_
 - Q-w7a-1: cp6-readiness section 2 also names S7-D4's dwell line for the draft; this brief scoped OPEN-4 to the mode-bits line only, so the dwell line is not added.
 - Q-w7a-2: prereg-draft.json stays claimed by w5c-draft-ci while its writer moved to w7a; say if it should follow the writer.
 - Q-w7a-3: `prereg.running_models()` and `not_run_reason()` read a `model_status` key the round 4 draft does not have; left as is.
+
+## Appendix: fold W7A-close-1 (review round 1 PASSED, no MAJOR)
+
+Written Mon 12 Oct 2026, 00:22 EDT (`date`), by the same writer, on glitch-1b's ruling W7A-close-1 (table in the Brain at `plans/gap-study-round-4/w7a-review-r1-2026-10-12.md`).
+Base `31c918db`; fold code commit `632ae20e`.
+This appendix controls where it differs from the body above; the body's three open questions are answered by the ruling (Q-w7a-1 folded, Q-w7a-2 ruled and folded, Q-w7a-3 folded as W7A-R1-2).
+The test_scaffold edit is ratified as departure w7a-1.
+
+Folded:
+- W7A-R1-1: `folded()` also reads connectors (Pc) and U+2212 as spaces (`SPACE_LIKE`, `SPACE_LIKE_CHARS`); floors refuse every default-ignorable code point (`ignorable()`: Cf, plus `IGNORABLE_RANGES` covering U+034F, U+115F-1160, U+17B4-17B5, U+180B-180F, U+2065, U+3164, U+FE00-FE0F, U+FFA0, U+FFF0-FFF8, U+E0000-E0FFF). New clauses R3.floors:connector (3 spellings) and R3.floors:ignorable (11 spellings, one per class); witnesses folded-connector and floors-format-only.
+- W7A-R1-2: `models()` lists the planned arms' models and then the optional arms' (8 on the draft); `running_models()` and `not_run_reason()` come from the planned rows (fable and any row-less model not running, with "no planned rows in ..."); the dead NOT RUN loop in --status is removed. Clause S4.running, witness runs-default.
+- W7A-R1-3: `Assembly.test_order_carry_is_true` (R3.carry): test_prereg_order's BOUND holds O1.planned_order, O3.cli, O5.pending, O4.seed, O6.length and O6.hex, each to a real method; SEED_SHAPE takes no extra flag; `prereg.py --order <fake sha>` on the committed draft exits 1 with "refuses the design in force".
+- W7A-R1-4: order_carry now reads "prereg.py --order <review sha> names freeze.planned_order and shows the head of its permutation of the design's whole planned rows, seeded by the full 40-character sha of the pre-freeze review commit; it refuses until every agent version is pinned." Witness order-carry-prints (the first w7a sentence).
+- Q-w7a-1: the draft's new `final_stop` entry pre-registers S7-D4 (A) (strictly after post-N's snapshot, else harness-error via the existing watcher rows; the tail lasts the drive step's dwell, no minimum checked), bound by R8.final-stop to FinalStop.test_the_final_stop_is_strictly_after_post_n and endstate.py's docstring; witness final-stop.
+- Q-w7a-2: prereg-draft.json moved from w5c-draft-ci to w7a-draft-text; the transfer is named in w5c's self-entry; Readiness.test_committed_writer now reads w7a's fragment.
+- W7A-R1-5: copied_modules() and Claims keep every non-new .py copy: 44 modules, TheImports 3 OK.
+- W7A-R1-6: pending() gives floors refused for an invisible character the reason `floor_invisible`; --status prints "0 rows; optional (D2 B)".
+- Draft regenerated through the writer only (order_carry and final_stop changed; 79 pending inputs, unchanged).
+
+Evidence (Mac, light-ok and `timeout -s INT 120` in each command, Python 3.13.2):
+- Red first, assertion only: test_prereg_status 4 run, 5 failures, 0 errors, exit 1; test_build_draft 45 run, 25 failures, 0 errors, exit 1 (a first run had 5 AttributeErrors from the not-yet-existing `ignorable`; the test was changed to fail by assertion and re-run red before any code).
+- Green after commit: test_build_draft 45 run, 0 failures, exit 0; test_prereg_status 4 OK; test_prereg_order 10 OK; test_wave6_bindings OK; test_scaffold TheImports OK; build_draft --check, freeze --check, copy_manifest --check (35 identical, 18 edited, 205 new) exit 0; lints unchanged (no finding in touched files).
+- Witnesses (rule B, 0 errors): test_prereg_status --witnesses 5/5 RED. test_build_draft through its own run_witnesses on the named mutants: folded-connector, floors-format-only, order-carry-prints, final-stop, folded-dash, floors-invisible, folded-width, claims-dropped-fragment 8/8 RED; collateral listed, not credited (test_order_carry_is_true, test_final_stop_is_bound, test_committed_writer). Registry 253; athena's six groups are the run of record.
+- Not run on the Mac: whole test_scaffold, test_pipeline, run_checks, the six full witness groups.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+RESUME HERE: hand-back at 632ae20e
