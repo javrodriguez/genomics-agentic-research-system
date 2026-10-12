@@ -1,0 +1,20 @@
+{
+  "lane": "w11c-walk-plan",
+  "files": [
+    {
+      "path": "tests/test_walk_plan.py",
+      "status": "new",
+      "reason": "Lane w11c-walk-plan (slice of the 12 Oct next-slices plan, section 2; rehearsals/README.md question 3; ruling Q-2 as glitch-2f applies it): the CP6 walk list and its coverage report. P1 the figures per arm and model against an independent derivation from prereg-draft.json and tasks/<task>.json; P2 a dropped task or wording changes them; P3 every task and half on every planned model, every wording on the every-wording model, the register's fields plus the agent, entry_problems clean, the optional arm not required; P4 an off-design or off-plan register entry reported and never counted, a retry covering its spec once; P5 exact wording on the every-wording model, any wording elsewhere; P6 --require-complete exits 1 on a gap; P7 coverage opens the register only under rehearsals/; P8 a spec the design refuses refuses the plan; P9 the printed text clean under both lints, no figure across arms or models; P10 the every-wording rule resolves to one model. Rule B witnesses; synthetic copies of the design only; the process guard armed in setUpModule."
+    },
+    {
+      "path": "checks.d/w11c-walk-plan.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): tests/test_walk_plan.py and its --witnesses."
+    },
+    {
+      "path": "COPIED.d/w11c-walk-plan.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    }
+  ]
+}
