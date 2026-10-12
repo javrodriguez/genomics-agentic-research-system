@@ -47,7 +47,7 @@ RESUME HERE: hand-back at 7eef1417; athena owns the exact-head run_checks (test_
 
 ## Appendix: fold W7A-close-1 (review round 1 PASSED, no MAJOR)
 
-Written Mon 12 Oct 2026, 00:22 EDT (`date`), by the same writer, on glitch-1b's ruling W7A-close-1 (table in the Brain at `plans/gap-study-round-4/w7a-review-r1-2026-10-12.md`).
+Written Mon 12 Oct 2026, 00:10 EDT (`date`), by the same writer, on glitch-1b's ruling W7A-close-1 (table in the Brain at `plans/gap-study-round-4/w7a-review-r1-2026-10-12.md`).
 Base `31c918db`; fold code commit `632ae20e`.
 This appendix controls where it differs from the body above; the body's three open questions are answered by the ruling (Q-w7a-1 folded, Q-w7a-2 ruled and folded, Q-w7a-3 folded as W7A-R1-2).
 The test_scaffold edit is ratified as departure w7a-1.
@@ -68,7 +68,5 @@ Evidence (Mac, light-ok and `timeout -s INT 120` in each command, Python 3.13.2)
 - Green after commit: test_build_draft 45 run, 0 failures, exit 0; test_prereg_status 4 OK; test_prereg_order 10 OK; test_wave6_bindings OK; test_scaffold TheImports OK; build_draft --check, freeze --check, copy_manifest --check (35 identical, 18 edited, 205 new) exit 0; lints unchanged (no finding in touched files).
 - Witnesses (rule B, 0 errors): test_prereg_status --witnesses 5/5 RED. test_build_draft through its own run_witnesses on the named mutants: folded-connector, floors-format-only, order-carry-prints, final-stop, folded-dash, floors-invisible, folded-width, claims-dropped-fragment 8/8 RED; collateral listed, not credited (test_order_carry_is_true, test_final_stop_is_bound, test_committed_writer). Registry 253; athena's six groups are the run of record.
 - Not run on the Mac: whole test_scaffold, test_pipeline, run_checks, the six full witness groups.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 
 RESUME HERE: hand-back at 632ae20e
