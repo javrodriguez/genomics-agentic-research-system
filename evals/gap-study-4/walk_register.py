@@ -39,8 +39,12 @@ reason or model, deleting a walk, or deleting and re-adding it refuses; the regi
 history refuses (the walk's commit cannot be read; CI checks out with fetch-depth 0); git is read even when no walk is
 registered. WHAT THIS CANNOT SEE (W8D-R1-4): history itself can be rewritten. Amending the walk commit (or rewriting
 the branch so a changed walk sits in its one walk commit), or a hand-made commit under the walk subject that adds a
-walk the way WalkRepo would, both pass, since this check reads the history it is handed. The backstop is outside
-it: CP8's commit pins by full sha and a protected branch. The test-only --base reads the
+walk the way WalkRepo would, both pass, since this check reads the history it is handed. Both history reads use
+--full-history (W8D-R2-1), so a walk dropped by `git merge -s ours`, in either direction, is still read and refused.
+drive.py's adapter class check (W8D-R1-3, W8D-R2-2) does not see in-process tampering: an object whose __class__ is
+reassigned to the production class, or a fake whose __module__ is "claude_code_adapter" that drive.py captures
+because drive was imported or reloaded while ClaudeCodeAdapter was patched. The backstop is outside both: CP8's
+commit pins by full sha and a protected branch. The test-only --base reads the
 history only when --repo names the repository; the gates (CI, freeze_rehearsal) run the bare --check, which reads
 this repository's.
 
@@ -285,7 +289,8 @@ def history_problems(base: Path, walks, repo: Path) -> list[str]:
         return {e["walk"]: e for e in listed if isinstance(e, dict) and isinstance(e.get("walk"), str)} \
             if isinstance(listed, list) else {}
     at_head_entries = entries_at("HEAD")
-    log = git("log", "--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)
+    # W8D-R2-1: --full-history, or git's default simplification prunes a merge side (merge -s ours drops a walk)
+    log = git("log", "--full-history", "--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)
     if log.returncode != 0:
         return out + [f"the register's history cannot be read ({log.stderr.strip()[:200]})"]
     seen: set = set()
@@ -309,7 +314,7 @@ def history_problems(base: Path, walks, repo: Path) -> list[str]:
     for walk in walks:
         rel = f"{rel_base}/{walk}"
         where = f"walk {walk!r}: {mode_binding.WALKS_DIR}/{walk}/"
-        log = git("log", "--no-merges", "--format=%H%x1f%P%x1f%s", "HEAD", "--", rel + "/")
+        log = git("log", "--full-history", "--no-merges", "--format=%H%x1f%P%x1f%s", "HEAD", "--", rel + "/")
         if log.returncode != 0:
             out.append(f"{where}: its history cannot be read ({log.stderr.strip()[:200]})")
             continue

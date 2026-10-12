@@ -13,6 +13,10 @@
       even with an empty register (no walk-subject commit passes, a shallow clone refuses).
       Witnesses: history-unchecked, walk-commits-uncounted, walk-subject-unchecked, head-tree-uncompared,
       disk-unchecked, entry-uncompared, walk-dropped-admitted, register-disk-unchecked.
+      Fold W8D-close-2 (W8D-R2-1): both history reads use --full-history, so a merge side git's default
+      simplification would prune is still read: a walk dropped by `git merge -s ours` in either direction refuses
+      (P4a: the walk on a side branch merged in with -s ours; P4b: a branch merges the walk's main with -s ours and
+      main fast-forwards to it). Witness: register-log-simplified.
   A1  W7B-R1-4: the walk driver checks the CLASS of the adapter it builds (exactly
       claude_code_adapter.ClaudeCodeAdapter), not only its self-declared name: an object named claude-code of
       another class, and a subclass, are refused (AdapterIdentityRefused); a later assignment of adapter_for cannot
@@ -89,6 +93,9 @@ def mutants():
                              "            elif now != entry:", "            elif False:"),
         "walk-dropped-admitted": ("H1.walk-history", "walk_register",
                                   "            if now is None:", "            if False:"),
+        "register-log-simplified": ("H1.walk-history", "walk_register",
+                                    '"log", "--full-history", "--no-merges", "--format=%H%x1f%s"',
+                                    '"log", "--no-merges", "--format=%H%x1f%s"'),
         "register-disk-unchecked": ("H1.walk-history", "walk_register",
                                     "    if reg_dirty:", "    if False:"),
         "adapter-class-at-call-time": ("A1.adapter-class", "drive",
@@ -308,6 +315,29 @@ class H1WalkHistory(Case):
             write_walk(s.walks, s.entry)
             s.walk_repo().commit_walk(dict(s.entry, reason="synthetic: re-added under another reason"))
             self.refused(s, "a walk deleted and re-added")
+        # W8D-R2-1 (P4b): a walk on main; a branch from before it merges main with -s ours; main fast-forwards to it
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            main = s.git("branch", "--show-current")
+            s.git("checkout", "-q", "-b", "side", "HEAD~1")
+            (s.root / "README").write_text("synthetic scratch repository, side\n")
+            s.git("commit", "-q", "-am", "Side work")
+            s.git("merge", "-q", "-s", "ours", "--no-edit", main)
+            s.git("checkout", "-q", main)
+            s.git("merge", "-q", "--ff-only", "side")
+            self.assertFalse((s.walks / "w-0001").exists(), "H1.walk-history: P4b kept the walk")
+            self.refused(s, "a walk dropped by a branch that merged main with -s ours (P4b)")
+        # W8D-R2-1 (P4a): a walk committed on a side branch, merged into main with -s ours
+        with contextlib.ExitStack() as stack:
+            s = Study(stack, walk=False)
+            main = s.git("branch", "--show-current")
+            s.git("checkout", "-q", "-b", "side")
+            write_walk(s.walks, s.entry)
+            s.walk_repo().commit_walk(s.entry)
+            s.git("checkout", "-q", main)
+            s.git("merge", "-q", "-s", "ours", "--no-ff", "--no-edit", "side")
+            self.assertFalse((s.walks / "w-0001").exists(), "H1.walk-history: P4a kept the walk")
+            self.refused(s, "a side branch's walk merged into main with -s ours (P4a)")
         # an uncommitted edit of the register on disk
         with contextlib.ExitStack() as stack:
             s = Study(stack)

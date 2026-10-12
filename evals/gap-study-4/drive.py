@@ -2737,7 +2737,9 @@ def take_folder_in(root):
 
 # W8D-R1-3 (fold W8D-close-1): the production class, captured when this module is imported, so a later patch of
 # claude_code_adapter.ClaudeCodeAdapter admits nothing; its module is checked too (a class captured under a patch is
-# another module's). Not seen here: an object whose __class__ is reassigned to this class (W8D-R1-4's limits).
+# another module's). Not seen here (walk_register's limits, W8D-R1-4, W8D-R2-2): an object whose __class__ is
+# reassigned to this class, or a fake whose __module__ is "claude_code_adapter" captured because drive.py was imported
+# or reloaded while ClaudeCodeAdapter was patched.
 PRODUCTION_ADAPTER = _cc.ClaudeCodeAdapter
 PRODUCTION_ADAPTER_MODULE = "claude_code_adapter"
 
