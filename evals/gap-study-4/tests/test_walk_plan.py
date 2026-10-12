@@ -169,6 +169,8 @@ def mutants():
                                "m.casefold()]"),
         "halves-typed": ("P11.design", "                for half in task[\"halves\"]:",
                          "                for half in (\"trap\", \"normal\"):"),
+        "stand-in-crash": ("P12.register", "        except OSError:\n            continue",
+                           "        except FileNotFoundError:\n            continue"),
         "register-check-skipped": ("P12.register", "        if problems:\n            raise RegisterUnreadable(",
                                    "        if False:\n            raise RegisterUnreadable("),
         "per-model-arm-dropped": ("P13.per-model",
@@ -403,6 +405,8 @@ class P1Counts(Base):
         self.wp("P1.counts")
         self.assertEqual(self.counts(specs), expected_counts(HERE), "P1.counts")
         self.assertEqual(len(specs), sum(sum(v.values()) for v in expected_counts(HERE).values()), "P1.counts")
+        # the study folder may be named by a string, as by a Path
+        self.assertEqual(self.plan("P1.counts", str(HERE))[1], specs, "P1.counts: a study folder named by a string")
 
 
 class P2Dropped(Base):
@@ -571,6 +575,11 @@ class P6Require(Base):
         self.assertNotIn("\nmissing  ", out, "P6.require")
         code, out = self.cli("P6.require", ["--coverage", "--base", str(self.tmpdir())])
         self.assertEqual(code, 2, f"P6.require: a missing register is not an empty one: {out}")
+        self.assertIn("a missing register is not an empty one", out, "P6.require")
+        with mock.patch.object(Path, "read_bytes", side_effect=PermissionError("synthetic unreadable")):
+            code, out = self.cli("P6.require", ["--coverage", "--base", str(full)])
+        self.assertEqual(code, 2, f"P6.require: an unreadable register: {out[-300:]}")
+        self.assertIn("cannot be read: synthetic unreadable", out, "P6.require: an unreadable register is named")
         linked = self.tmpdir() / "rehearsals"
         linked.mkdir()
         (linked / "register.json").symlink_to(full / "register.json")
@@ -629,7 +638,17 @@ class P8SpecChecked(Base):
         bent = copy.deepcopy(design)
         bent["cells"] = {c for c in bent["cells"] if c[1] != models[0]}
         exc = self.refuses("P8.spec-checked: a cell with no row", wp.plan_walks, bent)
-        self.assertRegex(str(exc), r"; and \d+ more$", "P8.spec-checked: a long refusal says how many it left out")
+        n = expected_counts(HERE)[arm][models[0]]
+        self.assertGreater(n, 6, "P8.spec-checked: the case is long")
+        self.assertEqual(len(re.findall(r"spec \d+: ", str(exc))), 5, "P8.spec-checked: the first five are named")
+        self.assertTrue(str(exc).endswith(f"; and {n - 5} more"), f"P8.spec-checked: the rest are counted: {exc}")
+        # six planned cells with no row: five named, and one more
+        bent = copy.deepcopy(design)
+        for s in [s for s in self.plan("P8.spec-checked")[1] if s["model"] == models[0]][:6]:
+            bent["cells"].discard((s["arm"], s["model"], s["task"], s["half"], s["wording"]))
+        exc = self.refuses("P8.spec-checked: six cells with no row", wp.plan_walks, bent)
+        self.assertEqual(len(re.findall(r"spec \d+: ", str(exc))), 5, "P8.spec-checked: six problems, five named")
+        self.assertTrue(str(exc).endswith("; and 1 more"), f"P8.spec-checked: six problems, one more: {exc}")
         # one planned cell with no row: one problem, named, and nothing said to be left out
         bent = copy.deepcopy(design)
         bent["cells"].discard(next(c for c in sorted(bent["cells"]) if c[1] == models[0]))
@@ -803,6 +822,21 @@ class P12Register(Base):
             "one walk id for every spec"]))])
         self.assertIn("registered twice", out, "P12.register: the check's own words")
         self.assertRegex(out, r"; and \d+ more", "P12.register: a long refusal says how many it left out")
+        # six problems: the first five named, and one more; many: five named and the rest counted
+        for k in (6, 9):
+            walks = [entry(s, f"c-{i}", counted=True) for i, s in enumerate(specs[:k])]
+            text = json.dumps({"schema": 1, "walks": walks})
+            base = self.raw_register(text)
+            code, out = self.cli("P12.register", ["--coverage", "--base", str(base)])
+            self.assertEqual(code, 2, f"P12.register: {k} counted entries")
+            self.assertEqual(len(re.findall(r"walk entry \d+: ", out)), 5, f"P12.register: {k} problems, five named")
+            self.assertIn(f"; and {k - 5} more", out, f"P12.register: {k} problems, the rest counted")
+        # walk ids that cannot be stand-in folder names are a named refusal, never a crash
+        for label, walk in (("register.json", "register.json"), ("a 300-character id", "w" * 300)):
+            base = self.raw_register(json.dumps({"schema": 1, "walks": good + [entry(specs[3], walk)]}))
+            code, out = self.cli("P12.register", ["--coverage", "--base", str(base)])
+            self.assertEqual(code, 2, f"P12.register {label}: {out[-300:]}")
+            self.assertIn("walk_register's check refuses", out, f"P12.register {label}")
         code, out = self.cli("P12.register", ["--coverage", "--base", str(self.raw_register(cases["a wrong schema"]))])
         self.assertIn("schema is 99", out, "P12.register: the check's own words")
         self.assertNotIn(" more", out, "P12.register: a short refusal leaves nothing out")
@@ -888,6 +922,13 @@ class P14Cli(Base):
         self.assertEqual(self.run_script(["--coverage", "--require-complete", "--base", str(full)])[0], 0,
                          "P14.cli: the script exits 0 on a complete register")
         self.assertEqual(self.run_script(["--list"])[0], 0, "P14.cli")
+        code, listed = self.cli("P14.cli", ["--list"])
+        self.assertEqual(code, 0, "P14.cli")
+        self.assertFalse(re.search(r"(?m)^(covered  |missing  |# walk coverage|the register lists)", listed),
+                         "P14.cli: --list prints the plan, never a coverage report")
+        code, out = self.cli("P14.cli", ["--coverage", "--require-complete", "--base", str(empty)])
+        self.assertEqual(out.splitlines()[-1], "FAIL --require-complete: required walks are missing (the lines "
+                         "above name each)", "P14.cli: the gap is said on the last line")
         # --require-complete goes with --coverage only
         code, out = self.cli("P14.cli", ["--list", "--require-complete"])
         self.assertEqual(code, 2, f"P14.cli: --list --require-complete is refused: {out[-300:]}")
