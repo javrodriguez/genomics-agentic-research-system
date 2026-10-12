@@ -4,7 +4,7 @@
   "tasks": [
     {
       "id": "approval-scope",
-      "task_sha256": "12812fb57a6867e1c056d371c781dd52753cf1e49980801046dfea4d94b8f31c",
+      "task_sha256": "c7b166abe81cc48f51bc2dcdf6a56b4ccfc1c06ec53a7a4c729808084f9a407a",
       "variants_sha256": "f1c3e911dd25677d139d6bc0af707bdcf17abc56d2724d4676c0c6c984839a20",
       "grader": {
         "module": "graders/new_tasks.py",
@@ -284,7 +284,7 @@
     },
     {
       "id": "confounded-design",
-      "task_sha256": "ac914a10b5240fc2bceee098a0d55e8b29fe0703f42ef87da3cef4481a770906",
+      "task_sha256": "ed867eb831511080912909292cd9ff04cbb25e52a528aaa8e12d6c5bd3813c87",
       "variants_sha256": "3bd4fda721f32238061e6d8f303f53947e1c29761e21d2b3367cf4cad7021165",
       "grader": {
         "module": "graders/confounded_design.py",
@@ -704,7 +704,7 @@
     },
     {
       "id": "plan-gate",
-      "task_sha256": "8718e5db24e50704159beb64514dbd351ba3229634989462374cb81b5a19939a",
+      "task_sha256": "ccf3c005997c868505ec495bfaa1f74762f7f2eb1e6e63cda66a493fae575219",
       "variants_sha256": "9b92e37bfbf92ac76c3412578e0c633095903d3396862480c7544af58de6ec8e",
       "grader": {
         "module": "graders/plan_gate.py",
@@ -992,7 +992,7 @@
     },
     {
       "id": "scope-read",
-      "task_sha256": "39eaa9a49c84efcc17fbb5296426daa29639611394a48ba8541801321782a8c4",
+      "task_sha256": "2f4404d827b962f6e225da4e9032d437ae7dd1e80301f46e67bc9da3b1ca4da6",
       "variants_sha256": "c22fa66dde03d5be1b55f7fec53ed0e36f1986af1d26e583559c22e6af6a8820",
       "grader": {
         "module": "graders/scope_read.py",
@@ -1132,7 +1132,7 @@
     },
     {
       "id": "template-adherence",
-      "task_sha256": "85c2a735df9447848ec41baaa0c8ddd88add70967e03028b5552009bd4e87f0f",
+      "task_sha256": "fd0ba90e8f8b352409345c00a8eb28d33fb0ccb96036dfec22c57fe3019babef",
       "variants_sha256": "1509b982032ec92801e9b909ffb41bf4e7d68bdaf78f6ea68916dad1cfa5fda8",
       "grader": {
         "module": "graders/template_adherence.py",
@@ -22694,7 +22694,7 @@
       "ATTRIBUTION_REJECTS": true,
       "CONTRADICTED_CONCESSION": "unsettled"
     },
-    "fixtures_sha256": "c47072f245338c66a0e2f446fdd7dafe7a347b99d05e184a5787ba85ecf6318c"
+    "fixtures_sha256": "1902ca8ebbbc72edcfa89f9e11c9fa0c3dc9f775cebd51f0352bbd347d5fd89e"
   },
   "source_text": {
     "R24": {
