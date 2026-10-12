@@ -2735,13 +2735,22 @@ def take_folder_in(root):
     return take_folder
 
 
+# W8D-R1-3 (fold W8D-close-1): the production class, captured when this module is imported, so a later patch of
+# claude_code_adapter.ClaudeCodeAdapter admits nothing; its module is checked too (a class captured under a patch is
+# another module's). Not seen here: an object whose __class__ is reassigned to this class (W8D-R1-4's limits).
+PRODUCTION_ADAPTER = _cc.ClaudeCodeAdapter
+PRODUCTION_ADAPTER_MODULE = "claude_code_adapter"
+
+
 def adapter_class_problems(adapter) -> None:
     """W7B-R1-4 (lane w8d, ruling W8D-gap4-1): the walk driver's adapter is exactly the production class,
     claude_code_adapter.ClaudeCodeAdapter, never another object that declares its name (a stub, a fake, a subclass)."""
-    if type(adapter) is not _cc.ClaudeCodeAdapter:
-        raise AdapterIdentityRefused(f"the walk driver built an adapter of class {type(adapter).__qualname__!r}, not "
-                                     f"{_cc.ClaudeCodeAdapter.__qualname__!r}; a walk or take of claude-code runs on "
-                                     f"the production adapter only, whatever name an object declares")
+    if type(adapter) is not PRODUCTION_ADAPTER or \
+            type(adapter).__module__ != PRODUCTION_ADAPTER_MODULE:
+        raise AdapterIdentityRefused(f"the walk driver built an adapter of class {type(adapter).__module__}."
+                                     f"{type(adapter).__qualname__}, not {PRODUCTION_ADAPTER_MODULE}."
+                                     f"ClaudeCodeAdapter; a walk or take of claude-code runs on the production adapter "
+                                     f"only, whatever name an object declares")
 
 
 def take_k_problems(records_root, row: dict, attempt, take) -> None:

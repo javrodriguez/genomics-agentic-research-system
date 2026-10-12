@@ -7,12 +7,19 @@
       that commit wrote; and the folder on disk is HEAD's. A shallow history refuses. Cases: the probe (a later
       ordinary commit edits the walk's driver ledger: refused), a later commit forged with the walk subject, a walk
       hand-committed under an ordinary subject, a merge that edits the ledger, an uncommitted edit, a shallow clone.
+      Review fold W8D-close-1: the register is append-only over history (W8D-R1-1, W8D-R1-2): every entry a
+      walk-subject commit's register lists is listed at HEAD, identical (a later commit editing a walk's reason or
+      model, deleting a walk, or deleting and re-adding it refuses), and the register on disk is HEAD's; git is read
+      even with an empty register (no walk-subject commit passes, a shallow clone refuses).
       Witnesses: history-unchecked, walk-commits-uncounted, walk-subject-unchecked, head-tree-uncompared,
-      disk-unchecked.
+      disk-unchecked, entry-uncompared, walk-dropped-admitted, register-disk-unchecked.
   A1  W7B-R1-4: the walk driver checks the CLASS of the adapter it builds (exactly
       claude_code_adapter.ClaudeCodeAdapter), not only its self-declared name: an object named claude-code of
       another class, and a subclass, are refused (AdapterIdentityRefused); a later assignment of adapter_for cannot
-      lift the check. Witness: adapter-class-unchecked.
+      lift the check. Fold W8D-close-1 (W8D-R1-3): the class is captured when drive.py is imported, so patching
+      claude_code_adapter.ClaudeCodeAdapter later admits nothing, and its module must be claude_code_adapter (a fake
+      captured by a drive imported under a patch is refused). Witnesses: adapter-class-unchecked,
+      adapter-class-at-call-time, adapter-module-unchecked.
   K1  W7B-R1-5: the take folder's k is Batch's attempt: the walk driver hands TakeRepo a take's records only from
       <root>/takes/<slot>/<attempt>, the attempt TakeRepo.commit_records is called with; a folder whose k is not
       that attempt (a launch refused before its folder, then a restart) is refused, never committed under the
@@ -58,6 +65,7 @@ for p in (HERE, HERE / "tests"):
 import test_box_integration as tbi  # noqa: E402
 
 SELECTED = None
+EDITS: tuple = ()          # the drive.py edits of the selected witness (A1 compiles a fresh drive with them)
 MODS: dict = {}
 TEXTS: dict = {}          # path -> text a witness swaps in (D1's accessor)
 LANE = "w8d-cp8-prep"
@@ -77,6 +85,18 @@ def mutants():
                                  "        if at_head != at_walk:", "        if False:"),
         "disk-unchecked": ("H1.walk-history", "walk_register",
                            "        if dirty:", "        if False:"),
+        "entry-uncompared": ("H1.walk-history", "walk_register",
+                             "            elif now != entry:", "            elif False:"),
+        "walk-dropped-admitted": ("H1.walk-history", "walk_register",
+                                  "            if now is None:", "            if False:"),
+        "register-disk-unchecked": ("H1.walk-history", "walk_register",
+                                    "    if reg_dirty:", "    if False:"),
+        "adapter-class-at-call-time": ("A1.adapter-class", "drive",
+                                       "    if type(adapter) is not PRODUCTION_ADAPTER or",
+                                       "    if type(adapter) is not _cc.ClaudeCodeAdapter or"),
+        "adapter-module-unchecked": ("A1.adapter-class", "drive",
+                                     "            type(adapter).__module__ != PRODUCTION_ADAPTER_MODULE:",
+                                     "            False:"),
         "adapter-class-unchecked": ("A1.adapter-class", "drive",
                                     "            adapter_class_problems(adapter)          # W7B-R1-4\n", ""),
         "take-k-unbound": ("K1.take-k", "drive",
@@ -112,7 +132,9 @@ def setUpModule():
     text = path.read_text()
     assert text.count(old) == 1, f"mutant {SELECTED}: its anchor occurs {text.count(old)} times"
     if target == "drive":
-        MODS["drive"] = tbi.witness_module(((old, new),))
+        global EDITS
+        EDITS = ((old, new),)
+        MODS["drive"] = tbi.witness_module(EDITS)
     else:
         MODS[target] = compile_module(target, text.replace(old, new))
 
@@ -180,11 +202,12 @@ class Study:
         self.entry = an_entry()
         if walk:
             write_walk(self.walks, self.entry)
-            repo = MODS["drive"].WalkRepo(runtime=types.SimpleNamespace(run=lambda *a, **k: None),
-                                          secrets=lambda: [("token", tbi.TOKEN)], rules_scanner=lambda paths: [],
-                                          root=self.root, repo=self.root,
-                                          design=MODS["walk_register"].design_in_force())
-            repo.commit_walk(self.entry)
+            self.walk_repo().commit_walk(self.entry)
+
+    def walk_repo(self):
+        return MODS["drive"].WalkRepo(runtime=types.SimpleNamespace(run=lambda *a, **k: None),
+                                      secrets=lambda: [("token", tbi.TOKEN)], rules_scanner=lambda paths: [],
+                                      root=self.root, repo=self.root, design=MODS["walk_register"].design_in_force())
 
     def git(self, *args) -> str:
         return tbi.git(self.root, *args)
@@ -201,10 +224,10 @@ class Study:
 class H1WalkHistory(Case):
     OK = "ok: 1 registered walk(s), each with its folder, none counted"
 
-    def refused(self, study, why, root=None):
+    def refused(self, study, why, root=None, line=r"(?m)^FAIL walk 'w-0001'"):
         code, out = self.must("H1.walk-history", study.check, root)
         self.assertEqual(code, 1, f"H1.walk-history: {why} passed: {out}")
-        self.assertRegex(out, r"(?m)^FAIL walk 'w-0001'", f"H1.walk-history: {why}: {out}")
+        self.assertRegex(out, line, f"H1.walk-history: {why}: {out}")
 
     def test_a_walk_folder_is_its_walk_commit(self):
         drive = MODS["drive"]
@@ -257,6 +280,54 @@ class H1WalkHistory(Case):
             s = Study(stack)
             (s.walks / "w-0001" / "grade.json").write_text('{"graded": true}\n')
             self.refused(s, "an uncommitted edit in the walk folder")
+        # W8D-R1-1: a later ordinary commit rewrites the walk's register entry (its reason, its model)
+        for field, value in (("reason", "synthetic: a reason rewritten after the walk"), ("model", None)):
+            with contextlib.ExitStack() as stack:
+                s = Study(stack)
+                reg = json.loads((s.walks / "register.json").read_text())
+                if value is None:
+                    models = json.loads((HERE / "prereg-draft.json").read_text())["models"]["A"]
+                    value = next(m for m in models if m != s.entry["model"])
+                reg["walks"][0][field] = value
+                (s.walks / "register.json").write_text(json.dumps(reg, indent=2) + "\n")
+                s.git("commit", "-q", "-am", "Tidy the register")
+                self.refused(s, f"a later commit that rewrote the walk's {field}")
+        # W8D-R1-2: the register is append-only; a later commit deletes the walk (folder and entry)
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            s.git("rm", "-q", "-r", "--", f"{s.walks.name}/w-0001")
+            (s.walks / "register.json").write_text('{\n  "schema": 1,\n  "walks": []\n}\n')
+            s.git("commit", "-q", "-am", "Drop a walk")
+            self.refused(s, "a later commit that deleted the walk")
+        # ... and deletes it, then re-adds it through WalkRepo with another reason
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            s.git("rm", "-q", "-r", "--", f"{s.walks.name}/w-0001")
+            (s.walks / "register.json").write_text('{\n  "schema": 1,\n  "walks": []\n}\n')
+            s.git("commit", "-q", "-am", "Drop a walk")
+            write_walk(s.walks, s.entry)
+            s.walk_repo().commit_walk(dict(s.entry, reason="synthetic: re-added under another reason"))
+            self.refused(s, "a walk deleted and re-added")
+        # an uncommitted edit of the register on disk
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            reg = json.loads((s.walks / "register.json").read_text())
+            reg["walks"][0]["reason"] = "synthetic: edited on disk only"
+            (s.walks / "register.json").write_text(json.dumps(reg, indent=2) + "\n")
+            self.refused(s, "an uncommitted edit of the register",
+                         line=rf"(?m)^FAIL {MODS['mode_binding'].WALKS_DIR}/register\.json on disk differs from HEAD")
+        # an empty register with no walk-subject commit in history passes, said out loud, git read
+        with contextlib.ExitStack() as stack:
+            s = Study(stack, walk=False)
+            code, out = self.must("H1.walk-history", s.check)
+            self.assertEqual(code, 0, f"H1.walk-history: {out}")
+            self.assertRegex(out, r"(?m)^ok, having registered 0 walks: ", "H1.walk-history")
+            shallow = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)).resolve() / "shallow"
+            s.git("commit", "-q", "--allow-empty", "-m", "Later work")
+            tbi.git(s.root, "clone", "-q", "--depth", "1", f"file://{s.root}", str(shallow))
+            code, out = self.must("H1.walk-history", s.check, shallow)
+            self.assertEqual(code, 1, f"H1.walk-history: a shallow clone with an empty register passed: {out}")
+            self.assertIn("shallow", out, "H1.walk-history")
         # a shallow clone cannot show the walk's commit
         with contextlib.ExitStack() as stack:
             s = Study(stack)
@@ -267,12 +338,6 @@ class H1WalkHistory(Case):
             code, out = self.must("H1.walk-history", s.check, shallow)
             self.assertEqual(code, 1, f"H1.walk-history: a shallow clone passed: {out}")
             self.assertIn("shallow", out, "H1.walk-history")
-        # the committed study: no walk registered, said out loud, no history read
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            code = MODS["walk_register"].main(["--check"])
-        self.assertEqual(code, 0, f"H1.walk-history: {out.getvalue()}")
-        self.assertRegex(out.getvalue(), r"(?m)^ok, having registered 0 walks: ", "H1.walk-history")
 
 
 # ------------------------------------------------------------------------------------------------- A1, K1
@@ -324,6 +389,22 @@ class A1AdapterClass(Case):
         drv.adapter_for = lambda row, take: Posing()
         with self.assertRaises(drive.AdapterIdentityRefused, msg="A1.adapter-class: a reassigned maker"):
             drv.adapter_for(row, None)
+        # W8D-R1-3: patching the module attribute after drive was imported admits nothing, even a fake that
+        # claims the production module's name
+        Disguised = type("ClaudeCodeAdapter", (), {"__module__": "claude_code_adapter",
+                                                   "name": cc.ClaudeCodeAdapter.name})
+        made["adapter"] = Disguised()
+        drv.adapter_for = lambda row, take: made["adapter"]
+        with mock.patch.object(cc, "ClaudeCodeAdapter", Disguised):
+            with self.assertRaises(drive.AdapterIdentityRefused, msg="A1.adapter-class: a patched class"):
+                drv.adapter_for(row, None)
+        # and a drive imported under a patch captured a class from another module: refused by its module
+        made["adapter"] = Posing()
+        with mock.patch.object(cc, "ClaudeCodeAdapter", Posing):
+            fresh = self.must("A1.adapter-class", tbi.witness_module, EDITS)
+        drv2 = self.must("A1.adapter-class", build_walk_driver, fresh, lambda row, take: made["adapter"], root)
+        with self.assertRaises(fresh.AdapterIdentityRefused, msg="A1.adapter-class: a class captured from __main__"):
+            drv2.adapter_for(row, None)
 
 
 class K1TakeK(Case):
