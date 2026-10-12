@@ -1938,6 +1938,8 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
         raise CheckRefused(f"the design view is {design.task_id}/{design.half}, not {task_id}/{half_name}")
     if wording_script != design.script:
         raise CheckRefused("the script handed in is not the one the take's own wording renders")
+    if not isinstance(design.run_tree, str) or not design.run_tree:      # W7B (Q-w6i-5)
+        raise CheckRefused("the design view names no run tree; a take is read against the tree the driver gave it")
     ids = event_ids(table)
     token = _PRE_IN_FORCE.set(design.pre)                 # R4C-10: the readers that take no pre read the view's
     try:
@@ -1951,6 +1953,7 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
         _PRE_IN_FORCE.reset(token)
     if not is_walk:
         problems += recorded_mode_problems(path, design.pre, arm)
+    problems += design_tree_problems(path, design)               # W7B (Q-w6i-5)
     # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
     led = _ledger_beside(path)
     if led is not None and led.get("arm") != arm:
@@ -2183,6 +2186,25 @@ def pinned_instruction_problems(path: Path, design: "Design") -> list[str]:
             out.append(f"[checkout-binding] the session loaded {rel} with content other than the pinned tree's; "
                        f"the agent was told something the study did not pin")
     return out
+
+
+# ---- W7B (lane w7b, wave 7 P2; this file moved from lane w6j to lane w7b under glitch-1b's ruling W7B-gap4-1) ------
+#   Q-w6i-5. design_view takes the run tree from the driver (TakeSpec.run_tree), and the source, the operator lines and
+#            the instruction files are all read against it. The session records where it actually opened (its
+#            environment attachment's workingDirectory, session_run_tree). check4 refuses a view with no run tree,
+#            and a session that opened anywhere else is round 3's readers-disagree (the driver's record of the take
+#            and the session's own disagree; the meaning widened as Q-w6j-4 widened it): a rehearsal before the
+#            first agent turn and harness-error after it, never a graded take. A session that records no working
+#            directory is checkout-binding already (pinned_instruction_problems).
+
+def design_tree_problems(path: Path, design: "Design") -> list[str]:
+    """W7B (Q-w6i-5): the session's own working directory against the run tree the design view was built with."""
+    wd = session_run_tree(path)
+    if wd is None or wd == design.run_tree:
+        return []
+    return [f"[readers-disagree] the driver gave the take the run tree {design.run_tree!r} and the session records "
+            f"that it opened in {wd!r}; the take's source, lines and instruction files were read against a tree "
+            f"it did not run in"]
 
 
 if __name__ == "__main__":

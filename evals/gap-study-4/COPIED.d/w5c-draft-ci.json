@@ -19,7 +19,7 @@
     {
       "path": "tests/test_build_draft.py",
       "status": "new",
-      "reason": "R1-R34: derived draft commitments and accessor mutations. Edit W7A-gap4-1 (lane w7a, no ownership transfer): R3.carry, R8.mode-residual, the floor-spelling clauses with five whole-file witnesses, and Claims derived from every COPIED.d fragment."
+      "reason": "R1-R34: derived draft commitments and accessor mutations. Edit W7A-gap4-1 (lane w7a, no ownership transfer): R3.carry, R8.mode-residual, the floor-spelling clauses with five whole-file witnesses, and Claims derived from every COPIED.d fragment. Departure w7b-1 (lane w7b, under ruling W7B-gap4-1) added COPIED.d/w7b-walk-wiring.json to the Claims hand list; ruled at the wave 7 merge (glitch-1b): w7a's derived list is taken, which reads w7b's fragment."
     },
     {
       "path": "study.py",
