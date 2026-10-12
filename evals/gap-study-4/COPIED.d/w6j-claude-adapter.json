@@ -19,6 +19,16 @@
       "reason": "Lane w6i (slice S6b): check4 driven on round 4's REAL design with no patched design (named limit L-S6-1): a clean synthetic take of scope-read / trap / w3 / arm A grades through design_view; PENDING constants refuse; the mode comes from the routing pin (D1); the first-turn rule agrees with agent_adapter.harness_records on five cases; the harness guard. Whole-file witnesses of check_take.py compiled in memory. Transferred again from lane w6i-checker-body to lane w6j-claude-adapter under ruling S6c-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026; slice S6c, the adapter side). Slice S6c: R7 drives a walk through the pinned-instruction rule both ways, with the witness walk-instructions-from-head (W6I-R2-1); the docstring's constant count corrected (W6I-R2-3)."
     },
     {
+      "path": "claude_code_adapter.py",
+      "status": "new",
+      "reason": "Lane w6j (slice S6c, C15): the Claude Code adapter for the box, agent_adapter's interface for claude-code: one docker exec per turn through box/run_take.run_turn (round 3's one_turn argv with the plan's named changes for arms A and C: the routing pin's permission mode, no --allowedTools, --disallowedTools WebFetch WebSearch; --session-id then --resume of the imposed id), the version from `claude --version`, and readers of the recorded stream-json and session-file shapes (harness 2.1.267): read_stream (init, credential source, agent text and output kept apart from the harness's API-error record, calls, tool ids, the result record), session_calls (one call per (message.id, requestId)), cross_check (C6) and cost_record (C14)."
+    },
+    {
+      "path": "tests/test_claude_code_adapter.py",
+      "status": "new",
+      "reason": "Lane w6j (slice S6c): the Claude Code adapter on the recorded haiku-prestudy stream probes, the recorded API-error probe's fields, the recorded env-smoke session file and synthetic streams over a fake runtime: A1 recorded reads, A2 the API-error record never the agent's, A3 the argv, A4 a turn's TurnResult; whole-file witnesses of claude_code_adapter.py compiled in memory."
+    },
+    {
       "path": "tests/test_drive_loop.py",
       "status": "new",
       "reason": "Lane w6j (slice S6c): the drive loop's agent side on test_box_integration's fake runtime and rig (imported, never copied): the design-table copy writes its hashed bytes (W6I-R2-2), each guard with a whole-file witness of drive.py compiled in memory."
