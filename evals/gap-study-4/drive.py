@@ -1888,6 +1888,8 @@ class _Take:
         self.teardown = None           # run_take.teardown's record (W6H-R1-3: remove() reads its network step)
         self.driven = False
         self.adapter_open = False      # S6b (d): set when start_take returned, cleared when end_take was called
+        self.ledger_rows: list = []    # S6c C13: one row per line sent (round 3's ledger turns[]), recovery rows too
+        self.outcome = None            # S6c C13: round 3's ledger outcome (check_take's driver_outcome_shapes)
 
 
 class TakeDriver:
@@ -2107,6 +2109,20 @@ class TakeDriver:
             take.cleanup.append(f"postflight: {type(e).__name__}: {e}")
             return None
 
+    @staticmethod
+    def _rate_limited(row, turns) -> bool:
+        """S6c C13: whether an API-error record of the take carries one of routing.json's rate-limit markers for the
+        take's harness (status or type by exact membership, or a text marker by routing's own bounded search): the
+        ledger's PAUSE outcome before the first agent turn. The route itself stays routing.py's."""
+        marks = _routing.load_table()["rate_limit_markers"].get(row["agent"]["harness"]) or {}
+        for t in turns:
+            for e in t.api_errors:
+                if (e.get("status") in (marks.get("status") or ()) or e.get("type") in (marks.get("type") or ())
+                        or (isinstance(e.get("text"), str)
+                            and _routing.rate_limit_text_marker(e["text"], marks.get("text") or ()) is not None)):
+                    return True
+        return False
+
     def _refused(self, take, e: BaseException) -> None:
         """R4-9: the pre-turn refusal record (its type and message; never a secret: lock, launch and reply texts)."""
         self._write(take, REFUSAL_RECORD, {"refused": type(e).__name__, "why": str(e)[:500]})
@@ -2169,8 +2185,8 @@ class TakeDriver:
                     self._refused(take, e)
                     ok = False
             if ok:
-                lines = list(self.script_for(row))
-                for n, line in enumerate(lines, 1):
+                script = _Script(self.script_for(row), take.ledger_rows)        # S6c C13: markers, recovery, stop
+                for n, line in enumerate(script, 1):
                     if n > 1:
                         unreadable += self._ctl(take, "snapshot", f"pre-{n}")["unreadable_consequential"]
                     turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
@@ -2186,13 +2202,17 @@ class TakeDriver:
                             self._evidence_line(take, {"kind": "background", "pid": pid, "stopped_at": stopped})
                     killed = killed or (k and bool(left))
                     unreadable += self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
-                    if turn.end_reason != _adapter.END_TURN:
+                    if not script.read(turn):                         # S6c C13: an unheld marker, or a cut turn
                         break
-                    step = OPERATOR_STEPS.get((row["task"], n))
-                    if step is not None and n < len(lines):          # S6b C9: between post-n and pre-(n+1)
+                    step = OPERATOR_STEPS.get((row["task"], script.done)) if script.done is not None else None
+                    if step is not None and script.pending is not None:   # S6b C9: between post-n and pre-(n+1)
                         if not self._operator_step(take, row, step):
                             finalize_abort = True                     # C12: nothing further is sent
+                            script.then(step[0], failed=True)
                             break
+                        script.then(step[0], failed=False)
+                take.outcome = script.outcome(turns, finalize_abort=finalize_abort, wait_s=self.finalize_wait_s,
+                                              rate_limited=self._rate_limited(row, turns))
             state = _run_take.container_state(self.runtime, take.launched.take_id, caller_env=self.caller_env)
         finally:
             self._cleanup(take, adapter)
@@ -2374,6 +2394,121 @@ def leaked_networks(runtime, recorded_ids, *, caller_env=None) -> list:
     if any(not _FULL_ID.fullmatch(x) for x in listed):
         raise _run_take.Refused("the network listing holds a line that is not a full id")
     return [n for n in nets if n in listed]
+
+
+# =====================================================================================================================
+# ROUND 4, SLICE S6c (lane w6j; drive.py moved from lane w6i to lane w6j under glitch-1b's ruling S6c-gap4-1): the
+# drive loop's agent side. In-place edits in part 2 above are marked "S6c"; round 3's bytes stay untouched.
+#   W6I-R2-2  confounded-design's finalize copy writes the bytes whose md5 it checked, never a second read.
+#   C13       the marker / recovery / stop loop (round 3's drive.py:1347-1402, the same file's main()): TakeDriver
+#             sends each step's line, reads the reply against the step's marker (exact and case-sensitive: round 3's
+#             marker_holds), sends the step's pre-registered recovery (at most `at_most` times, once by default)
+#             only when the reply holds the recovery's own marker and not the step's, and sends nothing past an
+#             unheld marker: the take is `stopped` and graded as it stands. A turn the host saw end other than
+#             end_turn is cut there. The operator step after step n (ruling D8) is keyed by the step's own n, so a
+#             recovery turn never shifts it. Each line sent is one ledger row (n, sent, expects, exit, end, held,
+#             recovery, then: round 3's turns[] fields, plus the host's turn end), and the outcome is round 3's
+#             vocabulary (check_take's driver_outcome_shapes). The stop itself is classified by pause_adherence
+#             (labels4's taxonomy: ran-ahead, reworded-marker, stalled, asked-to-proceed, refused, timed-out, other)
+#             from pause_evidence(rows), never by the driver: the driver reads only whether the marker is there.
+# =====================================================================================================================
+
+TIMED_OUT_EXIT = 124      # round 3's exit for a turn cut at the budget (check_take.completion_problems reads it)
+OUTCOME_COMPLETE = "complete"
+OUTCOME_STOPPED = "stopped \u2014 wait-point marker not held; graded as it stands"
+OUTCOME_TIMED_OUT = "timed-out"
+OUTCOME_PAUSE = "PAUSE \u2014 rate limited before the first agent turn"
+OUTCOME_REHEARSAL = "REHEARSAL \u2014 no completed agent output before the turn ended"
+
+
+class _Script:
+    """C13: the take's operator script as the driver sends it, one line at a time, deciding the next line from the
+    last reply's marker alone. Iterating yields the next line to send; read(turn) records the line's ledger row and
+    decides what comes next (False: send nothing further). `done` is the step number completed by the last read
+    (None while a recovery is pending), `pending` the next line (None when nothing more is sent)."""
+
+    def __init__(self, steps, rows: list):
+        self.steps = []
+        for i, s in enumerate(list(steps), 1):
+            if isinstance(s, str):                    # a line with no wait point (S6's and S6b's synthetic scripts)
+                s = {"n": i, "line": s}
+            if not (isinstance(s, dict) and isinstance(s.get("n"), int) and isinstance(s.get("line"), str)
+                    and (s.get("marker") is None or isinstance(s["marker"], str))
+                    and (s.get("recovery") is None or (isinstance(s["recovery"], dict)
+                                                      and isinstance(s["recovery"].get("if_reply_holds"), str)
+                                                      and isinstance(s["recovery"].get("send"), str)))):
+                raise DriveRefused(f"operator script entry {i} is not a step (n, line, marker?, recovery?)")
+            self.steps.append(s)
+        self.rows, self.i, self.recoveries, self.said = rows, 0, 0, ""
+        self.pending = self.steps[0]["line"] if self.steps else None
+        self.sent, self.done, self.stopped, self.step_row = None, None, False, None
+
+    def __iter__(self):
+        return self
+
+    def __next__(self) -> str:
+        if self.pending is None:
+            raise StopIteration
+        self.sent, self.pending = self.pending, None
+        return self.sent
+
+    def read(self, turn) -> bool:
+        step = self.steps[self.i]
+        code = TIMED_OUT_EXIT if turn.end_reason == _adapter.END_TIMED_OUT else turn.exit_code
+        row = {"n": step["n"], "sent": self.sent, "expects": step.get("marker"), "exit": code,
+               "end": turn.end_reason, "then": None}
+        if self.recoveries:
+            row["recovery"] = True
+        else:
+            self.step_row, self.said = row, ""
+        self.rows.append(row)
+        self.done = None
+        if turn.end_reason != _adapter.END_TURN:
+            self.step_row["held"] = False
+            return False
+        self.said = turn.text if not self.recoveries else self.said + "\n" + turn.text
+        held = marker_holds(step, self.said)
+        rec = step.get("recovery")
+        if not held and rec and self.recoveries < int(rec.get("at_most", 1)) and rec["if_reply_holds"] in turn.text:
+            self.recoveries += 1
+            self.pending = rec["send"]
+            return True
+        self.step_row["held"] = held
+        if not held:
+            self.stopped = True                       # no line past an unheld marker: graded as it stands
+            return False
+        self.done, self.i, self.recoveries = step["n"], self.i + 1, 0
+        self.pending = self.steps[self.i]["line"] if self.i < len(self.steps) else None
+        return True
+
+    def then(self, op_id: str, *, failed: bool) -> None:
+        """The operator step after the completed step, on that step's row (round 3's `then`)."""
+        self.step_row["then"] = {"name": op_id, "failed": failed}
+
+    def outcome(self, turns, *, finalize_abort: bool, wait_s, rate_limited: bool):
+        """Round 3's ledger outcome (drive.py main(), check_take's driver_outcome_shapes)."""
+        if not turns:
+            return None
+        last = turns[-1]
+        if finalize_abort:
+            return f"aborted \u2014 finalize did not write samples.csv within {wait_s} s"
+        if last.end_reason == _adapter.END_TIMED_OUT:
+            return OUTCOME_TIMED_OUT
+        if last.end_reason != _adapter.END_TURN:
+            if not any(t.agent_output for t in turns):
+                return OUTCOME_PAUSE if rate_limited else OUTCOME_REHEARSAL
+            which = "the recovery turn" if self.rows and self.rows[-1].get("recovery") else "a scripted turn"
+            return f"aborted \u2014 {which} exited {last.exit_code}"
+        if self.stopped:
+            return OUTCOME_STOPPED
+        return OUTCOME_COMPLETE if self.pending is None and self.i >= len(self.steps) else OUTCOME_STOPPED
+
+
+def pause_evidence(rows: list) -> dict:
+    """pause_adherence's evidence from the driver's ledger rows: each line sent with the marker it expected, and the
+    host's end of its turn (graders/pause_adherence.py INPUTS: turns[].sent, turns[].expects, turn_ends)."""
+    return {"turns": [{"sent": r["sent"], "expects": r["expects"]} for r in rows],
+            "turn_ends": [r["end"] for r in rows]}
 
 
 if __name__ == "__main__":
