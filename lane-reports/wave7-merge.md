@@ -48,4 +48,39 @@ Lane reports, checks.d and the other COPIED.d fragments merged without conflict.
 
 Not run here, by instruction: the whole test_scaffold, test_pipeline and run_checks; those are athena's.
 
-RESUME HERE: merge head c1f36bc75cbbfa2dd7ea41077502b6d3a689e7f1; athena run_checks owed (orchestrator)
+Superseded by the addendum below (the athena run on 82cf6ae9 covers merges 1 and 2 only).
+
+## Addendum: merges 3 and 4 (Mon 12 Oct 2026, 00:49 to 00:51 EDT, clock read with `date`)
+
+Asked by glitch-1b after the report commit 82cf6ae9; athena was running on 82cf6ae9 from a bundle.
+Both lanes branch from 82cf6ae9; both tips equalled the assigned shas, and each code head is an ancestor of its tip.
+
+| # | Lane | Tip merged | Code head | Close ruling | Merge commit | Conflicts |
+|---|---|---|---|---|---|---|
+| 3 | gap4/w7c-spend-wiring | 5d20c3b3 | 54772733 | W7C-close-1 and W7C-close-2 (`plans/gap-study-round-4/w7c-review-r1-2026-10-12.md`) | cfaa3bc9 | none |
+| 4 | gap4/w7d-rehearsals | 8994584c | 8fa9f8ef | W7D-close-1 (`plans/gap-study-round-4/w7d-review-r1-2026-10-12.md`) | 611ea72c | none |
+
+No file conflicted, so no resolution was needed.
+Ownership as ruled: batch.py and routing.py are claimed by `COPIED.d/w7c-spend-wiring.json`, review_kit/rounds.py by `COPIED.d/w7d-rehearsals.json`.
+test_scaffold's identical-copy stand-in is w7d's `review_kit/launch.py` (departure w7d-1), kept.
+
+Checks on the merge head 611ea72c (Mac, Python 3.13.2, each behind `mac_slot.py light-ok` and `timeout -s INT 120`):
+
+| Check | Exit | Result |
+|---|---|---|
+| copy_manifest.py --check | 0 | 270 files from 41 fragments |
+| freeze.py --check | 0 | 270 owned paths checked; no takes or freeze performed |
+| routing.py --check | 0 | routing.json: 22 rows, 3 annotations, sound |
+| batch.py --check | 1 (expected) | the base's three not-ready lines: pin_profiles empty, pin_profiles_status and spend_cap_markers_status not ruled (PENDING) |
+| walk_register.py --check | 0 | 0 walks registered; nothing here is evidence about any walk |
+| probes4.py --check | 0 | 9 tasks, 18 halves, 169 rows, 1690 cells graded, 0 defects, 0 problems |
+| tests/test_spend_wiring.py | 0 | Ran 25, OK |
+| tests/test_batch.py | 0 | Ran 118, OK |
+| tests/test_routing.py | 0 | Ran 276, OK |
+| tests/test_rehearsals.py | 0 | Ran 9, OK, 0 skipped |
+| tests/test_scaffold.py TheImports | 0 | Ran 3, OK |
+| tests/test_scaffold.py TheManifest.test_a_copy_that_differs_without_an_edited_entry_is_refused | 0 | Ran 1, OK |
+
+Not run here: the whole test_scaffold, test_pipeline and run_checks; athena's.
+
+RESUME HERE: merge head 611ea72c8c8b25acc5f097456e144a54605647e3; athena run_checks owed (orchestrator)
