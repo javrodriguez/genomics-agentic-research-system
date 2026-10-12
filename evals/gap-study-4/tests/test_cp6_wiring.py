@@ -14,7 +14,9 @@
       do not plan, and no freeze at all; and through a real batch.Batch with TakeRepo, a take whose folder exists is
       committed failed with drive_started false and nothing launched. Witnesses: launch-unchecked,
       launch-fields-unchecked, launch-prereg-unchecked, launch-folder-counted, launch-folder-exists-admitted,
-      launch-unregistered-admitted.
+      launch-unregistered-admitted. Fold w9-close-1 (W9-R1-1): an open attempt 1 under an outcome-closed attempt 2
+      (a ledger appended by hand) is refused, the open registration not the slot's latest; witness
+      launch-latest-unchecked.
   W1  K1-launch, the walk arm (records "walks"): a walk is refused before launch when prereg.json exists, when its
       task, half, wording, arm or model is not one the design in force admits (walk_register.entry_problems), and when
       its id is already in rehearsals/register.json (casefolded); a walk the design admits passes. Witnesses:
@@ -28,7 +30,9 @@
       fixture fixtures/holdout-rehearsal against the clone at its HEAD, and passes when the tool does; without it the
       step stays OWED and the run is not all green; a relative tool, one not named holdout.py, a missing one, and one
       inside this repository are refused before anything runs; the parser has no holdout-folder option and takes no
-      abbreviation. The fixture holds one file per draft task, ids h1-h3, every wording marked synthetic. Witnesses:
+      abbreviation. Fold w9-close-1: the step is labelled everywhere it is written (the report a freeze records, and
+      stdout) "on the synthetic fixture evals/gap-study-4/fixtures/holdout-rehearsal, not the real holdout", so the
+      fixture's counts are never read as the real pack's; witness tool-label-dropped. The fixture holds one file per draft task, ids h1-h3, every wording marked synthetic. Witnesses:
       tool-step-skipped, tool-digests, tool-real-folder, tool-in-repo-admitted, tool-owed-anyway.
 
 Fakes and synthetic strings only: no walk, model, vendor, network, container runtime, credential, salt or holdout.
@@ -87,6 +91,9 @@ def mutants():
         "launch-folder-exists-admitted": ("K1.launch", "drive",
                                           "    if os.path.lexists(folder):\n        raise LaunchRefused(f\"{folder} already",
                                           "    if False:\n        raise LaunchRefused(f\"{folder} already"),
+        "launch-latest-unchecked": ("K1.launch", "drive",
+                                    "    if reg.get(\"attempt\") != max(r.get(\"attempt\") for r in mine):",
+                                    "    if False:"),
         "launch-unregistered-admitted": ("K1.launch", "drive", "    if len(open_) != 1:\n",
                                          "    if len(open_) > 1:\n"),
         "walk-launch-unchecked": ("W1.walk-launch", "drive",
@@ -118,6 +125,9 @@ def mutants():
                              "\"--holdout\", str(Path(clone)),"),
         "tool-in-repo-admitted": ("R1.holdout-tool", "freeze_rehearsal",
                                   "    if path.resolve().is_relative_to(REPO.resolve()):", "    if False:"),
+        "tool-label-dropped": ("R1.holdout-tool", "freeze_rehearsal",
+                               "                step(HOLDOUT_STEP_LABEL, holdout_check_command(",
+                               "                step(\" \".join(command), holdout_check_command("),
         "tool-owed-anyway": ("R1.holdout-tool", "freeze_rehearsal",
                              "if str(part).endswith(\".py\") and not Path(part).is_absolute()), None)",
                              "if str(part).endswith(\".py\")), None)"),
@@ -307,6 +317,22 @@ class K1Launch(Case):
             self.assertEqual((sc.spy.calls, sorted(os.listdir(sc.cfg)),
                               list((sc.root / "takes" / "s1" / "1").iterdir())), (0, [], []),
                              "K1.launch: existing folder: something was made or launched")
+        # 2c. W9-R1-1: an open attempt 1 under an outcome-closed attempt 2 (a ledger appended outside
+        #     commit_registration; Batch cannot reach it): the open registration is not the slot's latest, refused
+        with contextlib.ExitStack() as st:
+            sc = self.must("K1.launch", Scene, st)
+            ledger = sc.root / "takes.json"
+            for n in (1, 2):                     # one row per commit, as row_commits requires, by hand
+                rows = [dict(row, attempt=a) for a in range(1, n + 1)]
+                ledger.write_text(json.dumps({"rows": rows}, indent=2) + "\n")
+                tbi.git(sc.root, "add", "--", "takes.json")
+                tbi.git(sc.root, "commit", "-q", "-m", "Register one synthetic row by hand")
+            commit_outcome(sc.root, tbi.outcome(row, 2, state="failed", final=False,
+                                                reason="synthetic: attempt 2 closed", drive_started=False))
+            with tbi.planned(row):
+                self.refused("K1.launch: open attempt under a later one", sc.launch, row,
+                             words=("attempt 1", "not its latest"))
+            sc.nothing_made(self, "K1.launch")
         # 3. each allow-listed field changed in turn is refused, naming that field (slot: the other slot has no
         #    registration, so it is refused as unregistered)
         with contextlib.ExitStack() as st:
@@ -555,7 +581,13 @@ class R1HoldoutTool(Case):
         flat = " ".join(" ".join(c) for c in h.commands)
         for word in ("--digests", "--make-salt", "--salt-file"):
             self.assertNotIn(word, flat, f"R1.holdout-tool: the rehearsal ran {word}")
-        self.assertIn("[0] holdout.py --check\n    ok", report, f"R1.holdout-tool: {report}")
+        label = ("holdout.py --check on the synthetic fixture evals/gap-study-4/fixtures/holdout-rehearsal, "
+                 "not the real holdout")
+        self.assertIn(f"[0] {label}\n    ok", report, f"R1.holdout-tool: the record is not labelled: {report}")
+        self.assertIn(f"[0] {label}: ok", out, f"R1.holdout-tool: the printed step is not labelled: {out}")
+        self.assertEqual([line for line in report.splitlines() + out.splitlines()
+                          if "holdout.py --check" in line and label not in line], [],
+                         "R1.holdout-tool: a line names the holdout step without its label")
         self.assertNotIn("OWED", report, "R1.holdout-tool")
         self.assertEqual((code, report.rstrip().splitlines()[-1]), (0, "all green"), f"R1.holdout-tool {report}")
         # without the tool the step stays owed, and the run is not all green

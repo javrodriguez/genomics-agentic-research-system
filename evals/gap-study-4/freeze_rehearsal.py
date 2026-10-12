@@ -111,6 +111,10 @@ def owed_step(command):
 HOLDOUT_GATE = ("holdout.py", "--check")
 HOLDOUT_FIXTURE = "fixtures/holdout-rehearsal"
 HOLDOUT_TOOL_NAME = "holdout.py"
+# Fold w9-close-1 (glitch-2f): the step's name wherever it is written (stdout and the report a freeze records), so the
+# fixture's counts are never read as the real holdout's.
+HOLDOUT_STEP_LABEL = (" ".join(HOLDOUT_GATE) + " on the synthetic fixture " + study.rel(HOLDOUT_FIXTURE)
+                      + ", not the real holdout")
 
 
 def holdout_tool_problem(tool):
@@ -254,7 +258,7 @@ def main(argv=None):
                 code, head = git(clone, "rev-parse", "HEAD")
                 if code:
                     raise ValueError("the clone's HEAD cannot be read: " + head)
-                step(" ".join(command), holdout_check_command(args.holdout_tool, clone, head.strip()))
+                step(HOLDOUT_STEP_LABEL, holdout_check_command(args.holdout_tool, clone, head.strip()))
             else:
                 step(" ".join(command), python_command(command))
         if fz == 0 and all(code == 0 for _, code, _ in steps):
