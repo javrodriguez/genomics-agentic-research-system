@@ -49,3 +49,5 @@ What the sweep changed in the code (each found by a survivor or by a clause that
 RESUME HERE: review round (fresh opus-medium, threat model "every guard red by assertion when removed; nothing undocumented is accepted"), then fold.
 
 Athena module list: tests/test_gemini_adapter.py; tests/test_gemini_adapter.py --witnesses; tests/test_gemini_adapter.py --generated-mutants (whole, or --shard i/n); test_agent_adapter.py; test_transcript_view.py; test_scaffold.py (whole); test_round4.py; the gates (copy_manifest, build_draft, freeze, walk_register --check; lint_language and lint_pooling over evals/gap-study-4/).
+
+Correction (Mon 12 Oct 2026 16:29 EDT, `date`): the stage 2 heading above says 16:31; `date` read 16:28 when it was written. The heading stands as committed; this line is the record.
