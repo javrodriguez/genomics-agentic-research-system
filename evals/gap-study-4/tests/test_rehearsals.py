@@ -157,6 +157,46 @@ def a_walk(**over):
     return entry
 
 
+@contextlib.contextmanager
+def case_blind(base: Path):
+    """Simulate APFS's case-blind lookup under `base` on any filesystem (athena's ext4 is case-sensitive).
+
+    A path query (exists, is_dir, is_file, is_symlink, rglob) on a path under `base` whose exact name is not listed
+    is answered for the one listed entry that matches it by case. iterdir() is left exact, as on APFS, where a listing
+    keeps each entry's own name. The real listing is read with os.listdir, never through the patched methods."""
+    from unittest import mock
+    root = Path(base)
+
+    def canonical(path):
+        try:
+            parts = Path(path).relative_to(root).parts
+        except ValueError:
+            return path
+        here = root
+        for part in parts:
+            try:
+                listed = os.listdir(here)
+            except OSError:
+                return path
+            if part not in listed:
+                match = [n for n in listed if n.casefold() == part.casefold()]
+                if len(match) != 1:
+                    return path
+                part = match[0]
+            here = here / part
+        return here
+
+    def folding(original):
+        def method(self, *args, **kwargs):
+            return original(canonical(self), *args, **kwargs)
+        return method
+
+    with contextlib.ExitStack() as stack:
+        for name in ("exists", "is_dir", "is_file", "is_symlink", "rglob"):
+            stack.enter_context(mock.patch.object(Path, name, folding(getattr(Path, name))))
+        yield
+
+
 class Rig:
     def __init__(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="w7d-"))
@@ -297,9 +337,23 @@ class TheRegisterFold(unittest.TestCase):
         # W7D-R1-1: "W-1" registered, "w-1/" on disk: the Mac's case-blind filesystem must not make them one
         self.rig.register([a_walk(walk="W-1")])
         self.rig.folder("w-1")
+        # Leg 1, the real filesystem: on APFS (case-blind) this alone catches a path lookup; on a case-sensitive
+        # filesystem (athena's ext4) a path lookup also misses "W-1", so this leg cannot tell the two apart there.
         problems, _ = self.rig.check()
         self.assertTrue(any("'W-1'" in p and "does not exist" in p for p in problems), f"R5.case {problems}")
         self.assertTrue(any("rehearsals/w-1/" in p and "does not list" in p for p in problems), f"R5.case {problems}")
+        # Leg 2, a case-blind lookup simulated on every filesystem (athena run on 22b320be): path queries under the
+        # rig resolve a name by case, as APFS does, while the directory listing keeps its exact names. A path lookup
+        # then finds "W-1"; the exact-name match must still refuse it.
+        with case_blind(self.rig.base):
+            self.assertTrue((self.rig.base / "W-1").is_dir() and (self.rig.base / "W-1").exists(),
+                            "the case-blind simulation is not armed")
+            self.assertEqual(sorted(p.name for p in self.rig.base.iterdir()), ["README.md", "register.json", "w-1"],
+                             "the case-blind simulation changed the listing")
+            problems, _ = self.rig.check()
+        self.assertTrue(any("'W-1'" in p and "does not exist" in p for p in problems), f"R5.case (case-blind) {problems}")
+        self.assertTrue(any("rehearsals/w-1/" in p and "does not list" in p for p in problems),
+                        f"R5.case (case-blind) {problems}")
         # two ids that differ only by case are refused, folder or not
         self.rig.register([a_walk(walk="w-1"), a_walk(walk="W-1")])
         problems, _ = self.rig.check()
