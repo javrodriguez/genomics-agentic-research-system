@@ -98,6 +98,8 @@ FIXTURES = HERE / "tests" / "fixtures" / "gemini-streams"
 README = FIXTURES / "README.md"
 SYNTHETIC_LABEL = "SYNTHETIC, from D8 section 1 documentation, not a recorded stream."
 LABEL = re.compile(r"^- `([^`]+)`: (SYNTHETIC|RECORDED)\b(.*)$")
+# A RECORDED label names the walk and the harness version it was captured at (W11B-R1-9, as w11a's W11A-R1-9).
+RECORDED_LABEL = re.compile(r"RECORDED at walk [A-Za-z0-9][A-Za-z0-9._-]*, gemini-cli [0-9]+\.[0-9]+\.[0-9]+\.")
 
 D8_EVENTS = ("init", "message", "tool_use", "tool_result", "error", "result")
 D8_STATS = ("total_tokens", "input_tokens", "output_tokens", "cached", "input", "duration_ms", "tool_calls")
@@ -164,6 +166,27 @@ def recs(name: str) -> list:
 
 def jl(records) -> str:
     return "".join(json.dumps(r) + "\n" for r in records)
+
+
+def jl_raw(records) -> str:
+    """JSON Lines as Node's JSON.stringify writes them: U+2028 and U+0085 raw inside strings, never escaped."""
+    return "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records)
+
+
+# One valid record per event type, for the single-change tests (W11B-R1-5).
+def valid_records() -> dict:
+    return {"init": ev("init", session_id=SID, model=MODEL),
+            "message": ev("message", role="assistant", content="x", delta=True),
+            "tool_use": ev("tool_use", tool_name="read_file", tool_id="t1", parameters={"file_path": "a"}),
+            "tool_result": ev("tool_result", tool_id="t1", status="error", output="o",
+                              error={"type": "x", "message": "m"}),
+            "error": ev("error", severity="warning", message="m"),
+            "result": result("error", error={"type": "x", "message": "m"})}
+
+
+REQUIRED_KEYS = {"init": ("type", "session_id", "model"), "message": ("type", "role", "content"),
+                 "tool_use": ("type", "tool_name", "tool_id", "parameters"), "tool_result": ("type", "tool_id", "status"),
+                 "error": ("type", "message"), "result": ("type", "status")}
 
 
 def labels() -> dict:
@@ -365,6 +388,11 @@ def s2_key(mod, p):
     out += _both_refuse(mod, p, result("error", error={"type": "x"}), "a result error without its message")
     out += _both_refuse(mod, p, result("error", error=["type", "message"]), "a result error that is a list")
     out += _both_accept(mod, p, result("success"), "a result with no error")
+    for t, rec in valid_records().items():
+        out += _both_accept(mod, p, rec, f"a valid {t} carrying every allowed key")
+        for key in REQUIRED_KEYS[t]:
+            one = {k: v for k, v in rec.items() if k != key}
+            out += _both_refuse(mod, p, one, f"a {t} without its {key}")
     for name in ("turn1-tools.jsonl", "turn2-resume.jsonl", "error-result.jsonl", "agent-says-429.jsonl",
                  "no-init.jsonl", "turn-limit.jsonl", "tool-only.jsonl", "blank-assistant.jsonl"):
         for ln in lines(name):
@@ -388,6 +416,20 @@ def s3_words(mod, p):
                         "an empty tool_use id")
     out += _both_refuse(mod, p, ev("tool_result", tool_id="", status="success"), "an empty tool_result id")
     out += _both_accept(mod, p, ev("error", message="m"), "an error event without a severity")
+    base = valid_records()
+    for t, key, v in (("message", "content", 5), ("message", "delta", "yes"), ("message", "delta", 1),
+                      ("message", "role", 5), ("message", "timestamp", {"x": [1]}), ("init", "session_id", 5),
+                      ("init", "model", ["m"]), ("tool_use", "tool_name", 5), ("tool_use", "tool_id", 7),
+                      ("tool_use", "parameters", ["file_path"]), ("tool_result", "output", [1]),
+                      ("tool_result", "status", ["error"]), ("error", "message", 5), ("error", "severity", 5),
+                      ("result", "status", None), ("init", "timestamp", 1)):
+        out += _both_refuse(mod, p, dict(base[t], **{key: v}), f"a {t} whose {key} is {v!r}")
+    for key, v in (("type", {"a": 1}), ("message", 5)):
+        bad = dict(base["result"], error=dict(base["result"]["error"], **{key: v}))
+        out += _both_refuse(mod, p, bad, f"a result whose error.{key} is {v!r}")
+        bad = dict(base["tool_result"], error=dict(base["tool_result"]["error"], **{key: v}))
+        out += _both_refuse(mod, p, bad, f"a tool_result whose error.{key} is {v!r}")
+    out += _both_accept(mod, p, dict(base["message"], delta=False), "a message whose delta is false")
     return out
 
 
@@ -412,8 +454,8 @@ def s4_stats(mod, p):
     for what, v in (("a bool", True), ("negative", -4)):
         entry = dict(STATS["models"][MODEL], output_tokens=v)
         out += _both_refuse(mod, p, result(stats=stats_with(models={MODEL: entry})), f"a model entry count {what}")
-    bare = ev("result", status="success")
-    out += _both_accept(mod, p, bare, "a result with no stats")
+    out += _both_refuse(mod, p, ev("result", status="success"), "a successful result with no stats (W11B-R1-2)")
+    out += _both_accept(mod, p, ev("result", status="error"), "a failed result with no stats")
     return out
 
 
@@ -461,9 +503,12 @@ def s6_error_text(mod, p):
              (result("error", error={"type": "x", "message": "synthetic failure"}), "synthetic failure"),
              (result("success"), None), (ev("message", role="assistant", content="agent words"), None),
              (ev("tool_result", tool_id="t1", status="error", error={"type": "x", "message": "a tool's words"}), None),
-             (ev("error", message=7), None))
+             (ev("result", status="error"), None))
     for rec, want in cases:
-        got = mod.error_text(rec)
+        try:
+            got = mod.error_text(rec)
+        except Exception as e:  # noqa: BLE001
+            got = f"raised {type(e).__name__}"
         if got != want:
             out.append(f"{p}: the error text of a {rec['type']} reads {got!r}, not {want!r}")
     return out
@@ -548,6 +593,31 @@ def a1_stream(mod, p):
     r = None if got else mod.read_stream(after_tool, model=MODEL)
     if got or (r["tool_ids"], r["undecoded"]) != (["t1"], 1):
         out.append(f"{p}: a cut line after a tool call reads {got or (r['tool_ids'], r['undecoded'])}")
+    mid = jl([ev("init", session_id=SID, model=MODEL)]) + "{cut\n" + jl([result()])
+    got = refusal(lambda: mod.read_stream(mid, model=MODEL), mod.StreamError)
+    if got:
+        out.append(f"{p}: a line that is not JSON before the last {got} (W11B-R1-1)")
+    init = ev("init", session_id=SID, model=MODEL)
+    for sep in ("\u2028", "\u0085"):
+        cmd = ev("tool_use", tool_name="run_shell_command", tool_id="t1", parameters={"command": f"echo a{sep}b"})
+        failed = result("error", error={"type": "x", "message": f"synthetic{sep}failure"})
+        said_ = ev("message", role="assistant", content=f"x{sep}y")
+        got = accepted(lambda: mod.read_stream(jl_raw([init, cmd, said_, failed]), model=MODEL))
+        if got:
+            out.append(f"{p}: a stream holding {sep!r} inside its strings {got}")
+            continue
+        r = mod.read_stream(jl_raw([init, cmd, said_, failed]), model=MODEL)
+        want = (["t1"], True, f"x{sep}y", "error", 0,
+                [{"status": None, "type": "x", "text": f"synthetic{sep}failure"}])
+        got = (r["tool_ids"], r["agent_output"], r["agent_text"], r["status"], r["undecoded"], r["api_errors"])
+        if got != want:
+            out.append(f"{p}: a stream holding {sep!r} inside a command and an error message reads {got}")
+    for t, rec in valid_records().items():
+        for key in REQUIRED_KEYS[t]:
+            one = {k: v for k, v in rec.items() if k != key}
+            got = refusal(lambda: mod.read_stream(jl([one]), model=MODEL), mod.StreamError)
+            if got:
+                out.append(f"{p}: the adapter's reader {got}: a {t} without its {key}")
     for bad_text in (None, b"{}"):
         got = refusal(lambda: mod.read_stream(bad_text, model=MODEL), mod.StreamError)
         if got:
@@ -615,14 +685,18 @@ def a4_stats(mod, p):
         out.append(f"{p}: the result's stats read as {r['stats']}")
     if mod.read_stream(fixture("no-init.jsonl"), model=MODEL)["stats"] is not None:
         out.append(f"{p}: a call with no result carries stats")
-    bare = jl([ev("result", status="success")])
-    got = accepted(lambda: mod.read_stream(bare, model=MODEL))
+    bare = jl([ev("init", session_id=SID, model=MODEL), ev("result", status="success")])
+    got = refusal(lambda: mod.read_stream(bare, model=MODEL), mod.StreamError)
     if got:
-        out.append(f"{p}: a result with no stats {got}")
+        out.append(f"{p}: a successful result with no stats {got} (W11B-R1-2: never end_turn unmeasured)")
+    bare_fail = jl([ev("init", session_id=SID, model=MODEL), ev("result", status="error")])
+    got = accepted(lambda: mod.read_stream(bare_fail, model=MODEL))
+    if got:
+        out.append(f"{p}: a failed result with no stats {got}")
     else:
-        r = mod.read_stream(bare, model=MODEL)
+        r = mod.read_stream(bare_fail, model=MODEL)
         if (r["stats"], r["served_models"]) != (None, []):
-            out.append(f"{p}: a result with no stats reads {r['stats']}, {r['served_models']}")
+            out.append(f"{p}: a failed result with no stats reads {r['stats']}, {r['served_models']}")
     got = refusal(lambda: mod.read_stream(fixture("stats-missing.jsonl"), model=MODEL), mod.StreamError)
     if got:
         out.append(f"{p}: a stats count that is missing {got} (never read as 0)")
@@ -637,10 +711,24 @@ def a5_model(mod, p):
         got = refusal(lambda: mod.read_stream(fixture(name), model=MODEL), mod.StreamError)
         if got:
             out.append(f"{p}: {what} {got}")
-    for bad in ("", 5):
+    for bad in ("", 5, "--sandbox", "-s", "a b"):
         got = refusal(lambda: mod.read_stream(fixture("no-init.jsonl"), model=bad), mod.StreamError)
         if got:
             out.append(f"{p}: a stream read against model {bad!r} {got}")
+    empty = stats_with(models={})
+    for what, records, refused in (
+            ("stats naming no model and no init", [result(stats=empty)], True),
+            ("stats naming no model under an init", [ev("init", session_id=SID, model=MODEL), result(stats=empty)], False),
+            ("stats naming the model and no init", [result()], False),
+            ("a failed result with no stats and no init", [ev("result", status="error")], False)):
+        if refused:
+            got = refusal(lambda: mod.read_stream(jl(records), model=MODEL), mod.StreamError)
+            if got:
+                out.append(f"{p}: {what} {got} (W11B-R1-3)")
+        else:
+            got = accepted(lambda: mod.read_stream(jl(records), model=MODEL))
+            if got:
+                out.append(f"{p}: {what} {got}")
     only_other = jl([result(stats=stats_with(models={OTHER_MODEL: STATS["models"][MODEL]}))])
     got = refusal(lambda: mod.read_stream(only_other, model=MODEL), mod.StreamError)
     if got:
@@ -680,18 +768,22 @@ def a6_argv(mod, p):
         out.append(f"{p}: a later turn's argv is {later}")
     if refusal(lambda: mod.argv("-x", model=MODEL, mode=MODE, session_id=None, first=True), mod.StreamError):
         out.append(f"{p}: a line starting with '-' was not refused")
-    for sid in (None, "a b; rm", 5):
+    for sid in (None, "a b; rm", 5, "latest", "1", "42"):
         got = refusal(lambda: mod.argv("two", model=MODEL, mode=MODE, session_id=sid, first=False), mod.StreamError)
         if got:
             out.append(f"{p}: a later turn with session id {sid!r} {got}")
-    for what, kw in (("an empty line", {"line": ""}), ("an empty model", {"model": ""}), ("a model that is a number", {"model": 5}),
-                     ("an unknown mode", {"mode": "default"})):
+    for what, kw in (("an empty line", {"line": ""}), ("a line that is a number", {"line": 5}),
+                     ("an empty model", {"model": ""}), ("a model that is a number", {"model": 5}),
+                     ("the model --sandbox (W11B-R1-6)", {"model": "--sandbox"}), ("the model -s", {"model": "-s"}),
+                     ("a model holding a space", {"model": "gemini 3"}), ("an unknown mode", {"mode": "default"})):
         args = dict({"line": "one", "model": MODEL, "mode": MODE, "session_id": None, "first": True}, **kw)
         line = args.pop("line")
         got = refusal(lambda: mod.argv(line, **args), mod.StreamError)
         if got:
             out.append(f"{p}: an argv with {what} {got}")
     for what, kw, err in (("an empty model", {"model": ""}, mod.StreamError),
+                          ("the model --sandbox", {"model": "--sandbox"}, mod.StreamError),
+                          ("a model holding a space", {"model": "gemini 3"}, mod.StreamError),
                           ("a model that is a number", {"model": 5}, mod.StreamError),
                           ("no stream path function", {"stream_path_for": None}, TypeError),
                           ("no counters function", {"counters_for": "counters"}, TypeError),
@@ -757,9 +849,14 @@ def a7_session(mod, p):
     got = refusal(lambda: a.turn("two", first=False, budget_s=60), mod.StreamError)
     if got:
         out.append(f"{p}: a later turn after a first turn with no init {got}")
-    for sid in ("a b", 5, ""):
+    for sid in ("a b", 5, "", "latest", "0", "17"):
         bad = jl([ev("init", session_id=sid, model=MODEL)])
         got = refusal(lambda: mod.read_stream(bad, model=MODEL), mod.StreamError)
+        if got:
+            out.append(f"{p}: an init session id {sid!r} {got}")
+    for sid in ("latest-session-1", "0a", "s1"):
+        good = jl([ev("init", session_id=sid, model=MODEL)])
+        got = accepted(lambda: mod.read_stream(good, model=MODEL))
         if got:
             out.append(f"{p}: an init session id {sid!r} {got}")
     return out
@@ -806,9 +903,13 @@ def a8_turn(mod, p):
     if names != ["turn-1.jsonl", "turn-2.jsonl"]:
         out.append(f"{p}: the streams were written at {names}")
     a, _ = take(mod, [ok.replace("\n", "\n\udcff\udcfe\n", 1)])
+    got = refusal(lambda: a.turn("one", first=True, budget_s=60), mod.StreamError)
+    if got:
+        out.append(f"{p}: a line of bytes that are not UTF-8 before the last {got} (W11B-R1-1)")
+    a, _ = take(mod, [ok + "\udcff\udcfe\n"])
     got = accepted(lambda: a.turn("one", first=True, budget_s=60))
     if got or a.turn_records[0]["undecoded"] != 1:
-        out.append(f"{p}: a stream holding bytes that are not UTF-8 {got or a.turn_records[0]['undecoded']}")
+        out.append(f"{p}: a last line of bytes that are not UTF-8 {got or a.turn_records[0]['undecoded']}")
     for code in (2, 137, True, None):
         a, _ = take(mod, [ok], exit_codes=[code])
         got = refusal(lambda: a.turn("one", first=True, budget_s=60), mod.StreamError)
@@ -820,12 +921,28 @@ def a8_turn(mod, p):
     asked = [c for c in box.calls if c[-2:] == ["gemini", "--version"]]
     if len(asked) != 1 or "-e" in asked[0]:
         out.append(f"{p}: `gemini --version` ran {len(asked)} time(s), or with a variable: {asked}")
-    for printed, code in (("Gemini CLI 0.63.0\n", 0), ("0.63\n", 0), ("v0.63.0\n", 0), (f"{VERSION}\n", 1), (None, 0)):
+    for printed, code in (("Gemini CLI 0.63.0\n", 0), ("0.63\n", 0), ("v0.63.0\n", 0), (f"{VERSION}\n", 1), (None, 0),
+                          ("0.63.0-nightly.20261012\n", 0), ("0.63.0 extra\n", 0), ("0.63.0.1\n", 0)):
         a, _ = take(mod, [], version_out=printed, version_code=code)
         got = refusal(a.version, rt.NotReady)
         if got:
             out.append(f"{p}: a version printed {printed!r} with exit {code} {got}")
     return out
+
+
+def label_problems(marks: dict, files) -> tuple:
+    """(problems, the fixtures whose RECORDED label carries its provenance). A SYNTHETIC label must be the brief's
+    words; a RECORDED label must fullmatch RECORDED_LABEL, never counted as recorded without it."""
+    out = []
+    wrong = [f for f, (kind, rest) in marks.items() if kind == "SYNTHETIC" and kind + rest != SYNTHETIC_LABEL]
+    if wrong:
+        out.append(f"fixture(s) whose label is not the brief's words: {wrong}")
+    bare = [f for f, (kind, rest) in marks.items() if kind == "RECORDED" and not RECORDED_LABEL.fullmatch(kind + rest)]
+    if bare:
+        out.append(f"fixture(s) labelled RECORDED without the walk id and harness version: {bare}")
+    recorded = [f for f, (kind, rest) in marks.items() if kind == "RECORDED" and f in files
+                and RECORDED_LABEL.fullmatch(kind + rest)]
+    return out, recorded
 
 
 @guarded("A9-source", GA_API)
@@ -836,10 +953,8 @@ def a9_source(mod, p):
     unlabelled = [f for f in files if f not in marks]
     if unlabelled:
         out.append(f"{p}: fixture(s) with no label: {unlabelled}")
-    wrong = [f for f, (kind, rest) in marks.items() if kind == "SYNTHETIC" and kind + rest != SYNTHETIC_LABEL]
-    if wrong:
-        out.append(f"{p}: fixture(s) whose label is not the brief's words: {wrong}")
-    recorded = [f for f, (kind, _) in marks.items() if kind == "RECORDED" and f in files]
+    problems, recorded = label_problems(marks, files)
+    out += [f"{p}: {x}" for x in problems]
     if mod.SHAPES_SOURCE not in mod.SHAPES_SOURCES or tuple(mod.SHAPES_SOURCES) != ("documented", "recorded"):
         out.append(f"{p}: SHAPES_SOURCE {mod.SHAPES_SOURCE!r} is off the two words")
     if mod.SHAPES_SOURCE == "recorded" and not recorded:
@@ -905,6 +1020,15 @@ class TestTheAdapter(unittest.TestCase):
     def test_a9_the_shapes_source_is_documented(self):
         self.assertEqual(a9_source(ga), [])
 
+    def test_a_recorded_label_needs_its_walk_and_version(self):
+        for rest in ("", " at walk w-1.", " at walk w-1, gemini-cli 0.63.", " at walk w-1, codex-cli 0.63.0.",
+                     " at walk w-1, gemini-cli 0.63.0. extra"):
+            problems, recorded = label_problems({"x.jsonl": ("RECORDED", rest)}, ["x.jsonl"])
+            self.assertTrue(problems, rest)
+            self.assertEqual(recorded, [], rest)
+        problems, recorded = label_problems({"x.jsonl": ("RECORDED", " at walk w-1, gemini-cli 0.63.0.")}, ["x.jsonl"])
+        self.assertEqual((problems, recorded), ([], ["x.jsonl"]))
+
     def test_the_adapter_is_named_for_run_takes_harness(self):
         self.assertEqual(getattr(getattr(ga, "GeminiAdapter", None), "name", None), rt.GEMINI)
 
@@ -950,15 +1074,19 @@ WITNESSES = {
         "    unknown = sorted(set(rec) - set(allowed))\n", "    unknown = []\n")),
     "error-object-keys-unchecked": _w("tg", s2_key, "S2-key", (
         "    _keys(f\"{what}.error\", err, ERROR_OBJECT_KEYS, ERROR_OBJECT_KEYS)\n", "    pass\n")),
-    "error-object-type-unchecked": _w("tg", s2_key, "S2-key", (
-        "    if not isinstance(err, dict):\n        raise ShapeError(f\"{what}: its error is not an object\")\n", "")),
     "error-object-unchecked": _w("tg", s2_key, "S2-key", (
         "    if \"error\" in rec:\n        _error_object(t, rec[\"error\"])\n", "")),
     "error-object-presence-dropped": _w("tg", s2_key, "S2-key", ("    if \"error\" in rec:\n", "    if True:\n")),
     "role-unchecked": _w("tg", s3_words, "S3-words", (
         "    if t == MESSAGE and rec[\"role\"] not in ROLES:", "    if False:")),
-    "content-unchecked": _w("tg", s3_words, "S3-words", (
-        "    if t == MESSAGE and not isinstance(rec[\"content\"], str):", "    if False:")),
+    "value-types-unchecked": _w("tg", s3_words, "S3-words", ("    _types(f\"event {t}\", rec, VALUE_TYPES)\n", "")),
+    "delta-type-loosened": _w("tg", s3_words, "S3-words", ("\"delta\": bool,", "\"delta\": int,")),
+    "error-object-types-unchecked": _w("tg", s3_words, "S3-words", (
+        "    _types(f\"{what}.error\", err, ERROR_OBJECT_TYPES)\n", "")),
+    "tool-id-empty-unchecked": _w("tg", s3_words, "S3-words", (
+        "    if t in (TOOL_USE, TOOL_RESULT) and not rec[\"tool_id\"]:", "    if False:")),
+    "tool-id-tool-use-only": _w("tg", s3_words, "S3-words", (
+        "    if t in (TOOL_USE, TOOL_RESULT) and not rec[\"tool_id\"]:", "    if t == TOOL_USE and not rec[\"tool_id\"]:")),
     "status-unchecked": _w("tg", s3_words, "S3-words", (
         "    if t in (TOOL_RESULT, RESULT) and rec[\"status\"] not in STATUSES:", "    if False:")),
     "status-result-only": _w("tg", s3_words, "S3-words", (
@@ -972,18 +1100,14 @@ WITNESSES = {
     "severity-presence-dropped": _w("tg", s3_words, "S3-words", (
         "    if \"severity\" in rec and rec[\"severity\"] not in SEVERITIES:",
         "    if rec.get(\"type\") == ERROR and rec[\"severity\"] not in SEVERITIES:")),
-    "tool-id-type-dropped": _w("tg", s3_words, "S3-words", (
-        "(not isinstance(rec[\"tool_id\"], str) or not rec[\"tool_id\"])", "(not rec[\"tool_id\"])")),
-    "tool-id-empty-dropped": _w("tg", s3_words, "S3-words", (
-        "(not isinstance(rec[\"tool_id\"], str) or not rec[\"tool_id\"])", "(not isinstance(rec[\"tool_id\"], str))")),
-    "tool-id-tool-use-only": _w("tg", s3_words, "S3-words", (
-        "    if t in (TOOL_USE, TOOL_RESULT) and (not isinstance", "    if t == TOOL_USE and (not isinstance")),
-    "stats-unchecked": _w("tg", s4_stats, "S4-stats", (
-        "    if \"stats\" in rec:\n        check_stats(rec[\"stats\"])\n", "")),
     "stats-presence-dropped": _w("tg", s4_stats, "S4-stats", (
         "    if \"stats\" in rec:\n        check_stats", "    if rec.get(\"type\") == RESULT:\n        check_stats")),
-    "stats-type-unchecked": _w("tg", s4_stats, "S4-stats", (
-        "    if not isinstance(stats, dict):\n        raise ShapeError(\"result.stats is not an object\")\n", "")),
+    "stats-unchecked": _w("tg", s4_stats, "S4-stats", (
+        "    if \"stats\" in rec:\n        check_stats(rec[\"stats\"])\n", "    if \"stats\" in rec:\n        pass\n")),
+    "success-without-stats": _w("tg", s4_stats, "S4-stats", (
+        "    elif t == RESULT and rec[\"status\"] == SUCCESS:\n", "    elif False:\n")),
+    "success-without-stats-status-dropped": _w("tg", s4_stats, "S4-stats", (
+        "    elif t == RESULT and rec[\"status\"] == SUCCESS:\n", "    elif t == RESULT:\n")),
     "stats-keys-unchecked": _w("tg", s4_stats, "S4-stats", (
         "    _keys(\"result.stats\", stats, STATS_KEYS, STATS_KEYS)\n", "")),
     "stats-counts-unchecked": _w("tg", s4_stats, "S4-stats", (
@@ -1012,15 +1136,15 @@ WITNESSES = {
         "    except ValueError:\n        raise\n")),
     "decode-unchecked": _w("tg", s1_event, "S1-event", ("    check_record(rec)\n    return rec\n", "    return rec\n")),
     "tool-refusal-untyped": _w("tg", s5_tools, "S5-tools", (
-        "    try:\n        return tv.map_tool(GEMINI_TOOLS, rec.get(\"tool_name\"), rec.get(\"parameters\"))\n"
+        "    try:\n        return tv.map_tool(GEMINI_TOOLS, rec[\"tool_name\"], rec[\"parameters\"])\n"
         "    except tv.ViewError as e:\n        raise ShapeError(f\"tool_use: {e}\") from None\n",
-        "    return tv.map_tool(GEMINI_TOOLS, rec.get(\"tool_name\"), rec.get(\"parameters\"))\n")),
+        "    return tv.map_tool(GEMINI_TOOLS, rec[\"tool_name\"], rec[\"parameters\"])\n")),
     "error-event-words-dropped": _w("tg", s6_error_text, "S6-error-text", (
-        "        words = rec.get(\"message\")\n", "        words = None\n")),
+        "        return rec[\"message\"]\n", "        return None\n")),
     "failed-result-words-dropped": _w("tg", s6_error_text, "S6-error-text", (
-        "        words = (rec.get(\"error\") or {}).get(\"message\")\n", "        words = None\n")),
-    "error-words-type-unchecked": _w("tg", s6_error_text, "S6-error-text", (
-        "    return words if isinstance(words, str) else None\n", "    return words\n")),
+        "        return rec[\"error\"][\"message\"]\n", "        return None\n")),
+    "failed-result-error-presence-dropped": _w("tg", s6_error_text, "S6-error-text", (
+        "    if t == RESULT and \"error\" in rec:\n", "    if t == RESULT:\n")),
     "harness-text-dropped": _w("tg", p1_view, "P1-view", (
         "    return [tv.RawItem(t, tv.HARNESS, text=tv._joined({k: v for k, v in rec.items() if k != \"type\"}))]",
         "    return [tv.RawItem(t, tv.HARNESS, text=None)]")),
@@ -1048,30 +1172,25 @@ WITNESSES = {
         "        try:\n            t = tg.check_record(rec)\n        except tg.ShapeError as e:\n"
         "            raise StreamError(f\"the stream holds a record off the pre-registered tables: {e}\") from None\n",
         "        t = rec.get(\"type\")\n")),
-    "cut-line-uncounted": _w("ga", a1_stream, "A1-stream", ("            bad += 1\n", "            pass\n")),
+    "cut-line-uncounted": _w("ga", a1_stream, "A1-stream", ("            bad = 1\n", "            pass\n")),
+    "midstream-junk-accepted": _w("ga", a1_stream, "A1-stream", (
+        "            if n != len(lines):\n                raise StreamError(f\"line {n}",
+        "            if False:\n                raise StreamError(f\"line {n}")),
+    "split-on-every-line-break": _w("ga", a1_stream, "A1-stream", ("text.split(\"\\n\")", "text.splitlines()")),
     "delta-clause-dropped": _w("ga", a1_stream, "A1-stream", (
         "            if rec.get(\"delta\") is True and joining:\n", "            if joining:\n")),
     "joining-clause-dropped": _w("ga", a1_stream, "A1-stream", (
         "            if rec.get(\"delta\") is True and joining:\n", "            if rec.get(\"delta\") is True and pieces:\n")),
     "joining-forced": _w("ga", a1_stream, "A1-stream", (
         "            joining = rec.get(\"delta\") is True\n", "            joining = True\n")),
-    "failed-result-type-dropped": _w("ga", a2_error, "A2-error", (
-        "api.append({\"status\": None, \"type\": err.get(\"type\"),", "api.append({\"status\": None, \"type\": t,")),
     "result-stats-presence-dropped": _w("ga", a4_stats, "A4-stats", (
         "            if \"stats\" in rec:\n", "            if True:\n")),
-    "read-model-type-dropped": _w("ga", a5_model, "A5-model", (
-        "    if not isinstance(model, str) or not model:\n        raise StreamError(\"the row's model must be a non-empty "
-        "string\")\n    init_model",
-        "    if not model:\n        raise StreamError(\"the row's model must be a non-empty string\")\n    init_model")),
-    "read-model-empty-dropped": _w("ga", a5_model, "A5-model", (
-        "    if not isinstance(model, str) or not model:\n        raise StreamError(\"the row's model must be a non-empty "
-        "string\")\n    init_model",
-        "    if not isinstance(model, str):\n        raise StreamError(\"the row's model must be a non-empty string\")\n"
-        "    init_model")),
     "agent-text-as-error": _w("ga", a2_error, "A2-error", (
         "        if t == tg.ERROR:\n            api.append(", "        if t == tg.ERROR or said:\n            api.append(")),
     "success-result-as-error": _w("ga", a2_error, "A2-error", (
         "            if status == tg.FAILED:\n", "            if True:\n")),
+    "failed-result-type-dropped": _w("ga", a2_error, "A2-error", (
+        "\"type\": rec[\"error\"][\"type\"] if \"error\" in rec else None,", "\"type\": t,")),
     "error-as-agent-output": _w("ga", a2_error, "A2-error", (
         "        if t == tg.ERROR:\n            api.append(", "        if t == tg.ERROR:\n            output = True\n"
                                                              "            api.append(")),
@@ -1086,6 +1205,26 @@ WITNESSES = {
                                                      "\"status\": status, \"stats\": None,")),
     "init-model-unchecked": _w("ga", a5_model, "A5-model", ("            if init_model != model:\n",
                                                             "            if False:\n")),
+    "no-model-record-accepted": _w("ga", a5_model, "A5-model", (
+        "    if stats is not None and not served and init_model is None:\n", "    if False:\n")),
+    "no-model-record-stats-clause-dropped": _w("ga", a5_model, "A5-model", (
+        "    if stats is not None and not served and init_model is None:\n",
+        "    if not served and init_model is None:\n")),
+    "no-model-record-served-clause-dropped": _w("ga", a5_model, "A5-model", (
+        "    if stats is not None and not served and init_model is None:\n",
+        "    if stats is not None and init_model is None:\n")),
+    "no-model-record-init-clause-dropped": _w("ga", a5_model, "A5-model", (
+        "    if stats is not None and not served and init_model is None:\n", "    if stats is not None and not served:\n")),
+    "read-model-type-dropped": _w("ga", a5_model, "A5-model", (
+        "    if not isinstance(model, str) or not _MODEL_ID.fullmatch(model):\n        raise StreamError(\"the row's "
+        "model is off the model-id shape\")\n    init_model",
+        "    if not _MODEL_ID.fullmatch(model):\n        raise StreamError(\"the row's model is off the model-id "
+        "shape\")\n    init_model")),
+    "read-model-shape-dropped": _w("ga", a5_model, "A5-model", (
+        "    if not isinstance(model, str) or not _MODEL_ID.fullmatch(model):\n        raise StreamError(\"the row's "
+        "model is off the model-id shape\")\n    init_model",
+        "    if not isinstance(model, str) or not model:\n        raise StreamError(\"the row's model is off the "
+        "model-id shape\")\n    init_model")),
     "stats-models-unchecked": _w("ga", a5_model, "A5-model", (
         "                other = [m for m in served if m != model]\n", "                other = []\n")),
     "stats-models-first-key-only": _w("ga", a5_model, "A5-model", (
@@ -1112,6 +1251,21 @@ WITNESSES = {
     "dash-line-accepted": _w("ga", a6_argv, "A6-argv", (
         "    if line.startswith(\"-\"):\n        raise StreamError(\"a line that starts", "    if False:\n"
                                                                                        "        raise StreamError(\"a line that starts")),
+    "argv-line-type-dropped": _w("ga", a6_argv, "A6-argv", (
+        "    if not isinstance(line, str) or not line:\n", "    if not line:\n")),
+    "argv-line-empty-dropped": _w("ga", a6_argv, "A6-argv", (
+        "    if not isinstance(line, str) or not line:\n", "    if not isinstance(line, str):\n")),
+    "argv-model-type-dropped": _w("ga", a6_argv, "A6-argv", (
+        "    if not isinstance(model, str) or not _MODEL_ID.fullmatch(model):\n        raise StreamError(\"the turn's",
+        "    if not _MODEL_ID.fullmatch(model):\n        raise StreamError(\"the turn's")),
+    "argv-model-shape-dropped": _w("ga", a6_argv, "A6-argv", (
+        "    if not isinstance(model, str) or not _MODEL_ID.fullmatch(model):\n        raise StreamError(\"the turn's",
+        "    if not isinstance(model, str) or not model:\n        raise StreamError(\"the turn's")),
+    "model-id-loosened": _w("ga", a6_argv, "A6-argv", (
+        "_MODEL_ID = re.compile(r\"[A-Za-z0-9][A-Za-z0-9._-]{0,99}\")", "_MODEL_ID = re.compile(r\"[^ ]+\")")),
+    "adapter-model-unchecked": _w("ga", a6_argv, "A6-argv", (
+        "        if not isinstance(model, str) or not _MODEL_ID.fullmatch(model):\n            raise StreamError(\"the "
+        "row's model is off the model-id shape\")\n        self.runtime", "        self.runtime")),
     "argv-session-type-dropped": _w("ga", a6_argv, "A6-argv", (
         "        if not isinstance(session_id, str) or not _SESSION_ID.fullmatch(session_id):\n"
         "            raise StreamError(\"a later turn",
@@ -1120,19 +1274,10 @@ WITNESSES = {
         "        if not isinstance(session_id, str) or not _SESSION_ID.fullmatch(session_id):\n"
         "            raise StreamError(\"a later turn",
         "        if not isinstance(session_id, str):\n            raise StreamError(\"a later turn")),
-    "argv-input-type-dropped": _w("ga", a6_argv, "A6-argv", (
-        "        if not isinstance(v, str) or not v:\n            raise StreamError(f\"the turn's",
-        "        if not v:\n            raise StreamError(f\"the turn's")),
-    "argv-input-empty-dropped": _w("ga", a6_argv, "A6-argv", (
-        "        if not isinstance(v, str) or not v:\n            raise StreamError(f\"the turn's",
-        "        if not isinstance(v, str):\n            raise StreamError(f\"the turn's")),
     "argv-mode-unchecked": _w("ga", a6_argv, "A6-argv", (
         "    if mode not in MODE_FLAGS:\n        raise StreamError(f\"no flags pre-registered for mode {mode!r}\")\n"
         "    out = [CLIENT, PROMPT_FLAG, line, *OUTPUT_FLAGS, MODEL_FLAG, model, *MODE_FLAGS[mode]]\n",
         "    out = [CLIENT, PROMPT_FLAG, line, *OUTPUT_FLAGS, MODEL_FLAG, model, *MODE_FLAGS.get(mode, ())]\n")),
-    "adapter-model-unchecked": _w("ga", a6_argv, "A6-argv", (
-        "        if not isinstance(model, str) or not model:\n            raise StreamError(\"the row's model must be a "
-        "non-empty string\")\n        self.runtime", "        self.runtime")),
     "callables-unchecked": _w("ga", a6_argv, "A6-argv", (
         "            if not callable(fn):\n                raise TypeError(f\"{what} must be callable\")\n",
         "            pass\n")),
@@ -1154,14 +1299,15 @@ WITNESSES = {
         "        if first:\n            self.session_id = read[\"session_id\"]\n        elif",
         "        if first or read[\"session_id\"] is None:\n            self.session_id = read[\"session_id\"]\n"
         "        elif")),
-    "init-session-type-dropped": _w("ga", a7_session, "A7-session", (
-        "            if not isinstance(session_id, str) or not _SESSION_ID.fullmatch(session_id):\n"
-        "                raise StreamError(\"the init carries",
-        "            if not _SESSION_ID.fullmatch(session_id):\n                raise StreamError(\"the init carries")),
     "init-session-shape-dropped": _w("ga", a7_session, "A7-session", (
-        "            if not isinstance(session_id, str) or not _SESSION_ID.fullmatch(session_id):\n"
-        "                raise StreamError(\"the init carries",
-        "            if not isinstance(session_id, str):\n                raise StreamError(\"the init carries")),
+        "            if not _SESSION_ID.fullmatch(session_id):\n                raise StreamError(\"the init carries",
+        "            if False:\n                raise StreamError(\"the init carries")),
+    "session-selectors-admitted": _w("ga", a7_session, "A7-session", (
+        "_SESSION_ID = re.compile(r\"(?!latest$)(?![0-9]+$)[A-Za-z0-9]", "_SESSION_ID = re.compile(r\"[A-Za-z0-9]")),
+    "session-latest-admitted": _w("ga", a7_session, "A7-session", (
+        "_SESSION_ID = re.compile(r\"(?!latest$)(?![0-9]+$)[A-Za-z0-9]", "_SESSION_ID = re.compile(r\"(?![0-9]+$)[A-Za-z0-9]")),
+    "session-index-admitted": _w("ga", a7_session, "A7-session", (
+        "_SESSION_ID = re.compile(r\"(?!latest$)(?![0-9]+$)[A-Za-z0-9]", "_SESSION_ID = re.compile(r\"(?!latest$)[A-Za-z0-9]")),
     # ---- the turn's end and exit
     "exit53-as-end-turn": _w("ga", a8_turn, "A8-turn", (
         "    if exit_code == 0 and read[\"status\"] == tg.SUCCESS:\n", "    if read[\"status\"] == tg.SUCCESS:\n")),
@@ -1180,6 +1326,7 @@ WITNESSES = {
         "        meaning = exit_meaning(got[\"exit_code\"], got[\"timed_out\"])\n", "        meaning = None\n")),
     "turn-limit-mislabelled": _w("ga", a8_turn, "A8-turn", ("53: TURN_LIMIT}", "53: \"success\"}")),
     "version-searched": _w("ga", a8_turn, "A8-turn", ("VERSION_FORM.fullmatch(", "VERSION_FORM.search(")),
+    "version-matched": _w("ga", a8_turn, "A8-turn", ("VERSION_FORM.fullmatch(", "VERSION_FORM.match(")),
     "version-exit-ignored": _w("ga", a8_turn, "A8-turn", ("if c.returncode == 0 else None", "if True else None")),
     "shapes-recorded": _w("ga", a9_source, "A9-source", ("SHAPES_SOURCE = \"documented\"\n",
                                                          "SHAPES_SOURCE = \"recorded\"\n")),
@@ -1205,7 +1352,7 @@ class TestWitnesses(unittest.TestCase):
         self.assertTrue(own, f"{name}: survived (no {prefix} line): {got}")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 98)
+        self.assertEqual(len(WITNESSES), 111)
         for name, (target, edits, _, _) in WITNESSES.items():
             path = Path(TARGETS[target]().__file__)
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
@@ -1235,12 +1382,21 @@ for _name in WITNESSES:
 # stale and fails. One listed rule skips mutants rather than allow-listing them one by one: MESSAGE_TEXT_RULE, a string
 # literal inside a `raise` statement, which only the refusal's message reads (no code or test reads those words).
 MUTANT_KINDS = ("stmt-delete", "if-true", "if-false", "bool-drop", "bool-swap", "not-drop", "cmp-negate",
-                "assign-empty", "return-none", "str-change", "int-change", "call-true")
+                "assign-empty", "return-none", "str-change", "int-change", "call-true",
+                # review round 1's operators (W11B-R1 fold): boundary swaps, `is True` to truthy, fullmatch to match
+                # and to search, a regex loosened, one element of a literal tuple or list dropped, one entry of a
+                # dict literal dropped, `.strip()` dropped, list/sorted/set unwrapped
+                "boundary", "is-true-truthy", "fullmatch-match", "fullmatch-search", "regex-loosen", "elt-drop",
+                "dict-drop", "strip-drop", "unwrap")
+BOUNDARY = {ast.Gt: ast.GtE, ast.GtE: ast.Gt, ast.Lt: ast.LtE, ast.LtE: ast.Lt}
 MESSAGE_TEXT_RULE = "a string literal inside a raise statement is the refusal's message text, read by no logic"
 EQUIVALENT_CATEGORIES = {
     "import-plumbing": "the sys.path insert or the __future__ import: the module imports the same either way under "
                        "the test's own sys.path, and Python 3.13 evaluates no annotation here",
     "falsy-alike": "the mutant swaps one falsy value for another where the only reader tests truthiness",
+    "typed-bool": "VALUE_TYPES makes `delta` a bool before this line reads it, so `is True` and truthiness agree",
+    "message-order": "sorted() only orders the names a refusal's message lists; no condition reads the order",
+    "sequence-alike": "run_take's argv check takes any sequence of strings, so a tuple and its list() agree",
     "identical-mutant": "the mutant behaves as the line does: a None written as None, or a method's last "
                         "`return None` deleted (it falls off and returns None)",
     "message-label": "a label string passed only into a refusal's message text, never read by a condition (the "
@@ -1248,45 +1404,52 @@ EQUIVALENT_CATEGORIES = {
 }
 # What each category's line must hold (checked against the named line of the file, so a reason cannot drift from it).
 EQUIVALENT_TOKENS = {"import-plumbing": ("_HERE", "__future__"), "falsy-alike": ("joining = False",),
-                     "identical-mutant": ("None",), "message-label": None}
+                     "identical-mutant": ("None",), "message-label": None, "typed-bool": ("is True",),
+                     "message-order": ("sorted(",), "sequence-alike": ("list(VERSION_ARGV)",)}
 CMP_NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: ast.In, ast.Lt: ast.GtE,
               ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt, ast.Is: ast.IsNot, ast.IsNot: ast.Is}
 # {mutant key: (category, why, a token its source line holds)}; the key is printed by the sweep for each survivor.
 EQUIVALENT = {
-    'gemini_adapter: stmt-delete L65 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
-    'gemini_adapter: assign-empty L72 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'gemini_adapter: cmp-negate#0 L73 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'gemini_adapter: if-false L73 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'gemini_adapter: if-true L73 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'gemini_adapter: stmt-delete L73 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'gemini_adapter: int-change L74 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'gemini_adapter: stmt-delete L74 7baa5234 sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'gemini_adapter: assign-empty L125 f8f68722 joining = False': ('falsy-alike', 'joining is read only as `and joining`; None and False read alike', 'joining = False'),
-    'gemini_adapter: assign-empty L141 f8f68722 joining = False': ('falsy-alike', 'joining is read only as `and joining`; None and False read alike', 'joining = False'),
-    "gemini_adapter: str-change L185 02b1093d 'line'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'line'),
-    "gemini_adapter: str-change L185 8bd2e950 'model'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'model'),
-    'gemini_adapter: return-none L203 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    "gemini_adapter: str-change L246 3a445bda 'stream_path_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'stream_path_for'),
-    "gemini_adapter: str-change L246 5a98356f 'counters_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'counters_for'),
-    "gemini_adapter: str-change L246 8c8bd4c2 'clock'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'clock'),
-    'gemini_adapter: assign-empty L255 65756fc1 self._version = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: assign-empty L256 7f1bf958 self.session_id = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: return-none L306 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
-    'gemini_adapter: stmt-delete L306 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
-    'transcript_gemini: stmt-delete L45 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
-    'transcript_gemini: assign-empty L51 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'transcript_gemini: cmp-negate#0 L52 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'transcript_gemini: if-false L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'transcript_gemini: if-true L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'transcript_gemini: stmt-delete L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'transcript_gemini: int-change L53 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    'transcript_gemini: stmt-delete L53 7baa5234 sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_HERE'),
-    "transcript_gemini: str-change L127 b2437d2e '.error'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", '.error'),
-    "transcript_gemini: str-change L135 934526e8 'result.stats'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'result.stats'),
-    "transcript_gemini: str-change L145 10c989f3 'result.stats.models['": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'result.stats.models['),
-    "transcript_gemini: str-change L145 cb8092dd ']'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", ']'),
-    "transcript_gemini: str-change L171 e8f80b17 'event '": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'event '),
-    'transcript_gemini: return-none L212 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: stmt-delete L65 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),
+    'gemini_adapter: assign-empty L72 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'gemini_adapter: cmp-negate#0 L73 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'gemini_adapter: if-false L73 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'gemini_adapter: if-true L73 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'gemini_adapter: stmt-delete L73 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'gemini_adapter: int-change L74 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'gemini_adapter: stmt-delete L74 7baa5234 sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'gemini_adapter: assign-empty L133 f8f68722 joining = False': ('falsy-alike', 'joining is read only as `and joining`; None and False read alike', 'joining = False'),
+    'gemini_adapter: assign-empty L149 f8f68722 joining = False': ('falsy-alike', 'joining is read only as `and joining`; None and False read alike', 'joining = False'),
+    "gemini_adapter: is-true-truthy L162 9d1f7fda rec.get('delta') is True": ('typed-bool', 'delta is a bool by VALUE_TYPES', 'is True'),
+    "gemini_adapter: is-true-truthy L166 9d1f7fda rec.get('delta') is True": ('typed-bool', 'delta is a bool by VALUE_TYPES', 'is True'),
+    'gemini_adapter: return-none L214 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: unwrap L216 790ab58d sorted(EXIT_MEANINGS)': ('message-order', "the sorted names go only into a refusal's message", 'sorted('),
+    "gemini_adapter: str-change L257 3a445bda 'stream_path_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'stream_path_for'),
+    "gemini_adapter: str-change L257 5a98356f 'counters_for'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'counters_for'),
+    "gemini_adapter: str-change L257 8c8bd4c2 'clock'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'clock'),
+    'gemini_adapter: assign-empty L266 65756fc1 self._version = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: assign-empty L267 7f1bf958 self.session_id = None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: unwrap L273 95ba8661 list(VERSION_ARGV)': ('sequence-alike', 'agent_exec_argv takes the tuple as it takes the list', 'list(VERSION_ARGV)'),
+    'gemini_adapter: return-none L317 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'gemini_adapter: stmt-delete L317 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
+    'transcript_gemini: stmt-delete L45 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),
+    'transcript_gemini: assign-empty L51 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: cmp-negate#0 L52 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: if-false L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: if-true L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: stmt-delete L52 9b7db2cf if _HERE not in sys.path: sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: int-change L53 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: stmt-delete L53 7baa5234 sys.path.insert(0, _HERE)': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
+    'transcript_gemini: unwrap L125 90ac4953 sorted(set(rec) - set(allowed))': ('message-order', "the sorted names go only into a refusal's message", 'sorted('),
+    "transcript_gemini: str-change L136 b2437d2e '.error'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", '.error'),
+    "transcript_gemini: str-change L137 b2437d2e '.error'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", '.error'),
+    "transcript_gemini: str-change L143 934526e8 'result.stats'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'result.stats'),
+    "transcript_gemini: str-change L153 10c989f3 'result.stats.models['": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'result.stats.models['),
+    "transcript_gemini: str-change L153 cb8092dd ']'": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", ']'),
+    "transcript_gemini: str-change L179 e8f80b17 'event '": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'event '),
+    "transcript_gemini: str-change L180 e8f80b17 'event '": ('message-label', "a label passed only into a refusal's message text (no condition reads it)", 'event '),
+    'transcript_gemini: return-none L220 9f730a1a return None': ('identical-mutant', 'the mutant writes the same None the line already writes', 'None'),
+    'transcript_gemini: stmt-delete L220 9f730a1a return None': ('identical-mutant', "a method's last `return None` deleted still returns None", 'None'),
 }
 MUTANT_FILES = (("tg", "transcript_gemini.py"), ("ga", "gemini_adapter.py"))
 
@@ -1341,6 +1504,26 @@ def mutant_sites(tree) -> tuple:
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in (
                 "isinstance", "callable", "all", "any"):
             out.append((w, "call-true", None))
+        if isinstance(node, ast.Compare):
+            out += [(w, "boundary", i) for i, op in enumerate(node.ops) if type(op) in BOUNDARY]
+            if len(node.ops) == 1 and isinstance(node.ops[0], ast.Is) and isinstance(node.comparators[0], ast.Constant) \
+                    and node.comparators[0].value is True:
+                out.append((w, "is-true-truthy", None))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if node.func.attr == "fullmatch":
+                out += [(w, "fullmatch-match", None), (w, "fullmatch-search", None)]
+            if node.func.attr == "compile" and node.args and isinstance(node.args[0], ast.Constant):
+                out.append((w, "regex-loosen", None))
+            if node.func.attr == "strip" and not node.args:
+                out.append((w, "strip-drop", None))
+        if isinstance(node, (ast.Tuple, ast.List)) and len(node.elts) > 1 and id(node) not in raised \
+                and all(isinstance(e, ast.Constant) for e in node.elts):
+            out += [(w, "elt-drop", i) for i in range(len(node.elts))]
+        if isinstance(node, ast.Dict) and len(node.keys) > 1 and None not in node.keys and id(node) not in raised:
+            out += [(w, "dict-drop", i) for i in range(len(node.keys))]
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("list", "sorted", "set") \
+                and len(node.args) == 1:
+            out.append((w, "unwrap", None))
     return out, skipped
 
 
@@ -1370,6 +1553,27 @@ def _mutate(node, kind, i):
     if kind == "int-change":
         node.value = node.value + 1
         return node
+    if kind == "boundary":
+        node.ops[i] = BOUNDARY[type(node.ops[i])]()
+        return node
+    if kind == "is-true-truthy":
+        return node.left
+    if kind in ("fullmatch-match", "fullmatch-search"):
+        node.func.attr = kind.split("-")[1]
+        return node
+    if kind == "regex-loosen":
+        node.args[0] = ast.Constant(r"(.+)")
+        return node
+    if kind == "elt-drop":
+        node.elts = node.elts[:i] + node.elts[i + 1:]
+        return node
+    if kind == "dict-drop":
+        node.keys, node.values = node.keys[:i] + node.keys[i + 1:], node.values[:i] + node.values[i + 1:]
+        return node
+    if kind == "strip-drop":
+        return node.func.value
+    if kind == "unwrap":
+        return node.args[0]
     return ast.Constant(True)                        # call-true
 
 
@@ -1500,7 +1704,7 @@ def equivalent_problems() -> list:
         allowed = EQUIVALENT_TOKENS[v[0]]
         if (allowed is not None and v[2] not in allowed) or v[2] not in line:
             out.append((key, f"line {m.group(2)} does not hold the {v[0]} token {v[2]!r}"))
-        if v[0] == "message-label" and not key.endswith(f"'{v[2]}'"):
+        if v[0] == "message-label" and not re.search(f"'{re.escape(v[2])}'( @[0-9]+)?$", key):
             out.append((key, "a message label's token is not the mutated literal"))
     return out
 

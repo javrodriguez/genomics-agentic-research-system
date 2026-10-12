@@ -52,3 +52,23 @@ Athena module list: tests/test_gemini_adapter.py; tests/test_gemini_adapter.py -
 
 Correction (Mon 12 Oct 2026 16:29 EDT, `date`): the stage 2 heading above says 16:31; `date` read 16:28 when it was written. The heading stands as committed; this line is the record.
 Correction to the correction: its own stamp should read 16:28 (`date` printed 16:28:32).
+
+## Stage 3: review round 1 fold, the tests first (Mon 12 Oct 2026 17:58 EDT, `date`)
+
+Review round 1 (d03f43e1, lane-reports/w11b-gemini-adapter-review-r1.md) was CHANGES: 2 MAJOR, 7 MINOR. glitch-2f's ruling w11b-R1-fold: fold all nine; rulings Q-w11b-2 to -6 hold.
+The reviewer's repro and harness were copied to the worktree's untracked .scratch/review-r1/ (not edited in place, not committed).
+Committed in this stage: the test module and the fixture README's RECORDED wording, both run against the pre-fold code (gemini_adapter.py and transcript_gemini.py at 4da835dc).
+Red: Ran 135, FAILED (failures=99), 0 errors (88 of them witnesses whose anchors name fold code that does not exist yet, plus the generated-sweep baseline, the stale EQUIVALENT list and the anchor registry).
+Each finding red by its own check's line on the pre-fold code:
+
+- W11B-R1-1: "A1-stream: a line that is not JSON before the last accepted it"; "A1-stream: a stream holding ' ' inside a command and an error message reads ([], False, '', None, 6, [])", and the same for '\x85'; "A8-turn: a line of bytes that are not UTF-8 before the last accepted it" (the old test that pinned the tolerance, inverted).
+- W11B-R1-2: "S4-stats: the record check accepted it: a successful result with no stats" (and the parser); "A4-stats: a successful result with no stats accepted it" (the old A4 acceptance, inverted).
+- W11B-R1-3: "A5-model: stats naming no model and no init accepted it".
+- W11B-R1-4: S3-words, 24 lines: delta 'yes' and 1, timestamp an object and an int, session_id 5, model a list, output a list, an error event's message 5, error.type an object and error.message 5 on a result and a tool_result.
+- W11B-R1-5: one single-change test per required key per event, through decode, the parser (S2-key) and read_stream (A1-stream). They pass on the pre-fold code, which refuses each by a ShapeError or a KeyError. The binding is new: the generated sweep's element-drop operator now kills every drop of a required key (the fold dropped `type` from the required tuples, where the event lookup already refuses it, and made tool_kind read its required keys by index).
+- W11B-R1-6: "A6-argv: an argv with the model --sandbox accepted it", "-s", "a model holding a space", "an adapter made with the model --sandbox accepted it"; "A5-model: a stream read against model '--sandbox' accepted it".
+- W11B-R1-7: the suffixed prints ("0.63.0-nightly.20261012", "0.63.0 extra", "0.63.0.1") pass on the pre-fold code, which already uses fullmatch; they bind the fullmatch-to-match mutant (witness version-matched, the sweep's fullmatch-match).
+- W11B-R1-8: "A6-argv: a later turn with session id 'latest' accepted it", '1', '42'; "A7-session: an init session id 'latest' accepted it", '0', '17'.
+- W11B-R1-9: RECORDED_LABEL, as w11a's, fullmatch "RECORDED at walk <id>, gemini-cli <X.Y.Z>."; a unit test refuses five partial labels; the README now says exactly that.
+
+The generated sweep gained the reviewer's operators where they apply: boundary swaps, `is True` to truthy, fullmatch to match and to search, regex loosening, one element of a literal tuple or list dropped, one dict-literal entry dropped, `.strip()` dropped, list/sorted/set unwrapped (21 kinds in all).
