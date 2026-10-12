@@ -88,3 +88,33 @@ No real holdout content was read or created (synthetic strings only), and no mod
 4. **The aegis side is still owed.**
    No aegis source exists today: no salt, no digest file and no loader for the holdout matcher.
    The plan text at lines 709 and 829, which says the public draft carries the digests, is now superseded by this ruling but has not been edited.
+
+## Fold: glitch-1b's rulings Q7 and Q8 (written Mon 12 Oct 2026, 09:14 EDT, `date`)
+
+Code commit `6c616d5a` sits on top of `8a833144`.
+The rulings were Q7 (rehearsal exercises the digest path), Q8/Q10 (the holdout check stays in aegis and is owed until S9), and Q9 ("per version" means per task, as built).
+
+1. **Q7.** `freeze_rehearsal` writes `synthetic-holdout-digests.json` in its temporary folder, beside the clone so the clone stays committed.
+   The file holds the sha256 of fake strings, one list per task of the cloned draft, and never any holdout content.
+   The rehearsal hands it to `freeze.py --holdout-digests`, and a "holdout digests" step checks both frozen fields (`holdout_written_problems`).
+   `--no-holdout-digests` leaves the file out and records `NOT REHEARSED: the holdout digests ...` as a failing step, so that rehearsal is never all green.
+   Tests: H9 and H10 (H10 reads the real freeze's output).
+2. **Q8.** The `holdout.py --check` step is never run in the clone.
+   `owed_step` fails it with `OWED: holdout.py --check lives in private aegis (ruling C4) and is wired with S9's landing ...`, so the rehearsal is not all green until S9 rewires it.
+   `COMMANDS` is unchanged, so L11 and FreezeCoverage hold.
+   Test: H11.
+3. **Ownership.** freeze_rehearsal.py moved from w8a to w8b, and the transfer is named in w8a's fragment.
+   tests/test_pipeline.py was edited without transfer, recorded in w8a's entry: PipelineOwnership's lane map now reads freeze.py and freeze_rehearsal.py from w8b.
+4. **Regression I caused in `4ad2b531`.** Moving freeze.py out of w5b turned PipelineOwnership red.
+   I had not run that class at the first hand-back; it is fixed in `6c616d5a`.
+
+Evidence (Mac; `light-ok &&`, `timeout -s INT 120`, Python 3.13):
+- Red first, with `8a833144`'s freeze_rehearsal.py restored byte for byte around the run: 11 run, 3 failures, 0 errors, exit 1, all by assertion (H9, H10 "the fold"; H11 holdout.py was run).
+- Green: 11/11, exit 0.
+- Witnesses: 16/16 RED, exit 0.
+  The five new ones are rehearsal-skips-file and no-file-silent (H9), written-unchecked (H10), and owed-passes and owed-runs (H11).
+- test_pipeline PipelineOwnership, FreezeCoverage, FreezeOutputs and FreezeDesign: 16 tests run by class, exit 0.
+- test_walk_layout L11Gates: exit 0.
+- test_build_draft: 45/45, exit 0.
+- `copy_manifest --check` exit 0; `freeze.py --check` exit 0.
+- Lint: freeze_rehearsal.py and the test are clean.
