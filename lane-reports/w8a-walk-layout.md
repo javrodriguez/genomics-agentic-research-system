@@ -1,4 +1,4 @@
-status: stopped
+status: closed
 
 # Lane w8a-walk-layout: Gap Study round 4, the walk layout (ruling W8-layout-1, Option A)
 
@@ -72,4 +72,20 @@ Evidence (same Mac conditions):
 - Regressions green: test_drive_commit 31, test_walk_wiring 20, test_rehearsals 9, test_mode_binding 8, test_drive_loop 27, test_box_integration TestTheTakePath 17 and TestBoundChecks 19, test_pipeline PublishedArtifacts and FreezeCoverage 15.
 - Gates: copy_manifest --check, freeze --check, walk_register --check, probes4 --check exit 0; batch --check exit 1 on its three not-ready lines.
 
-RESUME HERE: hand-back for review round 2 at ebdebd10
+## Appendix: fold W8A-close-2 (review round 2 PASSED; three cheap items)
+
+Written Mon 12 Oct 2026, 02:08 EDT (`date`), by the same writer, on glitch-1b's ruling W8A-close-2.
+Base `1aa15486`; fold code commit `98c3a3a2`.
+
+- R2-1: WalkRepo also refuses when `git log -1 --format=%H <head> -- <study>/prereg.json` is non-empty (or git cannot read the history). L3: a freeze committed, then removed by `git rm` and a commit, then a walk: refused, HEAD unmoved. Witness history-unchecked.
+- R2-3: `grade_committed` reads `row["slot"]` and `row["attempt"]`; a row without either raises KeyError (L5). Witness slot-defaulted.
+- R2-4: the L1 scan also matches a bare root name and annotated assignments at module level (mode_binding.py, which defines them, is skipped). Witness bare-root-constant. A walk's driver-ledger cell must hold exactly one of pressure and repeat as None (stats._one_level); L6 refuses both None and both set. Witness cell-level-unchecked.
+- R2-2: no change; recorded for CP8 with R1-5.
+
+Evidence (same Mac conditions):
+- Red first (new tests against 1aa15486): 14 run, 3 failures (L3, L5, L6), 0 errors, exit 1. R2-4's scan half is a test-side rule; its red is its witness.
+- Green: 14 run, 0 failures, 0 errors, exit 0. Witnesses 21/21 RED (14 + 7, exit 0 each).
+- Regressions green: test_drive_commit 31, test_walk_wiring 20, test_pipeline PublishedArtifacts 5.
+- Gates: copy_manifest --check, freeze --check, walk_register --check, probes4 --check exit 0; batch --check exit 1 on its three not-ready lines.
+
+RESUME HERE: w8a closed at 98c3a3a2
