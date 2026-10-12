@@ -1,6 +1,6 @@
-Status: review round 1 CHANGES (d8ed8b9b); ruling w11c-R1-fold folded (96376ecd); waiting on review round 2
+Status: review round 2 PASS (adc26ec7); ruling w11c-close-1 folded (2a6646c7); ready for athena
 
-RESUME HERE: review round 2
+RESUME HERE: athena
 
 # Lane w11c-walk-plan: Gap Study round 4, the CP6 walk list and its coverage report
 
@@ -174,3 +174,28 @@ Open questions: none new. Q-w11c-3 is answered by the ruling Q-2 line the review
 - The gates: copy_manifest --check, build_draft --check, freeze.py --check, walk_register --check, lint_language and lint_pooling over the folder
 
 RESUME HERE: review round 2.
+
+## Fold w11c-close-1, Mon 12 Oct 2026 19:11 EDT (`date`)
+
+Review round 2 passed (adc26ec7). The full generated sweep (251 mutants) left 11 survivors with EQUIVALENT empty; ruling w11c-close-1 (glitch-2f) folds them before athena.
+Red-first commit `52773435` (tests; against 96376ecd's code: 15 run, 1 failure, P12.register, the register.json walk id raised FileExistsError, 0 errors); fold commit `2a6646c7`.
+
+- Code: read_register gives no stand-in folder to a walk id that cannot be one (register.json itself, a 300-character id); walk_register's check then reports the folder missing and the register is refused by name, exit 2, never a crash. The except body is a bare `pass`, which the sweep does not mutate.
+- Tests: the "first five, and N more" bounds with six and with many problems, in plan_walks and in the register report; an unreadable register (read_bytes patched to raise) is a named exit 2; a missing register's own words; `--list` prints no coverage report; the FAIL line is the last line under a gap; a study folder named by a string plans the same walks; the two odd walk ids exit 2 with the check's words.
+- L98.pass.0 and L214.drop1.0 were not equivalent: each is now killed by an assertion (the string study folder; the missing register's own words), so EQUIVALENT stays empty.
+- Witness stand-in-crash added (P12): 32 in all.
+
+Evidence (Mac, light-ok before each batch, waiting on holds; the full sweep was not run here):
+- `test_walk_plan: 15 run, 0 failures, 0 errors, 0 skipped`; `test_walk_plan witnesses: 32 of 32 red; registry 32`.
+- `--only` on the Mac, every one KILLED by an assertion: L98.pass.0, L214.drop1.0, L219.pass.0, L301.pass.0 and L312.pass.0 (athena's L296 and L307, five lines later after the fold), L145.slice.0, L145.int.0, L146.int.0, L233.slice.0, L233.int.0 and L234.int.0 (athena's L228 and L229), and the new lines' L227.pass.0 and L228.pass.0, with L146.cmp.0 and L234.cmp.0.
+- The mutator still generates 251 mutants; ids after line 223 moved by five lines.
+- Gates: copy_manifest, build_draft, freeze.py and walk_register --check all exit 0; lint_language and lint_pooling clean over the folder, with `--include-code` over the lane's files, and over the commit bodies since f14ab57b; flake8 clean.
+
+## Modules athena must run (after fold w11c-close-1)
+
+- tests/test_walk_plan.py, `--witnesses`, and `--generated-mutants` in its four shards (checks.d/w11c-walk-plan.txt)
+- tests/test_scaffold.py (whole)
+- test_round4.py (the battery)
+- The gates: copy_manifest --check, build_draft --check, freeze.py --check, walk_register --check, lint_language and lint_pooling over the folder
+
+RESUME HERE: athena.
