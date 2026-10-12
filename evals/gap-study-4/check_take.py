@@ -2242,7 +2242,7 @@ def check_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordin
         raise CheckRefused("check() did not end at the ledger binding as a take with no row; the walk road cannot "
                            "be read past it")
     problems = problems[:-1]
-    pre = design.pre
+    walk_pre = design.pre
     sid = session_id_of(path)
     want = walk_session_id(walk_id)
     if sid != want:                                  # D2
@@ -2262,10 +2262,10 @@ def check_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordin
                         f"the walk's {want}")
     if ledger.get("row") is not None or ledger.get("row_commit") is not None:
         problems.append("[session-binding] " + "the driver ledger records a ledger row for a walk; a walk has none")
-    problems += environment_problems(path, ledger, pre, None)
+    problems += environment_problems(path, ledger, walk_pre, None)          # D1: as for a take, no row commit
     folder = path.parent
     try:
-        rec = json.loads((folder / (pre.get("environment_record") or {}).get("file", "environment.json")).read_text())
+        rec = json.loads((folder / (walk_pre.get("environment_record") or {}).get("file", "environment.json")).read_text())
     except (OSError, ValueError, AttributeError):
         rec = None
     if isinstance(rec, dict) and (rec.get("row") is not None or rec.get("row_commit") is not None):
@@ -2275,9 +2275,9 @@ def check_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordin
         problems += model_problems(path, ledger["model_requested"])
     else:
         problems.append("[session-binding] " + "the driver ledger names no model, so the walk's model cannot be bound")
-    problems += constant_problems(ledger, pre)
-    problems += checkout_problems(path, pre)
-    problems += pinned_instruction_problems(path, design)
+    problems += constant_problems(ledger, walk_pre)                     # D1: the take's tail
+    problems += checkout_problems(path, walk_pre)
+    problems += pinned_instruction_problems(path, design)               # D1: the take's tail
     if not prompt_snapshot_present(path):
         problems.append("[inherited-context] the session recorded no system-prompt snapshot, so whether the "
                         "harness offered its memory folder could not be read")
@@ -2318,8 +2318,8 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
         problems = check_walk(path, task_id, half_name, walk_id, wording_script=wording_script, design=design)
     finally:
         _PRE_IN_FORCE.reset(token)
-    problems += recorded_mode_problems(path, design.pre, arm)
-    problems += design_tree_problems(path, design)
+    problems += recorded_mode_problems(path, design.pre, arm)          # D1: as for a take
+    problems += design_tree_problems(path, design)                     # D1: as for a take
     beside = _ledger_beside(path)
     if isinstance(beside, dict) and beside.get("arm") != arm:
         problems.append(f"[constant-binding] the walk's driver ledger records arm {beside.get('arm')!r}, and the walk is "

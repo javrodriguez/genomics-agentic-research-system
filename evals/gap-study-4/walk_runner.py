@@ -48,7 +48,7 @@ import walk_register  # noqa: E402
 
 COMMITTED, LAUNCH_REFUSED, HELD = "committed", "launch-refused", "held"
 CHECK_FILE = "check.json"                 # drive.WALK_CHECK (asserted against the driver's module at run time)
-POSTFLIGHT_FILE, TEARDOWN_FILE = "postflight.json", "teardown.json"
+POSTFLIGHT_FILE, TEARDOWN_FILE, LEDGER_FILE = "postflight.json", "teardown.json", "driver-ledger.json"
 ENTRY_FROM_ROW = ("walk", "task", "half", "wording", "arm", "model")
 CLI_REFUSAL = ("the walk runner has no production builder of walk_driver from the real box yet (Q-w7b-3: the "
                "DockerRuntime, the login file, the counters reader, the identity and run-tree builders need CP2 and "
@@ -65,12 +65,14 @@ def walk_entry(row: dict, reason: str) -> dict:
     return dict({k: row.get(k) for k in ENTRY_FROM_ROW}, reason=reason, counted=False)
 
 
-def check_record(walk: str, records, table, route_fn) -> dict:
-    """check.json: the checker's reasons and events as the drive returned them, and the route routing gives the
+def check_record(walk: str, records, table, route_fn, *, checked: bool) -> dict:
+    """check.json: whether the checker ran (W10 review note: it runs only when a turn ran, and its reading is then
+    the driver ledger's companion; otherwise the driver hands an empty reading, which this file must not pass off
+    as a clean one), the checker's reasons and events as the drive returned them, and the route routing gives the
     records (or why it refused). Read, never counted."""
     if not isinstance(records, dict):
         raise TypeError("the drive returned no records")
-    doc = {"walk": walk, "checker_reasons": list(records.get("checker_reasons") or []),
+    doc = {"walk": walk, "checked": checked is True, "checker_reasons": list(records.get("checker_reasons") or []),
            "events": records.get("events"), "route": None, "route_refused": None}
     try:
         doc["route"] = route_fn(records, table)["route"]
@@ -94,11 +96,16 @@ def postflight_ok(folder: Path) -> bool:
 
 
 def _publish(driver, row: dict, folder: Path) -> str | None:
-    """Delete the walk's config folder (driver.published), unless its drive ran (teardown.json written) and its
-    postflight is not ok: then it is kept for a human. Returns why it was kept or could not be deleted, or None."""
-    if (Path(folder) / TEARDOWN_FILE).is_file():
-        if not postflight_ok(folder):
-            return "the config folder is kept for a human: the postflight did not pass"
+    """Delete the walk's config folder (driver.published), called only once driver.launch was reached for this row
+    (W10-R1-2: never for the runner's own pre-launch refusals, whose slot may name another walk's kept take). Kept
+    for a human instead when the drive's postflight record exists and is not ok, or when the drive ran (teardown.json)
+    and no postflight record was written (the driver's own stop: "the postflight check did not run"). Returns why it
+    was kept or could not be deleted, or None."""
+    post = Path(folder) / POSTFLIGHT_FILE
+    if post.exists() and not postflight_ok(folder):
+        return "the config folder is kept for a human: the postflight did not pass"
+    if (Path(folder) / TEARDOWN_FILE).is_file() and not post.exists():
+        return "the config folder is kept for a human: the postflight did not run"
     try:
         driver.published(row, 0)
     except Exception as e:  # noqa: BLE001 - recorded beside the walk's state, never over it
@@ -120,17 +127,19 @@ def run_one(driver, repo, row: dict, reason: str, *, table, route_fn, grade=None
     walk = row.get("walk") if isinstance(row, dict) else None
     folder = Path(driver.records_root) / mode_binding.WALKS_DIR / str(walk)
     out = {"walk": walk}
+    reached = []                       # W10-R1-2: set just before driver.launch is called for this row
     try:
-        out.update(_run_one(driver, repo, row, reason, walk, folder, table=table, route_fn=route_fn, grade=grade))
+        out.update(_run_one(driver, repo, row, reason, walk, folder, reached, table=table, route_fn=route_fn,
+                            grade=grade))
     finally:
         kept = None
-        if isinstance(row, dict) and isinstance(walk, str):
+        if reached:
             kept = _publish(driver, row, folder)
         out["config"] = kept
     return out
 
 
-def _run_one(driver, repo, row, reason, walk, folder, *, table, route_fn, grade) -> dict:
+def _run_one(driver, repo, row, reason, walk, folder, reached, *, table, route_fn, grade) -> dict:
     ns = driver_namespace(driver)
     if not isinstance(row, dict) or not isinstance(walk, str):
         return {"state": LAUNCH_REFUSED, "why": "the walk row names no walk id"}
@@ -140,6 +149,7 @@ def _run_one(driver, repo, row, reason, walk, folder, *, table, route_fn, grade)
     if not isinstance(reason, str) or not walk_register.visible(reason):
         return {"state": LAUNCH_REFUSED, "why": "the walk has no reason; every walk is committed with its reason"}
     entry = walk_entry(row, reason)
+    reached.append(True)
     try:
         cid = driver.launch(row)
     except ns["LaunchRefused"] as e:
@@ -161,7 +171,8 @@ def _run_one(driver, repo, row, reason, walk, folder, *, table, route_fn, grade)
         return {"state": HELD, "why": "; ".join(why) + "; the walk folder is left for a human, never committed"}
     if ns["WALK_CHECK"] != CHECK_FILE:
         raise RuntimeError(f"the driver's walk check file is {ns['WALK_CHECK']!r}, not {CHECK_FILE!r}")
-    write_check(folder, check_record(walk, records, table, route_fn))
+    checked = (folder / LEDGER_FILE).is_file()     # the checker ran exactly when the driver wrote its ledger
+    write_check(folder, check_record(walk, records, table, route_fn, checked=checked))
     try:
         run_mod.write_walk_grade(entry, folder, grade=grade)
         got = repo.commit_walk(entry)
