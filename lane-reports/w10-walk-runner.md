@@ -1,6 +1,6 @@
-Status: review round 2 CHANGES folded (ruling w10-R2-fold, 4858c41e); ready for review round 3
+Status: review round 3 CHANGES folded (ruling w10-R3-fold, 61cce6ec); generated mutation built, the full sweep is athena's
 
-RESUME HERE: review round 3
+RESUME HERE: review round 4 + athena generated run
 
 # Lane w10-walk-runner: Gap Study round 4, the CP6 walk runner (proposal)
 
@@ -319,3 +319,76 @@ Evidence (Mac, each run behind `mac_slot.py light-ok` and `timeout -s INT 100/11
   run.py, walk_register.py and rehearsals/README.md were edited again under departures w10-1, w10-5 and w10-6, each noted in its owner's entry.
 
 Athena's module list is unchanged; test_walk_runner now runs 43 tests with 89 witnesses.
+
+## Fold w10-R3-fold, Mon 12 Oct 2026 19:36 EDT (`date`)
+
+Review round 3 (250401c8) found CHANGES: W10-R3-1 (MAJOR, `problems = problems[:-1]` → `[]` green) and W10-R3-2..5 (MINOR).
+Ruling w10-R3-fold replaced shape lists with generated, exhaustive mutation.
+Code commit `61cce6ec`; this report is in its own commit.
+
+What changed:
+- `tests/walk_mutation.py` (new, stdlib only) generates the walk road's mutants:
+  - every statement deleted (replaced by `pass`);
+  - every if/while condition set to True and to False;
+  - every and/or operand dropped;
+  - every comparison negated;
+  - every assignment's right-hand side replaced by an empty value of its kind.
+  Each mutant is spliced into the module's own bytes at the node's position, so the rest of the file is unchanged, and each has a stable id (module, function, kind, relative line, column, hash).
+  The road covered:
+  - check_take: walk_session_id, check_walk, check4_walk;
+  - drive: walk_identity_problems, walk_files;
+  - run: died_before_turn_one, grade_walk, walk_row;
+  - walk_runner: every function.
+  Not mutated, because other lanes' suites bind them: shared take-and-walk code (record_kind, take_checker, TakeDriver, WalkRepo's commit step) and lane w9's walk_launch_problems.
+  Count: **533 generated**, 0 dropped for not compiling.
+- `test_walk_runner.py --generated-mutants [--shard i/n] [--sample k] [--only id,id] [--ids file] [--timeout s]` runs each mutant in its own process over the whole module, with failfast and the cheapest classes first (GENERATED_ORDER).
+  A mutant is killed when any test fails by assertion; a failfast stop on an error alone is re-run without failfast.
+  The run fails on a survivor not in EQUIVALENT, on a listed one that is killed, and on an inconclusive (timed-out) one.
+  G1Generated (always in the suite) fails on an EQUIVALENT entry that names no generated mutant, or one without a reason.
+- C1Coverage and its DELETIONS registry are removed.
+  They are superseded, and they masked behaviour: C1 alone killed every deletion in its three functions.
+- New tests:
+  - W10-R3-1: an operator line never sent; an improvised operator line; a fixture fault (each through check4_walk); a fixture fault through the drive into check.json.
+  - W10-R3-2: another walk's session id alone, refused at launch.
+  - W10-R3-3: a design view of another task with the right half; also a None script.
+  - W10-R3-4: a teardown problem through the drive (config folder kept); clean_drive record by record (both records ok; postflight not ok, missing or unreadable; teardown missing, null or with a problem).
+  - W10-R3-5: a recordless folder refused by walk_files; R3 asserts "preflight failed" in the dead walk's grade.
+  - From the reviewer's unverified item: a walk with no reason (empty, or only invisible characters) refused.
+  - From the Mac sample: R10Guards (run_walks' driver and repo guards, walk_session_id's guard, _remove), and R1 asserts check.json's route "graded".
+- The round-3 reviewer's eleven mutants are registry witnesses (REVIEWER3); there are 67 hand witnesses.
+- walk_runner.run_walks lost a dead line, `table = routing.load_table() if table is None else table`. A generated mutant showed it equivalent: routing.route reads routing.json itself when handed None.
+  No behaviour changed.
+
+EQUIVALENT (1 entry): `drive.walk_files:delete:L8:C8:a9b7cb72` (`dirs.sort()`).
+Its reason: the list is read as a mapping by path (TakeRepo._take_files, then sorted) and by content_problems for its refusal alone, so order does not matter.
+
+Generated sweep on the Mac (samples and targeted runs only, light-ok before each; stopped at your 18:5x word after the then-current part finished):
+- First sample: 90 mutants (shards 1, 7, ..., 55 of 60) at 115 s each.
+  49 killed, 1 survived (the dirs.sort() above, now listed), and 40 inconclusive (timed out).
+  At load 13-19 the whole module takes about 2-3 min, so a survivor or a late kill cannot finish inside the cap.
+- Re-run of the inconclusive ones with the cheapest-first order: 20 more before the stop. 1 killed (`clean_drive:drop-0`), the rest still timed out.
+- Targeted runs after R10Guards: 31 mutants.
+  25 killed: all 7 of walk_session_id, all 13 of _remove and run_walks' guards.
+  6 timed out: run_walks' table and route_fn defaults; the table line has since been removed as equivalent.
+- So the Mac shows no survivor beyond the listed one, but about 60 sampled mutants are inconclusive at this load.
+  The full 533 need athena: `python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard i/n` for i = 1..n, with no 115 s cap (the default --timeout is 600).
+  Its survivors are the next triage: a test, or an EQUIVALENT entry with a reason.
+
+Evidence (Mac, light-ok before each run, `timeout -s INT 110/115`):
+- test_walk_runner, in class groups because the whole module exceeds 115 s at this load: 14 + 29 + 12 = 55 run, 0 failures, 0 errors.
+  The groups were R10/R6/R7/G1/R1/R4; R8; and R2/R3/R5/R9/TestSysPath.
+- Hand witnesses: 67/67 RED in nine batches (8 x 8 + 3) before the R10 additions. No witness anchor changed after that.
+- Red first: there is no production behaviour change this round; the one code edit removes an equivalent line.
+  The new tests' red is the reviewer's mutants, each a registry witness and red.
+- Gates: copy_manifest --check exit 0 (300 files, 48 fragments; tests/walk_mutation.py claimed new); build_draft --check exit 0 (no input moved); freeze.py --check exit 0; walk_register --check exit 0; run.py --walks --check exit 0.
+- Lints: lint_language clean (92 inputs); lint_pooling clean (92 files).
+- Not re-run this round: the neighbour modules. No production code they read changed: walk_runner is imported only by test_walk_runner.
+
+## Modules athena must run (updated)
+
+- tests/test_walk_runner.py whole (55 tests), `--witnesses` (67), and `--generated-mutants`, sharded, whole (533; report generated, killed, equivalent, survived).
+- The rest as listed before:
+  - test_box_integration, test_pipeline, test_scaffold and test_round4, each whole;
+  - test_walk_layout, test_cp8_prep, test_cp6_wiring and test_rehearsals, each with `--witnesses`;
+  - test_walk_wiring, test_check_take, test_checker_body, test_drive_commit, test_drive_loop, test_mode_binding and test_wave6_bindings;
+  - the gates, the w6j and w6e byte bindings, and both lints.
