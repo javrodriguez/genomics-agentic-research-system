@@ -1,0 +1,9 @@
+# Lane w8a-walk-layout: Gap Study round 4, the walk layout (ruling W8-layout-1, Option A): one walk per folder at
+# rehearsals/<walk>/, committed by WalkRepo with its register entry, the record roots named once in mode_binding.
+# One command per line, run from the repository root. --witnesses prints one witness line per mutant (rule B).
+# No walk, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_layout.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_layout.py --witnesses
+python3 -B -W ignore evals/gap-study-4/walk_register.py --check
+python3 -B -W ignore evals/gap-study-4/run.py --walks --check
+python3 -B -W ignore evals/gap-study-4/mode_binding.py --walks --check

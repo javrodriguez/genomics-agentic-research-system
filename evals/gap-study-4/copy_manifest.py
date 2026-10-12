@@ -38,6 +38,13 @@ exist, and the freeze writes it once from derive(). What --check refuses:
     status; an `edited` copy whose bytes are already a file under evals/ (it is an `identical` copy of that file);
     and any copy of the first study's three named fixture builders that is not `identical`.
 
+RECORDS ARE CLAIMED BY THEIR OWN LEDGERS, NOT BY FRAGMENTS (lane w8a, ruling W8-layout-1, README Q4; this file moved
+from lane w1a to lane w8a under ruling W8A-gap4-1). A file inside a walk folder, rehearsals/<walk>/**, is claimed
+exactly when rehearsals/register.json lists <walk>; a file inside a take folder, takes/<slot>/<k>/**, exactly when
+outcomes.json names that slot and attempt (CP7; none today). An unlisted record folder's files are unclaimed and
+fail, and a fragment that claims a path inside a record folder is refused: a record is never a build file. The
+folder names are mode_binding's. rehearsals/README.md and rehearsals/register.json stay fragment-claimed.
+
 What --check cannot see (review round 2 W1A2-6): a record changed by even one byte is a new blob, so a derivative
 of a record (a record plus a line, a record re-wrapped) passes these byte guards. So does an older version of a
 record (review round 3 W1A3-5): the guards read the record blobs at the source and the base commit only, so a
@@ -71,6 +78,7 @@ REPO = HERE.parent.parent
 FRAGMENTS = HERE / "COPIED.d"
 sys.path.insert(0, str(HERE))
 
+import mode_binding  # noqa: E402
 import study  # noqa: E402
 
 # Round 3's done commit: every copy is read from here.
@@ -274,9 +282,47 @@ def read_copy(path: str) -> bytes:
     return (HERE / path).read_bytes()
 
 
+def committed_records(base: Path = HERE) -> dict:
+    """W8A: what the records' own ledgers claim: {"walks": the walk ids rehearsals/register.json lists, "takes": the
+    (slot, attempt) pairs outcomes.json names, the attempt as its folder's name}. An unreadable ledger claims nothing,
+    so its records fail as unclaimed (walk_register --check names the register's own problem)."""
+    import walk_register
+    walks = {e["walk"] for e in walk_register.registered(Path(base) / mode_binding.WALKS_DIR)}
+    takes = set()
+    try:
+        history = json.loads((Path(base) / "outcomes.json").read_text())
+    except (OSError, ValueError):
+        history = []
+    for o in history if isinstance(history, list) else []:
+        if isinstance(o, dict) and isinstance(o.get("slot"), str) and type(o.get("attempt")) is int:
+            takes.add((o["slot"], str(o["attempt"])))
+    return {"walks": walks, "takes": takes}
+
+
+def record_root_of(path: str) -> str | None:
+    """The record root when `path` (relative to this folder) is a file inside a record folder, else None."""
+    got = mode_binding.record_parts(path.split("/"))
+    return got[0] if got is not None and got[1] == 0 else None
+
+
+def record_claims(present: set[str], records: dict) -> set[str]:
+    """W8A: the present files a record ledger claims: rehearsals/<walk>/** when the register lists <walk>,
+    takes/<slot>/<k>/** when the outcomes name (slot, k)."""
+    out = set()
+    for name in present:
+        root = record_root_of(name)
+        parts = name.split("/")
+        if root == mode_binding.WALKS_DIR and parts[1] in records["walks"]:
+            out.add(name)
+        elif root == mode_binding.TAKES_DIR and (parts[1], parts[2]) in records["takes"]:
+            out.add(name)
+    return out
+
+
 def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=read_copy,
-             pinned: bool = True) -> list[str]:
-    """Every problem with the assembled fragments. `present` and `read` stand in for the folder (tests mutate them)."""
+             pinned: bool = True, records: dict | None = None) -> list[str]:
+    """Every problem with the assembled fragments. `present` and `read` stand in for the folder (tests mutate them);
+    `records` for committed_records() (W8A)."""
     entries, out = load_fragments(folder)
     try:
         record_blobs()
@@ -287,6 +333,10 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
     claimed: dict[str, str] = {}
     for lane, e in entries:
         path, status, src, why = e["path"], e["status"], e.get("source"), e.get("reason")
+        if record_root_of(path) is not None:            # W8A: a record is claimed by its ledger, never a fragment
+            out.append(f"{path} ({lane}) is inside a record folder; a record is claimed by its register or outcomes "
+                       f"ledger, never by a fragment")
+            continue
         if path in claimed:
             out.append(f"{path} is claimed by {claimed[path]} and again by {lane}; a file has one owner")
             continue
@@ -351,7 +401,8 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
                        f"edited; that is a FAIL, not a manifest entry")
         if path in UNEDITABLE and src != f"{SOURCE_DIR}/{path}":
             out.append(f"{path} ({lane}) is a copied fixture builder whose source is {src}, not {SOURCE_DIR}/{path}")
-    for name in sorted(present - set(claimed)):
+    by_record = record_claims(present, committed_records() if records is None else records)
+    for name in sorted(present - set(claimed) - by_record):
         out.append(f"{name} is under {study.STUDY_REL}/ and no fragment in {folder.name}/ claims it")
     for name in sorted(n for n in present if is_cache(n)):
         if name not in claimed:

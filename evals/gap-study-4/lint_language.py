@@ -218,12 +218,24 @@ def case_file_own_words(path: Path) -> str:
 # ROUND 2, CP3: `environment.json` is the third, the driver's record of the environment a take ran in (variable
 # names, absent/empty/set, the credential source per turn). Its published name patterns carry shapes such as
 # `_TOKEN$`, and a record is never edited to satisfy this guard. A walk's environment.json is still scanned.
-TAKE_ROOTS = ("transcripts", "rehearsals", "pauses")
-TAKE_RECORD_NAMES = ("driver-ledger.json", "scrub.json", "environment.json")
+#
+# ROUND 4 (lane w8a, ruling W8-layout-1, closing W7B-R1-3; this file moved from lane w1a to lane w8a under ruling
+# W8A-gap4-1). The record folders are named once, in mode_binding (RECORD_ROOTS: takes/ and rehearsals/), and every
+# file INSIDE a record folder (takes/<slot>/<k>/**, rehearsals/<walk>/**) is a record, never linted as prose: round
+# 4's walk folder holds a take folder's records plus its grade. rehearsals/README.md and rehearsals/register.json
+# (whose `reason` is the study's own prose) sit beside the walk folders, not in one, and are still linted. Round 3's
+# own roots (transcripts/, pauses/) are never written in round 4.
+import mode_binding  # noqa: E402
+
+TAKE_ROOTS = mode_binding.RECORD_ROOTS
 
 
 def is_take_record(path: Path) -> bool:
-    return path.name in TAKE_RECORD_NAMES and any(root in path.parts for root in TAKE_ROOTS)
+    try:
+        parts = path.resolve().relative_to(HERE).parts
+    except ValueError:
+        parts = path.parts
+    return mode_binding.record_parts(parts, TAKE_ROOTS) is not None
 
 
 # Prose and data are scanned by default. Source is scanned only when asked for: a docstring that

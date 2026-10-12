@@ -5,7 +5,11 @@
                                                             every operator line, before any session runs
     python3 evals/gap-study-3/fixture_walk.py --replay <transcript> --task <id> --half <h>
                                                             the verdict on one recorded session
-    python3 evals/gap-study-3/fixture_walk.py --check       every committed walk under walks/, re-derived
+    python3 evals/gap-study-4/fixture_walk.py --check       every registered walk under rehearsals/, re-derived
+
+ROUND 4 (lane w8a, ruling W8-layout-1; this file moved from lane w1a to lane w8a under ruling W8A-gap4-1): the walks
+are read through the walk register (rehearsals/register.json), one walk per folder, rehearsals/<walk>/, the folder
+named in mode_binding.WALKS_DIR; a walk's task and half come from its register entry, never from its path.
 
 WHAT THE VERDICT IS ABOUT, AND WHAT IT IS NOT. This round's checkout holds the study: its pre-registration,
 its transcripts, its graders. A session that reads a path inside that checkout has been shown the thing it
@@ -47,9 +51,13 @@ from pathlib import Path, PurePosixPath
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
-WALKS = HERE / "walks"
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(REPO / "evals"))
+
+import mode_binding  # noqa: E402
+import walk_register  # noqa: E402
+
+WALKS = HERE / mode_binding.WALKS_DIR      # W8A: rehearsals/, named once in mode_binding
 
 import prereg  # noqa: E402
 import round2  # noqa: E402
@@ -264,11 +272,8 @@ def walk_coverage() -> dict:
     """What has been walked, against what each task needs. Says plainly where it is short."""
     need = half_equivalence()
     have: dict[str, list[str]] = {}
-    for w in committed_walks():
-        task = w.parts[-3]
-        ledger = w.parent / "driver-ledger.json"
-        half = (json.loads(ledger.read_text()).get("half") if ledger.is_file() else None) or "?"
-        have.setdefault(task, []).append(half)
+    for entry, _ in registered_walks():                 # W8A: task and half from the register entry
+        have.setdefault(entry["task"], []).append(entry["half"])
     out = {}
     for task, n in need.items():
         halves = sorted(set(have.get(task, [])))
@@ -283,8 +288,20 @@ def walk_coverage() -> dict:
     return out
 
 
-def committed_walks() -> list[Path]:
-    return sorted(WALKS.glob("*/*/transcript.jsonl")) if WALKS.is_dir() else []
+def registered_walks(base: Path | None = None) -> list[tuple[dict, Path]]:
+    """W8A: (register entry, its transcript) for every registered walk whose folder holds a transcript.jsonl (a walk
+    that died before its first turn has no session to replay; it is still registered, with its reason)."""
+    walks = WALKS if base is None else Path(base) / mode_binding.WALKS_DIR
+    out = []
+    for entry in walk_register.registered(walks):
+        t = walks / entry["walk"] / "transcript.jsonl"
+        if t.is_file():
+            out.append((entry, t))
+    return out
+
+
+def committed_walks(base: Path | None = None) -> list[Path]:
+    return [t for _, t in registered_walks(base)]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -404,8 +421,8 @@ def main() -> int:
     walks = committed_walks()
     if not walks:
         # An empty gate is said out loud. No walk has been committed, so this check has graded nothing.
-        print("ok, having graded 0 walks: walks/ holds no committed walk, so nothing here is evidence "
-              "about any half. Not a pass for criterion 4.")
+        print(f"ok, having graded 0 walks: {mode_binding.WALKS_DIR}/ holds no registered walk with a session, so "
+              f"nothing here is evidence about any half. Not a pass for criterion 4.")
         return 0
     bad = []
     for w in walks:

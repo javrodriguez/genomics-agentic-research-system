@@ -12,6 +12,15 @@ committed take folder under this round, containing transcript.jsonl and evidence
 (endstate.Evidence's closed layout). model and agent are mandatory. The pure
 produce() seam accepts a grader callback so synthetic takes need no filesystem,
 model, container or network. CLI grading requires the frozen pre-registration.
+
+THE WALK LAYOUT (lane w8a, ruling W8-layout-1, Option A; this file moved from
+lane w5b to lane w8a under ruling W8A-gap4-1). A row's record_dir is bound to
+the take folders (mode_binding.TAKES_DIR): a walk folder (rehearsals/<walk>/)
+can never be graded into results. A walk is graded but never counted: its
+grade.json is grade_walk()'s output, written beside its records before
+WalkRepo commits it, and `run.py --walks --check` regrades every registered
+walk and requires its grade.json byte-identical. A walk with no first agent
+turn is not graded, and its grade.json says why (from its driver ledger).
 """
 from __future__ import annotations
 
@@ -35,6 +44,8 @@ import takes
 import transcript_view
 import variants
 from graders import labels4
+import mode_binding
+import walk_register
 
 RECORDS = HERE / "records"
 
@@ -193,7 +204,15 @@ def grade_committed(row: dict, outcome: dict) -> dict:
     """The real callback: bound take artifacts and specs, with the same pure grader path."""
     from graders import endstate
     path = (HERE / row["record_dir"]).resolve()
-    path.relative_to(HERE.resolve())
+    takes_root = (HERE / mode_binding.TAKES_DIR).resolve()
+    if path == takes_root or not path.is_relative_to(takes_root):          # W8A (L5): takes/ only, never a walk
+        raise ValueError(f"record_dir {row['record_dir']!r} is not a take folder under {mode_binding.TAKES_DIR}/; "
+                         f"a walk folder or any other folder is never graded into results")
+    inside = path.relative_to(takes_root).parts                           # W8A-R1-3: takes/<slot>/<k>, this row's
+    if len(inside) != mode_binding.RECORD_DEPTH[mode_binding.TAKES_DIR] or \
+            inside != (str(row["slot"]), str(row["attempt"])):              # W8A-R2-3: a missing key raises
+        raise ValueError(f"record_dir {row['record_dir']!r} is not this row's take folder "
+                         f"{mode_binding.TAKES_DIR}/{row['slot']}/{row['attempt']}")
     rel = path.relative_to(REPO.resolve()).as_posix()
     if takes._git_at(REPO, "status", "--porcelain", "--", rel):
         raise ValueError("take artifacts have uncommitted changes")
@@ -209,13 +228,121 @@ def grade_committed(row: dict, outcome: dict) -> dict:
     return dict(got, graded_by=module)
 
 
+# ---- the walks (W8A, L6): graded, never counted --------------------------------------------------------------------
+WALK_ROW_FROM_GRADE = ("pressure", "repeat")      # the cell fields a register entry does not carry (driver ledger)
+
+
+def walk_row(entry: dict, ledger: dict, cell: dict | None = None) -> dict:
+    """The row a walk is graded as: task, half, wording, arm and model from its register entry, the agent, project,
+    pressure and repeat from its driver ledger (which must agree with the entry). W8A-R1-2: the cell is the driver
+    ledger's own record of the row's pressure and repeat; a `cell` handed in must equal it, so grade.json can never
+    supply one the walk did not run under."""
+    for key, led in (("task", "task"), ("half", "half"), ("wording", "wording"), ("arm", "arm"),
+                     ("model", "model_requested")):
+        if ledger.get(led) != entry[key]:
+            raise ValueError(f"the walk's driver ledger records {led} {ledger.get(led)!r}; its register entry "
+                             f"says {entry[key]!r}")
+    missing = [k for k in WALK_ROW_FROM_GRADE if k not in ledger]
+    if missing:
+        raise ValueError(f"the walk's driver ledger records no {', '.join(missing)}; a walk is graded under the cell "
+                         f"its driver recorded")
+    recorded = {k: ledger[k] for k in WALK_ROW_FROM_GRADE}
+    if (recorded["repeat"] is None) == (recorded["pressure"] is None):         # W8A-R2-4: stats._one_level's rule
+        raise ValueError(f"the walk's driver ledger records pressure {recorded['pressure']!r} and repeat "
+                         f"{recorded['repeat']!r}; exactly one of them is None (variants.cells)")
+    if cell is not None and cell != recorded:
+        raise ValueError(f"the cell {cell!r} is not the one the walk's driver ledger records ({recorded!r})")
+    cell = recorded
+    return {"task": entry["task"], "half": entry["half"], "wording": entry["wording"], "arm": entry["arm"],
+            "model": entry["model"], "agent": dict(ledger["agent"]), "project": ledger["project"], **cell}
+
+
+def grade_walk_folder(row: dict, folder: Path) -> dict:
+    """The real grading of a walk folder: the same v4 grader road as grade_committed, past its take-folder binding.
+    graded_by is study-relative, so the bytes are the same on every machine."""
+    from graders import endstate
+    task = variants.load_task(row["task"])
+    spec = variants.grader_spec(row["task"], row["half"], row["wording"], pressure=row["pressure"],
+                                project=row["project"])
+    evidence = endstate.Evidence.load(folder / "evidence")
+    require_evidence_identity(row, evidence)
+    named = dict(row, grader_half=(task["grader_halves"] or {}).get(row["half"]))
+    got, module = regrade(variants.grader_name(task), named, spec, folder / "transcript.jsonl", evidence)
+    return dict(got, graded_by=Path(module).resolve().relative_to(HERE.resolve()).as_posix())
+
+
+def grade_walk(entry: dict, folder, cell: dict | None = None, grade=None) -> dict:
+    """grade.json's document for one walk: {"graded": true, "row", "grade"} when its driver ledger records a first
+    agent turn, else {"graded": false, "why"} with the ledger's own outcome. `grade` stands in for
+    grade_walk_folder (tests); `cell` ({pressure, repeat}) is optional and must equal the driver ledger's."""
+    folder = Path(folder)
+    ledger = json.loads((folder / "driver-ledger.json").read_text())
+    if ledger.get("first_agent_turn") is not True:
+        return {"graded": False, "why": f"no first agent turn, so a rehearsal before the agent's first turn "
+                                        f"(the routing table's first row): {ledger.get('outcome')}"}
+    row = walk_row(entry, ledger, cell)
+    return {"graded": True, "row": row, "grade": (grade_walk_folder if grade is None else grade)(row, folder)}
+
+
+def walk_grade_bytes(doc: dict) -> bytes:
+    return (json.dumps(doc, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def write_walk_grade(entry: dict, folder, cell: dict | None = None, grade=None) -> Path:
+    """Write a walk's grade.json (before WalkRepo commits the walk)."""
+    path = Path(folder) / mode_binding.WALK_GRADE
+    path.write_bytes(walk_grade_bytes(grade_walk(entry, folder, cell, grade)))
+    return path
+
+
+def walk_problems(base=None, grade=None) -> tuple[list[str], int]:
+    """L6: every registered walk regraded; its grade.json must be the regrade's bytes exactly. (problems, walks)."""
+    walks_root = Path(HERE if base is None else base) / mode_binding.WALKS_DIR
+    entries = walk_register.registered(walks_root)
+    out = []
+    for entry in entries:
+        folder = walks_root / entry["walk"]
+        stored_path = folder / mode_binding.WALK_GRADE
+        try:
+            stored = stored_path.read_bytes()
+            doc = json.loads(stored)
+            cell = ({k: doc["row"][k] for k in WALK_ROW_FROM_GRADE} if isinstance(doc, dict) and doc.get("graded")
+                    is True and isinstance(doc.get("row"), dict) else None)
+            again = walk_grade_bytes(grade_walk(entry, folder, cell, grade))
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            out.append(f"walk {entry['walk']!r}: cannot be regraded: {type(e).__name__}: {e}")
+            continue
+        if again != stored:
+            out.append(f"walk {entry['walk']!r}: {mode_binding.WALKS_DIR}/{entry['walk']}/{mode_binding.WALK_GRADE} "
+                       f"differs from regrading it")
+    return out, len(entries)
+
+
+def walks_main() -> int:
+    bad, n = walk_problems()
+    for b in bad:
+        print(f"run: FAIL {b}")
+    if bad:
+        return 1
+    if n == 0:
+        print("run: ok, having regraded 0 walks: none is registered, so nothing here is evidence about any walk")
+    else:
+        print(f"run: {n} walk(s) regraded, every grade.json the regrade's bytes; never counted")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     group = ap.add_mutually_exclusive_group(required=True)
     group.add_argument("--all", action="store_true")
     group.add_argument("--task")
     group.add_argument("--check", action="store_true")
+    ap.add_argument("--walks", action="store_true", help="with --check: regrade every registered walk")
     args = ap.parse_args(argv)
+    if args.walks:
+        if not args.check:
+            ap.error("--walks goes with --check only: a walk is regraded and compared, never written into results")
+        return walks_main()
     rows, history = takes.load_rows(), takes.read_history()
     if not rows and not history and not stats.results_files(RECORDS):
         print("run: no takes; nothing was graded or written")

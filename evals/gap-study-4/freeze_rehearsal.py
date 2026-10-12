@@ -38,13 +38,20 @@ import study  # noqa: E402
 DRAFT = HERE / "prereg-draft.json"
 
 # Frozen-state gates only. Missing files are interpreter failures, never dropped.
+# W8A (ruling W8-layout-1; this file moved from lane w5b to lane w8a under ruling W8A-gap4-1): the four walk checks,
+# so the rehearsal proves the walks the freeze rests on are registered, held to their pins, clean of the checkout and
+# graded as committed (README Q5).
+WALK_COMMANDS = (
+    ("walk_register.py", "--check"), ("mode_binding.py", "--walks", "--check"),
+    ("fixture_walk.py", "--check"), ("run.py", "--walks", "--check"),
+)
 COMMANDS = (
     ("test_round4.py",), ("copy_manifest.py", "--check"),
     ("tests/test_box_integration.py",), ("tests/test_pipeline.py",),
     ("probes4.py", "--check"), ("build_draft.py", "--check"),
     ("leak_grep.py", "--check"), ("holdout.py", "--check"),
     ("review_kit/rounds.py", "--check"),
-)
+) + WALK_COMMANDS
 
 
 def rehearsal_plan(pre, row_file):

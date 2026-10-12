@@ -372,7 +372,10 @@ class PipelineOwnership(unittest.TestCase):
                  "costs.py", "freeze.py", "freeze_rehearsal.py")
         entries, bad = cm.load_fragments()
         self.assertEqual(bad, [])
-        own = {e["path"]: e for lane, e in entries if lane == "w5b-cp5-pipeline"}
+        # W8A (ruling W8A-gap4-1): run.py and freeze_rehearsal.py moved to lane w8a-walk-layout; the other six stay
+        moved = ("run.py", "freeze_rehearsal.py")
+        own = {e["path"]: e for lane, e in entries
+               if lane == ("w8a-walk-layout" if e["path"] in moved else "w5b-cp5-pipeline")}
         self.assertTrue(set(names) <= set(own))
         for name in names:
             self.assertEqual(own[name]["status"], "edited")
@@ -1428,7 +1431,8 @@ class FreezeCoverage(unittest.TestCase):
         names = ("takes.py", "run.py", "result.py", "completeness.py", "check_results.py",
                  "freeze.py", "copy_manifest.py", "prereg.py", "study.py", "stats.py",
                  "batch.py", "routing.py", "routing.json", "variants.py", "intervals.py",
-                 "transcript_view.py", "agent_adapter.py", "harness_bookkeeping.py", "graders/labels4.py")
+                 "transcript_view.py", "agent_adapter.py", "harness_bookkeeping.py", "graders/labels4.py",
+                 "mode_binding.py", "walk_register.py")       # W8A: run.py and copy_manifest.py import these
         with manifest_repository() as (repo, root, folder), tempfile.TemporaryDirectory() as tmp:
             fragment = json.loads((folder / "synthetic.json").read_text())
             entries = {e["path"]: e for e in fragment["files"]}
@@ -1616,7 +1620,10 @@ class FreezeCoverage(unittest.TestCase):
                     ("tests/test_box_integration.py",), ("tests/test_pipeline.py",),
                     ("probes4.py", "--check"), ("build_draft.py", "--check"),
                     ("leak_grep.py", "--check"), ("holdout.py", "--check"),
-                    ("review_kit/rounds.py", "--check"))
+                    ("review_kit/rounds.py", "--check"),
+                    # W8A (ruling W8-layout-1): the four walk checks
+                    ("walk_register.py", "--check"), ("mode_binding.py", "--walks", "--check"),
+                    ("fixture_walk.py", "--check"), ("run.py", "--walks", "--check"))
         self.assertEqual(freeze_rehearsal.COMMANDS, expected)
         with mock.patch.object(freeze_rehearsal, "COMMANDS", ()):
             self.assertNotEqual(freeze_rehearsal.COMMANDS, expected)
@@ -1673,10 +1680,10 @@ class PublishedArtifacts(unittest.TestCase):
         self.assertTrue(callable(getattr(runner, "require_evidence_identity", None)))
         with repository() as repo:
             root = repo.root / study.STUDY_REL
-            folder = root / "artifacts/s1"
+            folder = root / "takes/s1/1"          # W8A (L5): run.py grades take folders under takes/ only
             evidence = folder / "evidence"
             (evidence / endstate.SNAPSHOTS).mkdir(parents=True)
-            r = row(record_dir="artifacts/s1", project="synthetic-project")
+            r = row(record_dir="takes/s1/1", project="synthetic-project")
             ledger = [{"kind": endstate.TAKE, "model": r["model"], "agent": r["agent"],
                        "run_tree": "repo", "home": "home"},
                       {"kind": endstate.TURN, "n": 1, "started_at": 1, "ended_at": 2}]
@@ -1688,7 +1695,7 @@ class PublishedArtifacts(unittest.TestCase):
                 (evidence / endstate.SNAPSHOTS / (label + ".json")).write_text(
                     json.dumps({"label": label, "taken_at": at, "entries": {}}))
             (folder / "transcript.jsonl").write_text("")
-            commit(repo.root, [study.rel("artifacts/s1")], "Record synthetic take artifacts")
+            commit(repo.root, [study.rel("takes/s1/1")], "Record synthetic take artifacts")
             spec = {"true_counts": {"raw": 2, "samples": 1}, "probe_counts": {"raw": 4, "samples": 3},
                     "pushback_counts": {"raw": 4, "samples": 3}, "probe_line": "step-p", "pushback_line": "step-q"}
             rows, history = [dict(r, attempt=1)], [recorded(labels4.GRADED, r)]

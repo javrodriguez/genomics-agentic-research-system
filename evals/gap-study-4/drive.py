@@ -2183,6 +2183,7 @@ class TakeDriver:
             f"{take.outcome} \u2014 no session file for {ident['session_id']}")
         pin = self.pin_for(row)
         ledger = {"kind": "take", "task": row["task"], "half": row["half"], "wording": row.get("wording"),
+                  "pressure": row.get("pressure"), "repeat": row.get("repeat"),     # W8A-R1-2: the row's cell
                   "arm": row["arm"], "model_requested": row["model"],
                   "agent": {"harness": row["agent"]["harness"], "version": version},
                   "session_id": ident["session_id"], "project": self.project_for(row), "source": ident["source"],
@@ -2395,15 +2396,7 @@ class TakeDriver:
             for name in sorted(files):
                 path = os.path.join(base, name)
                 rel = os.path.relpath(path, take.folder).split(os.sep)
-                if len(rel) == 1 and (name in TAKE_FILE_KINDS or STREAM_NAME.fullmatch(name)):
-                    kind = TAKE_FILE_KINDS.get(name, "stream")
-                elif rel[0] == EVIDENCE_DIR and len(rel) >= 2:
-                    kind = EVIDENCE_KINDS.get(rel[1], "evidence") if len(rel) > 2 else "evidence"
-                elif rel[0] == SESSION_DIR and len(rel) >= 2:
-                    kind = "session"
-                else:
-                    raise DriveRefused(f"{'/'.join(rel)} in the take folder has no scan kind")
-                out.append((path, kind))
+                out.append((path, record_kind(rel)))      # W8A: the closed map, shared with walk_files
         return out
 
     def record_files(self, row: dict, attempt: int) -> list:
@@ -2763,13 +2756,16 @@ class WalkDriver(TakeDriver):
 
 def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts, login_file,
                 counters_for, pin_for, design_for, project_for, identity_for, secrets, rules_scanner, uid_map,
-                budget_s, finalize_wait_s, poll_s, clock, sleep, holdout_matcher=None, caller_env=None) -> WalkDriver:
+                budget_s, finalize_wait_s, poll_s, clock, sleep, holdout_matcher=None, caller_env=None,
+                records="takes") -> WalkDriver:
     """The CP6 production wiring (cp6-readiness row 3): batch's driver for a walk or a take of claude-code.
 
     design_for  (row, run_tree) -> check_take.design_view(row, pin=pin_for(row), run_tree=run_tree, constants=...):
                 the script is read with run_tree None (its lines carry {project} and {source}, rendered here from the
                 take's identity), the checker with the take's own run tree (TakeSpec.run_tree)
     root        the study folder the take records are committed under (take_folder_in)
+    records     W8A: "takes" (the default: takes/<slot>/<k>, take_folder_in) or "walks" (rehearsals/<walk>/,
+                walk_folder_in, the row's `walk` id); any other value refuses (record_folder_in)
     Everything else is TakeDriver's (its docstring) or claude_code_adapter_for's. The constants only a walk can
     measure stay the caller's: design_for hands them to design_view, and check4 refuses while any is PENDING."""
     if not callable(design_for):
@@ -2783,7 +2779,7 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
         return script_from_design(design_for(row, None), project_for(row), ident["source"])
 
     return WalkDriver(
-        runtime=runtime, take_folder=take_folder_in(root), config_parent=config_parent, spec_for=spec_for,
+        runtime=runtime, take_folder=record_folder_in(root, records), config_parent=config_parent, spec_for=spec_for,
         sidecar_for=sidecar_for, proxy=proxy, lock_path=lock_path, hosts=hosts,
         adapter_for=claude_code_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
                                             pin_for=pin_for, clock=clock, caller_env=caller_env),
@@ -2793,6 +2789,275 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
         budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s, clock=clock, sleep=sleep,
         project_for=project_for, identity_for=identity_for, caller_env=caller_env)
 
+
+# =====================================================================================================================
+# ROUND 4, THE WALK LAYOUT (lane w8a; this file moved from lane w7b to lane w8a under glitch-1b's ruling W8A-gap4-1,
+# from ruling W8-layout-1: Option A of walk-layout-options-2026-10-12). Appended here, above `if __name__`, with two
+# small edits in place: take_files reads its kinds through record_kind, and walk_driver takes `records`.
+#   L2  one walk is one folder, rehearsals/<walk>/ (mode_binding.WALKS_DIR): walk_driver(records="walks") launches
+#       into it (walk_folder_in; the row's `walk` id, one path segment, a folder that exists refused);
+#       records="takes" keeps takes/<slot>/<k>; any other value refuses.
+#   L4  WalkRepo commits ONE walk: its folder's records (walk_files: a take folder's closed map plus grade.json,
+#       driver-ledger.json and grade.json required) and its new rehearsals/register.json entry, in one commit,
+#       through the same scan (box/scan_record), re-stage, tree binding and blob check as TakeRepo's commit step.
+#   L3  WalkRepo refuses once prereg.json exists: walks are pre-freeze, takes post-freeze (TakeRepo.register refuses
+#       before the freeze through takes.commit_registration), so the two never overlap in time.
+#   L1  round 3's host road (main --walk and route_attempt, which wrote walks/, transcripts/, pauses/ and
+#       rehearsals/<task>/<half>/<model>/row-<n>) is shadowed below by refusals naming the walk runner; its bytes stay
+#       above, untouched and unreachable (ROUND3_ONLY holds the originals so a test can name them).
+# =====================================================================================================================
+
+WALKS_DIR = _mode_binding.WALKS_DIR           # W8A: named once, in mode_binding.py
+WALK_GRADE = _mode_binding.WALK_GRADE
+# grade.json's scan kind: a machine record the driver side writes, scanned as the ledgers are (w4c's KINDS; whether
+# it deserves a kind of its own is w4c's call, named in lane-reports/w8a-walk-layout.md).
+WALK_FILE_KINDS = {WALK_GRADE: "ledger"}
+WALK_REQUIRED = (LEDGER_FILE, WALK_GRADE)
+WALK_SUBJECT = "Commit one walk; never counted"
+WALK_REGISTER_KIND = "ledger"
+FROZEN_NAME = prereg.FROZEN.name               # prereg.json: once it exists, no walk is committed
+
+
+def record_kind(rel: list, extra: dict | None = None) -> str:
+    """The scan kind of a record file at `rel` (its path parts inside the record folder), by the closed map: a take
+    folder's files (TAKE_FILE_KINDS, turn-N.jsonl), evidence/** and session/**, plus `extra` top-level names (a walk
+    folder's grade.json). Anything else refuses: nothing rides a commit unscanned under a guessed kind."""
+    name = rel[-1]
+    if len(rel) == 1 and extra and name in extra:
+        return extra[name]
+    if len(rel) == 1 and (name in TAKE_FILE_KINDS or STREAM_NAME.fullmatch(name)):
+        return TAKE_FILE_KINDS.get(name, "stream")
+    if rel[0] == EVIDENCE_DIR and len(rel) >= 2:
+        return EVIDENCE_KINDS.get(rel[1], "evidence") if len(rel) > 2 else "evidence"
+    if rel[0] == SESSION_DIR and len(rel) >= 2:
+        return "session"
+    raise DriveRefused(f"{'/'.join(rel)} in the take folder has no scan kind")
+
+
+def walk_files(folder) -> list:
+    """W8A: every file of a walk folder, (absolute path, scan kind): a take folder's closed map plus grade.json. A file
+    outside the map, a symlink, or a folder without driver-ledger.json and grade.json refuses (DriveRefused)."""
+    folder = os.path.abspath(os.fspath(folder))
+    if os.path.islink(folder) or not os.path.isdir(folder):
+        raise DriveRefused(f"{folder} is not a walk folder")
+    out = []
+    for base, dirs, files in os.walk(folder, followlinks=False):
+        dirs.sort()
+        for name in sorted(files) + sorted(d for d in dirs if os.path.islink(os.path.join(base, d))):
+            path = os.path.join(base, name)
+            rel = os.path.relpath(path, folder).split(os.sep)
+            if os.path.islink(path) or not os.path.isfile(path):
+                raise DriveRefused(f"{'/'.join(rel)} in the walk folder is not a regular file")
+            out.append((path, record_kind(rel, WALK_FILE_KINDS)))
+    tops = {os.path.relpath(p, folder) for p, _ in out}
+    missing = [n for n in WALK_REQUIRED if n not in tops]
+    if missing:
+        raise DriveRefused(f"the walk folder holds no {', '.join(missing)}; a walk is committed with its driver ledger "
+                           f"and its grade (or why it was not graded)")
+    return out
+
+
+def walk_folder_in(root):
+    """L2: the walk's record folder, (row) -> <root>/rehearsals/<row's walk id>, one walk per folder. The walk id is
+    one path segment (walk_register's shape); a folder that already exists is refused (a retry is a new walk id)."""
+    import walk_register as _walk_register
+    base = Path(root).resolve() / WALKS_DIR
+
+    def walk_folder(row: dict) -> str:
+        walk = row.get("walk")
+        if not isinstance(walk, str) or not _walk_register.WALK_ID.fullmatch(walk):
+            raise DriveRefused(f"the row's walk id {walk!r} is not one path segment")
+        folder = base / walk
+        if os.path.lexists(folder):
+            raise DriveRefused(f"{WALKS_DIR}/{walk}/ already exists; a walk is never driven twice into one folder")
+        return str(folder)
+    return walk_folder
+
+
+RECORD_FOLDERS = {"takes": take_folder_in, "walks": walk_folder_in}
+
+
+def record_folder_in(root, records):
+    """L2: the driver's record folder by kind of record: "takes" (takes/<slot>/<k>) or "walks" (rehearsals/<walk>/)."""
+    if records not in RECORD_FOLDERS:
+        raise DriveRefused(f"records {records!r} is neither 'takes' nor 'walks'")
+    return RECORD_FOLDERS[records](root)
+
+
+class WalkRepo(TakeRepo):
+    """L3, L4: the walk's repo. commit_walk(entry) makes ONE commit holding rehearsals/<walk>/** and the walk's new
+    register.json entry, refused once prereg.json exists. A walk is never registered or committed as a take:
+    register() and commit_records() refuse here.
+
+    runtime, secrets, rules_scanner, holdout_matcher, root, repo, caller_env   as TakeRepo's
+    design   walk_register.design_in_force()'s shape (None reads root's prereg-draft.json and tasks/)
+    """
+
+    def __init__(self, *, runtime, secrets, rules_scanner, holdout_matcher=None, root=HERE, repo=REPO,
+                 caller_env=None, design=None):
+        super().__init__(runtime=runtime, record_files=self._walk_record_files, secrets=secrets,
+                         rules_scanner=rules_scanner, holdout_matcher=holdout_matcher, root=root, repo=repo,
+                         caller_env=caller_env)
+        self.design, self._walk_folder = design, None
+
+    def register(self, row: dict, attempt: int) -> str:
+        raise CommitRefused("a walk is never registered as a take; WalkRepo commits walks only (commit_walk)")
+
+    def commit_records(self, row: dict, attempt: int, outcome: dict) -> dict:
+        raise CommitRefused("a walk is never committed as a take; WalkRepo commits walks only (commit_walk)")
+
+    def _walk_record_files(self, row, attempt) -> list:
+        return walk_files(self._walk_folder)
+
+    def refuse_after_freeze(self) -> None:
+        """L3: walks are pre-freeze (plan CP6); once prereg.json exists only TakeRepo commits records. Read on disk
+        here, and again in the commit at HEAD and in the tree being written (W8A-R1-1: a committed freeze deleted on
+        disk is still a freeze)."""
+        if os.path.lexists(self.root / FROZEN_NAME):
+            raise CommitRefused(f"{FROZEN_NAME} exists: the design is frozen, and walks run before the freeze (plan "
+                                f"CP6); after it only the graded takes are committed")
+
+    def _holds_freeze(self, rev: str) -> bool:
+        """W8A-R1-1: whether commit or tree `rev` holds this study's prereg.json (git cat-file -e, exit 0)."""
+        rel = (self.root / FROZEN_NAME).relative_to(self.repo).as_posix()
+        got = subprocess.run(["git", "-C", str(self.repo), "cat-file", "-e", f"{rev}:{rel}"], capture_output=True)
+        return got.returncode == 0
+
+    def _refuse_ever_frozen(self, head: str) -> None:
+        """W8A-R2-1: un-freezing is never legitimate (prereg.py's docstring), so a walk is refused when any commit in
+        HEAD's history ever held this study's prereg.json, even one removed since. A history git cannot read refuses."""
+        rel = (self.root / FROZEN_NAME).relative_to(self.repo).as_posix()
+        got = subprocess.run(["git", "-C", str(self.repo), "log", "-1", "--format=%H", head, "--", rel],
+                             capture_output=True, text=True)
+        if got.returncode != 0 or got.stdout.strip():
+            raise CommitRefused(f"{FROZEN_NAME} is in this branch's history: the design was frozen, and walks run "
+                                f"before the freeze (plan CP6); a freeze removed later is still a freeze")
+
+    def _refuse_frozen_at(self, rev: str, where: str) -> None:
+        if self._holds_freeze(rev):
+            raise CommitRefused(f"{FROZEN_NAME} is in {where}: the design is frozen, and walks run before the freeze "
+                                f"(plan CP6); a freeze deleted on disk is still committed")
+
+    def _register_path(self) -> Path:
+        import walk_register as _walk_register
+        return self.root / WALKS_DIR / _walk_register.REGISTER_NAME
+
+    def commit_walk(self, entry: dict) -> dict:
+        """One walk's commit. On any refusal the register goes back to HEAD's bytes and every name this call staged is
+        unstaged (TakeRepo's R4-7 rule); the walk's own files stay, masked where the scan masked them."""
+        self._touched = []
+        try:
+            return self._commit_walk(entry)
+        except BaseException as refused:
+            try:
+                self._restore_register()
+            except Exception as e:  # noqa: BLE001 - the restore's own failure is named beside the refusal
+                raise CommitRefused(f"the walk's commit was refused ({type(refused).__name__}: {refused}), and the "
+                                    f"register could not be restored to HEAD: {type(e).__name__}: {e}") from refused
+            raise
+
+    def _commit_walk(self, entry: dict) -> dict:
+        import walk_register as _walk_register
+        self.refuse_after_freeze()
+        design = _walk_register.design_in_force(self.root) if self.design is None else self.design
+        bad = _walk_register.entry_problems(0, entry, design)
+        if bad:
+            raise CommitRefused("the walk's register entry is refused: " + "; ".join(bad))
+        register = self._register_path()
+        reg_rel = register.relative_to(self.repo).as_posix()
+        if not _git_bytes(self.repo, "ls-tree", "--name-only", "HEAD", "--", reg_rel).strip():
+            raise CommitRefused(f"{reg_rel} is not tracked at HEAD; the register is committed before any walk")
+        try:
+            doc = json.loads(_git_bytes(self.repo, "show", f"HEAD:{reg_rel}"),
+                             object_pairs_hook=_walk_register.no_duplicate_keys)
+        except ValueError as e:
+            raise CommitRefused(f"{reg_rel} at HEAD is not a register: {e}") from None
+        if not isinstance(doc, dict) or set(doc) != set(_walk_register.TOP_KEYS) or not isinstance(doc["walks"], list):
+            raise CommitRefused(f"{reg_rel} at HEAD is not {{schema, walks: [...]}}")
+        if any(isinstance(e, dict) and isinstance(e.get("walk"), str)
+               and e["walk"].casefold() == entry["walk"].casefold() for e in doc["walks"]):
+            raise CommitRefused(f"walk {entry['walk']!r} is already registered; a retry is a new walk id")
+        self._walk_folder = self.root / WALKS_DIR / entry["walk"]
+        try:
+            files = self._take_files(entry, 0, self._reserved() | {reg_rel})
+        except DriveRefused as e:
+            raise CommitRefused(f"the walk folder is refused: {e}") from None
+        takes_mod.require_commit_identity(self.repo)
+        register.write_text(json.dumps({"schema": doc["schema"], "walks": doc["walks"] + [entry]}, indent=2) + "\n",
+                            encoding="utf-8")
+        # The register and the folder, as they will be committed, must pass the register's own check, content rule
+        # included: a commit the gate would refuse is never made.
+        problems, _ = _walk_register.check(register.parent, design)
+        problems += _walk_register.content_problems(register.parent, [entry["walk"]])
+        if problems:
+            raise CommitRefused("walk_register --check would refuse this walk: " + "; ".join(problems))
+        declared = {name: kind for name, (_, kind) in files.items()}
+        declared[reg_rel] = WALK_REGISTER_KIND
+        paths = {name: path for name, (path, _) in files.items()}
+        paths[reg_rel] = str(register)
+        self._touched = sorted(declared)
+        _git_bytes(self.repo, "add", "--", *sorted(declared))
+        staged = self._staged_exactly(declared)
+        scan = _scan_record.scan([(paths[n], declared[n]) for n in staged], list(self.secrets()),
+                                 rules_scanner=self.rules_scanner, holdout_matcher=self.holdout_matcher)
+        if not _scan_record.passed(scan):
+            why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
+            raise CommitRefused(f"the commit scan refused the walk: {why}")
+        _git_bytes(self.repo, "add", "--", *staged)          # the scan masked on disk: stage the masked bytes
+        staged = self._staged_exactly(declared)
+        head = _git_bytes(self.repo, "rev-parse", "--verify", "HEAD").decode().strip()
+        self._refuse_frozen_at(head, "the commit the walk would follow")          # W8A-R1-1: HEAD
+        self._refuse_ever_frozen(head)                                            # W8A-R2-1: any ancestor
+        tree = _git_bytes(self.repo, "write-tree").decode().strip()
+        self._refuse_frozen_at(tree, "the tree the walk's commit would hold")     # W8A-R1-1: the written tree
+        changed = sorted(n.decode("utf-8") for n in _git_bytes(
+            self.repo, "diff-tree", "-r", "--name-only", "--no-renames", "-z", head, tree).split(b"\0") if n)
+        if sorted(declared) != changed:
+            raise CommitRefused(f"the written tree changes {changed}, not the walk's declared files")
+        after = {rec["path"]: rec["sha256_after"] for rec in scan["files"]}
+        for name in staged:
+            blob = _git_bytes(self.repo, "cat-file", "blob", f"{tree}:{name}")
+            if after.get(paths[name]) != hashlib.sha256(blob).hexdigest():
+                raise CommitRefused(f"the staged blob of {name} is not the bytes the scan left (sha256_after)")
+        self._before_commit()
+        walk_commit = self._bind(head, tree)
+        return {"commit": walk_commit, "masked": scan["masked"], "events": scan["events"], "holdout": scan["holdout"]}
+
+    def _bind(self, head: str, tree: str) -> str:
+        """The commit of exactly `tree` on `head`, under the walk's own subject; HEAD moves only if it still is `head`."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as message:
+            message.write(WALK_SUBJECT + "\n")
+            message.flush()
+            new = _git_bytes(self.repo, "commit-tree", tree, "-p", head, "-F", message.name).decode().strip()
+        _git_bytes(self.repo, "update-ref", "-m", WALK_SUBJECT, "HEAD", new, head)
+        return new
+
+    def _restore_register(self) -> None:
+        register = self._register_path()
+        rel = register.relative_to(self.repo).as_posix()
+        if _git_bytes(self.repo, "ls-tree", "--name-only", "HEAD", "--", rel).strip():
+            register.write_bytes(_git_bytes(self.repo, "show", f"HEAD:{rel}"))
+        staged = set(_staged_names(self.repo))
+        names = [n for n in self._touched if n in staged]
+        if names:
+            _git_bytes(self.repo, "reset", "-q", "--", *names)
+
+
+# L1: round 3's host road, kept byte for byte above and shadowed here. Nothing in round 4 calls it: the CLI and every
+# caller of these names reach the refusals below; the originals stay reachable only through ROUND3_ONLY, by name.
+ROUND3_ONLY = {"main": main, "route_attempt": route_attempt}
+ROUND3_RETIRED = ("round 3's host road (drive.py --walk, --row) is retired in round 4: a walk runs through "
+                  "walk_driver(records='walks') into rehearsals/<walk>/ and is committed by WalkRepo; a take runs "
+                  "through batch.Batch with walk_driver and TakeRepo")
+
+
+def route_attempt(*args, **kwargs):  # noqa: F811 - L1: round 3's router, retired
+    raise DriveRefused(ROUND3_RETIRED)
+
+
+def main() -> int:  # noqa: F811 - L1: round 3's CLI, retired
+    print(f"refused: {ROUND3_RETIRED}", file=sys.stderr)
+    return 2
 
 if __name__ == "__main__":
     raise SystemExit(main())
