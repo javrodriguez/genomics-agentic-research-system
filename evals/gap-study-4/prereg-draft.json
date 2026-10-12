@@ -20648,7 +20648,7 @@
     "aborted"
   ],
   "routing": {
-    "sha256": "f6e6e38660f52d66d1ae342c2f87f3791e980de9e5bc0b7093de992f013e10e3",
+    "sha256": "56e8c935debe99aa38af3d13a3e571cd243af96bb76cf4fc935ade23976ebbd8",
     "about": "Round 4's routing table, pre-registered data. Decided by routing.py only, from harness-side records only, never from the agent's text. Route, phase, turn-end and batch-state strings are graders/labels4.py's and are checked against it on load. A row matches when the take is in its phase, every all_of condition holds, at least one any_of condition holds (when any_of is given), and no none_of condition holds. The winning rows are the matched rows at the highest precedence level; matched rows at that level that name different routes are a tie and are refused, as is an input that matches no row. Rows never read a text-derived count (the events record): those are annotations, below."
   },
   "predictions_rule": {
@@ -23602,10 +23602,10 @@
         "status": [],
         "type": [],
         "text": [],
-        "source": "Open, and empty by glitch-f3's ruling 4 (Thu 8 Oct 2026 17:25 EDT, under Javier's delegation; recorded as glitch-f3's, not the owner's): 'Claude Code's own spend-cap list ships empty, with a PENDING status, because it is unknown on a subscription login.' Arm A runs on a subscription login token (D4 A), not an API key with a spend limit, so no spend-cap error type is known for it. Lane w4h names Anthropic's API errors page's candidate in its report and adds none without the ruling. An empty closed list matches nothing; batch.py refuses to start until spend_cap_markers_status, stripped and upper-cased, begins RULED or FILLED and holds no PENDING anywhere (ruling 3 of 17:42; lane review round 2, W4H2-1)."
+        "source": "Empty on purpose, ruled by Javier on 12 Oct 2026 (\"spend markers: 1A 2A 3A\", choice 1A; see spend_cap_markers_status, which reads RULED). Before his ruling it shipped empty and unruled under glitch-f3's ruling 4 (Thu 8 Oct 2026 17:25 EDT, under Javier's delegation; recorded as glitch-f3's, not the owner's), because the list is unknown on a subscription login. Arm A runs on a subscription login token (D4 A), not an API key with a spend limit, so no spend-cap error type is known for it and none bills money per call. Lane w4h names Anthropic's API errors page's candidate in its report and adds none without the ruling. An empty closed list matches nothing; batch.py refuses to start until spend_cap_markers_status, stripped and upper-cased, begins RULED or FILLED and holds no PENDING anywhere (ruling 3 of 17:42; lane review round 2, W4H2-1)."
       }
     },
-    "spend_cap_markers_status": "PENDING (glitch-f3): claude-code's spend-cap types. Its list is empty (see spend_cap_markers.claude-code.source) until glitch-f3 rules it; the D8 harnesses' entries (OpenAI's four codes, Google's spend-cap error and HTTP 402) go in with their adapters, in this shape (CP2-requirements, D8 B2 item 6). batch.py refuses to start until this status, stripped and upper-cased, begins RULED or FILLED and holds no PENDING anywhere (lane review round 2, W4H2-1)."
+    "spend_cap_markers_status": "RULED 2026-10-12 by Javier (\"spend markers: 1A 2A 3A\", typed Mon 12 Oct 2026 08:52 EDT in glitch-1b's window, on plans/gap-study-round-4/spend-markers-proposal-2026-10-11.md): claude-code's spend-cap list is empty on purpose; arm A runs on his subscription login (D4 A), which bills no money per call, and a usage or weekly limit pauses under rate_limit_markers. The OpenAI and Google entries are added with their adapters, each with a non-empty list (OpenAI: project_spend_limit_exceeded, organization_spend_limit_exceeded, credit_balance_exhausted, insufficient_quota; Google: status 402 and its spend-cap error read at a walk), and this status is ruled again then."
   },
   "routing_marker_inputs": {
     "codex": {
@@ -23670,7 +23670,6 @@
     "/routing_marker_inputs/codex/spend_cap_markers": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
     "/routing_marker_inputs/gemini/rate_limit_markers": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
     "/routing_marker_inputs/gemini/spend_cap_markers": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
-    "/routing_markers/spend_cap_markers_status": "R15 CP5-req 55: the routing owner rules the marker status.",
     "/served_model_rule/claude-code": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/served_model_rule/codex": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/served_model_rule/gemini": "R15 CP5-req 53: the harness owners supply the served-model rule.",
@@ -23751,7 +23750,6 @@
       "/routing_marker_inputs/codex/spend_cap_markers",
       "/routing_marker_inputs/gemini/rate_limit_markers",
       "/routing_marker_inputs/gemini/spend_cap_markers",
-      "/routing_markers/spend_cap_markers_status",
       "/served_model_rule/claude-code",
       "/served_model_rule/codex",
       "/served_model_rule/gemini",

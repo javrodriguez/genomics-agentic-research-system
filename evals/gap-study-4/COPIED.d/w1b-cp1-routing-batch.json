@@ -12,11 +12,6 @@
       "reason": "The runner's only agent interface (interface 5); new in round 4. TurnResult's init, api_errors (every API error of the turn, in order) and counters are required keywords, and the agent's first turn starts only with completed agent output (review round 2: W1B2-1, W1B2-4, W1B2-7). started_at and ended_at are required keywords too, the host clock as an int or a float (review round 3, W1B3-6, fold 4)."
     },
     {
-      "path": "routing.json",
-      "status": "new",
-      "reason": "CP1's routing table as pre-registered data, with its annotations (an outside reach, a quiescence kill, an event id arriving as a checker reason: decided on every take, never routing), round 3's operator-side and driver-decided reasons and caps copied under Javier's ruling \"gap4 routing: A\" with their sources, glitch-f3's rulings on the rate-limit markers, the silent first-turn timeout (with no init event it rehearses, a differing init is refused: fold 3) and the cap units (rehearsals and pauses counted per half-cell, round 3's unit: fold 3), and the pin profiles CP5 pre-registers (PENDING); new in round 4 (round 3 routed inside drive.py). Fold 4 (review round 3): one table-level pin refusal (before the first turn a present init that differs from the pin is refused whatever else matches; only the rate-limit pause outranks it: W1B3-2, glitch-f3 accepted the stricter reading), the silent-timeout row without its none_of, the pause cap counted by usage-window event (W1B3-5, glitch-f3's ruling), and the stale key sentence gone (W1B3-4)."
-    },
-    {
       "path": "tests/test_labels4.py",
       "status": "new",
       "reason": "Tests for labels4.py (interface 3)."
@@ -27,24 +22,19 @@
       "reason": "Tests for agent_adapter.py (interface 3)."
     },
     {
-      "path": "tests/test_routing.py",
-      "status": "new",
-      "reason": "Tests for routing.py and routing.json (interface 3)."
-    },
-    {
       "path": "tests/test_batch.py",
       "status": "new",
-      "reason": "Tests for batch.py (interface 3)."
+      "reason": "Tests for batch.py (interface 3). Edited without transfer by lane w8c-spend-ruled (ruling W8C-gap4-1 (Javier's own decision \"spend markers: 1A 2A 3A\", Mon 12 Oct 2026 08:52 EDT)): spend_gate_problems reads the real table as ruled (no spend line) and, with its spend status set back to PENDING, refused naming it; the ignore-the-spend-cap mutant also fails that real-table line."
     },
     {
       "path": "COPIED.d/w1b-cp1-routing-batch.json",
       "status": "new",
-      "reason": "This lane's copy-record fragment (interface 1). Transfer (ruling W7C-gap4-1 (glitch-1b, under Javier's standing delegation, 12 Oct 2026; wave 7, the spend-guard wiring)): batch.py and routing.py moved on to lane w7c-spend-wiring, which claims them in COPIED.d/w7c-spend-wiring.json; their tests (tests/test_batch.py, tests/test_routing.py) and this lane's checks stay here, unedited."
+      "reason": "This lane's copy-record fragment (interface 1). Transfer (ruling W7C-gap4-1 (glitch-1b, under Javier's standing delegation, 12 Oct 2026; wave 7, the spend-guard wiring)): batch.py and routing.py moved on to lane w7c-spend-wiring, which claims them in COPIED.d/w7c-spend-wiring.json; their tests (tests/test_batch.py, tests/test_routing.py) and this lane's checks stay here, unedited. Transfer (ruling W8C-gap4-1 (Javier's own decision \"spend markers: 1A 2A 3A\", typed Mon 12 Oct 2026 08:52 EDT in glitch-1b's window on plans/gap-study-round-4/spend-markers-proposal-2026-10-11.md; lane w8c-spend-ruled, assigned by glitch-1b)): routing.json and tests/test_routing.py moved on to lane w8c-spend-ruled, which claims them in COPIED.d/w8c-spend-ruled.json; this lane's checks (checks.d/w1b-cp1-routing-batch.txt, which still runs tests/test_routing.py) stay here, unedited."
     },
     {
       "path": "checks.d/w1b-cp1-routing-batch.txt",
       "status": "new",
-      "reason": "This lane's local checks (interface 2)."
+      "reason": "This lane's local checks (interface 2). Comment corrected by lane w8c-spend-ruled (ruling W8C-gap4-1, glitch-1b's fold before review): after Javier ruled the spend status the batch line stays green; w8c's two-line check carries the exact expectation."
     }
   ]
 }

@@ -19,8 +19,13 @@ batch.py called them; and routing.py accepted an empty spend-cap list for any ha
               (build_draft.HARNESSES), their vendors costs.CAPS's; the no-money harness is the seam's claude-code
   G6-clock    the hold reads batch's OWN clock (UTC, at check time), never the ledger's `now` (glitch-1b, Q-w7c-1): a
               ledger saying "before the hold" while the clock is inside it is refused, and the converse runs
-  P3-pending  spend_cap_markers_status and pin_profiles_status stay PENDING, and batch.py refuses to start exactly as
-              it did at 82cf6ae9 (the same three lines, exit 1)
+  P3-ruled    (lane w8c, ruling W8C-gap4-1; was P3-pending) spend_cap_markers_status reads RULED by Javier ("spend
+              markers: 1A 2A 3A", 12 Oct 2026) and pin_profiles_status stays PENDING, so batch.py still refuses to
+              start: two lines now (the pin profiles), exit 1, and the Batch loop refuses with them; the spend-status
+              gate stays armed (the same table with the base's PENDING status gives the base's three lines)
+
+R1-nonempty also holds after the ruling (lane w8c): on routing.json as it now stands, status RULED, an OpenAI (codex)
+or Google (gemini) entry with an empty spend-cap list is still refused, and the same entry with one marker is sound.
 
 Each check is a function returning problems, each line prefixed by its clause (or ERROR when the check itself raised).
 Every witness (WITNESSES) edits batch.py or routing.py in memory and must be killed by its bound check's own line, the
@@ -71,13 +76,18 @@ OUT_OF_HOLD = "2026-10-15T12:00:00Z"
 TRIMMED = {"kind": "caps trimmed", "by": "Javier", "month": "2026-11", "at": "2026-10-31T23:40:00Z",
            "figures": {"openai": "200", "google": "100"}}
 
-# The three lines batch.py --check printed at 82cf6ae9 (this lane's base), in order: what P3 holds unchanged.
+# The three lines batch.py --check printed at 82cf6ae9 (lane w7c's base), in order: what the spend-status gate still
+# gives on routing.json with its spend status set back to the base's PENDING wording (P3-ruled).
 BASE_START_PROBLEMS = [
     "pin_profiles is empty in routing.json (CP5 pre-registers them)",
     "pin_profiles_status is not ruled in routing.json (RULED or FILLED, with no PENDING)",
     "spend_cap_markers_status is not ruled in routing.json (RULED or FILLED, with no PENDING): a spend cap stops for "
     "a human ruling",
 ]
+# Lane w8c: after Javier's "spend markers: 1A 2A 3A", the two lines left (CP5's pin profiles).
+RULED_START_PROBLEMS = BASE_START_PROBLEMS[:2]
+BASE_SPEND_STATUS = ("PENDING (glitch-f3): claude-code's spend-cap types. Its list is empty (see "
+                     "spend_cap_markers.claude-code.source) until glitch-f3 rules it.")
 
 
 def walk(harness, tries=10, cost="1.34"):
@@ -462,6 +472,22 @@ def _r1(mod) -> list[str]:
                     rc = "refused"
             if rc == 0:
                 p.append(f"R1-nonempty: routing.py --check passes an empty spend-cap list for {h}")
+    # Lane w8c: the refusal outlives the ruling. On routing.json as it stands (status RULED by Javier), a codex or
+    # gemini entry added with an empty list is refused; with one marker it is sound (the control).
+    if batch.is_pending(real.get("spend_cap_markers_status", batch.PENDING)):
+        p.append("R1-nonempty: spend_cap_markers_status is not ruled, so the after-the-ruling refusal is unproven")
+    for h in PAID:
+        for markers, want_refused in (([], True), ([f"test_{h}_spend_cap"], False)):
+            t = copy.deepcopy(real)
+            t["rate_limit_markers"][h] = {"status": [429], "type": [f"test_{h}_slow"], "text": [f"{h} throttled"],
+                                          "reset_wait": None, "source": "test-only"}
+            t["spend_cap_markers"][h] = {"status": [], "type": list(markers), "text": [], "source": "test-only"}
+            found = mod.check_table(t)
+            refused = any(h in x and "names no spend-cap marker" in x for x in found)
+            if want_refused and not refused:
+                p.append(f"R1-nonempty: after the ruling, an empty spend-cap list for {h} is admitted: {found}")
+            if not want_refused and found:
+                p.append(f"R1-nonempty: after the ruling, a {h} list with one marker is refused: {found}")
     t = paid_table()
     t["spend_cap_markers"][GEMINI].update(status=[402], type=[], text=[])   # one documented status is enough
     if mod.check_table(t) != []:
@@ -482,36 +508,52 @@ def _b1(mod) -> list[str]:
     return p
 
 
+def _refusal(mod, table) -> str | None:
+    """The loop's refusal on `table` (None when it would start)."""
+    w = tb.World()
+    try:
+        mod.Batch(Driver(w, mod, table), tb.FakeRepo(w), tb.FakeWindow(w), table=table, ledger=Ledger(snapshot()))
+    except mod.BatchConfigError as e:
+        return str(e)
+    return None
+
+
 def _p3(mod) -> list[str]:
     p = []
     table = routing.load_table()
-    for key, head in (("spend_cap_markers_status", f"PENDING (glitch-f3): {CLAUDE}'s spend-cap types"),
-                      ("pin_profiles_status", "PENDING (CP5)")):
-        if not table[key].startswith(head):
-            p.append(f"P3-pending: {key} no longer starts {head!r}: {table[key][:80]!r}")
+    spend = table["spend_cap_markers_status"]
+    if not (spend.startswith("RULED 2026-10-12 by Javier") and '"spend markers: 1A 2A 3A"' in spend
+            and not batch.is_pending(spend)):
+        p.append(f"P3-ruled: spend_cap_markers_status is not Javier's RULED line: {spend[:80]!r}")
+    if not table["pin_profiles_status"].startswith("PENDING (CP5)"):
+        p.append(f"P3-ruled: pin_profiles_status no longer starts 'PENDING (CP5)': {table['pin_profiles_status'][:80]!r}")
     if table["pin_profiles"] != {} or set(table["spend_cap_markers"]) != {CLAUDE}:
-        p.append("P3-pending: routing.json's pin profiles or spend-cap harnesses moved")
-    if mod.start_problems(table) != BASE_START_PROBLEMS:
-        p.append(f"P3-pending: start_problems differs from the base's: {mod.start_problems(table)}")
+        p.append("P3-ruled: routing.json's pin profiles or spend-cap harnesses moved")
+    if mod.start_problems(table) != RULED_START_PROBLEMS:
+        p.append(f"P3-ruled: start_problems is not the two pin-profile lines: {mod.start_problems(table)}")
     out = io.StringIO()
     with redirect_stdout(out):
         rc = mod.main(["--check"])
-    if rc != 1 or out.getvalue().splitlines() != [f"batch: not ready: {x}" for x in BASE_START_PROBLEMS]:
-        p.append(f"P3-pending: batch.py --check is not the base's exit 1 and three lines: {rc}, {out.getvalue()!r}")
-    w = tb.World()
-    try:
-        mod.Batch(Driver(w, mod, table), tb.FakeRepo(w), tb.FakeWindow(w), table=table,
-                    ledger=Ledger(snapshot()))
-    except mod.BatchConfigError as e:
-        if str(e) != "routing.json is not ready: " + "; ".join(BASE_START_PROBLEMS):
-            p.append(f"P3-pending: the loop refuses with other words than the base's: {e}")
-    else:
-        p.append("P3-pending: the loop starts on routing.json while its statuses are PENDING")
+    if rc != 1 or out.getvalue().splitlines() != [f"batch: not ready: {x}" for x in RULED_START_PROBLEMS]:
+        p.append(f"P3-ruled: batch.py --check is not exit 1 on the two pin-profile lines: {rc}, {out.getvalue()!r}")
+    why = _refusal(mod, table)
+    if why is None:
+        p.append("P3-ruled: the loop starts on routing.json while pin_profiles_status is PENDING")
+    elif why != "routing.json is not ready: " + "; ".join(RULED_START_PROBLEMS):
+        p.append(f"P3-ruled: the loop refuses with other words than the two pin-profile lines: {why}")
+    # the spend-status gate stays armed: the same table with the base's PENDING status refuses as the base did
+    pending = copy.deepcopy(table)
+    pending["spend_cap_markers_status"] = BASE_SPEND_STATUS
+    if mod.start_problems(pending) != BASE_START_PROBLEMS:
+        p.append(f"P3-ruled: a PENDING spend status no longer gives the base's three lines: {mod.start_problems(pending)}")
+    if _refusal(mod, pending) != "routing.json is not ready: " + "; ".join(BASE_START_PROBLEMS):
+        p.append(f"P3-ruled: the loop does not refuse a PENDING spend status with the base's words: "
+                 f"{_refusal(mod, pending)}")
     return p
 
 
 CHECKS = {"G1-claude": _g1, "G2-month": _g2, "G3-walk": _g3, "G4-ledger": _g4, "G5-order": _g5, "G6-clock": _g6,
-          "R1-nonempty": _r1, "B1-names": _b1, "P3-pending": _p3}
+          "R1-nonempty": _r1, "B1-names": _b1, "P3-ruled": _p3}
 CHECKS = {k: guarded(k, f) for k, f in CHECKS.items()}
 
 
@@ -546,9 +588,9 @@ class TestTheSpendLists(unittest.TestCase):
         self.assertEqual(CHECKS["B1-names"](routing), [])
 
 
-class TestStillPending(unittest.TestCase):
-    def test_p3_the_statuses_stay_pending_and_the_loop_refuses_as_before(self):
-        self.assertEqual(CHECKS["P3-pending"](batch), [])
+class TestSpendStatusRuled(unittest.TestCase):
+    def test_p3_the_spend_status_is_ruled_and_the_loop_still_refuses_on_two_lines(self):
+        self.assertEqual(CHECKS["P3-ruled"](batch), [])
 
 
 # name: (edits, the module the edits apply to, the bound check)
@@ -576,7 +618,7 @@ WITNESSES = {
     "empty-paid-list-admitted": ((("        if key == \"spend_cap_markers\" and harness not in NO_MONEY_HARNESSES",
                                    "        if False"),), "routing", "R1-nonempty"),
     "spend-status-ungated": ((("    if is_pending(table.get(\"spend_cap_markers_status\", PENDING)):",
-                               "    if False:"),), "batch", "P3-pending"),
+                               "    if False:"),), "batch", "P3-ruled"),
     "ledger-clock": ((("            allowed = costs.month_turn_allowed(arm, now, snap[\"trimmed\"])",
                        "            allowed = costs.month_turn_allowed(arm, snap[\"now\"], snap[\"trimmed\"])"),),
                      "batch", "G6-clock"),

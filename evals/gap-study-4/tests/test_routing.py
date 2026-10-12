@@ -2378,6 +2378,14 @@ class TestNextTouchAgentPin(unittest.TestCase):
 # raises RoutingRefused (batch.py commits the take blocked and the loop stops for a human), in every phase, outranked
 # by nothing, so a spend-cap 429 never pauses. The test-only `fake-second` entry carries made-up types.
 SPEND_ID = "spend-cap-reached"
+# Javier's ruling (lane w8c, W8C-gap4-1): the spend-markers proposal's section-5 line, <date> = 2026-10-12, his words named.
+SPEND_STATUS_RULED = (
+    'RULED 2026-10-12 by Javier ("spend markers: 1A 2A 3A", typed Mon 12 Oct 2026 08:52 EDT in glitch-1b\'s window, on '
+    'plans/gap-study-round-4/spend-markers-proposal-2026-10-11.md): claude-code\'s spend-cap list is empty on purpose; '
+    'arm A runs on his subscription login (D4 A), which bills no money per call, and a usage or weekly limit pauses '
+    'under rate_limit_markers. The OpenAI and Google entries are added with their adapters, each with a non-empty list '
+    '(OpenAI: project_spend_limit_exceeded, organization_spend_limit_exceeded, credit_balance_exhausted, '
+    'insufficient_quota; Google: status 402 and its spend-cap error read at a walk), and this status is ruled again then.')
 FAKE_RATE = {"status": [429], "type": ["fake2_slow_down"], "text": ["fake2 throttled"], "reset_wait": 60,
              "source": "test-only: a made-up second harness"}
 FAKE_SPEND = {"status": [402], "type": ["fake2_budget_spent", "fake2_org_budget_spent"],
@@ -2487,13 +2495,23 @@ class TestNextTouchSpendCap(unittest.TestCase):
             self.assertEqual(new[k], old[k], k)
         self.assertTrue(new["source"].startswith(old["source"]))
 
-    def test_claude_code_spend_list_is_empty_and_pending(self):
+    def test_claude_code_spend_list_is_empty_and_ruled(self):
+        """Lane w8c (ruling W8C-gap4-1): Javier ruled the status, "spend markers: 1A 2A 3A" (Mon 12 Oct 2026 08:52
+        EDT, glitch-1b's window, on plans/gap-study-round-4/spend-markers-proposal-2026-10-11.md): 1A, claude-code's
+        list stays empty on purpose. The status is the proposal's section-5 line with the date and his words filled
+        in, word for word; it was PENDING (glitch-f3) before."""
         entry = REAL["spend_cap_markers"][TEST_HARNESS]
         self.assertEqual({k: entry[k] for k in ("status", "type", "text")}, {"status": [], "type": [], "text": []})
-        for cite in ("subscription login", "D4 A", "glitch-f3"):
+        for cite in ("subscription login", "D4 A", "glitch-f3", '"spend markers: 1A 2A 3A"', "RULED"):
             self.assertIn(cite, entry["source"])
-        self.assertTrue(REAL["spend_cap_markers_status"].startswith(
-            f"PENDING (glitch-f3): {TEST_HARNESS}'s spend-cap types"), REAL["spend_cap_markers_status"])
+        self.assertTrue(entry["source"].startswith("Empty on purpose, ruled by Javier on 12 Oct 2026"), entry["source"])
+        self.assertNotIn("PENDING status", entry["source"])
+        status = REAL["spend_cap_markers_status"]
+        self.assertEqual(status, SPEND_STATUS_RULED)
+        self.assertTrue(status.startswith("RULED 2026-10-12 by Javier"), status)
+        self.assertIn('"spend markers: 1A 2A 3A"', status)
+        self.assertNotIn("PENDING", status.upper())
+        self.assertEqual(set(REAL["spend_cap_markers"]), {TEST_HARNESS})   # OpenAI and Google come with their adapters
 
     def test_the_refusal_is_a_closed_rule(self):
         rule = REAL["spend_cap_refusal"]

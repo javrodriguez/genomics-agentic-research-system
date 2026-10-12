@@ -4,6 +4,8 @@
 # per guard. The transferred modules' own test commands stay in checks.d/w1b-cp1-routing-batch.txt.
 python3 -B -W ignore evals/gap-study-4/tests/test_spend_wiring.py
 python3 -B evals/gap-study-4/routing.py --check
-# spend_cap_markers_status and pin_profiles_status stay PENDING (Javier's and CP5's): batch.py --check exits 1 naming
-# only those. When either is ruled, this line goes red on purpose, as w1b's does.
+# batch.py --check exits 1 naming only the pin-profile and spend-status lines. Javier ruled spend_cap_markers_status
+# ("spend markers: 1A 2A 3A", 12 Oct 2026) and this line stayed green, on the two pin-profile lines: it only forbids
+# other lines. The exact two-line expectation is checks.d/w8c-spend-ruled.txt's. This line goes red only when CP5
+# fills pin_profiles and rules its status (no line left), as w1b's does.
 out=$(python3 -B evals/gap-study-4/batch.py --check); rc=$?; [ "$rc" -eq 1 ] && [ -n "$out" ] && ! printf '%s\n' "$out" | grep -v -e pin_profiles -e spend_cap_markers_status
