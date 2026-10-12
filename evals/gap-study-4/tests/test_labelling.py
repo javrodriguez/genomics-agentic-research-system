@@ -665,80 +665,103 @@ def real_design():
 
 
 def k2_mask(sm, sh, ag):
+    """The token road (ruling w11d-R2-fold): NFKC, casefold, every non-letter-or-digit a separator, letters and digits
+    apart; every hidden sequence masked over its original span; the backstop refuses what is left."""
     out = []
+    got = [t for t, _, _ in sh.tokens("GPT\u20116.1 Sol, haiku4.5\nＦＬＡＳＨ_lite")]
+    if got != ["gpt", "6", "1", "sol", "haiku", "4", "5", "flash", "lite"]:
+        out.append(f"K2: tokens {got}")
+    if sh.tokens("a-bc 12") != [("a", 0, 1), ("bc", 2, 4), ("12", 5, 7)]:
+        out.append(f"K2: token spans {sh.tokens('a-bc 12')}")
+    if sh.tokens("") != [] or sh.tokens("--  ..") != []:
+        out.append("K2: separators alone are tokens")
+    if sh.words("Claude-Code") != ("claude", "code"):
+        out.append("K2: words is not the token texts")
     hs = sh.hidden_set(FRAME, DESIGN)
-    whole = set(sh.VENDOR_WORDS) | {"claude-code", "codex", "m-alpha", "m-beta", "m-gamma"} | {e["take"] for e in FRAME}
-    if set(hs["whole"]) != whole or hs["whole"] != sorted(whole, key=lambda t: (-len(t), t)):
-        out.append(f"K2: whole tokens differ by {sorted(set(hs['whole']) ^ whole)[:6]}")
-    if hs["parts"] != ["alpha", "gamma", "beta"] or hs["residual"] != ["m"]:
-        out.append(f"K2: parts {hs['parts']} residual {hs['residual']}")
-    if set(hs) != {"whole", "parts", "residual"}:
-        out.append(f"K2: hidden set keys {sorted(hs)}")
+    for q in (("m", "alpha"), ("alpha",), ("code",), ("claude", "code"), ("codex",), ("s", "001", "1"), ("cli",),
+              ("entrypoint",), ("toml",), ("gpt",), ("deepmind",)):
+        if q not in hs["sequences"]:
+            out.append(f"K2: {q} is not a hidden sequence")
+    if ("m",) in hs["sequences"] or hs["residual"] != ["m"] or set(hs) != {"sequences", "residual"}:
+        out.append(f"K2: residual {hs['residual']} keys {sorted(hs)}")
+    if hs["sequences"] != sorted(hs["sequences"], key=lambda q: (-len(q), q)):
+        out.append("K2: sequences are not longest first")
     if sh.VENDOR_WORDS != ("anthropic", "claude", "opus", "sonnet", "haiku", "fable", "openai", "chatgpt", "gpt",
                            "codex", "google", "deepmind", "gemini"):
         out.append("K2: the vendor words changed")
+    if sh.FURNITURE != ("cli", "entrypoint", "toml") or sh.HIDDEN != "[hidden]":
+        out.append("K2: the furniture or the mask word changed")
     cases = {
         "I am CLAUDE, built by Anthropic": "I am [hidden], built by [hidden]",
         "running m-alpha and M-BETA": "running [hidden] and [hidden]",
         "running m alpha, m_beta and M.Gamma": "running [hidden], [hidden] and [hidden]",
-        "alpha and Gamma alone": "[hidden] and [hidden] alone",
         "alphabet and gammas stay": "alphabet and gammas stay",
         "Gemini's answer, from gpt-6 via codex": "[hidden]'s answer, from [hidden]-6 via [hidden]",
         "see s001/1 and s002/1": "see [hidden] and [hidden]",
         "claude-code ran it": "[hidden] ran it",
-        "claude code ran it": "[hidden] ran it",
+        "ＣＬＡＵＤＥ said": "[hidden] said",
         "nothing to hide": "nothing to hide",
+        "": "",
     }
     for src, want_ in cases.items():
-        got = sh.mask(src, hs)
-        if got != want_:
-            out.append(f"K2: mask({src!r}) = {got!r}")
-    if sh.HIDDEN != "[hidden]":
-        out.append("K2: the mask word changed")
+        if sh.mask(src, hs) != want_:
+            out.append(f"K2: mask({src!r}) = {sh.mask(src, hs)!r}")
     items = sh.blind_items(sm.draw(FRAME, DESIGN), contents_for(FRAME, "Opus here", ("run Sonnet",)), FRAME, DESIGN)
     if any(i["text"] != "[hidden] here" or i["actions"] != ["run [hidden]"] for i in items):
         out.append("K2: blind_items does not mask text and actions")
     leaks = sh.leak_problems("from Claude via m-gamma, s003/1", hs)
-    want_l = ["LEAK: the sheet shows 'claude'", "LEAK: the sheet shows 'm-gamma'", "LEAK: the sheet shows 's003/1'",
-              "LEAK: the sheet shows 'gamma'"]
-    if sorted(leaks) != sorted(want_l):
+    if leaks != ["LEAK: the sheet shows 'claude'", "LEAK: the sheet shows 'm gamma'", "LEAK: the sheet shows 's 003 1'"]:
         out.append(f"K2: leak_problems {leaks}")
-    if sh.leak_problems("plain", hs) != []:
-        out.append("K2: leak_problems on clean text")
-    # the reviewer's four strings, on the design's real ids (prereg-draft's harness_models)
-    rd = real_design()
-    rh = sh.hidden_set([], rd)
-    for want_part in ("sol", "luna", "flash", "lite", "haiku", "opus", "sonnet", "gemini", "claude", "gpt"):
-        if want_part not in rh["parts"] + rh["whole"]:
-            out.append(f"K2: {want_part!r} is not hidden on the real ids")
+    for clean in ("plain", "[hidden] and [hidden]", "hidden m", "x [hidden] y"):
+        if sh.leak_problems(clean, hs) != []:
+            out.append(f"K2: leak_problems on {clean!r}: {sh.leak_problems(clean, hs)}")
+    for near in ("m [hidden]", "[hidden]-M", "I'm [hidden]"):           # R2-4: a short id part beside a mark
+        if sh.leak_problems(near, hs) != ["LEAK: [hidden] stands next to the id part 'm'"]:
+            out.append(f"K2: a short id part beside the mask passed: {near!r}")
+    # the real ids (prereg-draft's harness_models): every spelling the reviewers found, masked whole, and refused raw
+    rh = sh.hidden_set([], real_design())
+    for q in (("4", "5"), ("6", "1"), ("3", "8"), ("5", "5"), ("3", "5"), ("6",), ("sol",), ("luna",), ("flash",),
+              ("lite",), ("haiku",), ("opus",), ("sonnet",), ("gpt",), ("gemini",), ("claude",), ("code",)):
+        if q not in rh["sequences"]:
+            out.append(f"K2: {q} is not hidden on the real ids")
+    if ("4",) in rh["sequences"] or rh["residual"] != []:
+        out.append(f"K2: real residual {rh['residual']}, or a lone 4 hidden")
     real = {
-        "I am GPT-6.1 Sol, running in Codex CLI": ("I am [hidden], running in [hidden] CLI", []),
-        "As Gemini 3.5 Flash-Lite I stop here": ("As [hidden] I stop here", []),
-        "Claude Haiku 4.5 here": ("[hidden] [hidden] 4.5 here", ["LEAK: a version number follows [hidden]",
-                                                                "LEAK: [hidden] stands next to the id part '4'"]),
-        "GPT 6.1 here": ("[hidden] 6.1 here", ["LEAK: a version number follows [hidden]",
-                                               "LEAK: [hidden] stands next to the id part '6'"]),
-        "I am Luna": ("I am [hidden]", []),
-        "Claude Haiku 4 5 20251001 here": ("[hidden] here", []),
-        "the 6 [hidden] model": ("the 6 [hidden] model", ["LEAK: [hidden] stands next to the id part '6'"]),
-        "a solution, flashing, literally": ("a solution, flashing, literally", []),
+        "I am GPT-6.1 Sol, running in Codex CLI": "I am [hidden], running in [hidden] [hidden]",
+        "As Gemini 3.5 Flash-Lite I stop here": "As [hidden] I stop here",
+        "Claude Haiku 4.5 here": "[hidden] [hidden] [hidden] here",
+        "I am Luna": "I am [hidden]",
+        "GPT\u20116.1\u2011Sol": "[hidden]",
+        "GPT\u20116\u2011Luna": "[hidden]",
+        "Gemini\u00a03.8": "[hidden]\u00a0[hidden]",
+        "Haiku v4.5": "[hidden] v[hidden]",
+        "Haiku: 4.5": "[hidden]: [hidden]",
+        "I am Haiku, version 4.5": "I am [hidden], version [hidden]",
+        "Sonnet (5.5)": "[hidden] ([hidden])",
+        "Opus\n5.5": "[hidden]\n[hidden]",
+        "I am CLAUDE\nHAIKU\n4.5": "I am [hidden]\n[hidden]\n[hidden]",
+        "claude-\nhaiku-\n4-5": "[hidden]-\n[hidden]-\n[hidden]",
+        "GPT\u20106.1": "[hidden]\u2010[hidden]",
+        "Gemini \u2013 3.5": "[hidden] \u2013 [hidden]",
+        "Opus \u2014 5.5": "[hidden] \u2014 [hidden]",
+        "ＧＰＴ－６．１ Ｓｏｌ": "[hidden]",
+        "I\u2019m version 4.5": "I\u2019m version [hidden]",
+        "codex-cli 0.144": "[hidden] 0.144",
+        "~/.codex/config.toml": "~/.[hidden]/config.[hidden]",
+        "CODEX_ENTRYPOINT": "[hidden]_[hidden]",
+        "Gemini CLI": "[hidden] [hidden]",
     }
-    for src, (masked, leak) in real.items():
+    for src, masked in real.items():
         got = sh.mask(src, rh)
         if got != masked:
             out.append(f"K2: real mask({src!r}) = {got!r}")
-        if sh.leak_problems(got, rh) != leak:
+        if sh.leak_problems(got, rh) != []:
             out.append(f"K2: real leak_problems({got!r}) = {sh.leak_problems(got, rh)}")
-    if sh.leak_problems("[hidden] 5 stars", rh) != ["LEAK: a version number follows [hidden]", "LEAK: [hidden] stands next to the id part '5'"]:
-        out.append("K2: a digit after a space after the mask passed")
-    if sh.leak_problems("[hidden]5", rh) != ["LEAK: a version number follows [hidden]", "LEAK: [hidden] stands next to the id part '5'"]:
-        out.append("K2: a digit right after the mask passed")
-    if sh.leak_problems("x-[hidden] and [hidden]-y", rh) != []:
-        out.append("K2: a neighbour that is no id part was refused")
-    if sh.leak_problems("[hidden]-5", rh) != ["LEAK: a version number follows [hidden]", "LEAK: [hidden] stands next to the id part '5'"]:
-        out.append("K2: a version after a hyphen passed")
-    if sh.leak_problems("5-[hidden]", rh) != ["LEAK: [hidden] stands next to the id part '5'"]:
-        out.append("K2: an id part before the mask passed")
+        if not sh.leak_problems(src, rh):
+            out.append(f"K2: the backstop passed the raw {src!r}")
+    ordinary = "a solution, flashing, literally, 16 files, 4 cats, step 45"
+    if sh.mask(ordinary, rh) != ordinary or sh.leak_problems(ordinary, rh) != []:
+        out.append("K2: ordinary words and numbers were touched")
     return out
 
 
@@ -820,6 +843,12 @@ def k4_content(sm, sh, ag):
         for a in actions:
             out += refused("K4", lambda a=a: sh.blind_items(doc, {**c, first: {"text": "x", "actions": [a]}}, FRAME,
                                                             DESIGN), E, f"the {harness} action {a!r}")
+    for harness, ws in sh.HARNESS_WORDS.items():
+        for w in ws:
+            out += refused("K4", lambda w=w: sh.blind_items(doc, {**c, first: {"text": "x", "actions": [f"run {w}"]}},
+                                                            FRAME, DESIGN), E, f"run {w} ({harness})")
+    if sh.harness_word("run ls") is not False or sh.harness_word("run apply_patch") is not True:
+        out.append("K4: harness_word does not answer a bool")
     if not set(tv.CC_TOOLS) <= set(sh.HARNESS_WORDS["claude-code"]):
         out.append("K4: Claude Code's words are not derived from transcript_view.CC_TOOLS")
     for a in ("read notes/edit.md", "run grep foo", "write README.md", "read bash_notes.txt"):
@@ -886,6 +915,12 @@ def k6_write(sm, sh, ag):
         rc, text = out_of(sh.main, ["--contents", "x.json", "--out", str(where)])
         if rc != 1 or text != "sheet: FAIL --out is inside the study folder; the sheet holds agent text (Q-w11d-3)\n":
             out.append(f"K6: an --out at {where} was not refused: {rc} {text!r}")
+    with tempfile.TemporaryDirectory(prefix="w11d-k6-") as t:
+        link = Path(t) / "into-study"
+        link.symlink_to(HERE / "labelling", target_is_directory=True)
+        rc, text = out_of(sh.main, ["--contents", "x.json", "--out", str(link / "sheet.md")])
+        if rc != 1 or not text.startswith("sheet: FAIL --out is inside the study folder"):
+            out.append(f"K6: an --out through a symlink into the study was not refused: {rc} {text!r}")
     for where in (HERE.parent / "sheet.md", Path(str(HERE) + "-sibling") / "sheet.md"):
         if sh.inside_study(str(where)):
             out.append(f"K6: {where} is called inside the study")
@@ -1095,6 +1130,7 @@ def g9_small_rows(sm, sh, ag):
     """Rows of one labelled take (the dominant real shape), with their exact bounds as literals, and a frame cell
     the draw left empty printed as its own unsampled line."""
     out = []
+    FRAME = FRAME_ALL_RIGHT
     d = design(about_n=4)
     doc = sm.draw(FRAME, d)
     first = {}
@@ -1110,6 +1146,12 @@ def g9_small_rows(sm, sh, ag):
                                         else "did-not-reach"), doc, DEFS)
     rs = ag.rows(FRAME, doc, lab)
     text = ag.render(rs, FRAME)
+    keys = [tuple(r[k] for k in ("arm", "harness", "model", "task")) for r in rs]
+    if keys != sorted({sm.stratum(e)[:4] for e in FRAME}):
+        out.append(f"G9: the rows are not every frame cell: {keys}")
+    ar = next((r for r in rs if (r["model"], r["task"]) == ("m-gamma", "task-two")), None)
+    if ar is None or ar["n"] != 0:
+        out.append("G9: the all-right cell is not an undrawn row")
     ones = [r for r in rs if r["n"] == 1]
     if not any(r["agree"] == 1 for r in ones) or not any(r["agree"] == 0 for r in ones):
         out.append(f"G9: the fixture lacks a 1 of 1 or a 0 of 1 row: {[(r['agree'], r['n']) for r in rs]}")
@@ -1140,6 +1182,9 @@ GOLDEN_PAGE_SHA = "562526ee007df9b4ded378cbf2679e368cf475c252450521f8381bbf92f04
 
 
 FRAME4 = frame(per=4)
+# FRAME with m-gamma's task-two cell cut to five takes, all right and all agreeing (R2-3): about_n 4 leaves it empty.
+FRAME_ALL_RIGHT = [e for e in FRAME if not (e["record"]["model"] == "m-gamma" and e["record"]["task"] == "task-two"
+                                            and (e["record"]["views"]["failures"] == "wrong" or e["readers"] == "disagree"))]
 DESIGN18 = design(about_n=18)
 
 
@@ -1703,11 +1748,24 @@ WITNESSES = {
     "page-without-labels-admitted": _w("ag", g5_check, ("if os.path.isfile(PAGE if page is None else page):",
                                                         "if False:")),
     "deleted-labels-admitted": _w("ag", g6r_real_git, ("    if shas:\n", "    if False:\n")),
-    "id-parts-unhidden": _w("sh", k2_mask, ('parts = sorted({p.lower() for p in pieces if p.isalpha() and len(p) >= 3}',
-                                             'parts = sorted({p.lower() for p in pieces if False}')),
-    "id-separators-strict": _w("sh", k2_mask, ('return "[-_. ]?".join(', 'return "-".join(')),
-    "version-after-mask-admitted": _w("sh", k2_mask, ("if VERSION_AFTER.search(text):", "if False:")),
-    "residual-neighbour-admitted": _w("sh", k2_mask, ("if m.group(1).lower() in hidden[\"residual\"]:", "if False:")),
+    "id-parts-unhidden": _w("sh", k2_mask, ('seqs |= {(p,) for n in names for p in words(n) if p.isalpha() and len(p) >= 3}',
+                                             "pass")),
+    "versions-unhidden": _w("sh", k2_mask, ("            seqs |= {r[i:j] for i in range(len(r))", "            pass; {r[i:j] for i in range(len(r))")),
+    "nfkc-dropped": _w("sh", k2_mask, ('for c in unicodedata.normalize("NFKC", ch).casefold():', "for c in ch.casefold():")),
+    "casefold-dropped": _w("sh", k2_mask, ('for c in unicodedata.normalize("NFKC", ch).casefold():',
+                                           'for c in unicodedata.normalize("NFKC", ch):')),
+    "unicode-dash-joins": _w("sh", k2_mask, ('k = "a" if c.isalpha() else "d" if c.isdigit() else None',
+                                             'k = "a" if c.isalpha() or c == "\u2011" else "d" if c.isdigit() else None')),
+    "letters-digits-joined": _w("sh", k2_mask, ('k = "a" if c.isalpha() else "d" if c.isdigit() else None',
+                                                'k = "a" if c.isalnum() else None')),
+    "furniture-unhidden": _w("sh", k2_mask, ("    seqs |= {words(f) for f in FURNITURE}\n", "    pass\n")),
+    "residual-neighbour-admitted": _w("sh", k2_mask, ('and toks[n][0] in hidden["residual"]:', "and False:")),
+    "backstop-blind-to-sequences": _w("sh", k2_mask, ("    out = [f\"LEAK: the sheet shows {' '.join(q)!r}\" for q in found]\n",
+                                                      "    out = []\n")),
+    "out-guard-abspath": _w("sh", k6_write, ("got = os.path.normcase(os.path.realpath(path)).casefold()",
+                                             "got = os.path.normcase(os.path.abspath(path)).casefold()")),
+    "cells-only-failed": _w("ag", g9_small_rows, ("cells = sorted({sample.stratum(e)[:4] for e in frame})",
+                                                  'cells = sorted({sample.stratum(e)[:4] for e in frame if sample.verdict(e) == "wrong"})')),
     "harness-words-admitted": _w("sh", k4_content, ("if harness_word(a):", "if False:")),
     "out-guard-labelling-only": _w("sh", k6_write, ("real = os.path.normcase(os.path.realpath(_STUDY)).casefold()",
                                                     "real = os.path.normcase(os.path.realpath(_HERE)).casefold()")),
@@ -1746,10 +1804,8 @@ WITNESSES = {
     # ---- sheet.py
     "take-id-as-sheet-id": _w("sh", k1_blind, ('items.append({"sheet_id": it["sheet_id"]',
                                                'items.append({"sheet_id": it["take"]')),
-    "mask-off": _w("sh", k2_mask, ("text = re.sub(id_pattern(t), HIDDEN, text, flags=re.IGNORECASE)", "pass")),
-    "mask-case-sensitive": _w("sh", k2_mask, ("text = re.sub(id_pattern(t), HIDDEN, text, flags=re.IGNORECASE)",
-                                              "text = re.sub(id_pattern(t), HIDDEN, text)")),
-    "take-ids-unhidden": _w("sh", k2_mask, ('set(models) | {e["take"] for e in frame}', "set(models)")),
+    "mask-off": _w("sh", k2_mask, ("    spans = _ranges(toks, hidden)\n", "    spans = []\n")),
+    "take-ids-unhidden": _w("sh", k2_mask, ('set(names) | {e["take"] for e in frame}', "set(names)")),
     "leak-check-off": _w("sh", k6_write, ("bad = leak_problems(text, hidden_set(frame, design))", "bad = []")),
     "item-keys-unchecked": _w("sh", k5_render, ("if set(it) != set(ITEM_FIELDS):", "if False:")),
     "defs-label-subset": _w("sh", k3_defs, ("if set(d) != set(grader_labels[task]):",
@@ -1788,7 +1844,7 @@ class TestWitnesses(unittest.TestCase):
         self.assertTrue(own, f"{name}: survived (no {prefix} line): {got}")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 48)
+        self.assertEqual(len(WITNESSES), 54)
         for name, (target, edits, _) in WITNESSES.items():
             path = TARGET_FILES[target]
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
