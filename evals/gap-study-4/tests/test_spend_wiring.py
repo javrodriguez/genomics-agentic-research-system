@@ -94,11 +94,44 @@ def snapshot(now=OUT_OF_HOLD, trimmed=None, spend=None, walks=None):
             "walks": walks if walks is not None else [walk(CODEX), walk(GEMINI)]}
 
 
+class ShiftingDict(dict):
+    """W7C-R2-1: a hostile dict subclass whose spend reads as a list at the shape check and as "" afterwards."""
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.reads = 0
+
+    def __getitem__(self, key):
+        if key == "spend":
+            self.reads += 1
+            return dict.__getitem__(self, key) if self.reads == 1 else ""
+        return dict.__getitem__(self, key)
+
+
+class KeyLike(str):
+    """W7C-R2-1 (the reviewer's probe2): a key equal to every key, hashing as "walks"."""
+
+    def __eq__(self, other):
+        return True
+
+    def __hash__(self):
+        return hash("walks")
+
+
+class LyingFloat(float):
+    """W7C-R2-2: a float subclass whose str() says nothing was spent."""
+
+    def __str__(self):
+        return "0"
+
+    __repr__ = __str__
+
+
 OVER_SPENT = [{"vendor": "openai", "at": "2026-10-05T00:00:00Z", "usd": "261"}]
 
 
 class Ledger:
-    """The spend ledger's double: read() returns one snapshot (a deep copy), or raises."""
+    """The spend ledger's double: read() returns one snapshot (a deep copy, its own type kept), or raises."""
 
     def __init__(self, snap=None, raises=None, world=None):
         self.snap, self.raises, self.world, self.reads = snap, raises, world, 0
@@ -109,6 +142,8 @@ class Ledger:
             self.world.log("ledger-read")
         if self.raises is not None:
             raise self.raises
+        if isinstance(self.snap, ShiftingDict):
+            return ShiftingDict(copy.deepcopy(dict(self.snap)))
         return copy.deepcopy(self.snap)
 
 
@@ -313,7 +348,18 @@ def _g4(mod) -> list[str]:
                             ("a walk that is no dict", Ledger(snapshot(walks=[1]))),
                             ("start as an int", Ledger(snapshot() | {"start": 0})),
                             ("start as a naive datetime", Ledger(snapshot() | {"start": datetime(2026, 10, 1)})),
-                            ("start as None", Ledger(snapshot() | {"start": None}))):
+                            ("start as None", Ledger(snapshot() | {"start": None})),
+                            # W7C-R2-1: the reading itself must be exactly a dict
+                            ("a dict subclass reading", Ledger(ShiftingDict(snapshot(spend=OVER_SPENT)))),
+                            # W7C-R2-2: usd must be exactly str, int or float ($300 whose str() says 0)
+                            ("a usd whose type lies", Ledger(snapshot(spend=[{"vendor": "openai",
+                                                                             "at": "2026-10-05T00:00:00Z",
+                                                                             "usd": LyingFloat(300)}]))),
+                            ("a key that is a str subclass", Ledger({KeyLike("zzz"): [], **{k: v for k, v in
+                                                                              snapshot().items() if k != "walks"}})),
+                            ("a usd that is a bool", Ledger(snapshot(spend=[{"vendor": "openai",
+                                                                            "at": "2026-10-05T00:00:00Z",
+                                                                            "usd": True}])))):
             b, w = run(mod, [row(1, h)], ledger)
             p += _refused("G4-ledger", b, w, f"{h}, {why}", ("ledger",))
         b, w = run(mod, [row(1, h)], Ledger(snapshot()), clock=lambda: datetime(2026, 10, 15, 12))   # no zone
@@ -539,6 +585,8 @@ WITNESSES = {
                                      "        if False:"),), "batch", "G3-walk"),
     "launch-recheck-dropped": ((("        if bills_money(row):\n            why = hold_problem(",
                                  "        if False:\n            why = hold_problem("),), "batch", "G6-clock"),
+    "stopped-guard-dropped": ((("        if self.stopped is not None:\n            return None, MoneyGateRefused(",
+                                "        if False:\n            return None, MoneyGateRefused("),), "batch", "G6-clock"),
     "paid-arm-renamed": ((("    \"codex\": {\"arm\": \"O\", \"vendor\": \"openai\"},",
                            "    \"codex\": {\"arm\": \"C\", \"vendor\": \"openai\"},"),), "routing", "B1-names"),
 }
@@ -617,6 +665,9 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_launch_recheck_dropped(self):
         self.kill("launch-recheck-dropped")
 
+    def test_witness_stopped_guard_dropped(self):
+        self.kill("stopped-guard-dropped")
+
     def test_witness_paid_arm_renamed(self):
         self.kill("paid-arm-renamed")
 
@@ -624,7 +675,8 @@ class TestWitnesses(unittest.TestCase):
         self.assertEqual(sorted(WITNESSES), sorted([
             "gate-never-called", "month-check-dropped", "walk-check-dropped", "claude-gated", "no-ledger-passes",
             "gate-after-register", "empty-paid-list-admitted", "paid-arm-renamed", "spend-status-ungated", "ledger-clock",
-            "shape-unchecked", "start-after-clock-admitted", "launch-recheck-dropped"]))
+            "shape-unchecked", "start-after-clock-admitted", "launch-recheck-dropped",
+            "stopped-guard-dropped"]))
         self.assertTrue(all(w[2] in CHECKS for w in WITNESSES.values()))
 
 

@@ -419,12 +419,15 @@ def ledger_shape_problems(snap: dict) -> list[str]:
     start is a string or an aware datetime. An empty string or dict would iterate as nothing spent and PROCEED, so a
     ledger that failed to parse would read as $0."""
     p = []
-    for key in ("walks", "spend"):
+    for key in ("walks", "spend"):   # (W7C-R2-2: and each spend usd exactly str, int or float)
         value = snap[key]
         if type(value) is not list:
             p.append(f"the spend ledger's {key} is a {type(value).__name__}, not a list")
         elif not all(type(x) is dict for x in value):
             p.append(f"the spend ledger's {key} holds an element that is not a dict")
+        elif key == "spend" and not all(type(x.get("usd")) in (str, int, float) for x in value):
+            # W7C-R2-2: exactly str, int or float (never a subclass whose str() could lie, nor a bool)
+            p.append("the spend ledger's spend holds a usd that is not exactly a str, int or float")
     start = snap["start"]
     if not (type(start) is str or (isinstance(start, datetime.datetime) and start.tzinfo is not None)):
         p.append(f"the spend ledger's start is {start!r}, neither a string nor an aware datetime")
@@ -476,7 +479,8 @@ def money_gate_problems(rows: list[dict], ledger, clock=utc_now, seen: dict | No
         snap = ledger.read()
     except Exception as e:  # noqa: BLE001 - an unreadable ledger refuses, never lets a paid take run
         return [f"the spend ledger could not be read: {type(e).__name__}: {e}"]
-    if not isinstance(snap, dict) or set(snap) != set(LEDGER_KEYS):
+    # W7C-R2-1: exactly a dict (never a subclass) whose keys are exactly str (never a key equal to every key)
+    if type(snap) is not dict or not all(type(k) is str for k in snap) or set(snap) != set(LEDGER_KEYS):
         got = sorted(snap) if isinstance(snap, dict) else type(snap).__name__
         return [f"the spend ledger's reading is not exactly {list(LEDGER_KEYS)}: {got}"]
     p = ledger_shape_problems(snap)
