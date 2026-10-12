@@ -1,0 +1,35 @@
+{
+  "lane": "w11d-labelling-tools",
+  "files": [
+    {
+      "path": "labelling/sample.py",
+      "status": "new",
+      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). CP8's blind sample (plan CP8 lines 924-932, D6 A, D8 lines 497 and 671): a seeded draw of about 80 graded takes, stratified by arm, harness, model, task, strict-view verdict and whether the access log and the tool-call reader agree, failures and disagreements over-sampled by pinned factors, every design model drawn. The frame binds to the committed results both ways; --pin prints the seed, the strata and the design's sha256 for the freeze; --check re-derives the sample from the frame, the results and prereg.json's labelling_design and refuses any drift. Bound by tests/test_labelling.py D1, F1, B1, A1, S1, O1, M1, W1, P1, C1."
+    },
+    {
+      "path": "labelling/sheet.py",
+      "status": "new",
+      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). CP8's blind sheet: each sampled take's text and actions after the probe, the label definitions (each task's set exactly its grader's labels plus labels4's reserved ones) and a stop-cause column. Blind by construction: an item holds exactly sheet id, task, text and actions; model ids, harness names, vendor words and take ids are hidden in the content, and a sheet still showing one is refused; the sheet is written outside the study folder. Bound by tests/test_labelling.py K1-K6."
+    },
+    {
+      "path": "labelling/agreement.py",
+      "status": "new",
+      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). CP8's agreement table: Javier's labels against the grader's, one row per task inside one arm, harness and model (never across them), with exact bounds, the figure carried back to the frame by the sampling weights (Bonferroni bounds per stratum) and a confusion matrix with his stop causes. --check re-derives every number from the committed labels, which must be committed once and unchanged; --unmeasured prints the D6 B words and nothing else. Bound by tests/test_labelling.py G1-G7 and L1."
+    },
+    {
+      "path": "tests/test_labelling.py",
+      "status": "new",
+      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). The lane's tests on synthetic takes and labels only: every guard and every clause with its own case, 33 whole-file witnesses (the brief's six among them) and the generated mutation sweep over the three files (--generated-mutants, shardable, every survivor listed EQUIVALENT with a reason whose token its line holds). A process guard allows only git, for one temporary repository."
+    },
+    {
+      "path": "checks.d/w11d-labelling-tools.txt",
+      "status": "new",
+      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). This lane's local checks (interface 2): tests/test_labelling.py, its --witnesses, sample.py --check and agreement.py --check."
+    },
+    {
+      "path": "COPIED.d/w11d-labelling-tools.json",
+      "status": "new",
+      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). This lane's copy-record fragment (interface 1): six new files, no transfer and no edit to any other lane's file."
+    }
+  ]
+}

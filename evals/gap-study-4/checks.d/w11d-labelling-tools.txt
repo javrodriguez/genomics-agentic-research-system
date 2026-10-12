@@ -1,0 +1,8 @@
+# Lane w11d-labelling-tools: Gap Study round 4, CP8's blind sample, blind sheet and agreement table (D6 A), on
+# synthetic takes and labels only. One command per line, run from the repository root. --witnesses prints one
+# witness line per mutant; the generated mutation sweep (--generated-mutants, shardable) runs on athena.
+# No take, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_labelling.py
+python3 -B -W ignore evals/gap-study-4/tests/test_labelling.py --witnesses
+python3 -B -W ignore evals/gap-study-4/labelling/sample.py --check
+python3 -B -W ignore evals/gap-study-4/labelling/agreement.py --check
