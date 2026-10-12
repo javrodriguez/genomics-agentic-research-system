@@ -2,6 +2,16 @@
   "lane": "w11a-codex-adapter",
   "files": [
     {
+      "path": "codex_adapter.py",
+      "status": "new",
+      "reason": "Lane w11a-codex-adapter (arm O; D8 sections 1 and 3, D8:461-472; ruling Q-3): CodexAdapter, agent_adapter's interface for codex: one `codex exec --json` per turn through box/run_take.run_turn, `-m <model>` on every exec, `resume <thread id>` after the first turn only (the id read from turn 1's thread.started), the routing pin's mode looked up in MODE_FLAGS (D8:110), the version from `codex --version`; read_stream maps the documented events and items into the seam's records (api_errors from error and turn.failed only, never the agent's text; usage from turn.completed, a missing key refused, never 0; agent_output from event and item types); read_rollout takes the init's model from the rollout's turn_context, never the requested model. SHAPES_SOURCE = documented, reported in the harness record and every turn record. Not registered in any seam table (a later seam slice)."
+    },
+    {
+      "path": "transcript_codex.py",
+      "status": "new",
+      "reason": "Lane w11a-codex-adapter: the pre-registered Codex exec stream tables (D8 section 1's event types, item types and usage keys, and the keys it names as not in D8), check_record (anything off the tables refused, never guessed) and CodexParser into transcript_view.RawItem's closed vocabulary (command_execution -> shell, file_change -> write or edit, mcp_tool_call -> other, agent_message -> agent-text, reasoning -> agent-reasoning). NOT registered in transcript_view.PARSERS."
+    },
+    {
       "path": "tests/test_codex_adapter.py",
       "status": "new",
       "reason": "Lane w11a-codex-adapter (arm O, next-slices-plan-2026-10-12 section 2): the Codex CLI adapter and its stream parser on synthetic streams over a fake runtime: S1-S3 the closed event, item and key tables, P1 the view vocabulary through transcript_view.events with the parser in a copy of PARSERS for the test only, A1-A7 the stream read, the harness's errors kept apart from the agent's text, usage refused when a key is missing, the argv (-m every exec, resume after turn 1 only), the model from the rollout, the end reasons, SHAPES_SOURCE documented; whole-file witnesses of codex_adapter.py and transcript_codex.py compiled in memory."
