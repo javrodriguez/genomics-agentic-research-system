@@ -40,6 +40,16 @@ batch.expected_pin hands the driver), keyed by the harness and the model the tak
 never one constant: a mode still PENDING (or absent) is never an expectation, so a take under it is a problem and
 --check exits 1 naming it. The takes are read from round 4's take folders (TAKE_ROOTS); with none committed the
 empty gate still prints that nothing was graded.
+
+ROUND 4, THE WALK LAYOUT (lane w8a; this file moved from lane w7b to lane w8a under glitch-1b's ruling W8A-gap4-1,
+from ruling W8-layout-1, Option A of walk-layout-options-2026-10-12). Every record folder's name is spelled HERE and
+nowhere else: TAKES_DIR (takes/<slot>/<k>/, the graded takes, after the freeze) and WALKS_DIR (rehearsals/<walk>/, the
+pre-freeze walks, one walk per folder), RECORD_ROOTS both. drive.py, walk_register.py, run.py, copy_manifest.py,
+lint_language.py, fixture_walk.py, build_cases.py and leak_grep.py import them from here. --walks reads
+rehearsals/<walk>/transcript.jsonl and judges each walk against its pin exactly as a take is judged: round 3's
+"superseded" walk (driven before the design pinned an expectation) has no round 4 counterpart, so it is gone.
+Round 3's own roots (walks/<task>/<n>, transcripts/, pauses/, rehearsals/<task>/<half>/<model>/row-<n>) are named in
+ROUND3_ROOTS only so a test can prove nothing in round 4 reaches them (tests/test_walk_layout.py L1).
 """
 
 from __future__ import annotations
@@ -57,14 +67,48 @@ import prereg  # noqa: E402
 import routing  # noqa: E402
 import study  # noqa: E402
 
-# The same reading drive.py makes, spelled here independently: a re-derivation that imported the driver's
-# reader would be checking the driver against itself.
-ROOTS = ("transcripts", "rehearsals", "pauses")
 # ROUND 4: the folder round 4's take records are committed under. W7B (Q-w6i-1, lane w7b): named here once;
 # drive.py's production take folder (take_folder_in: <study>/TAKES_DIR/<slot>/<k>) reads this same name.
 TAKES_DIR = "takes"
 TAKE_ROOTS = (TAKES_DIR,)
+# W8A (ruling W8-layout-1): the pre-freeze walks, one walk per folder, rehearsals/<walk>/ (plan line 299). Named here
+# once; every reader and writer of walk or take folders imports these names. (Round 3's ROOTS, the names its
+# re-derivation spelled independently of its driver, are gone: round 4 has one place for the names, and the
+# independence that matters, the transcript re-read, is kept below.)
+WALKS_DIR = "rehearsals"
+RECORD_ROOTS = (TAKES_DIR, WALKS_DIR)
+# How many folder levels sit between a root and a record's files: takes/<slot>/<k>/..., rehearsals/<walk>/...
+RECORD_DEPTH = {TAKES_DIR: 2, WALKS_DIR: 1}
+# The one file a walk folder holds beyond a take folder's records: run.regrade()'s output, or why it was not graded.
+WALK_GRADE = "grade.json"
+# Round 3's roots, ROUND 3 ONLY: drive.py's round 3 host road wrote them (route_attempt and main, both shadowed by
+# refusals in round 4) and no round 4 module reads or writes them.
+ROUND3_ROOTS = ("walks", "transcripts", "pauses")
 PENDING = "PENDING"
+
+
+def record_transcripts(base: Path, root: str) -> list[Path]:
+    """W8A: every transcript.jsonl at its record's top level under `root` (one of RECORD_ROOTS): exactly one folder
+    level for a walk (rehearsals/<walk>/transcript.jsonl), two for a take (takes/<slot>/<k>/transcript.jsonl). Never
+    a recursive search, so a file of that name inside a record's evidence/ or session/ is not a second session."""
+    if root not in RECORD_DEPTH:
+        raise ValueError(f"{root!r} is not a record root; the record roots are {RECORD_ROOTS}")
+    folder = Path(base) / root
+    if not folder.is_dir():
+        return []
+    return sorted(folder.glob("/".join(["*"] * RECORD_DEPTH[root]) + "/transcript.jsonl"))
+
+
+def record_parts(parts, roots=RECORD_ROOTS) -> tuple[str, int] | None:
+    """W8A: (root, index of the root in `parts`) when the path whose parts these are is a file INSIDE a record
+    folder (takes/<slot>/<k>/<file...> or rehearsals/<walk>/<file...>); None otherwise (rehearsals/README.md and
+    rehearsals/register.json are the study's own files, not records). The first of `roots` in the parts is the one
+    read."""
+    parts = tuple(parts)
+    for i, part in enumerate(parts):
+        if part in roots and part in RECORD_DEPTH:
+            return (part, i) if len(parts) - i - 1 > RECORD_DEPTH[part] else None
+    return None
 
 
 def modes_recorded(transcript: Path) -> set[str]:
@@ -116,7 +160,7 @@ def expected(table: dict | None = None) -> dict[tuple, str]:
 def attempts(walks: bool = False, base: Path | None = None) -> list[Path]:
     base = HERE if base is None else Path(base)
     if walks:
-        return sorted((base / "walks").glob("*/*/transcript.jsonl")) if (base / "walks").is_dir() else []
+        return record_transcripts(base, WALKS_DIR)          # W8A: rehearsals/<walk>/transcript.jsonl, one level
     out: list[Path] = []
     for root in TAKE_ROOTS:
         folder = base / root
@@ -143,8 +187,6 @@ def judge(ledger: dict, derived: str, exp: dict, walks: bool) -> tuple[bool, lis
     """
     model = ledger.get("model_requested") or "?"
     harness = ledger_harness(ledger)           # W7B: the driver ledger's own shape, agent.harness
-    if walks and ledger.get("permission_mode_expected") is None:
-        return True, []
     want = exp.get((harness, model))           # ROUND 4 (Q2): keyed by the harness and the model the take ran
     problems = []
     if want is None:

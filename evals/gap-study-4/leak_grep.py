@@ -25,6 +25,11 @@ real leak this round has to fix. The two are told apart by reading the record th
 printed with every hit. A word that hits and is furniture needs an excusal pinned to the phrase it appears
 in, and that excusal is the owner's to rule rather than this file's to write.
 
+WHERE THE SESSIONS ARE (lane w8a, ruling W8-layout-1; this file moved from lane w1a to lane w8a under ruling
+W8A-gap4-1). Round 4's sessions are its records: the walks (rehearsals/<walk>/transcript.jsonl) and the takes
+(takes/<slot>/<k>/transcript.jsonl), the roots named once in mode_binding.RECORD_ROOTS and read at their records' top
+level (mode_binding.record_transcripts). Round 3's roots (walks/, transcripts/, pauses/) are never written in round 4.
+
 No model, no network, stdlib only. Read-only.
 """
 
@@ -41,10 +46,11 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
+import mode_binding  # noqa: E402
 import prereg  # noqa: E402
 import study  # noqa: E402
 
-ROOTS = ("walks", "transcripts", "rehearsals", "pauses")
+ROOTS = mode_binding.RECORD_ROOTS        # W8A: the record roots, named once in mode_binding
 
 
 def checker():
@@ -55,12 +61,10 @@ def checker():
     return mod
 
 
-def sessions() -> list[Path]:
+def sessions(base: Path | None = None) -> list[Path]:
     out: list[Path] = []
     for root in ROOTS:
-        base = HERE / root
-        if base.is_dir():
-            out += sorted(base.rglob("transcript.jsonl"))
+        out += mode_binding.record_transcripts(HERE if base is None else Path(base), root)
     return out
 
 

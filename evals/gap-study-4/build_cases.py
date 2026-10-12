@@ -28,6 +28,10 @@ So each case carries `hand_verdict`, and the suite is only finished when every c
 The freeze requires every case labelled. `--write` refuses to overwrite a hand verdict that is
 already there.
 
+ROUND 4 (lane w8a, ruling W8-layout-1; this file moved from lane w1a to lane w8a under ruling W8A-gap4-1): this
+study's walks are read through the walk register (rehearsals/register.json), one walk per folder,
+rehearsals/<walk>/, the folder named in mode_binding.WALKS_DIR; a walk's task comes from its register entry.
+
 No model is called. stdlib only.
 """
 
@@ -50,11 +54,13 @@ if str(REPO / "evals") not in sys.path:
 sys.path.insert(0, str(HERE / "graders"))
 sys.path.insert(0, str(HERE))
 
+import mode_binding  # noqa: E402
 import prereg  # noqa: E402
 import transcript as tx  # noqa: E402
+import walk_register  # noqa: E402
 
 CASES = HERE / "cases"
-WALKS = HERE / "walks"
+WALKS = HERE / mode_binding.WALKS_DIR      # W8A: rehearsals/, named once in mode_binding
 OK_LEDGER = {"outcome": "complete"}
 
 
@@ -105,10 +111,20 @@ def messages_for(task_id: str) -> list[dict]:
     if carried and carried.is_dir():
         for t in sorted(carried.rglob("transcript.jsonl")):
             out += _messages(t, "first-study/" + str(t.parent.relative_to(carried)))
-    root = WALKS / task_id
-    if root.is_dir():
-        for walk in sorted(root.glob("*/transcript.jsonl")):
-            out += _messages(walk, str(walk.parent.relative_to(WALKS)))
+    for walk in walk_transcripts(task_id):
+        out += _messages(walk, walk.parent.name)
+    return out
+
+
+def walk_transcripts(task_id: str, base: Path | None = None) -> list[Path]:
+    """W8A: the transcript of every registered walk of this task (its register entry names the task), in register
+    order; a walk with no transcript (no first turn) has no message to read."""
+    walks = WALKS if base is None else Path(base) / mode_binding.WALKS_DIR
+    out = []
+    for entry in walk_register.registered(walks):
+        t = walks / entry["walk"] / "transcript.jsonl"
+        if entry.get("task") == task_id and t.is_file():
+            out.append(t)
     return out
 
 def label_of(task_id: str, half: str, msg: dict) -> dict:

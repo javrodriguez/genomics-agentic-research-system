@@ -20,9 +20,16 @@ THE EMPTY GATE IS SAID OUT LOUD. No walk has been run when this file is written,
 --check passes, printing "ok, having registered 0 walks", never a bare ok: an empty register is not evidence about
 any walk.
 
-WHAT THIS DOES NOT CHECK (open questions in rehearsals/README.md): what files a walk folder must hold, where a
-walk's grader output lives, whether the walks cover what CP6 asks for (every wording on the smallest model, every
-task and half on each model), and which driver road writes into rehearsals/<walk>/.
+WHAT A WALK FOLDER HOLDS (lane w8a, ruling W8-layout-1, Option A; this file moved from lane w7d to lane w8a under
+ruling W8A-gap4-1). --check also applies the content rule (content_problems): a registered walk's folder holds only
+what a take folder holds (drive.py's closed map: launch, preflight, refusal, postflight, teardown, operator-check,
+proxy.log, transcript.jsonl, turn-N.jsonl, driver-ledger.json, environment.json, scrub.json, evidence/**, session/**)
+plus grade.json (run.regrade()'s output, or why the walk was not graded), and it holds driver-ledger.json and
+grade.json. The road that writes here is drive.walk_driver(records="walks"), and drive.WalkRepo commits the folder
+with its register entry in one commit. The folder's name comes from mode_binding.WALKS_DIR.
+
+WHAT THIS DOES NOT CHECK (open questions in rehearsals/README.md): whether the walks cover what CP6 asks for (every
+wording on the smallest model, every task and half on each model), and whether the walks are published at CP8.
 
 No model, no network, stdlib only. Read-only.
 """
@@ -36,7 +43,11 @@ import unicodedata
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-REHEARSALS = HERE / "rehearsals"
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+import mode_binding  # noqa: E402
+
+REHEARSALS = HERE / mode_binding.WALKS_DIR    # W8A: the folder name is mode_binding's, never spelled here
 REGISTER_NAME = "register.json"
 TOP_FILES = ("README.md", REGISTER_NAME)
 # Finder's folder file on the Mac; never tracked, never a walk.
@@ -120,6 +131,35 @@ def has_a_file(folder: Path) -> bool:
     return any(p.is_file() and not p.is_symlink() and p.name not in IGNORED_NAMES for p in folder.rglob("*"))
 
 
+def registered(base: Path = REHEARSALS) -> list[dict]:
+    """W8A: the register's entries that name a walk id (objects with a string `walk`), in order; [] when the register
+    cannot be read. For the readers (fixture_walk, build_cases, run, copy_manifest); --check is the judge of the rest."""
+    try:
+        hook = no_duplicate_keys
+        doc = json.loads((Path(base) / REGISTER_NAME).read_text(), object_pairs_hook=hook)
+    except (OSError, ValueError):
+        return []
+    walks = doc.get("walks") if isinstance(doc, dict) else None
+    return [e for e in walks if isinstance(e, dict) and isinstance(e.get("walk"), str)] if isinstance(walks, list) else []
+
+
+def content_problems(base: Path, walks) -> list[str]:
+    """W8A (README Q2): each named walk's folder holds only a take folder's records plus grade.json, and holds
+    driver-ledger.json and grade.json (drive.walk_files, the same rule WalkRepo commits by). A folder that does not
+    exist is check()'s to report, not this rule's."""
+    import drive  # the closed map lives with the driver that writes it; imported here, never at module load
+    out = []
+    for walk in walks:
+        folder = Path(base) / walk
+        if not folder.is_dir() or folder.is_symlink():
+            continue
+        try:
+            drive.walk_files(folder)
+        except drive.DriveRefused as e:
+            out.append(f"walk {walk!r}: {mode_binding.WALKS_DIR}/{walk}/ breaks the walk folder's content rule: {e}")
+    return out
+
+
 def check(base: Path = REHEARSALS, design: dict | None = None) -> tuple[list[str], int]:
     """(problems, number of registered walks)."""
     design = design_in_force() if design is None else design
@@ -193,8 +233,11 @@ def main(argv=None) -> int:
     ap.add_argument("--check", action="store_true", required=True)
     ap.add_argument("--base", help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
+    base = Path(args.base) if args.base else REHEARSALS
     try:
-        problems, n = check(Path(args.base) if args.base else REHEARSALS)
+        problems, n = check(base)
+        if not problems:                     # W8A: the content rule, on a register and folders that bind both ways
+            problems = content_problems(base, [e["walk"] for e in registered(base)])
     except OSError as exc:
         problems, n = [f"rehearsals/ cannot be read: {exc}"], 0
     for p in problems:
