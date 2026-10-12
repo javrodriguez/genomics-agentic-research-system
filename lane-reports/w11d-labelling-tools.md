@@ -158,3 +158,63 @@ Athena module list:
 - `evals/gap-study-4/test_round4.py` (the battery, which discovers test_labelling)
 - `evals/gap-study-4/tests/test_scaffold.py` (whole)
 - the gates: `copy_manifest.py --check`, `build_draft.py --check`, `freeze.py --check`, `walk_register.py --check`, `lint_language.py evals/gap-study-4/`, `lint_pooling.py evals/gap-study-4/`, `labelling/sample.py --check`, `labelling/agreement.py --check`
+
+## Review round 1 fold (ruling w11d-R1-fold), Mon 12 Oct 2026 19:03 EDT (`date`)
+
+Review: `lane-reports/w11d-labelling-tools-review-r1.md` (78e57de3), CHANGES, 2 MAJOR, 5 MINOR, every finding folded.
+Correction to the report above: the sweep's skipped message-text strings were 79 at `bc0f0c0c`, not 76 (the reviewer's count, R1-7); at the fold head the count is 81.
+
+- **R1-1 MAJOR.**
+  - With no labels.json, `agreement.py --check` now fails while AGREEMENT.md stands, and fails while any commit in `git log --full-history` ever touched labels.json (`gone_problems`); a shallow clone refuses.
+  - `sample.py --check` fails when sample.json stands with nothing to derive it from.
+  - Tests: G5 (the no-labels case is now a refusal while the page stands; then committed-and-deleted; then shallow), G6R (a real repository whose labels were deleted after their commit), C1 (a stray sample).
+  - Witnesses: page-without-labels-admitted, deleted-labels-admitted, gone-shallow-admitted, stray-sample-admitted.
+- **R1-2 MAJOR.**
+  - `sheet.hidden_set` builds the hidden set from the design's own ids.
+    Each whole id is matched with -, _, . and a space interchangeable.
+    Every alphabetic part of three or more letters of a model id is matched as a word (sol, luna, flash, lite, haiku, opus, sonnet, gpt, claude, gemini).
+    The vendor and harness names stay.
+  - `leak_problems` refuses a version number after the mask and the mask beside another id part.
+  - On prereg-draft's real harness_models, the reviewer's four strings now give:
+    - "I am GPT-6.1 Sol, running in Codex CLI" is masked whole: "I am [hidden], running in [hidden] CLI";
+    - "As Gemini 3.5 Flash-Lite I stop here" is masked whole: "As [hidden] I stop here";
+    - "Claude Haiku 4.5 here" is refused (a version after the mask, and the id part 4 beside it);
+    - "I am Luna" becomes "I am [hidden]".
+  - "a solution, flashing, literally" stays untouched.
+  - Witnesses: id-parts-unhidden, id-separators-strict, version-after-mask-admitted, residual-neighbour-admitted.
+- **R1-3.**
+  - `HARNESS_WORDS` per harness: Claude Code's are derived from `transcript_view.CC_TOOLS` plus the names its reader has not met; Codex's and Gemini's are copied from lanes w11a and w11b, whose tables are not on this base (Q-w11d-6 below).
+  - Any of them in an action is refused.
+  - In text, the ones no plain sentence uses are refused: an underscore, a dot or a CamelCase name, such as update_plan, AGENTS.md or TodoWrite.
+  - The docstring names the CP8 reader's acceptance test: write_sheet over every sampled take, with no refusal.
+  - K4 has one case per harness, plus neutral actions that share a tool's spelling.
+  - Witness: harness-words-admitted.
+- **R1-4.**
+  - `inside_study` compares real paths, with normcase and casefold, over the whole study.
+  - K6 tries `--out` in labelling/, in the study root, deeper in the study, in swapped case, in upper case and at the study itself.
+  - A sibling folder and the parent are not inside.
+  - Witnesses: out-guard-labelling-only (the reviewer's `_HERE` mutant) and out-guard-case-sensitive.
+- **R1-5.** G4 adds a row holding a take of its own model's other task. Witness: pool-row-task-unchecked.
+- **R1-6.** G9 adds rows of one take, with the exact bounds pinned as literals: 1 of 1 is 0.025 to 1.000, and 0 of 1 is 0.000 to 0.975. Witness: one-take-bounds-widened.
+- **R1-7.** G6 adds a failing `git show` on an empty file, killing `bool-drop#0` of `rc != 0 or blob != disk`.
+- **Residual: rows that are missing.** Every frame cell the draw left empty prints "unsampled: no take drawn" and no figure (G9). Witness: unsampled-cells-dropped.
+- **Residual: blindness by procedure.** The sheet docstring now says it, and this report says it for the CP8 brief: whoever runs sheet.py is not the labeller, and the labeller never opens sample.json or the --contents file.
+
+**Evidence (Mac, behind light-ok, `timeout -s INT 120`):**
+- Red first, `60b114bf` against the reviewed code: 87 run, 28 failures by assertion, 0 errors.
+- Green on the fold head: 89 run, OK.
+- Witnesses: 48 of 48 red.
+- Gates and both lints: exit 0, unchanged counts.
+- Sweep, sampled only (the Mac reached load 57; glitch-2f's word):
+  - shards 4, 12, 20, 28, 36 and 40 of 40 on the fold code; 1913 mutants generated, 81 message strings skipped by rule;
+  - two survivors were killed by test cases and confirmed by targeted runs: shard 40, `return out + [...]` after a failing `git log` in gone_problems (a G6 case); shard 28, the undrawn stratum's agreeing default (G3 now checks each stratum's agreeing count);
+  - EQUIVALENT was regenerated by targeted runs: 24 import-plumbing and 3 identical `return None` entries, at their new lines.
+- Test expectations adjusted after the red run: a few K2 expected leak lists, now the code's truthful output.
+  The separator-insensitive id match masks two of the reviewer's strings whole, and a digit beside the mask reports both the version rule and the id-part rule.
+
+**Q-w11d-6 (new): the Codex and Gemini tool-name lists.**
+- They are copied from w11a and w11b's tables, which are not on this base.
+- Proposed: at the merge after waves 10 and 11, HARNESS_WORDS reads `transcript_gemini.GEMINI_TOOLS` and Codex's item and tool names from their modules, with a test that every table name is in the list.
+- CLAUDE.md is refused in actions per the ruling, although D8:287 makes it every arm's workspace instruction file (in text it is masked as a vendor word anyway).
+
+RESUME HERE: review round 2 on `gap4/w11d-labelling-tools` (this commit), then the whole sweep and the athena module list above.

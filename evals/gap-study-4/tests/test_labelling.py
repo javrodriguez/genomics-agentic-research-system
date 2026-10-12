@@ -712,11 +712,12 @@ def k2_mask(sm, sh, ag):
         if want_part not in rh["parts"] + rh["whole"]:
             out.append(f"K2: {want_part!r} is not hidden on the real ids")
     real = {
-        "I am GPT-6.1 Sol, running in Codex CLI": ("I am [hidden]-6.1 [hidden], running in [hidden] CLI",
-                                                  ["LEAK: a version number follows [hidden]"]),
-        "As Gemini 3.5 Flash-Lite I stop here": ("As [hidden] 3.5 [hidden]-[hidden] I stop here",
-                                                ["LEAK: a version number follows [hidden]"]),
-        "Claude Haiku 4.5 here": ("[hidden] [hidden] 4.5 here", ["LEAK: a version number follows [hidden]"]),
+        "I am GPT-6.1 Sol, running in Codex CLI": ("I am [hidden], running in [hidden] CLI", []),
+        "As Gemini 3.5 Flash-Lite I stop here": ("As [hidden] I stop here", []),
+        "Claude Haiku 4.5 here": ("[hidden] [hidden] 4.5 here", ["LEAK: a version number follows [hidden]",
+                                                                "LEAK: [hidden] stands next to the id part '4'"]),
+        "GPT 6.1 here": ("[hidden] 6.1 here", ["LEAK: a version number follows [hidden]",
+                                               "LEAK: [hidden] stands next to the id part '6'"]),
         "I am Luna": ("I am [hidden]", []),
         "Claude Haiku 4 5 20251001 here": ("[hidden] here", []),
         "the 6 [hidden] model": ("the 6 [hidden] model", ["LEAK: [hidden] stands next to the id part '6'"]),
@@ -728,13 +729,13 @@ def k2_mask(sm, sh, ag):
             out.append(f"K2: real mask({src!r}) = {got!r}")
         if sh.leak_problems(got, rh) != leak:
             out.append(f"K2: real leak_problems({got!r}) = {sh.leak_problems(got, rh)}")
-    if sh.leak_problems("[hidden] 5 stars", rh) != ["LEAK: a version number follows [hidden]"]:
+    if sh.leak_problems("[hidden] 5 stars", rh) != ["LEAK: a version number follows [hidden]", "LEAK: [hidden] stands next to the id part '5'"]:
         out.append("K2: a digit after a space after the mask passed")
-    if sh.leak_problems("[hidden]5", rh) != ["LEAK: a version number follows [hidden]"]:
+    if sh.leak_problems("[hidden]5", rh) != ["LEAK: a version number follows [hidden]", "LEAK: [hidden] stands next to the id part '5'"]:
         out.append("K2: a digit right after the mask passed")
     if sh.leak_problems("x-[hidden] and [hidden]-y", rh) != []:
         out.append("K2: a neighbour that is no id part was refused")
-    if sh.leak_problems("[hidden]-5", rh) != ["LEAK: a version number follows [hidden]"]:
+    if sh.leak_problems("[hidden]-5", rh) != ["LEAK: a version number follows [hidden]", "LEAK: [hidden] stands next to the id part '5'"]:
         out.append("K2: a version after a hyphen passed")
     if sh.leak_problems("5-[hidden]", rh) != ["LEAK: [hidden] stands next to the id part '5'"]:
         out.append("K2: an id part before the mask passed")
@@ -1008,6 +1009,15 @@ def g3_back(sm, sh, ag):
                 drawn[(st["verdict"], st["readers"])] = drawn.get((st["verdict"], st["readers"]), 0) + 1
         if {k: s["drawn"] for k, s in zip(got, r["strata"])} != {k: drawn.get(k, 0) for k in got}:
             out.append("G3: strata drawn counts are not the sample's")
+        rec_ = {e["take"]: e["record"] for e in FRAME}
+        agree = {}
+        for i in doc["items"]:
+            st = i["stratum"]
+            if (st["arm"], st["harness"], st["model"], st["task"]) == (r["arm"], r["harness"], r["model"], r["task"]):
+                k = (st["verdict"], st["readers"])
+                agree[k] = agree.get(k, 0) + (rec_[i["take"]]["label"] == "held")
+        if {k: s["agree"] for k, s in zip(got, r["strata"])} != {k: agree.get(k, 0) for k in got}:
+            out.append("G3: strata agreeing counts are not the labels' (an undrawn stratum agrees 0)")
         if r["carried"] != ag.carried_back(r["strata"]):
             out.append("G3: a row's figure is not carried_back of its strata")
     full = frame(per=4)
@@ -1085,7 +1095,7 @@ def g9_small_rows(sm, sh, ag):
     """Rows of one labelled take (the dominant real shape), with their exact bounds as literals, and a frame cell
     the draw left empty printed as its own unsampled line."""
     out = []
-    d = design(about_n=6)
+    d = design(about_n=4)
     doc = sm.draw(FRAME, d)
     first = {}
     for i in sorted(doc["items"], key=lambda i: i["sheet_id"]):
@@ -1211,8 +1221,8 @@ def g5_check(sm, sh, ag):
             out.append(f"G5: a page with no labels: {rc} {got!r}")
         page.unlink()
         rc, got = out_of(ag.check, page=str(page), git=git, **kw)
-        if (rc, got) != (1, "agreement: FAIL HISTORY: labels.json was committed in 1 commit(s) and is gone; "
-                            "committed labels may not vanish\n"):
+        if rc != 1 or not got.startswith("agreement: FAIL HISTORY: ") or not got.endswith(
+                "labels.json was committed in 1 commit(s) and is gone; committed labels may not vanish\n"):
             out.append(f"G5: labels committed and deleted: {rc} {got!r}")
         rc, got = out_of(ag.check, page=str(page), git=fake_git(kw["labels_path"], shallow="true"), **kw)
         if (rc, got) != (1, "agreement: FAIL HISTORY: the history cannot be read in full (a shallow clone or no "
@@ -1283,6 +1293,9 @@ def g6_history(sm, sh, ag):
 
             def failing_log(*args):
                 return (1, "a" * 40 + "\n") if args[0] == "log" else fake_git(p)(*args)
+            if ag.gone_problems(str(p) + ".absent", failing_log, page=str(p) + ".nopage") != [
+                    "HISTORY: the history cannot be read in full (a shallow clone or no git); refused"]:
+                out.append("G6: gone_problems passed a failing git log")
             if not ag.history_problems(str(p), failing_log):
                 out.append("G6: a failing git log passed")
     return out
@@ -1682,9 +1695,9 @@ WITNESSES = {
     # ---- the brief's six
     "model-name-in-sheet": _w("sh", k1_blind, ('"task": it["stratum"]["task"], "text"',
                                                '"task": it["stratum"]["task"] + " " + it["stratum"]["model"], "text"')),
-    "model-name-in-sheet-unguarded": _w("sh", k1_blind, ('"text": mask(c["text"], tokens)',
-                                                         '"text": it["stratum"]["model"] + mask(c["text"], tokens)'),
-                                        ("bad = leak_problems(text, hidden_tokens(frame, design))", "bad = []")),
+    "model-name-in-sheet-unguarded": _w("sh", k1_blind, ('"text": mask(c["text"], hidden)',
+                                                         '"text": it["stratum"]["model"] + mask(c["text"], hidden)'),
+                                        ("bad = leak_problems(text, hidden_set(frame, design))", "bad = []")),
     "stray-sample-admitted": _w("sm", c1_check, ("    if got is None:\n        if os.path.isfile(SAMPLE if sample_path is None",
                                                   "    if got is None:\n        if False and os.path.isfile(SAMPLE if sample_path is None")),
     "page-without-labels-admitted": _w("ag", g5_check, ("if os.path.isfile(PAGE if page is None else page):",
@@ -1705,6 +1718,9 @@ WITNESSES = {
     "unsampled-cells-dropped": _w("ag", g9_small_rows, ("    for key in cells:\n", "    for key in []:\n")),
     "pool-row-task-unchecked": _w("ag", g4_pool, ('if (rec["arm"], rec["agent"]["harness"], rec["model"], rec["task"]) != key:',
                                                   'if (rec["arm"], rec["agent"]["harness"], rec["model"]) != key[:3]:')),
+    "one-take-bounds-widened": _w("ag", g9_small_rows, ('row["bounds"] = stats.bound(row["agree"], row["n"]) if row["n"] else None',
+                                                       'row["bounds"] = (stats.bound(row["agree"], row["n"]) if row["n"] > 1 '
+                                                       'else ("0.000", "1.000")) if row["n"] else None')),
     "unseeded-draw": _w("sm", s1_seed, ('rng = random.Random(design["seed"])', "rng = random.Random()")),
     "failures-not-oversampled": _w("sm", o1_over, ('f = design["oversample"]["failure"] if key[4] == FAILED else 1',
                                                     "f = 1")),
@@ -1730,16 +1746,15 @@ WITNESSES = {
     # ---- sheet.py
     "take-id-as-sheet-id": _w("sh", k1_blind, ('items.append({"sheet_id": it["sheet_id"]',
                                                'items.append({"sheet_id": it["take"]')),
-    "mask-off": _w("sh", k2_mask, ("text = re.sub(re.escape(t), HIDDEN, text, flags=re.IGNORECASE)", "pass")),
-    "mask-case-sensitive": _w("sh", k2_mask, ("text = re.sub(re.escape(t), HIDDEN, text, flags=re.IGNORECASE)",
-                                              "text = re.sub(re.escape(t), HIDDEN, text)")),
-    "take-ids-unhidden": _w("sh", k2_mask, ('toks |= {e["take"] for e in frame}', "pass")),
-    "leak-check-off": _w("sh", k6_write, ("bad = leak_problems(text, hidden_tokens(frame, design))", "bad = []")),
+    "mask-off": _w("sh", k2_mask, ("text = re.sub(id_pattern(t), HIDDEN, text, flags=re.IGNORECASE)", "pass")),
+    "mask-case-sensitive": _w("sh", k2_mask, ("text = re.sub(id_pattern(t), HIDDEN, text, flags=re.IGNORECASE)",
+                                              "text = re.sub(id_pattern(t), HIDDEN, text)")),
+    "take-ids-unhidden": _w("sh", k2_mask, ('set(models) | {e["take"] for e in frame}', "set(models)")),
+    "leak-check-off": _w("sh", k6_write, ("bad = leak_problems(text, hidden_set(frame, design))", "bad = []")),
     "item-keys-unchecked": _w("sh", k5_render, ("if set(it) != set(ITEM_FIELDS):", "if False:")),
     "defs-label-subset": _w("sh", k3_defs, ("if set(d) != set(grader_labels[task]):",
                                             "if not set(d) <= set(grader_labels[task]):")),
-    "out-in-study-admitted": _w("sh", k6_write, ("if os.path.abspath(args.out).startswith(_STUDY + os.sep):",
-                                                 "if False:")),
+    "out-in-study-admitted": _w("sh", k6_write, ("if inside_study(args.out):", "if False:")),
     # ---- agreement.py
     "bonferroni-dropped": _w("ag", g3_back, ('stats.intervals.clopper_pearson(s["agree"], s["drawn"], alpha / len(strata))',
                                              'stats.intervals.clopper_pearson(s["agree"], s["drawn"], alpha)')),
@@ -1747,7 +1762,10 @@ WITNESSES = {
     "pool-take-unchecked": _w("ag", g4_pool, ('if (rec["arm"], rec["agent"]["harness"], rec["model"], rec["task"]) != key:',
                                               "if False:")),
     "history-unchecked": _w("ag", g5_check, ("bad = history_problems(labels_path, git)", "bad = []")),
-    "history-shallow-admitted": _w("ag", g6_history, ('if rc != 0 or shallow.strip() != "false":', "if rc != 0:")),
+    "history-shallow-admitted": _w("ag", g6_history, ('if rc != 0 or shallow.strip() != "false":\n        return ["HISTORY',
+                                                      'if rc != 0:\n        return ["HISTORY')),
+    "gone-shallow-admitted": _w("ag", g5_check, ('if rc != 0 or shallow.strip() != "false":\n        return out + [',
+                                                 'if rc != 0:\n        return out + [')),
     "unmeasured-words": _w("ag", g7_unmeasured, ('UNMEASURED = "grader agreement unmeasured"',
                                                  'UNMEASURED = "grader agreement not measured"')),
     "label-off-definitions": _w("ag", g1_labels, ("if e[\"label\"] not in defs[tasks[sid]]:", "if False:")),
@@ -1770,7 +1788,7 @@ class TestWitnesses(unittest.TestCase):
         self.assertTrue(own, f"{name}: survived (no {prefix} line): {got}")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 46)
+        self.assertEqual(len(WITNESSES), 48)
         for name, (target, edits, _) in WITNESSES.items():
             path = TARGET_FILES[target]
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
@@ -1813,33 +1831,33 @@ CMP_NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn
               ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt, ast.Is: ast.IsNot, ast.IsNot: ast.Is}
 # {mutant key: (category, why, a token its source line holds)}; the key is printed by the sweep for each survivor.
 EQUIVALENT = {
-    'sample: return-none L267 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
-    'agreement: return-none L99 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
-    'agreement: return-none L224 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
-    'sample: stmt-delete L41 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
-    'sample: stmt-delete L54 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sample: stmt-delete L55 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sample: if-true L55 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sample: if-false L55 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sample: cmp-negate#0 L55 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sample: stmt-delete L56 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sample: int-change L56 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: stmt-delete L33 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
-    'sheet: stmt-delete L44 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: stmt-delete L45 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: if-true L45 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: if-false L45 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: cmp-negate#0 L45 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: stmt-delete L46 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: int-change L46 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'agreement: stmt-delete L38 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
-    'agreement: stmt-delete L49 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'agreement: stmt-delete L50 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'agreement: if-true L50 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'agreement: if-false L50 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'agreement: cmp-negate#0 L50 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'agreement: stmt-delete L51 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'agreement: int-change L51 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: stmt-delete L42 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
+    'sample: stmt-delete L55 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: stmt-delete L56 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: if-true L56 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: if-false L56 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: cmp-negate#0 L56 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: stmt-delete L57 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: return-none L268 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
+    'sample: int-change L57 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L41 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
+    'sheet: stmt-delete L52 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L53 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: if-true L53 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: if-false L53 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: cmp-negate#0 L53 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L54 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: int-change L54 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: stmt-delete L42 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
+    'agreement: stmt-delete L53 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: stmt-delete L54 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: if-true L54 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: if-false L54 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: cmp-negate#0 L54 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: stmt-delete L55 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: return-none L103 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
+    'agreement: return-none L255 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
+    'agreement: int-change L55 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
 }
 
 

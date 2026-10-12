@@ -29,7 +29,8 @@ strict view (stats.standing, "failures"), so a stop is a failure. One random.Ran
   4 The drawn takes are shuffled by the same generator and numbered L001, L002, ... in that order, so the sheet's
     order says nothing about the strata.
 Every item carries its stratum and the stratum's size in the frame and its drawn count: the weights agreement.py uses
-to carry each stratum back to the frame. Every design model must have a take in the frame (the sample is stratified
+to carry each stratum back to the frame. A sample.json with no frame and no results to derive it from fails --check
+(review W11D-R1-1): a drawn sample never stands without what it was drawn from. Every design model must have a take in the frame (the sample is stratified
 over each one), else the draw refuses.
 
 WHAT THE SHEET RECEIVES. Nothing from here directly: sheet.py takes from each item its sheet id and task, and nothing
@@ -283,6 +284,9 @@ def check(frame_path=None, prereg=None, results=None, sample_path=None) -> int:
         print(f"sample: FAIL {err}")
         return 1
     if got is None:
+        if os.path.isfile(SAMPLE if sample_path is None else sample_path):
+            print("sample: FAIL sample.json stands with no frame or results to derive it from")
+            return 1
         print("sample: no takes (no frame and no results); nothing was drawn. Not a pass on data.")
         return 0
     doc = got[2]

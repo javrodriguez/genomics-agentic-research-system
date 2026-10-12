@@ -26,8 +26,12 @@ harnesses. Each row prints:
 
 WHAT --check BINDS. The sample re-derives (sample.py's rules), the labels validate, every number of AGREEMENT.md
 re-derives from them byte for byte, and labels.json is published as read: exactly one commit in HEAD's history
-touches it, and the file on disk is that commit's (history_problems; a shallow clone refuses). No labels committed:
-"no labels; nothing measured", exit 0, not a pass on data.
+touches it, and the file on disk is that commit's (history_problems; a shallow clone refuses). No labels on disk:
+"no labels; nothing measured", exit 0 and not a pass on data, only while no AGREEMENT.md stands and no commit ever
+touched labels.json (gone_problems, review W11D-R1-1).
+
+EVERY CELL IS SEEN. A (arm, harness, model, task) cell of the frame that the draw left empty prints its own line,
+"unsampled: no take drawn", so an absent row is never silent.
 
 UNDER D6 B (no labelling), the result says "grader agreement unmeasured" (plan line 1065): --unmeasured prints exactly
 that line.
@@ -116,10 +120,13 @@ def rows(frame, smp: dict, labels: dict) -> list:
         frame_sizes.setdefault(sample.stratum(e), 0)
         frame_sizes[sample.stratum(e)] += 1
     out = {}
+    cells = sorted({sample.stratum(e)[:4] for e in frame})
+    for key in cells:
+        out[key] = {**dict(zip(ROW_KEY, key)), "takes": [], "n": 0, "agree": 0, "matrix": {}, "cells": {}}
     for it in smp["items"]:
         st = it["stratum"]
         key = tuple(st[k] for k in ROW_KEY)
-        row = out.setdefault(key, {**dict(zip(ROW_KEY, key)), "takes": [], "n": 0, "agree": 0, "matrix": {}, "cells": {}})
+        row = out[key]
         mine, stop = labels[it["sheet_id"]]
         theirs = record[it["take"]]["label"]
         row["takes"].append(it["take"])
@@ -136,7 +143,7 @@ def rows(frame, smp: dict, labels: dict) -> list:
                 c = row["cells"].get(sk[4:], {"drawn": 0, "agree": 0})
                 strata.append({"verdict": sk[4], "readers": sk[5], "frame": size, **c})
         row["strata"] = strata
-        row["bounds"] = stats.bound(row["agree"], row["n"])
+        row["bounds"] = stats.bound(row["agree"], row["n"]) if row["n"] else None
         row["carried"] = carried_back(strata)
         del row["cells"]
     return [out[k] for k in sorted(out)]
@@ -176,12 +183,15 @@ def render(rs: list, frame) -> str:
            "| Arm | Harness | Model | Task | Agreeing | Exact bounds | Carried back to the frame | Its bounds |",
            "|---|---|---|---|---|---|---|---|"]
     for r in rs:
+        if not r["n"]:
+            out.append(f"| {r['arm']} | {r['harness']} | {r['model']} | {r['task']} | unsampled: no take drawn |  |  |  |")
+            continue
         cb = r["carried"]
         back = ("a stratum unsampled", "") if cb is None else (_f(cb[0]), f"{_f(cb[1])} to {_f(cb[2])}")
         out.append(f"| {r['arm']} | {r['harness']} | {r['model']} | {r['task']} | {r['agree']} of {r['n']} | "
                    f"{r['bounds'][0]} to {r['bounds'][1]} | {back[0]} | {back[1]} |")
     out.append("")
-    for r in rs:
+    for r in (r for r in rs if r["n"]):
         out += [f"## Confusion, {r['arm']} {r['harness']} {r['model']} {r['task']}", "",
                 "| Grader label | Javier's label | His stop cause | Takes |", "|---|---|---|---|"]
         out += [f"| {g} | {h} | {s or 'blank'} | {k} |" for (g, h, s), k in sorted(r["matrix"].items())]
@@ -216,6 +226,27 @@ def history_problems(path=None, git=None) -> list:
     return []
 
 
+def gone_problems(path=None, git=None, page=None) -> list:
+    """With no labels.json on disk (review W11D-R1-1): no AGREEMENT.md may stand, and no commit in HEAD's history may
+    ever have touched labels.json (labels once committed may not vanish). A shallow clone refuses."""
+    path = LABELS if path is None else path
+    git = _git if git is None else git
+    out = []
+    if os.path.isfile(PAGE if page is None else page):
+        out.append("PAGE: AGREEMENT.md stands with no labels.json behind it")
+    rel = os.path.relpath(path, REPO).replace(os.sep, "/")
+    rc, shallow = git("rev-parse", "--is-shallow-repository")
+    if rc != 0 or shallow.strip() != "false":
+        return out + ["HISTORY: the history cannot be read in full (a shallow clone or no git); refused"]
+    rc, log = git("log", "--full-history", "--format=%H", "--", rel)
+    if rc != 0:
+        return out + ["HISTORY: the history cannot be read in full (a shallow clone or no git); refused"]
+    shas = log.split()
+    if shas:
+        out.append(f"HISTORY: {rel} was committed in {len(shas)} commit(s) and is gone; committed labels may not vanish")
+    return out
+
+
 def derive(labels_path=None, defs_path=None, frame_path=None, prereg=None, results=None, sample_path=None,
            glabels=None):
     """The page the committed labels give, or None when no sample or no labels are committed."""
@@ -247,6 +278,11 @@ def check(page=None, labels_path=None, git=None, **kw) -> int:
         print(f"agreement: FAIL {err}")
         return 1
     if text is None:
+        gone = gone_problems(labels_path, git, page)
+        for b in gone:
+            print(f"agreement: FAIL {b}")
+        if gone:
+            return 1
         print("agreement: no labels; nothing measured. Not a pass on data.")
         return 0
     page = PAGE if page is None else page
