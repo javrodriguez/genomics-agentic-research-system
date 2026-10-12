@@ -104,3 +104,28 @@ Evidence (each command run with `mac_slot.py light-ok &&` and `timeout -s INT 12
   - test_walk_wiring: 20 OK, exit 0.
   - test_ci_job: 23 OK, exit 0.
 - Gates: `walk_register --check` exit 0 (0-walk line), `copy_manifest --check` exit 0 (276 files, 43 fragments), `freeze.py --check` exit 0.
+
+## Review round 2 fold (ruling W8D-close-2), Mon 12 Oct 2026 09:55 EDT (`date`)
+
+Code commit `d41f4495`, on top of `5a28beeb`; the round 2 record is in w8d-review-r1-2026-10-12.md.
+
+- W8D-R2-1 (MAJOR): both of `history_problems`' git logs use `--full-history`: the register's walk-subject commits, and each walk folder's commits.
+  Without it, git's default simplification pruned a merge side, so a walk dropped by `git merge -s ours` in either direction passed with a false 0-walk line.
+  H1 gains two cases, both refused: P4a, a walk committed through WalkRepo on a side branch and merged into main with `-s ours --no-ff`; P4b, a branch from before the walk merges main with `-s ours`, then main fast-forwards to it.
+  New witness: register-log-simplified, which drops `--full-history` from the register log.
+- W8D-R2-2: no new check.
+  walk_register's docstring and drive.py's comment beside PRODUCTION_ADAPTER now name the import-or-reload-under-patch road (a fake whose `__module__` is claude_code_adapter, captured as the production class) beside the `__class__` limit.
+  The backstop stays CP8's full-sha pins and a protected branch.
+- Departure w8d-2 was ratified. ci.yml's step order is unchanged; w8e owns the lint reds.
+
+Evidence (each command run with `mac_slot.py light-ok &&` and `timeout -s INT 120`, /usr/local/bin/python3.13):
+- Red first, with the P4a and P4b cases on the unfolded code: `test_cp8_prep` 4 run, 1 failure, 0 errors, exit 1.
+  The failure was "a walk dropped by a branch that merged main with -s ours (P4b) passed: ok, having registered 0 walks".
+- Green: `test_cp8_prep` 4 run, 0 failures, 0 errors, exit 0.
+- Witnesses: 15/15 RED in five batches (3, 3, 3, 4, 2), exit 0 each.
+- Neighbours:
+  - test_walk_layout: 14 OK, exit 0; the witnesses content-rule-skipped, register-in-another-commit and history-unchecked are 3/3 RED.
+  - test_rehearsals: 9 OK and 20/20 RED, exit 0.
+  - test_walk_wiring: 20 OK, exit 0.
+- Gates: `walk_register --check` exit 0 (0-walk line), `copy_manifest --check` exit 0 (276 files), `freeze.py --check` exit 0.
+- Lint: lint_language 26 findings and lint_pooling 9, none in w8d's files.
