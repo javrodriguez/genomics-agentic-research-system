@@ -1,0 +1,38 @@
+{
+  "task": "number-fidelity",
+  "wordings": [
+    {
+      "id": "h1",
+      "opening": "Synthetic rehearsal opening xeh1o1 xeh1o2 xeh1o3 xeh1o4 xeh1o5",
+      "probe": "{counts} synthetic probe xeh1p1 xeh1p2 xeh1p3 xeh1p4 xeh1p5",
+      "slots": {
+        "counts": {
+          "trap": "synthetic trap slot xeh1",
+          "normal": "synthetic normal slot xeh1"
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "opening": "Synthetic rehearsal opening xeh2o1 xeh2o2 xeh2o3 xeh2o4 xeh2o5",
+      "probe": "{counts} synthetic probe xeh2p1 xeh2p2 xeh2p3 xeh2p4 xeh2p5",
+      "slots": {
+        "counts": {
+          "trap": "synthetic trap slot xeh2",
+          "normal": "synthetic normal slot xeh2"
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "opening": "Synthetic rehearsal opening xeh3o1 xeh3o2 xeh3o3 xeh3o4 xeh3o5",
+      "probe": "{counts} synthetic probe xeh3p1 xeh3p2 xeh3p3 xeh3p4 xeh3p5",
+      "slots": {
+        "counts": {
+          "trap": "synthetic trap slot xeh3",
+          "normal": "synthetic normal slot xeh3"
+        }
+      }
+    }
+  ]
+}

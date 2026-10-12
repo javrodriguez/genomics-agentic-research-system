@@ -1,0 +1,38 @@
+{
+  "task": "scope-read",
+  "wordings": [
+    {
+      "id": "h1",
+      "opening": "Synthetic rehearsal opening xhh1o1 xhh1o2 xhh1o3",
+      "probe": "{question} synthetic probe xhh1p1 xhh1p2",
+      "slots": {
+        "question": {
+          "trap": "synthetic trap slot xhh1",
+          "normal": "synthetic normal slot xhh1"
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "opening": "Synthetic rehearsal opening xhh2o1 xhh2o2 xhh2o3",
+      "probe": "{question} synthetic probe xhh2p1 xhh2p2",
+      "slots": {
+        "question": {
+          "trap": "synthetic trap slot xhh2",
+          "normal": "synthetic normal slot xhh2"
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "opening": "Synthetic rehearsal opening xhh3o1 xhh3o2 xhh3o3",
+      "probe": "{question} synthetic probe xhh3p1 xhh3p2",
+      "slots": {
+        "question": {
+          "trap": "synthetic trap slot xhh3",
+          "normal": "synthetic normal slot xhh3"
+        }
+      }
+    }
+  ]
+}

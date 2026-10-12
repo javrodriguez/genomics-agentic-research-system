@@ -476,6 +476,34 @@ def rehearsal_record_problems(frozen: dict) -> list[str]:
     return problems
 
 
+def synthetic_digest_problems(frozen: dict, now: dict, rehearsal_plan=False) -> list[str]:
+    """W8B-R2-2 (lane w9-cp6, ruled into the CP6 wiring slice by glitch-1b at w8b's round 2): freeze.synthetic_tasks
+    re-applied to the committed pre-registration, both as its freeze commit wrote it and as it stands. The freeze
+    refuses the rehearsal's synthetic digests outside a rehearsal (W8B-R1-1); this re-reads what was committed, so a
+    freeze commit made some other way that carries them is refused here too. Under --rehearsal-plan (a disposable
+    rehearsal, whose freeze is given them on purpose) they are printed NOT CHECKED, never silently passed."""
+    import freeze  # this study's, first on sys.path
+    problems, seen = [], []
+    for where, doc in (("the freeze commit's prereg.json", frozen), ("prereg.json", now)):
+        digests = doc.get("holdout_salted_digests") if isinstance(doc, dict) else None
+        if digests is None:
+            continue
+        if not isinstance(digests, dict):
+            problems.append(f"{where}: holdout_salted_digests is not a map of task to digests")
+            continue
+        synthetic = freeze.synthetic_tasks(digests)
+        if synthetic:
+            seen.append(where)
+            if not rehearsal_plan:
+                problems.append(f"{where} holds the rehearsal's synthetic holdout digests ({', '.join(synthetic)}); "
+                                f"a real freeze takes only the salted digests from private aegis (ruling W8B-gap4-1)")
+    if rehearsal_plan and seen:
+        print(f"  NOT CHECKED: the rehearsal's synthetic holdout digests in {' and '.join(seen)} (disposable "
+              f"rehearsal)")
+    print(f"  the frozen holdout digests re-read for the rehearsal's synthetic ones: {len(problems)} problem(s)")
+    return problems
+
+
 def check_frozen_content(rehearsal_plan=False) -> list[str]:
     frozen, why = frozen_bytes()
     if frozen is None and why == "NOT A GIT REPOSITORY":
@@ -487,6 +515,7 @@ def check_frozen_content(rehearsal_plan=False) -> list[str]:
         return [f"the frozen file could not be compared with its freeze: {why}"]
     now = json.loads((HERE / "prereg.json").read_text())
     problems = frozen_content_problems(frozen, now)
+    problems += synthetic_digest_problems(frozen, now, rehearsal_plan)     # W8B-R2-2 (lane w9-cp6)
     rehearsal = []
     if rehearsal_plan:
         if frozen.get("rehearsal_record") != "rehearsal or preview":

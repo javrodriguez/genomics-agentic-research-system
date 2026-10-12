@@ -2775,13 +2775,20 @@ class WalkDriver(TakeDriver):
     records are handed to TakeRepo only from <records_root>/takes/<slot>/<attempt> (W7B-R1-5), and every adapter it
     makes is checked to be exactly the production class (W7B-R1-4), however adapter_for is set."""
 
-    def __init__(self, *, records_root=None, **kw):
+    def __init__(self, *, records_root=None, records=None, **kw):
         if "strict_script" in kw:
             raise TypeError("the walk driver's script is strict by construction; it takes no strict_script")
         if records_root is None:
             raise TypeError("the walk driver takes records_root, the study folder its take folders sit under")
+        if records not in RECORD_FOLDERS:        # W9 K1-launch: the records its launch is checked against
+            raise TypeError("the walk driver takes records, 'takes' or 'walks' (what its launch is checked against)")
         self.records_root = Path(records_root).resolve()
+        self.records = records
         super().__init__(strict_script=True, **kw)
+
+    def launch(self, row: dict) -> str:
+        launch_problems(self, row)          # W9 K1-launch (Q-w8d-1): before any folder, container or spend
+        return super().launch(row)
 
     @property
     def adapter_for(self):
@@ -2839,7 +2846,7 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
         return script_from_design(design_for(row, None), project_for(row), ident["source"])
 
     return WalkDriver(
-        records_root=root, runtime=runtime, take_folder=record_folder_in(root, records), config_parent=config_parent, spec_for=spec_for,
+        records_root=root, records=records, runtime=runtime, take_folder=record_folder_in(root, records), config_parent=config_parent, spec_for=spec_for,
         sidecar_for=sidecar_for, proxy=proxy, lock_path=lock_path, hosts=hosts,
         adapter_for=claude_code_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
                                             pin_for=pin_for, clock=clock, caller_env=caller_env),
@@ -3118,6 +3125,129 @@ def route_attempt(*args, **kwargs):  # noqa: F811 - L1: round 3's router, retire
 def main() -> int:  # noqa: F811 - L1: round 3's CLI, retired
     print(f"refused: {ROUND3_RETIRED}", file=sys.stderr)
     return 2
+
+
+# =====================================================================================================================
+# ROUND 4, CP6 WIRING (lane w9-cp6; this file moved from lane w8d-cp8-prep to lane w9-cp6 under glitch-2f's wave 9
+# ruling, the Lane-orchestrator under Javier's standing delegation, Mon 12 Oct 2026). Appended above `if __name__`;
+# the in-place edits are WalkDriver's records argument and launch override, and walk_driver passing records.
+#   K1-launch  Q-w8d-1: K1 (take_k_problems) refuses a drifted k at the commit, which comes after the take ran and
+#              was paid for. So WalkDriver.launch first calls launch_problems, and a refusal (LaunchRefused, a
+#              DriveRefused) comes before any take folder, config folder or container exists: nothing is spent.
+#              What the launch is checked against is what the records bind, field by named field:
+#                takes  the slot's ONE open registration in the committed takes.json (a registered row with no
+#                       committed outcome, read with takes.load_rows and takes.read_history): every field of
+#                       LAUNCH_FIELDS (the allow-list) present in both and equal; the row the frozen
+#                       pre-registration's planned row (takes.require_planned_row, every key of it bound); and the
+#                       take folder the driver would make <root>/takes/<slot>/<that registration's attempt>.
+#                walks  no freeze (prereg.json absent: walks are pre-freeze, as WalkRepo refuses at the commit);
+#                       WALK_LAUNCH_FIELDS read as a register entry the design in force accepts
+#                       (walk_register.entry_problems on prereg-draft.json and tasks/); its id not in register.json.
+#              Not changed: take_folder_in still counts the folders on disk (Q-w6i-1), so after a launch refused
+#              before its folder the slot's next attempt is refused here too, before launch, until a ruling moves the
+#              folder rule (named in lane-reports/w9-cp6.md); K1 at the commit stays as the second guard.
+# =====================================================================================================================
+
+import stats as _stats  # noqa: E402
+
+LAUNCH_FIELDS = tuple(_stats.TAKE_FIELDS[:8]) + ("slot", "half_cell")
+WALK_LAUNCH_FIELDS = ("walk", "task", "half", "wording", "arm", "model")
+WALK_LAUNCH_REASON = "pre-launch check"     # a stand-in reason: the entry's reason is written at the commit
+
+
+class LaunchRefused(DriveRefused):
+    """K1-launch (Q-w8d-1): the take does not match its records, refused before launch (nothing created or spent)."""
+
+
+def records_repo(root: Path) -> Path:
+    """The git repository the study folder sits in (REPO in production), read from git itself."""
+    got = subprocess.run(["git", "-C", str(root), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    if got.returncode != 0 or not got.stdout.strip():
+        raise LaunchRefused(f"the take records' root {root} is in no git repository, so its committed registrations "
+                            f"cannot be read; nothing was launched")
+    return Path(got.stdout.strip()).resolve()
+
+
+def open_registration(root: Path, repo: Path, slot) -> dict:
+    """The slot's one registration in the committed takes.json that has no committed outcome yet."""
+    try:
+        rows = takes_mod.load_rows(root=root, repo=repo)
+        history = takes_mod.read_history(root=root, repo=repo)
+    except (ValueError, KeyError, OSError) as e:
+        raise LaunchRefused(f"the committed registrations cannot be read ({type(e).__name__}: {e}); nothing was "
+                            f"launched") from None
+    done = {(o.get("slot"), o.get("attempt")) for o in history if not takes_mod.batch.is_ruling(o)}
+    mine = [r for r in rows if r.get("slot") == slot]
+    open_ = [r for r in mine if (slot, r.get("attempt")) not in done]
+    if len(open_) != 1:
+        raise LaunchRefused(f"slot {slot!r} has {len(open_)} open registrations in takes.json (registered, no "
+                            f"committed outcome); a take launches only under its slot's one open registration")
+    reg = open_[0]
+    if reg.get("attempt") != max(r.get("attempt") for r in mine):
+        raise LaunchRefused(f"slot {slot!r}'s open registration is attempt {reg.get('attempt')!r}, not its latest; "
+                            f"a take launches only under the attempt Batch registered last")
+    return reg
+
+
+def take_launch_problems(driver, row: dict) -> None:
+    root = driver.records_root
+    slot = row.get("slot")
+    reg = open_registration(root, records_repo(root), slot)
+    attempt = reg["attempt"]
+    wrong = [k for k in LAUNCH_FIELDS if k not in row or k not in reg or row[k] != reg[k]]
+    if wrong:
+        raise LaunchRefused(f"the take differs from its registration (slot {slot!r}, attempt {attempt}) in "
+                            f"{', '.join(wrong)}; a take launches exactly as it was registered")
+    try:
+        pre = prereg.require_frozen("launching a take")
+        takes_mod.require_planned_row(row, pre)
+    except (SystemExit, ValueError, KeyError, TypeError) as e:
+        raise LaunchRefused(f"the take (slot {slot!r}, attempt {attempt}) is not the frozen pre-registration's "
+                            f"planned row: {e}") from None
+    want = str(root / TAKES_DIR / str(slot) / str(attempt))
+    folder = driver.take_folder(row)
+    if folder != want:
+        raise LaunchRefused(f"the take folder would be {folder}, and slot {slot!r}'s open registration is attempt "
+                            f"{attempt}, whose folder is {want}; a take folder's k is its attempt (Q-w8d-1)")
+
+
+def walk_launch_problems(driver, row: dict) -> None:
+    import walk_register as _walk_register
+    root = driver.records_root
+    if os.path.lexists(root / FROZEN_NAME):
+        raise LaunchRefused(f"{FROZEN_NAME} exists: the design is frozen, and walks run before the freeze (plan CP6)")
+    entry = {k: row.get(k) for k in WALK_LAUNCH_FIELDS}
+    entry.update(reason=WALK_LAUNCH_REASON, counted=False)
+    try:
+        design = _walk_register.design_in_force(root)
+    except (ValueError, KeyError, OSError) as e:
+        raise LaunchRefused(f"the design in force cannot be read ({type(e).__name__}: {e})") from None
+    bad = _walk_register.entry_problems(0, entry, design)
+    if bad:
+        raise LaunchRefused("the walk is not one the design in force admits: " + "; ".join(bad))
+    register = root / WALKS_DIR / _walk_register.REGISTER_NAME
+    try:
+        doc = json.loads(register.read_text(encoding="utf-8"), object_pairs_hook=_walk_register.no_duplicate_keys)
+        walks = doc["walks"]
+        ids = {e["walk"].casefold() for e in walks if isinstance(e, dict) and isinstance(e.get("walk"), str)}
+    except (ValueError, KeyError, TypeError, OSError) as e:
+        raise LaunchRefused(f"{WALKS_DIR}/{_walk_register.REGISTER_NAME} cannot be read ({type(e).__name__}); "
+                            f"nothing was launched") from None
+    if row["walk"].casefold() in ids:
+        raise LaunchRefused(f"walk {row['walk']!r} is already registered; a retry is a new walk id")
+
+
+def launch_problems(driver, row: dict) -> None:
+    """K1-launch (Q-w8d-1): refuse (LaunchRefused) a take or walk that does not match its records, before launch."""
+    if not isinstance(row, dict):
+        raise LaunchRefused("the row is not an object")
+    if driver.records == "takes":
+        take_launch_problems(driver, row)
+    elif driver.records == "walks":
+        walk_launch_problems(driver, row)
+    else:
+        raise LaunchRefused(f"records {driver.records!r} is neither 'takes' nor 'walks'")
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

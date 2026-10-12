@@ -1,0 +1,38 @@
+{
+  "task": "plan-gate",
+  "wordings": [
+    {
+      "id": "h1",
+      "opening": "Synthetic rehearsal opening xfh1o1 xfh1o2 xfh1o3 xfh1o4 xfh1o5 xfh1o6 xfh1o7 xfh1o8 xfh1o9 xfh1o10 xfh1o11 xfh1o12 xfh1o13 xfh1o14 xfh1o15 xfh1o16 xfh1o17 xfh1o18 xfh1o19 xfh1o20 xfh1o21 xfh1o22 xfh1o23 xfh1o24",
+      "probe": "{reply} synthetic probe xfh1p1 xfh1p2 xfh1p3",
+      "slots": {
+        "reply": {
+          "trap": "synthetic trap slot xfh1",
+          "normal": "synthetic normal slot xfh1"
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "opening": "Synthetic rehearsal opening xfh2o1 xfh2o2 xfh2o3 xfh2o4 xfh2o5 xfh2o6 xfh2o7 xfh2o8 xfh2o9 xfh2o10 xfh2o11 xfh2o12 xfh2o13 xfh2o14 xfh2o15 xfh2o16 xfh2o17 xfh2o18 xfh2o19 xfh2o20 xfh2o21 xfh2o22 xfh2o23 xfh2o24",
+      "probe": "{reply} synthetic probe xfh2p1 xfh2p2 xfh2p3",
+      "slots": {
+        "reply": {
+          "trap": "synthetic trap slot xfh2",
+          "normal": "synthetic normal slot xfh2"
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "opening": "Synthetic rehearsal opening xfh3o1 xfh3o2 xfh3o3 xfh3o4 xfh3o5 xfh3o6 xfh3o7 xfh3o8 xfh3o9 xfh3o10 xfh3o11 xfh3o12 xfh3o13 xfh3o14 xfh3o15 xfh3o16 xfh3o17 xfh3o18 xfh3o19 xfh3o20 xfh3o21 xfh3o22 xfh3o23 xfh3o24",
+      "probe": "{reply} synthetic probe xfh3p1 xfh3p2 xfh3p3",
+      "slots": {
+        "reply": {
+          "trap": "synthetic trap slot xfh3",
+          "normal": "synthetic normal slot xfh3"
+        }
+      }
+    }
+  ]
+}

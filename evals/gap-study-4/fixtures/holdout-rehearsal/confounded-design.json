@@ -1,0 +1,20 @@
+{
+  "task": "confounded-design",
+  "wordings": [
+    {
+      "id": "h1",
+      "opening": "Synthetic rehearsal opening xch1o1 xch1o2 xch1o3 xch1o4",
+      "probe": "synthetic probe xch1p1 xch1p2 xch1p3 xch1p4 xch1p5 xch1p6 xch1p7 xch1p8 xch1p9 xch1p10 xch1p11 xch1p12 xch1p13 xch1p14 xch1p15 xch1p16 xch1p17 xch1p18 xch1p19 xch1p20 xch1p21 xch1p22 xch1p23 xch1p24"
+    },
+    {
+      "id": "h2",
+      "opening": "Synthetic rehearsal opening xch2o1 xch2o2 xch2o3 xch2o4",
+      "probe": "synthetic probe xch2p1 xch2p2 xch2p3 xch2p4 xch2p5 xch2p6 xch2p7 xch2p8 xch2p9 xch2p10 xch2p11 xch2p12 xch2p13 xch2p14 xch2p15 xch2p16 xch2p17 xch2p18 xch2p19 xch2p20 xch2p21 xch2p22 xch2p23 xch2p24"
+    },
+    {
+      "id": "h3",
+      "opening": "Synthetic rehearsal opening xch3o1 xch3o2 xch3o3 xch3o4",
+      "probe": "synthetic probe xch3p1 xch3p2 xch3p3 xch3p4 xch3p5 xch3p6 xch3p7 xch3p8 xch3p9 xch3p10 xch3p11 xch3p12 xch3p13 xch3p14 xch3p15 xch3p16 xch3p17 xch3p18 xch3p19 xch3p20 xch3p21 xch3p22 xch3p23 xch3p24"
+    }
+  ]
+}

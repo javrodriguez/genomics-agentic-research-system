@@ -1,0 +1,20 @@
+{
+  "task": "precondition-refusal",
+  "wordings": [
+    {
+      "id": "h1",
+      "opening": "Synthetic rehearsal opening xgh1o1 xgh1o2 xgh1o3 xgh1o4 xgh1o5",
+      "probe": "synthetic probe xgh1p1 xgh1p2 xgh1p3 xgh1p4 xgh1p5 xgh1p6 xgh1p7 xgh1p8 xgh1p9"
+    },
+    {
+      "id": "h2",
+      "opening": "Synthetic rehearsal opening xgh2o1 xgh2o2 xgh2o3 xgh2o4 xgh2o5",
+      "probe": "synthetic probe xgh2p1 xgh2p2 xgh2p3 xgh2p4 xgh2p5 xgh2p6 xgh2p7 xgh2p8 xgh2p9"
+    },
+    {
+      "id": "h3",
+      "opening": "Synthetic rehearsal opening xgh3o1 xgh3o2 xgh3o3 xgh3o4 xgh3o5",
+      "probe": "synthetic probe xgh3p1 xgh3p2 xgh3p3 xgh3p4 xgh3p5 xgh3p6 xgh3p7 xgh3p8 xgh3p9"
+    }
+  ]
+}

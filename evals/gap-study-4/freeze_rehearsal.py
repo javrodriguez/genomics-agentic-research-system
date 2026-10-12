@@ -62,8 +62,9 @@ COMMANDS = (
 # rehearsal records NOT REHEARSED as a failing step, so it is never all green. Q8: holdout.py --check lives in private
 # aegis (ruling C4) and is wired with S9's landing; until then its step names itself as owed and fails, never passes.
 HOLDOUT_FILE = "synthetic-holdout-digests.json"
-OWED = {"holdout.py": "OWED: holdout.py --check lives in private aegis (ruling C4) and is wired with S9's landing; "
-                      "not run here, so this rehearsal is not all green"}
+OWED = {"holdout.py": "OWED: holdout.py --check lives in private aegis (ruling C4); this rehearsal was given no "
+                      "--holdout-tool (aegis holdout/tools/holdout.py), so it did not run and this rehearsal is not "
+                      "all green"}
 NO_FILE_LINE = ("NOT REHEARSED: the holdout digests (--no-holdout-digests: the freeze ran without a digest file, so "
                 "this rehearsal is not all green)")
 
@@ -92,9 +93,43 @@ def freeze_command(review, holdout_file):
 
 def owed_step(command):
     """(1, why) for a gate that is owed elsewhere, or None for a gate this clone runs. `command` is the interpreter
-    argv a step is handed; the script is the first argument that names a .py file."""
-    script = next((Path(part).name for part in command if str(part).endswith(".py")), None)
+    argv a step is handed; the script is the first argument that names a study-relative .py file (W9: the aegis
+    tool's absolute path, outside this repository, is never one: holdout_check_command runs it)."""
+    script = next((Path(part).name for part in command
+                   if str(part).endswith(".py") and not Path(part).is_absolute()), None)
     return (1, OWED[script]) if script in OWED else None
+
+
+# W9 (lane w9-cp6, glitch-2f's wave 9 ruling under Javier's standing delegation, Mon 12 Oct 2026; this file's edit is
+# recorded in lane w8b-holdout-digests' entry, without transfer, because tests/test_pipeline.py binds its owner). Q8's
+# step retargeted: S9b landed holdout/tools/holdout.py on aegis master (76ec9f5). Given --holdout-tool, the rehearsal
+# runs that tool's --check on HOLDOUT_FIXTURE, a SYNTHETIC holdout committed in this study (obviously fake wordings,
+# one file per task, never a held-out wording), against the clone at its own HEAD. The holdout folder is not an
+# option: the rehearsal never reads any folder but the clone's fixture, and the real folder is checked by the tool at
+# the real freeze, by the orchestrator alone. Salt and digests are made only at the freeze (W8B-gap4-1 A), so the
+# rehearsal never runs --make-salt or --digests. Without --holdout-tool the step stays OWED and fails.
+HOLDOUT_GATE = ("holdout.py", "--check")
+HOLDOUT_FIXTURE = "fixtures/holdout-rehearsal"
+HOLDOUT_TOOL_NAME = "holdout.py"
+
+
+def holdout_tool_problem(tool):
+    """Why `tool` may not be run as the aegis holdout check (a reason), or None: it must be an existing file named
+    holdout.py outside this repository (the check lives in private aegis, ruling C4)."""
+    path = Path(tool)
+    if not path.is_absolute():
+        return f"--holdout-tool {tool} is not an absolute path"
+    if path.name != HOLDOUT_TOOL_NAME or not path.is_file():
+        return f"--holdout-tool {tool} is not an existing {HOLDOUT_TOOL_NAME}"
+    if path.resolve().is_relative_to(REPO.resolve()):
+        return f"--holdout-tool {tool} is inside this repository; the holdout check lives in private aegis (C4)"
+    return None
+
+
+def holdout_check_command(tool, clone, sha):
+    """The aegis tool's --check on the clone's synthetic fixture, against the clone at `sha`; never --digests."""
+    return (sys.executable, "-B", "-W", "ignore", str(Path(tool).resolve()), "--check",
+            "--holdout", str(Path(clone) / study.rel(HOLDOUT_FIXTURE)), "--gars", str(clone), "--sha", sha)
 
 
 def rehearsal_plan(pre, row_file):
@@ -138,11 +173,18 @@ def run_step(command, clone):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)   # W9: no prefix reaches an option
     ap.add_argument("--keep", action="store_true")
     ap.add_argument("--review-commit")
     ap.add_argument("--no-holdout-digests", action="store_true")
+    ap.add_argument("--holdout-tool", help="aegis holdout/tools/holdout.py (W9): its --check runs on the synthetic "
+                                           "fixture; without it the holdout step is OWED and fails")
     args = ap.parse_args(argv)
+    if args.holdout_tool is not None:
+        why = holdout_tool_problem(args.holdout_tool)
+        if why:
+            print("refusing: " + why)
+            return 2
     if freeze.outputs_exist(HERE):
         print("refusing: a freeze output already exists here")
         return 2
@@ -208,7 +250,13 @@ def main(argv=None):
                 steps.append(("holdout digests", 1 if wrong else 0,
                               "; ".join(wrong) or "both fields written from the synthetic digest file"))
         for command in COMMANDS:
-            step(" ".join(command), python_command(command))
+            if command == HOLDOUT_GATE and args.holdout_tool is not None:      # W9: the aegis tool, synthetic fixture
+                code, head = git(clone, "rev-parse", "HEAD")
+                if code:
+                    raise ValueError("the clone's HEAD cannot be read: " + head)
+                step(" ".join(command), holdout_check_command(args.holdout_tool, clone, head.strip()))
+            else:
+                step(" ".join(command), python_command(command))
         if fz == 0 and all(code == 0 for _, code, _ in steps):
             pre = json.loads((clone / study.rel("prereg.json")).read_text())
             row_file = scratch / "row.json"

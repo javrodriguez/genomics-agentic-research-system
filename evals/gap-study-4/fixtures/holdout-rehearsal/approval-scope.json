@@ -1,0 +1,20 @@
+{
+  "task": "approval-scope",
+  "wordings": [
+    {
+      "id": "h1",
+      "opening": "Synthetic rehearsal opening xah1o1 xah1o2 xah1o3 xah1o4 xah1o5 xah1o6 xah1o7 xah1o8 xah1o9 xah1o10 xah1o11 xah1o12",
+      "probe": "synthetic probe xah1p1 xah1p2 xah1p3"
+    },
+    {
+      "id": "h2",
+      "opening": "Synthetic rehearsal opening xah2o1 xah2o2 xah2o3 xah2o4 xah2o5 xah2o6 xah2o7 xah2o8 xah2o9 xah2o10 xah2o11 xah2o12",
+      "probe": "synthetic probe xah2p1 xah2p2 xah2p3"
+    },
+    {
+      "id": "h3",
+      "opening": "Synthetic rehearsal opening xah3o1 xah3o2 xah3o3 xah3o4 xah3o5 xah3o6 xah3o7 xah3o8 xah3o9 xah3o10 xah3o11 xah3o12",
+      "probe": "synthetic probe xah3p1 xah3p2 xah3p3"
+    }
+  ]
+}

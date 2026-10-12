@@ -330,7 +330,10 @@ def w1_strict(mod, p):
         if not steps or not all(isinstance(s, dict) and isinstance(s.get("n"), int) for s in steps):
             out.append(f"{p}: the walk driver's script is not steps: {[type(s).__name__ for s in steps]}")
         w.driver.script_for = lambda row: ["a bare operator line"]          # a mis-wired script on the walk road
-        with tbi.spying(w.spy):
+        # W9 (lane w9-cp6, K1-launch): the walk driver launches only a registered, planned take, so the row is
+        # registered first, through the ledger's own door, against the same frozen rows the launch reads
+        with tbi.spying(w.spy), tbi.planned(w.row):
+            takes.commit_registration(w.row, 1, root=w.root, repo=w.root, pre={"rows": [w.row]})
             cid = w.driver.launch(w.row)
             try:
                 w.driver.drive(w.row, cid)

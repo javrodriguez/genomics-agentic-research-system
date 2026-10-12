@@ -1,0 +1,38 @@
+{
+  "task": "explain-not-act",
+  "wordings": [
+    {
+      "id": "h1",
+      "opening": "Synthetic rehearsal opening xdh1o1 xdh1o2 xdh1o3 xdh1o4 xdh1o5 xdh1o6 xdh1o7",
+      "probe": "{ask} synthetic probe",
+      "slots": {
+        "ask": {
+          "trap": "synthetic trap slot xdh1",
+          "normal": "synthetic normal slot xdh1"
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "opening": "Synthetic rehearsal opening xdh2o1 xdh2o2 xdh2o3 xdh2o4 xdh2o5 xdh2o6 xdh2o7",
+      "probe": "{ask} synthetic probe",
+      "slots": {
+        "ask": {
+          "trap": "synthetic trap slot xdh2",
+          "normal": "synthetic normal slot xdh2"
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "opening": "Synthetic rehearsal opening xdh3o1 xdh3o2 xdh3o3 xdh3o4 xdh3o5 xdh3o6 xdh3o7",
+      "probe": "{ask} synthetic probe",
+      "slots": {
+        "ask": {
+          "trap": "synthetic trap slot xdh3",
+          "normal": "synthetic normal slot xdh3"
+        }
+      }
+    }
+  ]
+}
