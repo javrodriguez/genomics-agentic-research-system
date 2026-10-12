@@ -1,6 +1,6 @@
-Status: built, gates green on the Mac; review round 1 (fresh opus-medium, on construction) not yet run; then athena
+Status: review round 1 CHANGES (d8ed8b9b); ruling w11c-R1-fold folded (96376ecd); waiting on review round 2
 
-RESUME HERE: review round 1, then athena
+RESUME HERE: review round 2
 
 # Lane w11c-walk-plan: Gap Study round 4, the CP6 walk list and its coverage report
 
@@ -117,3 +117,60 @@ No other lane's file was edited.
 - tests/test_scaffold.py (whole)
 - test_round4.py (the battery)
 - The gates: copy_manifest --check, build_draft --check, freeze.py --check, walk_register --check, lint_language and lint_pooling over the folder
+
+## Fold w11c-R1, Mon 12 Oct 2026 16:28 EDT (`date`)
+
+Review round 1 (`lane-reports/w11c-walk-plan-review-r1.md`, d8ed8b9b) was CHANGES: two MAJOR findings and three MINOR ones that loosen a check.
+Ruling w11c-R1-fold (glitch-2f) folds all five, the notes, and a generated mutation sweep.
+Red-first commit `0dae2059` (tests); fold commit `96376ecd` (code, tests folded while going green, fragment appends, checks line).
+
+What changed in walk_plan.py:
+- W11C-R1-1: `read_register(base, design)` reads the register through walk_register's own check and reader, one code path.
+  The register's bytes are copied into a temporary folder beside a stand-in folder for each one-segment walk id; `walk_register.check` runs there against the design in force; any problem refuses the report, exit 2, with the check's own words (the first five, then "and N more"); `walk_register.registered` then reads the entries.
+  A walk id used twice, ids that differ only by case, a wrong schema, an extra top-level key, walks that are not a list, a top-level list, a non-object entry, a counted entry, an off-design entry, a non-string or two-segment walk id and a duplicate JSON key all exit 2.
+  The review's repro (every spec under one walk id, with `--require-complete`) now exits 2 with "registered twice".
+  No walk folder under rehearsals/ is listed, read or looked up; the stand-ins mean only the folder rules are left to `walk_register.py --check`, which the gates run.
+- Note: coverage checks each register entry's cell against the design's rows; an entry on a wording with no row covers nothing and is reported outside the plan.
+- Note: `SPEC_FIELDS` is removed.
+
+What changed in the tests (15 tests, 31 witnesses):
+- W11C-R1-2: P13 binds each model's missing figure on a register with a different number of gaps on every model (0 to 6 in plan order), and on a synthetic design that plans one model id on arms A and O; witnesses per-model-arm-dropped and per-model-model-dropped.
+- W11C-R1-3: P14 runs walk_plan's source as a script (`__name__ == "__main__"`) and binds its exit codes; `--list --require-complete` is refused; the ok line prints only under `--require-complete` with nothing missing; a design that cannot be derived exits 2; without `--base` the register is `walk_register.REHEARSALS`'.
+- W11C-R1-4: P12 (the register shapes above, each first shown refused by `walk_register.check` itself); P4 gains a non-object entry and a non-string walk id (reported as "entry <i>"); P10 and the refusal helper accept only PlanRefused; calls into walk_plan go through helpers that fail the clause by an assertion on any other exception or a wrongly typed return; a module that fails or exits on import fails every test by P0.module.
+- W11C-R1-5: P11 synthetic designs drop a half, add a half and add a model on arm G; P10 adds a haiku model moved to arm O (refused: arm A has none) and a haiku-named model on arm O beside arm A's (not taken, one wording); the test's own every-wording derivation searches arm A only.
+- Notes: P6 binds every missing line, every covered line with its walk id, and the empty-register line only on an empty register; P7 also records stat and lstat, and only the register is touched under rehearsals/.
+- The generated sweep: `--generated-mutants [--shard i/n] [--only ID,...]`, self-contained in the test file.
+  A stdlib AST mutator over every function and the `__main__` block (comparison negated, if and conditional tests set to True and False, and/or swapped and each operand dropped, `not` removed, each conditional branch taken, a slice's bound removed, an integer moved by one, each comprehension filter dropped, an assignment, expression, raise, return or continue replaced by pass) makes 251 mutants of walk_plan.py.
+  String constants and f-strings are never mutated (the one message rule); the printed lines the gate depends on are bound by assertions instead.
+  The unmutated module, re-emitted by the same unparser, must pass first. Each mutant runs the whole suite with `--failfast` in its own process and must fail by an assertion, with no error; otherwise it must be listed in EQUIVALENT with its line text and a reason, and a listed mutant that is killed, or an entry whose mutant is no longer generated on that line, fails the sweep.
+  EQUIVALENT is empty. P15 binds the registry check (a changed line, a missing mutant and an empty reason are each reported).
+  checks.d runs it in four shard lines, for athena.
+
+Witnesses added (13): rows-unchecked-coverage, entry-label-fallback (P4); stand-ins-missing (P6); folder-statted (P7); every-rule-dropped, every-rule-any-arm (P10); halves-typed (P11); register-check-skipped (P12); per-model-arm-dropped, per-model-model-dropped (P13); script-entry-dropped, list-require-admitted, ok-unconditional, default-base-ignored (P14).
+Removed (1): register-duplicate-admitted, whose anchor (the old JSON read) is gone; the duplicate key is now refused by walk_register.check and bound in P12 under register-check-skipped.
+
+Evidence (Mac, each batch behind `mac_slot.py light-ok` and `timeout -s INT 120` or 115, /usr/local/bin/python3.13):
+- Red at `0dae2059` against 798223de's code: `14 run, 2 failures, 0 errors` (P12.register: the one-walk-id register exited 0; P4.off-design: a wording with no row covered a spec).
+- Green at `96376ecd`: `test_walk_plan: 15 run, 0 failures, 0 errors, 0 skipped`; `test_walk_plan witnesses: 31 of 31 red; registry 31`.
+- Gates: copy_manifest --check ok (299 files, 48 fragments); build_draft --check ok; freeze.py --check ok; walk_register --check ok, 0 walks.
+- lint_language and lint_pooling over the folder: clean, 92 inputs each; both clean with `--include-code` over walk_plan.py, the test and the fragment, and over the commit bodies since f14ab57b. flake8 at 120 columns clean.
+- Derived figures unchanged (`--list`): Haiku 90; Opus, Sonnet and each arm O and arm G model 18.
+- The sweep on the Mac, a sample only (the Mac was near its light limit): shard 1 of 12, shards 2 to 8 of 16, three mutants of shard 9 of 16 and shard 17 of 32, about 140 of the 251 mutants.
+  Survivors and errors found there, each now killed by an assertion (re-run with `--only`): L128 ifexp-else (an error before failfast), L146 and L229 (the "and N more" text), L206 drop1 and drop2 (stand-in ids), L234 (spec_line returning None), L245 (the --list walk lines), L249 (the rule text), L293 (exit 2 on a design failure), L314 (a module that runs main on import), L133 (each spec's reason).
+  The rest of the sample was killed by an assertion on the first run. The whole sweep is athena's; a survivor there is folded by a test or an EQUIVALENT entry with its reason.
+
+Residuals:
+- One read-only timing probe of the mutant generator ran after a light-ok hold at 16:23 (load1 16.31): a `&&` chain stopped the suite but not the `;`-joined probe (about 15 s of one process). No other batch ran on a hold.
+- Shard 9 of 16 was stopped by its 115 s timeout after three mutants (before the generator was made lazy); no child process was left running (`ps`).
+- The sweep's run time on athena is about 251 suite runs, in four shard lines under run_checks' 3600 s limit each.
+
+Open questions: none new. Q-w11c-3 is answered by the ruling Q-2 line the reviewer cites (next-slices-2026-10-11.md, 15:32 EDT).
+
+## Modules athena must run (after fold w11c-R1)
+
+- tests/test_walk_plan.py, `--witnesses`, and `--generated-mutants` in its four shards (checks.d/w11c-walk-plan.txt)
+- tests/test_scaffold.py (whole)
+- test_round4.py (the battery)
+- The gates: copy_manifest --check, build_draft --check, freeze.py --check, walk_register --check, lint_language and lint_pooling over the folder
+
+RESUME HERE: review round 2.
