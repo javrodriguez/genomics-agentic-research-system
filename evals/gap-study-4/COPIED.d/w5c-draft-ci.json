@@ -2,11 +2,6 @@
   "lane": "w5c-draft-ci",
   "files": [
     {
-      "path": "tests/test_ci_job.py",
-      "status": "new",
-      "reason": "R35-R44 and PL-5: publication job text contract and in-memory mutations."
-    },
-    {
       "path": "checks.d/w5c-draft-ci.txt",
       "status": "new",
       "reason": "R41 and interface 2: the publication job's local command."
@@ -14,7 +9,7 @@
     {
       "path": "COPIED.d/w5c-draft-ci.json",
       "status": "new",
-      "reason": "Interface 1: records this lane's added files. Transfer (ruling W7A-gap4-1 (glitch-1b, under Javier's standing delegation, Sun 11 Oct 2026)): build_draft.py, which this lane edited from evals/gap-study-3/build_draft.py, moved to lane w7a-draft-text, which edits it for W6D-R1-2, OPEN-4 and W6C-R1-2 and claims it in COPIED.d/w7a-draft-text.json. Transfer (ruling W7A-close-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026), Q-w7a-2): prereg-draft.json moved with its writer to lane w7a-draft-text, which claims it in COPIED.d/w7a-draft-text.json."
+      "reason": "Interface 1: records this lane's added files. Transfer (ruling W7A-gap4-1 (glitch-1b, under Javier's standing delegation, Sun 11 Oct 2026)): build_draft.py, which this lane edited from evals/gap-study-3/build_draft.py, moved to lane w7a-draft-text, which edits it for W6D-R1-2, OPEN-4 and W6C-R1-2 and claims it in COPIED.d/w7a-draft-text.json. Transfer (ruling W7A-close-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026), Q-w7a-2): prereg-draft.json moved with its writer to lane w7a-draft-text, which claims it in COPIED.d/w7a-draft-text.json. Transfer (ruling W8D-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8d, CP8 prep)): tests/test_ci_job.py moved to lane w8d-cp8-prep, which adds the walk register's CI step to the contract (W8A-R1-5) and claims it in COPIED.d/w8d-cp8-prep.json."
     },
     {
       "path": "tests/test_build_draft.py",

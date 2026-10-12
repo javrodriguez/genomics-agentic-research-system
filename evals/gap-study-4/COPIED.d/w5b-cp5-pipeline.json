@@ -39,7 +39,7 @@
       "path": "costs.py",
       "status": "edited",
       "source": "evals/gap-study-3/costs.py",
-      "reason": "R6 R11 R29: per-call costs, dated prices and round spending predicates."
+      "reason": "R6 R11 R29: per-call costs, dated prices and round spending predicates. Edit W8D-gap4-1 (lane w8d, under ruling W8D-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8d, CP8 prep); no ownership transfer, departure w8d-1, because tests/test_pipeline.py's PipelineOwnership binds costs.py to this lane): the module docstring's last two lines, which said the driver invokes walk_gate and month_turn_allowed, now name batch.Batch (lane w7c's wiring: before a block is registered, and month_turn_allowed again before each paid launch). Docs only; the line count is unchanged."
     }
   ]
 }

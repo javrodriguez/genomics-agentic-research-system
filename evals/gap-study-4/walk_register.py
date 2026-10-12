@@ -28,6 +28,26 @@ plus grade.json (run.regrade()'s output, or why the walk was not graded), and it
 grade.json. The road that writes here is drive.walk_driver(records="walks"), and drive.WalkRepo commits the folder
 with its register entry in one commit. The folder's name comes from mode_binding.WALKS_DIR.
 
+ONE WALK, ONE COMMIT (lane w8d, ruling W8D-gap4-1, from W8A-R2-2; this file moved from lane w8a
+to lane w8d). The CLI's --check also reads the repository's history (history_problems): for each registered walk,
+exactly one non-merge commit in HEAD's history touches rehearsals/<walk>/, and it is a walk commit (drive.WALK_SUBJECT,
+one parent, changing only that folder and the register, whose entry for the walk it adds); HEAD's tree at the folder
+is the tree that commit wrote (so a merge cannot rewrite it either); and the folder on disk is HEAD's. A later
+ordinary commit that edits a walk's ledger is refused. The register is append-only over history (fold W8D-close-1):
+every entry a walk-subject commit's register lists is listed at HEAD, identical, so a later commit editing a walk's
+reason or model, deleting a walk, or deleting and re-adding it refuses; the register on disk is HEAD's. A shallow
+history refuses (the walk's commit cannot be read; CI checks out with fetch-depth 0); git is read even when no walk is
+registered. WHAT THIS CANNOT SEE (W8D-R1-4): history itself can be rewritten. Amending the walk commit (or rewriting
+the branch so a changed walk sits in its one walk commit), or a hand-made commit under the walk subject that adds a
+walk the way WalkRepo would, both pass, since this check reads the history it is handed. Both history reads use
+--full-history (W8D-R2-1), so a walk dropped by `git merge -s ours`, in either direction, is still read and refused.
+drive.py's adapter class check (W8D-R1-3, W8D-R2-2) does not see in-process tampering: an object whose __class__ is
+reassigned to the production class, or a fake whose __module__ is "claude_code_adapter" that drive.py captures
+because drive was imported or reloaded while ClaudeCodeAdapter was patched. The backstop is outside both: CP8's
+commit pins by full sha and a protected branch. The test-only --base reads the
+history only when --repo names the repository; the gates (CI, freeze_rehearsal) run the bare --check, which reads
+this repository's.
+
 WHAT THIS DOES NOT CHECK (open questions in rehearsals/README.md): whether the walks cover what CP6 asks for (every
 wording on the smallest model, every task and half on each model), and whether the walks are published at CP8.
 
@@ -38,6 +58,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 import unicodedata
 from pathlib import Path
@@ -228,16 +249,129 @@ def check(base: Path = REHEARSALS, design: dict | None = None) -> tuple[list[str
     return problems, len(walks)
 
 
+def history_problems(base: Path, walks, repo: Path) -> list[str]:
+    """W8A-R2-2 (ruling W8D-gap4-1): each named walk's folder is the tree its one walk commit wrote, unchanged since;
+    and (fold W8D-close-1, W8D-R1-1, W8D-R1-2) the register is append-only over history: every entry the register of a
+    walk-subject commit in HEAD's history lists is listed at HEAD, identical, and the register on disk is HEAD's. git
+    is read even when no walk is registered: a false "0 walks" over a deleted walk is worse than one read."""
+    walks = list(walks)
+    import drive  # WALK_SUBJECT lives with WalkRepo, which writes the commit; imported here, never at module load
+    repo, base = Path(repo).resolve(), Path(base).resolve()
+    try:
+        rel_base = base.relative_to(repo).as_posix()
+    except ValueError:
+        return [f"{mode_binding.WALKS_DIR}/ ({base}) is not inside the repository {repo}; a walk's commit cannot be read"]
+
+    def git(*args):
+        return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+    got = git("rev-parse", "--is-shallow-repository")
+    if got.returncode != 0:
+        return [f"the repository's history cannot be read ({got.stderr.strip()[:200]}); each walk is bound to the "
+                f"commit that wrote it"]
+    if got.stdout.strip() != "false":
+        return [f"the repository is a shallow clone: a walk's commit is not in it, so no walk can be bound to the "
+                f"commit that wrote it (check out with full history, fetch-depth: 0)"]
+    reg_rel = f"{rel_base}/{REGISTER_NAME}"
+    out = []
+    reg_dirty = git("status", "--porcelain", "--untracked-files=all", "--", reg_rel).stdout.strip()
+    if reg_dirty:
+        out.append(f"{mode_binding.WALKS_DIR}/{REGISTER_NAME} on disk differs from HEAD's: {reg_dirty.splitlines()[0]}")
+    hook = no_duplicate_keys
+
+    def entries_at(rev) -> dict:
+        shown = git("show", f"{rev}:{reg_rel}")
+        if shown.returncode != 0:
+            return {}
+        try:
+            listed = json.loads(shown.stdout, object_pairs_hook=hook)["walks"]
+        except (ValueError, KeyError, TypeError):
+            return {}
+        return {e["walk"]: e for e in listed if isinstance(e, dict) and isinstance(e.get("walk"), str)} \
+            if isinstance(listed, list) else {}
+    at_head_entries = entries_at("HEAD")
+    # W8D-R2-1: --full-history, or git's default simplification prunes a merge side (merge -s ours drops a walk)
+    log = git("log", "--full-history", "--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)
+    if log.returncode != 0:
+        return out + [f"the register's history cannot be read ({log.stderr.strip()[:200]})"]
+    seen: set = set()
+    for line in log.stdout.splitlines():           # newest first; each walk reported once
+        sha, _, subject = line.partition("\x1f")
+        if not subject == drive.WALK_SUBJECT:     # only walk commits register walks
+            continue
+        for walk, entry in entries_at(sha).items():
+            if walk in seen:
+                continue
+            now = at_head_entries.get(walk)
+            if now is None:
+                seen.add(walk)
+                out.append(f"walk {walk!r} is listed by walk commit {sha[:12]} and not in HEAD's register; the "
+                           f"register is append-only: a walk, once committed, is never removed")
+            elif now != entry:
+                seen.add(walk)
+                out.append(f"walk {walk!r}: its register entry at HEAD is not the one walk commit {sha[:12]} wrote "
+                           f"(fields {sorted(k for k in set(now) | set(entry) if now.get(k) != entry.get(k))}); the "
+                           f"register is append-only")
+    for walk in walks:
+        rel = f"{rel_base}/{walk}"
+        where = f"walk {walk!r}: {mode_binding.WALKS_DIR}/{walk}/"
+        log = git("log", "--full-history", "--no-merges", "--format=%H%x1f%P%x1f%s", "HEAD", "--", rel + "/")
+        if log.returncode != 0:
+            out.append(f"{where}: its history cannot be read ({log.stderr.strip()[:200]})")
+            continue
+        commits = [line.split("\x1f", 2) for line in log.stdout.splitlines() if line]
+        if len(commits) != 1:
+            out.append(f"{where} is touched by {len(commits)} commits; a walk folder is written once, by its walk "
+                       f"commit, and no later commit rewrites it")
+            continue
+        sha, parents, subject = commits[0]
+        if subject != drive.WALK_SUBJECT:
+            out.append(f"{where} was written by {sha[:12]} ({subject!r}), not by a walk commit "
+                       f"({drive.WALK_SUBJECT!r}, drive.WalkRepo)")
+            continue
+        changed = git("diff-tree", "-r", "--name-only", "--no-renames", "--no-commit-id", sha)
+        names = changed.stdout.splitlines()
+        if len(parents.split()) != 1 or changed.returncode != 0 or reg_rel not in names or \
+                any(n != reg_rel and not n.startswith(rel + "/") for n in names):
+            out.append(f"{where}: its commit {sha[:12]} is not one walk's commit (one parent, changing only the "
+                       f"walk's folder and {REGISTER_NAME})")
+            continue
+        try:
+            hook = no_duplicate_keys        # (spelled once as a keyword argument, in check(), which R7's witness edits)
+            listed = json.loads(git("show", f"{sha}:{reg_rel}").stdout, object_pairs_hook=hook)
+            listed = [e.get("walk") for e in listed["walks"] if isinstance(e, dict)]
+        except (ValueError, KeyError, TypeError):
+            listed = []
+        if walk not in listed:
+            out.append(f"{where}: its commit {sha[:12]} does not register the walk in {REGISTER_NAME}")
+            continue
+        at_head = git("rev-parse", "--verify", "-q", f"HEAD:{rel}").stdout.strip()
+        at_walk = git("rev-parse", "--verify", "-q", f"{sha}:{rel}").stdout.strip()
+        if at_head != at_walk:
+            out.append(f"{where} at HEAD is not the tree its walk commit {sha[:12]} wrote; a walk's records are "
+                       f"never rewritten, by a commit or a merge")
+            continue
+        dirty = git("status", "--porcelain", "--untracked-files=all", "--", rel + "/").stdout.strip()
+        if dirty:
+            out.append(f"{where} on disk differs from HEAD: {dirty.splitlines()[0]}")
+    return out
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Check the walk register against rehearsals/.")
     ap.add_argument("--check", action="store_true", required=True)
     ap.add_argument("--base", help=argparse.SUPPRESS)
+    ap.add_argument("--repo", help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
     base = Path(args.base) if args.base else REHEARSALS
+    # W8A-R2-2: the history is this repository's; under the test-only --base, only the one --repo names
+    repo = Path(args.repo) if args.repo else (None if args.base else mode_binding.REPO)
     try:
         problems, n = check(base)
         if not problems:                     # W8A: the content rule, on a register and folders that bind both ways
             problems = content_problems(base, [e["walk"] for e in registered(base)])
+        if not problems and repo is not None:
+            walks = [e["walk"] for e in registered(base)]
+            problems = history_problems(base, walks, repo)   # W8A-R2-2
     except OSError as exc:
         problems, n = [f"rehearsals/ cannot be read: {exc}"], 0
     for p in problems:

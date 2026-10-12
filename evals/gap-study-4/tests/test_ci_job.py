@@ -50,6 +50,16 @@ AFTER = PLAN_COMMANDS[-3:] + (
     "python3 evals/gap-study-4/completeness.py --check",
 )
 BEFORE = PLAN_COMMANDS[:9] + (PLAN_COMMANDS[10],)
+# W8D (lane w8d, ruling W8D-gap4-1): W8A-R1-5 and W8A-R2-2, recorded for CP8 by glitch-1b's ruling W8A-close-2. The
+# walk register's check runs as its own step, before and after the freeze alike (walks are pre-freeze records that
+# stay): every walk folder bound to the one walk commit that wrote it. It is not one of plan 1013-1036's commands, so
+# it is bound here beside them, never in their place, with the same single-command shape as BEFORE's steps.
+WALK = "python3 evals/gap-study-4/walk_register.py --check"
+WALK_STEP = (
+    "      - name: Walk register\n"
+    "        # Binds each registered walk to the one walk commit that wrote it; zero walks is said, not passed.\n"
+    f"        run: {WALK}\n"
+)
 COPY = PLAN_COMMANDS[3]
 BOX = PLAN_COMMANDS[4]
 BOX_OWNER = "      # CP2 owns tests/test_box_integration.py; omitted until it exists\n"
@@ -212,6 +222,7 @@ def problems(text, baseline, introduced, *, box_present=None):
         need(BOX_OWNER in block, "R38.box-owner")
         need(BOX_RULING in block, "R38.box-ruling")
         need(not any("test_box_integration.py" in run for run in runs), "R38.box-absent")
+    before = before + (WALK,)                 # W8D: the walk register's step, single-command like BEFORE's
     expected = before + AFTER
     command_steps = {}
     for command in expected:
@@ -363,6 +374,10 @@ def mutations():
                               f'        run: |\n          echo ready\n          {BEFORE[0]}\n')
     edits['combined-steps'] = ('R38.separate', language_step + separation_step,
         language_step.replace(f'run: {BEFORE[0]}', f'run: |\n          {BEFORE[0]}\n          {BEFORE[1]}'))
+    edits["walk-step-removed"] = ("R38.command:" + WALK, WALK_STEP, "")       # W8D: the CI step taken out
+    edits["command-walk"] = ("R38.command:" + WALK, WALK, WALK + " --missing")
+    edits["before-walk"] = ("R38.before:" + WALK, f"        run: {WALK}\n",
+                            f"        run: |\n          echo fake\n          {WALK}\n")
     edits['extra-step'] = ('R38.total', '    steps:\n',
         '    steps:\n      - name: Extra\n        # A fake extra command.\n        run: echo extra\n')
     for name, command in (("push", "git push"), ("gh", "gh run list"), ("deploy", "deploy fake"),

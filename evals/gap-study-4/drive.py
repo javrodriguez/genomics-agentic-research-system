@@ -2735,14 +2735,74 @@ def take_folder_in(root):
     return take_folder
 
 
+# W8D-R1-3 (fold W8D-close-1): the production class, captured when this module is imported, so a later patch of
+# claude_code_adapter.ClaudeCodeAdapter admits nothing; its module is checked too (a class captured under a patch is
+# another module's). Not seen here (walk_register's limits, W8D-R1-4, W8D-R2-2): an object whose __class__ is
+# reassigned to this class, or a fake whose __module__ is "claude_code_adapter" captured because drive.py was imported
+# or reloaded while ClaudeCodeAdapter was patched.
+PRODUCTION_ADAPTER = _cc.ClaudeCodeAdapter
+PRODUCTION_ADAPTER_MODULE = "claude_code_adapter"
+
+
+def adapter_class_problems(adapter) -> None:
+    """W7B-R1-4 (lane w8d, ruling W8D-gap4-1): the walk driver's adapter is exactly the production class,
+    claude_code_adapter.ClaudeCodeAdapter, never another object that declares its name (a stub, a fake, a subclass)."""
+    if type(adapter) is not PRODUCTION_ADAPTER or \
+            type(adapter).__module__ != PRODUCTION_ADAPTER_MODULE:
+        raise AdapterIdentityRefused(f"the walk driver built an adapter of class {type(adapter).__module__}."
+                                     f"{type(adapter).__qualname__}, not {PRODUCTION_ADAPTER_MODULE}."
+                                     f"ClaudeCodeAdapter; a walk or take of claude-code runs on the production adapter "
+                                     f"only, whatever name an object declares")
+
+
+def take_k_problems(records_root, row: dict, attempt, take) -> None:
+    """W7B-R1-5 (lane w8d, ruling W8D-gap4-1): the take folder's k is Batch's attempt. TakeRepo.commit_records(row,
+    attempt) receives the attempt Batch registered; the folder take_folder_in made counts the folders on disk, which
+    drift from it when a launch is refused before its folder exists. So the records are handed over only from
+    <records_root>/takes/<slot>/<attempt>, exactly; any other folder refuses (DriveRefused), never a commit under the
+    wrong attempt."""
+    want = Path(records_root) / TAKES_DIR / str(row.get("slot")) / str(attempt)
+    if Path(take.folder) != want:
+        raise DriveRefused(f"the take's records are in {take.folder}, and Batch commits them as attempt {attempt} of "
+                           f"slot {row.get('slot')!r}, whose folder is {want}; a take folder's k is its attempt")
+
+
 class WalkDriver(TakeDriver):
     """C6-strict (W6J-close-1's CP6 checklist item): the production driver. Its script is strict by construction: the
-    production script (script_from_design) hands steps with their markers, and a bare line is refused, never sent."""
+    production script (script_from_design) hands steps with their markers, and a bare line is refused, never sent.
 
-    def __init__(self, **kw):
+    W8D (lane w8d, ruling W8D-gap4-1): records_root (required) is the study folder walk_driver was given; a take's
+    records are handed to TakeRepo only from <records_root>/takes/<slot>/<attempt> (W7B-R1-5), and every adapter it
+    makes is checked to be exactly the production class (W7B-R1-4), however adapter_for is set."""
+
+    def __init__(self, *, records_root=None, **kw):
         if "strict_script" in kw:
             raise TypeError("the walk driver's script is strict by construction; it takes no strict_script")
+        if records_root is None:
+            raise TypeError("the walk driver takes records_root, the study folder its take folders sit under")
+        self.records_root = Path(records_root).resolve()
         super().__init__(strict_script=True, **kw)
+
+    @property
+    def adapter_for(self):
+        made = self._adapter_for
+
+        def checked(row, take):
+            adapter = made(row, take)
+            adapter_class_problems(adapter)          # W7B-R1-4
+            return adapter
+        return checked
+
+    @adapter_for.setter
+    def adapter_for(self, fn) -> None:
+        self._adapter_for = fn
+
+    def record_files(self, row: dict, attempt: int) -> list:
+        with self._lock:
+            take = self._by_slot.get(row["slot"])
+        if take is not None:
+            take_k_problems(self.records_root, row, attempt, take)    # W7B-R1-5
+        return super().record_files(row, attempt)
 
     @property
     def strict_script(self) -> bool:
@@ -2779,7 +2839,7 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
         return script_from_design(design_for(row, None), project_for(row), ident["source"])
 
     return WalkDriver(
-        runtime=runtime, take_folder=record_folder_in(root, records), config_parent=config_parent, spec_for=spec_for,
+        records_root=root, runtime=runtime, take_folder=record_folder_in(root, records), config_parent=config_parent, spec_for=spec_for,
         sidecar_for=sidecar_for, proxy=proxy, lock_path=lock_path, hosts=hosts,
         adapter_for=claude_code_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
                                             pin_for=pin_for, clock=clock, caller_env=caller_env),
