@@ -160,6 +160,22 @@ review round 2, W4H2-1); every other status keeps the loop from starting. Every 
 and a model that has a profile under that harness, and its agent's version must be that profile's
 (a row that fails any of these is refused before it is registered).
 
+THE MONEY GATE (lane w7c, ruling W7C-gap4-1, glitch-1b under Javier's standing delegation, 12 Oct 2026). The
+round's two money checks, costs.month_turn_allowed (the month-turn hold: no OpenAI or Google take from 23:30 UTC on a
+month's last day until Javier's "caps trimmed" is recorded) and costs.walk_gate (spend since the round began, plus
+what the remaining tries project, against the $260 / $140 / $400 caps), are called by the loop itself, never left to
+a driver. Before each block is registered, every row of the block whose harness bills money per call (any harness
+but routing.NO_MONEY_HARNESSES; routing.PAID_HARNESSES names each one's arm) is put through both, on one reading of
+the spend ledger (`ledger.read()`, exactly LEDGER_KEYS: now, walks, spend, start, trimmed). The hold reads the
+loop's OWN clock (`clock()`, aware UTC, read at check time; injectable for tests), never the ledger's `now`, which
+may be recorded but never decides the hold (glitch-1b's ruling on Q-w7c-1, 12 Oct 2026). When either refuses, or
+the ledger cannot be read or is not that shape, or the harness has no arm, nothing of the block is registered or
+launched: the loop stops (`stopped`, state blocked) with the named reason, for Javier's word, and the frozen order is
+kept (the block's Claude rows wait too). Nothing is committed, so a restart puts the block through the gate again. A
+row of a harness that bills money, handed to a loop given no ledger, is refused before anything runs. Rows of
+claude-code (arms A and C, a subscription login that bills no money per call) never read the ledger and never call
+either check. The ledger is CP2's (the vendor spend reads and the recorded trim); none is built here.
+
 A REPO OR WINDOW FAILURE STOPS, never sinks (review round 2, W1B2-5). If `register` raises, every
 row of the block already registered is committed `failed` (masked fail-closed, nothing launched),
 the loop records why in `stopped` and returns; if `wait_reset` raises, nothing of the next block
@@ -180,7 +196,8 @@ object with three methods,
 
 and a repo object with `register(row, attempt)` and `commit_records(row, attempt, outcome)`, each
 one commit, and `history()` (the committed outcomes and rulings), and a usage window with
-`wait_reset()`. CP2 supplies the real three; CP5's tooling commits the rulings a human makes.
+`wait_reset()`, and (for arms O and G only) a spend ledger with `read()` (THE MONEY GATE). CP2 supplies the real
+four; CP5's tooling commits the rulings a human makes.
 
 THE USAGE WINDOW (glitch-f3's ruling, in-plan, 6 Oct 2026; recorded as glitch-f3's, not the
 owner's). The loop calls `window.wait_reset()` before its next launch after a committed pause, and
@@ -201,6 +218,7 @@ from __future__ import annotations
 import argparse
 import collections
 import concurrent.futures
+import datetime
 import json
 import os
 import signal
@@ -288,6 +306,10 @@ def history_difference(given, held):
         more = "the argument" if len(given) > len(held) else "repo.history()"
         return f"history[{n}] is held by {more} only ({len(given)} entries given, {len(held)} in repo.history())"
     return None
+
+
+class MoneyGateRefused(RuntimeError):
+    """W7C-R1-3: a paid take the month-turn hold refused just before its launch (nothing was launched)."""
 
 
 class BatchConfigError(RuntimeError):
@@ -378,10 +400,135 @@ def version_problems(row: dict, table: dict) -> list[str]:
     return []
 
 
+# THE MONEY GATE (W7C, ruling W7C-gap4-1): one reading of the spend ledger, a closed key set.
+LEDGER_KEYS = ("now", "walks", "spend", "start", "trimmed")
+
+
+def bills_money(row: dict) -> bool:
+    """W7C: a row whose harness bills money per call: every harness but routing's no-money one (claude-code)."""
+    return row["agent"]["harness"] not in routing.NO_MONEY_HARNESSES
+
+
+def utc_now() -> datetime.datetime:
+    """W7C (Q-w7c-1): the loop's own clock, aware UTC."""
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def ledger_shape_problems(snap: dict) -> list[str]:
+    """W7C-R1-1 (MAJOR, money fail-open; ruling W7C-close-1): walks and spend are lists (exactly list) of dicts, and
+    start is a string or an aware datetime. An empty string or dict would iterate as nothing spent and PROCEED, so a
+    ledger that failed to parse would read as $0."""
+    p = []
+    for key in ("walks", "spend"):   # (W7C-R2-2: and each spend usd exactly str, int or float)
+        value = snap[key]
+        if type(value) is not list:
+            p.append(f"the spend ledger's {key} is a {type(value).__name__}, not a list")
+        elif not all(type(x) is dict for x in value):
+            p.append(f"the spend ledger's {key} holds an element that is not a dict")
+        elif key == "spend" and not all(type(x.get("usd")) in (str, int, float) for x in value):
+            # W7C-R2-2: exactly str, int or float (never a subclass whose str() could lie, nor a bool)
+            p.append("the spend ledger's spend holds a usd that is not exactly a str, int or float")
+    start = snap["start"]
+    if not (type(start) is str or (isinstance(start, datetime.datetime) and start.tzinfo is not None)):
+        p.append(f"the spend ledger's start is {start!r}, neither a string nor an aware datetime")
+    return p
+
+
+def hold_problem(row: dict, now, trimmed) -> str | None:
+    """W7C: why the month-turn hold refuses this paid row's arm at `now` (the loop's clock), or None when it allows."""
+    import costs   # costs imports this module: read at call time, never at import
+    harness = row["agent"]["harness"]
+    arm = routing.PAID_HARNESSES.get(harness, {}).get("arm")
+    if arm is None:
+        return f"slot {row['slot']}: harness {harness!r} bills money and has no arm in routing.PAID_HARNESSES"
+    try:
+        allowed = costs.month_turn_allowed(arm, now, trimmed)
+    except Exception as e:  # noqa: BLE001 - a clock or trim the hold cannot read refuses
+        allowed = f"{type(e).__name__}: {e}"
+    if allowed is True:
+        return None
+    return (f"slot {row['slot']}: arm {arm} ({harness}): the month-turn hold refuses at {now!r} (the loop's clock) "
+            f"(costs.month_turn_allowed: {allowed}): no OpenAI or Google take until Javier's 'caps trimmed' is "
+            f"recorded")
+
+
+def read_clock(clock):
+    """The loop's clock, read once; a clock that raises reads as a value every check refuses."""
+    try:
+        return clock()
+    except Exception as e:  # noqa: BLE001 - a clock that cannot be read refuses
+        return f"<clock unreadable: {type(e).__name__}: {e}>"
+
+
+def money_gate_problems(rows: list[dict], ledger, clock=utc_now, seen: dict | None = None) -> list[str]:
+    """W7C (THE MONEY GATE): why these rows may not be launched now (empty when they may). Rows that bill no money are
+    never put through it: with none that bills money the ledger is not read and neither check is called. Otherwise one
+    reading of the ledger feeds costs.month_turn_allowed, per row with its harness's arm and the loop's own clock
+    (`clock()`, read once here; never the ledger's `now`, Q-w7c-1), and costs.walk_gate, once;
+    anything but an explicit allow from each, or a ledger that cannot be read or is not exactly LEDGER_KEYS of the
+    right shapes (W7C-R1-1), or whose start is after the clock's reading (W7C-R1-2), refuses. `seen`, when given,
+    receives the reading's trim, for the re-check just before each paid launch (W7C-R1-3)."""
+    paid = [r for r in rows if bills_money(r)]
+    if not paid:
+        return []
+    if ledger is None:
+        return [f"the loop was given no spend ledger, and slot {paid[0]['slot']}'s harness "
+                f"{paid[0]['agent']['harness']!r} bills money per call"]
+    import costs   # costs imports this module: read at call time, never at import
+    try:
+        snap = ledger.read()
+    except Exception as e:  # noqa: BLE001 - an unreadable ledger refuses, never lets a paid take run
+        return [f"the spend ledger could not be read: {type(e).__name__}: {e}"]
+    # W7C-R2-1: exactly a dict (never a subclass) whose keys are exactly str (never a key equal to every key)
+    if type(snap) is not dict or not all(type(k) is str for k in snap) or set(snap) != set(LEDGER_KEYS):
+        got = sorted(snap) if isinstance(snap, dict) else type(snap).__name__
+        return [f"the spend ledger's reading is not exactly {list(LEDGER_KEYS)}: {got}"]
+    p = ledger_shape_problems(snap)
+    if p:
+        return p
+    if seen is not None:
+        seen["trimmed"] = snap["trimmed"]
+    now = read_clock(clock)
+    try:   # W7C-R1-2: the same clock reading as the hold; a start after it would exclude every dollar spent
+        if costs.utc(snap["start"]) > costs.utc(now):
+            p.append(f"the spend ledger's start {snap['start']!r} is after the loop's clock {now!r}: no spend would "
+                     f"count")
+    except Exception as e:  # noqa: BLE001 - a start or clock that cannot be compared refuses
+        p.append(f"the spend ledger's start {snap['start']!r} cannot be read against the loop's clock {now!r}: "
+                 f"{type(e).__name__}: {e}")
+    for r in paid:
+        harness = r["agent"]["harness"]
+        arm = routing.PAID_HARNESSES.get(harness, {}).get("arm")
+        if arm is None:
+            p.append(f"slot {r['slot']}: harness {harness!r} bills money and has no arm in routing.PAID_HARNESSES")
+            continue
+        try:
+            allowed = costs.month_turn_allowed(arm, now, snap["trimmed"])
+        except Exception as e:  # noqa: BLE001 - a clock or trim the hold cannot read refuses
+            allowed = f"{type(e).__name__}: {e}"
+        if allowed is not True:
+            p.append(f"slot {r['slot']}: arm {arm} ({harness}): the month-turn hold refuses at {now!r} (the loop's clock) "
+                     f"(costs.month_turn_allowed: {allowed}): no OpenAI or Google take until Javier's 'caps trimmed' "
+                     f"is recorded")
+    try:
+        gate = costs.walk_gate(snap["walks"], snap["spend"], snap["start"])
+    except Exception as e:  # noqa: BLE001 - inputs the gate refuses refuse the takes
+        return p + [f"the walk gate refused its inputs: {type(e).__name__}: {e}"]
+    if not isinstance(gate, dict):
+        return p + [f"the walk gate returned no decision: {gate!r}"]
+    if gate.get("decision") != costs.PROCEED:
+        p.append(f"the walk gate says {gate.get('decision')!r}, not {costs.PROCEED!r} (spent and projected against "
+                 f"the round caps: {gate.get('projected')})")
+    return p
+
+
 class Batch:
     def __init__(self, driver, repo, window, *, table: dict | None = None, serial: bool = False,
-                 route_fn=None, annotate_fn=None, history: list | None = None):
+                 route_fn=None, annotate_fn=None, history: list | None = None, ledger=None,
+                 clock=utc_now):
         self.driver, self.repo, self.window = driver, repo, window
+        self.ledger = ledger                 # W7C: the spend ledger (THE MONEY GATE), read before each paid block
+        self.clock = clock                   # W7C (Q-w7c-1): the loop's own UTC clock, the one the hold reads
         self.table = table if table is not None else routing.load_table()
         self.route_fn = route_fn or routing.route
         self.annotate_fn = annotate_fn or routing.annotate
@@ -404,6 +551,7 @@ class Batch:
         if problems:
             raise BatchConfigError("routing.json is not ready: " + "; ".join(problems))
         self.outcomes: list[dict] = []
+        self._block_trim: dict = {}         # W7C-R1-3: the gated block's trim, for each paid launch's re-check
         self.containers: dict = {}           # (slot, attempt) -> recorded container id
         self.reruns = collections.Counter()  # (half_cell, route) -> re-runs spent
         self.slot_reruns = collections.Counter()  # (slot, route) -> re-runs spent
@@ -660,6 +808,9 @@ class Batch:
                          f"{r['agent']['harness']!r}")
             elif version_problems(r, self.table):
                 p += version_problems(r, self.table)
+            elif bills_money(r) and self.ledger is None:
+                p.append(f"row {r['slot']}: harness {r['agent']['harness']!r} bills money per call, and the loop was "
+                         f"given no spend ledger: refused before anything runs (W7C, THE MONEY GATE)")
             elif self.slot_cell.get(r["slot"], r["half_cell"]) != r["half_cell"]:
                 p.append(f"row {r['slot']}: committed under half-cell {self.slot_cell[r['slot']]!r}, "
                          f"not {r['half_cell']!r}")
@@ -694,9 +845,11 @@ class Batch:
                     return self.outcomes
                 self.paused = False
             block = [queue.popleft() for _ in range(min(self.block, len(queue)))]
+            if self._money_gate(block):                     # W7C: before the block is registered
+                return self.outcomes
             if not self._register(block):                    # serial: one commit each
                 return self.outcomes
-            launched = [(row, attempt) + self._launch(row, attempt) for row, attempt in block]   # ids recorded
+            launched = [(row, attempt) + self._launch_paid_checked(row, attempt) for row, attempt in block]   # ids
             with concurrent.futures.ThreadPoolExecutor(max_workers=len(block)) as pool:
                 futures = [pool.submit(self._drive_step, row, attempt, cid, err)
                            for row, attempt, cid, err in launched]
@@ -722,6 +875,34 @@ class Batch:
             else:
                 kept.append((row, attempt))
         return kept
+
+    def _money_gate(self, block) -> bool:
+        """W7C (THE MONEY GATE): True when the block may not be launched. Nothing of it is registered or launched; the
+        loop stops blocked, naming the first row that bills money and every reason, for Javier's word."""
+        self._block_trim = {}
+        problems = money_gate_problems([r for r, _ in block], self.ledger, self.clock, seen=self._block_trim)
+        if not problems:
+            return False
+        row, attempt = next((r, a) for r, a in block if bills_money(r))
+        self.stopped = {"slot": row["slot"], "attempt": attempt, "state": labels4.BLOCKED,
+                        "reason": "the money gate refuses the block (nothing registered or launched): "
+                                  + "; ".join(problems)}
+        return True
+
+    def _launch_paid_checked(self, row, attempt) -> tuple:
+        """W7C-R1-3 (ruling W7C-close-1): just before a paid launch, the month-turn hold again on a fresh clock reading
+        (the block's gate may have read it before 23:30 UTC). On a refusal nothing is launched: the take is committed
+        `failed` with drive_started false (so a restart re-drives it, no ruling needed), and the loop stops blocked
+        naming the hold. Once the loop has stopped, no later take of the block is launched either."""
+        if self.stopped is not None:
+            return None, MoneyGateRefused(f"not launched: the loop stopped before it ({self.stopped['reason']})")
+        if bills_money(row):
+            why = hold_problem(row, read_clock(self.clock), self._block_trim.get("trimmed"))
+            if why is not None:
+                self.stopped = {"slot": row["slot"], "attempt": attempt, "state": labels4.BLOCKED,
+                                "reason": f"the money gate refuses the launch (W7C-R1-3): {why}"}
+                return None, MoneyGateRefused(why)
+        return self._launch(row, attempt)
 
     def _wait_window(self) -> bool:
         """Wait for the usage window (THE USAGE WINDOW: wait_reset() returns at once if the window has already reset,

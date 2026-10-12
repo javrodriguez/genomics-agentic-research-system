@@ -99,6 +99,14 @@ by the same bounded search), `route()` refuses the take for a human ruling, what
 outranked by nothing, so it is decided above pause and a spend-cap 429 never reaches the rate-limit
 row; it never re-runs and never waits. No route is added to labels4.ROUTES.
 
+NO EMPTY LIST WHERE MONEY IS BILLED (lane w7c, ruling W7C-gap4-1, glitch-1b under Javier's standing delegation,
+12 Oct 2026). An empty spend-cap list would let a spent cap arrive as a bare 429 and pause, waiting for a window that
+never resets. So `check_table` (and with it `load_table` and `--check`) refuses a spend-cap entry that names no marker
+in any field, for every harness except those in NO_MONEY_HARNESSES (claude-code: a subscription login, D4 A, that
+bills no money per call, whose list may stay empty). PAID_HARNESSES names the harnesses that bill money (Codex CLI and
+Gemini CLI, D8 B2) with the arm each runs and the vendor whose cap it spends; batch.py's money gate reads it. This
+check holds whatever spend_cap_markers_status says: it is no ruling of that status, which stays the owner's.
+
 ANNOTATING. `annotate()` decides the table's annotations (an outside reach: an event, and the
 text masked before commit; a quiescence kill: an event; an event id arriving as a checker reason:
 an event, and the text masked) on every take, in every phase, whatever route wins and even when
@@ -150,6 +158,14 @@ RATE_MARKER_KEYS = API_ERROR_KEYS + ("reset_wait", "source")
 SPEND_MARKER_KEYS = API_ERROR_KEYS + ("source",)
 SPEND_REFUSAL_KEYS = ("id", "when", "any_of", "outranked_by", "source")
 SPEND_OP = "in_spend_cap_markers"
+# W7C (ruling W7C-gap4-1): the harness that bills no money per call, whose spend-cap list alone may be empty, and the
+# harnesses that bill money (D8 B2), each with its arm and the vendor whose cap it spends (box/run_take.py's names,
+# build_draft.HARNESSES's arms and costs.CAPS's vendors; tests/test_spend_wiring.py binds all three).
+NO_MONEY_HARNESSES = ("claude-code",)
+PAID_HARNESSES = {
+    "codex": {"arm": "O", "vendor": "openai"},
+    "gemini": {"arm": "G", "vendor": "google"},
+}
 # API-error fields whose rate-limit markers match by round 3's bounded search, not exact membership.
 TEXT_MARKER_FIELDS = ("text",)
 
@@ -443,6 +459,12 @@ def _marker_problems(table: dict) -> list[str]:
             if key == "rate_limit_markers" and all(isinstance(e.get(k), list) for k in API_ERROR_KEYS) \
                     and not any(e[k] for k in API_ERROR_KEYS):
                 p.append(f"{where} names no marker")
+            # W7C: a harness that bills money never has an empty spend-cap list; only a no-money harness's may be
+            if key == "spend_cap_markers" and harness not in NO_MONEY_HARNESSES \
+                    and all(isinstance(e.get(k), list) for k in API_ERROR_KEYS) and not any(e[k] for k in API_ERROR_KEYS):
+                p.append(f"{where} names no spend-cap marker: a harness that bills money per call needs at least one, "
+                         f"or a spent cap would pause for a window that never resets (only {list(NO_MONEY_HARNESSES)} "
+                         f"may be empty; W7C)")
             if "source" in e and not (_is_str(e["source"]) and e["source"]):
                 p.append(f"{where}: no source cited")
             if "reset_wait" in e:
@@ -528,8 +550,8 @@ def _pin_refusal_problems(rule, order: dict) -> list[str]:
     return p
 
 
-def load_table(path: str = TABLE_PATH) -> dict:
-    with open(path, encoding="utf-8") as fh:
+def load_table(path: str | None = None) -> dict:
+    with open(path or TABLE_PATH, encoding="utf-8") as fh:   # W7C: TABLE_PATH read at call time
         table = json.load(fh)
     problems = check_table(table)
     if problems:
