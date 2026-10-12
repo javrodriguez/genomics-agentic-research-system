@@ -107,6 +107,16 @@ def mutants():
         "content-rule-skipped": ("L10.content", "walk_register",
                                  "            problems = content_problems(base, [e[\"walk\"] for e in registered(base)])",
                                  "            problems = []"),
+        "freeze-at-head-unchecked": ("L3.time-fence", "drive",
+                                     "        self._refuse_frozen_at(head, \"the commit the walk would follow\")"
+                                     "          # W8A-R1-1: HEAD\n", ""),
+        "cell-from-grade-unchecked": ("L6.grade-bound", "run", "    if cell is not None and cell != recorded:",
+                                      "    if False:"),
+        "take-folder-depth-unchecked": ("L5.never-results", "run",
+                                        "    if len(inside) != mode_binding.RECORD_DEPTH[mode_binding.TAKES_DIR] or \\",
+                                        "    if False and \\"),
+        "module-constant-root": ("L1.one-name", "leak_grep", "ROOTS = mode_binding.RECORD_ROOTS",
+                                 "ROOTS = mode_binding.RECORD_ROOTS\nWALKS_HOME = \"rehearsals/\""),
         "gate-dropped": ("L11.gates", "freeze_rehearsal",
                          "    (\"fixture_walk.py\", \"--check\"), (\"run.py\", \"--walks\", \"--check\"),",
                          "    (\"fixture_walk.py\", \"--check\"),"),
@@ -183,6 +193,7 @@ def an_entry(walk="w-0001", **over) -> dict:
 def a_ledger(entry, first_turn=True) -> dict:
     return {"kind": "take", "task": entry["task"], "half": entry["half"], "wording": entry["wording"],
             "arm": entry["arm"], "model_requested": entry["model"],
+            "pressure": None, "repeat": 1,
             "agent": {"harness": "claude-code", "version": "0.0.1"}, "project": "run-0000abcd",
             "first_agent_turn": first_turn, "outcome": "complete" if first_turn else "refused before turn 1"}
 
@@ -241,6 +252,8 @@ EXEMPT = {
     ("awareness_furniture.py", "ROUND3_TRANSCRIPTS"): "round 3's committed transcripts, another study's folder",
     ("round2.py", "TRANSCRIPTS"): "round 2's committed transcripts, another study's folder",
     ("graders/pause_adherence.py", "stopped_round3"): "round 3's committed takes, another study's folder",
+    ("template_offer_reading.py", "TASK_DIR"): "the earlier rounds' committed transcripts (gap-study, gap-study-2, "
+                                                "gap-study-3), other studies' folders",
     ("denials.py", "graded_transcripts"): "round 3's take layout under this study, which nothing in round 4 writes "
                                           "(drive's round 3 road is shadowed); out of this slice (CP7), named as "
                                           "Q-w8a-1",
@@ -268,9 +281,16 @@ def root_spellings(rel: str, text: str) -> set:
             first_defs.setdefault(top.name, top)
     sites = set()
 
+    def is_root_text(node) -> bool:
+        return (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                and any(node.value.startswith(r + "/") for r in ROOT_NAMES))
+
     def is_root(node) -> bool:
         return (isinstance(node, ast.Constant) and isinstance(node.value, str)
                 and any(node.value == r or node.value.startswith(r + "/") for r in ROOT_NAMES))
+    for top in tree.body:              # W8A-R1-4: a module-level path constant joined later through its name
+        if isinstance(top, ast.Assign) and is_root_text(top.value):
+            sites.add((rel, scope_of(tree, top)))
     for node in ast.walk(tree):
         hit = False
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div) and is_root(node.right):
@@ -427,6 +447,28 @@ class L3TimeFence(Case):
                 self.fail(f"L3.time-fence: {type(e).__name__}: {e}")
             self.assertEqual(tbi.git(r.root, "rev-parse", "HEAD"), r.base, "L3.time-fence")
             self.assertEqual(json.loads((r.walks / "register.json").read_text())["walks"], [], "L3.time-fence")
+        # W8A-R1-1: a freeze committed at HEAD and deleted on disk only is still a freeze, read at HEAD
+        with contextlib.ExitStack() as stack:
+            r = Repo(stack)
+            (r.root / "prereg.json").write_text("{}\n")
+            tbi.git(r.root, "add", "--", "prereg.json")
+            tbi.git(r.root, "commit", "-q", "-m", "Freeze (synthetic)")
+            frozen = tbi.git(r.root, "rev-parse", "HEAD")
+            entry = an_entry()
+            write_walk(r.walks, entry)
+            os.remove(r.root / "prereg.json")
+            try:
+                r.walk_repo(drive).commit_walk(entry)
+                self.fail("L3.time-fence: a walk was committed on top of a committed freeze")
+            except AssertionError:
+                raise
+            except drive.CommitRefused as e:
+                self.assertIn("the commit the walk would follow", str(e), f"L3.time-fence: {e}")
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"L3.time-fence: {type(e).__name__}: {e}")
+            self.assertEqual(tbi.git(r.root, "rev-parse", "HEAD"), frozen, "L3.time-fence")
+            self.assertEqual(tbi.git(r.root, "diff", "--cached", "--name-only"), "", "L3.time-fence")
+            self.assertEqual(json.loads((r.walks / "register.json").read_text())["walks"], [], "L3.time-fence")
         # TakeRepo stays post-freeze: registration needs the frozen pre-registration (this study has none)
         with mock.patch.object(prereg, "load", REAL_LOAD), mock.patch.object(prereg, "require_frozen", REAL_REQUIRE):
             self.assertFalse(REAL_LOAD()["_frozen"], "L3.time-fence")
@@ -486,16 +528,18 @@ class L5NeverResults(Case):
         with mock.patch.object(run.takes, "_git_at", git_at), \
                 mock.patch.object(run.variants, "load_task", side_effect=Reached("graded")):
             for record_dir in ("rehearsals/w-0001", "rehearsals/w-0001/", "rehearsals", "takes/../rehearsals/w-1",
-                               "takes", "artifacts/s1"):
+                               "takes", "artifacts/s1", "takes/s1", "takes/s1/1/evidence", "takes/s2/1", "takes/s1/2"):
                 try:
-                    run.grade_committed({"record_dir": record_dir, "task": "synthetic-task"}, {})
+                    run.grade_committed({"record_dir": record_dir, "task": "synthetic-task", "slot": "s1",
+                                         "attempt": 1}, {})
                     self.fail(f"L5.never-results: {record_dir} returned a grade")
                 except Reached:
                     self.fail(f"L5.never-results: {record_dir} reached the grader")
                 except ValueError as e:
                     self.assertIn("take folder", str(e), f"L5.never-results: {record_dir}: {e}")
             with self.assertRaises(Reached, msg="L5.never-results: a take folder no longer reaches the grader"):
-                run.grade_committed({"record_dir": "takes/s1/1", "task": "synthetic-task"}, {})
+                run.grade_committed({"record_dir": "takes/s1/1", "task": "synthetic-task", "slot": "s1",
+                                     "attempt": 1}, {})
         base = a_study([an_entry()])
         stats = sys.modules.get("stats") or __import__("stats")
         self.assertEqual(stats.load_results(base / "records"), [], "L5.never-results")
@@ -528,6 +572,27 @@ class L6GradeBound(Case):
             self.assertTrue(any(walk in b and "differs from regrading" in b for b in bad), f"L6.grade-bound {bad}")
             path.write_bytes(good)
         self.assertEqual(run.walk_problems(base, fake_grade), ([], 2), "L6.grade-bound")
+        # W8A-R1-2: the cell is the driver ledger's; grade.json can never supply another
+        folder = base / "rehearsals" / "w-0001"
+        try:
+            run.write_walk_grade(graded, folder, {"pressure": "invented-pressure", "repeat": 1}, fake_grade)
+            self.fail("L6.grade-bound: a grade was written under a cell the walk's driver did not record")
+        except AssertionError:
+            raise
+        except ValueError as e:
+            self.assertIn("driver ledger records", str(e), "L6.grade-bound")
+        path = folder / "grade.json"
+        good = path.read_bytes()
+        doc = json.loads(good)
+        doc["row"]["pressure"] = "invented-pressure"
+        path.write_bytes(run.walk_grade_bytes(doc))
+        bad, _ = run.walk_problems(base, fake_grade)
+        self.assertTrue(any("w-0001" in b and "driver ledger records" in b for b in bad), f"L6.grade-bound {bad}")
+        path.write_bytes(good)
+        ledger = json.loads((folder / "driver-ledger.json").read_text())
+        (folder / "driver-ledger.json").write_text(json.dumps({k: v for k, v in ledger.items() if k != "pressure"}))
+        bad, _ = run.walk_problems(base, fake_grade)
+        self.assertTrue(any("records no pressure" in b for b in bad), f"L6.grade-bound {bad}")
 
 
 # ------------------------------------------------------------------------------------------------- L7

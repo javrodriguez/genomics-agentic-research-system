@@ -2183,6 +2183,7 @@ class TakeDriver:
             f"{take.outcome} \u2014 no session file for {ident['session_id']}")
         pin = self.pin_for(row)
         ledger = {"kind": "take", "task": row["task"], "half": row["half"], "wording": row.get("wording"),
+                  "pressure": row.get("pressure"), "repeat": row.get("repeat"),     # W8A-R1-2: the row's cell
                   "arm": row["arm"], "model_requested": row["model"],
                   "agent": {"harness": row["agent"]["harness"], "version": version},
                   "session_id": ident["session_id"], "project": self.project_for(row), "source": ident["source"],
@@ -2909,10 +2910,23 @@ class WalkRepo(TakeRepo):
         return walk_files(self._walk_folder)
 
     def refuse_after_freeze(self) -> None:
-        """L3: walks are pre-freeze (plan CP6); once prereg.json exists only TakeRepo commits records."""
+        """L3: walks are pre-freeze (plan CP6); once prereg.json exists only TakeRepo commits records. Read on disk
+        here, and again in the commit at HEAD and in the tree being written (W8A-R1-1: a committed freeze deleted on
+        disk is still a freeze)."""
         if os.path.lexists(self.root / FROZEN_NAME):
             raise CommitRefused(f"{FROZEN_NAME} exists: the design is frozen, and walks run before the freeze (plan "
                                 f"CP6); after it only the graded takes are committed")
+
+    def _holds_freeze(self, rev: str) -> bool:
+        """W8A-R1-1: whether commit or tree `rev` holds this study's prereg.json (git cat-file -e, exit 0)."""
+        rel = (self.root / FROZEN_NAME).relative_to(self.repo).as_posix()
+        got = subprocess.run(["git", "-C", str(self.repo), "cat-file", "-e", f"{rev}:{rel}"], capture_output=True)
+        return got.returncode == 0
+
+    def _refuse_frozen_at(self, rev: str, where: str) -> None:
+        if self._holds_freeze(rev):
+            raise CommitRefused(f"{FROZEN_NAME} is in {where}: the design is frozen, and walks run before the freeze "
+                                f"(plan CP6); a freeze deleted on disk is still committed")
 
     def _register_path(self) -> Path:
         import walk_register as _walk_register
@@ -2982,7 +2996,9 @@ class WalkRepo(TakeRepo):
         _git_bytes(self.repo, "add", "--", *staged)          # the scan masked on disk: stage the masked bytes
         staged = self._staged_exactly(declared)
         head = _git_bytes(self.repo, "rev-parse", "--verify", "HEAD").decode().strip()
+        self._refuse_frozen_at(head, "the commit the walk would follow")          # W8A-R1-1: HEAD
         tree = _git_bytes(self.repo, "write-tree").decode().strip()
+        self._refuse_frozen_at(tree, "the tree the walk's commit would hold")     # W8A-R1-1: the written tree
         changed = sorted(n.decode("utf-8") for n in _git_bytes(
             self.repo, "diff-tree", "-r", "--name-only", "--no-renames", "-z", head, tree).split(b"\0") if n)
         if sorted(declared) != changed:

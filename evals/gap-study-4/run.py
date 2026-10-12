@@ -208,6 +208,11 @@ def grade_committed(row: dict, outcome: dict) -> dict:
     if path == takes_root or not path.is_relative_to(takes_root):          # W8A (L5): takes/ only, never a walk
         raise ValueError(f"record_dir {row['record_dir']!r} is not a take folder under {mode_binding.TAKES_DIR}/; "
                          f"a walk folder or any other folder is never graded into results")
+    inside = path.relative_to(takes_root).parts                           # W8A-R1-3: takes/<slot>/<k>, this row's
+    if len(inside) != mode_binding.RECORD_DEPTH[mode_binding.TAKES_DIR] or \
+            inside != (str(row.get("slot")), str(row.get("attempt"))):
+        raise ValueError(f"record_dir {row['record_dir']!r} is not this row's take folder "
+                         f"{mode_binding.TAKES_DIR}/{row.get('slot')}/{row.get('attempt')}")
     rel = path.relative_to(REPO.resolve()).as_posix()
     if takes._git_at(REPO, "status", "--porcelain", "--", rel):
         raise ValueError("take artifacts have uncommitted changes")
@@ -224,19 +229,27 @@ def grade_committed(row: dict, outcome: dict) -> dict:
 
 
 # ---- the walks (W8A, L6): graded, never counted --------------------------------------------------------------------
-WALK_ROW_FROM_GRADE = ("pressure", "repeat")      # the cell fields a register entry does not carry
+WALK_ROW_FROM_GRADE = ("pressure", "repeat")      # the cell fields a register entry does not carry (driver ledger)
 
 
-def walk_row(entry: dict, ledger: dict, cell: dict) -> dict:
-    """The row a walk is graded as: task, half, wording, arm and model from its register entry, the agent and project
-    from its driver ledger (which must agree with the entry), pressure and repeat from `cell`."""
+def walk_row(entry: dict, ledger: dict, cell: dict | None = None) -> dict:
+    """The row a walk is graded as: task, half, wording, arm and model from its register entry, the agent, project,
+    pressure and repeat from its driver ledger (which must agree with the entry). W8A-R1-2: the cell is the driver
+    ledger's own record of the row's pressure and repeat; a `cell` handed in must equal it, so grade.json can never
+    supply one the walk did not run under."""
     for key, led in (("task", "task"), ("half", "half"), ("wording", "wording"), ("arm", "arm"),
                      ("model", "model_requested")):
         if ledger.get(led) != entry[key]:
             raise ValueError(f"the walk's driver ledger records {led} {ledger.get(led)!r}; its register entry "
                              f"says {entry[key]!r}")
-    if set(cell) != set(WALK_ROW_FROM_GRADE):
-        raise ValueError(f"a walk's cell is exactly {list(WALK_ROW_FROM_GRADE)}")
+    missing = [k for k in WALK_ROW_FROM_GRADE if k not in ledger]
+    if missing:
+        raise ValueError(f"the walk's driver ledger records no {', '.join(missing)}; a walk is graded under the cell "
+                         f"its driver recorded")
+    recorded = {k: ledger[k] for k in WALK_ROW_FROM_GRADE}
+    if cell is not None and cell != recorded:
+        raise ValueError(f"the cell {cell!r} is not the one the walk's driver ledger records ({recorded!r})")
+    cell = recorded
     return {"task": entry["task"], "half": entry["half"], "wording": entry["wording"], "arm": entry["arm"],
             "model": entry["model"], "agent": dict(ledger["agent"]), "project": ledger["project"], **cell}
 
@@ -258,14 +271,12 @@ def grade_walk_folder(row: dict, folder: Path) -> dict:
 def grade_walk(entry: dict, folder, cell: dict | None = None, grade=None) -> dict:
     """grade.json's document for one walk: {"graded": true, "row", "grade"} when its driver ledger records a first
     agent turn, else {"graded": false, "why"} with the ledger's own outcome. `grade` stands in for
-    grade_walk_folder (tests); `cell` is {pressure, repeat}, needed only to grade."""
+    grade_walk_folder (tests); `cell` ({pressure, repeat}) is optional and must equal the driver ledger's."""
     folder = Path(folder)
     ledger = json.loads((folder / "driver-ledger.json").read_text())
     if ledger.get("first_agent_turn") is not True:
         return {"graded": False, "why": f"no first agent turn, so a rehearsal before the agent's first turn "
                                         f"(the routing table's first row): {ledger.get('outcome')}"}
-    if cell is None:
-        raise ValueError("a walk with a first agent turn is graded, and needs its cell (pressure, repeat)")
     row = walk_row(entry, ledger, cell)
     return {"graded": True, "row": row, "grade": (grade_walk_folder if grade is None else grade)(row, folder)}
 
