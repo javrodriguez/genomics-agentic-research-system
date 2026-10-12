@@ -22,6 +22,7 @@ import variants
 import check_results
 from box import image_lock, run_take
 import harness_bookkeeping
+import prereg
 
 SELECTED = None
 PATCHES = []
@@ -35,6 +36,14 @@ HARNESSES = {"A": CLAUDE, "O": CODEX, "G": GEMINI}
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+# W6D-R1-2 (lane w7a, ruling W7A-gap4-1): the draft's order_carry sentence names the --order that exists, keeping the
+# "prereg.py --order" substring R3.order reads. The stale per-axis sentence it replaces is a witness value.
+ORDER_CARRY = ("prereg.py --order <review sha> prints freeze.planned_order: one permutation of the design's whole "
+               "planned rows, seeded by the full 40-character sha of the pre-freeze review commit; it refuses until "
+               "every agent version is pinned.")
+STALE_ORDER_CARRY = "prereg.py --order is the earlier per-axis positive/control order; CP2 must replace it."
 
 
 def core_problems(d):
@@ -55,6 +64,9 @@ def core_problems(d):
     need(d["take_order"] is None and d["take_order_seed"] is None and
          d["take_order_function"] == "freeze.planned_order" and "review commit" in d["take_order_rule"] and
          "prereg.py --order" in d["order_carry"], "R3.order")
+    need(d["order_carry"] == ORDER_CARRY and "axis" not in d["order_carry"] and
+         prereg.ORDER_FUNCTION == d["take_order_function"] and prereg.ORDER_FUNCTION in d["order_carry"] and
+         prereg.SEED_SHAPE.pattern == "[0-9a-f]{40}" and "whole planned rows" in d["order_carry"], "R3.carry")
     rows = d["rows"]
     need(all(set(r["agent"]) == {"harness", "version"} and r["agent"]["harness"] == HARNESSES[r["arm"]]
              for r in rows), "R11.agent")
@@ -101,6 +113,7 @@ CORE_MUTANTS = {
     "n": ("R2.n", ("n",), 11),
     "optional": ("R2.optional", ("optional_arms", "C", "tries"), 180),
     "order": ("R3.order", ("take_order_seed",), "fake-seed"),
+    "order-carry-stale": ("R3.carry", ("order_carry",), STALE_ORDER_CARRY),
     "agent": ("R11.agent", ("rows", 0, "agent", "harness"), "fake-harness"),
     "slots": ("R12.slots", ("rows", 0, "slot"), None),
     "cells": ("R12.cells", ("rows", 0, "half_cell"), "fake-cell"),
@@ -399,7 +412,7 @@ def description_problems(d):
         {"text": line, "round_4_reading": reading} for line,reading in zip(old["limitations_lines"],expected_readings())], "R8.carried")
     need(d["box_residuals"] == [
         {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True, "finding": "PENDING"},
-        {"text": "model weights behind an id are not pinnable"}], "R8.residuals")
+        {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL], "R8.residuals")
     need(d["leak_words"] == old["leak_words"] + [study.STUDY, "round 4"] and len(old["leak_words"]) == 23 and
          d["leak_context_excusals"] == old["leak_context_excusals"] and len(d["leak_context_excusals"]) == 3 and
          d["leak_word_dropped"] == old["leak_word_dropped"], "R9.words")
@@ -428,6 +441,17 @@ def description_problems(d):
     return bad + source_problems(d)
 
 
+# OPEN-4 (lane w7a, ruling W7A-gap4-1): S7-D2 ruled (C), so mode bits stay a named residual, pre-registered with the
+# closed check that no task's move is a change of mode alone. Description.test_mode_residual_is_bound ties both
+# halves of the sentence to the files that make them true.
+MODE_CHECK = ("tests/test_endstate.py", "ModeBits", "test_no_task_move_is_chmod_only")
+MODE_RESIDUAL = {
+    "text": "mode bits are not graded: the end state records no file mode, so a change of mode alone is invisible",
+    "ruling": "S7-D2 (C)",
+    "closed_check": "no task's right or wrong move is a change of mode alone: " + MODE_CHECK[0] + " " + MODE_CHECK[1]
+                    + "." + MODE_CHECK[2] + " reads every task definition and fixture"}
+
+
 DESCRIPTION_MUTANTS = {
     **{"quote-" + key: ("quote." + key, ("commitments", key), {}) for key in EXPECTED_QUOTES},
     "vocabulary": ("R4.vocabulary", ("views",), []),
@@ -436,6 +460,10 @@ DESCRIPTION_MUTANTS = {
     "digests-pending": ("R7.pending", ("holdout_salted_digests",), {}),
     "limitation": ("R8.carried", ("limitations", 0, "text"), "fake text"),
     "residual": ("R8.residuals", ("box_residuals", 0, "conditional_on_preflight"), False),
+    # the mode-bits residual dropped from the draft, as before OPEN-4
+    "mode-residual": ("R8.residuals", ("box_residuals",), [
+        {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True, "finding": "PENDING"},
+        {"text": "model weights behind an id are not pinnable"}]),
     "leak-list": ("R9.words", ("leak_words",), []),
     "sessions": ("R9.sessions", ("checked_against", "status"), "checked"),
     "earlier": ("R10.earlier", ("not_poolable", "rounds"), []),
@@ -490,6 +518,18 @@ class Description(unittest.TestCase):
         prior = b.prior_metadata()
         with mock.patch.object(b, "prior_metadata", return_value=prior):
             self.assertEqual(b.describe()["predictions"], d["predictions"])
+
+    def test_mode_residual_is_bound(self):
+        d = self.get()
+        self.assertEqual(len(d["box_residuals"]), 3, "R8.mode-residual")
+        self.assertEqual(d["box_residuals"][2], MODE_RESIDUAL, "R8.mode-residual")
+        endstate_tests = (HERE / MODE_CHECK[0]).read_text()
+        self.assertIn(f"class {MODE_CHECK[1]}(", endstate_tests, "R8.mode-residual")
+        body = endstate_tests.split(f"class {MODE_CHECK[1]}(", 1)[-1].split("\nclass ", 1)[0]
+        self.assertIn(f"    def {MODE_CHECK[2]}(self):", body, "R8.mode-residual")
+        self.assertIn("self.assertEqual(mode_problems(), []", body, "R8.mode-residual")
+        sidecar = " ".join((HERE / "box/sidecar.py").read_text().split())
+        self.assertIn("a chmod alone is invisible: a named residual", sidecar, "R8.mode-residual")
 
     def test_no_new_words(self):
         d = self.get()
@@ -705,6 +745,32 @@ class Readiness(unittest.TestCase):
                     freeze.prepare(closed, review="a"*40, parent="b"*40, pins=[], frozen_at="fake-time")
         self.assertEqual(b.finalize(fake)["pending"], {}, "R3.floors:fallback")
 
+    def test_floor_spellings_keep_closed(self):
+        # W6C-R1-2 (lane w7a, the V5 binding): folded() and the invisible-character refusal decide whether a supplied
+        # floor still says the fallback. Each spelling of "not yet run" keeps the floors pending; the clause names
+        # the folding step that catches it, and each step has its own whole-file witness (FOLD_MUTANTS).
+        fake = fill_fake(self.get())
+        pointer = "/stats_design_inputs/floors"
+        self.assertNotIn(pointer, b.pending(fake), "R3.floors:case")
+        phrase = stats.FLOOR_NOT_RUN.rsplit(", ", 1)[-1]
+        self.assertEqual(phrase, "not yet run", "R3.floors:case")
+        spellings = {
+            "R3.floors:case": ("NOT YET RUN", "Not Yet Run", "nOt yEt rUn"),
+            "R3.floors:dash": ("not-yet-run", "Not-Yet-Run", "not\u2010yet\u2013run", "NOT\u2011YET\u2014RUN"),
+            "R3.floors:invisible": ("not\u200byet run", "no\u200bt yet run", "not yet\u2060run", "\ufeffnot yet run",
+                                    "not y\u00adet run"),
+            "R3.floors:width": ("\uff4e\uff4f\uff54 \uff59\uff45\uff54 \uff52\uff55\uff4e",),
+        }
+        for clause, texts in spellings.items():
+            for text in texts:
+                with self.subTest(clause=clause, text=text):
+                    floors = dict(fake["stats_design_inputs"]["floors"])
+                    floors[next(iter(floors))] = "fake prefix " + text + " fake suffix"
+                    draft = changed(fake, ("stats_design_inputs", "floors"), floors)
+                    self.assertIn(pointer, b.pending(draft), clause)
+        self.assertEqual(b.folded("NOT-YET\u2013RUN"), "not yet run", "R3.floors:dash")
+        self.assertEqual(b.folded("  Not\tYet \u00a0 Run "), "not yet run", "R3.floors:case")
+
     def test_price_shapes(self):
         d=self.get(); fake=fake_price(d); b.validate_prices(fake,d['stats_design_inputs']['harness_models'])
         for bad in ({},dict(fake,as_of='fake-price'),dict(fake,vendors={}),
@@ -901,15 +967,17 @@ def setUpModule():
 
 class Claims(unittest.TestCase):
     def test_relocated_claims(self):
-        # Wave 6 merge: drive.py's claim moved to w6e (S5-gap4-1) and then, with check_take.py's, to w6h
-        # (S6-gap4-1), w6i (S6b-gap4-1) and w6j (S6c-gap4-1); mode_binding.py's moved to w6i. copied_modules()
-        # reads those fragments too, so the expected set follows it. Floor unchanged.
-        fragments = [HERE / 'COPIED.d' / name for name in
-                     ('w1a-cp1-scaffold.json', 'w5c-draft-ci.json', 'w6e-drive-commit.json',
-                      'w6h-drive-lifecycle.json', 'w6i-checker-body.json', 'w6j-claude-adapter.json')]
+        # W6-claims-1 (lane w7a, ruling W7A-gap4-1): the hand list of fragments went stale twice on 11 Oct as claims
+        # moved between lanes. The expected list is now derived from every fragment in COPIED.d by the rule
+        # copied_modules() applies (a .py entry copied from the prior round), so an ownership move cannot drop a
+        # module from either side. Floor unchanged.
+        fragments = sorted((HERE / 'COPIED.d').glob('*.json'))
         expected = [entry['path'] for path in fragments for entry in json.loads(path.read_text())['files']
-                    if entry['status'] != 'new' and entry['path'].endswith('.py')]
-        self.assertGreater(len(expected), 30)
+                    if entry['status'] != 'new' and entry['path'].endswith('.py')
+                    and str(entry.get('source', '')).startswith(study.PRIOR_REL + '/')]
+        self.assertGreater(len(expected), 30, "R13.claims")
+        for path in ('build_draft.py', 'prereg.py', 'freeze.py', 'drive.py', 'check_take.py', 'mode_binding.py'):
+            self.assertIn(path, expected, "R13.claims")
         read_text = Path.read_text
         reads = []
         def read(path, *args, **kwargs):
@@ -917,7 +985,7 @@ class Claims(unittest.TestCase):
             return read_text(path, *args, **kwargs)
         with mock.patch.object(Path, 'read_text', read):
             self.assertEqual(scaffold.copied_modules(), expected, "R13.claims")
-        self.assertEqual(reads, fragments)
+        self.assertEqual(reads, fragments, "R13.claims")
         self.assertIn('build_draft.py', expected)
         self.assertIn('study.py', expected)
 
@@ -1800,10 +1868,50 @@ def setUpModule():
     patch.start(); PATCHES.append(patch)
 
 
+# Lane w7a (ruling W7A-gap4-1): W6C-R1-2's V5 binding of folded() and W6-claims-1's derived claim list. Each mutant
+# restores one weaker step; its whole-file run must fail the bound method by its clause (rule B).
+def _drop_fragment():
+    # copied_modules() as if one fragment holding prior-round copies (w5b's pipeline claims) were not read: the
+    # hand-list failure W6-claims-1 names.
+    original = scaffold.copied_modules
+    dropped = {e['path'] for e in json.loads((HERE / 'COPIED.d' / 'w5b-cp5-pipeline.json').read_text())['files']}
+    return lambda: [p for p in original() if p not in dropped]
+
+
+W7A_MUTANTS = {
+    # case-sensitive folding: whitespace collapsed, nothing else
+    "folded-case": ("Readiness.test_floor_spellings_keep_closed", "R3.floors:case",
+                    lambda: mock.patch.object(b, "folded", lambda text: " ".join(text.split()))),
+    # W5C-R4-4's folding before this lane: casefold and whitespace only, so a hyphen hides the phrase
+    "folded-dash": ("Readiness.test_floor_spellings_keep_closed", "R3.floors:dash",
+                    lambda: mock.patch.object(b, "folded", lambda text: " ".join(text.casefold().split()))),
+    # the invisible-character refusal removed
+    "floors-invisible": ("Readiness.test_floor_spellings_keep_closed", "R3.floors:invisible",
+                         lambda: mock.patch.object(b, "invisible", lambda text: False)),
+    # folding without compatibility normalisation, so full-width letters hide the phrase
+    "folded-width": ("Readiness.test_floor_spellings_keep_closed", "R3.floors:width",
+                     lambda: mock.patch.object(b, "NORMAL_FORM", None)),
+    # one fragment's prior-round copies dropped from copied_modules()
+    "claims-dropped-fragment": ("Claims.test_relocated_claims", "R13.claims",
+                                lambda: mock.patch.object(scaffold, "copied_modules", _drop_fragment())),
+}
+W7A_SETUP = setUpModule
+
+
+def setUpModule():
+    if SELECTED in W7A_MUTANTS:
+        patch = W7A_MUTANTS[SELECTED][2]()
+        patch.start(); PATCHES.append(patch)
+    else:
+        W7A_SETUP()
+
+
 # Explicit Athena-only whole-file witnesses. Never called by ordinary imports
 # or by a targeted Mac invocation. Six disjoint groups bound command time.
 WITNESS_GROUP_COUNT = 6
 def witness_binding(name):
+    if name in W7A_MUTANTS:
+        return W7A_MUTANTS[name][:2]
     if name in R3_MUTANTS:
         return R3_MUTANTS[name]
     if name in R2_MUTANTS:
@@ -1845,7 +1953,7 @@ def witness_binding(name):
 
 
 def witness_names():
-    return sorted(set(CORE_MUTANTS) | set(DESCRIPTION_MUTANTS) | set(READY_MUTANTS) | set(VALIDATOR_MUTANTS) | set(CLAIM_MUTANTS) | set(OWNER_MUTANTS) | set(VALUE_MUTANTS) | set(R2_MUTANTS) | set(R3_MUTANTS) | {"earlier-count"})
+    return sorted(set(CORE_MUTANTS) | set(DESCRIPTION_MUTANTS) | set(READY_MUTANTS) | set(VALIDATOR_MUTANTS) | set(CLAIM_MUTANTS) | set(OWNER_MUTANTS) | set(VALUE_MUTANTS) | set(R2_MUTANTS) | set(R3_MUTANTS) | set(W7A_MUTANTS) | {"earlier-count"})
 
 
 def witness_groups():

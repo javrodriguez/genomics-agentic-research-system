@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The one door to the pre-registration. Every other module reads the study's design through here.
 
-    python3 evals/gap-study-4/prereg.py --status        which file is in force, and whether it is frozen
+    python3 evals/gap-study-4/prereg.py --status        which file is in force, whether it is frozen, its arms
+                                                        and their models, and the planned rows counted
     python3 evals/gap-study-4/prereg.py --task <id>     one task's design
     python3 evals/gap-study-4/prereg.py --order <sha>   the take order this seed produces (freeze.planned_order;
                                                         the sha is the full 40 lowercase hex characters)
@@ -34,6 +35,7 @@ No model, no network, stdlib only.
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import re
 import sys
@@ -91,12 +93,19 @@ def task(task_id: str) -> dict:
 def models() -> list[str]:
     """EVERY model in the fixed list, including any that will never produce a take.
 
+    Round 4's design keys `models` by arm (arm -> its models), so the list is every planned arm's models in the
+    design's arm order; the arm letters themselves are never models (W6D-R1-1, lane w7a).
+
     A model that never runs publishes as `not run — <reason>`, never as absent. Dropping it from
     this list would make the table read as though the axis had always been three wide, which is a
     quieter and less honest claim than the one the record supports. Callers that want only the
     models which actually run ask for running_models().
     """
-    return list(load()["models"])
+    pre = load()
+    table = pre["models"]
+    if isinstance(table, dict):
+        return [m for arm in pre.get("arms", list(table)) if arm in table for m in table[arm]]
+    return list(table)
 
 
 def running_models() -> list[str]:
@@ -113,19 +122,41 @@ def n() -> int:
     return int(load()["n"])
 
 
-def cells() -> list[tuple[str, str, str, int]]:
-    """Round 3's (task, half, model, take) set, sorted; only --status's "planned takes" count reads it.
+ARMS_LABEL = "arms"
 
-    It is not round 4's design: round 4's rows also carry arm, wording, repeat and agent, so this
-    count does not match them (a carried residual, W6D-R1-1), and the take order never uses it:
-    order() permutes the design's whole rows.
-    """
-    out = []
-    for t in sorted(x["id"] for x in load()["tasks"]):
-        for half in ("positive", "control"):
-            for m in sorted(running_models()):
-                for k in range(1, n() + 1):
-                    out.append((t, half, m, k))
+
+def planned_rows(pre: dict) -> list[dict]:
+    """The design's planned rows themselves: --status counts these, never the draft's own `counts` field and never
+    round 3's (task, half, model, take) shape (W6D-R1-1)."""
+    rows = pre.get("rows")
+    if not isinstance(rows, list):
+        raise SystemExit(f"{pre.get('_source', 'the design')} has no planned rows: --status reads round 4's design")
+    return rows
+
+
+def status_lines(pre: dict) -> list[str]:
+    """--status for round 4's design: the arms as arms, each arm's harness and models, and the planned rows."""
+    rows = planned_rows(pre)
+    table = pre["models"]
+    arms = list(pre.get("arms") or table)
+    optional = pre.get("optional_arms") or {}
+    planned = [a for a in arms if a in table]
+    by_arm = collections.Counter(r.get("arm") for r in rows)
+    extra = [a for a in arms if a not in table and a in optional]
+    out = [f"{ARMS_LABEL:9}: {len(planned)} planned ({', '.join(planned)})"
+           + (f"; optional: {', '.join(extra)}" if extra else "")]
+    for arm in arms:
+        if arm in table:
+            harnesses = sorted({str(r["agent"]["harness"]) for r in rows if r.get("arm") == arm}) or ["no rows"]
+            out.append(f"  arm {arm}  {'/'.join(harnesses)}: {len(table[arm])} models, {by_arm[arm]} rows: "
+                       f"{', '.join(table[arm])}")
+        elif arm in optional:
+            o = optional[arm]
+            out.append(f"  arm {arm}  optional: {o.get('model')}, {by_arm[arm]} rows ({o.get('status')})")
+        else:
+            out.append(f"  arm {arm}  in the arm list with no models and {by_arm[arm]} rows")
+    out.append(f"rows     : {len(rows)} planned rows (n = {pre['n']} tries per half), "
+               f"{len({r.get('half_cell') for r in rows})} half-cells")
     return out
 
 
@@ -182,13 +213,12 @@ def main() -> int:
         print(f"frozen   : {pre['_frozen']}")
         print(f"status   : {pre.get('status', '?')}")
         print(f"tasks    : {len(pre['tasks'])}  ({', '.join(t['id'] for t in pre['tasks'])})")
-        print(f"models   : {len(pre['models'])} in the fixed list, {len(running_models())} running")
+        for line in status_lines(pre):
+            print(line)
         for m in models():
             reason = not_run_reason(m)
-            print(f"           {m:28} {'runs' if not reason else 'NOT RUN'}")
             if reason:
-                print(f"             {reason}")
-        print(f"n        : {pre['n']}  -> {len(cells())} planned takes")
+                print(f"  NOT RUN {m}: {reason}")
         print(f"take order: {'FIXED' if pre.get('take_order_seed') else 'not yet — seeded at the freeze'}")
         if not pre["_frozen"]:
             print("\nThis is a DRAFT. No take may run against it and no number may be graded from "

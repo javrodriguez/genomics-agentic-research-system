@@ -78,14 +78,16 @@ def foreign(files: list[str]) -> list[str]:
 
 
 def copied_modules() -> list[str]:
-    # Departures w6e-1 and w6h-1: drive.py's claim moved to lane w6e's fragment (ruling S5-gap4-1), then with
-    # check_take.py's to lane w6h's (ruling S6-gap4-1), then both to lane w6i's (ruling S6b-gap4-1), then both to lane
-    # w6j's (ruling S6c-gap4-1, departure w6j-1); still probed here.
-    rec = {"files": [e for frag in (OWN_FRAGMENT, cm.FRAGMENTS / "w5c-draft-ci.json",
-                                    cm.FRAGMENTS / "w6e-drive-commit.json", cm.FRAGMENTS / "w6h-drive-lifecycle.json",
-                                    cm.FRAGMENTS / "w6i-checker-body.json", cm.FRAGMENTS / "w6j-claude-adapter.json")
-                     for e in json.loads(frag.read_text())["files"]]}
-    return [e["path"] for e in rec["files"] if e["status"] != "new" and e["path"].endswith(".py")]
+    """Every .py file copied from the prior round, whichever lane's fragment claims it now.
+
+    Edit W7A-gap4-1 (lane w7a, W6-claims-1): this read a hand list of fragments, which went stale as claims moved
+    between lanes (drive.py, check_take.py and mode_binding.py on 11 Oct) and never held w5b's pipeline copies. It now
+    reads every fragment through copy_manifest's own loader, so an ownership move cannot drop a module."""
+    entries, problems = cm.load_fragments()
+    if problems:
+        raise ValueError("COPIED.d does not load: " + "; ".join(problems))
+    return [e["path"] for _, e in entries if e["status"] != "new" and e["path"].endswith(".py")
+            and str(e.get("source", "")).startswith(study.PRIOR_REL + "/")]
 
 
 def own_fragment_in(folder: Path, files: list[dict] | None = None, name: str = LANE) -> None:

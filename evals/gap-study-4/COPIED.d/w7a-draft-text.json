@@ -1,0 +1,32 @@
+{
+  "lane": "w7a-draft-text",
+  "files": [
+    {
+      "path": "COPIED.d/w7a-draft-text.json",
+      "status": "new",
+      "reason": "Lane w7a-draft-text's copy-record fragment (Gap Study round 4 wave 7, piece P1). Transfers under ruling W7A-gap4-1 (glitch-1b, under Javier's standing delegation, Sun 11 Oct 2026): build_draft.py from lane w5c-draft-ci and prereg.py from lane w1a-cp1-scaffold. Edits without transfer, recorded in their owners' entries: tests/test_build_draft.py (w5c-draft-ci), prereg-draft.json (w5c-draft-ci, regenerated through the writer) and tests/test_scaffold.py (w1a-cp1-scaffold)."
+    },
+    {
+      "path": "build_draft.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/build_draft.py",
+      "reason": "R1-R34 and PL-1 w5c-1: assemble this round from task and wording files, with explicit pending inputs. Lane w7a (W7A-gap4-1): the order_carry sentence names the --order that exists (freeze.planned_order over whole rows, the full review sha, refused until versions are pinned; W6D-R1-2); box_residuals pre-registers S7-D2's mode-bits residual with its closed check (OPEN-4); folded() normalises NFKC and reads dashes and invisible format characters as spaces, and a floor text carrying an invisible character is refused (W6C-R1-2)."
+    },
+    {
+      "path": "prereg.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/prereg.py",
+      "reason": "Slice S3 (lane w6d-prereg-order, 11 Oct 2026) closes the w5c carry: --order and order() now name freeze.planned_order, the one permutation of the design's whole planned rows that the freeze writes, in place of round 3's per-axis positive/control order; a design whose agent versions are still pending is refused by that function's own ledger check, never filled. The per-axis AXES and axis_of went with it. The entry stays in this fragment as the copy's provenance; tests/test_prereg_order.py (claimed by w6d-prereg-order) binds the change. Lane w7a (W7A-gap4-1, W6D-R1-1): --status names the arms as arms with each arm's harness, models and planned rows, and counts the planned rows themselves (1260 on the committed draft); models() lists the models of round 4's arm-keyed table; round 3's cells() count is removed."
+    },
+    {
+      "path": "tests/test_prereg_status.py",
+      "status": "new",
+      "reason": "Lane w7a's tests for prereg.py --status (W6D-R1-1): arms labelled as arms with their models (S1), the planned rows counted from the rows on the committed draft and on a synthetic thinned design with a stale counts field (S2), models() returning the seven models (S3), and four mutation witnesses (rule B)."
+    },
+    {
+      "path": "checks.d/w7a-draft-text.txt",
+      "status": "new",
+      "reason": "Lane w7a's local checks: the status test module and its witnesses, and the draft writer check."
+    }
+  ]
+}

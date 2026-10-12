@@ -15,6 +15,7 @@ import json
 import re
 import subprocess
 import sys
+import unicodedata
 import uuid
 from pathlib import Path
 
@@ -135,7 +136,10 @@ def assemble(root=None):
                                       "tries": len(rows), "half_cells": len({r["half_cell"] for r in rows})},
             "take_order": None, "take_order_seed": None, "take_order_function": "freeze.planned_order",
             "take_order_rule": "in one randomised order interleaved across arm, model, task and half, seeded from the review commit as round 3 seeded its order.",
-            "order_carry": "prereg.py --order is the earlier per-axis positive/control order; CP2 must replace it.",
+            # W6D-R1-2 (lane w7a): the --order that exists (prereg.order -> freeze.planned_order, seed_problem).
+            "order_carry": ("prereg.py --order <review sha> prints freeze.planned_order: one permutation of the "
+                            "design's whole planned rows, seeded by the full 40-character sha of the pre-freeze "
+                            "review commit; it refuses until every agent version is pinned."),
             "image_locks": locks, "version_pins": pins}
 
 
@@ -842,7 +846,12 @@ def describe(root=None):
     d["limitations"] = [{"text": text, "round_4_reading": PENDING} for text in prior["limitations_lines"]]
     d["box_residuals"] = [
         {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True, "finding": PENDING},
-        {"text": "model weights behind an id are not pinnable"}]
+        {"text": "model weights behind an id are not pinnable"},
+        # OPEN-4 (lane w7a): S7-D2 ruled (C); the residual and its closed check, pre-registered.
+        {"text": "mode bits are not graded: the end state records no file mode, so a change of mode alone is invisible",
+         "ruling": "S7-D2 (C)",
+         "closed_check": "no task's right or wrong move is a change of mode alone: tests/test_endstate.py "
+                         "ModeBits.test_no_task_move_is_chmod_only reads every task definition and fixture"}]
     d["leak_words"] = prior["leak_words"] + [study.STUDY, "round 4"]
     for key in ("leak_context_excusals", "leak_word_dropped"):
         d[key] = prior[key]
@@ -1062,14 +1071,29 @@ def owner_list_problems(draft):
             if not isinstance(draft.get(key), list) or len(draft[key]) != count]
 
 
+NORMAL_FORM = "NFKC"
+
+
 def folded(text):
-    """W5C-R4-4: casefolded, with every run of whitespace collapsed to one space."""
-    return " ".join(text.casefold().split())
+    """W5C-R4-4 and W6C-R1-2: compatibility-normalised (NFKC, so full-width letters read as plain ones), casefolded,
+    every dash (Unicode Pd, the hyphen-minus included) and every invisible format character (Cf: zero-width space,
+    word joiner, soft hyphen, byte-order mark) read as a space, and every run of whitespace collapsed to one space."""
+    if NORMAL_FORM:
+        text = unicodedata.normalize(NORMAL_FORM, text)
+    text = "".join(" " if unicodedata.category(ch) in ("Pd", "Cf") else ch for ch in text.casefold())
+    return " ".join(text.split())
+
+
+def invisible(text):
+    """W6C-R1-2: a supplied text carrying an invisible format character (Cf). folded() reads one as a space, which
+    misses one placed inside a word ("no<zero-width space>t yet run"), so such a text is refused outright."""
+    return any(unicodedata.category(ch) == "Cf" for ch in text)
 
 
 def floors_missing(value, tasks, declared_tasks):
     return not (isinstance(value, dict) and bool(tasks) and tasks == declared_tasks and set(value) == set(tasks)
-                and all(supplied_text(text) and folded(stats.FLOOR_NOT_RUN.rsplit(", ", 1)[-1]) not in folded(text)
+                and all(supplied_text(text) and not invisible(text)
+                        and folded(stats.FLOOR_NOT_RUN.rsplit(", ", 1)[-1]) not in folded(text)
                         for text in value.values()))
 
 
