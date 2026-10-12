@@ -100,3 +100,83 @@ The Claude Code adapter has the same tolerance, so this is a precedent, but noth
 ## Stop rule
 
 Four MAJORs, so not a PASS. Round 2 should re-run my mutation sweep (or an equivalent) on the fold and confirm each named survivor is killed by its own check.
+
+---
+
+# Round 2
+
+_Written Mon 12 Oct 2026 16:20 EDT (`date`) by the same reviewer, on the fold: head 2a94da13 (code f61fd4af; commits 65e38285, 32de8b98, f61fd4af, 2a94da13)._
+Ruling Q-w11a-9 (glitch-2f) applied: a kill by a crash inside a check counts this round and is reported separately.
+
+## Verdict: PASS (0 MAJOR, 0 MINOR that loosens a check)
+
+## What I ran (Mac, each batch behind `mac_slot.py light-ok`, `timeout -s INT 120`, python3.13)
+
+- `tests/test_codex_adapter.py`: Ran 42 tests, OK.
+- `tests/test_codex_adapter.py --witnesses`: "13/13 red; registry 13".
+- The builder's sweep, `--generated-mutants --shard i/6` for i = 1..6, every shard exit 0: 867 mutants, 831 killed (581 by a check's own line, 220 by a crash, 30 at build), 36 equivalent, 0 survivors, 0 stale.
+  This matches the claim.
+
+## (1) My own harness, re-anchored
+
+I copied round 1's harness to a fresh scratch folder and pointed it at the fold's check lists (`TC_CHECKS`, `CA_CHECKS`) plus the usage-key, version-form and name tests.
+It has operator kinds the builder's generator does not: int +1, `isinstance`/`all`/`callable` forced True, `return X` to `return None`, augmented assignments emptied, boundary comparison swaps (`<` to `<=`), and strings inside `raise`.
+- transcript_codex.py: 321 mutants: 229 red by a check's own line, 54 by a crash only, 2 at build, 36 survived.
+- codex_adapter.py: 442 mutants: 278 red by a check's own line, 121 by a crash only, 1 at build, 42 survived.
+- Every survivor falls into one of three classes:
+  - It is on the builder's EQUIVALENT list (the import preamble, what-labels, the ref joiner, why_no_init's words, the three initial attribute values).
+  - It is a string inside a `raise` (the builder's stated rule; I confirmed no check or logic reads refusal words).
+  - It is one of two equivalents the builder's generator never produces: `sys.path.insert(0, ...)` to `insert(1, ...)` (the preamble), and `argv`'s docstring altered.
+- No survivor of mine falls outside the builder's sweep, so there is no finding from (1).
+
+## (2) The EQUIVALENT list, audited against the source
+
+All 36 entries hold:
+- **Import preamble (14):** the test puts the module folder on sys.path before importing either module (test line 73). `from __future__ import annotations` is not needed under 3.13 for these annotations.
+- **_keys/_types labels (10):** `"event "` ×2, `"item "` ×4, `"turn.failed.error"` ×2 and `" change"` ×2. In transcript_codex.py:118-130 `what` reaches only the f-strings of the two `raise` lines.
+- **The ref joiner `'#'` (1):** the spelling changes uniformly for every change of an item, so each ref stays unique and still pairs a call with its result.
+- **The four callable labels and the two argv labels (6):** used only in the TypeError and StreamError words (codex_adapter.py:214-216, 265-268).
+- **why_no_init's two strings (2):** carried in the turn record; nothing in the module branches on them. Checks B4 and B9 require only a non-empty string.
+- **`self._version = None` and `self.thread_id = None` (2):** already None. `self._contexts = 0` to None (1): only ever `read_rollout`'s `seen`, where `ctxs[None:]` equals `ctxs[0:]`.
+
+None of them hides a check.
+
+## (3) A7 and the report line
+
+`label_problems` now requires a RECORDED label to read `RECORDED at walk <id>, codex-cli X.Y.Z.` in full (RECORDED_LABEL, fullmatch). Anything less is a problem line and never counts as recorded.
+Repro on a scratch copy of the fixture folder, with codex_adapter compiled as SHAPES_SOURCE = "recorded":
+- A bare `RECORDED` gives two A7 lines (no provenance; recorded without a provenanced fixture).
+- `RECORDED at walk w-1.` gives the same two lines.
+- `RECORDED at walk w-1, codex-cli 0.160.1.` gives `[]`.
+The lane report keeps its 3cd99ebb line 86 and adds an explicit correction at line 167, which names the overclaim. Line 86's claim is true at this head.
+
+## (4) The ten round-1 findings, each re-run as a single mutant on the fold
+
+Each one is now red by a check's own line:
+- **R1:** B3-required, 28 lines.
+- **R2:** each end_reason condition dropped alone, plus turn.failed never counted; B1-end.
+- **R3:** read_stream's shape check, argv's later-turn check, both together, and turn 1 with two ids; B2-thread.
+- **R4:** two models in one turn, and an init with a None field; B4-rollout.
+- **R5:** a bool count, a negative count, and two turn.completed; B5-usage.
+- **R6:** an empty model or line at both seats; B6-empty.
+- **R7:** B7-blank.
+- **R8:** `_types` emptied, an empty id, empty changes, and a change that is not an object; B8-types.
+- **R10:** a line that is not JSON anywhere, and the cut-line count emptied; B10-cut and B9-record.
+
+One exception was red by a crash only: R4's one-session_meta rule with `len(metas) == 1` dropped, where B4 hits IndexError on its zero-meta case first. That counts under Q-w11a-9.
+The realistic weakening `len(metas) >= 1` is red by B4's own line ("two session_metas"). So are a version read from a failed exec, the version form not checked, any string mode admitted, and a line starting with "-" admitted.
+
+## Notes for the later tightening (not findings)
+
+- These guards, all relevant to the threat model, are killed only by a crash under the generated or my operators:
+  - codex_adapter.py:202, the session_meta count (drop operand).
+  - :121, the cut line's position (negated or forced True).
+  - :285, the version exec's returncode (negated).
+  - :286, `m is None` (negated).
+  - :133, `failed += 1` emptied.
+  Each has a realistic weakening that is red by its own line (above), so none loosens a check today.
+- The worktree holds an untracked `.scratch/` folder that is not mine; nothing of it is committed.
+
+## Stop rule
+
+No MAJOR, and no MINOR that loosens a check: PASS.
