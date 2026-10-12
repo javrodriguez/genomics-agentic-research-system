@@ -1,4 +1,4 @@
-status: hand-back for review (fold Q-w7c-1 on top)
+status: hand-back for review round 2 (review fold W7C-close-1 on top)
 head: see RESUME HERE. Base 82cf6ae9 (the wave 7 merge head), branch gap4/w7c-spend-wiring, worktree /Users/javrodher/aegis-builds/gap4-w7c.
 
 # Lane w7c-spend-wiring: Gap Study round 4, wave 7, the spend-guard wiring
@@ -65,3 +65,17 @@ Green: test_spend_wiring exit 0 (21, 10 of 10 witnesses red); test_batch exit 0 
 Code commit (fold): bd60d8da on 66fb0dac.
 
 RESUME HERE: hand-back at bd60d8da
+
+## Review fold W7C-close-1 (round 1: CHANGES, 1 MAJOR; table plans/gap-study-round-4/w7c-review-r1-2026-10-12.md)
+
+_Written Mon 12 Oct 2026 (`date`)._
+- W7C-R1-1 (MAJOR): `ledger_shape_problems` refuses walks or spend that are not exactly `list` (so "", {}, a tuple, None), any element that is not a dict, and a start that is neither a str nor an aware datetime. G4 adds ten cases; witness shape-unchecked red by G4-ledger (24 own, 0 collateral, 0 errors).
+- W7C-R1-2: a start after the loop's clock (the same reading the hold uses) is refused; G3 case $300 OpenAI with start 2027-01-01. Witness start-after-clock-admitted red by G3-walk (4 own, 0 errors).
+- W7C-R1-3: `_launch_paid_checked` calls `costs.month_turn_allowed` again on a fresh `clock()` reading just before each paid launch (the block's trim); a refusal launches nothing, commits that take `failed` with drive_started false (a restart re-drives it, no ruling), and stops blocked naming the hold; no later take of the block is launched. G6 cases: a clock reading 23:29:59 at the gate and 23:30:30 after, for [codex] and [claude, gemini, claude]. Witness launch-recheck-dropped red by G6-clock (7 own, 0 errors). G2's spy now expects two hold calls per paid take (gate, launch).
+- W7C-R1-4 not mine (recorded as a CP2 ledger-contract item); the reviewer's "baseline codex, empty ledger lists" probe still PASSes for that reason.
+- Red first (tests before code): test_spend_wiring exit 1, 21 ran, 6 failures, 0 errors, all AssertionError (G3, G4, G6 and the three witnesses bound to them). Green: exit 0, 24 ran, 13 of 13 witnesses red, 0 errors; test_batch exit 0 (118); batch.py --check exit 1 on the base's three lines; routing --check 0; copy_manifest and freeze --check 0; import guard holds.
+- The reviewer's probe.py re-run on the tree: every money finding now REFUSEs (spend/walks "", {}, None, a non-empty dict, a future start, an int or naive start, a naive clock); the boundary cases are unchanged.
+
+Code commit (review fold): 8b8fe21f on 1dd7e2e9.
+
+RESUME HERE: hand-back for review round 2 at 8b8fe21f
