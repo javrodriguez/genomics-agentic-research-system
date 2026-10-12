@@ -19,6 +19,7 @@ AssertionError carrying its clause token (rule B; collateral is listed, not cred
 from __future__ import annotations
 
 import contextlib
+import os
 import io
 import json
 import re
@@ -76,6 +77,43 @@ def mutants():
         # an empty register passes silently, without saying it registered 0 walks
         "silent-empty": ("R4.empty", "walk_register.py",
                          "print(f\"ok, having registered 0 walks: ", "print(f\"ok: "),
+        # W7D-R1-1: a registered walk's folder looked up by path, which ignores case on APFS
+        "folder-by-path": ("R5.case", "walk_register.py",
+                           "folder = names.get(walk)", "folder = base / walk if (base / walk).exists() else None"),
+        # W7D-R1-1: two ids that differ only by case admitted
+        "case-collision-admitted": ("R5.case", "walk_register.py",
+                                    "problems.append(f\"walk entry {i}: walk {walk!r} and {seen_fold[folded]!r} differ only by case",
+                                    "(f\"walk entry {i}: walk {walk!r} and {seen_fold[folded]!r} differ only by case"),
+        # W7D-R1-2: a symlink counted as a walk's file
+        "symlink-file-admitted": ("R6.symlink", "walk_register.py",
+                                  "p.is_file() and not p.is_symlink()", "p.is_file()"),
+        # W7D-R1-4: a symlinked walk folder admitted as the walk's folder
+        "symlink-folder-admitted": ("R6.symlink", "walk_register.py",
+                                    "if folder is None or folder.is_symlink() or not folder.is_dir():",
+                                    "if folder is None or not folder.is_dir():"),
+        # W7D-R1-2: a register.json that is a symlink admitted
+        "register-symlink-admitted": ("R6.symlink", "walk_register.py",
+                                      "    if reg.is_symlink():", "    if False:"),
+        # W7D-R1-3: duplicate keys read as the last one
+        "duplicate-keys-admitted": ("R7.dupkey", "walk_register.py",
+                                    "object_pairs_hook=no_duplicate_keys", "object_pairs_hook=dict"),
+        # W7D-R1-4: one id registered twice admitted
+        "duplicate-id-admitted": ("R3.malformed", "walk_register.py",
+                                  "problems.append(f\"walk entry {i}: walk {walk!r} is registered twice",
+                                  "(f\"walk entry {i}: walk {walk!r} is registered twice"),
+        # W7D-R1-4: the walk id's one-segment shape unchecked
+        "walk-id-unchecked": ("R3.malformed", "walk_register.py",
+                              "    if not WALK_ID.fullmatch(entry[\"walk\"]):", "    if False:"),
+        # W7D-R1-6: schema compared by value, so true and 1.0 pass
+        "schema-by-value": ("R8.nits", "walk_register.py",
+                            "type(doc[\"schema\"]) is not int or doc[\"schema\"] != SCHEMA", "doc[\"schema\"] != SCHEMA"),
+        # W7D-R1-6: a reason of format characters only admitted
+        "reason-format-admitted": ("R8.nits", "walk_register.py",
+                                   "unicodedata.category(c) == \"Cf\"", "False"),
+        # W7D-R1-6: an unreadable register raises instead of a FAIL line
+        "unreadable-raises": ("R8.nits", "walk_register.py",
+                              "    except OSError as exc:\n        return [f\"rehearsals/{REGISTER_NAME} cannot be read",
+                              "    except KeyError as exc:\n        return [f\"rehearsals/{REGISTER_NAME} cannot be read"),
         # round 3's path back in rounds.py's usage
         "round3-usage": ("U1.usage", "rounds.py",
                          "python3 evals/gap-study-4/review_kit/rounds.py --check",
@@ -243,6 +281,86 @@ class TheRegister(unittest.TestCase):
         self.assertRegex(out.getvalue(), r"(?m)^ok, having registered 0 walks: ", "R4.empty")
 
 
+class TheRegisterFold(unittest.TestCase):
+    """Review round 1 (W7D-R1-1 to R1-4, R1-6), ruling W7D-close-1."""
+
+    def setUp(self):
+        self.rig = Rig()
+
+    def tearDown(self):
+        reg = self.rig.base / "register.json"
+        if reg.exists() and not reg.is_symlink():
+            os.chmod(reg, 0o600)
+        self.rig.close()
+
+    def test_folders_match_by_exact_name(self):
+        # W7D-R1-1: "W-1" registered, "w-1/" on disk: the Mac's case-blind filesystem must not make them one
+        self.rig.register([a_walk(walk="W-1")])
+        self.rig.folder("w-1")
+        problems, _ = self.rig.check()
+        self.assertTrue(any("'W-1'" in p and "does not exist" in p for p in problems), f"R5.case {problems}")
+        self.assertTrue(any("rehearsals/w-1/" in p and "does not list" in p for p in problems), f"R5.case {problems}")
+        # two ids that differ only by case are refused, folder or not
+        self.rig.register([a_walk(walk="w-1"), a_walk(walk="W-1")])
+        problems, _ = self.rig.check()
+        self.assertTrue(any("differ only by case" in p for p in problems), f"R5.case {problems}")
+
+    def test_symlinks_are_not_walk_records(self):
+        outside = self.rig.tmp / "outside"
+        outside.mkdir()
+        (outside / "x.json").write_text("{}\n")
+        # a walk folder holding only a symlink to a file holds no file
+        self.rig.register([a_walk()])
+        (self.rig.base / "w-0001").mkdir()
+        os.symlink(outside / "x.json", self.rig.base / "w-0001" / "x.json")
+        problems, _ = self.rig.check()
+        self.assertTrue(any("'w-0001'" in p and "holds no file" in p for p in problems), f"R6.symlink {problems}")
+        shutil.rmtree(self.rig.base / "w-0001")
+        # a walk folder that is a symlink to a folder is not the walk's folder
+        os.symlink(outside, self.rig.base / "w-0001")
+        problems, _ = self.rig.check()
+        self.assertTrue(any("'w-0001'" in p and "does not exist as a folder" in p for p in problems),
+                        f"R6.symlink {problems}")
+        (self.rig.base / "w-0001").unlink()
+        # a register.json that is a symlink is refused, whatever it points at
+        (outside / "r.json").write_text(json.dumps({"schema": 1, "walks": []}))
+        (self.rig.base / "register.json").unlink()
+        os.symlink(outside / "r.json", self.rig.base / "register.json")
+        problems, _ = self.rig.check()
+        self.assertTrue(any("register.json" in p and "symlink" in p for p in problems), f"R6.symlink {problems}")
+
+    def test_duplicate_keys_are_refused(self):
+        self.rig.folder("w-0001")
+        entry = json.dumps(a_walk(counted=True))[:-1] + ', "counted": false}'
+        (self.rig.base / "register.json").write_text('{"schema": 1, "walks": [' + entry + ']}')
+        problems, _ = self.rig.check()
+        self.assertTrue(any("duplicate key 'counted'" in p for p in problems), f"R7.dupkey {problems}")
+        (self.rig.base / "register.json").write_text('{"schema": 1, "walks": [], "walks": []}')
+        problems, _ = self.rig.check()
+        self.assertTrue(any("duplicate key 'walks'" in p for p in problems), f"R7.dupkey {problems}")
+
+    def test_review_nits(self):
+        # schema: an int, never true or 1.0
+        for raw in ('{"schema": true, "walks": []}', '{"schema": 1.0, "walks": []}'):
+            (self.rig.base / "register.json").write_text(raw)
+            self.assertTrue(any("schema" in p for p in self.rig.check()[0]), f"R8.nits {raw}")
+        # a reason of spaces and format characters only is empty
+        self.rig.folder("w-0001")
+        for reason in ("\u200b", "\u00a0", "\u200b \u2060\ufeff"):
+            self.rig.register([a_walk(reason=reason)])
+            self.assertTrue(any("reason" in p for p in self.rig.check()[0]), f"R8.nits {reason!r}")
+        # an unreadable register is a FAIL line, never a traceback
+        self.rig.register([])
+        os.chmod(self.rig.base / "register.json", 0)
+        if os.access(self.rig.base / "register.json", os.R_OK):
+            self.skipTest("running as a user who reads mode-0 files")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = wr.main(["--check", "--base", str(self.rig.base)])
+        self.assertEqual(code, 1, "R8.nits")
+        self.assertRegex(out.getvalue(), r"(?m)^FAIL rehearsals/register\.json cannot be read", "R8.nits")
+
+
 class RoundsUsage(unittest.TestCase):
     def test_usage_names_round_4_paths(self):
         text = rounds_text()
@@ -261,6 +379,10 @@ BOUND = {"R1.unregistered": "TheRegister.test_unregistered_walk_folder_fails",
          "R2.folder": "TheRegister.test_registered_walk_without_its_folder_fails",
          "R3.malformed": "TheRegister.test_malformed_entry_fails",
          "R4.empty": "TheRegister.test_empty_register_says_zero_walks",
+         "R5.case": "TheRegisterFold.test_folders_match_by_exact_name",
+         "R6.symlink": "TheRegisterFold.test_symlinks_are_not_walk_records",
+         "R7.dupkey": "TheRegisterFold.test_duplicate_keys_are_refused",
+         "R8.nits": "TheRegisterFold.test_review_nits",
          "U1.usage": "RoundsUsage.test_usage_names_round_4_paths"}
 WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _, _) in mutants().items()}
 

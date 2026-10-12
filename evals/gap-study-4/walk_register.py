@@ -32,6 +32,7 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -45,6 +46,25 @@ TOP_KEYS = ("schema", "walks")
 FIELDS = ("walk", "task", "half", "wording", "arm", "model", "reason", "counted")
 STRING_FIELDS = ("walk", "task", "half", "wording", "arm", "model", "reason")
 WALK_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+class DuplicateKey(ValueError):
+    pass
+
+
+def no_duplicate_keys(pairs):
+    """W7D-R1-3: json keeps the last of two equal keys, so `"counted": true, "counted": false` would read false."""
+    out = {}
+    for k, v in pairs:
+        if k in out:
+            raise DuplicateKey(k)
+        out[k] = v
+    return out
+
+
+def visible(text: str) -> str:
+    """W7D-R1-6: the text without Unicode whitespace or format characters (a zero-width-only reason is empty)."""
+    return "".join(c for c in text if not (c.isspace() or unicodedata.category(c) == "Cf"))
 
 
 def design_in_force(study_dir: Path = HERE) -> dict:
@@ -71,7 +91,7 @@ def entry_problems(i: int, entry, design: dict) -> list[str]:
         extra = sorted(set(entry) - set(FIELDS))
         return [f"{where} has fields missing {missing} and unknown {extra}; an entry holds exactly {list(FIELDS)}"]
     for k in STRING_FIELDS:
-        if not isinstance(entry.get(k), str) or not entry[k].strip():
+        if not isinstance(entry.get(k), str) or not visible(entry[k]):
             out.append(f"{where}: {k} is not a non-empty string")
     if out:
         return out
@@ -96,7 +116,8 @@ def entry_problems(i: int, entry, design: dict) -> list[str]:
 
 
 def has_a_file(folder: Path) -> bool:
-    return any(p.is_file() and p.name not in IGNORED_NAMES for p in folder.rglob("*"))
+    """W7D-R1-2: a regular file, never a symlink (a link to a file outside the study is not a walk record)."""
+    return any(p.is_file() and not p.is_symlink() and p.name not in IGNORED_NAMES for p in folder.rglob("*"))
 
 
 def check(base: Path = REHEARSALS, design: dict | None = None) -> tuple[list[str], int]:
@@ -104,34 +125,52 @@ def check(base: Path = REHEARSALS, design: dict | None = None) -> tuple[list[str
     design = design_in_force() if design is None else design
     problems: list[str] = []
     reg = base / REGISTER_NAME
+    if reg.is_symlink():
+        return [f"rehearsals/{REGISTER_NAME} is a symlink; the register is a file in this folder"], 0
     if not reg.is_file():
         return [f"rehearsals/{REGISTER_NAME} is missing; an empty register is {{\"schema\": {SCHEMA}, "
                 f"\"walks\": []}}, and a missing one is not empty"], 0
     try:
-        doc = json.loads(reg.read_text())
-    except (ValueError, UnicodeDecodeError) as exc:
+        text = reg.read_text()
+    except OSError as exc:
+        return [f"rehearsals/{REGISTER_NAME} cannot be read: {exc}"], 0
+    except UnicodeDecodeError as exc:
+        return [f"rehearsals/{REGISTER_NAME} is not JSON: {exc}"], 0
+    try:
+        doc = json.loads(text, object_pairs_hook=no_duplicate_keys)
+    except DuplicateKey as exc:
+        return [f"rehearsals/{REGISTER_NAME} has a duplicate key {exc.args[0]!r}; each key is written once"], 0
+    except ValueError as exc:
         return [f"rehearsals/{REGISTER_NAME} is not JSON: {exc}"], 0
     if not isinstance(doc, dict) or set(doc) != set(TOP_KEYS):
         return [f"rehearsals/{REGISTER_NAME}: the top-level keys are exactly {list(TOP_KEYS)}"], 0
-    if doc["schema"] != SCHEMA:
+    if type(doc["schema"]) is not int or doc["schema"] != SCHEMA:
         problems.append(f"rehearsals/{REGISTER_NAME}: schema is {doc['schema']!r}, not {SCHEMA}")
     walks = doc["walks"]
     if not isinstance(walks, list):
         return problems + [f"rehearsals/{REGISTER_NAME}: walks is not a list"], 0
     registered: list[str] = []
+    seen_fold: dict[str, str] = {}
     for i, entry in enumerate(walks):
         bad = entry_problems(i, entry, design)
         problems.extend(bad)
         if isinstance(entry, dict) and isinstance(entry.get("walk"), str):
             walk = entry["walk"]
+            folded = walk.casefold()
             if walk in registered:
                 problems.append(f"walk entry {i}: walk {walk!r} is registered twice")
+            elif folded in seen_fold:
+                # W7D-R1-1: one folder on a case-blind filesystem (the Mac), two on athena
+                problems.append(f"walk entry {i}: walk {walk!r} and {seen_fold[folded]!r} differ only by case")
+            seen_fold.setdefault(folded, walk)
             registered.append(walk)
+    # W7D-R1-1: folders are matched by their exact listed names, never by a path lookup, which ignores case on APFS
+    names = {p.name: p for p in base.iterdir()}
     for walk in dict.fromkeys(registered):
         if not WALK_ID.fullmatch(walk):
             continue
-        folder = base / walk
-        if folder.is_symlink() or not folder.is_dir():
+        folder = names.get(walk)
+        if folder is None or folder.is_symlink() or not folder.is_dir():
             problems.append(f"walk {walk!r} is registered and rehearsals/{walk}/ does not exist as a folder")
         elif not has_a_file(folder):
             problems.append(f"walk {walk!r} is registered and rehearsals/{walk}/ holds no file")
@@ -154,7 +193,10 @@ def main(argv=None) -> int:
     ap.add_argument("--check", action="store_true", required=True)
     ap.add_argument("--base", help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
-    problems, n = check(Path(args.base) if args.base else REHEARSALS)
+    try:
+        problems, n = check(Path(args.base) if args.base else REHEARSALS)
+    except OSError as exc:
+        problems, n = [f"rehearsals/ cannot be read: {exc}"], 0
     for p in problems:
         print(f"FAIL {p}")
     if problems:

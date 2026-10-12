@@ -10,7 +10,7 @@ Line numbers cite the private round 4 plan (`plans/gap-study-round-4.md`) as it 
 - "They are rehearsals: graded but never counted, each committed with its reason." (line 877)
 - "Every walk is graded but never counted. The v4 graders and the evidence readers meet real box end states before the freeze, and their outputs are read." (line 878)
 - "Fix what the walks show. Pre-register only what was walked." (line 884)
-- The plan's checklist repeats it: "box probes with scripted stub agents, and every walk graded but not counted" (line 1186).
+- The plan's review fold-in list repeats it: "box probes with scripted stub agents, and every walk graded but not counted" (line 1186).
 
 ## A walk is never a data take
 
