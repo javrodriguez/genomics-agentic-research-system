@@ -83,6 +83,8 @@ FIXTURES = HERE / "tests" / "fixtures" / "codex-streams"
 README = FIXTURES / "README.md"
 SYNTHETIC_LABEL = "SYNTHETIC, from D8 section 1 documentation, not a recorded stream."
 LABEL = re.compile(r"^- `([^`]+)`: (SYNTHETIC|RECORDED)\b(.*)$")
+# A RECORDED label names the walk and the harness version it was captured at (W11A-R1-9).
+RECORDED_LABEL = re.compile(r"RECORDED at walk [A-Za-z0-9][A-Za-z0-9._-]*, codex-cli [0-9]+\.[0-9]+\.[0-9]+\.")
 
 D8_EVENTS = ("thread.started", "turn.started", "item.started", "item.completed", "turn.completed", "turn.failed",
              "error")
@@ -470,22 +472,35 @@ def a6_turn(mod, p):
     return out
 
 
-@guarded("A7-source", CA_API)
-def a7_source(mod, p):
+def label_problems(marks: dict, files: list) -> tuple:
+    """(problems, the fixtures whose RECORDED label carries its provenance) for a README's labels (W11A-R1-9).
+
+    A SYNTHETIC label must be the brief's words; a RECORDED label must name the walk and the harness version it was
+    captured at (RECORDED_LABEL); a RECORDED word without both is a problem, never counted as recorded."""
     out = []
-    marks = labels()
-    files = sorted(f.name for f in FIXTURES.iterdir() if f.name != README.name)
     unlabelled = [f for f in files if f not in marks]
     if unlabelled:
-        out.append(f"{p}: fixture(s) with no label: {unlabelled}")
+        out.append(f"fixture(s) with no label: {unlabelled}")
     wrong = [f for f, (kind, rest) in marks.items() if kind == "SYNTHETIC" and kind + rest != SYNTHETIC_LABEL]
     if wrong:
-        out.append(f"{p}: fixture(s) whose label is not the brief's words: {wrong}")
-    recorded = [f for f, (kind, _) in marks.items() if kind == "RECORDED" and f in files]
+        out.append(f"fixture(s) whose label is not the brief's words: {wrong}")
+    bare = [f for f, (kind, rest) in marks.items() if kind == "RECORDED" and not RECORDED_LABEL.fullmatch(kind + rest)]
+    if bare:
+        out.append(f"fixture(s) labelled RECORDED without the walk id and harness version: {bare}")
+    recorded = [f for f, (kind, rest) in marks.items() if kind == "RECORDED" and f in files
+                and RECORDED_LABEL.fullmatch(kind + rest)]
+    return out, recorded
+
+
+@guarded("A7-source", CA_API)
+def a7_source(mod, p):
+    files = sorted(f.name for f in FIXTURES.iterdir() if f.name != README.name)
+    problems, recorded = label_problems(labels(), files)
+    out = [f"{p}: {x}" for x in problems]
     if mod.SHAPES_SOURCE not in mod.SHAPES_SOURCES or tuple(mod.SHAPES_SOURCES) != ("documented", "recorded"):
         out.append(f"{p}: SHAPES_SOURCE {mod.SHAPES_SOURCE!r} is off the two words")
     if mod.SHAPES_SOURCE == "recorded" and not recorded:
-        out.append(f"{p}: SHAPES_SOURCE reads 'recorded' while no fixture is labelled RECORDED")
+        out.append(f"{p}: SHAPES_SOURCE reads 'recorded' while no fixture is labelled RECORDED with its provenance")
     box = FakeRuntime([fixture("turn1-tools.jsonl")])
     a = adapter(mod, box, rollouts=[fixture("rollout-two-turns.jsonl")])
     if a.harness_record() != {"harness": "codex", "shapes_source": mod.SHAPES_SOURCE}:
@@ -494,6 +509,332 @@ def a7_source(mod, p):
     a.turn("one", first=True, budget_s=60)
     if [r["shapes_source"] for r in a.turn_records] != [mod.SHAPES_SOURCE]:
         out.append(f"{p}: the turn records do not carry the shapes' source")
+    return out
+
+
+# ------------------------------------------------------------------------------------------------ review round 1 fold
+# Each check below changes one thing per case (ruling w11a-R1-fold item 1), so each condition and clause is bound on
+# its own; the generated mutation sweep (--generated-mutants) binds the class.
+def jl(*recs) -> str:
+    return "".join((r if isinstance(r, str) else json.dumps(r)) + "\n" for r in recs)
+
+
+T_START = {"type": "thread.started", "thread_id": TID}
+TURN_START = {"type": "turn.started"}
+DONE = {"type": "turn.completed", "usage": USAGE}
+FAILED = {"type": "turn.failed", "error": {"message": "synthetic failure"}}
+
+
+def say(text, i="m1"):
+    return {"type": "item.completed", "item": {"id": i, "type": "agent_message", "text": text}}
+
+
+def take_with(mod, streams, rollouts=None, exit_codes=None):
+    box = FakeRuntime(streams, exit_codes=exit_codes)
+    two = fixture("rollout-two-turns.jsonl")
+    a = adapter(mod, box, rollouts=rollouts or [two] * len(streams))
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    return a, box
+
+
+@guarded("B1-end", CA_API)
+def b1_end(mod, p):
+    """W11A-R1-1: each of end_reason's three conditions, and the turn.failed count, on its own."""
+    out = []
+    cases = [((1, False, {"completed": 1, "failed": 0}), aa.END_ERROR, "a non-zero exit with a clean stream"),
+             ((0, False, {"completed": 0, "failed": 0}), aa.END_ERROR, "exit 0 with no turn.completed"),
+             ((0, False, {"completed": 1, "failed": 1}), aa.END_ERROR, "exit 0 with a turn.failed"),
+             ((None, False, {"completed": 1, "failed": 0}), aa.END_ERROR, "no exit code"),
+             ((0, False, {"completed": 1, "failed": 0}), aa.END_TURN, "exit 0, one turn.completed, no turn.failed"),
+             ((0, True, {"completed": 1, "failed": 0}), aa.END_TIMED_OUT, "a timed-out exec")]
+    for args, want, what in cases:
+        got = mod.end_reason(*args)
+        if got != want:
+            out.append(f"{p}: {what} ends {got!r}, not {want!r}")
+    r = mod.read_stream(jl(T_START, TURN_START, say("x"), FAILED, DONE))
+    if (r["failed"], r["completed"]) != (1, 1):
+        out.append(f"{p}: a stream with one turn.failed and one turn.completed counts {r['failed']}, {r['completed']}")
+    a, _ = take_with(mod, [jl(T_START, TURN_START, say("x"), FAILED, DONE)])
+    t = a.turn("one", first=True, budget_s=60)
+    if t.end_reason != aa.END_ERROR:
+        out.append(f"{p}: a turn with turn.failed and turn.completed under exit 0 ends {t.end_reason!r}")
+    return out
+
+
+@guarded("B2-thread", CA_API)
+def b2_thread(mod, p):
+    """W11A-R1-2: the thread id at all three seats: read_stream's shape, argv's later-turn id, turn 1's one thread."""
+    out = []
+    for bad in ("--last", "", "a b", 5):
+        got = refusal(lambda: mod.read_stream(jl({"type": "thread.started", "thread_id": bad}, TURN_START)),
+                      mod.StreamError)
+        if got:
+            out.append(f"{p}: read_stream with thread id {bad!r} {got}")
+    for bad in (None, "--last", "", 5):
+        got = refusal(lambda: mod.argv("two", model=MODEL, mode=MODE, session_id=bad, first=False), mod.StreamError)
+        if got:
+            out.append(f"{p}: argv for a later turn with session id {bad!r} {got}")
+    second = jl(T_START, TURN_START, say("two"), DONE)
+    for what, first in (("no thread.started", jl(TURN_START, say("one"), DONE)),
+                        ("two thread ids", jl(T_START, {"type": "thread.started", "thread_id": "synthetic-thread-0009"},
+                                              TURN_START, say("one"), DONE))):
+        a, box = take_with(mod, [first, second])
+        a.turn("one", first=True, budget_s=60)
+        got = refusal(lambda: a.turn("two", first=False, budget_s=60), mod.StreamError)
+        if got or len(turn_calls(box)) != 1:
+            out.append(f"{p}: turn 1 with {what}: turn 2 {got or 'refused'} after {len(turn_calls(box))} exec(s)")
+    a, box = take_with(mod, [jl({"type": "thread.started", "thread_id": "--last"}, TURN_START, say("one"), DONE),
+                             second])
+    got = refusal(lambda: a.turn("one", first=True, budget_s=60), mod.StreamError)
+    if got or any("resume" in c for c in turn_calls(box)):
+        out.append(f"{p}: a turn 1 naming thread '--last' {got or 'refused'}; execs {turn_calls(box)}")
+    return out
+
+
+REQUIRED_DROPS = (
+    ("thread.started without thread_id", {"type": "thread.started"}),
+    ("turn.completed without usage", {"type": "turn.completed"}),
+    ("turn.failed without error", {"type": "turn.failed"}),
+    ("turn.failed error without message", {"type": "turn.failed", "error": {}}),
+    ("error without message", {"type": "error"}),
+    ("item.completed without item", {"type": "item.completed"}),
+    ("item without id", {"type": "item.completed", "item": {"type": "agent_message", "text": "x"}}),
+    ("agent_message without text", {"type": "item.completed", "item": {"id": "i1", "type": "agent_message"}}),
+    ("reasoning without text", {"type": "item.completed", "item": {"id": "i1", "type": "reasoning"}}),
+    ("command_execution without command", {"type": "item.completed", "item": {"id": "i1", "type": "command_execution"}}),
+    ("file_change without changes", {"type": "item.completed", "item": {"id": "i1", "type": "file_change"}}),
+    ("a change without kind", {"type": "item.completed", "item": {"id": "i1", "type": "file_change",
+                                                                   "changes": [{"path": "a"}]}}),
+    ("mcp_tool_call without tool", {"type": "item.started", "item": {"id": "i1", "type": "mcp_tool_call",
+                                                                      "server": "s"}}),
+    ("mcp_tool_call without server", {"type": "item.started", "item": {"id": "i1", "type": "mcp_tool_call",
+                                                                        "tool": "t"}}),
+)
+TYPE_BREAKS = (
+    ("agent_message text 5", say(5)),
+    ("reasoning text 5", {"type": "item.completed", "item": {"id": "i1", "type": "reasoning", "text": 5}}),
+    ("item id ''", {"type": "item.completed", "item": {"id": "", "type": "agent_message", "text": "x"}}),
+    ("item id 5", {"type": "item.completed", "item": {"id": 5, "type": "agent_message", "text": "x"}}),
+    ("item not an object", {"type": "item.completed", "item": "agent_message"}),
+    ("command 5", {"type": "item.started", "item": {"id": "i1", "type": "command_execution", "command": 5}}),
+    ("exit_code '0'", {"type": "item.completed", "item": {"id": "i1", "type": "command_execution", "command": "ls",
+                                                           "exit_code": "0"}}),
+    ("exit_code true", {"type": "item.completed", "item": {"id": "i1", "type": "command_execution", "command": "ls",
+                                                            "exit_code": True}}),
+    ("changes []", {"type": "item.completed", "item": {"id": "i1", "type": "file_change", "changes": []}}),
+    ("changes not a list", {"type": "item.completed", "item": {"id": "i1", "type": "file_change", "changes": "a"}}),
+    ("a change not an object", {"type": "item.completed", "item": {"id": "i1", "type": "file_change",
+                                                                    "changes": ["a"]}}),
+    ("a change path 5", {"type": "item.completed", "item": {"id": "i1", "type": "file_change",
+                                                             "changes": [{"path": 5, "kind": "add"}]}}),
+    ("error message 5", {"type": "error", "message": 5}),
+    ("turn.failed error not an object", {"type": "turn.failed", "error": "x"}),
+    ("turn.failed message 5", {"type": "turn.failed", "error": {"message": 5}}),
+    ("usage not an object", {"type": "turn.completed", "usage": [1, 2]}),
+    ("status 5", {"type": "item.completed", "item": {"id": "i1", "type": "file_change", "status": 5,
+                                                      "changes": [{"path": "a", "kind": "add"}]}}),
+    ("server 5", {"type": "item.started", "item": {"id": "i1", "type": "mcp_tool_call", "server": 5, "tool": "t"}}),
+    ("a record not an object", [1]),
+)
+
+
+@guarded("B3-required", TC_API)
+def b3_required(mod, p):
+    """W11A-R1-3: each required key, dropped one at a time, refused by the record check."""
+    out = []
+    for what, rec in REQUIRED_DROPS:
+        got = refusal(lambda: mod.check_record(rec), mod.ShapeError)
+        if got:
+            out.append(f"{p}: {what}: the record check {got}")
+    return out
+
+
+@guarded("B3-stream", CA_API)
+def b3_stream(mod, p):
+    """W11A-R1-3 and R1-8 on the adapter's road: each dropped key and each value off its type is a StreamError."""
+    out = []
+    for what, rec in REQUIRED_DROPS + TYPE_BREAKS:
+        got = refusal(lambda: mod.read_stream(jl(T_START, TURN_START, rec)), mod.StreamError)
+        if got:
+            out.append(f"{p}: {what}: read_stream {got}")
+    return out
+
+
+@guarded("B8-types", TC_API)
+def b8_types(mod, p):
+    """W11A-R1-8: each value off its type, one at a time, refused (typed) by the record check or the parser."""
+    out = []
+    for what, rec in TYPE_BREAKS:
+        got = refusal(lambda: mod.CodexParser().items(json.dumps(rec)), mod.ShapeError)
+        if got:
+            out.append(f"{p}: {what}: the parser {got}")
+        got = refusal(lambda: mod.check_record(rec), mod.ShapeError)
+        if got:
+            out.append(f"{p}: {what}: the record check {got}")
+    return out
+
+
+ROLLOUT_META_OK = {"type": "session_meta", "payload": {"id": TID, "cli_version": VERSION}}
+
+
+def ctx(**payload):
+    return {"type": "turn_context", "payload": payload}
+
+
+@guarded("B4-rollout", CA_API)
+def b4_rollout(mod, p):
+    """W11A-R1-4: the rollout init's guards, one at a time."""
+    out = []
+    good = {"model": MODEL, "permission_mode": "never", "version": VERSION}
+    r = mod.read_rollout(jl(ROLLOUT_META_OK, ctx(model=MODEL, approval_policy="never")), seen=0)
+    if r != {"turn_contexts": 1, "init": good, "why_no_init": None}:
+        out.append(f"{p}: a clean rollout reads {r}")
+    r = mod.read_rollout(jl(ROLLOUT_META_OK, ctx(model=MODEL, approval_policy="never"),
+                            ctx(model=MODEL, approval_policy="never")), seen=0)
+    if r["init"] != good or r["turn_contexts"] != 2:
+        out.append(f"{p}: two agreeing turn_contexts in one turn read {r}")
+    got = refusal(lambda: mod.read_rollout(jl(ROLLOUT_META_OK, ctx(model="a", approval_policy="never"),
+                                              ctx(model="b", approval_policy="never")), seen=0), mod.StreamError)
+    if got:
+        out.append(f"{p}: one turn's turn_contexts naming two models {got}")
+    nones = (("no approval_policy", jl(ROLLOUT_META_OK, ctx(model=MODEL))),
+             ("approval_policy 5", jl(ROLLOUT_META_OK, ctx(model=MODEL, approval_policy=5))),
+             ("approval_policy ''", jl(ROLLOUT_META_OK, ctx(model=MODEL, approval_policy=""))),
+             ("no model", jl(ROLLOUT_META_OK, ctx(approval_policy="never"))),
+             ("model ''", jl(ROLLOUT_META_OK, ctx(model="", approval_policy="never"))),
+             ("no session_meta", jl(ctx(model=MODEL, approval_policy="never"))),
+             ("two session_metas", jl(ROLLOUT_META_OK, {"type": "session_meta", "payload": {"cli_version": "9.9.9"}},
+                                      ctx(model=MODEL, approval_policy="never"))),
+             ("a session_meta with no cli_version", jl({"type": "session_meta", "payload": {"id": TID}},
+                                                       ctx(model=MODEL, approval_policy="never"))),
+             ("a session_meta payload not an object", jl({"type": "session_meta", "payload": "x"},
+                                                         ctx(model=MODEL, approval_policy="never"))))
+    for what, text in nones:
+        r = mod.read_rollout(text, seen=0)
+        if r["init"] is not None or not isinstance(r["why_no_init"], str) or not r["why_no_init"]:
+            out.append(f"{p}: {what}: init {r['init']}, reason {r['why_no_init']!r}")
+    for what, text in (("a payload not an object", jl(ROLLOUT_META_OK, {"type": "turn_context", "payload": "x"})),
+                       ("a line that is not JSON", jl(ROLLOUT_META_OK, "not json")),
+                       ("a record that is not an object", jl(ROLLOUT_META_OK, [1]))):
+        got = refusal(lambda: mod.read_rollout(text, seen=0), mod.StreamError)
+        if got:
+            out.append(f"{p}: a rollout with {what} {got}")
+    r = mod.read_rollout(jl(ROLLOUT_META_OK, ctx(model="a", approval_policy="never"),
+                            ctx(model=MODEL, approval_policy="never")), seen=1)
+    if r["init"] != good:
+        out.append(f"{p}: the turn_contexts before `seen` were read: {r}")
+    r = mod.read_rollout(jl(ROLLOUT_META_OK), seen=0)
+    if r["init"] is not None or r["turn_contexts"] != 0:
+        out.append(f"{p}: a rollout with no turn_context reads {r}")
+    return out
+
+
+@guarded("B5-usage", CA_API)
+def b5_usage(mod, p):
+    """W11A-R1-5: usage values true, negative or not an int, and two turn.completed records, each refused."""
+    out = []
+    for what, v in (("true", True), ("-5", -5), ("1.0", 1.0), ("'3'", "3"), ("None", None)):
+        got = refusal(lambda: mod.read_stream(jl(T_START, {"type": "turn.completed",
+                                                           "usage": dict(USAGE, output_tokens=v)})), mod.StreamError)
+        if got:
+            out.append(f"{p}: output_tokens {what} {got}")
+    r = mod.read_stream(jl(T_START, {"type": "turn.completed", "usage": dict(USAGE, output_tokens=0)}))
+    if r["usage"] != dict(USAGE, output_tokens=0):
+        out.append(f"{p}: a usage of 0 output tokens reads {r['usage']}")
+    got = refusal(lambda: mod.read_stream(jl(T_START, DONE, DONE)), mod.StreamError)
+    if got:
+        out.append(f"{p}: two turn.completed records {got}")
+    return out
+
+
+@guarded("B6-empty", CA_API)
+def b6_empty(mod, p):
+    """W11A-R1-6: an empty or absent model and an empty line, at argv and at the adapter's making."""
+    out = []
+    for what, kw in (("model ''", {"line": "x", "model": ""}), ("model None", {"line": "x", "model": None}),
+                     ("line ''", {"line": "", "model": MODEL}), ("line None", {"line": None, "model": MODEL})):
+        got = refusal(lambda: mod.argv(kw["line"], model=kw["model"], mode=MODE, session_id=TID, first=True),
+                      mod.StreamError)
+        if got:
+            out.append(f"{p}: argv with {what} {got}")
+    got = refusal(lambda: mod.argv("x", model=MODEL, mode="default", session_id=TID, first=True), mod.StreamError)
+    if got:
+        out.append(f"{p}: argv with an unknown mode {got}")
+    for bad in ("", None, 5):
+        got = refusal(lambda: mod.CodexAdapter(runtime=FakeRuntime([]), take_id=TAKE, run_tree=str(SCRATCH),
+                                               login_file="x", model=bad, pin={"permission_mode": MODE},
+                                               stream_path_for=str, rollout_for=str, counters_for=dict, clock=float),
+                      mod.StreamError)
+        if got:
+            out.append(f"{p}: an adapter for model {bad!r} {got}")
+    for what, kw in (("stream_path_for", "stream_path_for"), ("rollout_for", "rollout_for"),
+                     ("counters_for", "counters_for"), ("clock", "clock")):
+        args = dict(stream_path_for=str, rollout_for=str, counters_for=dict, clock=float)
+        args[kw] = "not callable"
+        got = refusal(lambda: mod.CodexAdapter(runtime=FakeRuntime([]), take_id=TAKE, run_tree=str(SCRATCH),
+                                               login_file="x", model=MODEL, pin={"permission_mode": MODE}, **args),
+                      TypeError)
+        if got:
+            out.append(f"{p}: an adapter whose {what} is not callable {got}")
+    got = refusal(lambda: mod.CodexAdapter(runtime=FakeRuntime([]), take_id=TAKE, run_tree=str(SCRATCH),
+                                           login_file="x", model=MODEL, pin="bypass", stream_path_for=str,
+                                           rollout_for=str, counters_for=dict, clock=float), rt.NotReady)
+    if got:
+        out.append(f"{p}: a pin that is not an object {got}")
+    return out
+
+
+@guarded("B7-blank", CA_API)
+def b7_blank(mod, p):
+    """W11A-R1-7: a blank agent_message is not output; each output item type alone is."""
+    out = []
+    for text in ("", "   ", "\n\t"):
+        r = mod.read_stream(jl(T_START, say(text), DONE))
+        if r["agent_output"] is not False:
+            out.append(f"{p}: an agent_message of {text!r} was read as output")
+    singles = (("command_execution", {"type": "item.completed", "item": {"id": "c1", "type": "command_execution",
+                                                                         "command": "ls"}}),
+               ("file_change", {"type": "item.completed", "item": {"id": "f1", "type": "file_change",
+                                                                   "changes": [{"path": "a", "kind": "add"}]}}),
+               ("mcp_tool_call", {"type": "item.completed", "item": {"id": "x1", "type": "mcp_tool_call",
+                                                                     "server": "s", "tool": "t"}}),
+               ("agent_message", say("words")))
+    for what, rec in singles:
+        r = mod.read_stream(jl(T_START, rec, DONE))
+        if r["agent_output"] is not True:
+            out.append(f"{p}: a completed {what} alone was not read as output")
+        want = [] if what == "agent_message" else [rec["item"]["id"]]
+        if r["tool_ids"] != want:
+            out.append(f"{p}: a completed {what} gives tool ids {r['tool_ids']}")
+    started = {"type": "item.started", "item": {"id": "c1", "type": "command_execution", "command": "ls"}}
+    r = mod.read_stream(jl(T_START, started, DONE))
+    if r["agent_output"] or r["tool_ids"]:
+        out.append(f"{p}: a call started and never completed reads output {r['agent_output']}, ids {r['tool_ids']}")
+    r = mod.read_stream(jl(T_START, say("a"), say("", "m2"), say("b", "m3"), DONE))
+    if r["agent_text"] != "a\nb":
+        out.append(f"{p}: the agent's texts join as {r['agent_text']!r}")
+    return out
+
+
+@guarded("B10-cut", CA_API)
+def b10_cut(mod, p):
+    """W11A-R1-10: a line that is not JSON is accepted only as a cut stream's last line, and counted."""
+    out = []
+    r = mod.read_stream(jl(T_START, TURN_START, say("x"), '{"type": "turn.compl'))
+    if r["undecoded"] != 1 or r["agent_text"] != "x":
+        out.append(f"{p}: a cut last line reads undecoded {r['undecoded']}")
+    r = mod.read_stream(jl(T_START, TURN_START, say("x"), '{"type": "turn.compl', ""))
+    if r["undecoded"] != 1:
+        out.append(f"{p}: a cut last line before a blank line reads undecoded {r['undecoded']}")
+    for what, text in (("a first line", jl("garbage", T_START, TURN_START)),
+                       ("a middle line", jl(T_START, "garbage", TURN_START)),
+                       ("two last lines", jl(T_START, TURN_START, "garbage", "more garbage"))):
+        got = refusal(lambda: mod.read_stream(text), mod.StreamError)
+        if got:
+            out.append(f"{p}: a line that is not JSON as {what} {got}")
+    r = mod.read_stream("")
+    if r["undecoded"] != 0 or r["usage"] is not None or r["agent_output"]:
+        out.append(f"{p}: an empty stream reads {r}")
     return out
 
 
@@ -510,6 +851,12 @@ class TestTheShapes(unittest.TestCase):
 
     def test_p1_the_view_vocabulary(self):
         self.assertEqual(p1_view(tc), [])
+
+    def test_b3_a_dropped_required_key_is_refused(self):
+        self.assertEqual(b3_required(tc), [])
+
+    def test_b8_a_value_off_its_type_is_refused(self):
+        self.assertEqual(b8_types(tc), [])
 
     def test_the_usage_keys_are_d8s(self):
         self.assertEqual(tuple(getattr(tc, "USAGE_KEYS", ())), D8_USAGE)
@@ -536,6 +883,40 @@ class TestTheAdapter(unittest.TestCase):
 
     def test_a7_the_shapes_source_is_documented(self):
         self.assertEqual(a7_source(ca), [])
+
+    def test_b1_each_end_reason_condition(self):
+        self.assertEqual(b1_end(ca), [])
+
+    def test_b2_the_thread_id_at_every_seat(self):
+        self.assertEqual(b2_thread(ca), [])
+
+    def test_b3_a_dropped_required_key_is_refused_on_the_adapters_road(self):
+        self.assertEqual(b3_stream(ca), [])
+
+    def test_b4_the_rollout_init_guards(self):
+        self.assertEqual(b4_rollout(ca), [])
+
+    def test_b5_usage_values_and_two_completions(self):
+        self.assertEqual(b5_usage(ca), [])
+
+    def test_b6_an_empty_model_or_line(self):
+        self.assertEqual(b6_empty(ca), [])
+
+    def test_b7_a_blank_message_is_not_output(self):
+        self.assertEqual(b7_blank(ca), [])
+
+    def test_b10_a_cut_line_only_last(self):
+        self.assertEqual(b10_cut(ca), [])
+
+    def test_a7_a_recorded_label_needs_its_provenance(self):
+        files = ["x.jsonl", "y.jsonl"]
+        bare = {"x.jsonl": ("RECORDED", ""), "y.jsonl": ("RECORDED", " at walk w-1.")}
+        problems, recorded = label_problems(bare, files)
+        self.assertEqual(recorded, [])
+        self.assertTrue(any("without the walk id and harness version" in x for x in problems), problems)
+        full = {"x.jsonl": ("RECORDED", " at walk w-1, codex-cli 0.160.1."), "y.jsonl": ("SYNTHETIC",
+                                                                                         SYNTHETIC_LABEL[9:])}
+        self.assertEqual(label_problems(full, files), ([], ["x.jsonl"]))
 
     def test_a_version_off_its_form_refuses(self):
         self.assertTrue(hasattr(ca, "CodexAdapter"), "codex_adapter.py has no CodexAdapter")
