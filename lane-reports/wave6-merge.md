@@ -166,4 +166,56 @@ Checks on 66e1ede1 (Mac, Python 3.13.2, `mac_slot.py light-ok`, `timeout -s INT 
 | tests/test_checker_body.py | 0 | Ran 26, OK |
 | tests/test_claude_code_adapter.py | 0 | Ran 19, OK |
 
-RESUME HERE: merge head 66e1ede15ebf3f9d81d57a2822f341a0a30107ea; athena run_checks owed (orchestrator)
+Superseded by the sys.path addendum below.
+
+## Addendum: the sys.path leak after athena's run on 7e057eb2 (Sun 11 Oct 2026, 21:59 to 22:16 EDT)
+
+athena's run_checks on 7e057eb2 (`gap4-wave6-merge-7e057eb2-7e057eb-20261012T003714Z`) passed 123 of 124.
+The one failure was test_round4: `test_confounded_design.TheContractDrift.test_the_reimplemented_helpers_equal_stated_counts` (line 644) found `<repo>/evals` on sys.path.
+
+Culprit: check_take.py, a round 3 copy, puts `evals/` at the front of sys.path on import (line 70).
+S6 introduced the leak, not an older slice: its new `tests/test_check_take.py` imports check_take.py in setUpModule and never restores sys.path.
+`tests/test_box_integration.py` reaches it through drive.py, and `test_drive_loop` leaks through that module's setUp.
+S6b's `tests/test_checker_body.py` (merged after 7e057eb2) does the same.
+test_round4 runs every module in one process, alphabetically, so these run before test_confounded_design.
+test_mode_binding and test_claude_code_adapter do not leak; the evidence is a one-process run of each before test_confounded_design, ending with 0 `evals/` entries on the path.
+Reproduced on the Mac (a scratch runner, one process, discovery as test_round4 does it):
+
+| Run | Exit | evals/ left on sys.path |
+|---|---|---|
+| test_confounded_design alone | 0 | 0 |
+| test_check_take, then test_confounded_design | 1 (the line 644 failure) | 6 |
+| test_checker_body, then test_confounded_design | 1 | 11 |
+| test_drive_loop, then test_confounded_design | 1 | 1 |
+| test_mode_binding, then test_confounded_design | 0 | 0 |
+| test_claude_code_adapter, then test_confounded_design | 0 | 0 |
+
+Fix (commit 664d9b00), line 644 untouched: in test_box_integration, test_check_take and test_checker_body, setUpModule first registers `_STACK.callback(sys.path.__setitem__, slice(None), list(sys.path))`.
+Being registered first, it runs last when tearDownModule closes the stack, and it puts sys.path back in place.
+The check is new `tests/test_wave6_bindings.py` (binding W6M1).
+In a fresh interpreter per module it runs setUpModule, then the check_take.py import, then tearDownModule, and requires sys.path back exactly; a non-vacuity test shows the import does insert `evals/`.
+It is claimed by the new `COPIED.d/wave6-merge.json`, with `checks.d/wave6-merge.txt`.
+Red first: before the fix it failed on all three modules by assertion (`W6M1.evals-left:<module>`), and the non-vacuity test passed.
+
+Checks on 664d9b00 (Mac, Python 3.13.2, `mac_slot.py light-ok`, `timeout -s INT 120`):
+
+| Check | Exit | Result |
+|---|---|---|
+| tests/test_wave6_bindings.py (before the fix) | 1 | 3 failures, one per module |
+| tests/test_wave6_bindings.py | 0 | Ran 2, OK |
+| test_check_take, then test_confounded_design (one process) | 0 | Ran 44; 0 evals/ left |
+| test_checker_body, then test_confounded_design | 0 | Ran 55; 0 left |
+| test_drive_loop, then test_confounded_design | 0 | Ran 56; 0 left |
+| tests/test_check_take.py | 0 | Ran 15, OK |
+| tests/test_checker_body.py | 0 | Ran 26, OK |
+| tests/test_box_integration.py TestGuardArmed, TestTheTakePath, TestBoundChecks, TestRealBoxStub | 0 each | 2, 17, 19, 1 OK |
+| tests/test_box_integration.py TestWitnesses | 124 | exceeds the 120 s cap; athena's |
+| copy_manifest.py --check | 0 | 255 files from 37 fragments |
+| freeze.py --check | 0 | 255 owned paths |
+
+lint_language and lint_pooling, run by absolute path over the folder, report pre-existing findings in other lanes' files (26 and 8), none in a file this commit touches.
+I did not chase them; CI runs them from the repository root, and athena's run_checks is the authority.
+
+RESIDUAL: a later module in the battery that had passed only because of the leaked path would now fail. None was found on the Mac, but the full test_round4 battery is athena's.
+
+RESUME HERE: merge head 664d9b0080461ed1e38dfd04a27c16597c590d1c; athena run_checks owed (orchestrator)
