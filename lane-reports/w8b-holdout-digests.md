@@ -14,7 +14,7 @@ No real holdout content was read or created (synthetic strings only), and no mod
 
 1. **Pre-freeze draft carries nothing (build_draft.py).**
    `describe` no longer writes `holdout_salted_digests: PENDING`, and `holdout_rule` is `HOLDOUT_RULE`.
-   `HOLDOUT_RULE` drops `wordings_per_task_version: 3` and adds `digests_and_count_enter: "the freeze commit only"` and `ruling: "W8B-gap4-1"`.
+   `HOLDOUT_RULE` carries no count field and adds `digests_and_count_enter: "the freeze commit only"` and `ruling: "W8B-gap4-1"`.
    `prefreeze_holdout_problems` names either freeze-only field (`HOLDOUT_FREEZE_KEYS`) or any other `holdout_rule`.
    `finalize` refuses such a draft, so `write_draft` and `build` refuse it too.
    The holdout pending reason is removed.
@@ -118,3 +118,34 @@ Evidence (Mac; `light-ok &&`, `timeout -s INT 120`, Python 3.13):
 - test_build_draft: 45/45, exit 0.
 - `copy_manifest --check` exit 0; `freeze.py --check` exit 0.
 - Lint: freeze_rehearsal.py and the test are clean.
+
+## Fold W8B-close-1: review round 1 (written Mon 12 Oct 2026, 09:26 EDT, `date`)
+
+Code commit `19af7698` sits on top of `b533f53b`.
+Review round 1 came back CHANGES with one MAJOR and two MINOR findings (`plans/gap-study-round-4/w8b-review-r1-2026-10-12.md`).
+
+1. **W8B-R1-1 (MAJOR).** The synthetic digest generator now lives in freeze.py (`synthetic_digest`, `synthetic_holdout_source`, `SYNTHETIC_BOUND` = 8, two per task by default).
+   `holdout_fields` now refuses, outside a disposable rehearsal, a source holding any synthetic digest of any of its tasks at an index below the bound.
+   The refusal names the tasks and ruling W8B-gap4-1.
+   `freeze_rehearsal` calls the generator from freeze.py, and its `finally` deletes the synthetic file unless `--keep`.
+   I reran the reviewer's `probe.py` against the fold: `holdout_source_problem` still prints None, because that check only covers an absent file.
+   The probe then stops at `holdout_fields` with `ValueError: the holdout digest source holds the rehearsal's synthetic digests (...all 9 tasks...); a real freeze takes only the salted digests from private aegis (ruling W8B-gap4-1)`.
+   New test H12: a real freeze refuses the probe's file, and also refuses a single synthetic digest hidden at index 7 of another task; a rehearsal accepts the file; the file is gone after a rehearsal and kept with `--keep`.
+   Witnesses: synthetic-admitted and synthetic-file-kept.
+2. **W8B-R1-2.** No mutant or negative case plants the real count any more; 7 is used instead.
+   This covers H5, H7 and H10 here, and test_build_draft's digests-count mutant and digest-shape cases.
+   The ownership line above was reworded so it no longer quotes the count.
+   The base-history note (98424794 holds the count and the stand-in) is left for Javier's publish decision; no history was rewritten.
+3. **W8B-R1-3.** H3 to H6 now open with `hasattr` assertions.
+   In a temporary detached worktree of `98424794` (removed after) with only the new test file: 12 run, 14 failures, 0 errors, exit 1, every one by assertion.
+
+Evidence (Mac; `light-ok &&`, `timeout -s INT 120`, Python 3.13):
+- Red first on `b533f53b`'s code: 12 run, 1 failure (H12 by assertion: "the generator lives in freeze.py"), exit 1.
+- Green: 12/12, exit 0.
+- Witnesses: 18/18 RED, exit 0.
+- test_build_draft: 45/45, exit 0.
+  Mutants digests-count (R7.absent) and digest-shape (R7.digest-shape): each exit 1, red by its clause.
+- test_pipeline PipelineOwnership, FreezeCoverage, FreezeOutputs and FreezeDesign: 16 tests run by class, exit 0.
+- `copy_manifest --check`, `freeze.py --check` and `build_draft --check`: each exit 0.
+- Lint: freeze.py, freeze_rehearsal.py and the test are clean.
+- `~/holdout-author` was never opened.
