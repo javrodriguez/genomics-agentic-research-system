@@ -597,6 +597,10 @@ def a1_stream(mod, p):
     got = refusal(lambda: mod.read_stream(mid, model=MODEL), mod.StreamError)
     if got:
         out.append(f"{p}: a line that is not JSON before the last {got} (W11B-R1-1)")
+    for lone in ("Error: quota exceeded\n", '{"type": "ini', "\n  \nnot json\n\n"):
+        got = refusal(lambda: mod.read_stream(lone, model=MODEL), mod.StreamError)
+        if got:
+            out.append(f"{p}: a stream whose only non-blank line is not JSON {got} (W11B-R2-1): {lone!r}")
     init = ev("init", session_id=SID, model=MODEL)
     for sep in ("\u2028", "\u0085"):
         cmd = ev("tool_use", tool_name="run_shell_command", tool_id="t1", parameters={"command": f"echo a{sep}b"})
@@ -768,7 +772,7 @@ def a6_argv(mod, p):
         out.append(f"{p}: a later turn's argv is {later}")
     if refusal(lambda: mod.argv("-x", model=MODEL, mode=MODE, session_id=None, first=True), mod.StreamError):
         out.append(f"{p}: a line starting with '-' was not refused")
-    for sid in (None, "a b; rm", 5, "latest", "1", "42"):
+    for sid in (None, "a b; rm", 5, "latest", "LATEST", "Latest", "1", "42"):
         got = refusal(lambda: mod.argv("two", model=MODEL, mode=MODE, session_id=sid, first=False), mod.StreamError)
         if got:
             out.append(f"{p}: a later turn with session id {sid!r} {got}")
@@ -849,7 +853,7 @@ def a7_session(mod, p):
     got = refusal(lambda: a.turn("two", first=False, budget_s=60), mod.StreamError)
     if got:
         out.append(f"{p}: a later turn after a first turn with no init {got}")
-    for sid in ("a b", 5, "", "latest", "0", "17"):
+    for sid in ("a b", 5, "", "latest", "LATEST", "lAtEsT", "0", "17"):
         bad = jl([ev("init", session_id=sid, model=MODEL)])
         got = refusal(lambda: mod.read_stream(bad, model=MODEL), mod.StreamError)
         if got:
@@ -1174,8 +1178,12 @@ WITNESSES = {
         "        t = rec.get(\"type\")\n")),
     "cut-line-uncounted": _w("ga", a1_stream, "A1-stream", ("            bad = 1\n", "            pass\n")),
     "midstream-junk-accepted": _w("ga", a1_stream, "A1-stream", (
-        "            if n != len(lines):\n                raise StreamError(f\"line {n}",
+        "            if n != len(lines) or n == 1:\n                raise StreamError(f\"line {n}",
         "            if False:\n                raise StreamError(f\"line {n}")),
+    "lone-junk-accepted": _w("ga", a1_stream, "A1-stream", (
+        "            if n != len(lines) or n == 1:\n", "            if n != len(lines):\n")),
+    "midstream-clause-dropped": _w("ga", a1_stream, "A1-stream", (
+        "            if n != len(lines) or n == 1:\n", "            if n == 1:\n")),
     "split-on-every-line-break": _w("ga", a1_stream, "A1-stream", ("text.split(\"\\n\")", "text.splitlines()")),
     "delta-clause-dropped": _w("ga", a1_stream, "A1-stream", (
         "            if rec.get(\"delta\") is True and joining:\n", "            if joining:\n")),
@@ -1303,11 +1311,12 @@ WITNESSES = {
         "            if not _SESSION_ID.fullmatch(session_id):\n                raise StreamError(\"the init carries",
         "            if False:\n                raise StreamError(\"the init carries")),
     "session-selectors-admitted": _w("ga", a7_session, "A7-session", (
-        "_SESSION_ID = re.compile(r\"(?!latest$)(?![0-9]+$)[A-Za-z0-9]", "_SESSION_ID = re.compile(r\"[A-Za-z0-9]")),
+        "_SESSION_ID = re.compile(r\"(?!(?i:latest)$)(?![0-9]+$)[A-Za-z0-9]", "_SESSION_ID = re.compile(r\"[A-Za-z0-9]")),
     "session-latest-admitted": _w("ga", a7_session, "A7-session", (
-        "_SESSION_ID = re.compile(r\"(?!latest$)(?![0-9]+$)[A-Za-z0-9]", "_SESSION_ID = re.compile(r\"(?![0-9]+$)[A-Za-z0-9]")),
+        "_SESSION_ID = re.compile(r\"(?!(?i:latest)$)(?![0-9]+$)[A-Za-z0-9]", "_SESSION_ID = re.compile(r\"(?![0-9]+$)[A-Za-z0-9]")),
+    "session-latest-case-sensitive": _w("ga", a7_session, "A7-session", ("(?!(?i:latest)$)", "(?!latest$)")),
     "session-index-admitted": _w("ga", a7_session, "A7-session", (
-        "_SESSION_ID = re.compile(r\"(?!latest$)(?![0-9]+$)[A-Za-z0-9]", "_SESSION_ID = re.compile(r\"(?!latest$)[A-Za-z0-9]")),
+        "_SESSION_ID = re.compile(r\"(?!(?i:latest)$)(?![0-9]+$)[A-Za-z0-9]", "_SESSION_ID = re.compile(r\"(?!(?i:latest)$)[A-Za-z0-9]")),
     # ---- the turn's end and exit
     "exit53-as-end-turn": _w("ga", a8_turn, "A8-turn", (
         "    if exit_code == 0 and read[\"status\"] == tg.SUCCESS:\n", "    if read[\"status\"] == tg.SUCCESS:\n")),
@@ -1352,7 +1361,7 @@ class TestWitnesses(unittest.TestCase):
         self.assertTrue(own, f"{name}: survived (no {prefix} line): {got}")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 111)
+        self.assertEqual(len(WITNESSES), 114)
         for name, (target, edits, _, _) in WITNESSES.items():
             path = Path(TARGETS[target]().__file__)
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")

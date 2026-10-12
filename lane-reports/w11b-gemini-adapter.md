@@ -106,3 +106,12 @@ Athena module list: tests/test_gemini_adapter.py; --witnesses; --generated-mutan
 
 Correction (Mon 12 Oct 2026 17:46 EDT, `date`): lint_language over this report flags four lines, not two: the ratio shapes at lines 14, 22 and 27 (stages 1 and 2), and the residual line in stage 4, where the line number of claude_code_adapter.py reads as the banned hundred. The report stays outside the gated folder and append-only.
 That correction's own stamp should read 17:45 (`date` printed 17:45:43).
+
+## Stage 5: ruling w11b-close-1, the tests first (Mon 12 Oct 2026 18:05 EDT, `date`)
+
+Review round 2 (9d7c8c8b) passed with one MINOR; glitch-2f's ruling w11b-close-1 folds it and the reviewer's case observation.
+Red on the stage 4 code: Ran 138, FAILED (failures=43), 0 errors (38 witnesses whose anchors name the fold's code, the sweep baseline, the anchor registry, and A1, A6, A7).
+Own lines:
+
+- W11B-R2-1: "A1-stream: a stream whose only non-blank line is not JSON accepted it", for 'Error: quota exceeded\n', a lone cut '{"type": "ini' and a junk line among blank lines.
+- The case observation: "A6-argv: a later turn with session id 'LATEST' accepted it" and 'Latest'; "A7-session: an init session id 'LATEST' accepted it" and 'lAtEsT'.
