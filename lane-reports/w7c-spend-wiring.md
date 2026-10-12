@@ -1,4 +1,4 @@
-status: hand-back for review
+status: hand-back for review (fold Q-w7c-1 on top)
 head: see RESUME HERE. Base 82cf6ae9 (the wave 7 merge head), branch gap4/w7c-spend-wiring, worktree /Users/javrodher/aegis-builds/gap4-w7c.
 
 # Lane w7c-spend-wiring: Gap Study round 4, wave 7, the spend-guard wiring
@@ -51,3 +51,17 @@ checks.d/w7c-spend-wiring.txt runs the new module, `routing.py --check`, and the
 Code commit: 0c980a0a (base 82cf6ae9). After the commit, copy_manifest.py --check exit 0 (264 files, 40 fragments) and freeze.py --check exit 0 on the committed index.
 
 RESUME HERE: hand-back at 0c980a0a
+
+## Fold Q-w7c-1 (glitch-1b's rulings, 12 Oct 2026, recorded in next-slices)
+
+_Written Mon 12 Oct 2026 (`date`)._
+Q-w7c-1: the month-turn hold now reads batch's OWN clock: `Batch(clock=...)`, default `utc_now()` (aware UTC, read at each block's check), passed to `money_gate_problems`; the ledger's `now` stays in LEDGER_KEYS (recorded) but never decides the hold.
+A clock that raises or reads naive refuses the paid block.
+Q-w7c-2: kept as built (a refused paid row stops the whole loop).
+Test G6-clock: the ledger says 15 Oct while batch's clock is 31 Oct 23:45 UTC -> refused; the ledger says inside the hold while the clock says 15 Oct -> runs; the clock is read for a paid block. Witness ledger-clock (the hold reads `snap["now"]`) red by G6-clock (6 own, 0 collateral, 0 errors); month-check-dropped's anchor follows the new line.
+Red first: test_spend_wiring exit 1, 21 ran, 13 failures, 0 errors (all AssertionError; `clock=` did not exist).
+Green: test_spend_wiring exit 0 (21, 10 of 10 witnesses red); test_batch exit 0 (118); batch.py --check exit 1 on the base's three lines; copy_manifest and freeze --check exit 0; import guard holds.
+
+Code commit (fold): bd60d8da on 66fb0dac.
+
+RESUME HERE: hand-back at bd60d8da
