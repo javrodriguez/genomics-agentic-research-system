@@ -69,3 +69,38 @@ Departure w8d-1, for ratification: costs.py's docstring edit is recorded in w5b'
   denials.py is round 3's, and claude_code_adapter keeps `permission_denials` per turn.
   CP7/CP8 should decide whether result.py prints denials beside each take.
 - Pre-existing, not changed here: lint_language and lint_pooling over the whole study are red at the base (27 and 9 findings), so the CI job's "Language rules" and "Separation of rounds" steps would be red as the tree stands.
+
+## Review round 1 fold (ruling W8D-close-1), Mon 12 Oct 2026 09:41 EDT (`date`)
+
+Code commit `1667c988`, on top of `7136c955`.
+Review record: plans/gap-study-round-4/w8d-review-r1-2026-10-12.md (CHANGES, five findings, all folded).
+
+- W8D-R1-1 (MAJOR) and W8D-R1-2 (ruled append-only): `history_problems` now holds the register append-only over history.
+  Every entry that a walk-subject commit's register lists must be listed at HEAD, identical.
+  It reports, once per walk, either "not in HEAD's register" or "entry at HEAD is not the one walk commit <sha> wrote".
+  The register on disk must be HEAD's.
+  git is now read even with an empty register: no walk-subject commit passes, and a shallow clone refuses.
+  New H1 cases cover a rewritten reason, a rewritten model, a deleted walk, a deleted then re-added walk (through WalkRepo), an uncommitted register edit, an empty register (passes) and its depth-1 clone (refused).
+  H1's old final case was removed: bare `--check` on the real study now reads this repository's git, which test_box_integration's process guard refuses.
+  The gate command and test_rehearsals' own bare `--check` cover that path instead (exit 0).
+- W8D-R1-3: `drive.PRODUCTION_ADAPTER` is captured at import, and the adapter's module must be `claude_code_adapter`.
+  A1 adds two cases: a fake that claims the production module's name, patched in after import, is refused by the captured class; a drive compiled under a patch captures the fake, which is refused by its module.
+- W8D-R1-4: the docstring says "ONE WALK, ONE COMMIT" and names what the check cannot see.
+  Amending the walk commit, a hand-made walk-subject commit and a `__class__` patch all pass; the backstop is CP8's full-sha pins and a protected branch.
+- W8D-R1-5: the drive.py entry in the w8d fragment now says "strict by construction".
+  lint_language goes from 27 to 26 findings with no w8d hits; lint_pooling stays at 9. The rest are left to the W8D-lint triage.
+
+Evidence (each command run with `mac_slot.py light-ok &&` and `timeout -s INT 120`, /usr/local/bin/python3.13):
+- Red first, with the new cases on the unfolded code: `test_cp8_prep` 4 run, 2 failures, 0 errors, exit 1.
+  H1 failed with "a later commit that rewrote the walk's reason passed"; A1 failed with "AdapterIdentityRefused not raised: a patched class".
+- Green: `test_cp8_prep` 4 run, 0 failures, 0 errors, exit 0.
+- Witnesses: 14/14 RED, in batches, exit 0 each.
+  The new ones are entry-uncompared, walk-dropped-admitted, register-disk-unchecked, adapter-class-at-call-time and adapter-module-unchecked.
+  Two anchors needed fixing first. walk-subject-unchecked's anchor occurred twice, so the new loop reads `if not subject == ...`.
+  adapter-class-at-call-time was first killed by the module check alone, so its case now uses a fake whose module is claude_code_adapter.
+- Neighbours:
+  - test_walk_layout: 14 OK, exit 0; the witnesses bound to walk_register and drive (content-rule-skipped, walk-folder-under-takes, freeze-unchecked, register-in-another-commit, freeze-at-head-unchecked, history-unchecked) are 6/6 RED.
+  - test_rehearsals: 9 OK and 20/20 RED, exit 0.
+  - test_walk_wiring: 20 OK, exit 0.
+  - test_ci_job: 23 OK, exit 0.
+- Gates: `walk_register --check` exit 0 (0-walk line), `copy_manifest --check` exit 0 (276 files, 43 fragments), `freeze.py --check` exit 0.
