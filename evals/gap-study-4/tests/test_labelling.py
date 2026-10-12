@@ -26,6 +26,8 @@ lines, each starting with its own prefix; a check that raises reports that as it
   W1-weights  every item carries its stratum's frame size and drawn count, both true.
   P1-pin      the pin prints the seed, the strata, the canonical design and its sha256; --pin reads the draft's models.
   C1-check    sample.check: nothing to draw, results without a frame, no design, a drift, a match; exact output.
+  C2-cli      sample.py's command line over its own paths (patched to a temporary tree): --check, --write, --help
+              and the parser's refusals.
 
   sheet.py (blind by construction)
   K1-blind    a frame whose every hidden field is a sentinel: no sentinel reaches an item or the sheet; an item holds
@@ -34,9 +36,12 @@ lines, each starting with its own prefix; a check that raises reports that as it
               leak_problems names each one left.
   K3-defs     the definitions: not a dict, a task missing, a label set off the grader's, a blank meaning; the real
               graders' label sets with the reserved labels.
-  K4-content  post-probe content: missing take, its keys, text not a string, actions not a list of strings.
+  K4-content  post-probe content: missing take, its keys, text not a string, actions not a list of strings, an
+              action off the neutral format (a harness's own tool words, an unknown verb, no object).
   K5-render   render refuses an item with another key; the golden sheet; items in sheet-id order.
   K6-write    write_sheet refuses a sheet that still shows a hidden string; the CLI refuses an --out in the study.
+  K7-cli      sheet.py's command line: the written sheet is write_sheet's; missing content, a drifted sample, no
+              frame and nothing to sheet are refused with their own lines.
 
   agreement.py
   G1-labels   labels.json: its shape, each entry's keys, an unknown, twice-labelled or missing sheet id, a label off
@@ -50,9 +55,12 @@ lines, each starting with its own prefix; a check that raises reports that as it
   G6-history  labels.json committed once and on disk as committed (fake git: shallow, none, two commits, an edit; a
               real temporary repository).
   G7-unmeasured --unmeasured prints exactly "grader agreement unmeasured".
+  G8-cli      agreement.py's command line over its own paths: --write, --check, --help, bad labels, no labels.
   L1-lint     lint_language and lint_pooling find nothing in the rendered page, the sheet or this lane's files.
+  X1-script   each file run as a script exits with main()'s code.
+  N1-names    each module's own paths, as the command lines read them.
 
-Witnesses (hand-picked, whole-file, compiled in memory): WITNESSES below, at least the brief's six: a model name
+Witnesses (hand-picked, whole-file, compiled in memory): WITNESSES below, 34, among them the brief's six: a model name
 leaking into the sheet, an unseeded draw, failures not over-sampled, weights dropped from the agreement, a figure
 pooled across harnesses without its label, --check passing on an edited label file. The generated sweep
 (`--generated-mutants`) mutates the three files by kind and runs every check against each mutant; every survivor is
@@ -73,6 +81,7 @@ import io
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -145,6 +154,8 @@ def setUpModule():
     for name in ("system", "popen", "posix_spawn", "posix_spawnp", "fork", "forkpty"):
         if hasattr(os, name):
             _STACK.enter_context(mock.patch.object(os, name, _trip(f"os.{name}")))
+    (SCRATCH / "repos").mkdir()
+    REPOS.update(_real_repos(SCRATCH / "repos"))
 
 
 def tearDownModule():
@@ -207,7 +218,7 @@ def run(check, *mods) -> list:
     try:
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             return list(check(*mods))
-    except Exception as e:  # noqa: BLE001
+    except (Exception, SystemExit) as e:  # noqa: BLE001  a mutant's exit is a red, never the sweep's end
         return [f"{prefix}: raised {type(e).__name__}: {str(e)[:120]}"]
 
 
@@ -246,6 +257,7 @@ def d1_design(sm, sh, ag):
         out.append("D1: validate_design does not return the design")
     bad = {
         "not a dict": [1],
+        "a list of the field names": list(design()),
         "a key missing": {k: v for k, v in design().items() if k != "seed"},
         "an extra key": dict(design(), extra=1),
         "seed a string": design(seed="7"),
@@ -255,6 +267,7 @@ def d1_design(sm, sh, ag):
         "about_n a bool": design(about_n=True),
         "about_n a float": design(about_n=12.0),
         "oversample not a dict": design(oversample=[3, 2]),
+        "oversample a list of its keys": design(oversample=["failure", "disagree"]),
         "oversample a key missing": design(oversample={"failure": 3}),
         "oversample an extra key": design(oversample={"failure": 3, "disagree": 2, "x": 1}),
         "failure factor zero": design(oversample={"failure": 0, "disagree": 2}),
@@ -301,7 +314,9 @@ def f1_frame(sm, sh, ag):
     no_beta = [e for e in copy.deepcopy(FRAME) if e["record"]["model"] != "m-beta"]
     bad = {
         "not a list": {"entries": FRAME},
+        "a tuple of entries": tuple(FRAME),
         "an entry not a dict": [FRAME[0], ["x"]],
+        "an entry a list of the field names": [FRAME[0], ["take", "readers", "record"]],
         "an entry key missing": [dict((k, v) for k, v in FRAME[0].items() if k != "readers")] + FRAME[1:],
         "an extra entry key": with_(0, model="m-alpha"),
         "a take not a string": with_(0, take=17),
@@ -365,6 +380,8 @@ def a1_split(sm, sh, ag):
         ((30, {"a": 1, "b": 1}, {"a": 2, "b": 3}), {"a": 2, "b": 3}),           # quota past every cap
         ((5, {"a": 1, "b": 1}, {"a": 0, "b": 9}), {"a": 0, "b": 5}),            # an empty stratum
         ((0, {"a": 1}, {"a": 4}), {"a": 0}),
+        ((1, {"a": 1, "b": 2}, {"a": 9, "b": 9}), {"a": 0, "b": 1}),            # a quota of one
+        ((3, {"a": 1, "b": 1}, {"a": 0, "b": 0}), {"a": 0, "b": 0}),            # nothing open at all
         ((4, {"a": 1, "b": 1}, {"a": 2, "b": 2}), {"a": 2, "b": 2}),            # caps met exactly
         ((5, {"a": 3, "b": 1, "c": 1}, {"a": 1, "b": 1, "c": 9}), {"a": 1, "b": 1, "c": 3}),
     ]
@@ -389,7 +406,7 @@ def s1_seed(sm, sh, ag):
         out.append(f"S1: the draw is not the pinned golden draw: {';'.join(' '.join(x) for x in got)}")
     if a["seed"] != 7 or a["strata"] != STRATA:
         out.append("S1: the sample does not carry its seed and strata")
-    if a["design_sha256"] != sm.design_pin(DESIGN).rsplit("sha256 ", 1)[1]:
+    if a["design_sha256"] != hashlib.sha256(json.dumps(DESIGN, sort_keys=True, separators=(",", ":")).encode()).hexdigest():
         out.append("S1: the sample does not carry its design's pin")
     if set(a) != {"design_sha256", "seed", "strata", "items"}:
         out.append(f"S1: sample keys {sorted(a)}")
@@ -659,8 +676,8 @@ def k2_mask(sm, sh, ag):
             out.append(f"K2: mask({src!r}) = {got!r}")
     if sh.HIDDEN != "[hidden]":
         out.append("K2: the mask word changed")
-    items = sh.blind_items(sm.draw(FRAME, DESIGN), contents_for(FRAME, "Opus here", ("ran Sonnet",)), FRAME, DESIGN)
-    if any(i["text"] != "[hidden] here" or i["actions"] != ["ran [hidden]"] for i in items):
+    items = sh.blind_items(sm.draw(FRAME, DESIGN), contents_for(FRAME, "Opus here", ("run Sonnet",)), FRAME, DESIGN)
+    if any(i["text"] != "[hidden] here" or i["actions"] != ["run [hidden]"] for i in items):
         out.append("K2: blind_items does not mask text and actions")
     leaks = sh.leak_problems("from Claude via m-gamma, s003/1", toks)
     want_l = ["LEAK: the sheet shows 'claude'", "LEAK: the sheet shows 'm-gamma'", "LEAK: the sheet shows 's003/1'"]
@@ -714,12 +731,24 @@ def k4_content(sm, sh, ag):
     bad = {
         "a take with no content": {k: v for k, v in c.items() if k != first},
         "content not a dict": {**c, first: "text"},
+        "content a list of its keys": {**c, first: ["text", "actions"]},
         "a content key missing": {**c, first: {"text": "x"}},
         "an extra content key": {**c, first: {"text": "x", "actions": [], "model": "m-alpha"}},
         "text not a string": {**c, first: {"text": ["x"], "actions": []}},
         "actions not a list": {**c, first: {"text": "x", "actions": "ls"}},
-        "an action not a string": {**c, first: {"text": "x", "actions": ["ls", 3]}},
+        "actions a tuple of neutral actions": {**c, first: {"text": "x", "actions": ("read a.md",)}},
+        "an action not a string": {**c, first: {"text": "x", "actions": ["run ls", 3]}},
+        "an action in a harness's own tool words": {**c, first: {"text": "x", "actions": ["Bash(ls)"]}},
+        "an action with an unknown verb": {**c, first: {"text": "x", "actions": ["apply_patch notes.md"]}},
+        "an action with no object": {**c, first: {"text": "x", "actions": ["read "]}},
+        "an action with a verb prefix only": {**c, first: {"text": "x", "actions": ["reading notes.md"]}},
+        "an action after a neutral one": {**c, first: {"text": "x", "actions": ["read a.md", "Edit a.md"]}},
     }
+    for verb in ("read", "write", "delete", "run"):
+        out += accepted("K4", lambda verb=verb: sh.blind_items(doc, {**c, first: {"text": "x", "actions": [
+            f"{verb} notes/plan.md"]}}, FRAME, DESIGN), f"the neutral action {verb}")
+    if sh.ACTION_VERBS != ("read", "write", "delete", "run"):
+        out.append("K4: the action verbs changed")
     for what, cc in bad.items():
         out += refused("K4", lambda cc=cc: sh.blind_items(doc, cc, FRAME, DESIGN), E, what)
     out += accepted("K4", lambda: sh.blind_items(doc, {**c, first: {"text": "", "actions": []}}, FRAME, DESIGN),
@@ -765,7 +794,7 @@ def k6_write(sm, sh, ag):
     with mock.patch.object(sh, "mask", lambda text, tokens: text):
         out += refused("K6", lambda: sh.write_sheet(doc, contents_for(FRAME, "I am Claude"), FRAME, DESIGN, DEFS, GL),
                        sh.SheetError, "a sheet still showing a vendor word")
-        out += refused("K6", lambda: sh.write_sheet(doc, contents_for(FRAME, "", ["ran on m-beta"]), FRAME, DESIGN,
+        out += refused("K6", lambda: sh.write_sheet(doc, contents_for(FRAME, "", ["run on m-beta"]), FRAME, DESIGN,
                                                     DEFS, GL), sh.SheetError, "a sheet still showing a model id")
     leaky = {**DEFS, "task-one": {**DEFS["task-one"], "held": "what Gemini does"}}
     out += refused("K6", lambda: sh.write_sheet(doc, contents_for(FRAME), FRAME, DESIGN, leaky, GL), sh.SheetError,
@@ -802,7 +831,9 @@ def g1_labels(sm, sh, ag):
         "not a dict": good["labels"],
         "an extra top key": dict(good, labeller="x"),
         "labels not a list": {"labels": {"L001": "held"}},
+        "labels a tuple of entries": {"labels": tuple(good["labels"])},
         "an entry not a dict": edit(lambda ls: ls.__setitem__(0, ["L001", "held", ""])),
+        "an entry a list of the field names": edit(lambda ls: ls.__setitem__(0, ["sheet_id", "label", "stop_cause"])),
         "an entry key missing": edit(lambda ls: ls[0].pop("stop_cause")),
         "an extra entry key": edit(lambda ls: ls[0].update(model="m-alpha")),
         "an unknown sheet id": edit(lambda ls: ls[0].update(sheet_id="L999")),
@@ -917,19 +948,30 @@ def g4_pool(sm, sh, ag):
     pooled = copy.deepcopy(rs)
     other = next(r for r in pooled if r["harness"] != pooled[0]["harness"])
     pooled[0]["takes"] += other["takes"]
+    k0 = (rs[0]["arm"], rs[0]["harness"], rs[0]["model"], rs[0]["task"])
+    t_other = other["takes"][0]
     cases = {
-        "a row without its harness": [dict(rs[0], harness="")] + rs[1:],
-        "a row without its model": [{k: v for k, v in rs[0].items() if k != "model"}] + rs[1:],
-        "a row without its arm": [dict(rs[0], arm=None)] + rs[1:],
-        "a row without its task": [dict(rs[0], task="")] + rs[1:],
-        "two rows of one key": rs + [rs[0]],
-        "a row holding another harness's takes": pooled,
+        "a row without its harness": ([dict(rs[0], harness="")] + rs[1:],
+                                      [f"POOL: a row does not name its {('arm', 'harness', 'model', 'task')}: "
+                                       f"{(k0[0], '', k0[2], k0[3])}"]),
+        "a row without its harness, holding no takes": ([dict(rs[0], harness="", takes=[])] + rs[1:],
+                                                        [f"POOL: a row does not name its {('arm', 'harness', 'model', 'task')}: "
+                                                         f"{(k0[0], '', k0[2], k0[3])}"]),
+        "a row without its model": ([{k: v for k, v in rs[0].items() if k != "model"}] + rs[1:], None),
+        "a row without its arm": ([dict(rs[0], arm=None)] + rs[1:], None),
+        "a row without its task": ([dict(rs[0], task="")] + rs[1:], None),
+        "a row whose model is not a string": ([dict(rs[0], model=7, takes=[])] + rs[1:], None),
+        "two rows of one key": (rs + [dict(rs[0], takes=[])], [f"POOL: two rows for {k0}"]),
+        "a row holding another harness's takes": (pooled, [f"POOL: take {t} is not of the row {k0}"
+                                                            for t in other["takes"]]),
     }
-    for what, r in cases.items():
+    for what, (r, want) in cases.items():
         got = ag.pool_problems(r, FRAME)
-        if not got or not all(g.startswith("POOL: ") for g in got):
-            out.append(f"G4: {what} passed")
+        if not got or not all(g.startswith("POOL: a row does not name its ") for g in got) if want is None else got != want:
+            out.append(f"G4: {what}: {got}")
         out += refused("G4", lambda r=r: ag.render(r, FRAME), (ag.AgreementError, KeyError), f"rendering {what}")
+    if not t_other:
+        out.append("G4: no take to pool")
     one = {"model": [dict(rs[0], model="m-beta")] + rs[1:], "task": [dict(rs[0], task="task-two")] + rs[1:]}
     for what, r in one.items():
         if not ag.pool_problems(r, FRAME):
@@ -1029,11 +1071,16 @@ def g5_check(sm, sh, ag):
             out.append(f"G5: no labels: {rc} {got!r}")
         e = t / "empty"
         e.mkdir()
-        rc, got = out_of(ag.check, page=str(e / "AGREEMENT.md"), git=git, labels_path=str(e / "labels.json"),
-                         frame_path=str(e / "frame.json"), prereg=str(e / "prereg.json"), results=str(e / "records"),
-                         sample_path=str(e / "sample.json"), defs_path=str(e / "definitions.json"), glabels=GL)
+        ekw = dict(page=str(e / "AGREEMENT.md"), git=git, labels_path=str(e / "labels.json"),
+                   frame_path=str(e / "frame.json"), prereg=str(e / "prereg.json"), results=str(e / "records"),
+                   sample_path=str(e / "sample.json"), defs_path=str(e / "definitions.json"), glabels=GL)
+        rc, got = out_of(ag.check, **ekw)
         if (rc, got) != (0, "agreement: no labels; nothing measured. Not a pass on data.\n"):
             out.append(f"G5: nothing at all: {rc} {got!r}")
+        (e / "labels.json").write_text(orig)
+        rc, got = out_of(ag.check, **ekw)
+        if (rc, got) != (1, "agreement: FAIL labels.json is committed and there is no sample to read it against\n"):
+            out.append(f"G5: labels with no sample: {rc} {got!r}")
     return out
 
 
@@ -1082,31 +1129,50 @@ def g6_history(sm, sh, ag):
     return out
 
 
-def g6r_real_git(sm, sh, ag):
-    """history_problems with the module's own git, on a temporary repository: once, twice, edited."""
-    out = []
-    with tempfile.TemporaryDirectory(prefix="w11d-g6r-") as t:
+def _real_repos(root: Path) -> dict:
+    """Two temporary repositories, built once in setUpModule: labels committed once, and committed twice."""
+    out = {}
+    for name, commits in (("once", 1), ("twice", 2)):
+        t = root / name
+        t.mkdir()
+
         def git(*a):
-            return subprocess.run(["git", "-C", t, *a], capture_output=True, text=True, check=True)
+            return subprocess.run(["git", "-C", str(t), *a], capture_output=True, text=True, check=True)
         git("init", "-q")
         git("config", "maintenance.auto", "false")
-        p = Path(t) / "labelling" / "labels.json"
+        p = t / "labelling" / "labels.json"
         p.parent.mkdir()
-        p.write_text('{"labels": []}\n')
-        git("add", "-A")
-        git("commit", "-q", "-m", "labels")
-        with mock.patch.object(ag, "REPO", t):
-            if ag.history_problems(str(p)) != []:
-                out.append(f"G6R: one commit refused: {ag.history_problems(str(p))}")
-            p.write_text('{"labels": [1]}\n')
+        for k in range(commits):
+            p.write_text('{"labels": []}\n' if k == 0 else '{"labels": [1]}\n')
+            git("add", "-A")
+            git("commit", "-q", "-m", f"labels {k}")
+        out[name] = (str(t), p)
+    return out
+
+
+REPOS: dict = {}
+
+
+def g6r_real_git(sm, sh, ag):
+    """history_problems with the module's own git, on the temporary repositories: once, edited on disk, twice."""
+    out = []
+    t, p = REPOS["once"]
+    with mock.patch.object(ag, "REPO", t):
+        if ag.history_problems(str(p)) != []:
+            out.append(f"G6R: one commit refused: {ag.history_problems(str(p))}")
+        p.write_text('{"labels": [1]}\n')
+        try:
             if ag.history_problems(str(p)) != ["HISTORY: labelling/labels.json on disk is not the one commit's"]:
                 out.append("G6R: an edit on disk passed")
-            git("commit", "-qam", "edit")
-            if ag.history_problems(str(p)) != ["HISTORY: labelling/labels.json is touched by 2 commits; the labels "
-                                               "are committed once, as read"]:
-                out.append("G6R: a second commit passed")
-            if ag._git("rev-parse", "--is-shallow-repository") != (0, "false\n"):
-                out.append("G6R: _git does not read the repository it names")
+        finally:
+            p.write_text('{"labels": []}\n')
+        if ag._git("rev-parse", "--is-shallow-repository") != (0, "false\n"):
+            out.append("G6R: _git does not read the repository it names")
+    t2, p2 = REPOS["twice"]
+    with mock.patch.object(ag, "REPO", t2):
+        if ag.history_problems(str(p2)) != ["HISTORY: labelling/labels.json is touched by 2 commits; the labels "
+                                            "are committed once, as read"]:
+            out.append("G6R: a second commit passed")
     return out
 
 
@@ -1144,9 +1210,197 @@ def l1_lint(sm, sh, ag):
     return out
 
 
-SAMPLE_CHECKS = (d1_design, f1_frame, b1_bind, a1_split, s1_seed, o1_over, m1_models, w1_weights, p1_pin, c1_check)
-SHEET_CHECKS = (k1_blind, k2_mask, k3_defs, k3r_real_graders, k4_content, k5_render, k6_write)
-AGREE_CHECKS = (g1_labels, g2_rows, g3_back, g4_pool, g5_check, g6_history, g6r_real_git, g7_unmeasured, l1_lint)
+def _patched(sm, sh, ag, root: Path, kw: dict):
+    """The modules' own paths pointed at a temporary tree, for the CLIs (read when called, never bound at import)."""
+    st = contextlib.ExitStack()
+    for mod, name, value in ((sm, "FRAME", kw["frame_path"]), (sm, "PREREG", kw["prereg"]),
+                             (sm, "RESULTS", kw["results"]), (sm, "SAMPLE", kw["sample_path"]),
+                             (sh, "DEFINITIONS", str(root / "definitions.json")),
+                             (sh, "grader_labels", lambda t: GL[t]),
+                             (ag, "LABELS", str(root / "labels.json")), (ag, "PAGE", str(root / "AGREEMENT.md"))):
+        st.enter_context(mock.patch.object(mod, name, value))
+    return st
+
+
+def _exits(fn, argv) -> int | None:
+    try:
+        with contextlib.redirect_stderr(io.StringIO()):
+            fn(argv)
+    except SystemExit as e:
+        return e.code
+    return None
+
+
+def _help(fn) -> str:
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+        try:
+            fn(["--help"])
+        except SystemExit:
+            pass
+    return buf.getvalue()
+
+
+def help_problems(prefix, mod) -> list:
+    """--help prints the module docstring's first line as the description."""
+    doc = [x for x in Path(mod.__file__).read_text(encoding="utf-8").split('"""')[1].split("\n") if x.strip()]
+    got = " ".join(_help(mod.main).split())
+    if " ".join(doc[0].split()) not in got or " ".join(doc[1].split())[:40] in got:
+        return [f"{prefix}: --help does not describe the tool by its first line alone: {got[-80:]!r}"]
+    return []
+
+
+def c2_cli(sm, sh, ag):
+    """sample.py's command line over its own (patched) paths: --check, --write, --pin and the refusals."""
+    out = help_problems("C2", sm)
+    rc, got = out_of(sm.main, ["--check"])
+    if (rc, got) != (0, "sample: no takes (no frame and no results); nothing was drawn. Not a pass on data.\n"):
+        out.append(f"C2: --check on this tree: {rc} {got!r}")
+    with tempfile.TemporaryDirectory(prefix="w11d-c2-") as t:
+        root = Path(t)
+        kw = _tree(root, write_sample=False)
+        with _patched(sm, sh, ag, root, kw):
+            rc, got = out_of(sm.main, ["--check"])
+            if rc != 1 or not got.endswith("sample: FAIL no sample.json; draw it with --write\n"):
+                out.append(f"C2: --check with no sample: {rc} {got!r}")
+            rc, got = out_of(sm.main, ["--write"])
+            if (rc, got) != (0, "sample: wrote 12 takes; seed 7\n"):
+                out.append(f"C2: --write: {rc} {got!r}")
+            if Path(kw["sample_path"]).read_text(encoding="utf-8") != sm.render(sm.draw(FRAME, DESIGN)):
+                out.append("C2: --write did not write the draw")
+            rc, got = out_of(sm.main, ["--check"])
+            if rc != 0 or not got.endswith("sample: ok, 12 takes drawn as the design gives them\n"):
+                out.append(f"C2: --check after --write: {rc} {got!r}")
+            Path(kw["prereg"]).write_text("{}")
+            rc, got = out_of(sm.main, ["--write"])
+            if (rc, got) != (1, "sample: FAIL prereg.json carries no labelling_design\n"):
+                out.append(f"C2: --write with no design: {rc} {got!r}")
+        e = root / "empty"
+        e.mkdir()
+        ekw = dict(frame_path=str(e / "frame.json"), prereg=str(e / "prereg.json"), results=str(e / "records"),
+                   sample_path=str(e / "sample.json"))
+        with _patched(sm, sh, ag, e, ekw):
+            rc, got = out_of(sm.main, ["--write"])
+            if (rc, got) != (1, "sample: no takes; nothing drawn or written\n") or (e / "sample.json").exists():
+                out.append(f"C2: --write over nothing: {rc} {got!r}")
+    for argv in ([], ["--check", "--write"], ["--pin", "--check"], ["--draw"]):
+        if _exits(sm.main, argv) != 2:
+            out.append(f"C2: {argv} was not refused by the parser")
+    return out
+
+
+def k7_cli(sm, sh, ag):
+    """sheet.py's command line: it writes the blind sheet from the study's (patched) sample, or refuses."""
+    out = help_problems("K7", sh)
+    with tempfile.TemporaryDirectory(prefix="w11d-k7-") as t:
+        root = Path(t)
+        kw = _agree_tree(root)
+        doc = sm.draw(FRAME4, DESIGN18)
+        cpath, opath = root / "post-probe.json", root / "out" / "sheet.md"
+        opath.parent.mkdir()
+        cpath.write_text(json.dumps(contents_for(FRAME4, "Claude says plain words")))
+        with _patched(sm, sh, ag, root, kw):
+            rc, got = out_of(sh.main, ["--contents", str(cpath), "--out", str(opath)])
+            if (rc, got) != (0, f"sheet: wrote 18 blind items to {opath}\n"):
+                out.append(f"K7: a sheet: {rc} {got!r}")
+            want = sh.write_sheet(doc, contents_for(FRAME4, "Claude says plain words"), FRAME4, DESIGN18, DEFS, GL)
+            if not opath.is_file() or opath.read_text(encoding="utf-8") != want:
+                out.append("K7: the written sheet is not write_sheet's")
+            cpath.write_text(json.dumps({}))
+            rc, got = out_of(sh.main, ["--contents", str(cpath), "--out", str(opath)])
+            if (rc, got) != (1, "sheet: FAIL L001: no post-probe content for its take\n"):
+                out.append(f"K7: missing content: {rc} {got!r}")
+            Path(kw["sample_path"]).write_text("{}")
+            rc, got = out_of(sh.main, ["--contents", str(cpath), "--out", str(opath)])
+            if (rc, got) != (1, "sheet: FAIL sample.json differs from the draw; run sample.py --check\n"):
+                out.append(f"K7: a drifted sample: {rc} {got!r}")
+            Path(kw["frame_path"]).unlink()
+            rc, got = out_of(sh.main, ["--contents", str(cpath), "--out", str(opath)])
+            if rc != 1 or not got.startswith("sheet: FAIL results are committed and no frame is"):
+                out.append(f"K7: no frame: {rc} {got!r}")
+            for f in Path(kw["results"]).iterdir():
+                f.unlink()
+            rc, got = out_of(sh.main, ["--contents", str(cpath), "--out", str(opath)])
+            if (rc, got) != (1, "sheet: no takes; no sheet written\n"):
+                out.append(f"K7: nothing to sheet: {rc} {got!r}")
+    for argv in ([], ["--out", "x.md"], ["--contents", "x.json"]):
+        if _exits(sh.main, argv) != 2:
+            out.append(f"K7: {argv} was not refused by the parser")
+    return out
+
+
+def g8_cli(sm, sh, ag):
+    """agreement.py's command line over its own (patched) paths: --write, --check, and nothing to write."""
+    out = help_problems("G8", ag)
+    rc, got = out_of(ag.main, ["--check"])
+    if (rc, got) != (0, "agreement: no labels; nothing measured. Not a pass on data.\n"):
+        out.append(f"G8: --check on this tree: {rc} {got!r}")
+    with tempfile.TemporaryDirectory(prefix="w11d-g8-") as t:
+        root = Path(t)
+        kw = _agree_tree(root)
+        with _patched(sm, sh, ag, root, kw), mock.patch.object(ag, "_git", fake_git(kw["labels_path"])):
+            rc, got = out_of(ag.main, ["--write"])
+            if (rc, got) != (0, "agreement: wrote AGREEMENT.md\n"):
+                out.append(f"G8: --write: {rc} {got!r}")
+            want = ag.derive(**kw)
+            if (root / "AGREEMENT.md").read_text(encoding="utf-8") != want:
+                out.append("G8: --write did not write the derived page")
+            rc, got = out_of(ag.main, ["--check"])
+            if (rc, got) != (0, "agreement: ok, every number re-derived from the committed labels\n"):
+                out.append(f"G8: --check after --write: {rc} {got!r}")
+            if ag.history_problems() != []:
+                out.append("G8: history_problems does not default to the module's labels and git")
+            Path(kw["labels_path"]).write_text(json.dumps({"labels": []}))
+            rc, got = out_of(ag.main, ["--write"])
+            if rc != 1 or not got.startswith("agreement: FAIL sheet ids not labelled"):
+                out.append(f"G8: --write with bad labels: {rc} {got!r}")
+            Path(kw["labels_path"]).unlink()
+            rc, got = out_of(ag.main, ["--write"])
+            if (rc, got) != (1, "agreement: no labels; nothing written\n"):
+                out.append(f"G8: --write with no labels: {rc} {got!r}")
+    return out
+
+
+def n1_names(sm, sh, ag):
+    """Each module's own paths and names: what the CLIs read when no path is given."""
+    want = [(sm, "FRAME", str(LAB / "frame.json")), (sm, "SAMPLE", str(LAB / "sample.json")),
+            (sm, "PREREG", str(HERE / "prereg.json")), (sm, "DRAFT", str(HERE / "prereg-draft.json")),
+            (sm, "RESULTS", str(HERE / "records")), (sm, "DESIGN_KEY", "labelling_design"),
+            (sm, "HERE", str(LAB)), (sm, "STUDY", str(HERE)),
+            (sh, "DEFINITIONS", str(LAB / "definitions.json")),
+            (ag, "LABELS", str(LAB / "labels.json")), (ag, "PAGE", str(LAB / "AGREEMENT.md")),
+            (ag, "REPO", str(HERE.parent.parent))]
+    return [f"N1: {Path(m.__file__).stem}.{n} is {getattr(m, n, None)!r}" for m, n, v in want if getattr(m, n, None) != v]
+
+
+def x1_script(sm, sh, ag):
+    """Each file run as a script (its own code, under __name__ == "__main__") exits with main()'s code."""
+    out = []
+    for mod, argv, code, text in (
+            (sm, ["--pin"], 0, "seed 20261012\n"),
+            (sh, ["--contents", "x.json", "--out", str(LAB / "sheet.md")], 1,
+             "sheet: FAIL --out is inside the study folder; the sheet holds agent text (Q-w11d-3)\n"),
+            (ag, ["--unmeasured"], 0, "grader agreement unmeasured\n")):
+        compiled = getattr(mod, "__w11d_code__", None) or compile(Path(mod.__file__).read_text(encoding="utf-8"),
+                                                                 mod.__file__, "exec")
+        buf = io.StringIO()
+        with mock.patch.object(sys, "argv", [mod.__file__] + argv), contextlib.redirect_stdout(buf):
+            try:
+                exec(compiled, {"__name__": "__main__", "__file__": mod.__file__})
+                got = None
+            except SystemExit as e:
+                got = e.code
+        name = Path(mod.__file__).name
+        if got != code or not buf.getvalue().startswith(text):
+            out.append(f"X1: {name} as a script exited {got!r} printing {buf.getvalue()[:60]!r}")
+    return out
+
+
+SAMPLE_CHECKS = (d1_design, f1_frame, b1_bind, a1_split, s1_seed, o1_over, m1_models, w1_weights, p1_pin, c1_check,
+                 c2_cli)
+SHEET_CHECKS = (k1_blind, k2_mask, k3_defs, k3r_real_graders, k4_content, k5_render, k6_write, k7_cli)
+AGREE_CHECKS = (g1_labels, g2_rows, g3_back, g4_pool, g5_check, g6_history, g6r_real_git, g7_unmeasured, g8_cli,
+                l1_lint, x1_script, n1_names)
 ALL_CHECKS = SAMPLE_CHECKS + SHEET_CHECKS + AGREE_CHECKS
 
 
@@ -1206,7 +1460,7 @@ def _build(tree_or_src, name: str, path: Path, inject=None) -> types.ModuleType:
     """A module compiled in memory from a tree or a source text, with `inject` standing in sys.modules meanwhile."""
     mod = types.ModuleType(name)
     mod.__file__ = str(path)
-    code = (compile(ast.fix_missing_locations(tree_or_src), str(path) + " (generated mutant)", "exec")
+    mod.__dict__["__w11d_code__"] = code = (compile(ast.fix_missing_locations(tree_or_src), str(path) + " (generated mutant)", "exec")
             if isinstance(tree_or_src, ast.AST) else compile(tree_or_src, str(path) + " (witness)", "exec"))
     saved = {}
     for k, v in (inject or {}).items():
@@ -1257,6 +1511,9 @@ WITNESSES = {
     # ---- the brief's six
     "model-name-in-sheet": _w("sh", k1_blind, ('"task": it["stratum"]["task"], "text"',
                                                '"task": it["stratum"]["task"] + " " + it["stratum"]["model"], "text"')),
+    "model-name-in-sheet-unguarded": _w("sh", k1_blind, ('"text": mask(c["text"], tokens)',
+                                                         '"text": it["stratum"]["model"] + mask(c["text"], tokens)'),
+                                        ("bad = leak_problems(text, hidden_tokens(frame, design))", "bad = []")),
     "unseeded-draw": _w("sm", s1_seed, ('rng = random.Random(design["seed"])', "rng = random.Random()")),
     "failures-not-oversampled": _w("sm", o1_over, ('f = design["oversample"]["failure"] if key[4] == FAILED else 1',
                                                     "f = 1")),
@@ -1322,7 +1579,7 @@ class TestWitnesses(unittest.TestCase):
         self.assertTrue(own, f"{name}: survived (no {prefix} line): {got}")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 33)
+        self.assertEqual(len(WITNESSES), 34)
         for name, (target, edits, _) in WITNESSES.items():
             path = TARGET_FILES[target]
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
@@ -1365,6 +1622,33 @@ CMP_NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn
               ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt, ast.Is: ast.IsNot, ast.IsNot: ast.Is}
 # {mutant key: (category, why, a token its source line holds)}; the key is printed by the sweep for each survivor.
 EQUIVALENT = {
+    'sample: return-none L267 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
+    'agreement: return-none L99 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
+    'agreement: return-none L224 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
+    'sample: stmt-delete L41 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
+    'sample: stmt-delete L54 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: stmt-delete L55 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: if-true L55 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: if-false L55 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: cmp-negate#0 L55 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: stmt-delete L56 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sample: int-change L56 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L33 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
+    'sheet: stmt-delete L44 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L45 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: if-true L45 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: if-false L45 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: cmp-negate#0 L45 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L46 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: int-change L46 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: stmt-delete L38 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
+    'agreement: stmt-delete L49 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: stmt-delete L50 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: if-true L50 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: if-false L50 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: cmp-negate#0 L50 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: stmt-delete L51 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'agreement: int-change L51 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
 }
 
 
@@ -1482,22 +1766,58 @@ def generated_mutants() -> tuple:
     return out, skipped
 
 
-def all_checks(s, h, a) -> list:
+def all_checks(s, h, a, first: str | None = None) -> list:
+    """Every check's lines. With `first` (a target), that file's own checks run first and the sweep stops at the
+    first check that reports: a mutant is killed by one line, and only a survivor pays for every check."""
+    order = ALL_CHECKS if first is None else (OWN_CHECKS[first] + tuple(c for c in ALL_CHECKS
+                                                                         if c not in OWN_CHECKS[first]))
     out = []
-    for c in ALL_CHECKS:
+    for c in order:
         out += run(c, s, h, a)
+        if out and first is not None:
+            break
     return out
 
 
+OWN_CHECKS = {"sm": SAMPLE_CHECKS, "sh": SHEET_CHECKS, "ag": AGREE_CHECKS}
+
+
+class MutantTimeout(Exception):
+    """A mutant that runs past MUTANT_SECONDS (a loop that never ends): killed, by the clock."""
+
+
+MUTANT_SECONDS = 30
+
+
+def _alarm(signum, frame):
+    raise MutantTimeout(f"the mutant ran past {MUTANT_SECONDS} seconds")
+
+
 def run_mutant(target: str, w: int, kind: str, i) -> list:
-    """The checks' lines against one mutant (["IMPORT ..."] when it does not even load: killed)."""
+    """The checks' lines against one mutant (["IMPORT ..."] when it does not even load: killed; a mutant past
+    MUTANT_SECONDS is killed by the clock, through SIGALRM where the platform has it)."""
+    if not hasattr(signal, "setitimer"):
+        return _run_mutant(target, w, kind, i)
+    old = signal.signal(signal.SIGALRM, _alarm)
+    signal.setitimer(signal.ITIMER_REAL, MUTANT_SECONDS)
+    try:
+        return _run_mutant(target, w, kind, i)
+    except MutantTimeout as e:
+        return [f"TIMEOUT {e}"]
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, old)
+
+
+def _run_mutant(target: str, w: int, kind: str, i) -> list:
     tree = ast.parse(TARGET_FILES[target].read_text(encoding="utf-8"))
     node = list(ast.walk(tree))[w]
     try:
-        mods = triple(target, _Replace(node, kind, i).visit(tree))
-    except Exception as e:  # noqa: BLE001
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            mods = triple(target, _Replace(node, kind, i).visit(tree))
+    except (Exception, SystemExit) as e:  # noqa: BLE001  (a mutant that runs main() at import exits)
         return [f"IMPORT {type(e).__name__}: {str(e)[:120]}"]
-    return all_checks(*mods)
+    return all_checks(*mods, first=target)
 
 
 def equivalent_problems() -> list:

@@ -9,7 +9,7 @@
     {
       "path": "labelling/sheet.py",
       "status": "new",
-      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). CP8's blind sheet: each sampled take's text and actions after the probe, the label definitions (each task's set exactly its grader's labels plus labels4's reserved ones) and a stop-cause column. Blind by construction: an item holds exactly sheet id, task, text and actions; model ids, harness names, vendor words and take ids are hidden in the content, and a sheet still showing one is refused; the sheet is written outside the study folder. Bound by tests/test_labelling.py K1-K6."
+      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). CP8's blind sheet: each sampled take's text and actions after the probe, the label definitions (each task's set exactly its grader's labels plus labels4's reserved ones) and a stop-cause column. Blind by construction: an item holds exactly sheet id, task, text and actions; model ids, harness names, vendor words and take ids are hidden in the content, and a sheet still showing one is refused; each action must arrive in the neutral format (read, write, delete or run, then its object), so no harness's tool names reach it; the sheet is written outside the study folder. Bound by tests/test_labelling.py K1-K6."
     },
     {
       "path": "labelling/agreement.py",
@@ -19,7 +19,7 @@
     {
       "path": "tests/test_labelling.py",
       "status": "new",
-      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). The lane's tests on synthetic takes and labels only: every guard and every clause with its own case, 33 whole-file witnesses (the brief's six among them) and the generated mutation sweep over the three files (--generated-mutants, shardable, every survivor listed EQUIVALENT with a reason whose token its line holds). A process guard allows only git, for one temporary repository."
+      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). The lane's tests on synthetic takes and labels only: every guard and every clause with its own case, 34 whole-file witnesses (the brief's six among them) and the generated mutation sweep over the three files (--generated-mutants, shardable, every survivor listed EQUIVALENT with a reason whose token its line holds). A process guard allows only git, for two temporary repositories built in setUpModule; the sweep stops a mutant that runs past 30 seconds."
     },
     {
       "path": "checks.d/w11d-labelling-tools.txt",
