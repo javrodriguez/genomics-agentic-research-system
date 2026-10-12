@@ -4,3 +4,6 @@
 # No walk, model, container, network, salt or holdout.
 python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py
 python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --witnesses
+# The generated mutation run (ruling w10-R3-fold) is long and is run by hand on athena, sharded, not by run_checks:
+#   python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard i/n
+# for i in 1..n; each shard prints its generated / killed / equivalent counts and fails on an unlisted survivor.

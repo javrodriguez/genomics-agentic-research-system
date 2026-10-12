@@ -55,6 +55,17 @@ TEST DATA, NEVER PRODUCTION VALUES: test_walk_wiring's rig (its walk constants, 
 with the walk's own identity. Fakes and synthetic strings only: no model, vendor, network, container runtime,
 credential, salt or holdout. The process guard and scratch repositories are test_box_integration's.
 
+  G1  (ruling w10-R3-fold, W10-R3-1..5) GENERATED MUTATION replaces round 2's C1 shape list: tests/walk_mutation.py
+      generates every mechanical mutant of the walk road (each statement deleted, each if/while condition True and
+      False, each and/or operand dropped, each comparison negated, each assignment's right-hand side emptied);
+      `--generated-mutants [--shard i/n] [--sample k] [--timeout s]` runs each in its own process over this whole
+      module (failfast) and fails on a survivor not listed in EQUIVALENT (each entry with a checkable reason) and on a
+      listed one that is killed; G1 fails on an EQUIVALENT entry that names no generated mutant. New tests from round
+      3: faults only check() sees (an operator line never sent, one improvised, a fixture fault, and a fixture fault
+      through the drive into check.json), a reused session id alone, a design view of another task with the right
+      half, a teardown problem (through the drive) and clean_drive record by record, a recordless folder, a walk with
+      no reason; the round-3 reviewer's eleven mutants are registry witnesses (REVIEWER3).
+
 --mutant NAME compiles one altered module in memory before the bound test runs; --witnesses runs every registered
 mutant in its own process, only its bound test, and requires that test to fail by an AssertionError carrying its
 clause token, with no error (rule B).
@@ -93,46 +104,9 @@ import variants  # noqa: E402
 from box import run_take as rt  # noqa: E402
 
 SELECTED = None
+GENERATED = None        # --gen-mutant ID: one generated mutant of the walk road (tests/walk_mutation.py)
 MODS: dict = {}
 LANE = "w10-walk-runner"
-
-
-# W10-R2-1 (ruling w10-R2-fold): one witness per statement that adds a problem or refuses in check_walk,
-# check4_walk and walk_identity_problems; each deletes exactly that statement (replaced by `pass`) inside its
-# function. C1 (the coverage test) requires this registry and those statements to match one to one, by AST.
-DELETIONS = {
-    'del-cw-row-needed-raise': ('check_take', 'check_walk', 'raise CheckRefused("check() did not end at the ledger binding as a take with no row; the walk road cannot "\n                           "be read past it")', 'R8WalkRoad.test_the_row_needed_line_is_asserted'),
-    'del-cw-session': ('check_take', 'check_walk', 'problems.append("[session-binding] " + f"the session id does not match its walk. The transcript says {sid}, "\n                        f"and uuid5(namespace, {WALK_SESSION_PREFIX}{walk_id}) is {want}; this is not that walk\'s "\n                        f"session")', 'R2WalkCheck.test_a_walk_is_read_as_a_walk'),
-    'del-cw-no-ledger': ('check_take', 'check_walk', 'problems.append("[session-binding] " + "no driver ledger beside the walk\'s transcript, so nothing binds it "\n                        "to its walk")', 'R8WalkRoad.test_no_ledger'),
-    'del-cw-ledger-cell': ('check_take', 'check_walk', 'problems.append("[session-binding] " + f"the driver ledger is {ledger.get(\'task\')}/{ledger.get(\'half\')}, not "\n                        f"{task_id}/{half_name}")', 'R8WalkRoad.test_the_ledger_cell'),
-    'del-cw-ledger-session': ('check_take', 'check_walk', 'problems.append("[session-binding] " + f"the driver ledger records session {ledger.get(\'session_id\')}, not "\n                        f"the walk\'s {want}")', 'R2WalkCheck.test_a_walk_is_read_as_a_walk'),
-    'del-cw-ledger-row': ('check_take', 'check_walk', 'problems.append("[session-binding] " + "the driver ledger records a ledger row for a walk; a walk has none")', 'R8WalkRoad.test_the_ledger_row'),
-    'del-cw-environment': ('check_take', 'check_walk', 'problems += environment_problems(path, ledger, walk_pre, None)', 'R8WalkRoad.test_the_environment_record'),
-    'del-cw-environment-row': ('check_take', 'check_walk', 'problems.append("[environment-record] " + "the environment record names a ledger row for a walk; a walk has "\n                        "none")', 'R8WalkRoad.test_the_environment_row'),
-    'del-cw-model': ('check_take', 'check_walk', 'problems += model_problems(path, ledger["model_requested"])', 'R8WalkRoad.test_the_model'),
-    'del-cw-no-model': ('check_take', 'check_walk', 'problems.append("[session-binding] " + "the driver ledger names no model, so the walk\'s model cannot be bound")', 'R8WalkRoad.test_no_model'),
-    'del-cw-constants': ('check_take', 'check_walk', 'problems += constant_problems(ledger, walk_pre)', 'R8WalkRoad.test_the_constants'),
-    'del-cw-checkout': ('check_take', 'check_walk', 'problems += checkout_problems(path, walk_pre)', 'R8WalkRoad.test_the_checkout'),
-    'del-cw-instructions': ('check_take', 'check_walk', 'problems += pinned_instruction_problems(path, design)', 'R8WalkRoad.test_the_instructions'),
-    'del-cw-snapshot': ('check_take', 'check_walk', 'problems.append("[inherited-context] the session recorded no system-prompt snapshot, so whether the "\n                        "harness offered its memory folder could not be read")', 'R8WalkRoad.test_no_snapshot'),
-    'del-cw-memory': ('check_take', 'check_walk', 'problems.append("[inherited-context] the session was offered the harness\'s persistent memory folder "\n                        "outside its checkout; takes run with CLAUDE_CODE_DISABLE_AUTO_MEMORY=1")', 'R8WalkRoad.test_memory_offered'),
-    'del-c4-script-list': ('check_take', 'check4_walk', 'raise CheckRefused("a round-4 walk is checked against its own wording\'s script (a non-empty list)")', 'R8WalkRoad.test_the_design_refusals'),
-    'del-c4-design-type': ('check_take', 'check4_walk', 'raise CheckRefused("a round-4 walk is checked against its design view (check_take.design_view)")', 'R8WalkRoad.test_the_design_refusals'),
-    'del-c4-half-script': ('check_take', 'check4_walk', 'raise CheckRefused("the design view names no half or no wording script; both are the walk\'s own")', 'R8WalkRoad.test_the_design_refusals'),
-    'del-c4-harness': ('check_take', 'check4_walk', 'harness_guard(design.harness)', 'R8WalkRoad.test_the_design_refusals'),
-    'del-c4-pending': ('check_take', 'check4_walk', 'raise CheckRefused(f"the design view\'s constants {pending} are still PENDING; a value only a "\n                           f"walk can measure is never defaulted")', 'R8WalkRoad.test_the_design_refusals'),
-    'del-c4-cell': ('check_take', 'check4_walk', 'raise CheckRefused(f"the design view is {design.task_id}/{design.half}, not {task_id}/{half_name}")', 'R8WalkRoad.test_the_design_refusals'),
-    'del-c4-script': ('check_take', 'check4_walk', 'raise CheckRefused("the script handed in is not the one the walk\'s own wording renders")', 'R8WalkRoad.test_the_design_refusals'),
-    'del-c4-run-tree': ('check_take', 'check4_walk', 'raise CheckRefused("the design view names no run tree; a walk is read against the tree the driver gave it")', 'R8WalkRoad.test_the_design_refusals'),
-    'del-c4-event-ids': ('check_take', 'check4_walk', 'raise CheckRefused(f"routing.json\'s event ids {sorted(ids)} are not the ones this checker counts "\n                               f"{sorted(counts)}")', 'R8WalkRoad.test_the_design_refusals'),
-    'del-c4-mode': ('check_take', 'check4_walk', 'problems += recorded_mode_problems(path, design.pre, arm)', 'R8WalkRoad.test_the_permission_mode'),
-    'del-c4-tree': ('check_take', 'check4_walk', 'problems += design_tree_problems(path, design)', 'R8WalkRoad.test_the_design_tree'),
-    'del-c4-arm': ('check_take', 'check4_walk', 'problems.append(f"[constant-binding] the walk\'s driver ledger records arm {beside.get(\'arm\')!r}, and the walk is "\n                        f"checked as arm {arm!r}")', 'R8WalkRoad.test_the_arm'),
-    'del-c4-reason-id': ('check_take', 'check4_walk', 'raise CheckRefused(f"a refusal carries no reason id, so it cannot be routed: {problem[:80]!r}")', 'R8WalkRoad.test_the_reason_id_refusal'),
-    'del-c4-event-disagree': ('check_take', 'check4_walk', 'raise CheckRefused(f"{event}: check() and its reader disagree ({counts[event]} counted)")', 'R8WalkRoad.test_the_event_disagreement_refusal'),
-    'del-wi-unreadable': ('drive', 'walk_identity_problems', 'raise LaunchRefused(f"the walk\'s identity cannot be read ({type(e).__name__}: {e}); nothing was launched") \\\n            from None', 'R2WalkCheck.test_an_unreadable_identity_is_refused'),
-    'del-wi-not-own': ('drive', 'walk_identity_problems', 'raise LaunchRefused(f"the walk\'s identity is not its own (ruling D2): {got!r}; a walk has no ledger row or row "\n                            f"commit, and its session id is {want} (uuid5 of \'walk/{row[\'walk\']}\')")', 'R2WalkCheck.test_a_take_identity_is_refused_at_launch'),
-}
 
 
 # W10-R2 (ruling w10-R2-fold): the round-2 reviewer's fifteen mutants (scratchpad/w10r2/mut.py), anchors
@@ -179,17 +153,52 @@ REVIEWER = {
 REVIEWER_BOUND = {'r1-row-needed-assert-gone': 'R8WalkRoad.test_the_row_needed_line_is_asserted', 'r1-ledger-taskhalf-gone': 'R8WalkRoad.test_the_ledger_cell', 'r1-ledger-row-gone': 'R8WalkRoad.test_the_ledger_row', 'r1-env-gone': 'R8WalkRoad.test_the_environment_record', 'r1-envrec-row-gone': 'R8WalkRoad.test_the_environment_row', 'r1-model-gone': 'R8WalkRoad.test_the_model', 'r1-constants-gone': 'R8WalkRoad.test_the_constants', 'r1-mode-gone': 'R8WalkRoad.test_the_permission_mode', 'r1-identity-row-gone': 'R2WalkCheck.test_a_walk_identity_with_a_row_is_refused', 'x-row-needed-last-clause': 'R8WalkRoad.test_the_row_needed_line_is_last', 'x-row-needed-count-clause': 'R8WalkRoad.test_the_row_needed_line_is_alone', 'x-snapshot-gone': 'R8WalkRoad.test_no_snapshot', 'x-memory-offered-gone': 'R8WalkRoad.test_memory_offered', 'x-no-ledger-silent': 'R8WalkRoad.test_no_ledger', 'x-ledger-session-gone': 'R2WalkCheck.test_a_walk_is_read_as_a_walk'}
 
 
-CLAUSE_OF = {"R8WalkRoad": "R8.walk-road", "R2WalkCheck": "R2.walk-check"}
+CLAUSE_OF = {"R8WalkRoad": "R8.walk-road", "R2WalkCheck": "R2.walk-check", "R3DeadWalk": "R3.dead-walk",
+             "R4Held": "R4.held"}
+
+# W10-R3 (ruling w10-R3-fold): the round-3 reviewer's eleven mutants (scratchpad/w10r3/mut_extra.py), anchors verbatim.
+REVIEWER3 = {
+    "x3-problems-wiped": ("X", "check_take", "    problems = problems[:-1]\n", "    problems = []\n", "check_walk"),
+    "x3-reasons-dropped": ("X", "check_take", "            reasons.append(named[0])\n", "            pass\n",
+                           "check4_walk"),
+    "x3-identity-session-clause": ("X", "drive", 'ident.get("session_id") != want or ', ""),
+    "x3-design-task-clause": ("X", "check_take", "    if (design.task_id, design.half) != (task_id, half_name):",
+                              "    if design.half != half_name:", "check4_walk"),
+    "x3-design-script-clause": ("X", "check_take", "    if None in (design.half, design.script):",
+                                "    if design.half is None:", "check4_walk"),
+    "x3-noledger-nopreturn-admitted": ("X", "drive",
+                                       "    if LEDGER_FILE not in tops and not (tops & set(WALK_PRE_TURN)):",
+                                       "    if False:"),
+    "x3-preflight-failed-read-as-passed": ("X", "run", '        if doc.get("ok") is not True:', "        if False:"),
+    "x3-teardown-problems-ignored": ("X", "walk_runner", ' and tear.get("problems") == []', ""),
+    "x3-teardown-null-ignored": ("X", "walk_runner", 'tear.get("teardown") is not None and ', ""),
+    "x3-checker-reasons-dropped": ("X", "walk_runner", 'list(records.get("checker_reasons") or [])', "[]"),
+    "x3-reason-unchecked": ("X", "walk_runner",
+                            "    if not isinstance(reason, str) or not walk_register.visible(reason):", "    if False:"),
+}
+REVIEWER3_BOUND = {
+    "x3-problems-wiped": "R8WalkRoad.test_an_operator_line_never_sent",
+    "x3-reasons-dropped": "R8WalkRoad.test_the_design_tree_through_the_drive",
+    "x3-identity-session-clause": "R2WalkCheck.test_a_reused_session_id_is_refused",
+    "x3-design-task-clause": "R8WalkRoad.test_the_design_refusals",
+    "x3-design-script-clause": "R8WalkRoad.test_the_design_refusals",
+    "x3-noledger-nopreturn-admitted": "R3DeadWalk.test_a_recordless_folder_is_refused",
+    "x3-preflight-failed-read-as-passed": "R3DeadWalk.test_a_walk_that_dies_before_turn_one_is_committed_with_its_reason",
+    "x3-teardown-problems-ignored": "R4Held.test_clean_drive_needs_both_clean_records",
+    "x3-teardown-null-ignored": "R4Held.test_clean_drive_needs_both_clean_records",
+    "x3-checker-reasons-dropped": "R8WalkRoad.test_the_design_tree_through_the_drive",
+    "x3-reason-unchecked": "R2WalkCheck.test_a_walk_without_a_reason_is_refused",
+}
 
 
 def mutants():
     """name -> (clause, module, old text, new text[, function]). Each weakens one guard; old must occur exactly once
     (inside `function` when one is named). The deletion registry and the reviewer's mutants are merged in."""
     out = own_mutants()
-    for name, (module, function, statement, method) in DELETIONS.items():
-        out[name] = (CLAUSE_OF[method.split(".")[0]], module, statement, "pass", function)
     for name, (_, module, old, new) in REVIEWER.items():
         out[name] = (CLAUSE_OF[REVIEWER_BOUND[name].split(".")[0]], module, old, new)
+    for name, (_, module, old, new, *scope) in REVIEWER3.items():
+        out[name] = (CLAUSE_OF[REVIEWER3_BOUND[name].split(".")[0]], module, old, new, *scope)
     return out
 
 
@@ -242,11 +251,6 @@ def own_mutants():
         "ledgerless-graded": ("R3.dead-walk", "run",
                               "    if ran:                                              # W10-R2-3",
                               "    if False:                                              # W10-R2-3"),
-        "coverage-guard-added": ("C1.coverage", "check_take", "    walk_pre = design.pre\n",
-                                 "    walk_pre = design.pre\n    if not walk_pre:\n        problems.append("
-                                 "\"[session-binding] synthetic: a guard with no witness\")\n"),
-        "coverage-statement-changed": ("C1.coverage", "check_take",
-                                       "(a non-empty list)\")", "(a list that is not empty)\")", "check4_walk"),
         "published-before-launch": ("R4.held", "walk_runner", "        if reached:\n", "        if True:\n"),
         "walk-identity-row-admitted": ("R2.walk-check", "drive", "ident.get(\"row\") is not None \\",
                                        "False \\"),
@@ -346,6 +350,14 @@ def setUpModule():
             MODS["drive"] = tbi.witness_module(((old, new),))
         else:
             MODS[target] = compile_module(target, SOURCES[target])
+    if GENERATED is not None:
+        import walk_mutation
+        m = walk_mutation.by_id()[GENERATED]
+        SOURCES[m.module] = m.source((HERE / f"{m.module}.py").read_text())
+        if m.module == "drive":
+            MODS["drive"] = compile_drive(SOURCES["drive"])
+        else:
+            MODS[m.module] = compile_module(m.module, SOURCES[m.module])
     for name in ("check_take", "run", "walk_register", "mode_binding", "fixture_walk", "walk_runner", "routing"):
         if name not in MODS:
             try:
@@ -354,8 +366,22 @@ def setUpModule():
                 MODS[name] = types.SimpleNamespace()
 
 
+def compile_drive(source: str) -> types.ModuleType:
+    """drive.py from a whole generated source, compiled in memory as test_box_integration.witness_module compiles a
+    witness (its own module name, drive.py's file), never written to disk."""
+    name = "drive_w6h_witness"
+    mod = types.ModuleType(name)
+    mod.__file__ = tbi.drive.__file__
+    sys.modules[name] = mod
+    try:
+        exec(compile(source, tbi.drive.__file__ + " (generated mutant)", "exec"), mod.__dict__)
+    finally:
+        sys.modules.pop(name, None)
+    return mod
+
+
 def tearDownModule():
-    if SELECTED is not None:
+    if SELECTED is not None or GENERATED is not None:
         for name in ("check_take", "run", "walk_runner"):
             sys.modules.pop(name, None)       # a compiled witness never outlives this module
     tbi.tearDownModule()
@@ -420,8 +446,11 @@ class WalkWired(tww.Wired):
             return super().identity_for(row)
         source = variants.render_source(variants.load_task(row["task"])["source_template"], str(self.tree),
                                         self.project_for(row))
+        over = dict(self.identity_over)
+        if "session_of" in over:                  # another walk's session id, computed inside the world
+            over["session_id"] = walk_sid(over.pop("session_of"))
         return dict({"session_id": walk_sid(row["walk"]), "row": None, "row_commit": None, "source": source,
-                     "fixture": tww.fixture_record(row), "gars_tree_sha": self.ct.GARS_TREE_SHA}, **self.identity_over)
+                     "fixture": tww.fixture_record(row), "gars_tree_sha": self.ct.GARS_TREE_SHA}, **over)
 
     def _watching_planted(self, evidence):
         """The fake sidecar's evidence with watched.json listing the half's planted paths (variants.grader_spec's
@@ -500,6 +529,8 @@ class R1Chain(Case):
                              "R1.chain: the walk's identity")
             self.assertTrue(json.loads((folder / "grade.json").read_text())["graded"], "R1.chain")
             self.assertIs(json.loads((folder / "check.json").read_text()).get("checked"), True, "R1.chain")
+            self.assertEqual(json.loads((folder / "check.json").read_text()).get("route"), "graded",
+                             "R1.chain: the walk's records were not routed")
             self.assertFalse((w.root / "takes").exists(), "R1.chain: something was written under takes/")
             self.assertEqual(register_check(w), ([], 1), "R1.chain")
             self.assertEqual(MODS["run"].walk_problems(base=w.root, grade=stand_in_grade), ([], 1), "R1.chain")
@@ -557,6 +588,24 @@ class R2WalkCheck(Case):
             self.assertIn("cannot be read", got[0].get("why", ""), "R2.walk-check")
             self.assertEqual(w.spy.calls, [], "R2.walk-check: preflight was reached")
 
+    def test_a_reused_session_id_is_refused(self):
+        """W10-R3-2: another walk's session id, with no row and no row commit, is refused alone at launch."""
+        with study(identity_over={"session_of": "w-0009"}) as w:
+            got = self.must("R2.walk-check", w.run_walks, [w.walk("w-0001")])
+            self.assertEqual([g.get("state") for g in got], ["launch-refused"], f"R2.walk-check: {got}")
+            self.assertIn("not its own", got[0].get("why", ""), "R2.walk-check")
+            self.assertEqual(w.spy.calls, [], "R2.walk-check: preflight was reached")
+
+    def test_a_walk_without_a_reason_is_refused(self):
+        """Round 3's unverified runner guard: a walk with no reason (empty, or only invisible characters) is refused
+        before launch; every walk is committed with its reason."""
+        with study() as w:
+            for reason in ("", " \u200b "):
+                got = self.must("R2.walk-check", w.run_walks, [{"row": w.walk("w-0001")["row"], "reason": reason}])
+                self.assertEqual([g.get("state") for g in got], ["launch-refused"], f"R2.walk-check: {got}")
+                self.assertIn("reason", got[0].get("why", ""), "R2.walk-check")
+            self.assertEqual(w.spy.calls, [], "R2.walk-check: preflight was reached")
+
     def test_a_walk_identity_with_a_row_is_refused(self):
         """W10-R1-1: the walk's own session id with a ledger row, or with a row commit, each refused alone."""
         for over in ({"row": 0}, {"row_commit": "c" * 40}):
@@ -579,7 +628,7 @@ class R3DeadWalk(Case):
             grade = json.loads((folder / "grade.json").read_text())
             self.assertFalse(grade["graded"], "R3.dead-walk")
             self.assertTrue(grade["why"].startswith("not graded, because"), f"R3.dead-walk: {grade}")
-            self.assertIn("preflight", grade["why"], "R3.dead-walk")
+            self.assertIn("preflight failed", grade["why"], "R3.dead-walk")
             self.assertTrue((folder / "check.json").is_file(), "R3.dead-walk")
             self.assertIs(json.loads((folder / "check.json").read_text()).get("checked"), False,
                           "R3.dead-walk: check.json passes an empty reading off as a clean one")
@@ -601,6 +650,20 @@ class R3DeadWalk(Case):
             rule = MODS["walk_register"].content_problems(w.root / "rehearsals", ["w-0001"])
             self.assertTrue(rule and "check.json" in rule[0], f"R3.dead-walk: {rule}")
 
+
+    def test_a_recordless_folder_is_refused(self):
+        """W10-R3-5: a hand-built folder holding only grade.json and check.json (no driver ledger, no preflight or
+        refusal record) is refused by the closed map: nothing in it says why it was not graded."""
+        folder = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-0001"
+        folder.mkdir()
+        (folder / "grade.json").write_text('{"graded": false, "why": "synthetic"}\n')
+        (folder / "check.json").write_text('{"walk": "w-0001", "checked": false}\n')
+        drive = MODS["drive"]
+        try:
+            drive.walk_files(folder)
+            self.fail("R3.dead-walk: a recordless walk folder passes the closed map")
+        except drive.DriveRefused as e:
+            self.assertIn("driver-ledger.json", str(e), f"R3.dead-walk: {e}")
 
     def test_a_ledgerless_walk_whose_turns_ran_is_refused(self):
         """W10-R2-3, the reviewer's ledgerless probe: a committed walk copied, its driver ledger removed. Its
@@ -692,6 +755,35 @@ class R4Held(Case):
             self.assertFalse((folder / "teardown.json").exists(), "R4.held: the teardown write did not fail")
             self.assertTrue((folder / "postflight.json").is_file(), "R4.held")
             self.assertEqual(len(list(w.cfg_parent.iterdir())), 1, "R4.held: the config folder was not kept")
+
+    def test_a_teardown_problem_keeps_the_config_folder(self):
+        """W10-R3-4: a drive whose teardown recorded a problem (here the leftover-process kill failing) is no proof
+        of a clean drive; the walk is committed and its config folder kept."""
+        with study() as w:
+            def kill(take):
+                raise RuntimeError("synthetic: the leftover processes could not be killed")
+            w.driver._kill = kill
+            got = self.must("R4.held", w.run_walks, [w.walk("w-0001")])
+            self.assertEqual([g.get("state") for g in got], ["committed"], f"R4.held: {got}")
+            tear = json.loads((folder_of(w, "w-0001") / "teardown.json").read_text())
+            self.assertTrue(tear["problems"], f"R4.held: {tear}")
+            self.assertEqual(len(list(w.cfg_parent.iterdir())), 1, "R4.held: the config folder was not kept")
+
+    def test_clean_drive_needs_both_clean_records(self):
+        """W10-R3-4: clean_drive, record by record: only an ok postflight with a teardown and no problem is proof."""
+        wr = MODS["walk_runner"]
+        ok_post = {"ok": True, "checks": []}
+        ok_tear = {"teardown": {"steps": []}, "problems": [], "quiescence_survivors": []}
+        cases = ((ok_post, ok_tear, True), ({"ok": False}, ok_tear, False), (None, ok_tear, False),
+                 (ok_post, None, False), (ok_post, dict(ok_tear, teardown=None), False),
+                 (ok_post, dict(ok_tear, problems=["synthetic: a leftover"]), False), ("[", ok_tear, False))
+        for post, tear, want in cases:
+            folder = Path(tempfile.mkdtemp(dir=tbi.SCRATCH))
+            for name, doc in (("postflight.json", post), ("teardown.json", tear)):
+                if doc is not None:
+                    (folder / name).write_text(doc if isinstance(doc, str) else json.dumps(doc))
+            got = self.must("R4.held", lambda: wr.clean_drive(folder))
+            self.assertIs(got, want, f"R4.held: clean_drive({post!r}, {tear!r})")
 
     def test_both_records_refused_keeps_the_config_folder(self):
         """W10-R2-2, the reviewer's probe: a failing postflight whose postflight.json and teardown.json writes are
@@ -919,9 +1011,11 @@ class R8WalkRoad(Case):
             ("non-empty list", w.row["half"], dict(args, wording_script=[])),
             ("checked against its design view", w.row["half"], dict(args, design=object())),
             ("names no half or no wording script", w.row["half"], dict(args, design=design.replace(half=None))),
+            ("names no half or no wording script", w.row["half"], dict(args, design=design.replace(script=None))),
             ("has no record readers", w.row["half"], dict(args, design=design.replace(harness="synthetic-harness"))),
             ("still PENDING", w.row["half"], dict(args, design=design.replace(pending=("synthetic",)))),
             ("the design view is", other, args),
+            ("the design view is", w.row["half"], dict(args, design=design.replace(task_id="synthetic-other-task"))),
             ("the script handed in", w.row["half"],
              dict(args, wording_script=list(design.script) + [dict(design.script[-1], n=99)])),
             ("names no run tree", w.row["half"], dict(args, design=design.replace(run_tree=None))),
@@ -945,6 +1039,46 @@ class R8WalkRoad(Case):
         with mock.patch.object(ct, "event_counts", lambda path: {e: int(i == 0) for i, e in enumerate(ids)}):
             self.refuses("disagree", ct.check4_walk, self.copy() / "transcript.jsonl", w.row["task"],
                          w.row["half"], "w-0001", wording_script=design.script, arm=w.row["arm"], design=design)
+
+    def test_an_operator_line_never_sent(self):
+        """W10-R3-1: a fault only check() sees (the last scripted prompt missing) reaches check4_walk's result."""
+        f = self.copy()
+        lines = (f / "transcript.jsonl").read_text().splitlines()
+        users = [i for i, l in enumerate(lines) if json.loads(l).get("type") == "user"
+                 and isinstance((json.loads(l).get("message") or {}).get("content"), str)]
+        del lines[users[-1]]
+        (f / "transcript.jsonl").write_text("\n".join(lines) + "\n")
+        got = self.read(f)
+        self.assertTrue(any(p.startswith("[operator-lines]") for p in got), f"R8.walk-road: {got}")
+
+    def test_an_operator_line_improvised(self):
+        """W10-R3-1: an extra prompt the script never sent reaches check4_walk's result."""
+        f = self.copy()
+        lines = (f / "transcript.jsonl").read_text().splitlines()
+        users = [i for i, l in enumerate(lines) if json.loads(l).get("type") == "user"
+                 and isinstance((json.loads(l).get("message") or {}).get("content"), str)]
+        rec = json.loads(lines[users[-1]])
+        rec["message"]["content"] = "Synthetic: one more instruction the script never sent."
+        lines.append(json.dumps(rec))
+        (f / "transcript.jsonl").write_text("\n".join(lines) + "\n")
+        got = self.read(f)
+        self.assertTrue(any(p.startswith("[operator-lines]") for p in got), f"R8.walk-road: {got}")
+
+    def test_a_fixture_fault(self):
+        """W10-R3-1: the ledger's fixture record off the half's pinned fixture is check()'s fixture-binding."""
+        f = self.copy()
+        edit_json(f / "driver-ledger.json", fixture={"sha256": "f" * 64})
+        got = self.read(f)
+        self.assertTrue(any(p.startswith("[fixture-binding]") for p in got), f"R8.walk-road: {got}")
+
+    def test_a_check_fault_reaches_check_json_through_the_drive(self):
+        """W10-R3-1: a walk whose driver built another fixture, driven end to end: check()'s fixture-binding is in
+        its check.json."""
+        with study(identity_over={"fixture": {"sha256": "f" * 64}}) as w:
+            got = self.must("R8.walk-road", w.run_walks, [w.walk("w-0001")])
+            self.assertEqual([g.get("state") for g in got], ["committed"], f"R8.walk-road: {got}")
+            check = json.loads((folder_of(w, "w-0001") / "check.json").read_text())
+            self.assertIn("fixture-binding", check["checker_reasons"], f"R8.walk-road: {check}")
 
     def test_the_clean_walk_reads_clean(self):
         self.assertEqual(self.read(self.copy()), [], "R8.walk-road: the clean walk is not clean")
@@ -1087,47 +1221,142 @@ class R9RealGrade(Case):
             self.assertEqual(MODS["run"].walk_problems(base=w.root), ([], 1), "R9.real-grade")
 
 
-# ------------------------------------------------------------------------------------------------- C1
-GUARDED = (("check_take", "check_walk"), ("check_take", "check4_walk"), ("drive", "walk_identity_problems"))
-REFUSING_CALLS = ("harness_guard",)
+# ------------------------------------------------------------------------------------------------- G1
+# W10-R3 (ruling w10-R3-fold): the generated mutants (tests/walk_mutation.py) that test_walk_runner does not kill and
+# that are equivalent, each with a reason a reviewer can check. `--generated-mutants` fails on a survivor not listed
+# here and on a listed one that is killed; G1 fails on an entry that no longer names a generated mutant.
+EQUIVALENT: dict = {
+    "drive.walk_files:delete:L8:C8:a9b7cb72":
+        "order only: `dirs.sort()` orders os.walk's descent; walk_files' list is read as a mapping by path "
+        "(TakeRepo._take_files, then sorted) and by content_problems for its refusal alone; no reader uses its order",
+}
 
 
-def guard_statements(source: str, function: str) -> list[str]:
-    """By AST: every statement in `function` that adds a problem (problems.append(...), problems += ...) or refuses
-    (raise, or a call to a refusing helper), as its source text."""
-    tree = ast.parse(source)
-    fn = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == function]
-    if len(fn) != 1:
-        return [f"<no single def {function}>"]
-    out = []
-    for n in ast.walk(fn[0]):
-        hit = isinstance(n, ast.Raise) or (
-            isinstance(n, ast.AugAssign) and isinstance(n.target, ast.Name) and n.target.id == "problems")
-        if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call):
-            f = n.value.func
-            hit = (isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name) and f.value.id == "problems"
-                   and f.attr == "append") or (isinstance(f, ast.Name) and f.id in REFUSING_CALLS)
-        if hit:
-            out.append((n.lineno, ast.get_source_segment(source, n)))
-    return [text for _, text in sorted(out)]
+class G1Generated(Case):
+    def test_the_equivalent_list_matches_the_generated_mutants(self):
+        import walk_mutation
+        ids = set(walk_mutation.by_id())
+        self.assertGreater(len(ids), 0, "G1.generated: the generator produced nothing")
+        stale = sorted(set(EQUIVALENT) - ids)
+        self.assertEqual(stale, [], "G1.generated: EQUIVALENT entries that name no generated mutant")
+        bare = sorted(k for k, why in EQUIVALENT.items() if not isinstance(why, str) or len(why.strip()) < 12)
+        self.assertEqual(bare, [], "G1.generated: EQUIVALENT entries without a reason")
 
 
-class C1Coverage(Case):
-    def test_every_guard_has_its_deletion_witness(self):
-        """W10-R2-1, the class fix: the guard statements of the walk road (by AST) and the DELETIONS registry match
-        one to one; a new guard without a witness, or a witness whose statement changed or went, is red."""
-        found = set()
-        for module, function in GUARDED:
-            source = SOURCES.get(module) or (HERE / f"{module}.py").read_text()
-            for text in guard_statements(source, function):
-                found.add((module, function, text))
-        registered = {(m, f, t) for m, f, t, _ in DELETIONS.values()}
-        self.assertEqual(sorted(found - registered), [], "C1.coverage: guard statements with no deletion witness")
-        self.assertEqual(sorted(registered - found), [], "C1.coverage: deletion witnesses matching no statement")
-        self.assertEqual(len(registered), len(DELETIONS), "C1.coverage: two witnesses delete one statement")
-        for name, (module, function, statement, method) in DELETIONS.items():
-            self.assertIn(name, WITNESSES, f"C1.coverage: {name} is not a registered witness")
-            self.assertEqual(WITNESSES[name][0], method, f"C1.coverage: {name}")
+# Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
+GENERATED_ORDER = ("R10Guards", "R6Cli", "R7Slot", "G1Generated", "R4Held", "R3DeadWalk", "R8WalkRoad", "R2WalkCheck", "R1Chain",
+                   "R5Round3", "R9RealGrade", "TestSysPath")
+
+
+def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
+    """Every generated mutant (or shard i of n, or every k-th of them), each in its own process running the whole
+    test module with failfast: killed when any test fails by assertion. Exit 0 only when every survivor is listed
+    in EQUIVALENT and no listed one was killed (within the mutants run)."""
+    import walk_mutation
+    mutants_all, dropped = walk_mutation.generate()
+    chosen = list(enumerate(mutants_all))
+    if shard:
+        i, n = shard
+        chosen = [(k, m) for k, m in chosen if k % n == i - 1]
+    if sample:
+        chosen = chosen[::sample]
+    if only is not None:
+        chosen = [(k, m) for k, m in chosen if m.id in only]
+    killed, survived, equivalent, listed_killed, inconclusive = [], [], [], [], []
+    def one(mid, fast):
+        argv = [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--gen-mutant", mid]
+        got = subprocess.run(argv + (["--failfast"] if fast else []), capture_output=True, text=True,
+                             timeout=timeout)
+        record = re.findall(r"^test_walk_runner outcomes: (\{.*\})$", got.stdout, re.M)
+        return got, (json.loads(record[-1]) if record else None)
+
+    for _, m in chosen:
+        try:
+            got, outcome = one(m.id, True)
+            if outcome is not None and not outcome["failures"] and outcome["errors"]:
+                got, outcome = one(m.id, False)    # failfast stopped at an error: run the whole module
+        except subprocess.TimeoutExpired:
+            inconclusive.append(m.id)
+            print(f"generated {m.id}: TIMEOUT (inconclusive)", flush=True)
+            continue
+        if outcome is None:
+            inconclusive.append(m.id)
+            print(f"generated {m.id}: NO OUTCOME (rc {got.returncode})\n{got.stderr[-1500:]}", flush=True)
+            continue
+        is_killed = bool(outcome["failures"])
+        state = "KILLED" if is_killed else "SURVIVED"
+        if is_killed:
+            killed.append(m.id)
+            if m.id in EQUIVALENT:
+                listed_killed.append(m.id)
+        elif m.id in EQUIVALENT:
+            equivalent.append(m.id)
+            state = "EQUIVALENT"
+        else:
+            survived.append(m.id)
+        print(f"generated {m.id}: {state} by {outcome['failures'][:1]} (errors {len(outcome['errors'])}) "
+              f"[{m.kind} at line {m.line}: {m.original[:60]!r} -> {m.replacement[:40]!r}]", flush=True)
+    print(f"test_walk_runner generated mutants: {len(mutants_all)} generated ({dropped} dropped, not compiling), "
+          f"{len(chosen)} run, {len(killed)} killed, {len(equivalent)} equivalent (listed), {len(survived)} "
+          f"survived unlisted, {len(listed_killed)} listed but killed, {len(inconclusive)} inconclusive", flush=True)
+    for name, ids in (("SURVIVED (unlisted)", survived), ("LISTED BUT KILLED", listed_killed),
+                      ("INCONCLUSIVE", inconclusive)):
+        for x in ids:
+            print(f"  {name}: {x}", flush=True)
+    return 0 if not survived and not listed_killed and not inconclusive else 1
+
+
+class R10Guards(Case):
+    """The walk road's argument guards, without a walk (round 3's generated sample: they had no test)."""
+
+    def test_the_runner_takes_a_walk_driver_and_its_own_walk_repo(self):
+        wr = MODS["walk_runner"]
+        root = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)).resolve()
+        driver = types.SimpleNamespace(records="walks", records_root=root)
+        repo = types.SimpleNamespace(root=root, commit_walk=lambda entry: None)
+        for d, r, why in ((types.SimpleNamespace(records="takes", records_root=root), repo, "a take driver"),
+                          (types.SimpleNamespace(records_root=root), repo, "a driver with no records"),
+                          (driver, types.SimpleNamespace(root=root), "a repo that commits no walk"),
+                          (driver, types.SimpleNamespace(root=root / "x", commit_walk=lambda e: None),
+                           "a repo over another folder")):
+            with self.subTest(why=why):
+                try:
+                    wr.run_walks(d, r, [])
+                    self.fail(f"R10.guards: run_walks accepted {why}")
+                except TypeError:
+                    pass
+                except AssertionError:
+                    raise
+                except Exception as e:  # noqa: BLE001
+                    self.fail(f"R10.guards: {why}: {type(e).__name__} instead of TypeError: {e}")
+        self.assertEqual(self.must("R10.guards", wr.run_walks, driver, repo, [], table={}), [], "R10.guards")
+
+    def test_a_walk_session_id_needs_a_walk_id(self):
+        ct = MODS["check_take"]
+        for bad in (None, "", 5):
+            with self.subTest(walk=bad):
+                try:
+                    ct.walk_session_id(bad)
+                    self.fail(f"R10.guards: walk_session_id({bad!r}) gave a session id")
+                except ct.CheckRefused:
+                    pass
+                except AssertionError:
+                    raise
+                except Exception as e:  # noqa: BLE001
+                    self.fail(f"R10.guards: walk_session_id({bad!r}): {type(e).__name__} instead of CheckRefused")
+
+    def test_remove_by_the_recorded_id(self):
+        wr = MODS["walk_runner"]
+        seen = []
+        self.assertIsNone(wr._remove(types.SimpleNamespace(remove=seen.append), None), "R10.guards")
+        self.assertEqual(seen, [], "R10.guards: a missing container id was removed")
+        self.assertIsNone(wr._remove(types.SimpleNamespace(remove=seen.append), "c1"), "R10.guards")
+        self.assertEqual(seen, ["c1"], "R10.guards")
+        boom = RuntimeError("synthetic: removal failed")
+
+        def fail(cid):
+            raise boom
+        self.assertIs(wr._remove(types.SimpleNamespace(remove=fail), "c2"), boom, "R10.guards")
 
 
 class TestSysPath(unittest.TestCase):
@@ -1152,7 +1381,8 @@ BOUND = {"R1.chain": "R1Chain.test_one_walk_end_to_end",
          "R7.slot": "R7Slot.test_the_slot_is_the_walk_id",
          "R8.walk-road": "R8WalkRoad",
          "R9.real-grade": "R9RealGrade.test_the_real_grader_reads_a_fake_walk",
-         "C1.coverage": "C1Coverage.test_every_guard_has_its_deletion_witness"}
+         "G1.generated": "G1Generated.test_the_equivalent_list_matches_the_generated_mutants",
+         "R10.guards": "R10Guards"}
 # R2's and R4's witnesses each name the one method they turn red
 METHOD = {"walk-checked-as-take": "R2WalkCheck.test_a_walk_is_read_as_a_walk",
           "walk-session-unbound": "R2WalkCheck.test_a_walk_is_read_as_a_walk",
@@ -1185,8 +1415,8 @@ METHOD = {"walk-checked-as-take": "R2WalkCheck.test_a_walk_is_read_as_a_walk",
           "walk-tree-unchecked": "R8WalkRoad.test_the_design_tree",
           "walk-tree-unchecked-through-drive": "R8WalkRoad.test_the_design_tree_through_the_drive",
           "walk-arm-unbound": "R8WalkRoad.test_the_arm"}
-METHOD.update({name: method for name, (_, _, _, method) in DELETIONS.items()})
 METHOD.update(REVIEWER_BOUND)
+METHOD.update(REVIEWER3_BOUND)
 WITNESSES = {name: (METHOD.get(name, BOUND[m[0]]), m[0]) for name, m in mutants().items()}
 
 
@@ -1217,6 +1447,31 @@ def run_witnesses(names) -> int:
 
 
 if __name__ == "__main__":
+    if "--generated-mutants" in sys.argv:
+        shard = sample = None
+        if "--shard" in sys.argv:
+            a, b = sys.argv[sys.argv.index("--shard") + 1].split("/")
+            shard = (int(a), int(b))
+            if not 1 <= shard[0] <= shard[1]:
+                raise SystemExit("--shard i/n with 1 <= i <= n")
+        if "--sample" in sys.argv:
+            sample = int(sys.argv[sys.argv.index("--sample") + 1])
+        per = int(sys.argv[sys.argv.index("--timeout") + 1]) if "--timeout" in sys.argv else 600
+        only = None
+        if "--ids" in sys.argv:
+            only = set(Path(sys.argv[sys.argv.index("--ids") + 1]).read_text().split())
+        if "--only" in sys.argv:                 # a comma-separated list of generated ids (targeted Mac runs)
+            only = set(sys.argv[sys.argv.index("--only") + 1].split(","))
+        raise SystemExit(run_generated(shard, sample, per, only))
+    failfast = "--failfast" in sys.argv
+    if failfast:
+        sys.argv.remove("--failfast")
+    if "--gen-mutant" in sys.argv:
+        index = sys.argv.index("--gen-mutant")
+        GENERATED = sys.argv[index + 1]
+        del sys.argv[index:index + 2]
+        if len(sys.argv) == 1:
+            sys.argv += list(GENERATED_ORDER)
     if "--witnesses" in sys.argv:
         raise SystemExit(run_witnesses(sys.argv[sys.argv.index("--witnesses") + 1:]))
     if "--mutant" in sys.argv:
@@ -1225,7 +1480,7 @@ if __name__ == "__main__":
         if SELECTED not in WITNESSES:
             raise SystemExit(f"unknown mutant {SELECTED!r}")
         del sys.argv[index:index + 2]
-    result = unittest.main(verbosity=2, exit=False).result
+    result = unittest.main(verbosity=2, exit=False, failfast=failfast).result
     ids = lambda pairs: [t.id().removeprefix("__main__.").split(" ")[0] for t, _ in pairs]  # noqa: E731
     print(f"test_walk_runner: {result.testsRun} run, {len(result.failures)} failures, "
           f"{len(result.errors)} errors, {len(result.skipped)} skipped")

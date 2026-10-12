@@ -199,8 +199,7 @@ def run_walks(driver, repo, walks, *, table=None, route_fn=None, grade=None) -> 
         raise TypeError("the walk runner drives a walk driver: drive.walk_driver(records='walks')")
     if not callable(getattr(repo, "commit_walk", None)) or Path(repo.root).resolve() != Path(driver.records_root):
         raise TypeError("the walk runner commits through a WalkRepo over the driver's own study folder")
-    table = routing.load_table() if table is None else table
-    route_fn = routing.route if route_fn is None else route_fn
+    route_fn = routing.route if route_fn is None else route_fn    # routing.route reads routing.json when table is None
     results = []
     for item in walks:
         got = run_one(driver, repo, item.get("row"), item.get("reason"), table=table, route_fn=route_fn, grade=grade)
