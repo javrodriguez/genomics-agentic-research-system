@@ -1,6 +1,6 @@
-Status: STOPPED at the proposal (three design choices open); nothing built
+Status: built on glitch-2f's rulings D1, D2, D3 (see the build section at the end); ready for review
 
-RESUME HERE: the Lane-orchestrator's ruling on D1, D2 and D3 below
+RESUME HERE: review round 1, then athena
 
 # Lane w10-walk-runner: Gap Study round 4, the CP6 walk runner (proposal)
 
@@ -92,3 +92,98 @@ D3. A walk that dies before its driver ledger exists.
 ## Modules athena must run
 
 - None for this commit, which is a report only.
+
+## Rulings (glitch-2f, the Lane-orchestrator under Javier's delegation, Mon 12 Oct 2026)
+
+- D1 accepted: a round-4 walk mode in check4, `take_checker` uses it for walks, and the result goes in a required `check.json`; round 3's `is_walk` is untouched, with a test showing it is byte-identical.
+- D2 accepted: `session_id = uuid5(takes.namespace(), "walk/" + id)`, with row and row_commit None.
+- D3 accepted as written.
+- The in-plan choices stand: `walk_runner.py` runs one walk at a time, slot equals the walk id, Claude only, the CLI refuses naming Q-w7b-3, and `driver.published` is called on every road.
+
+## Build, Mon 12 Oct 2026 13:35 EDT (`date`)
+
+Commits `cb53102e` (code and tests) and `17e7e129` (ownership records, checks.d, register and README text).
+
+What was built:
+- `walk_runner.py` (new): `run_walks(driver, repo, walks)`.
+  For each walk it launches through the walk arm, drives, removes the containers, writes `check.json`, writes `grade.json`, commits through `WalkRepo.commit_walk`, then calls `driver.published`.
+  A walk refused before launch is reported, and the runner moves on.
+  A walk whose launch failed after making things, whose drive raised, whose containers could not all be removed, or whose grade or commit was refused is never committed; its folder is left for a human, and the runner stops.
+  The CLI refuses (exit 2), naming Q-w7b-3.
+- `check_take.py` (D1, D2), appended above `if __name__` only:
+  - `walk_session_id`;
+  - `check_walk`, which runs `check()` as a take with no row, asserts it ends at exactly one row-needed line, replaces that line with the walk's binding, and keeps the take's tail;
+  - `check4_walk`.
+  The round-3 byte binding (checks.d/w6j-claude-adapter.txt) still holds.
+- `drive.py`:
+  - `take_checker(records=...)` reads a walk by `check4_walk`;
+  - the walk folder's closed map gains `check.json` (required);
+  - D3: a walk folder with no driver ledger must hold `preflight.json` or `refusal.json`;
+  - `walk_identity_problems` (D2) runs at the end of `walk_launch_problems`.
+  The round-3 byte binding (checks.d/w6e-drive-commit.txt) still holds.
+- `run.py` (D3): `grade_walk` gives a walk with no driver ledger "not graded, because ..." from its refusal.json or preflight.json.
+
+Departure from the ruling's wording, named here: `driver.published` is called on every road except one.
+When the drive ran (teardown.json written) and its postflight did not pass, the config folder is kept for a human.
+That is the driver's own postflight stop (S6b (e): "the config folder is kept for a human"); deleting it would destroy the credential-like file the stop is about.
+R4 binds both sides: after a postflight refusal the config folder is kept, and after a drive-scan refusal it is deleted.
+
+Evidence (Mac, each run behind `mac_slot.py light-ok` and `timeout -s INT 115/120`, python3.13):
+- Red first, against a detached worktree of f14ab57b holding only the new test file: `test_walk_runner: 9 run, 9 failures, 0 errors`, every failure by assertion with its clause.
+  With `walk_runner.py` also copied in, so that only the base's drive, check_take and run were missing the change: `9 run, 5 failures, 0 errors`, each failure `KeyError: 'WALK_CHECK'` by assertion (R1, R2 x2, R3, R5).
+- Green: `test_walk_runner: 10 run, 0 failures, 0 errors, 0 skipped` (9 plus TestSysPath W6M1).
+- Witnesses: 16/16 RED in two batches of 8, exit 0 each.
+  Two first survived and were fixed in the test, not the code:
+  - walk-session-unbound: the ledger's session check covered it. R2 now shows each binding alone, on a copy whose ledger names another walk's session, and a witness walk-ledger-session-unbound was added.
+  - check-file-optional: walk_register imports the real drive module, not the witness. R3 now asserts the driver module's own `walk_files`.
+- The probe's four variants are now tests: faked and the chain → R1; prefreeze → R2; preflightfail → R3; the leftover config folder → R1, R3 and R4.
+- Neighbours:
+  - test_walk_layout: 14 run, 0 failures; its witnesses 21/21 red.
+  - test_cp8_prep: 4 run, 0 failures; its witnesses 15/15 red.
+  - test_cp6_wiring: 5 run, 0 failures; its witnesses 20/20 red.
+  - test_rehearsals: 9 run, 0 failures; its witnesses 20/20 red.
+  - test_walk_wiring: Ran 20, OK. test_check_take: Ran 15, OK. test_checker_body: Ran 29, OK.
+  - test_drive_commit: Ran 31, OK. test_drive_loop: Ran 27, OK. test_mode_binding: Ran 8, OK. test_ci_job: Ran 23, OK.
+  - test_scaffold: TheManifest.test_check_passes_on_the_folder and TheImports, Ran 4, OK; TheBinding, Ran 2, OK. Whole TheManifest hit rc 124 (owed to athena).
+  - test_pipeline: PipelineOwnership and PublishedArtifacts only, Ran 6, OK.
+- Before the fixture edits, test_walk_layout went red on L3, L4 and L10 and test_cp8_prep on H1, because check.json is now required. That is the expected red; the fix adds one fixture line each, and no assertion or witness changed.
+- Anchor sweep: every test string that occurred once in the base's check_take, drive, run, walk_register or mode_binding still occurs once, apart from the file name 'driver-ledger.json' in run.py, which no mutant anchors on.
+  Two test_check_take witnesses (ledger-arm-unbound, nothing-lifted) and four test_checker_body anchors first doubled because of check4_walk's copied lines; those lines were reworded.
+- Gates: copy_manifest --check exit 0 (299 files, 48 fragments); build_draft --check exit 0 (no input moved, so prereg-draft.json is untouched); freeze.py --check exit 0 (299 owned paths); walk_register --check exit 0 (0-walk line).
+  Also exit 0: run.py --walks --check, mode_binding.py --walks --check and fixture_walk.py --check (0-walk lines).
+- lint_language: clean, 92 inputs, 23 excused. lint_pooling: clean, 92 files.
+- One real-grader run (scratch, not a test): the fake box's walk reached the REAL v4 grader, which raised `EvidenceError: ... is not a watched path (watched.json)`.
+  The fake sidecar's watched set does not cover the grader's path.
+  The runner held the walk, uncommitted, as designed.
+  So the real grade road is wired but not yet shown green on the fake box; the tests use a labelled stand-in grade.
+
+## Ownership
+
+- Transfers, under rulings D1-D3: drive.py from w9-cp6, and check_take.py from w7b-walk-wiring.
+- New: walk_runner.py, tests/test_walk_runner.py, checks.d/w10-walk-runner.txt, COPIED.d/w10-walk-runner.json.
+- Departures (edited without transfer, each recorded in its owner's entry):
+  - w10-1 run.py (w8a; PipelineOwnership binds it there);
+  - w10-2 tests/test_walk_layout.py (w8a);
+  - w10-3 tests/test_cp8_prep.py (w8d);
+  - w10-4 tests/test_cp6_wiring.py (w9; W1's admitted walk gets its own identity);
+  - w10-5 walk_register.py (w8d; docstring only);
+  - w10-6 rehearsals/README.md (w8a).
+
+## Open questions (proposed answers)
+
+- Q-w10-1: the real v4 grader refuses the fake box's evidence (path not watched).
+  Proposed: before the first real walk, one fake-box test grades a walk through the real grader with a watched set covering the half's paths. Alternatively, accept that the first real Haiku walk is the proof (plan line 1040: "one real walk per model in the box, read end to end").
+- Q-w10-2: the checker's constants are still PENDING, so on real walks check4_walk raises CheckRefused, the drive raises, and the walk is held (Q-w8a-5's twin).
+  Proposed: as for takes, the first walks are run with the constants measured, or the checker step is ruled for the very first walk; this is not changed here.
+- Q-w10-3: `check.json` cannot be regraded (it needs the design view and pin), unlike `grade.json`.
+  Proposed: accept, as with driver-ledger.json; CP8's walk_register step in CI binds its bytes to the walk commit.
+
+## Modules athena must run
+
+- tests/test_walk_runner.py and `--witnesses` (16)
+- tests/test_box_integration.py (whole; it exceeds 120 s on the Mac)
+- tests/test_pipeline.py (whole; PipelineOwnership with run.py's departure)
+- tests/test_scaffold.py (whole) and test_round4.py (the battery)
+- tests/test_walk_layout.py, test_cp8_prep.py, test_cp6_wiring.py and test_rehearsals.py, each with `--witnesses`
+- tests/test_walk_wiring.py, test_check_take.py, test_checker_body.py, test_drive_commit.py, test_drive_loop.py, test_mode_binding.py and test_wave6_bindings.py
+- The gates: copy_manifest --check, build_draft --check, freeze.py --check, walk_register --check, run.py --walks --check, mode_binding.py --walks --check, fixture_walk.py --check, the checks.d byte bindings (w6j check_take, w6e drive), and lint_language and lint_pooling over the folder
