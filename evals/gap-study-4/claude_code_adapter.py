@@ -30,6 +30,10 @@ THE RECORDS READ, AND WHERE THEIR SHAPES WERE VERIFIED (no field below is read o
                   `error` (its type, e.g. model_not_found), its words in text blocks
     result        subtype, is_error, result, total_cost_usd, usage, modelUsage, num_turns, permission_denials
                   ([{tool_name, tool_use_id, tool_input}]), api_error_status, session_id
+                  UNEVIDENCED (W6J-R1-4): every recorded result is subtype success with is_error false and
+                  api_error_status null. read_stream's error-result branch (is_error true or an `error...` subtype,
+                  typed by the subtype) and its `error` key are round 3's stream_split reading, not seen in a
+                  recording at 2.1.267; they stay unevidenced until CP6 records an error result.
 
   session file (the transcript the harness writes under CLAUDE_CONFIG_DIR/projects), harness 2.1.267, recorded:
   evals/gap-study-2/verification/env-smoke/tmpdir/transcript.jsonl: assistant records carry sessionId, requestId,
@@ -352,7 +356,11 @@ def cross_check(turn_records: list, session_text: str, *, session_id: str) -> li
     """
     out = []
     recs, _ = _records(session_text)
-    sids = sorted({r.get("sessionId") for r in recs if "sessionId" in r})
+    raw_sids = [r.get("sessionId") for r in recs if "sessionId" in r]
+    bad = sum(1 for x in raw_sids if not isinstance(x, str))      # W6J-R1-2: a null id is a problem, never a crash
+    if bad:
+        out.append(f"{bad} session record(s) carry a session id that is not a string")
+    sids = sorted({x for x in raw_sids if isinstance(x, str)})
     if sids != [session_id]:
         out.append(f"the session file carries session ids {sids}, not the imposed {session_id}")
     stream_sids = sorted({s for t in turn_records for s in t["session_ids"]})

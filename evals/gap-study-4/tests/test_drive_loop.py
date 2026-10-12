@@ -41,6 +41,10 @@ What is tested, each guard with its own bound check and a whole-file witness of 
              design view (the real round-4 design, test_checker_body's synthetic clean take); a cross-check that
              failed adds readers-disagree; no transcript at all is readers-disagree; the production constants
              (PENDING) refuse, never a default. Witnesses: cross-check-unrouted, missing-transcript-graded.
+  D11-numbering  W6J-R1-3: a script whose steps are not numbered exactly 1..k in order is refused (a bare line beside
+             a step of the same n, a gap, a repeat, a reversal); a strict driver refuses bare lines. Witnesses:
+             any-numbering, strict-ignored. D7 also carries W6J-R1-1 (a session file the cost reader refuses is a
+             cross-check problem; the take still reaches its ledger): witness cost-refusal-raises.
   D10-start  Q-w6i-3: an adapter whose start_take raises after it opened is ended once on the cleanup road, and the
              take rehearses (nothing of the agent ran). Witness: open-after-start (the flag set after start_take).
 
@@ -377,10 +381,16 @@ class ClaudeBox(tbi.FakeBox):
             body = list(content) + ([{"type": "tool_use", "id": "toolu_extra", "name": "Bash",
                                       "input": {"command": "pwd"}}] if edit == "extra_tool" else [])
             if edit != "drop":
-                for block in body:      # one record per content block, each with the whole call's usage
-                    recs.append({"type": "assistant", "sessionId": sid, "requestId": req, "message": {
+                for k, block in enumerate(body):    # one record per content block, each with the call's usage
+                    usage = dict(USAGE)
+                    if edit == "dup_usage":         # W6J-R1-1: one call written twice, its output 3 then 286
+                        usage["output_tokens"] = 3 if k == 0 else 286
+                    rec = {"type": "assistant", "sessionId": sid, "requestId": req, "message": {
                         "id": msg, "model": "another-model" if edit == "model" else model, "role": "assistant",
-                        "content": [block], "usage": dict(USAGE), "stop_reason": "end_turn"}})
+                        "content": [block], "usage": usage, "stop_reason": "end_turn"}}
+                    if edit == "no_request_id":     # W6J-R1-1: a usage record with no requestId
+                        del rec["requestId"]
+                    recs.append(rec)
             folder = Path(self.cfg_of(cid)) / "projects" / "-work-run"
             folder.mkdir(parents=True, exist_ok=True)
             with open(folder / f"{sid}.jsonl", "a", encoding="utf-8") as fh:
@@ -465,6 +475,16 @@ def d7_records(mod, p):
         take, _, _ = drive_claude(mod, TWO, TWO_REPLIES, **kw)
         if not read_json(take, "driver-ledger.json")["cross_check"]:
             out.append(f"{p}: {case} in the session file passed the cross-check")
+    for case, edit in (("one call recorded twice with different usage", "dup_usage"),
+                       ("a usage record with no requestId", "no_request_id")):     # W6J-R1-1
+        try:
+            take, rec2, _ = drive_claude(mod, TWO, TWO_REPLIES, session={1: edit})
+        except Exception as e:  # noqa: BLE001 - the take must reach its ledger, scan and checker
+            out.append(f"{p}: {case}: drive() raised {type(e).__name__}: {str(e)[:80]}")
+            continue
+        led = read_json(take, "driver-ledger.json")
+        if led["cost"] is not None or not led["cross_check"] or not take.cross_check:
+            out.append(f"{p}: {case}: cost {led['cost'] is not None}, cross-check {led['cross_check']}")
     take, _, _ = drive_claude(mod, TWO, TWO_REPLIES, no_session=True)
     led = read_json(take, "driver-ledger.json")
     if led["transcript"] is not None or not led["outcome"].endswith(f"no session file for {tbi.SESSION_ID}") \
@@ -536,6 +556,44 @@ def d8_checker(mod, p):
     return out
 
 
+@guarded("D11-numbering")
+def d11_numbering(mod, p):
+    """W6J-R1-3: a script's steps are numbered exactly 1..k in order; a strict script holds steps only."""
+    out = tbi.missing_api(mod, p, "TakeDriver")
+    if out:
+        return out
+    bad = {"a bare line beside a step of the same n": ["operator line 1", step(1), step(2)],
+           "steps out of order": [step(2), step(1)], "a gap": [step(1), step(3)], "a repeat": [step(1), step(1)]}
+    for case, steps in bad.items():
+        try:
+            mod._Script(steps, [])
+            out.append(f"{p}: {case} was accepted")
+        except mod.DriveRefused:
+            pass
+    try:
+        mod._Script(["operator line 1", "operator line 2"], [], strict=True)
+        out.append(f"{p}: a strict script accepted bare lines")
+    except mod.DriveRefused:
+        pass
+    except TypeError:
+        return out + [f"{p}: _Script has no strict flag"]
+    mod._Script([step(1), step(2)], [], strict=True)
+    mod._Script(["operator line 1", "operator line 2"], [])
+    with tbi.scratch_repo() as root:                 # the driver hands its own flag to the script
+        rig = tbi.Rig(mod, root)
+        rig.driver.strict_script = True
+        r = tbi.row(1)
+        with tbi.spying(rig.spy):
+            cid = rig.driver.launch(r)
+            try:
+                rig.driver.drive(r, cid)
+                out.append(f"{p}: a strict driver drove a script of bare lines")
+            except mod.DriveRefused:
+                pass
+            rig.driver.remove(cid)
+    return out
+
+
 class OpensThenRaises(LoopAdapter):
     """start_take opens (the base class's _enter) and then fails in _start: a harness that died while starting."""
 
@@ -604,6 +662,11 @@ class TestStage6Carried(unittest.TestCase):
         self.assertEqual(d10_start(tbi.drive), [])
 
 
+class TestReviewFold(unittest.TestCase):
+    def test_d11_the_script_is_numbered_1_to_k(self):
+        self.assertEqual(d11_numbering(tbi.drive), [])
+
+
 # name: (edits to drive.py, the bound check, the line prefix that is its own assertion)
 WITNESSES = {
     "table-reread": ((("            with open(target, \"wb\") as fh:                  # the hashed bytes, never a "
@@ -641,6 +704,15 @@ WITNESSES = {
                            "raises is still ended\n                    adapter.start_take(dict(row))\n",
                            "                    adapter.start_take(dict(row))\n                    take.adapter_open = "
                            "True\n"),), d10_start, "D10-start"),
+    # W6J-close-1
+    "cost-refusal-raises": ((("                cost = _cc.cost_record(recs, text, model=row[\"model\"], version=version)\n"
+                              "            except _cc.StreamError as e:",
+                              "                cost = _cc.cost_record(recs, text, model=row[\"model\"], version=version)\n"
+                              "            except ZeroDivisionError as e:"),), d7_records, "D7-records"),
+    "any-numbering": ((("        if [s[\"n\"] for s in self.steps] != list(range(1, len(self.steps) + 1)):    # W6J-R1-3",
+                        "        if False:"),), d11_numbering, "D11-numbering"),
+    "strict-ignored": ((("                                 strict=self.strict_script)",
+                         "                                 strict=False)"),), d11_numbering, "D11-numbering"),
 }
 WITNESS_LOG: list = []
 
@@ -702,12 +774,22 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_open_after_start(self):
         self.kill("open-after-start")
 
+    def test_witness_cost_refusal_raises(self):
+        self.kill("cost-refusal-raises")
+
+    def test_witness_any_numbering(self):
+        self.kill("any-numbering")
+
+    def test_witness_strict_ignored(self):
+        self.kill("strict-ignored")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["table-reread", "continued-past-unheld-marker",
                                                     "recovery-never-sent", "recovery-unbounded", "marker-casefold",
                                                     "abort-before-output", "turn-ends-dropped", "no-cross-check",
                                                     "session-raw", "env-per-turn-dropped", "cross-check-unrouted",
-                                                    "missing-transcript-graded", "open-after-start"]))
+                                                    "missing-transcript-graded", "open-after-start",
+                                                    "cost-refusal-raises", "any-numbering", "strict-ignored"]))
 
 
 if __name__ == "__main__":

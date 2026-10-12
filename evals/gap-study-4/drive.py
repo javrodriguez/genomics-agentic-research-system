@@ -1920,6 +1920,8 @@ class TakeDriver:
     identity_for     (row) -> the take's identity as the row's registration and the run-tree builder know it, exactly
                      IDENTITY_KEYS: session_id (takes.session_id_for of the row's commit), row, row_commit, source
                      (the absolute source handed in), fixture (the fixture builder's record), gars_tree_sha (S6c C7)
+    strict_script    W6J-R1-3: True refuses a script_for entry that is a bare line (the production wiring,
+                     script_from_design, hands steps with their markers); False keeps S6's synthetic line scripts
     secrets          () -> [(kind, value)] for the scan, read at scan time and never held
     rules_scanner, holdout_matcher   box/scan_record.py's
     uid_map          the runtime's uid map lines (container start, host start, length)
@@ -1930,7 +1932,7 @@ class TakeDriver:
     def __init__(self, *, runtime, take_folder, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts,
                  adapter_for, script_for, pin_for, checker, secrets, rules_scanner, uid_map, budget_s,
                  finalize_wait_s, poll_s, clock, sleep, project_for, identity_for, holdout_matcher=None,
-                 caller_env=None):
+                 caller_env=None, strict_script=False):
         if not callable(getattr(runtime, "run", None)):
             raise TypeError("runtime must offer run(argv, env=, timeout=)")
         for name, fn in (("take_folder", take_folder), ("spec_for", spec_for), ("sidecar_for", sidecar_for),
@@ -1949,6 +1951,7 @@ class TakeDriver:
         self.clock, self.sleep, self.caller_env = clock, sleep, caller_env
         self.project_for = project_for
         self.identity_for = identity_for                  # S6c C7
+        self.strict_script = strict_script is True        # W6J-R1-3: True in the CP6 production wiring
         self._lock = threading.Lock()
         self._by_id: dict = {}        # take container id -> _Take
         self._by_slot: dict = {}      # slot -> the slot's latest _Take not yet published
@@ -2170,6 +2173,12 @@ class TakeDriver:
         with open(os.path.join(take.folder, ENVIRONMENT_RECORD_FILE), "rb") as fh:
             env_sha = hashlib.sha256(fh.read()).hexdigest()
         version = adapter.version()
+        cost = None
+        if cc and text is not None:
+            try:                       # W6J-R1-1: a session file the cost reader refuses is a disagreement, never a crash
+                cost = _cc.cost_record(recs, text, model=row["model"], version=version)
+            except _cc.StreamError as e:
+                take.cross_check = list(take.cross_check) + [f"the cost reader refused the session file: {e}"]
         outcome = take.outcome if src is not None else (
             f"{take.outcome} \u2014 no session file for {ident['session_id']}")
         pin = self.pin_for(row)
@@ -2186,8 +2195,7 @@ class TakeDriver:
                   "environment": {"file": ENVIRONMENT_RECORD_FILE, "sha256": env_sha},
                   "transcript": "transcript.jsonl" if src is not None else None, "published": published,
                   "cross_check": list(take.cross_check),
-                  "cost": (_cc.cost_record(recs, text, model=row["model"], version=version)
-                           if cc and text is not None else None),
+                  "cost": cost,
                   "streams": [os.path.basename(t.stream_path) for t in turns if t.stream_path]}
         self._write(take, LEDGER_FILE, ledger)
 
@@ -2271,7 +2279,8 @@ class TakeDriver:
             if ok and money:                                  # S6c C8: round 3's money line stops the driver
                 raise DriveRefused(f"the exec would give the agent {money}: an API key or a billing route")
             if ok:
-                script = _Script(self.script_for(row), take.ledger_rows)        # S6c C13: markers, recovery, stop
+                script = _Script(self.script_for(row), take.ledger_rows,        # S6c C13: markers, recovery, stop
+                                 strict=self.strict_script)
                 for n, line in enumerate(script, 1):
                     if n > 1:
                         unreadable += self._ctl(take, "snapshot", f"pre-{n}")["unreadable_consequential"]
@@ -2532,9 +2541,11 @@ class _Script:
     decides what comes next (False: send nothing further). `done` is the step number completed by the last read
     (None while a recovery is pending), `pending` the next line (None when nothing more is sent)."""
 
-    def __init__(self, steps, rows: list):
+    def __init__(self, steps, rows: list, *, strict: bool = False):
         self.steps = []
         for i, s in enumerate(list(steps), 1):
+            if isinstance(s, str) and strict:         # W6J-R1-3: the production wiring hands steps, never bare lines
+                raise DriveRefused(f"operator script entry {i} is a bare line; a strict script holds steps only")
             if isinstance(s, str):                    # a line with no wait point (S6's and S6b's synthetic scripts)
                 s = {"n": i, "line": s}
             if not (isinstance(s, dict) and isinstance(s.get("n"), int) and isinstance(s.get("line"), str)
@@ -2544,6 +2555,9 @@ class _Script:
                                                       and isinstance(s["recovery"].get("send"), str)))):
                 raise DriveRefused(f"operator script entry {i} is not a step (n, line, marker?, recovery?)")
             self.steps.append(s)
+        if [s["n"] for s in self.steps] != list(range(1, len(self.steps) + 1)):    # W6J-R1-3
+            raise DriveRefused(f"the operator script's steps are numbered {[s['n'] for s in self.steps]}, not 1..k "
+                               f"in order: an operator step could fire twice")
         self.rows, self.i, self.recoveries, self.said = rows, 0, 0, ""
         self.pending = self.steps[0]["line"] if self.steps else None
         self.sent, self.done, self.stopped, self.step_row = None, None, False, None

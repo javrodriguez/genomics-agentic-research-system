@@ -417,6 +417,20 @@ def a5_cost(mod, p):
     return out
 
 
+@guarded("A6-null-id")
+def a6_null_id(mod, p):
+    """W6J-R1-2: a session record whose sessionId is not a string is a cross-check problem, never a TypeError."""
+    session = jsonl([session_record("m1", "r1", TEXT, USAGE_1), session_record("m2", "r2", TEXT, USAGE_2, sid=None)])
+    turns = [{"session_ids": [SID], "calls": [{"message_id": "m1", "request_id": "r1", "model": MODEL},
+                                              {"message_id": "m2", "request_id": "r2", "model": MODEL}],
+              "tool_use_ids": []}]
+    try:
+        got = mod.cross_check(turns, session, session_id=SID)
+    except TypeError as e:
+        return [f"{p}: a null session id raised TypeError: {e}"]
+    return [] if any("not a string" in g for g in got) else [f"{p}: a null session id passed: {got}"]
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheReaders(unittest.TestCase):
     def test_a1_the_recorded_streams_read_as_recorded(self):
@@ -430,6 +444,9 @@ class TestTheReaders(unittest.TestCase):
 
     def test_a4_a_turn_on_the_fake_runtime(self):
         self.assertEqual(a4_turn(cca), [])
+
+    def test_a6_a_null_session_id_is_a_problem(self):
+        self.assertEqual(a6_null_id(cca), [])
 
     def test_a5_the_cost_is_read_per_call(self):
         self.assertEqual(a5_cost(cca), [])
@@ -497,6 +514,9 @@ WITNESSES = {
                               "A5-cost"),
     "zero-dollars-per-call": ((("\"usage\": c[\"usage\"], \"total_cost_usd\": None,",
                                 "\"usage\": c[\"usage\"], \"total_cost_usd\": 0,"),), a5_cost, "A5-cost"),
+    "null-id-unreported": ((("    if bad:\n        out.append(f\"{bad} session record(s) carry a session id that is not a string\")\n"
+                             "    sids = sorted({x for x in raw_sids if isinstance(x, str)})",
+                             "    sids = sorted(set(raw_sids))"),), a6_null_id, "A6-null-id"),
 }
 WITNESS_LOG: list = []
 
@@ -540,10 +560,14 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_zero_dollars_per_call(self):
         self.kill("zero-dollars-per-call")
 
+    def test_witness_null_id_unreported(self):
+        self.kill("null-id-unreported")
+
     def test_the_witnesses_are_named_and_each_bound_to_its_own_check(self):
         self.assertEqual(sorted(WITNESSES), sorted(["init-any-record", "api-error-as-agent", "allowed-tools-back",
                                                     "mode-constant", "exit-ignored", "count-records",
-                                                    "missing-class-as-zero", "zero-dollars-per-call"]))
+                                                    "missing-class-as-zero", "zero-dollars-per-call",
+                                                    "null-id-unreported"]))
 
 
 if __name__ == "__main__":
