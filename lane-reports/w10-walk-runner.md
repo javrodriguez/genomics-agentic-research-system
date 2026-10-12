@@ -1,6 +1,6 @@
-Status: review round 1 CHANGES folded (ruling w10-R1-fold, f0af28ee); ready for review round 2
+Status: review round 2 CHANGES folded (ruling w10-R2-fold, 4858c41e); ready for review round 3
 
-RESUME HERE: review round 2
+RESUME HERE: review round 3
 
 # Lane w10-walk-runner: Gap Study round 4, the CP6 walk runner (proposal)
 
@@ -260,3 +260,62 @@ Evidence (Mac, each run behind `mac_slot.py light-ok` and `timeout -s INT 100/11
 - Lints: lint_language clean (92 inputs); lint_pooling clean (92 files).
 
 Athena's module list is unchanged; test_walk_runner now runs 31 tests with 38 witnesses.
+
+## Fold w10-R2-fold, Mon 12 Oct 2026 14:41 EDT (`date`)
+
+Review round 2 (f76d5c65, lane-reports/w10-walk-runner-review-r2.md) found CHANGES: W10-R2-1 (MAJOR), W10-R2-2 and W10-R2-3 (MINOR).
+Ruling w10-R2-fold asked for class-level fixes.
+Code commit `4858c41e`; this report is in its own commit.
+
+What changed:
+- W10-R2-1, the class fix: C1Coverage.
+  It parses, by AST, every statement in `check_walk`, `check4_walk` and `walk_identity_problems` that adds a problem or refuses: `problems.append`, `problems +=`, `raise`, and a call to `harness_guard`.
+  It requires those statements and the DELETIONS registry to match one to one, each entry a witness that replaces exactly that statement with `pass` inside its own function.
+  So a new guard without a witness, or a witness whose statement changed or went, is red.
+  Witnesses `coverage-guard-added` and `coverage-statement-changed` prove both directions.
+  The registry holds 31 statements: 15 in check_walk, 14 in check4_walk and 2 in walk_identity_problems.
+  The mutant machinery now applies a replacement inside a named function (`apply_mutant`), because some statements are textually the same in the base `check()` and `check4()`.
+- New single-change tests, so that every deletion goes red by assertion through the real suite:
+  - no driver ledger;
+  - no prompt snapshot;
+  - the memory section offered;
+  - the row-needed line first with a real problem after it, and the row-needed line twice (the reviewer's two clause survivors);
+  - check4_walk's nine design refusals, each on one bad input (script list, design type, half/script, harness, pending, cell, script, run tree, event ids), checked by their own words;
+  - the reason-id refusal and the event-disagreement refusal;
+  - an identity builder that raises, refused at launch.
+- The round-2 reviewer's fifteen mutants (`scratchpad/w10r2/mut.py`) are registry witnesses under their own names, with their anchors verbatim (REVIEWER, REVIEWER_BOUND).
+- W10-R2-2: the keep guard is inverted to fail closed.
+  `clean_drive` is true only when `postflight.json` is present, readable and ok, and `teardown.json` is present, readable, records a teardown and has no problem.
+  The config folder is deleted only then; every other state keeps it.
+  A row whose launch made no walk folder touches nothing.
+  Tests:
+  - the reviewer's probe: both records' writes refused under a failing postflight, so the folder is kept (witness keep-by-default-dropped);
+  - a clean postflight whose teardown write is refused: the walk is committed and its folder kept (witness teardown-unread);
+  - the existing postflight test (witness postflight-config-deleted, re-anchored).
+  The `keep-keyed-on-teardown` witness is replaced by `teardown-unread`.
+- The `reached` guard: under fail-closed, the old slot probe no longer isolated it (witness published-before-launch first survived, because the new folder check also stops it).
+  The test now commits w-0002 clean first, holds w-0001, then refuses a row with walk w-0002 and slot w-0001.
+  Only `reached` stands between that row and w-0001's kept folder, and the witness is red.
+- W10-R2-3: `drive.walk_files` (the register's content rule too) refuses a folder that holds `transcript.jsonl` or a `turn-N.jsonl` but no driver ledger.
+  `run.died_before_turn_one` raises for such a folder.
+  The pre-turn alternative now applies only to a walk with neither.
+  Test: the reviewer's ledgerless probe (a committed walk copied, its ledger removed). Witnesses: ledgerless-turns-admitted and ledgerless-graded.
+
+Evidence (Mac, each run behind `mac_slot.py light-ok` and `timeout -s INT 100/115`, python3.13):
+- Red first: the new test file against f76d5c65's code (scratch worktree, test file only) gave `43 run, 3 failures, 0 errors`, each by assertion:
+  - R3 "a ledgerless walk whose turns ran passes the closed map";
+  - R4 teardown and R4 both-refused, each "0 != 1 ... the config folder was not kept".
+  The rest of the new tests bind guards that already existed, so their red is their witnesses: the reviewer's 5 survivors (x-snapshot-gone, x-memory-offered-gone, x-row-needed-last-clause, x-row-needed-count-clause, x-no-ledger-silent) are all red now.
+- Green: `test_walk_runner: 43 run, 0 failures, 0 errors, 0 skipped`.
+- Witnesses: 89/89 RED, in ten batches of up to 9, exit 0 each; the registry is 89.
+  One batch first had published-before-launch survive; it was fixed as above and its batch re-run 9/9.
+- Neighbours:
+  - test_walk_layout: 14 run, 0 failures. test_cp8_prep: 4 run, 0 failures. test_rehearsals: 9 run, 0 failures. test_cp6_wiring: 5 run, 0 failures.
+  - test_check_take: Ran 15, OK.
+  - Anchor sweep against adea27d3: no other test's mutant anchor doubled.
+- Gates: copy_manifest --check exit 0 (299 files, 48 fragments); build_draft --check exit 0 (no input moved); freeze.py --check exit 0; walk_register --check exit 0; run.py --walks --check exit 0.
+- Lints: lint_language clean (92 inputs); lint_pooling clean (92 files).
+- Ownership: the fold is recorded in COPIED.d/w10-walk-runner.json.
+  run.py, walk_register.py and rehearsals/README.md were edited again under departures w10-1, w10-5 and w10-6, each noted in its owner's entry.
+
+Athena's module list is unchanged; test_walk_runner now runs 43 tests with 89 witnesses.
