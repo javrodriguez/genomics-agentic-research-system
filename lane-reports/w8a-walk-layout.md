@@ -53,3 +53,23 @@ Nothing was pushed, merged or dispatched, and no walk, model, network, Docker, c
 - L5's `check_results --ledger` half: only `stats.load_results` is shown reading 0 records from a tree holding a walk.
 
 RESUME HERE: hand-back at b45329d4
+
+## Appendix: fold W8A-close-1 (review round 1: 1 MAJOR, 2 MINOR, 2 NIT)
+
+Written Mon 12 Oct 2026, 01:55 EDT (`date`), by the same writer, on glitch-1b's ruling W8A-close-1 (table `plans/gap-study-round-4/w8a-review-r1-2026-10-12.md` in the Brain).
+Base `e7f1aacd`; fold code commit `ebdebd10`.
+
+- R1-1 (MAJOR): after `head = rev-parse HEAD`, WalkRepo refuses when `git cat-file -e <head>:<study>/prereg.json` succeeds, and again for the written tree; the disk check stays. L3: a freeze committed then deleted on disk only is refused by the HEAD reading (HEAD unmoved, nothing staged, register restored). Witness freeze-at-head-unchecked. The tree reading has no witness of its own: behind the staged-names check, the index differs from HEAD only by the walk's declared files, so it fires only on a race.
+- R1-2: the driver ledger records the row's `pressure` and `repeat`; `walk_row` takes the cell from the ledger and refuses any other cell handed in (from the writer or from `grade.json`), and a ledger without them. L6 + witness cell-from-grade-unchecked.
+- R1-3: `grade_committed` requires `takes/<slot>/<k>` exactly (RECORD_DEPTH parts), equal to the row's slot and attempt. L5 (takes/s1, takes/s1/1/evidence, takes/s2/1, takes/s1/2 refused) + witness take-folder-depth-unchecked.
+- R1-4: the L1 scan also flags module-level string constants that start with a root name; `template_offer_reading.TASK_DIR` exempted (the earlier rounds' folders). Witness module-constant-root.
+- R1-5: no change; recorded for the CP8 CI step.
+
+Evidence (same Mac conditions):
+- Reviewer's probes reproduced on e7f1aacd: P1 committed a walk on a frozen HEAD, P2 `([], 1)` under an invented pressure, P3 takes/s1 and takes/s1/1/evidence reached the grader, P4 and P5 as the review says. On ebdebd10: P1 refused, P2 refused (ValueError naming the ledger's cell), P3 all four refused, P4 and P5 unchanged.
+- Red first (new tests against e7f1aacd): 14 run, 3 failures (L3, L5, L6), 0 errors, exit 1. R1-4 is a test-side rule, so its red is its witness.
+- Green: 14 run, 0 failures, 0 errors, exit 0. Witnesses 17/17 RED (14 + 3 batches, exit 0).
+- Regressions green: test_drive_commit 31, test_walk_wiring 20, test_rehearsals 9, test_mode_binding 8, test_drive_loop 27, test_box_integration TestTheTakePath 17 and TestBoundChecks 19, test_pipeline PublishedArtifacts and FreezeCoverage 15.
+- Gates: copy_manifest --check, freeze --check, walk_register --check, probes4 --check exit 0; batch --check exit 1 on its three not-ready lines.
+
+RESUME HERE: hand-back for review round 2 at ebdebd10
