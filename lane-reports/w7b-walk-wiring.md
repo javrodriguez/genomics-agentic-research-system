@@ -64,4 +64,14 @@ Green at 4749620c, each rc 0 ending in a bare OK:
 
 Not run on the Mac: the whole test_scaffold, test_pipeline and run_checks (athena's). test_box_integration's 21 witnesses ran in six groups (each under 120 s).
 
-RESUME HERE: hand-back at 4749620c
+## Fold of review round 1 (W7B-close-1, glitch-1b, 12 Oct)
+
+Round 1 passed with no MAJOR (plans/gap-study-round-4/w7b-review-r1-2026-10-12.md). Folded at 8178b30d (written Mon 12 Oct 2026 00:20 EDT, `date`); R1-3, R1-4 and R1-5 are carried to CP6 by the ruling and not touched.
+- W7B-R1-2: walk_driver refuses a root that is not mode_binding.HERE. Test W4-root; witness root-unchecked.
+- W7B-R1-1: W5-one-road reads every non-test .py under evals/gap-study-4 by AST and refuses a TakeDriver( call or a TakeDriver subclass other than WalkDriver. Witnesses added-construction and added-subclass (batch.py's source extended in memory).
+- W7B-R1-6: W6-pending requires the six walk-measured checker constants to be PENDING, every other entry to be one of the two known values, and routing.json's pin_profiles to be {}. Witnesses constant-filled and pin-filled.
+
+Red first on 4749620c's drive.py (byte backup restored, `shasum -c` OK): TestTheWalkWiring + TestTheEndToEndTake ran 10, failures 1 (W4: another root accepted), 0 errors, rc 1. W5 and W6 hold on that code as well; their red is their witnesses.
+Green at 8178b30d: test_walk_wiring 20, rc 0, bare OK, 14 witnesses red (0 NOT KILLED); copy_manifest (258 files, 38 fragments), freeze, mode_binding --check, both byte bindings rc 0; lint_language adds no finding.
+
+RESUME HERE: hand-back at 8178b30d
