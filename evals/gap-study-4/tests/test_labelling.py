@@ -99,6 +99,7 @@ for _p in (str(HERE), str(LAB)):
         sys.path.insert(0, _p)
 
 import stats  # noqa: E402
+import transcript_view as tv  # noqa: E402
 import lint_language as ll  # noqa: E402
 import lint_pooling as lp  # noqa: E402
 
@@ -584,6 +585,12 @@ def c1_check(sm, sh, ag):
         d = _tree(t / "drift")
         Path(d["sample_path"]).write_text(Path(d["sample_path"]).read_text().replace("L001", "L099"))
         cases["a drift"] = (d, 1, head + "sample: FAIL sample.json differs from the draw the frame and the design give\n")
+        st = t / "stray"
+        st.mkdir()
+        (st / "sample.json").write_text("{}")
+        cases["a stray sample"] = (dict(frame_path=str(st / "frame.json"), prereg=str(st / "prereg.json"),
+                                        results=str(st / "records"), sample_path=str(st / "sample.json")), 1,
+                                   "sample: FAIL sample.json stands with no frame or results to derive it from\n")
         x = _tree(t / "unbound", results=[e["record"] for e in FRAME[1:]], write_sample=False)
         cases["unbound"] = (x, 1, "sample: FAIL BIND: frame record ")
         for what, (paths, rc_want, text) in cases.items():
@@ -652,27 +659,38 @@ def k1_blind(sm, sh, ag):
     return out
 
 
+def real_design():
+    draft = json.loads((HERE / "prereg-draft.json").read_text())["stats_design_inputs"]["harness_models"]
+    return design(harness_models=draft)
+
+
 def k2_mask(sm, sh, ag):
     out = []
-    toks = sh.hidden_tokens(FRAME, DESIGN)
-    want = set(sh.VENDOR_WORDS) | {"claude-code", "codex", "m-alpha", "m-beta", "m-gamma"} | {e["take"] for e in FRAME}
-    if set(toks) != want:
-        out.append(f"K2: hidden tokens differ by {sorted(set(toks) ^ want)[:6]}")
-    if toks != sorted(toks, key=lambda t: (-len(t), t)):
-        out.append("K2: hidden tokens are not longest first")
+    hs = sh.hidden_set(FRAME, DESIGN)
+    whole = set(sh.VENDOR_WORDS) | {"claude-code", "codex", "m-alpha", "m-beta", "m-gamma"} | {e["take"] for e in FRAME}
+    if set(hs["whole"]) != whole or hs["whole"] != sorted(whole, key=lambda t: (-len(t), t)):
+        out.append(f"K2: whole tokens differ by {sorted(set(hs['whole']) ^ whole)[:6]}")
+    if hs["parts"] != ["alpha", "gamma", "beta"] or hs["residual"] != ["m"]:
+        out.append(f"K2: parts {hs['parts']} residual {hs['residual']}")
+    if set(hs) != {"whole", "parts", "residual"}:
+        out.append(f"K2: hidden set keys {sorted(hs)}")
     if sh.VENDOR_WORDS != ("anthropic", "claude", "opus", "sonnet", "haiku", "fable", "openai", "chatgpt", "gpt",
                            "codex", "google", "deepmind", "gemini"):
         out.append("K2: the vendor words changed")
     cases = {
         "I am CLAUDE, built by Anthropic": "I am [hidden], built by [hidden]",
         "running m-alpha and M-BETA": "running [hidden] and [hidden]",
+        "running m alpha, m_beta and M.Gamma": "running [hidden], [hidden] and [hidden]",
+        "alpha and Gamma alone": "[hidden] and [hidden] alone",
+        "alphabet and gammas stay": "alphabet and gammas stay",
         "Gemini's answer, from gpt-6 via codex": "[hidden]'s answer, from [hidden]-6 via [hidden]",
         "see s001/1 and s002/1": "see [hidden] and [hidden]",
         "claude-code ran it": "[hidden] ran it",
+        "claude code ran it": "[hidden] ran it",
         "nothing to hide": "nothing to hide",
     }
     for src, want_ in cases.items():
-        got = sh.mask(src, toks)
+        got = sh.mask(src, hs)
         if got != want_:
             out.append(f"K2: mask({src!r}) = {got!r}")
     if sh.HIDDEN != "[hidden]":
@@ -680,12 +698,46 @@ def k2_mask(sm, sh, ag):
     items = sh.blind_items(sm.draw(FRAME, DESIGN), contents_for(FRAME, "Opus here", ("run Sonnet",)), FRAME, DESIGN)
     if any(i["text"] != "[hidden] here" or i["actions"] != ["run [hidden]"] for i in items):
         out.append("K2: blind_items does not mask text and actions")
-    leaks = sh.leak_problems("from Claude via m-gamma, s003/1", toks)
-    want_l = ["LEAK: the sheet shows 'claude'", "LEAK: the sheet shows 'm-gamma'", "LEAK: the sheet shows 's003/1'"]
+    leaks = sh.leak_problems("from Claude via m-gamma, s003/1", hs)
+    want_l = ["LEAK: the sheet shows 'claude'", "LEAK: the sheet shows 'm-gamma'", "LEAK: the sheet shows 's003/1'",
+              "LEAK: the sheet shows 'gamma'"]
     if sorted(leaks) != sorted(want_l):
         out.append(f"K2: leak_problems {leaks}")
-    if sh.leak_problems("plain", toks) != []:
+    if sh.leak_problems("plain", hs) != []:
         out.append("K2: leak_problems on clean text")
+    # the reviewer's four strings, on the design's real ids (prereg-draft's harness_models)
+    rd = real_design()
+    rh = sh.hidden_set([], rd)
+    for want_part in ("sol", "luna", "flash", "lite", "haiku", "opus", "sonnet", "gemini", "claude", "gpt"):
+        if want_part not in rh["parts"] + rh["whole"]:
+            out.append(f"K2: {want_part!r} is not hidden on the real ids")
+    real = {
+        "I am GPT-6.1 Sol, running in Codex CLI": ("I am [hidden]-6.1 [hidden], running in [hidden] CLI",
+                                                  ["LEAK: a version number follows [hidden]"]),
+        "As Gemini 3.5 Flash-Lite I stop here": ("As [hidden] 3.5 [hidden]-[hidden] I stop here",
+                                                ["LEAK: a version number follows [hidden]"]),
+        "Claude Haiku 4.5 here": ("[hidden] [hidden] 4.5 here", ["LEAK: a version number follows [hidden]"]),
+        "I am Luna": ("I am [hidden]", []),
+        "Claude Haiku 4 5 20251001 here": ("[hidden] here", []),
+        "the 6 [hidden] model": ("the 6 [hidden] model", ["LEAK: [hidden] stands next to the id part '6'"]),
+        "a solution, flashing, literally": ("a solution, flashing, literally", []),
+    }
+    for src, (masked, leak) in real.items():
+        got = sh.mask(src, rh)
+        if got != masked:
+            out.append(f"K2: real mask({src!r}) = {got!r}")
+        if sh.leak_problems(got, rh) != leak:
+            out.append(f"K2: real leak_problems({got!r}) = {sh.leak_problems(got, rh)}")
+    if sh.leak_problems("[hidden] 5 stars", rh) != ["LEAK: a version number follows [hidden]"]:
+        out.append("K2: a digit after a space after the mask passed")
+    if sh.leak_problems("[hidden]5", rh) != ["LEAK: a version number follows [hidden]"]:
+        out.append("K2: a digit right after the mask passed")
+    if sh.leak_problems("x-[hidden] and [hidden]-y", rh) != []:
+        out.append("K2: a neighbour that is no id part was refused")
+    if sh.leak_problems("[hidden]-5", rh) != ["LEAK: a version number follows [hidden]"]:
+        out.append("K2: a version after a hyphen passed")
+    if sh.leak_problems("5-[hidden]", rh) != ["LEAK: [hidden] stands next to the id part '5'"]:
+        out.append("K2: an id part before the mask passed")
     return out
 
 
@@ -756,6 +808,29 @@ def k4_content(sm, sh, ag):
                     "an empty text and no actions")
     if sh.validate_content(c[first], "L001") is not c[first]:
         out.append("K4: validate_content does not return the content")
+    per_harness = {
+        "claude-code": ["run Bash ls", "write TodoWrite", "read CLAUDE.md", "run Grep x", "run WebFetch"],
+        "codex": ["run apply_patch", "write update_plan", "run exec_command ls", "read AGENTS.md", "read agents.md"],
+        "gemini": ["run run_shell_command ls", "write write_file x", "read GEMINI.md", "run search_file_content"],
+    }
+    for harness, actions in per_harness.items():
+        if not set(sh.HARNESS_WORDS) >= {harness}:
+            out.append(f"K4: no harness words for {harness}")
+        for a in actions:
+            out += refused("K4", lambda a=a: sh.blind_items(doc, {**c, first: {"text": "x", "actions": [a]}}, FRAME,
+                                                            DESIGN), E, f"the {harness} action {a!r}")
+    if not set(tv.CC_TOOLS) <= set(sh.HARNESS_WORDS["claude-code"]):
+        out.append("K4: Claude Code's words are not derived from transcript_view.CC_TOOLS")
+    for a in ("read notes/edit.md", "run grep foo", "write README.md", "read bash_notes.txt"):
+        out += accepted("K4", lambda a=a: sh.blind_items(doc, {**c, first: {"text": "x", "actions": [a]}}, FRAME,
+                                                         DESIGN), f"the neutral action {a!r}")
+    texts = {"claude-code": "then TodoWrite listed it", "codex": "I called update_plan first",
+             "gemini": "used run_shell_command", "codex-file": "see AGENTS.md"}
+    for harness, text in texts.items():
+        out += refused("K4", lambda text=text: sh.write_sheet(doc, contents_for(FRAME, text), FRAME, DESIGN, DEFS, GL),
+                       E, f"text naming a {harness} word")
+    out += accepted("K4", lambda: sh.write_sheet(doc, contents_for(FRAME, "I read the file and ran grep"), FRAME, DESIGN,
+                                                 DEFS, GL), "plain words that share a tool's name")
     return out
 
 
@@ -805,9 +880,14 @@ def k6_write(sm, sh, ag):
     got = sh.write_sheet(doc, contents_for(FRAME), FRAME, DESIGN, DEFS, GL)
     if got != sh.render(sh.blind_items(doc, contents_for(FRAME), FRAME, DESIGN), DEFS):
         out.append("K6: write_sheet is not the render of the blind items")
-    rc, text = out_of(sh.main, ["--contents", "x.json", "--out", str(HERE / "labelling" / "sheet.md")])
-    if rc != 1 or text != "sheet: FAIL --out is inside the study folder; the sheet holds agent text (Q-w11d-3)\n":
-        out.append(f"K6: an --out inside the study was not refused: {rc} {text!r}")
+    for where in (HERE / "labelling" / "sheet.md", HERE / "sheet.md", HERE / "records" / "x" / "sheet.md",
+                  Path(str(HERE / "sheet.md").swapcase()), Path(str(HERE / "labelling" / "sheet.md").upper()), HERE):
+        rc, text = out_of(sh.main, ["--contents", "x.json", "--out", str(where)])
+        if rc != 1 or text != "sheet: FAIL --out is inside the study folder; the sheet holds agent text (Q-w11d-3)\n":
+            out.append(f"K6: an --out at {where} was not refused: {rc} {text!r}")
+    for where in (HERE.parent / "sheet.md", Path(str(HERE) + "-sibling") / "sheet.md"):
+        if sh.inside_study(str(where)):
+            out.append(f"K6: {where} is called inside the study")
     return out
 
 
@@ -862,7 +942,7 @@ def g2_rows(sm, sh, ag):
     labels = ag.validate_labels(labels_doc(doc, stop=lambda i: "stalled" if i["sheet_id"] == "L001" else ""), doc, DEFS)
     rs = ag.rows(FRAME, doc, labels)
     keys = [tuple(r[k] for k in ("arm", "harness", "model", "task")) for r in rs]
-    want_keys = sorted({tuple(i["stratum"][k] for k in ("arm", "harness", "model", "task")) for i in doc["items"]})
+    want_keys = sorted({sm.stratum(e)[:4] for e in FRAME})
     if keys != want_keys:
         out.append(f"G2: row keys {keys}")
     rec_ = {e["take"]: e["record"] for e in FRAME}
@@ -871,7 +951,7 @@ def g2_rows(sm, sh, ag):
         x = sum(1 for i in mine if rec_[i["take"]]["label"] == "held")
         if (r["n"], r["agree"]) != (len(mine), x):
             out.append(f"G2: {keys[rs.index(r)]} counts {r['agree']} of {r['n']}, true {x} of {len(mine)}")
-        if r["bounds"] != stats.bound(x, len(mine)):
+        if r["bounds"] != (stats.bound(x, len(mine)) if mine else None):
             out.append("G2: bounds are not stats.bound")
         m = {}
         for i in mine:
@@ -973,6 +1053,11 @@ def g4_pool(sm, sh, ag):
         out += refused("G4", lambda r=r: ag.render(r, FRAME), (ag.AgreementError, KeyError), f"rendering {what}")
     if not t_other:
         out.append("G4: no take to pool")
+    same_model = copy.deepcopy(rs)
+    sib = next(r for r in same_model if r["model"] == same_model[0]["model"] and r["task"] != same_model[0]["task"])
+    same_model[0]["takes"] = same_model[0]["takes"] + sib["takes"][:1]
+    if ag.pool_problems(same_model, FRAME) != [f"POOL: take {sib['takes'][0]} is not of the row {k0}"]:
+        out.append(f"G4: a row holding a take of its model's other task: {ag.pool_problems(same_model, FRAME)}")
     one = {"model": [dict(rs[0], model="m-beta")] + rs[1:], "task": [dict(rs[0], task="task-two")] + rs[1:]}
     for what, r in one.items():
         if not ag.pool_problems(r, FRAME):
@@ -980,6 +1065,8 @@ def g4_pool(sm, sh, ag):
     text = ag.render(rs, FRAME)
     fmt = stats.intervals.fmt
     for r in rs:
+        if not r["n"]:
+            continue
         cb = r["carried"]
         back = "a stratum unsampled |  |" if cb is None else f"{fmt(cb[0])} | {fmt(cb[1])} to {fmt(cb[2])} |"
         line = (f"| {r['arm']} | {r['harness']} | {r['model']} | {r['task']} | {r['agree']} of {r['n']} | "
@@ -989,8 +1076,53 @@ def g4_pool(sm, sh, ag):
     if not any(r["carried"] is None for r in rs):
         out.append("G4: no row here has an unsampled stratum, so its words are untested")
     body = [ln for ln in text.splitlines() if ln.startswith("| ") and " of " in ln]
-    if len(body) != len(rs):
+    if len(body) != sum(1 for r in rs if r["n"]):
         out.append(f"G4: {len(body)} figure lines for {len(rs)} rows")
+    return out
+
+
+def g9_small_rows(sm, sh, ag):
+    """Rows of one labelled take (the dominant real shape), with their exact bounds as literals, and a frame cell
+    the draw left empty printed as its own unsampled line."""
+    out = []
+    d = design(about_n=6)
+    doc = sm.draw(FRAME, d)
+    first = {}
+    for i in sorted(doc["items"], key=lambda i: i["sheet_id"]):
+        key = tuple(i["stratum"][k] for k in ("arm", "harness", "model", "task"))
+        first.setdefault(key, i["sheet_id"])
+    rec_ = {e["take"]: e["record"] for e in FRAME}
+    agree_keys = set(sorted(first)[::2])
+
+    def key_of(i):
+        return tuple(i["stratum"][k] for k in ("arm", "harness", "model", "task"))
+    lab = ag.validate_labels(labels_doc(doc, label=lambda i: rec_[i["take"]]["label"] if key_of(i) in agree_keys
+                                        else "did-not-reach"), doc, DEFS)
+    rs = ag.rows(FRAME, doc, lab)
+    text = ag.render(rs, FRAME)
+    ones = [r for r in rs if r["n"] == 1]
+    if not any(r["agree"] == 1 for r in ones) or not any(r["agree"] == 0 for r in ones):
+        out.append(f"G9: the fixture lacks a 1 of 1 or a 0 of 1 row: {[(r['agree'], r['n']) for r in rs]}")
+    for r in ones:
+        want = ("0.025", "1.000") if r["agree"] == 1 else ("0.000", "0.975")
+        if r["bounds"] != want:
+            out.append(f"G9: {r['agree']} of 1 has bounds {r['bounds']}, want {want}")
+        line = f"| {r['arm']} | {r['harness']} | {r['model']} | {r['task']} | {r['agree']} of 1 | {want[0]} to {want[1]} |"
+        if not any(ln.startswith(line) for ln in text.splitlines()):
+            out.append(f"G9: no line {line!r}")
+    empty = [r for r in rs if r["n"] == 0]
+    if not empty:
+        out.append("G9: the fixture has no undrawn cell")
+    for r in empty:
+        line = f"| {r['arm']} | {r['harness']} | {r['model']} | {r['task']} | unsampled: no take drawn |  |  |  |"
+        if line not in text.splitlines():
+            out.append(f"G9: the undrawn cell {r['model']} {r['task']} has no unsampled line")
+        if (r["takes"], r["agree"], r["matrix"], r["bounds"], r["carried"]) != ([], 0, {}, None, None):
+            out.append(f"G9: an undrawn row carries figures: {r}")
+        if f"## Confusion, {r['arm']} {r['harness']} {r['model']} {r['task']}" in text:
+            out.append("G9: an undrawn row prints a confusion matrix")
+    if len([ln for ln in text.splitlines() if "unsampled: no take drawn" in ln]) != len(empty):
+        out.append("G9: unsampled lines are not one per undrawn cell")
     return out
 
 
@@ -1073,12 +1205,27 @@ def g5_check(sm, sh, ag):
             out.append(f"G5: missing definitions: {rc} {got!r}")
         Path(kw["defs_path"]).write_text(json.dumps(DEFS))
         lp_.unlink()
+        never = fake_git(kw["labels_path"], shas=())
+        rc, got = out_of(ag.check, page=str(page), git=never, **kw)
+        if (rc, got) != (1, "agreement: FAIL PAGE: AGREEMENT.md stands with no labels.json behind it\n"):
+            out.append(f"G5: a page with no labels: {rc} {got!r}")
+        page.unlink()
         rc, got = out_of(ag.check, page=str(page), git=git, **kw)
+        if (rc, got) != (1, "agreement: FAIL HISTORY: labels.json was committed in 1 commit(s) and is gone; "
+                            "committed labels may not vanish\n"):
+            out.append(f"G5: labels committed and deleted: {rc} {got!r}")
+        rc, got = out_of(ag.check, page=str(page), git=fake_git(kw["labels_path"], shallow="true"), **kw)
+        if (rc, got) != (1, "agreement: FAIL HISTORY: the history cannot be read in full (a shallow clone or no "
+                            "git); refused\n"):
+            out.append(f"G5: no labels in a shallow clone: {rc} {got!r}")
+        rc, got = out_of(ag.check, page=str(page), git=never, **kw)
         if (rc, got) != (0, "agreement: no labels; nothing measured. Not a pass on data.\n"):
             out.append(f"G5: no labels: {rc} {got!r}")
+        page.write_text(text)
         e = t / "empty"
         e.mkdir()
-        ekw = dict(page=str(e / "AGREEMENT.md"), git=git, labels_path=str(e / "labels.json"),
+        ekw = dict(page=str(e / "AGREEMENT.md"), git=fake_git(e / "labels.json", shas=()),
+                   labels_path=str(e / "labels.json"),
                    frame_path=str(e / "frame.json"), prereg=str(e / "prereg.json"), results=str(e / "records"),
                    sample_path=str(e / "sample.json"), defs_path=str(e / "definitions.json"), glabels=GL)
         rc, got = out_of(ag.check, **ekw)
@@ -1129,6 +1276,11 @@ def g6_history(sm, sh, ag):
             if not ag.history_problems(str(p), failing_show):
                 out.append("G6: a failing git show passed")
 
+            p.write_text("")
+            if ag.history_problems(str(p), failing_show) != ["HISTORY: labels.json on disk is not the one commit's"]:
+                out.append("G6: a failing git show passed on an empty file")
+            p.write_text('{"labels": []}\n')
+
             def failing_log(*args):
                 return (1, "a" * 40 + "\n") if args[0] == "log" else fake_git(p)(*args)
             if not ag.history_problems(str(p), failing_log):
@@ -1139,7 +1291,7 @@ def g6_history(sm, sh, ag):
 def _real_repos(root: Path) -> dict:
     """Two temporary repositories, built once in setUpModule: labels committed once, and committed twice."""
     out = {}
-    for name, commits in (("once", 1), ("twice", 2)):
+    for name, commits in (("once", 1), ("twice", 2), ("gone", 1)):
         t = root / name
         t.mkdir()
 
@@ -1153,6 +1305,9 @@ def _real_repos(root: Path) -> dict:
             p.write_text('{"labels": []}\n' if k == 0 else '{"labels": [1]}\n')
             git("add", "-A")
             git("commit", "-q", "-m", f"labels {k}")
+        if name == "gone":
+            git("rm", "-q", "labelling/labels.json")
+            git("commit", "-q", "-m", "labels deleted")
         out[name] = (str(t), p)
     return out
 
@@ -1180,6 +1335,15 @@ def g6r_real_git(sm, sh, ag):
         if ag.history_problems(str(p2)) != ["HISTORY: labelling/labels.json is touched by 2 commits; the labels "
                                             "are committed once, as read"]:
             out.append("G6R: a second commit passed")
+    t3, p3 = REPOS["gone"]
+    with mock.patch.object(ag, "REPO", t3):
+        want = ["HISTORY: labelling/labels.json was committed in 2 commit(s) and is gone; committed labels may not vanish"]
+        if ag.gone_problems(str(p3), page=str(Path(t3) / "AGREEMENT.md")) != want:
+            out.append(f"G6R: labels deleted after their commit passed: {ag.gone_problems(str(p3), page=str(Path(t3) / 'AGREEMENT.md'))}")
+    with mock.patch.object(ag, "REPO", t):
+        q = Path(t) / "labelling" / "other.json"
+        if ag.gone_problems(str(q), page=str(Path(t) / "AGREEMENT.md")) != []:
+            out.append("G6R: a never-committed path is called gone")
     return out
 
 
@@ -1406,7 +1570,7 @@ def x1_script(sm, sh, ag):
 SAMPLE_CHECKS = (d1_design, f1_frame, b1_bind, a1_split, s1_seed, o1_over, m1_models, w1_weights, p1_pin, c1_check,
                  c2_cli)
 SHEET_CHECKS = (k1_blind, k2_mask, k3_defs, k3r_real_graders, k4_content, k5_render, k6_write, k7_cli)
-AGREE_CHECKS = (g1_labels, g2_rows, g3_back, g4_pool, g5_check, g6_history, g6r_real_git, g7_unmeasured, g8_cli,
+AGREE_CHECKS = (g1_labels, g2_rows, g3_back, g4_pool, g9_small_rows, g5_check, g6_history, g6r_real_git, g7_unmeasured, g8_cli,
                 l1_lint, x1_script, n1_names)
 ALL_CHECKS = SAMPLE_CHECKS + SHEET_CHECKS + AGREE_CHECKS
 
@@ -1521,6 +1685,26 @@ WITNESSES = {
     "model-name-in-sheet-unguarded": _w("sh", k1_blind, ('"text": mask(c["text"], tokens)',
                                                          '"text": it["stratum"]["model"] + mask(c["text"], tokens)'),
                                         ("bad = leak_problems(text, hidden_tokens(frame, design))", "bad = []")),
+    "stray-sample-admitted": _w("sm", c1_check, ("    if got is None:\n        if os.path.isfile(SAMPLE if sample_path is None",
+                                                  "    if got is None:\n        if False and os.path.isfile(SAMPLE if sample_path is None")),
+    "page-without-labels-admitted": _w("ag", g5_check, ("if os.path.isfile(PAGE if page is None else page):",
+                                                        "if False:")),
+    "deleted-labels-admitted": _w("ag", g6r_real_git, ("    if shas:\n", "    if False:\n")),
+    "id-parts-unhidden": _w("sh", k2_mask, ('parts = sorted({p.lower() for p in pieces if p.isalpha() and len(p) >= 3}',
+                                             'parts = sorted({p.lower() for p in pieces if False}')),
+    "id-separators-strict": _w("sh", k2_mask, ('return "[-_. ]?".join(', 'return "-".join(')),
+    "version-after-mask-admitted": _w("sh", k2_mask, ("if VERSION_AFTER.search(text):", "if False:")),
+    "residual-neighbour-admitted": _w("sh", k2_mask, ("if m.group(1).lower() in hidden[\"residual\"]:", "if False:")),
+    "harness-words-admitted": _w("sh", k4_content, ("if harness_word(a):", "if False:")),
+    "out-guard-labelling-only": _w("sh", k6_write, ("real = os.path.normcase(os.path.realpath(_STUDY)).casefold()",
+                                                    "real = os.path.normcase(os.path.realpath(_HERE)).casefold()")),
+    "out-guard-case-sensitive": _w("sh", k6_write, ("real = os.path.normcase(os.path.realpath(_STUDY)).casefold()",
+                                                    "real = os.path.normcase(os.path.realpath(_STUDY))"),
+                                   ("got = os.path.normcase(os.path.realpath(path)).casefold()",
+                                    "got = os.path.normcase(os.path.realpath(path))")),
+    "unsampled-cells-dropped": _w("ag", g9_small_rows, ("    for key in cells:\n", "    for key in []:\n")),
+    "pool-row-task-unchecked": _w("ag", g4_pool, ('if (rec["arm"], rec["agent"]["harness"], rec["model"], rec["task"]) != key:',
+                                                  'if (rec["arm"], rec["agent"]["harness"], rec["model"]) != key[:3]:')),
     "unseeded-draw": _w("sm", s1_seed, ('rng = random.Random(design["seed"])', "rng = random.Random()")),
     "failures-not-oversampled": _w("sm", o1_over, ('f = design["oversample"]["failure"] if key[4] == FAILED else 1',
                                                     "f = 1")),
@@ -1586,7 +1770,7 @@ class TestWitnesses(unittest.TestCase):
         self.assertTrue(own, f"{name}: survived (no {prefix} line): {got}")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 34)
+        self.assertEqual(len(WITNESSES), 46)
         for name, (target, edits, _) in WITNESSES.items():
             path = TARGET_FILES[target]
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
