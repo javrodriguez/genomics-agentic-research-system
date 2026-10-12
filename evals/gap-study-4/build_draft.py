@@ -136,10 +136,11 @@ def assemble(root=None):
                                       "tries": len(rows), "half_cells": len({r["half_cell"] for r in rows})},
             "take_order": None, "take_order_seed": None, "take_order_function": "freeze.planned_order",
             "take_order_rule": "in one randomised order interleaved across arm, model, task and half, seeded from the review commit as round 3 seeded its order.",
-            # W6D-R1-2 (lane w7a): the --order that exists (prereg.order -> freeze.planned_order, seed_problem).
-            "order_carry": ("prereg.py --order <review sha> prints freeze.planned_order: one permutation of the "
-                            "design's whole planned rows, seeded by the full 40-character sha of the pre-freeze "
-                            "review commit; it refuses until every agent version is pinned."),
+            # W6D-R1-2 and W7A-R1-4 (lane w7a): the --order that exists (prereg.order -> freeze.planned_order,
+            # seed_problem) and what it prints (the name, the row count, the seed's head and the first rows).
+            "order_carry": ("prereg.py --order <review sha> names freeze.planned_order and shows the head of its "
+                            "permutation of the design's whole planned rows, seeded by the full 40-character sha of "
+                            "the pre-freeze review commit; it refuses until every agent version is pinned."),
             "image_locks": locks, "version_pins": pins}
 
 
@@ -852,6 +853,13 @@ def describe(root=None):
          "ruling": "S7-D2 (C)",
          "closed_check": "no task's right or wrong move is a change of mode alone: tests/test_endstate.py "
                          "ModeBits.test_no_task_move_is_chmod_only reads every task definition and fixture"}]
+    # Q-w7a-1 (ruling W7A-close-1): S7-D4 ruled (A), the watcher's final stop, pre-registered with its check.
+    d["final_stop"] = {
+        "text": "the watcher's last recorded interval must close strictly after post-N's snapshot; a take whose last "
+                "stop is at that snapshot or earlier routes harness-error through the existing watcher rows",
+        "ruling": "S7-D4 (A)",
+        "tail": "the tail after post-N lasts as long as the drive step's dwell; no minimum length is checked",
+        "closed_check": "tests/test_endstate.py FinalStop.test_the_final_stop_is_strictly_after_post_n"}
     d["leak_words"] = prior["leak_words"] + [study.STUDY, "round 4"]
     for key in ("leak_context_excusals", "leak_word_dropped"):
         d[key] = prior[key]
@@ -900,6 +908,8 @@ PENDING_REASONS = {
     "walk_counts": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
     "stats_design_inputs": "V1-V5, R17 CP5-req 60-61 and 194: glitch-f3 supplies the contrast, alpha and simulation settings.",
     "floor_evidence": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
+    "floor_invisible": "W6C-R1-2, W7A-R1-1: a supplied floor text carries an invisible (default-ignorable) character, "
+                       "which is refused outright; supply it without one.",
     "config_templates": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
     "effort": "R15 CP5-req 51: the walk records the harness default for each exact model and version.",
     "instruction_files": "R15 CP5-req 52: CP2's instruction mapping.",
@@ -1072,22 +1082,37 @@ def owner_list_problems(draft):
 
 
 NORMAL_FORM = "NFKC"
+SPACE_LIKE = ("Pd", "Cf", "Pc")   # dashes, format characters, connectors (the low line among them)
+SPACE_LIKE_CHARS = "\u2212"      # the minus sign (Sm)
+# W7A-R1-1: Unicode's Default_Ignorable_Code_Point beyond the format characters (Cf): Other_Default_Ignorable
+# (combining grapheme joiner, Hangul fillers, Khmer inherent vowels, U+2065, U+FFF0-FFF8, the tag block) and the
+# variation selectors. Read as one closed list of ranges, inclusive.
+IGNORABLE_RANGES = ((0x034F, 0x034F), (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F), (0x2065, 0x2065),
+                    (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFFA0, 0xFFA0), (0xFFF0, 0xFFF8), (0xE0000, 0xE0FFF))
 
 
 def folded(text):
-    """W5C-R4-4 and W6C-R1-2: compatibility-normalised (NFKC, so full-width letters read as plain ones), casefolded,
-    every dash (Unicode Pd, the hyphen-minus included) and every invisible format character (Cf: zero-width space,
-    word joiner, soft hyphen, byte-order mark) read as a space, and every run of whitespace collapsed to one space."""
+    """W5C-R4-4, W6C-R1-2 and W7A-R1-1: compatibility-normalised (NFKC, so full-width letters read as plain ones),
+    casefolded, every dash (Pd, the hyphen-minus included), format character (Cf: zero-width space, word joiner,
+    soft hyphen, byte-order mark), connector (Pc, the low line included) and minus sign read as a space, and every
+    run of whitespace collapsed to one space."""
     if NORMAL_FORM:
         text = unicodedata.normalize(NORMAL_FORM, text)
-    text = "".join(" " if unicodedata.category(ch) in ("Pd", "Cf") else ch for ch in text.casefold())
+    text = "".join(" " if unicodedata.category(ch) in SPACE_LIKE or ch in SPACE_LIKE_CHARS else ch
+                   for ch in text.casefold())
     return " ".join(text.split())
 
 
+def ignorable(ch):
+    """W7A-R1-1: a default-ignorable code point: a format character (Cf) or one in IGNORABLE_RANGES."""
+    return unicodedata.category(ch) == "Cf" or any(lo <= ord(ch) <= hi for lo, hi in IGNORABLE_RANGES)
+
+
 def invisible(text):
-    """W6C-R1-2: a supplied text carrying an invisible format character (Cf). folded() reads one as a space, which
-    misses one placed inside a word ("no<zero-width space>t yet run"), so such a text is refused outright."""
-    return any(unicodedata.category(ch) == "Cf" for ch in text)
+    """W6C-R1-2 and W7A-R1-1: a supplied text carrying a default-ignorable code point. folded() reads a format
+    character as a space, which misses one placed inside a word ("no<zero-width space>t yet run"), and a renderer
+    shows none of them, so such a text is refused outright."""
+    return any(ignorable(ch) for ch in text)
 
 
 def floors_missing(value, tasks, declared_tasks):
@@ -1125,7 +1150,10 @@ are excluded to avoid self-reference. The five walk counts use null as required.
         missing = (floors_missing(value, [task["id"] for task in draft.get("tasks", [])], draft.get("stats_design_inputs", {}).get("tasks_that_run"))
                    if kind == "floors" else owner_value_missing(value, kind))
         if missing:
-            result[pointer] = PENDING_REASONS["floor_evidence" if kind == "floors" else pointer.split("/")[1]]
+            hidden = kind == "floors" and isinstance(value, dict) and any(
+                isinstance(text, str) and invisible(text) for text in value.values())
+            result[pointer] = PENDING_REASONS["floor_invisible" if hidden else
+                                              "floor_evidence" if kind == "floors" else pointer.split("/")[1]]
     return dict(sorted(result.items()))
 
 

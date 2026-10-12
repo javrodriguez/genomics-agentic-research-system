@@ -93,29 +93,48 @@ def task(task_id: str) -> dict:
 def models() -> list[str]:
     """EVERY model in the fixed list, including any that will never produce a take.
 
-    Round 4's design keys `models` by arm (arm -> its models), so the list is every planned arm's models in the
-    design's arm order; the arm letters themselves are never models (W6D-R1-1, lane w7a).
+    Round 4's design keys `models` by arm (arm -> its models): the list is every planned arm's models in the design's
+    arm order, then each optional arm's model (`optional_arms`), which runs only if it is given rows. The arm letters
+    themselves are never models (W6D-R1-1, W7A-R1-2).
 
     A model that never runs publishes as `not run — <reason>`, never as absent. Dropping it from
-    this list would make the table read as though the axis had always been three wide, which is a
+    this list would make the table read as though the axis had always been narrower, which is a
     quieter and less honest claim than the one the record supports. Callers that want only the
     models which actually run ask for running_models().
     """
     pre = load()
     table = pre["models"]
-    if isinstance(table, dict):
-        return [m for arm in pre.get("arms", list(table)) if arm in table for m in table[arm]]
-    return list(table)
+    if not isinstance(table, dict):
+        return list(table)
+    arms = list(pre.get("arms") or table)
+    out = [m for arm in arms if arm in table for m in table[arm]]
+    optional = pre.get("optional_arms") or {}
+    out += [optional[arm]["model"] for arm in arms if arm not in table and isinstance(optional.get(arm), dict)
+            and optional[arm].get("model") and optional[arm]["model"] not in out]
+    return out
 
 
 def running_models() -> list[str]:
-    """The models a take will actually be driven on."""
-    status = load().get("model_status") or {}
+    """The models a take will actually be driven on: those the design plans rows for (W7A-R1-2). A design without
+    rows (round 3's shape) falls back to its model_status."""
+    pre = load()
+    if isinstance(pre.get("rows"), list):
+        planned = {r.get("model") for r in pre["rows"]}
+        return [m for m in models() if m in planned]
+    status = pre.get("model_status") or {}
     return [m for m in models() if status.get(m, {}).get("runs", True)]
 
 
 def not_run_reason(model: str) -> str | None:
-    return (load().get("model_status") or {}).get(model, {}).get("not_run_reason")
+    """Why a listed model does not run, or None when it does (W7A-R1-2)."""
+    pre = load()
+    if isinstance(pre.get("rows"), list):
+        if model in running_models():
+            return None
+        why = [f"{o.get('status')}, {o.get('cut')}" for o in (pre.get("optional_arms") or {}).values()
+               if isinstance(o, dict) and o.get("model") == model]
+        return "; ".join(why + [f"no planned rows in {pre.get('_source', 'the design')}"])
+    return (pre.get("model_status") or {}).get(model, {}).get("not_run_reason")
 
 
 def n() -> int:
@@ -152,7 +171,7 @@ def status_lines(pre: dict) -> list[str]:
                        f"{', '.join(table[arm])}")
         elif arm in optional:
             o = optional[arm]
-            out.append(f"  arm {arm}  optional: {o.get('model')}, {by_arm[arm]} rows ({o.get('status')})")
+            out.append(f"  arm {arm}  optional: {o.get('model')}, {by_arm[arm]} rows; {o.get('status')}")
         else:
             out.append(f"  arm {arm}  in the arm list with no models and {by_arm[arm]} rows")
     out.append(f"rows     : {len(rows)} planned rows (n = {pre['n']} tries per half), "
@@ -215,10 +234,6 @@ def main() -> int:
         print(f"tasks    : {len(pre['tasks'])}  ({', '.join(t['id'] for t in pre['tasks'])})")
         for line in status_lines(pre):
             print(line)
-        for m in models():
-            reason = not_run_reason(m)
-            if reason:
-                print(f"  NOT RUN {m}: {reason}")
         print(f"take order: {'FIXED' if pre.get('take_order_seed') else 'not yet — seeded at the freeze'}")
         if not pre["_frozen"]:
             print("\nThis is a DRAFT. No take may run against it and no number may be graded from "

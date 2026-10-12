@@ -78,7 +78,7 @@ def foreign(files: list[str]) -> list[str]:
 
 
 def copied_modules() -> list[str]:
-    """Every .py file copied from the prior round, whichever lane's fragment claims it now.
+    """Every .py file copied into this folder (status identical or edited), whichever lane's fragment claims it now.
 
     Edit W7A-gap4-1 (lane w7a, W6-claims-1): this read a hand list of fragments, which went stale as claims moved
     between lanes (drive.py, check_take.py and mode_binding.py on 11 Oct) and never held w5b's pipeline copies. It now
@@ -86,8 +86,8 @@ def copied_modules() -> list[str]:
     entries, problems = cm.load_fragments()
     if problems:
         raise ValueError("COPIED.d does not load: " + "; ".join(problems))
-    return [e["path"] for _, e in entries if e["status"] != "new" and e["path"].endswith(".py")
-            and str(e.get("source", "")).startswith(study.PRIOR_REL + "/")]
+    # W7A-R1-5: every non-new .py copy, the five from outside the prior round included.
+    return [e["path"] for _, e in entries if e["status"] != "new" and e["path"].endswith(".py")]
 
 
 def own_fragment_in(folder: Path, files: list[dict] | None = None, name: str = LANE) -> None:

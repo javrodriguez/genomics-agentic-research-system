@@ -68,6 +68,8 @@ def mutants():
             len(pre["tasks"]) * 2 * len(pre["models"]) * int(pre["n"]))]),
         # the model list read as the design's top-level keys, which in round 4 are the arms
         "arm-keys": ("S3.models", "models", lambda: list(prereg.load()["models"])),
+        # W7A-R1-2: every listed model counted as running, as the absent model_status made it
+        "runs-default": ("S4.running", "running_models", lambda: list(prereg.models())),
     }
 
 
@@ -100,7 +102,9 @@ class StatusIsRound4(unittest.TestCase):
             want = (f"  arm {arm}  {harness.pop()}: {len(d['models'][arm])} models, "
                     f"{sum(r['arm'] == arm for r in d['rows'])} rows: {', '.join(d['models'][arm])}")
             self.assertIn(want, lines, "S1.arms")
-        self.assertIn("  arm C  optional: claude-fable-5-1, 0 rows (optional (D2 B))", lines, "S1.arms")
+        self.assertIn("  arm C  optional: claude-fable-5-1, 0 rows; optional (D2 B)", lines, "S1.arms")
+        self.assertFalse(any("((" in line or "))" in line for line in lines), "S1.arms")
+        self.assertFalse(any(line.startswith("  NOT RUN") for line in lines), "S1.arms")
 
     def test_rows_are_counted_from_the_rows(self):
         for name, d in (("committed", committed()), ("thinned", thinned())):
@@ -119,19 +123,38 @@ class StatusIsRound4(unittest.TestCase):
         self.assertIn("rows     : 1253 planned rows", status(thinned())[1], "S2.rows")
 
     def test_models_are_the_models(self):
+        # every model in the fixed list: the planned arms' models, then the optional arms' (W7A-R1-2)
         d = committed()
         with mock.patch.object(prereg, "load", lambda: d):
             got = prereg.models()
-            running = prereg.running_models()
         flat = [m for arm in d["arms"] if arm in d["models"] for m in d["models"][arm]]
-        self.assertEqual(got, flat, "S3.models")
-        self.assertEqual(len(got), 7, "S3.models")
+        self.assertEqual(got, flat + ["claude-fable-5-1"], "S3.models")
+        self.assertEqual(len(got), 8, "S3.models")
         self.assertFalse(set(got) & set(d["arms"]), "S3.models")
-        self.assertEqual(running, flat, "S3.models")
+
+    def test_running_comes_from_the_rows(self):
+        # W7A-R1-2: a model runs when the design plans rows for it; one with none is not running, with a reason.
+        for name, d in (("committed", committed()), ("thinned", thinned())):
+            with self.subTest(design=name):
+                with mock.patch.object(prereg, "load", lambda: d):
+                    running = prereg.running_models()
+                    reasons = {m: prereg.not_run_reason(m) for m in prereg.models()}
+                planned = {r["model"] for r in d["rows"]}
+                self.assertEqual(running, [m for m in reasons if m in planned], "S4.running")
+                self.assertEqual(len(running), 7, "S4.running")
+                self.assertNotIn("claude-fable-5-1", running, "S4.running")
+                self.assertEqual([m for m, why in reasons.items() if why], ["claude-fable-5-1"], "S4.running")
+                self.assertIn("no planned rows", reasons["claude-fable-5-1"], "S4.running")
+        # a design with one model's rows removed: that model stops running, with the reason
+        d = committed()
+        d["rows"] = [r for r in d["rows"] if r["model"] != "gpt-6-luna"]
+        with mock.patch.object(prereg, "load", lambda: d):
+            self.assertNotIn("gpt-6-luna", prereg.running_models(), "S4.running")
+            self.assertIn("no planned rows", prereg.not_run_reason("gpt-6-luna") or "", "S4.running")
 
 
 BOUND = {"S1.arms": "test_arms_are_named_as_arms", "S2.rows": "test_rows_are_counted_from_the_rows",
-         "S3.models": "test_models_are_the_models"}
+         "S3.models": "test_models_are_the_models", "S4.running": "test_running_comes_from_the_rows"}
 WITNESSES = {name: ("StatusIsRound4." + BOUND[clause], clause) for name, (clause, _, _) in mutants().items()}
 
 
