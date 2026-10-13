@@ -206,6 +206,16 @@ class Case(unittest.TestCase):
             self.fail(f"{clause}: raised {type(e).__name__}, not Refused: {str(e)[:300]}")
         self.fail(f"{clause}: not refused ({words!r})")
 
+    def not_ready(self, clause, words, fn, *args, **kwargs):
+        try:
+            fn(*args, **kwargs)
+        except rt().NotReady as e:
+            self.assertIn(words, str(e), f"{clause}: pending for another reason: {e}")
+            return
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"{clause}: raised {type(e).__name__}, not NotReady: {str(e)[:300]}")
+        self.fail(f"{clause}: did not wait on {words}")
+
     def login(self, harness):
         path = self.tmp / f"{harness}.line"
         path.write_text(f"{LOGINS[harness]}={FAKE_VALUE}\n")
@@ -531,6 +541,14 @@ class E4Model(Case):
                          ["-m", "gemini-3.8-flash", "-xm", "flash-lite"]):
                 self.refuses("E4.boundary", "unsupported", m.check_model, "gemini", ["gemini", *args])
 
+    def test_non_model_options_need_non_flag_values(self):
+        m = rt()
+        for flag in ("-p", "--prompt", "-o", "--output-format", "--approval-mode", "--resume", "-r"):
+            for tail in ([flag], [flag, "-unexpected"], [flag + "=-unexpected"]):
+                with self.subTest(flag=flag, tail=tail):
+                    self.refuses("E4.values", f"value for {flag!r}", m.check_model, "gemini",
+                                 ["gemini", "-m", "gemini-3.8-flash", *tail])
+
     def test_exec_refuses_an_alias(self):
         m = rt()
         with filled():
@@ -561,12 +579,11 @@ class E5Units(Case):
             with mock.patch.object(m, "RUN_TREE_TMPDIR_VARIABLES", ("TMPDIR", "TMP")):
                 self.refuses("E5.tmp", "temporary-folder names", m.take_environment, "codex", "/r/t")
         with mock.patch.object(m, "VENDOR_BILLING_ROUTE_VARIABLES", {m.CODEX: (), m.GEMINI: ()}):
-            with self.assertRaises(m.NotReady, msg="E5.pending: arm A built while FALLBACK_ENV is PENDING"):
-                m.take_environment("claude-code", "/r/t")
+            self.not_ready("E5.pending", "FALLBACK_ENV is PENDING", m.take_environment, "claude-code", "/r/t")
         with mock.patch.object(m, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}):
             for h in ("codex", "gemini"):
-                with self.assertRaises(m.NotReady, msg=f"E5.pending: {h} built while its route list is PENDING"):
-                    m.take_environment(h, "/r/t")
+                self.not_ready("E5.pending", f"VENDOR_BILLING_ROUTE_VARIABLES[{h!r}] is PENDING",
+                               m.take_environment, h, "/r/t")
 
     def test_the_fallback_values_are_arm_a_s_alone(self):
         m = rt()
