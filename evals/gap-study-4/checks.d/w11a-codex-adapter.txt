@@ -1,0 +1,9 @@
+# Lane w11a-codex-adapter: Gap Study round 4, arm O's adapter on documented shapes (ruling Q-3): the Codex CLI adapter
+# and its stream parser, on synthetic streams over a fake runtime. One command per line, run from the repository root.
+# --witnesses runs the witnesses only and prints one WITNESS line per guard and the red count.
+# No model, container, network, credential, salt or holdout.
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py --witnesses
+# Review round 1 fold (ruling w11a-R1-fold item 2): every generated mutant of codex_adapter.py and transcript_codex.py
+# killed or listed EQUIVALENT with its reason; a stale entry fails. Shardable with --shard i/n; athena runs it whole.
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py --generated-mutants

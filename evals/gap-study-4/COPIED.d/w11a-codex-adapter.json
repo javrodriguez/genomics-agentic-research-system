@@ -1,0 +1,110 @@
+{
+  "lane": "w11a-codex-adapter",
+  "files": [
+    {
+      "path": "codex_adapter.py",
+      "status": "new",
+      "reason": "Lane w11a-codex-adapter (arm O; D8 sections 1 and 3, D8:461-472; ruling Q-3): CodexAdapter, agent_adapter's interface for codex: one `codex exec --json` per turn through box/run_take.run_turn, `-m <model>` on every exec, `resume <thread id>` after the first turn only (the id read from turn 1's thread.started), the routing pin's mode looked up in MODE_FLAGS (D8:110), the version from `codex --version`; read_stream maps the documented events and items into the seam's records (api_errors from error and turn.failed only, never the agent's text; usage from turn.completed, a missing key refused, never 0; agent_output from event and item types); read_rollout takes the init's model from the rollout's turn_context, never the requested model. SHAPES_SOURCE = documented, reported in the harness record and every turn record. Not registered in any seam table (a later seam slice). Review round 1 fold: a line that is not JSON is accepted only as the stream's last line; the error words are read from the typed record; the mode check is one table lookup; the version exec's stdout must be a string."
+    },
+    {
+      "path": "transcript_codex.py",
+      "status": "new",
+      "reason": "Lane w11a-codex-adapter: the pre-registered Codex exec stream tables (D8 section 1's event types, item types and usage keys, and the keys it names as not in D8), check_record (anything off the tables refused, never guessed) and CodexParser into transcript_view.RawItem's closed vocabulary (command_execution -> shell, file_change -> write or edit, mcp_tool_call -> other, agent_message -> agent-text, reasoning -> agent-reasoning). NOT registered in transcript_view.PARSERS. Review round 1 fold: every documented value is type-checked (a bool is never an int), a file_change's changes are checked in check_record, an event or item type that is not a string is a typed refusal, and two unused names are gone."
+    },
+    {
+      "path": "tests/test_codex_adapter.py",
+      "status": "new",
+      "reason": "Lane w11a-codex-adapter (arm O, next-slices-plan-2026-10-12 section 2): the Codex CLI adapter and its stream parser on synthetic streams over a fake runtime: S1-S3 the closed event, item and key tables, P1 the view vocabulary through transcript_view.events with the parser in a copy of PARSERS for the test only, A1-A7 the stream read, the harness's errors kept apart from the agent's text, usage refused when a key is missing, the argv (-m every exec, resume after turn 1 only), the model from the rollout, the end reasons, SHAPES_SOURCE documented; whole-file witnesses of codex_adapter.py and transcript_codex.py compiled in memory. Review round 1 fold (ruling w11a-R1-fold): B1-B11 bind each condition and clause one case at a time (end_reason, the thread id at three seats, required keys, value types, the rollout init, usage values, empty model or line, blank messages, the cut last line, the turn record, the version exec), A7 requires a RECORDED label's walk id and harness version, and --generated-mutants (shardable) runs a generated mutation sweep of both modules with an EQUIVALENT list whose stale entries fail."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/README.md",
+      "status": "new",
+      "reason": "Lane w11a: labels every Codex fixture in its folder SYNTHETIC (none recorded; ruling Q-3), read by test_codex_adapter A7."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/agent-says-429.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/file-delete.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/mcp-call.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/reasoning-only.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/rollout-no-context.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/rollout-served-other.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/rollout-two-turns.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/turn-failed.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/turn1-tools.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/turn2-other-thread.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/turn2-resume.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/unknown-event.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/unknown-item.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/unknown-key.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/usage-missing.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "COPIED.d/w11a-codex-adapter.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w11a-codex-adapter.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): the test module and its --witnesses. Review round 1 fold: the generated mutation sweep, run whole."
+    }
+  ]
+}
