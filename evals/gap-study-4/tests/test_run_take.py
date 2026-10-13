@@ -529,8 +529,9 @@ class TestArmVariables(MutantCase):
         out = []
         for arm in ARMS:
             other = next(rt.LOGIN_VARIABLE[h] for h in ARMS if h != arm)
-            bad = dict(rt.HARNESS_ENV, **{arm: dict(rt.HARNESS_ENV[arm], **{other: "x"})})
-            with mock.patch.object(rt, "HARNESS_ENV", bad), filled():
+            # Departure w12a-2: the one table is TAKE_ENV (ruling docs-1); HARNESS_ENV is a view derived from it.
+            bad = dict(rt.TAKE_ENV, **{arm: dict(rt.TAKE_ENV[arm], **{other: "x"})})
+            with mock.patch.object(rt, "TAKE_ENV", bad), filled():
                 try:
                     self.exec_for(arm)
                     out.append(f"{arm} exec requesting {other} accepted")
@@ -604,12 +605,14 @@ class TestExecArgv(MutantCase):
                                      workdir="/srv/w/t1/tree", harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
                                      login_file=self.login, caller_env=CALLER)
         t = "/srv/w/t1/tree/.tmp"
+        # Departure w12a-2 (ruling docs-1): the values ride as the launcher's NAME=VALUE pairs, the agent starting
+        # from an empty environment plus its TAKE_ENV row; the login still rides as `-e NAME` only.
         want = ["docker", "exec", "--user", "10001:10001", "--workdir", "/srv/w/t1/tree",
-                "-e", "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1", "-e", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
-                "-e", "CLAUDE_CONFIG_DIR=/opt/cfg", "-e", "DISABLE_AUTOUPDATER=1",
-                "-e", "ENABLE_CLAUDEAI_MCP_SERVERS=false", "-e", "FAKE_FALLBACK_A=1",
-                "-e", "HTTPS_PROXY=http://proxy:3128", "-e", f"TEMP={t}", "-e", f"TMP={t}", "-e", f"TMPDIR={t}",
-                "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], "agent-cli", "-p", "x"]
+                "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], *rt.LAUNCHER, "CLAUDE_CODE_OAUTH_TOKEN", "13",
+                "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
+                "CLAUDE_CONFIG_DIR=/opt/cfg", "DISABLE_AUTOUPDATER=1", "ENABLE_CLAUDEAI_MCP_SERVERS=false",
+                "FAKE_FALLBACK_A=1", "HOME=/opt/cfg", "HTTPS_PROXY=http://proxy:3128", "LANG=C.UTF-8",
+                f"PATH={rt.TAKE_PATH}", f"TEMP={t}", f"TMP={t}", f"TMPDIR={t}", "agent-cli", "-p", "x"]
         if argv != want:
             out.append(f"exec argv differs: {argv}")
         if any(FAKE_VALUE in a for a in argv):
@@ -1562,7 +1565,7 @@ SUBPROCESS_NAMES = frozenset({"run", "TimeoutExpired"})
 GUARDED_MODULES = ("os", "subprocess")
 # W4B2-2, derived once from the three box modules' source and committed (TestAuditAllowlists binds both ways).
 OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "getuid",
-                      "listdir", "lstat", "makedirs", "mkdir", "open", "path", "walk"})
+                      "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk"})
 DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 # How subprocess may appear, at DockerRuntime.run only: run as the func of a call, TimeoutExpired in an except.
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})

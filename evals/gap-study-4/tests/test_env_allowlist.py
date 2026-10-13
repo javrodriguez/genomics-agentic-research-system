@@ -22,6 +22,11 @@ delegation).
   E4  arm G's model: a short alias (auto, pro, flash, flash-lite) is refused by its name, with what it resolves to
       (flash-lite -> gemini-2.5-flash-lite); the full pinned ids pass; another id, no model flag, or two are refused;
       exec_argv refuses a gemini call that names an alias; MODEL_PINS' arm G ids equal build_draft.MODELS["G"].
+  E5  this lane's functions one at a time (the generated sweep's first-round survivors): take_environment refuses an
+      unknown arm, a relative run tree and a row whose temporary-folder names are off, waits (NotReady) on each
+      PENDING value, adds Claude Code's fallback values to arm A alone and never over a row's name; launcher_argv
+      refuses a credential that is not a NAME and a value that is not a string; check_model leaves an empty call
+      alone; refuse_env_files refuses a row whose HOME is not the config mount.
   G1  the generated mutants (tests/walk_mutation.py's generator over this lane's functions in box/run_take.py):
       EQUIVALENT names only generated ids, each with a reason.
 
@@ -236,11 +241,12 @@ def REAL_RT_LAUNCHER_LEN():
     return getattr(rt(), "LAUNCHER", ())
 
 
-def run_launcher(launcher_and_args, start_env):
+def run_launcher(launcher_and_args, start_env, present=(), cwd="/srv/w/t1/tree", recorded=None):
     """The launcher's source run in memory: `import os,sys` answers fakes; os.execvpe is captured, never called."""
     src = launcher_and_args[4]
-    got = {}
-    fake_os = types.SimpleNamespace(environ=dict(start_env),
+    got = {} if recorded is None else recorded
+    path = types.SimpleNamespace(join=os.path.join, dirname=os.path.dirname, lexists=lambda p: p in present)
+    fake_os = types.SimpleNamespace(environ=dict(start_env), path=path, getcwd=lambda: cwd,
                                     execvpe=lambda f, a, e: got.update(file=f, argv=list(a), env=dict(e)))
     fake_sys = types.SimpleNamespace(argv=["-c", *launcher_and_args[5:]])
     real_import = builtins.__import__
@@ -330,7 +336,10 @@ class E2Allowlist(Case):
         self.assertIn("OPENAI_PROJECT", passable, "E2.turn: the test's own parent set is off")
         for h in ARMS:
             argv, env = self.must("E2.turn", self.turn, h, caller=passable, environ=passable)
-            head, launcher, name, pairs, inner = split_turn(argv)
+            at = argv.index(ID) + 1
+            self.assertEqual(tuple(argv[at:at + len(m.LAUNCHER)]), tuple(m.LAUNCHER),
+                             f"E2.turn: {h}'s turn is not run by the launcher")
+            head, launcher, name, pairs, inner = self.must("E2.turn", split_turn, argv)
             self.assertEqual(tuple(launcher), tuple(m.LAUNCHER), f"E2.turn: {h}'s turn is not run by the launcher")
             self.assertEqual(head, ["docker", "exec", "--user", m.AGENT_USER, "--workdir", "/srv/w/t1/tree",
                                     "-e", LOGINS[h], ID], f"E2.turn: {h}'s docker part is off")
@@ -353,6 +362,20 @@ class E2Allowlist(Case):
         for h in ARMS:
             for name in ("AWS_BEARER_TOKEN_BEDROCK", "OPENAI_API_KEY", "ANTHROPIC_BASE_URL"):
                 self.refuses("E2.refused", name, self.turn, h, caller={name: FAKE_VALUE})
+
+    def test_launcher_refuses_container_ancestors_and_current_home(self):
+        # These are virtual names only: no protected path is created or inspected.
+        for h in ARMS:
+            argv, _ = self.turn(h)
+            launch = argv[argv.index(ID) + 1:]
+            home = rt().CONFIG_MOUNT
+            for folder in ("/srv/w/t1/tree", "/srv/w/t1", "/srv/w", "/srv", "/", home):
+                for name in (".env", ".gemini/.env"):
+                    path = os.path.join(folder, name)
+                    recorded = {}
+                    with self.assertRaisesRegex(SystemExit, re.escape(path), msg="E3.container: env file accepted"):
+                        run_launcher(launch, {LOGINS[h]: FAKE_VALUE}, present=(path,), recorded=recorded)
+                    self.assertEqual(recorded, {}, "E3.container: harness dispatched before refusal")
 
     def test_the_launcher_needs_the_credential(self):
         m = rt()
@@ -508,6 +531,67 @@ class E4Model(Case):
         self.assertEqual(sorted(m.MODEL_PINS), ["gemini"], "E4.table: another arm pinned without a docs read")
 
 
+# ------------------------------------------------------------------------------------------------- E5
+class E5Units(Case):
+    """This lane's functions one at a time: the refusals the end-to-end tests above do not reach."""
+
+    def test_take_environment_refusals(self):
+        m = rt()
+        with filled():
+            for bad in ("fake-second", "", None, "Codex"):
+                self.refuses("E5.harness", "unknown harness", m.take_environment, bad, "/r/t")
+            self.refuses("E5.tree", "run_tree", m.take_environment, "codex", "r/t")
+            with mock.patch.object(m, "RUN_TREE_TMPDIR_VARIABLES", ("TMPDIR", "TMP")):
+                self.refuses("E5.tmp", "temporary-folder names", m.take_environment, "codex", "/r/t")
+        with mock.patch.object(m, "VENDOR_BILLING_ROUTE_VARIABLES", {m.CODEX: (), m.GEMINI: ()}):
+            with self.assertRaises(m.NotReady, msg="E5.pending: arm A built while FALLBACK_ENV is PENDING"):
+                m.take_environment("claude-code", "/r/t")
+        with mock.patch.object(m, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}):
+            for h in ("codex", "gemini"):
+                with self.assertRaises(m.NotReady, msg=f"E5.pending: {h} built while its route list is PENDING"):
+                    m.take_environment(h, "/r/t")
+
+    def test_the_fallback_values_are_arm_a_s_alone(self):
+        m = rt()
+        with mock.patch.object(m, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}), \
+                mock.patch.object(m, "VENDOR_BILLING_ROUTE_VARIABLES", {m.CODEX: (), m.GEMINI: ()}):
+            got = self.must("E5.fallback", m.take_environment, "claude-code", "/r/t")
+            self.assertEqual(got.get("FAKE_FALLBACK_A"), "1", "E5.fallback: arm A lacks its fallback value")
+            self.assertEqual(set(got) - set(expected_row("claude-code", "/r/t")),
+                             {"FAKE_FALLBACK_A", "CLAUDE_CODE_OAUTH_TOKEN"}, "E5.fallback: arm A's names are off")
+            for h in ("codex", "gemini"):
+                self.assertNotIn("FAKE_FALLBACK_A", self.must("E5.fallback", m.take_environment, h, "/r/t"),
+                                 f"E5.fallback: {h} carries arm A's fallback value")
+        for name in ("PATH", "HOME", "CLAUDE_CODE_OAUTH_TOKEN"):
+            with mock.patch.object(m, "FALLBACK_ENV", {name: "x"}):
+                self.refuses("E5.fallback", f"may not override {name}", m.take_environment, "claude-code", "/r/t")
+
+    def test_launcher_argv_refusals(self):
+        m = rt()
+        for login in (None, 5, "bad name", "lower"):
+            self.refuses("E5.login", "credential is named", m.launcher_argv, login, {"A": "1"}, ["codex"])
+        for value in (5, None, b"x"):
+            self.refuses("E5.value", "NUL", m.launcher_argv, "CODEX_API_KEY", {"A": value}, ["codex"])
+
+    def test_check_model_edges(self):
+        m = rt()
+        self.assertIsNone(self.must("E5.model", m.check_model, "gemini", []), "E5.model: an empty call was checked")
+        self.assertIsNone(self.must("E5.model", m.check_model, "gemini", ()), "E5.model: an empty call was checked")
+
+    def test_home_must_be_the_config_mount(self):
+        m = rt()
+        tree = self.tmp / "tree"
+        tree.mkdir()
+        cfg = self.tmp / "cfg"
+        cfg.mkdir()
+        for h in ARMS:
+            bad = dict(m.TAKE_ENV, **{h: dict(m.TAKE_ENV[h], HOME="/home/dana")})
+            with mock.patch.object(m, "TAKE_ENV", bad):
+                self.refuses("E5.home", "HOME is not the config mount", m.refuse_env_files, workdir=str(tree),
+                             run_tree=str(tree), config_dir=str(cfg))
+                self.must("E5.home", m.refuse_env_files, workdir=str(tree), run_tree=str(tree))
+
+
 # ------------------------------------------------------------------------------------------------- witnesses
 def mutants() -> dict:
     """name -> (clause, old text in box/run_take.py, new text). Each weakens one guard; old occurs exactly once."""
@@ -525,15 +609,15 @@ def mutants() -> dict:
                         "            container_id, *inner]"),
         "launcher-keeps-env": ("E2.launcher", "                   \"e=dict(x.split('=',1) for x in a[2:2+n])\\n\"",
                                "                   \"e=dict(os.environ,**dict(x.split('=',1) for x in a[2:2+n]))\\n\""),
+        "container-env-unchecked": ("E3.container", "  if os.path.lexists(p): raise SystemExit", "  if False: raise SystemExit"),
         "pairs-unchecked": ("E2.pairs", "        if not _NAME.fullmatch(k):", "        if False:"),
         "launch-no-env-check": ("E3.launch", "    refuse_env_files(workdir=spec.run_tree, run_tree=spec.run_tree, "
                                 "config_dir=spec.config_dir)\n", ""),
         "turn-no-env-check": ("E3.turn", "    refuse_env_files(workdir=run_tree, run_tree=run_tree)\n", ""),
         "home-unchecked": ("E3.home", "    if config_dir is not None:", "    if False:"),
-        "gemini-name-dropped": ("E3.workdir", 'ENV_FILE_NAMES = (".env", ".gemini/.env")',
+        "gemini-name-dropped": ("E3.workdir", 'ENV_FILE_NAMES = (".env", os.path.join(".gemini", ".env"))',
                                 'ENV_FILE_NAMES = (".env",)'),
-        "root-not-read": ("E3.root", "        dirs.append(cur)\n    return dirs\n",
-                          "        dirs.append(cur)\n    return dirs[:-1]\n"),
+        "root-not-read": ("E3.root", "for i in range(len(parts), -1, -1)]", "for i in range(len(parts), 0, -1)]"),
         "alias-unchecked": ("E4.alias", "    if model in pin[\"short_aliases\"]:", "    if False:"),
         "any-id": ("E4.pinned", "    if model not in pin[\"models\"]:", "    if False:"),
         "exec-no-model-check": ("E4.exec", "    check_model(harness, inner)\n", ""),
@@ -547,6 +631,7 @@ METHOD = {
     "values-in-client-env": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
     "no-launcher": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
     "launcher-keeps-env": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
+    "container-env-unchecked": "E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home",
     "pairs-unchecked": "E2Allowlist.test_the_launcher_needs_the_credential",
     "launch-no-env-check": "E3EnvFiles.test_launch_refuses_before_any_runtime_call",
     "turn-no-env-check": "E3EnvFiles.test_run_turn_refuses_before_its_exec",
@@ -584,7 +669,7 @@ class G1Generated(Case):
         self.assertEqual(fns, set(ROAD_FUNCTIONS), "G1.generated: a road function made no mutant")
 
 
-GENERATED_ORDER = ("E1Table", "E4Model", "E2Allowlist", "E3EnvFiles", "G1Generated")
+GENERATED_ORDER = ("E1Table", "E5Units", "E4Model", "E2Allowlist", "E3EnvFiles", "G1Generated")
 
 
 def _outcome(stdout):
