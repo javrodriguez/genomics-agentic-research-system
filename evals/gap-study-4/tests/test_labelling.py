@@ -753,7 +753,6 @@ def k2_mask(sm, sh, ag):
         "Opus \u2014 5.5": "[hidden] \u2014 [hidden]",
         "ＧＰＴ－６．１ Ｓｏｌ": "[hidden]",
         "I\u2019m version 4.5": "I\u2019m version [hidden]",
-        "codex-cli 0.144": "[hidden]-[hidden] 0.144",
         "~/.codex/config.toml": "~/.[hidden]/config.[hidden]",
         "CODEX_ENTRYPOINT": "[hidden]_[hidden]",
         "Gemini CLI": "[hidden] [hidden]",
@@ -766,6 +765,28 @@ def k2_mask(sm, sh, ag):
             out.append(f"K2: real leak_problems({got!r}) = {sh.leak_problems(got, rh)}")
         if not sh.leak_problems(src, rh):
             out.append(f"K2: the backstop passed the raw {src!r}")
+    # R3-1: a number beside a mark is refused (a family's major version names it); numbers away from a mark are not
+    for src, masked, num in (("I am Gemini 3", "I am [hidden] 3", "3"), ("Gemini 3 Flash here", "[hidden] 3 [hidden] here", "3"),
+                             ("I'm Claude 4", "I'm [hidden] 4", "4"), ("Haiku 4", "[hidden] 4", "4"),
+                             ("I am Sonnet 5", "I am [hidden] 5", "5"), ("Claude Opus 5", "[hidden] [hidden] 5", "5"),
+                             ("Gemini 3.x", "[hidden] 3.x", "3"), ("Gemini 3-series", "[hidden] 3-series", "3"),
+                             ("codex-cli 0.144", "[hidden]-[hidden] 0.144", "0"), ("2 [hidden]", "2 [hidden]", "2")):
+        got = sh.mask(src, rh)
+        if got != masked:
+            out.append(f"K2: R3-1 mask({src!r}) = {got!r}")
+        if sh.leak_problems(got, rh) != [f"LEAK: {sh.HIDDEN} stands next to the number {num!r}"]:
+            out.append(f"K2: a number beside the mask passed: {got!r} {sh.leak_problems(got, rh)}")
+    for away in ("[hidden] has 16 files", "4 cats and a [hidden] here", "[hidden] x 7"):
+        if sh.leak_problems(away, rh) != []:
+            out.append(f"K2: a number away from the mask was refused: {away!r}")
+    # R3-2: invisible format characters are dropped before grouping, so a split name is still one token
+    for src in ("Hai\u00adku", "Hai\u200dku", "Hai\u200bku", "Gem\u2060ini"):
+        if sh.mask(src, rh) != "[hidden]" or sh.leak_problems(sh.mask(src, rh), rh) != []:
+            out.append(f"K2: a name split by a format character was not masked: {src!r} -> {sh.mask(src, rh)!r}")
+        if not sh.leak_problems(src, rh):
+            out.append(f"K2: the backstop passed the raw {src!r}")
+    if sh.tokens("a\u200bb c") != [("ab", 0, 3), ("c", 4, 5)]:
+        out.append(f"K2: a format character is not dropped inside a token: {sh.tokens('a' + chr(0x200b) + 'b c')}")
     ordinary = "a solution, flashing, literally, 16 files, 4 cats, step 45"
     if sh.mask(ordinary, rh) != ordinary or sh.leak_problems(ordinary, rh) != []:
         out.append("K2: ordinary words and numbers were touched")
@@ -909,6 +930,17 @@ def k5_render(sm, sh, ag):
         out.append("K5: a take with no actions does not say none")
     if tuple(sh.STOP_CAUSES) != stats.labels4.STOPS:
         out.append("K5: the stop causes are not labels4.STOPS")
+    # the fence escape: a fence longer than any backtick run in the text; actions in a fence of their own
+    tricky = dict(items[0], text="before\n```\n# a heading\n````` five\nafter", actions=["read &#72;aiku", "run **x**"])
+    got = sh.render([tricky], DEFS).split("\n")
+    if "``````" not in got or got[got.index("``````") + 1:got.index("``````") + 6] != [
+            "before", "```", "# a heading", "````` five", "after"] or got.count("``````") != 2:
+        out.append("K5: the text's fence is not longer than every backtick run in it")
+    acts = got.index("Actions after the probe:")
+    if got[acts + 1:acts + 6] != ["", "```", "read &#72;aiku", "run **x**", "```"]:
+        out.append(f"K5: the actions are not fenced: {got[acts + 1:acts + 6]}")
+    if sh.fence("no ticks") != "```" or sh.fence("a ``` b") != "````" or sh.fence("`` x ````") != "`````":
+        out.append("K5: fence() is not three backticks or one past the longest run")
     return out
 
 
@@ -1796,6 +1828,12 @@ WITNESSES = {
     "one-take-bounds-widened": _w("ag", g9_small_rows, ('row["bounds"] = stats.bound(row["agree"], row["n"]) if row["n"] else None',
                                                        'row["bounds"] = (stats.bound(row["agree"], row["n"]) if row["n"] > 1 '
                                                        'else ("0.000", "1.000")) if row["n"] else None')),
+    "number-beside-mark-admitted": _w("sh", k2_mask, ('    out += [f"LEAK: {HIDDEN} stands next to the number {d!r}" for d in sorted(digits)]\n',
+                                                         "    pass\n")),
+    "format-characters-kept": _w("sh", k2_mask, ('            if unicodedata.category(c) == "Cf":\n                continue\n', "")),
+    "fence-fixed": _w("sh", k5_render, ('    return "`" * max(3, longest + 1)', '    return "```"')),
+    "actions-unfenced": _w("sh", k5_render, ('out += ["", fa, *it["actions"], fa] if it["actions"] else ["- none"]',
+                                             'out += [f"- {a}" for a in it["actions"]] or ["- none"]')),
     "unseeded-draw": _w("sm", s1_seed, ('rng = random.Random(design["seed"])', "rng = random.Random()")),
     "failures-not-oversampled": _w("sm", o1_over, ('f = design["oversample"]["failure"] if key[4] == FAILED else 1',
                                                     "f = 1")),
@@ -1861,7 +1899,7 @@ class TestWitnesses(unittest.TestCase):
         self.assertTrue(own, f"{name}: survived (no {prefix} line): {got}")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 54)
+        self.assertEqual(len(WITNESSES), 58)
         for name, (target, edits, _) in WITNESSES.items():
             path = TARGET_FILES[target]
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
