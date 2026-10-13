@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """The CP6 walk runner: drive pre-freeze walks one at a time, check, grade and commit each.
 
-    python3 evals/gap-study-4/walk_runner.py      refuses (exit 2): no production builder of the walk driver yet
+    python3 evals/gap-study-4/walk_runner.py --walk <id> --task <t> --half <h> --wording <w> --arm <a> --model <m>
+        --reason <why>      one walk end to end (walk_builders.cli); refuses (exit 2), naming each builder or
+                            real-box value still missing, until every one exists
 
 WHAT IT DOES (lane w10-walk-runner; glitch-2f's rulings D1, D2, D3 under Javier's standing delegation, Mon 12 Oct
 2026, from the proposal in lane-reports/w10-walk-runner.md). run_walks(driver, repo, walks) takes a driver built by
@@ -28,9 +30,12 @@ NEVER committed: its folder is left for a human, which turns walk_register --che
 
 A walk is graded but never counted: nothing here writes under takes/, registers a take or reads takes.json.
 
-THE CLI refuses until the production builders exist (Q-w7b-3: the DockerRuntime, the login file, the counters reader,
-the identity and run-tree builders need CP2 and CP6 values). Claude walks only: walk_driver admits only the production
-ClaudeCodeAdapter, so walks of arms O and G wait for their adapters and w7c's spend gate.
+THE CLI refuses until the production builders exist (Q-w7b-3). Lane w12b-walk-builders (departure w12b-1, recorded in
+lane w10's entry) built the half fakes can prove in walk_builders.py: the D2 identity, the login file read by name,
+the counters reader, the run-tree and fixture builders and the plumbing; main hands its argv to walk_builders.cli,
+which refuses by name while the DockerRuntime or any other real-box or walk-measured value is missing. Claude walks
+only: walk_driver admits only the production ClaudeCodeAdapter, so walks of arms O and G wait for their adapters and
+w7c's spend gate.
 """
 from __future__ import annotations
 
@@ -50,9 +55,9 @@ COMMITTED, LAUNCH_REFUSED, HELD = "committed", "launch-refused", "held"
 CHECK_FILE = "check.json"                 # drive.WALK_CHECK (asserted against the driver's module at run time)
 POSTFLIGHT_FILE, TEARDOWN_FILE, LEDGER_FILE = "postflight.json", "teardown.json", "driver-ledger.json"
 ENTRY_FROM_ROW = ("walk", "task", "half", "wording", "arm", "model")
-CLI_REFUSAL = ("the walk runner has no production builder of walk_driver from the real box yet (Q-w7b-3: the "
-               "DockerRuntime, the login file, the counters reader, the identity and run-tree builders need CP2 and "
-               "CP6 values); call walk_runner.run_walks with a driver built by drive.walk_driver(records='walks')")
+CLI_REFUSAL = ("the walk runner's production builders are not all there yet (Q-w7b-3: the DockerRuntime and the other "
+               "real-box values come at the bring-up, the login file with the walk token, the pins and constants from "
+               "the walks); each missing one is named above")
 
 
 def driver_namespace(driver) -> dict:
@@ -211,9 +216,10 @@ def run_walks(driver, repo, walks, *, table=None, route_fn=None, grade=None) -> 
     return results
 
 
-def main(argv=None) -> int:
-    print(f"refused: {CLI_REFUSAL}", file=sys.stderr)
-    return 2
+def main(argv=None, *, builders=None) -> int:
+    """walk_builders.cli: production_builders() unless a builder set is handed in (a test's fake box)."""
+    import walk_builders
+    return walk_builders.cli(argv, builders, refusal=CLI_REFUSAL)
 
 
 if __name__ == "__main__":

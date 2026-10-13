@@ -1,0 +1,27 @@
+# Lane w12b-walk-builders: Gap Study round 4, the walk runner's production builders and its command line (next-slices
+# plan of 12 Oct, section 1 item 5, the half fakes can prove; Q-w7b-3): the D2 identity, the login file by name, the
+# counters reader, the run-tree and fixture builders, and walk_runner.main through walk_builders.cli, which refuses by
+# name while any real-box or walk-measured value is missing and drives one walk end to end on the fake box.
+# One command per line, run from the repository root. --witnesses prints one witness line per mutant (rule B).
+# No walk, model, container, network, salt or holdout.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --witnesses
+# The generated mutation sweep: 346 mutants (every top-level function of walk_builders.py and walk_runner.main) in 16
+# shards (about 22 each), each mutant capped at 240 s; each shard fails on an unlisted survivor, a listed one killed,
+# or an inconclusive run.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 1/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 2/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 3/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 4/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 5/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 6/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 7/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 8/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 9/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 10/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 11/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 12/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 13/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 14/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 15/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 16/16 --timeout 240
