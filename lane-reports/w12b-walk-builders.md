@@ -136,3 +136,6 @@ Evidence (Mac, light-ok before each batch, `timeout -s INT 120`, python3.13):
 - Green on the fold: `test_walk_builders: 43 run, 0 failures, 0 errors, 0 skipped`.
 - athena's four survivors through `--generated-mutants --only`: three killed (B7's two refusal-line tests, B9's held walk, B3's bad folder) and the listed one EQUIVALENT; the `kept run tree` print killed by its new test.
 - The generator now makes 346 mutants (the fold's new lines); the checks.d count comment says so, still 16 shards.
+- Of the fold's 20 generated mutants on its new lines, 15 ran on the Mac and were killed; the other 5, the seven new hand witnesses, and the gates and lints on this head were not run on the Mac.
+  From 07:30 EDT the Mac sat at `light hold: memory pressure critical`, and it was still holding at 08:02, so they were handed to athena's rerun (its checks.d lines run `--witnesses` and every shard).
+  The witnesses' anchors were checked against the file when they were written, and each witness compiles only when its anchor occurs exactly once.
