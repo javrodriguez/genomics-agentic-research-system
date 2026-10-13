@@ -104,6 +104,8 @@ for _p in (str(HERE), str(LAB)):
 
 import stats  # noqa: E402
 import transcript_view as tv  # noqa: E402
+import transcript_codex as tcx  # noqa: E402
+import transcript_gemini as tgm  # noqa: E402
 import lint_language as ll  # noqa: E402
 import lint_pooling as lp  # noqa: E402
 
@@ -909,6 +911,11 @@ def k4_content(sm, sh, ag):
         out.append("K4: harness_word does not answer a bool")
     if not set(tv.CC_TOOLS) <= set(sh.HARNESS_WORDS["claude-code"]):
         out.append("K4: Claude Code's words are not derived from transcript_view.CC_TOOLS")
+    # Q-w11d-6 (bound at the wave 11 merge): every name of the Codex and Gemini readers' own tables is a harness word.
+    if not set(tcx.TOOL_ITEM_TYPES) <= set(sh.HARNESS_WORDS["codex"]):
+        out.append("K4: Codex's words do not cover transcript_codex.TOOL_ITEM_TYPES")
+    if not set(tgm.GEMINI_TOOLS) <= set(sh.HARNESS_WORDS["gemini"]):
+        out.append("K4: Gemini's words do not cover transcript_gemini.GEMINI_TOOLS")
     for a in ("read notes/edit.md", "run grep foo", "write README.md", "read bash_notes.txt"):
         out += accepted("K4", lambda a=a: sh.blind_items(doc, {**c, first: {"text": "x", "actions": [a]}}, FRAME,
                                                          DESIGN), f"the neutral action {a!r}")
@@ -1745,6 +1752,37 @@ def _check_test(check):
 
 for _c in ALL_CHECKS:
     setattr(TestTheLabellingTools, "test_" + _c.__name__, _check_test(_c))
+
+
+class TestHarnessWordsBinding(unittest.TestCase):
+    """Q-w11d-6, bound at the wave 11 merge: sheet.py reads the Codex and Gemini harness words from their readers'
+    own tables, so a name added to (or dropped from) either table moves the refused words with it; a copied literal
+    list would not follow, and this test would fail."""
+
+    def build_with(self, codex_items, gemini_tools):
+        cx = types.ModuleType("transcript_codex")
+        cx.TOOL_ITEM_TYPES = tuple(codex_items)
+        gm = types.ModuleType("transcript_gemini")
+        gm.GEMINI_TOOLS = {n: None for n in gemini_tools}
+        return _build(TARGET_FILES["sh"].read_text(encoding="utf-8"), "sheet", TARGET_FILES["sh"],
+                      {"sample": sm, "transcript_codex": cx, "transcript_gemini": gm})
+
+    def test_the_words_follow_the_tables(self):
+        self.assertTrue(tcx.TOOL_ITEM_TYPES and tgm.GEMINI_TOOLS)  # the real tables are not empty
+        h = self.build_with(tuple(tcx.TOOL_ITEM_TYPES) + ("new_codex_item",), tuple(tgm.GEMINI_TOOLS) + ("new_tool",))
+        self.assertIn("new_codex_item", h.HARNESS_WORDS["codex"])
+        self.assertIn("new_tool", h.HARNESS_WORDS["gemini"])
+        self.assertIn("new_codex_item", h.TEXT_HARNESS_WORDS)
+        self.assertTrue(h.harness_word("run new_tool"))
+        dropped = tuple(tgm.GEMINI_TOOLS)[0]
+        h = self.build_with(tcx.TOOL_ITEM_TYPES[1:], tuple(tgm.GEMINI_TOOLS)[1:])
+        self.assertNotIn(tcx.TOOL_ITEM_TYPES[0], h.HARNESS_WORDS["codex"])
+        self.assertNotIn(dropped, h.HARNESS_WORDS["gemini"])
+
+    def test_the_real_tables_give_the_pinned_words(self):
+        self.assertEqual(sh.HARNESS_WORDS["codex"],
+                         ("apply_patch", "update_plan", "exec_command") + tuple(tcx.TOOL_ITEM_TYPES) + ("AGENTS.md",))
+        self.assertEqual(sh.HARNESS_WORDS["gemini"], tuple(tgm.GEMINI_TOOLS) + ("GEMINI.md",))
 
 
 class TestTheLaneFiles(unittest.TestCase):

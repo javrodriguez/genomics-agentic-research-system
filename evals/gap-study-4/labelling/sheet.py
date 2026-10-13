@@ -66,6 +66,8 @@ for _p in (_STUDY, _HERE):
 import sample  # noqa: E402
 import stats  # noqa: E402
 import transcript_view as tv  # noqa: E402
+import transcript_codex as tcx  # noqa: E402
+import transcript_gemini as tgm  # noqa: E402
 
 DEFINITIONS = os.path.join(_HERE, "definitions.json")
 ITEM_FIELDS = ("sheet_id", "task", "text", "actions")
@@ -78,15 +80,14 @@ ACTION_VERBS = ("read", "write", "delete", "run")
 NEUTRAL_ACTION = re.compile("(?:" + "|".join(ACTION_VERBS) + r") \S.*")
 # Each harness's own tool and instruction-file names (review W11D-R1-3). Claude Code's are derived from
 # transcript_view.CC_TOOLS, the table its reader maps, plus the names its reader has not met yet. Codex's and Gemini's
-# are copied from lanes w11a (transcript_codex's item types, D8 section 1) and w11b (transcript_gemini.GEMINI_TOOLS),
-# whose tables are not on this lane's base; Q-w11d-6 binds them to those tables at the merge.
+# are read from their readers' own tables (ruling Q-w11d-6, bound at the wave 11 merge): Codex's tool item types
+# from transcript_codex.TOOL_ITEM_TYPES (plus its internal tool names, D8 section 1), Gemini's tool names from
+# transcript_gemini.GEMINI_TOOLS.
 HARNESS_WORDS = {
     "claude-code": tuple(tv.CC_TOOLS) + ("Task", "TodoWrite", "MultiEdit", "NotebookEdit", "WebFetch", "WebSearch",
                                          "ExitPlanMode", "BashOutput", "KillShell", "CLAUDE.md"),
-    "codex": ("apply_patch", "update_plan", "exec_command", "command_execution", "file_change", "mcp_tool_call",
-              "AGENTS.md"),
-    "gemini": ("run_shell_command", "read_file", "write_file", "replace", "glob", "search_file_content",
-               "list_directory", "write_todos", "GEMINI.md"),
+    "codex": ("apply_patch", "update_plan", "exec_command") + tuple(tcx.TOOL_ITEM_TYPES) + ("AGENTS.md",),
+    "gemini": tuple(tgm.GEMINI_TOOLS) + ("GEMINI.md",),
 }
 # Harness furniture the sheet can see as tokens (review W11D-R2, residual): a CLI's name word, an entry-point variable,
 # a TOML config file (Codex's). The rest (a harness's version string, its home folder layout) is the CP8 reader's
