@@ -52,6 +52,13 @@ from a typed number, and bind:
                     ok-unconditional, default-base-ignored
   P15.sweep         the generated sweep is armed (mutants generated, ids unique) and its EQUIVALENT registry is current:
                     an entry on a changed line, with no such mutant, or without a reason is reported
+  P16.scratch-only  (athena sweep, L206.drop2) a register naming a walk id that is a path (a parent step, "..", an
+                    absolute path) is refused, exit 2, and the run writes nothing outside its own scratch folder,
+                    which is gone after; witness stand-in-any-id
+  P17.wrong-type    stand_in_ids keeps only walk ids: an entry that is no object, a walk that is no string (None, an
+                    int, a bool, a list, an object, missing) or no walk id is skipped, never a crash, and bytes that
+                    are no register give []; coverage() labels an entry whose walk is no string "entry <i>";
+                    witnesses stand-in-type-unchecked, stand-in-entry-unchecked, stand-in-walks-unchecked
 
 Red first: before walk_plan.py exists every test fails by its own assertion (P0.module), with no error. The helpers
 that call walk_plan (plan, cover, cli) turn any exception other than the documented refusal into a failure carrying
@@ -185,6 +192,16 @@ def mutants():
         "ok-unconditional": ("P14.cli", "    if args.require_complete:\n        print(\"ok",
                              "    if True:\n        print(\"ok"),
         "default-base-ignored": ("P14.cli", "else walk_register.REHEARSALS", "else HERE / \"rehearsals\""),
+        "stand-in-any-id": ("P16.scratch-only", "\n            and walk_register.WALK_ID.fullmatch(e[\"walk\"])]",
+                            "]"),
+        "stand-in-type-unchecked": ("P17.wrong-type",
+                                    "isinstance(e, dict) and isinstance(e.get(\"walk\"), str)\n            and ",
+                                    "isinstance(e, dict)\n            and "),
+        "stand-in-entry-unchecked": ("P17.wrong-type",
+                                     "if isinstance(e, dict) and isinstance(e.get(\"walk\"), str)\n",
+                                     "if isinstance(e.get(\"walk\"), str)\n"),
+        "stand-in-walks-unchecked": ("P17.wrong-type", "    if not isinstance(walks, list):\n        return []\n",
+                                     ""),
     }
 
 
@@ -973,6 +990,58 @@ class P15Sweep(Base):
                          "P15.sweep: an entry needs a reason")
 
 
+class P16ScratchOnly(Base):
+    CLAUSE = "P16.scratch-only"
+
+    def test_a_path_shaped_walk_id_writes_nothing_outside_the_scratch(self):
+        wr = MODS["walk_register"]
+        _, specs = self.plan("P16.scratch-only")
+        good = [entry(s, f"walk-{i}") for i, s in enumerate(specs[:3])]
+        root, outside = self.tmpdir(), self.tmpdir()      # root holds the scratch folder; outside is a bystander
+        ids = {"a parent step": "../escaped-up", "the parent itself": "..", "an absolute path":
+               str(outside / "escaped-abs")}
+        for label, walk in ids.items():
+            self.assertIsNone(wr.WALK_ID.fullmatch(walk), f"P16.scratch-only {label}: not a walk id (case armed)")
+            base = self.raw_register(json.dumps({"schema": 1, "walks": good + [entry(specs[3], walk)]}))
+            problems, _ = wr.check(base, wr.design_in_force(HERE))
+            self.assertTrue(problems, f"P16.scratch-only {label}: walk_register.check refuses it (case armed)")
+            with mock.patch.object(tempfile, "tempdir", str(root)):
+                code, out = self.cli("P16.scratch-only", ["--coverage", "--base", str(base)])
+            self.assertEqual(code, 2, f"P16.scratch-only {label}: {out[-300:]}")
+            self.assertIn("walk_register's check refuses", out, f"P16.scratch-only {label}")
+            self.assertEqual(sorted(os.listdir(root)), [], f"P16.scratch-only {label}: the scratch folder is the "
+                                                           f"only thing written, and it is gone")
+            self.assertEqual(sorted(os.listdir(outside)), [], f"P16.scratch-only {label}: nothing written outside")
+
+
+class P17WrongType(Base):
+    CLAUSE = "P17.wrong-type"
+
+    def test_a_field_of_the_wrong_type_is_skipped_never_a_crash(self):
+        wp = self.wp("P17.wrong-type")
+        ok = {"walk": "walk-ok"}
+        wrong = [{"walk": None}, {"walk": 7}, {"walk": True}, {"walk": ["walk-l"]}, {"walk": {"walk": "walk-d"}},
+                 {"not-walk": "walk-k"}, 5, "walk-s", None, ["walk-x"], {"walk": ""}, {"walk": "a/b"},
+                 {"walk": "../up"}, {"walk": "-dash"}]
+        got = self.call("P17.wrong-type", wp.stand_in_ids, json.dumps({"schema": 1, "walks": [ok] + wrong + [
+            {"walk": "walk-last"}]}).encode())
+        self.assertEqual(got, ["walk-ok", "walk-last"], "P17.wrong-type: stand_in_ids keeps walk ids only")
+        for label, raw in (("not JSON", b"{"), ("not UTF-8", b"\xff\xfe"), ("a top-level list", b"[]"),
+                           ("walks an object", b'{"walks": {"walk": "walk-ok"}}'), ("walks null", b'{"walks": null}'),
+                           ("no walks", b'{"schema": 1}'), ("a duplicate key", b'{"walks": [], "walks": []}')):
+            self.assertEqual(self.call("P17.wrong-type", wp.stand_in_ids, raw), [],
+                             f"P17.wrong-type: stand_in_ids of {label}")
+        # coverage(): an entry whose walk id is no string is reported as "entry <i>", never by the value
+        design, specs = self.plan("P17.wrong-type")
+        other = next(s for s in specs if (s["arm"], s["model"]) != design["every_wording"])
+        entries = [entry(other, walk) for walk in (None, ["walk-l"], {"walk": "walk-d"})]
+        bare = {k: v for k, v in entry(other, "x").items() if k != "walk"}
+        got = self.cover("P17.wrong-type", entries + [bare], specs, design)
+        self.assertEqual(got["covered"], {}, "P17.wrong-type: nothing covered")
+        self.assertEqual([w for w, _ in got["outside"]], ["entry 0", "entry 1", "entry 2", "entry 3"],
+                         "P17.wrong-type: labelled by position")
+
+
 BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_figures",
          "P3.halves": "P3Halves.test_every_task_and_half_on_every_planned_model",
          "P4.off-design": "P4OffDesign.test_an_entry_outside_the_plan_is_reported_never_counted",
@@ -985,7 +1054,9 @@ BOUND = {"P2.dropped": "P2Dropped.test_a_dropped_task_or_wording_changes_the_fig
          "P11.design": "P11Design.test_a_half_or_a_model_moves_the_figures",
          "P12.register": "P12Register.test_a_register_the_register_check_refuses_is_refused",
          "P13.per-model": "P13PerModel.test_each_model_figure_counts_its_own_gaps",
-         "P14.cli": "P14Cli.test_the_command_line_exits"}
+         "P14.cli": "P14Cli.test_the_command_line_exits",
+         "P16.scratch-only": "P16ScratchOnly.test_a_path_shaped_walk_id_writes_nothing_outside_the_scratch",
+         "P17.wrong-type": "P17WrongType.test_a_field_of_the_wrong_type_is_skipped_never_a_crash"}
 WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _) in mutants().items()}
 
 
