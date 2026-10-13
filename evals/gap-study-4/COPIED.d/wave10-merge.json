@@ -1,0 +1,15 @@
+{
+  "lane": "wave10-merge",
+  "files": [
+    {
+      "path": "COPIED.d/wave10-merge.json",
+      "status": "new",
+      "reason": "The wave 10 merge's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/wave10-merge.txt",
+      "status": "new",
+      "reason": "The wave 10 merge's local checks (interface 2): w11b-gemini-adapter's generated mutation sweep in 16 shards, owed at the merge because w11b's own checks.d ran only the suite and its witnesses."
+    }
+  ]
+}
