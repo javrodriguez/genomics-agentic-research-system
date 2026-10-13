@@ -311,7 +311,8 @@ def own_mutants():
                             "\n\nif __name__ == \"__main__\":",
                             "\n\ndef fixture_binding_problems(path, half, is_walk=True):\n    return [], None\n"
                             "\n\nif __name__ == \"__main__\":"),
-        "cli-runs": ("R6.cli", "walk_runner", "    print(f\"refused: {CLI_REFUSAL}\", file=sys.stderr)\n    return 2",
+        # departure w12b-2 (lane w12b-walk-builders): main now hands its argv to walk_builders.cli (w12b-1)
+        "cli-runs": ("R6.cli", "walk_runner", "    return walk_builders.cli(argv, builders, refusal=CLI_REFUSAL)",
                      "    return 0"),
         "slot-unchecked": ("R7.slot", "walk_runner", "    if row.get(\"slot\") != walk:", "    if False:"),
     }

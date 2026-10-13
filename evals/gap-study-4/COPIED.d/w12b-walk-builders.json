@@ -1,0 +1,25 @@
+{
+  "lane": "w12b-walk-builders",
+  "files": [
+    {
+      "path": "walk_builders.py",
+      "status": "new",
+      "reason": "Lane w12b-walk-builders (next-slices plan of 12 Oct, section 1 item 5, the half fakes can prove; Q-w7b-3; glitch-2f's assignment under Javier's standing delegation, Tue 13 Oct 2026): the walk runner's production builders and its command line. walk_identity (ruling D2: session id check_take.walk_session_id, uuid5 of 'walk/<id>' in takes.namespace(), row and row_commit None, exactly drive.IDENTITY_KEYS, a relative or unnormalised source, a missing fixture record and a gars tree that is not 40 hex refused) and identity_for (a copy of the identity prepared for the row's own walk, any other refused); login_file_by_name (absolute, regular, never a link, mode 600, owned by the reader, outside every repository, and exactly len(run_take.LOGIN_VARIABLE[harness]) + 1 bytes read and compared with NAME=, never the value) and login_secrets (the value read by scan_record.read_login only when the scan asks); counters_reader (run_take.counters over the absolute folder cgroup_dir_for(take) names); build_run_tree (drive.clean_run_tree of the origin commit at the walk's own neutral name, any refusal BuilderRefused) and remove_run_tree; build_walk_fixture (drive.build_take_fixture inside the run tree, refused by name when nothing was built, when a project fixture records another variant or no stage 01 exit or not the one its variant reaches, or when the template's source does not exist afterwards); walk_row (the design's first row for the cell, slot and walk the walk id, the pinned agent version); production_builders (every value only the real box, the owner or a walk can give is a Missing with its reason; nothing PENDING is filled) and missing (absent, Missing and unknown names, in NAMES' order); cli (walk_runner.main's body: refuse by name, exit 2, before anything is parsed or built; else the row, the login by name, the run tree, the fixture and identity, drive.walk_driver(records='walks') and its WalkRepo, one walk through walk_runner.run_walks, one JSON line; exit 0 committed, 1 launch-refused or held, 2 a builder's refusal with its run tree removed; a held walk keeps its run tree). Claude walks only (drive A1). Bound by tests/test_walk_builders.py B1-B9."
+    },
+    {
+      "path": "tests/test_walk_builders.py",
+      "status": "new",
+      "reason": "Lane w12b-walk-builders: B1 the D2 identity (recomputed from the ruling's words; drive.walk_identity_problems admits it for its own walk only), B2 the login file by name (exactly the name and '=' read, in one read, closed; a value that is not text passes; each placement rule refuses alone; no refusal carries the value; the scan's secrets read late), B3 the counters reader, B4 the run tree (a real clean_run_tree over a scratch origin inside the scratch folder; a rebuild, an unknown commit and malformed inputs leave nothing), B5 the fixture (a stand-in generator in place of the real ones; generated and project kinds, each refusal by name), B6 the walk row, B7 production refuses by name (exactly the sixteen values still missing, each with its reason; walk_runner.main exits 2 naming them, in order, and Q-w7b-3, before anything is parsed or built), B8 a measured value is no longer missing (pin_profiles, the checker constants, a real rules scanner, patched for the test alone), B9 the command line drives one walk end to end on the fake box (test_walk_wiring's session box; the REAL v4 grader over watched planted paths; committed with its reason, the run tree and config folder removed) and refuses, holds or launch-refuses as named. 28 hand witnesses under rule B; the generated sweep (tests/walk_mutation.py's generator over every top-level function of walk_builders.py and walk_runner.main, --generated-mutants with --shard, --sample, --only), with the EQUIVALENT registry and G1. Fakes and synthetic strings only, under test_box_integration's process guard."
+    },
+    {
+      "path": "checks.d/w12b-walk-builders.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): tests/test_walk_builders.py, its --witnesses, and the generated sweep in shard lines for athena."
+    },
+    {
+      "path": "COPIED.d/w12b-walk-builders.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Edits without transfer, each recorded in its owner's entry (lane w10-walk-runner's fragment): walk_runner.py (departure w12b-1: main hands its argv and an optional builder set to walk_builders.cli; the module docstring and CLI_REFUSAL's words) and tests/test_walk_runner.py (departure w12b-2: the cli-runs witness's anchor follows main's new body; no assertion changed)."
+    }
+  ]
+}
