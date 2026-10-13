@@ -65,6 +65,16 @@ credential, salt or holdout. The process guard and scratch repositories are test
       through the drive into check.json), a reused session id alone, a design view of another task with the right
       half, a teardown problem (through the drive) and clean_drive record by record, a recordless folder, a walk with
       no reason; the round-3 reviewer's eleven mutants are registry witnesses (REVIEWER3).
+  R11 (fold w10-athena-survivors: athena's full sweep, run gap4-w10-5ff8b2e-20261013T003648Z, left 101 unlisted
+      survivors) the walk road's functions one at a time, without a walk, each fed one bad input and read by its
+      refusal's type and words: run.walk_row, grade_walk and died_before_turn_one; drive.walk_files (a symlinked or
+      missing folder, a relative path, a symlinked or FIFO record, a ledger with no pre-turn record, a turn record
+      with no ledger) and walk_identity_problems (an identity of another shape, shown in the refusal); walk_runner's
+      check_record, write_check, _publish, run_one (a row with no walk id or reason; a launch that failed after making
+      things; a container that could not be removed; another check file; a grade refusal; a committed walk's result)
+      and run_walks (two committed walks). R8 gains check4_walk's type refusals, an event counted never routed, the
+      design's pre put back, and the environment record unreadable, renamed by the pre, or with no pre block. Seven
+      survivors are EQUIVALENT, each with its reason. R11Units runs first under --gen-mutant.
 
 --mutant NAME compiles one altered module in memory before the bound test runs; --witnesses runs every registered
 mutant in its own process, only its bound test, and requires that test to fail by an AssertionError carrying its
@@ -1188,6 +1198,89 @@ class R8WalkRoad(Case):
         self.assertTrue(any(p.startswith("[constant-binding] the walk's driver ledger records arm") for p in got),
                         f"R8.walk-road: {got}")
 
+    # Fold w10-athena-survivors: the check_take survivors of the athena sweep, each fed its one bad input.
+    def read_with(self, folder: Path, design) -> dict:
+        w = self.w
+        return self.must("R8.walk-road", MODS["check_take"].check4_walk, folder / "transcript.jsonl", w.row["task"],
+                         w.row["half"], "w-0001", wording_script=design.script, arm=w.row["arm"], design=design)
+
+    def test_the_design_refusals_read_the_type(self):
+        """A wording script of another type (a tuple) and a run tree that is not a non-empty string (a Path, '') are
+        refused by their own words, never passed on to a later check."""
+        ct, w = MODS["check_take"], self.w
+        design = w.design_for(w.row, str(w.tree))
+        path = self.copy() / "transcript.jsonl"
+        args = dict(wording_script=design.script, arm=w.row["arm"], design=design)
+        for words, kw in (("non-empty list", dict(args, wording_script=tuple(design.script))),
+                          ("names no run tree", dict(args, design=design.replace(run_tree=Path(design.run_tree)))),
+                          ("names no run tree", dict(args, design=design.replace(run_tree="")))):
+            with self.subTest(words=words, kw=sorted(kw)):
+                self.refuses(words, ct.check4_walk, path, w.row["task"], w.row["half"], "w-0001", **kw)
+
+    def test_no_problem_at_all_is_refused(self):
+        """check() returning nothing (no row-needed line) is refused by name, never read past."""
+        self.row_needed_case([], "did not end at the ledger binding")
+
+    def test_an_event_is_counted_never_routed(self):
+        """A problem whose reason id routing makes an event is counted as that event and kept out of the reasons."""
+        ct, w = MODS["check_take"], self.w
+        design = w.design_for(w.row, str(w.tree))
+        ids = ct.event_ids(None)
+        problem = f"[{ids[0]}] synthetic: one instance"
+        with mock.patch.object(ct, "check_walk", lambda *a, **k: [problem]), \
+                mock.patch.object(ct, "event_counts", lambda path: {e: int(e == ids[0]) for e in ids}):
+            got = self.read_with(self.copy(), design)
+        self.assertEqual((got["reasons"], got["problems"], got["outside_reach"]), ([], [], 1), f"R8.walk-road: {got}")
+
+    def test_the_design_pre_is_put_back(self):
+        """check4_walk sets the design's pre for check() and puts the previous one back: a later check() in the same
+        process reads its own pre-registration, never this walk's."""
+        ct = MODS["check_take"]
+        before = ct._PRE_IN_FORCE.get()
+        self.read(self.copy())
+        self.assertIs(ct._PRE_IN_FORCE.get(), before, "R8.walk-road: the walk's pre was left in force")
+
+    def test_an_environment_record_that_cannot_be_read(self):
+        """No environment record, and one that is not an object: each is environment_problems' line, never a crash
+        of the walk's own row check."""
+        f = self.copy()
+        (f / "environment.json").unlink()
+        got = self.read(f)
+        self.assertTrue(any(p.startswith("[environment-record] no environment.json") for p in got),
+                        f"R8.walk-road: {got}")
+        f = self.copy()
+        (f / "environment.json").write_text("[]\n")
+        rebind_environment(f)
+        got = self.read(f)
+        self.assertTrue(any(p.startswith("[environment-record] environment.json holds a list") for p in got),
+                        f"R8.walk-road: {got}")
+
+    def test_the_environment_row_in_a_record_named_by_the_pre(self):
+        """The walk's row check reads the environment record the pre-registration names (its `file`), and the
+        default name when the pre carries no environment_record block."""
+        import hashlib
+        design = self.w.design_for(self.w.row, str(self.w.tree))
+        name = "environment-synthetic.json"
+        f = self.copy()
+        rec = dict(json.loads((f / "environment.json").read_text()), row=0)
+        (f / "environment.json").unlink()
+        (f / name).write_text(json.dumps(rec, indent=2) + "\n")
+        led = json.loads((f / "driver-ledger.json").read_text())
+        led["environment"] = dict(led["environment"], file=name,
+                                  sha256=hashlib.sha256((f / name).read_bytes()).hexdigest())
+        (f / "driver-ledger.json").write_text(json.dumps(led, indent=2) + "\n")
+        pre = dict(design.pre, environment_record=dict(design.pre["environment_record"], file=name))
+        got = self.read_with(f, design.replace(pre=pre))["problems"]
+        self.assertIn("[environment-record] the environment record names a ledger row for a walk; a walk has none",
+                      got, f"R8.walk-road: {got}")
+        f = self.copy()
+        edit_json(f / "environment.json", row=0)
+        rebind_environment(f)
+        pre = {k: v for k, v in design.pre.items() if k != "environment_record"}
+        got = self.read_with(f, design.replace(pre=pre))["problems"]
+        self.assertIn("[environment-record] the environment record names a ledger row for a walk; a walk has none",
+                      got, f"R8.walk-road: {got}")
+
     def test_the_design_tree_through_the_drive(self):
         """The machinery (W10-R1-1, root cause 1): the check_take the drive imports is this module's MODS entry, a
         witness included, and a walk driven through the drive in another tree than its own is read by the walk road
@@ -1229,6 +1322,26 @@ EQUIVALENT: dict = {
     "drive.walk_files:delete:L8:C8:a9b7cb72":
         "order only: `dirs.sort()` orders os.walk's descent; walk_files' list is read as a mapping by path "
         "(TakeRepo._take_files, then sorted) and by content_problems for its refusal alone; no reader uses its order",
+    # Fold w10-athena-survivors (athena run gap4-w10-5ff8b2e-20261013T003648Z):
+    "walk_runner._publish:delete:L14:C4:e3e767f5":
+        "the function's last statement `return None`; deleted, the function falls off its end and returns None",
+    "walk_runner._record:delete:L4:C8:e3e767f5":
+        "`return None` in the except, the try's last handler; deleted, control leaves the try and falls off the "
+        "function's end, which returns None",
+    "walk_runner._remove:delete:L7:C4:e3e767f5":
+        "the function's last statement `return None`; deleted, the function falls off its end and returns None",
+    "walk_runner._run_one:drop-0:L2:C7:2b55246e":
+        "run_one, _run_one's only caller, passes walk = row.get('walk') if row is a dict, else None; so whenever "
+        "row is not a dict, walk is None and `not isinstance(walk, str)` alone already holds",
+    "walk_runner.run_walks:cond-false:L12:C11:aa50c7d9":
+        "the `continue` is the loop body's tail but for the HELD test; a launch-refused state is not HELD, so "
+        "without it the loop goes on the same way",
+    "walk_runner.run_walks:delete:L12:C8:35f36fd2":
+        "the `if launch-refused: continue` is the loop body's tail but for the HELD test; a launch-refused state is "
+        "not HELD, so without it the loop goes on the same way",
+    "walk_runner.run_walks:delete:L13:C12:93cfda8b":
+        "`continue` replaced by `pass` falls to the HELD test, which a launch-refused state never meets, so the loop "
+        "goes on the same way",
 }
 
 
@@ -1243,9 +1356,10 @@ class G1Generated(Case):
         self.assertEqual(bare, [], "G1.generated: EQUIVALENT entries without a reason")
 
 
-# Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
-GENERATED_ORDER = ("R10Guards", "R6Cli", "R7Slot", "G1Generated", "R4Held", "R3DeadWalk", "R8WalkRoad", "R2WalkCheck", "R1Chain",
-                   "R5Round3", "R9RealGrade", "TestSysPath")
+# Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can. R8WalkRoad drives one
+# walk for all its tests, so it runs before R4Held and R3DeadWalk, which drive one or more walks per test.
+GENERATED_ORDER = ("R11Units", "R10Guards", "R6Cli", "R7Slot", "G1Generated", "R8WalkRoad", "R4Held", "R3DeadWalk",
+                   "R2WalkCheck", "R1Chain", "R5Round3", "R9RealGrade", "TestSysPath")
 
 
 def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
@@ -1359,6 +1473,287 @@ class R10Guards(Case):
         self.assertIs(wr._remove(types.SimpleNamespace(remove=fail), "c2"), boom, "R10.guards")
 
 
+# ------------------------------------------------------------------------------------------------- R11
+# Fold w10-athena-survivors (athena run gap4-w10-5ff8b2e-20261013T003648Z): the walk road's functions one at a time,
+# without a walk. The generated sweep left 101 survivors in five classes: run.py's walk readers and drive.walk_files
+# had no direct test of their refusals (each was reached only on its clean road); type guards were only ever handed
+# the right type; the runner's launch-failure, removal-failure, wrong-check-file and grade-refusal roads had no test;
+# a few values were never read back (the walk id in the result, a failed deletion's reason, a route refusal's text);
+# and run_walks was never handed two walks that both commit. Each test here feeds the bad input directly and reads
+# the exact refusal, so each kill is by assertion.
+def stub_driver(root: Path, *, walk_check=None, launch=None, drive=None, remove=None, published=None):
+    """A walk driver stand-in whose class's launch carries the namespace walk_runner.driver_namespace reads (the drive
+    module's LaunchRefused and WALK_CHECK, or another WALK_CHECK)."""
+    g = {"__name__": "synthetic_drive", "LaunchRefused": MODS["drive"].LaunchRefused,
+         "WALK_CHECK": MODS["drive"].WALK_CHECK if walk_check is None else walk_check}
+    exec("class StubDriver:\n    def launch(self, row):\n        return self.on_launch(row)\n", g)
+    d = g["StubDriver"]()
+    d.records, d.records_root, d.calls = "walks", root, []
+
+    def note(name, fn):
+        def call(*a):
+            d.calls.append((name,) + a)
+            return fn(*a)
+        return call
+    d.on_launch = note("launch", launch or (lambda row: "c1"))
+    d.drive = note("drive", drive or (lambda row, cid: {"checker_reasons": [], "events": {}}))
+    d.remove = note("remove", remove or (lambda cid: None))
+    d.published = note("published", published or (lambda row, n: None))
+    return d
+
+
+def raiser(exc):
+    def fn(*a):
+        raise exc
+    return fn
+
+
+class R11Units(Case):
+    """Each walk-road function fed one bad input directly; the refusal is read by its type and its words."""
+
+    def raising(self, exc, words, fn, *args, **kwargs):
+        try:
+            fn(*args, **kwargs)
+        except exc as e:
+            self.assertIn(words, str(e), f"R11.units: refused for another reason: {e}")
+            return e
+        except AssertionError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"R11.units: {type(e).__name__} instead of {exc.__name__} ({words!r}): {str(e)[:300]}")
+        self.fail(f"R11.units: nothing raised ({words!r})")
+
+    def scratch(self) -> Path:
+        return Path(tempfile.mkdtemp(dir=tbi.SCRATCH)).resolve()
+
+    # ---- run.walk_row, run.grade_walk
+    ENTRY = {"walk": "w-0001", "task": "synthetic-task", "half": "trap", "wording": "w1", "arm": "C",
+             "model": "claude-synthetic"}
+    LEDGER = {"task": "synthetic-task", "half": "trap", "wording": "w1", "arm": "C", "model_requested": "claude-synthetic",
+              "pressure": "low", "repeat": None, "agent": {"name": "synthetic"}, "project": "synthetic-project",
+              "first_agent_turn": True, "outcome": "synthetic-outcome"}
+
+    def test_walk_row_binds_the_ledger(self):
+        run = MODS["run"]
+        got = self.must("R11.units", run.walk_row, dict(self.ENTRY), dict(self.LEDGER))
+        self.assertEqual(got, {"task": "synthetic-task", "half": "trap", "wording": "w1", "arm": "C",
+                               "model": "claude-synthetic", "agent": {"name": "synthetic"},
+                               "project": "synthetic-project", "pressure": "low", "repeat": None}, "R11.units")
+        for key, led in (("task", "task"), ("half", "half"), ("wording", "wording"), ("arm", "arm"),
+                         ("model", "model_requested")):
+            with self.subTest(key=key):
+                self.raising(ValueError, f"records {led} 'synthetic-other'", run.walk_row, dict(self.ENTRY),
+                             dict(self.LEDGER, **{led: "synthetic-other"}))
+        for gone in ("pressure", "repeat"):
+            with self.subTest(gone=gone):
+                led = dict(self.LEDGER)
+                led.pop(gone)
+                self.raising(ValueError, f"records no {gone}", run.walk_row, dict(self.ENTRY), led)
+        for pressure, repeat in ((None, None), ("low", 2)):
+            with self.subTest(pressure=pressure, repeat=repeat):
+                self.raising(ValueError, "exactly one of them is None", run.walk_row, dict(self.ENTRY),
+                             dict(self.LEDGER, pressure=pressure, repeat=repeat))
+        self.raising(ValueError, "is not the one the walk's driver ledger records", run.walk_row, dict(self.ENTRY),
+                     dict(self.LEDGER), {"pressure": "high", "repeat": None})
+        self.assertEqual(self.must("R11.units", run.walk_row, dict(self.ENTRY), dict(self.LEDGER),
+                                   {"pressure": "low", "repeat": None})["pressure"], "low", "R11.units")
+
+    def test_grade_walk_reads_a_folder_by_any_path_and_the_first_turn(self):
+        run = MODS["run"]
+        folder = self.scratch()
+        (folder / "driver-ledger.json").write_text(json.dumps(self.LEDGER))
+        got = self.must("R11.units", run.grade_walk, dict(self.ENTRY), str(folder), grade=lambda row, f: {"g": 1})
+        self.assertEqual((got.get("graded"), got.get("grade")), (True, {"g": 1}), f"R11.units: {got}")
+        (folder / "driver-ledger.json").write_text(json.dumps(dict(self.LEDGER, first_agent_turn=False, task="x")))
+        got = self.must("R11.units", run.grade_walk, dict(self.ENTRY), folder, grade=lambda row, f: {"g": 1})
+        self.assertEqual(got, {"graded": False, "why": "no first agent turn, so a rehearsal before the agent's first "
+                                                       "turn (the routing table's first row): synthetic-outcome"},
+                         "R11.units")
+
+    # ---- run.died_before_turn_one
+    def dead(self, files: dict) -> Path:
+        folder = self.scratch()
+        for name, doc in files.items():
+            (folder / name).write_text(doc if isinstance(doc, str) else json.dumps(doc))
+        return folder
+
+    def test_died_before_turn_one_says_why(self):
+        run = MODS["run"]
+        said = lambda files: self.must("R11.units", run.died_before_turn_one, self.dead(files))  # noqa: E731
+        self.assertEqual(said({"refusal.json": {"refused": "synthetic-check", "why": "synthetic reason"}}),
+                         "the walk was refused before its first turn (synthetic-check: synthetic reason)", "R11.units")
+        checks = [{"id": "a", "ok": True, "detail": "fine"}, {"id": "b", "ok": False, "detail": "synthetic failure"}]
+        self.assertEqual(said({"preflight.json": {"ok": False, "checks": checks}}),
+                         "its preflight failed before the first turn (b: synthetic failure)", "R11.units")
+        self.assertEqual(said({"preflight.json": {"ok": False}}),
+                         "its preflight failed before the first turn (no check named)", "R11.units")
+        passed = "its preflight passed and no turn ran, so the driver wrote no ledger"
+        self.assertEqual(said({"preflight.json": {"ok": True, "checks": []}}), passed, "R11.units")
+        # only transcript.jsonl and turn-N.jsonl say a turn ran
+        self.assertEqual(said({"preflight.json": {"ok": True}, "notes.jsonl": "", "turn-notes.txt": ""}), passed,
+                         "R11.units")
+        self.raising(ValueError, "turn-1.jsonl", run.died_before_turn_one,
+                     self.dead({"preflight.json": {"ok": True}, "turn-1.jsonl": ""}))
+        self.raising(ValueError, "nothing says why", run.died_before_turn_one, self.dead({}))
+
+    # ---- drive.walk_files
+    def walk_folder(self, files) -> Path:
+        folder = self.scratch() / "w-0001"
+        folder.mkdir()
+        for name in files:
+            (folder / name).write_text("{}\n")
+        return folder
+
+    def test_walk_files_reads_only_a_real_folder_of_regular_files(self):
+        drive = MODS["drive"]
+        import os
+        complete = ("driver-ledger.json", "grade.json", "check.json")
+        folder = self.walk_folder(complete)
+        got = self.must("R11.units", drive.walk_files, os.path.relpath(folder))
+        self.assertEqual(sorted(p for p, _ in got), sorted(str(folder / n) for n in complete),
+                         "R11.units: walk_files gave other paths than the folder's absolute ones")
+        link = folder.parent / "w-link"
+        link.symlink_to(folder)
+        self.raising(drive.DriveRefused, "is not a walk folder", drive.walk_files, link)
+        self.raising(drive.DriveRefused, "is not a walk folder", drive.walk_files, folder / "grade.json")
+        target = folder.parent / "elsewhere.json"
+        target.write_text("{}\n")
+        linked = self.walk_folder(("driver-ledger.json", "grade.json"))
+        (linked / "check.json").symlink_to(target)
+        self.raising(drive.DriveRefused, "check.json in the walk folder is not a regular file", drive.walk_files,
+                     linked)
+        fifo = self.walk_folder(("driver-ledger.json", "grade.json"))
+        os.mkfifo(fifo / "check.json")
+        self.raising(drive.DriveRefused, "check.json in the walk folder is not a regular file", drive.walk_files,
+                     fifo)
+        ran = self.walk_folder(("preflight.json", "grade.json", "check.json", "turn-1.jsonl"))
+        self.raising(drive.DriveRefused, "holds turn-1.jsonl and no driver-ledger.json", drive.walk_files, ran)
+
+    # ---- drive.walk_identity_problems
+    def test_a_walk_identity_of_another_shape_is_refused_by_name(self):
+        import prereg
+        with mock.patch.object(prereg, "load", tww.REAL_LOAD):     # the real draft's session namespace
+            self.identity_cases()
+
+    def identity_cases(self):
+        drive = MODS["drive"]
+        row = {"walk": "w-0001"}
+        for ident in (["synthetic"], "synthetic"):
+            with self.subTest(ident=ident):
+                self.raising(drive.LaunchRefused, "is not its own", drive.walk_identity_problems,
+                             types.SimpleNamespace(identity_for=lambda r, i=ident: i), row)
+        e = self.raising(drive.LaunchRefused, "is not its own", drive.walk_identity_problems,
+                         types.SimpleNamespace(identity_for=lambda r: {"session_id": "synthetic-sid", "row": None,
+                                                                       "row_commit": None}), row)
+        self.assertIn("'synthetic-sid'", str(e), "R11.units: the refusal does not show the identity it read")
+
+    # ---- walk_runner
+    def test_check_record_and_its_file(self):
+        wr = MODS["walk_runner"]
+        self.raising(TypeError, "the drive returned no records", wr.check_record, "w-0001", None, None,
+                     lambda r, t: {"route": "x"}, checked=True)
+        doc = self.must("R11.units", wr.check_record, "w-0001", {"checker_reasons": None, "events": None}, None,
+                        raiser(ValueError("synthetic: no route")), checked=False)
+        self.assertEqual((doc["checker_reasons"], doc["route"], doc["route_refused"]),
+                         ([], None, "ValueError: synthetic: no route"), f"R11.units: {doc}")
+        folder = self.scratch()
+        self.assertEqual(self.must("R11.units", wr.write_check, folder, doc), folder / "check.json", "R11.units")
+
+    def test_publish_reports_a_failed_deletion_and_touches_no_missing_folder(self):
+        wr = MODS["walk_runner"]
+        folder = self.scratch()
+        (folder / "postflight.json").write_text(json.dumps({"ok": True}))
+        (folder / "teardown.json").write_text(json.dumps({"teardown": {}, "problems": []}))
+        d = stub_driver(folder, published=raiser(RuntimeError("synthetic: busy")))
+        self.assertEqual(self.must("R11.units", wr._publish, d, {}, folder),
+                         "the config folder could not be deleted: RuntimeError: synthetic: busy", "R11.units")
+        self.assertIsNone(self.must("R11.units", wr._publish, d, {}, folder / "absent"), "R11.units")
+
+    def one(self, d, row, reason="synthetic: a reason", repo=None, route_fn=None):
+        wr = MODS["walk_runner"]
+        repo = repo or types.SimpleNamespace(commit_walk=lambda entry: {"commit": "c0"})
+        return self.must("R11.units", wr.run_one, d, repo, row, reason, table=None,
+                         route_fn=route_fn or (lambda r, t: {"route": "synthetic-route"}), grade=None)
+
+    def test_run_one_refuses_a_row_with_no_walk_id_or_reason(self):
+        wr = MODS["walk_runner"]
+        for row in (None, {"walk": 5, "slot": 5}):
+            with self.subTest(row=row):
+                d = stub_driver(self.scratch())
+                got = self.one(d, row)
+                self.assertEqual((got.get("walk"), got.get("state"), got.get("why")),
+                                 (None if row is None else 5, wr.LAUNCH_REFUSED, "the walk row names no walk id"),
+                                 f"R11.units: {got}")
+                self.assertEqual(d.calls, [], "R11.units: a row with no walk id reached the driver")
+        d = stub_driver(self.scratch())
+        got = self.one(d, {"walk": "w-0001", "slot": "w-0001"}, reason=5)
+        self.assertEqual(got.get("state"), wr.LAUNCH_REFUSED, f"R11.units: {got}")
+        self.assertIn("has no reason", got.get("why", ""), f"R11.units: {got}")
+        self.assertEqual(d.calls, [], "R11.units: a walk with no reason reached the driver")
+
+    def test_a_launch_that_failed_after_making_things_is_held(self):
+        wr = MODS["walk_runner"]
+        boom = RuntimeError("synthetic: launch broke")
+        boom.container_id = "c9"
+        row = {"walk": "w-0001", "slot": "w-0001"}
+        d = stub_driver(self.scratch(), launch=raiser(boom))
+        got = self.one(d, row)
+        self.assertEqual((got.get("state"), got.get("why"), got.get("config")),
+                         (wr.HELD, "launch failed: RuntimeError: synthetic: launch broke", None), f"R11.units: {got}")
+        self.assertIn(("remove", "c9"), d.calls, "R11.units: the launch's container was not removed")
+        d = stub_driver(self.scratch(), launch=raiser(boom), remove=raiser(OSError("synthetic: stuck")))
+        got = self.one(d, row)
+        self.assertEqual(got.get("why"), "launch failed: RuntimeError: synthetic: launch broke; and its container "
+                                         "could not be removed: synthetic: stuck", f"R11.units: {got}")
+
+    def test_a_container_that_could_not_be_removed_holds_the_walk(self):
+        wr = MODS["walk_runner"]
+        d = stub_driver(self.scratch(), remove=raiser(OSError("synthetic: stuck")))
+        got = self.one(d, {"walk": "w-0001", "slot": "w-0001"})
+        self.assertEqual(got.get("state"), wr.HELD, f"R11.units: {got}")
+        self.assertIn("container c1 could not be removed: synthetic: stuck", got.get("why", ""), f"R11.units: {got}")
+
+    def test_a_driver_of_another_check_file_is_refused(self):
+        wr = MODS["walk_runner"]
+        d = stub_driver(self.scratch(), walk_check="synthetic-check.json")
+        self.raising(RuntimeError, "the driver's walk check file is 'synthetic-check.json'", wr.run_one, d,
+                     types.SimpleNamespace(commit_walk=lambda e: {"commit": "c0"}), {"walk": "w-0001",
+                                                                                     "slot": "w-0001"},
+                     "synthetic: a reason", table=None, route_fn=lambda r, t: {"route": "x"}, grade=None)
+
+    def walk_dir(self, root: Path, ledger=None) -> Path:
+        folder = root / MODS["mode_binding"].WALKS_DIR / "w-0001"
+        folder.mkdir(parents=True)
+        if ledger is not None:
+            (folder / "driver-ledger.json").write_text(json.dumps(ledger))
+        return folder
+
+    def test_a_walk_the_grade_refuses_is_held(self):
+        wr = MODS["walk_runner"]
+        root = self.scratch()
+        self.walk_dir(root)                                  # no ledger, no pre-turn record: grade_walk refuses
+        got = self.one(stub_driver(root), {"walk": "w-0001", "slot": "w-0001"})
+        self.assertEqual(got.get("state"), wr.HELD, f"R11.units: {got}")
+        self.assertIn("the walk was not committed: ValueError", got.get("why", ""), f"R11.units: {got}")
+
+    def test_a_committed_walk_reports_its_grade_and_route(self):
+        wr = MODS["walk_runner"]
+        root = self.scratch()
+        self.walk_dir(root, dict(self.LEDGER, first_agent_turn=False))
+        got = self.one(stub_driver(root), dict(self.ENTRY, slot="w-0001"))
+        self.assertEqual({k: got.get(k) for k in ("walk", "state", "commit", "graded", "route", "checker_reasons")},
+                         {"walk": "w-0001", "state": wr.COMMITTED, "commit": "c0", "graded": False,
+                          "route": "synthetic-route", "checker_reasons": []}, f"R11.units: {got}")
+
+    def test_run_walks_goes_on_after_a_committed_walk(self):
+        wr = MODS["walk_runner"]
+        root = self.scratch()
+        repo = types.SimpleNamespace(root=root, commit_walk=lambda e: None)
+        with mock.patch.object(wr, "run_one", lambda *a, **k: {"state": wr.COMMITTED}):
+            got = self.must("R11.units", wr.run_walks, stub_driver(root), repo, [{"row": {}}, {"row": {}}])
+        self.assertEqual(len(got), 2, f"R11.units: the runner stopped after a committed walk: {got}")
+
+
 class TestSysPath(unittest.TestCase):
     def test_the_module_puts_sys_path_back(self):
         """Binding W6M1 (tests/test_wave6_bindings.py) for this module: it imports check_take.py through drive.py and
@@ -1382,7 +1777,8 @@ BOUND = {"R1.chain": "R1Chain.test_one_walk_end_to_end",
          "R8.walk-road": "R8WalkRoad",
          "R9.real-grade": "R9RealGrade.test_the_real_grader_reads_a_fake_walk",
          "G1.generated": "G1Generated.test_the_equivalent_list_matches_the_generated_mutants",
-         "R10.guards": "R10Guards"}
+         "R10.guards": "R10Guards",
+         "R11.units": "R11Units"}
 # R2's and R4's witnesses each name the one method they turn red
 METHOD = {"walk-checked-as-take": "R2WalkCheck.test_a_walk_is_read_as_a_walk",
           "walk-session-unbound": "R2WalkCheck.test_a_walk_is_read_as_a_walk",
