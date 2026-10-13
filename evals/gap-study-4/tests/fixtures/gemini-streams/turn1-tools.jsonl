@@ -1,0 +1,11 @@
+{"type": "init", "timestamp": "2026-10-12T00:00:01.000Z", "session_id": "synthetic-session-0001", "model": "gemini-3.8-flash"}
+{"type": "message", "timestamp": "2026-10-12T00:00:02.000Z", "role": "user", "content": "Synthetic operator line one."}
+{"type": "message", "timestamp": "2026-10-12T00:00:03.000Z", "role": "assistant", "content": "Synthetic reply ", "delta": true}
+{"type": "message", "timestamp": "2026-10-12T00:00:04.000Z", "role": "assistant", "content": "one.", "delta": true}
+{"type": "tool_use", "timestamp": "2026-10-12T00:00:05.000Z", "tool_name": "run_shell_command", "tool_id": "tool-1", "parameters": {"command": "ls", "description": "list the folder"}}
+{"type": "tool_result", "timestamp": "2026-10-12T00:00:06.000Z", "tool_id": "tool-1", "status": "success", "output": "README.md\n"}
+{"type": "tool_use", "timestamp": "2026-10-12T00:00:07.000Z", "tool_name": "read_file", "tool_id": "tool-2", "parameters": {"file_path": "README.md"}}
+{"type": "tool_result", "timestamp": "2026-10-12T00:00:08.000Z", "tool_id": "tool-2", "status": "success", "output": "synthetic file text"}
+{"type": "tool_use", "timestamp": "2026-10-12T00:00:09.000Z", "tool_name": "replace", "tool_id": "tool-3", "parameters": {"file_path": "src/b.py", "old_string": "a", "new_string": "b"}}
+{"type": "tool_result", "timestamp": "2026-10-12T00:00:10.000Z", "tool_id": "tool-3", "status": "error", "error": {"type": "edit_no_occurrence_found", "message": "synthetic: no match"}}
+{"type": "result", "timestamp": "2026-10-12T00:00:11.000Z", "status": "success", "stats": {"total_tokens": 1500, "input_tokens": 1200, "output_tokens": 90, "cached": 800, "input": 400, "duration_ms": 5000, "tool_calls": 3, "models": {"gemini-3.8-flash": {"total_tokens": 1500, "input_tokens": 1200, "output_tokens": 90, "cached": 800, "input": 400}}}}
