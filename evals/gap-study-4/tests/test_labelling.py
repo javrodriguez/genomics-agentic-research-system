@@ -20,12 +20,14 @@ lines, each starting with its own prefix; a check that raises reports that as it
   B1-bind     the frame binds to the committed results both ways: a record missing, an extra record, a changed
               record, a duplicate; a harness-error result is not required. Exact problem lines.
   A1-split    largest remainder with sorted ties, proportional to weights, never past a cap, the excess split again.
-  S1-seed     the draw is a function of the seed: two draws agree, another seed differs, and the pinned golden draw.
+  S1-seed     the draw is a function of the seed: two draws agree, another seed differs, and the pinned golden draw;
+              a design the draw could not run on is refused by its own rule first.
   O1-over     failures and disagreements are over-sampled by their factors (and only by their own).
   M1-models   every design model is drawn; each cell's equal share and the seeded remainder.
   W1-weights  every item carries its stratum's frame size and drawn count, both true.
   P1-pin      the pin prints the seed, the strata, the canonical design and its sha256; --pin reads the draft's models.
-  C1-check    sample.check: nothing to draw, results without a frame, no design, a drift, a match; exact output.
+  C1-check    sample.check: nothing to draw, results without a frame, no design, a drift, a match, a malformed frame
+              (refused by its rule before it is bound, never a crash); read_design refuses a bad design; exact output.
   C2-cli      sample.py's command line over its own paths (patched to a temporary tree): --check, --write, --help
               and the parser's refusals.
 
@@ -39,7 +41,8 @@ lines, each starting with its own prefix; a check that raises reports that as it
   K4-content  post-probe content: missing take, its keys, text not a string, actions not a list of strings, an
               action off the neutral format (a harness's own tool words, an unknown verb, no object).
   K5-render   render refuses an item with another key; the golden sheet; items in sheet-id order.
-  K6-write    write_sheet refuses a sheet that still shows a hidden string; the CLI refuses an --out in the study.
+  K6-write    write_sheet refuses a sheet that still shows a hidden string, and definitions off the grader's labels;
+              the CLI refuses an --out in the study.
   K7-cli      sheet.py's command line: the written sheet is write_sheet's; missing content, a drifted sample, no
               frame and nothing to sheet are refused with their own lines.
 
@@ -50,21 +53,22 @@ lines, each starting with its own prefix; a check that raises reports that as it
   G3-back     the carried-back figure weights each stratum by its frame size (hand-computed), Bonferroni bounds,
               unsampled strata print no figure.
   G4-pool     a row missing a name, two rows of one key, or a take of another row is refused; render refuses them.
-  G5-check    agreement.check: no labels, a match, an edited label file, an edited page, a drifted sample; exact
-              output.
+  G5-check    agreement.check: no labels, a match, an edited label file, an edited page, a drifted sample,
+              definitions off the grader's labels; exact output.
   G6-history  labels.json committed once and on disk as committed (fake git: shallow, none, two commits, an edit; a
-              real temporary repository).
+              real temporary repository); a failing git rev-parse refuses whatever it prints, in both arms.
   G7-unmeasured --unmeasured prints exactly "grader agreement unmeasured".
   G8-cli      agreement.py's command line over its own paths: --write, --check, --help, bad labels, no labels.
   L1-lint     lint_language and lint_pooling find nothing in the rendered page, the sheet or this lane's files.
   X1-script   each file run as a script exits with main()'s code.
   N1-names    each module's own paths, as the command lines read them.
 
-Witnesses (hand-picked, whole-file, compiled in memory): WITNESSES below, 34, among them the brief's six: a model name
+Witnesses (hand-picked, whole-file, compiled in memory): WITNESSES below, 64, among them the brief's six: a model name
 leaking into the sheet, an unseeded draw, failures not over-sampled, weights dropped from the agreement, a figure
 pooled across harnesses without its label, --check passing on an edited label file. The generated sweep
 (`--generated-mutants`) mutates the three files by kind and runs every check against each mutant; every survivor is
-in EQUIVALENT with a reason whose token its line holds, and a stale entry fails.
+in EQUIVALENT with a reason whose token its line holds, and a stale entry fails; a mutant whose run leaves the shared
+modules changed fails too (LEAKED), since every later mutant of the shard would run against that change.
 
 Fakes only: no model, vendor, network, container, credential or holdout. setUpModule arms a process guard that refuses
 every process start but `git` (the history check's temporary repository), clears the environment to a fixed few
@@ -416,6 +420,14 @@ def s1_seed(sm, sh, ag):
     if sm.draw(shuffled, DESIGN) != a:
         out.append("S1: the draw depends on the frame's order")
     out += refused("S1", lambda: sm.draw(FRAME, design(seed="x")), sm.SampleError, "a bad design")
+    try:                     # a design the draw cannot even run on is refused by its own rule, before any drawing
+        sm.draw(FRAME, design(about_n="12"))
+        out.append("S1: draw accepted about_n as text")
+    except sm.SampleError as err:
+        if str(err) != "about_n is a positive int":
+            out.append(f"S1: draw refused about_n as text with {err}")
+    except Exception as err:  # noqa: BLE001
+        out.append(f"S1: draw ran a design it never validated: {type(err).__name__}")
     out += refused("S1", lambda: sm.draw(FRAME[:-1] + [dict(FRAME[-1], readers="x")], DESIGN), sm.SampleError,
                    "a bad frame")
     if sm.render(a) != json.dumps(a, indent=1, sort_keys=True) + "\n":
@@ -593,11 +605,15 @@ def c1_check(sm, sh, ag):
                                    "sample: FAIL sample.json stands with no frame or results to derive it from\n")
         x = _tree(t / "unbound", results=[e["record"] for e in FRAME[1:]], write_sample=False)
         cases["unbound"] = (x, 1, "sample: FAIL BIND: frame record ")
+        mf = _tree(t / "malformed", frame_=[FRAME[0], ["x"]], results=[e["record"] for e in FRAME],
+                   write_sample=False)
+        cases["a malformed frame"] = (mf, 1, "sample: FAIL a frame entry holds exactly ('take', 'readers', 'record')\n")
         for what, (paths, rc_want, text) in cases.items():
             rc, got = out_of(sm.check, **paths)
             ok = got.startswith(text) if text.endswith(("; ", "record ")) else got == text
             if rc != rc_want or not ok:
                 out.append(f"C1: {what}: rc {rc} {got[:160]!r}")
+        out += refused("C1", lambda: sm.read_design(b["prereg"]), sm.SampleError, "a bad design in read_design")
         if sm.derive(**{k_: v for k_, v in cases["nothing"][0].items() if k_ != "sample_path"}) is not None:
             out.append("C1: derive over nothing is not None")
         got = sm.derive(**{k_: v for k_, v in p.items() if k_ != "sample_path"})
@@ -966,6 +982,9 @@ def k6_write(sm, sh, ag):
     leaky = {**DEFS, "task-one": {**DEFS["task-one"], "held": "what Gemini does"}}
     out += refused("K6", lambda: sh.write_sheet(doc, contents_for(FRAME), FRAME, DESIGN, leaky, GL), sh.SheetError,
                    "definitions naming a vendor")
+    off = dict(DEFS, **{"task-one": {k: v for k, v in DEFS["task-one"].items() if k != "did-not-reach"}})
+    out += refused("K6", lambda: sh.write_sheet(doc, contents_for(FRAME), FRAME, DESIGN, off, GL), sh.SheetError,
+                   "definitions whose labels are not the grader's")
     out += refused("K6", lambda: sh.write_sheet(doc, contents_for(FRAME), FRAME, DESIGN, {"task-one": DEFS["task-one"]},
                                                 GL), sh.SheetError, "definitions missing a sampled task")
     got = sh.write_sheet(doc, contents_for(FRAME), FRAME, DESIGN, DEFS, GL)
@@ -1319,6 +1338,11 @@ def g5_check(sm, sh, ag):
         rc, got = out_of(ag.check, page=str(page), git=git, **kw)
         if (rc, got) != (1, "agreement: FAIL no definitions for task task-two\n"):
             out.append(f"G5: missing definitions: {rc} {got!r}")
+        Path(kw["defs_path"]).write_text(json.dumps(dict(DEFS, **{"task-one": {
+            k: v for k, v in DEFS["task-one"].items() if k != "did-not-reach"}})))
+        rc, got = out_of(ag.check, page=str(page), git=git, **kw)
+        if (rc, got) != (1, "agreement: FAIL task task-one: the labels defined are not its grader's labels\n"):
+            out.append(f"G5: definitions off the grader's labels: {rc} {got!r}")
         Path(kw["defs_path"]).write_text(json.dumps(DEFS))
         lp_.unlink()
         never = fake_git(kw["labels_path"], shas=())
@@ -1396,6 +1420,16 @@ def g6_history(sm, sh, ag):
             if ag.history_problems(str(p), failing_show) != ["HISTORY: labels.json on disk is not the one commit's"]:
                 out.append("G6: a failing git show passed on an empty file")
             p.write_text('{"labels": []}\n')
+
+            def failing_rev_parse(*args):
+                return (128, "false\n") if args[0] == "rev-parse" else fake_git(p, shas=shas_)(*args)
+            refuse = ["HISTORY: the history cannot be read in full (a shallow clone or no git); refused"]
+            shas_ = ("a" * 40,)
+            if ag.history_problems(str(p), failing_rev_parse) != refuse:
+                out.append("G6: history_problems passed a failing git rev-parse")
+            shas_ = ()
+            if ag.gone_problems(str(p) + ".absent", failing_rev_parse, page=str(p) + ".nopage") != refuse:
+                out.append("G6: gone_problems passed a failing git rev-parse")
 
             def failing_log(*args):
                 return (1, "a" * 40 + "\n") if args[0] == "log" else fake_git(p)(*args)
@@ -1503,12 +1537,16 @@ def l1_lint(sm, sh, ag):
 def _patched(sm, sh, ag, root: Path, kw: dict):
     """The modules' own paths pointed at a temporary tree, for the CLIs (read when called, never bound at import)."""
     st = contextlib.ExitStack()
-    for mod, name, value in ((sm, "FRAME", kw["frame_path"]), (sm, "PREREG", kw["prereg"]),
-                             (sm, "RESULTS", kw["results"]), (sm, "SAMPLE", kw["sample_path"]),
-                             (sh, "DEFINITIONS", str(root / "definitions.json")),
-                             (sh, "grader_labels", lambda t: GL[t]),
-                             (ag, "LABELS", str(root / "labels.json")), (ag, "PAGE", str(root / "AGREEMENT.md"))):
-        st.enter_context(mock.patch.object(mod, name, value))
+    try:                     # a patch that fails (a mutant without the name) unwinds the ones before it, or they leak
+        for mod, name, value in ((sm, "FRAME", kw["frame_path"]), (sm, "PREREG", kw["prereg"]),
+                                 (sm, "RESULTS", kw["results"]), (sm, "SAMPLE", kw["sample_path"]),
+                                 (sh, "DEFINITIONS", str(root / "definitions.json")),
+                                 (sh, "grader_labels", lambda t: GL[t]),
+                                 (ag, "LABELS", str(root / "labels.json")), (ag, "PAGE", str(root / "AGREEMENT.md"))):
+            st.enter_context(mock.patch.object(mod, name, value))
+    except BaseException:
+        st.close()
+        raise
     return st
 
 
@@ -1869,6 +1907,10 @@ WITNESSES = {
     "cap-ignored": _w("sm", a1_split, ("capped = [k for k in open_ if give[k] >= caps[k]]", "capped = []")),
     "sheet-order-unshuffled": _w("sm", s1_seed, ("rng.shuffle(picked)", "pass")),
     "frame-size-wrong": _w("sm", w1_weights, ('"frame": len(groups[k])', '"frame": counts[k]')),
+    "draw-design-unvalidated": _w("sm", s1_seed, ("    validate_design(design)\n    validate_frame(frame, design)\n",
+                                                  "    validate_frame(frame, design)\n")),
+    "derive-frame-unvalidated": _w("sm", c1_check, ("    validate_frame(frame, design)\n    bad = frame_problems",
+                                                    "    bad = frame_problems")),
     "sample-check-uncompared": _w("sm", c1_check, ("if fh.read() != render(doc):", "if False:")),
     # ---- sheet.py
     "take-id-as-sheet-id": _w("sh", k1_blind, ('items.append({"sheet_id": it["sheet_id"]',
@@ -1879,6 +1921,7 @@ WITNESSES = {
     "item-keys-unchecked": _w("sh", k5_render, ("if set(it) != set(ITEM_FIELDS):", "if False:")),
     "defs-label-subset": _w("sh", k3_defs, ("if set(d) != set(grader_labels[task]):",
                                             "if not set(d) <= set(grader_labels[task]):")),
+    "sheet-definitions-unvalidated": _w("sh", k6_write, ("    validate_definitions(defs, [i[\"task\"] for i in items], grader_labels)\n", "")),
     "out-in-study-admitted": _w("sh", k6_write, ("if inside_study(args.out):", "if False:")),
     # ---- agreement.py
     "bonferroni-dropped": _w("ag", g3_back, ('stats.intervals.clopper_pearson(s["agree"], s["drawn"], alpha / len(strata))',
@@ -1891,6 +1934,11 @@ WITNESSES = {
                                                       'if rc != 0:\n        return ["HISTORY')),
     "gone-shallow-admitted": _w("ag", g5_check, ('if rc != 0 or shallow.strip() != "false":\n        return out + [',
                                                  'if rc != 0:\n        return out + [')),
+    "gone-failed-git-admitted": _w("ag", g6_history, ('if rc != 0 or shallow.strip() != "false":\n        return out + [',
+                                                      'if shallow.strip() != "false":\n        return out + [')),
+    "history-failed-git-admitted": _w("ag", g6_history, ('if rc != 0 or shallow.strip() != "false":\n        return ["HISTORY',
+                                                         'if shallow.strip() != "false":\n        return ["HISTORY')),
+    "agreement-definitions-unvalidated": _w("ag", g5_check, ("    sheet.validate_definitions(defs, tasks, glabels)\n", "")),
     "unmeasured-words": _w("ag", g7_unmeasured, ('UNMEASURED = "grader agreement unmeasured"',
                                                  'UNMEASURED = "grader agreement not measured"')),
     "label-off-definitions": _w("ag", g1_labels, ("if e[\"label\"] not in defs[tasks[sid]]:", "if False:")),
@@ -1913,7 +1961,7 @@ class TestWitnesses(unittest.TestCase):
         self.assertTrue(own, f"{name}: survived (no {prefix} line): {got}")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 58)
+        self.assertEqual(len(WITNESSES), 64)
         for name, (target, edits, _) in WITNESSES.items():
             path = TARGET_FILES[target]
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
@@ -2177,13 +2225,34 @@ def equivalent_problems() -> list:
     return out
 
 
+def shared_state() -> dict:
+    """{(module, name): value} of the modules every mutant shares (sample and sheet under a later file's mutants)."""
+    return {(m.__name__, k): v for m in (sm, sh, ag) for k, v in vars(m).items()}
+
+
+def leak_lines(key: str, before: dict) -> list:
+    """What a mutant's run left changed in the shared modules (review of run gap4-w11d-79e9cba: a patch half-entered
+    by _patched leaked sample.FRAME into every later mutant of the shard); each is restored, and each fails the shard."""
+    now = shared_state()
+    bad = sorted(k for k in set(before) | set(now) if k not in now or k not in before or now[k] is not before[k])
+    mods = {m.__name__: m for m in (sm, sh, ag)}
+    for mod, name in bad:
+        if (mod, name) in before:
+            setattr(mods[mod], name, before[(mod, name)])
+        else:
+            delattr(mods[mod], name)
+    return [f"{key}: left {mod}.{name} changed in the shared modules" for mod, name in bad]
+
+
 def mutation_sweep(shard: int = 0, of: int = 1) -> dict:
     mutants, skipped = generated_mutants()
     keys = [m[0] for m in mutants]
     mine = [m for n, m in enumerate(mutants) if n % of == shard]
-    survived, killed, equivalent, stale = [], 0, 0, []
+    survived, killed, equivalent, stale, leaked = [], 0, 0, [], []
     for key, target, w, kind, i in mine:
+        before = shared_state()
         got = run_mutant(target, w, kind, i)
+        leaked += leak_lines(key, before)
         if key in EQUIVALENT:
             if got:
                 stale.append(f"{key}: listed EQUIVALENT but killed by {got[0][:96]}")
@@ -2196,7 +2265,8 @@ def mutation_sweep(shard: int = 0, of: int = 1) -> dict:
     stale += [f"{k}: listed EQUIVALENT but no such generated mutant" for k in EQUIVALENT if k not in keys]
     stale += [f"{k}: {why}" for k, why in equivalent_problems()]
     return {"generated": len(mutants), "shard": f"{shard + 1}/{of}", "ran": len(mine), "killed": killed,
-            "equivalent": equivalent, "survived": survived, "stale": stale, "message_text_skipped": skipped}
+            "equivalent": equivalent, "survived": survived, "stale": stale, "leaked": leaked,
+            "message_text_skipped": skipped}
 
 
 class TestGeneratedMutants(unittest.TestCase):
@@ -2227,6 +2297,24 @@ class TestGeneratedMutants(unittest.TestCase):
             with mock.patch.dict(EQUIVALENT, bad, clear=True):
                 self.assertTrue(equivalent_problems(), f"{bad} passed")
 
+    def test_a_mutant_that_breaks_a_patch_leaves_the_shared_modules_as_they_were(self):
+        mutants, _ = generated_mutants()
+        key, t, w, kind, i = next(m for m in mutants if m[1] == "sh" and m[3] == "stmt-delete"
+                                  and "DEFINITIONS = os.path.join" in m[0])
+        before = shared_state()
+        self.assertTrue(run_mutant(t, w, kind, i), f"{key} survived")
+        self.assertEqual(leak_lines(key, before), [])
+
+    def test_a_leak_is_named_and_restored(self):
+        before = shared_state()
+        frame_ = sm.FRAME
+        sm.FRAME = "/elsewhere/frame.json"
+        sm.w11d_stray = 1
+        self.assertEqual(leak_lines("k", before), ["k: left sample.FRAME changed in the shared modules",
+                                                   "k: left sample.w11d_stray changed in the shared modules"])
+        self.assertIs(sm.FRAME, frame_)
+        self.assertFalse(hasattr(sm, "w11d_stray"))
+
     def test_one_mutant_of_each_file_is_killed(self):
         mutants, _ = generated_mutants()
         for target, anchor in (("sm", "if e['readers'] not in READERS"), ("sh", "if set(it) != set(ITEM_FIELDS)"),
@@ -2253,11 +2341,13 @@ if __name__ == "__main__":
             print(f"SURVIVED {key}")
         for line in got["stale"]:
             print(f"STALE {line}")
+        for line in got["leaked"]:
+            print(f"LEAKED {line}")
         print(f"test_labelling generated mutants (shard {got['shard']}): generated {got['generated']}, ran "
               f"{got['ran']}, killed {got['killed']}, equivalent {got['equivalent']}, survived {len(got['survived'])}, "
-              f"stale {len(got['stale'])}; message-text strings skipped by rule: {got['message_text_skipped']}",
+              f"stale {len(got['stale'])}, leaked {len(got['leaked'])}; message-text strings skipped by rule: {got['message_text_skipped']}",
               flush=True)
-        raise SystemExit(0 if not got["survived"] and not got["stale"] else 1)
+        raise SystemExit(0 if not got["survived"] and not got["stale"] and not got["leaked"] else 1)
     if "--witnesses" in sys.argv:
         sys.argv.remove("--witnesses")
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(TestWitnesses)
