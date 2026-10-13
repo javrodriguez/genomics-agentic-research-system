@@ -27,6 +27,9 @@ proxy.log, transcript.jsonl, turn-N.jsonl, driver-ledger.json, environment.json,
 plus grade.json (run.regrade()'s output, or why the walk was not graded), and it holds driver-ledger.json and
 grade.json. The road that writes here is drive.walk_driver(records="walks"), and drive.WalkRepo commits the folder
 with its register entry in one commit. The folder's name comes from mode_binding.WALKS_DIR.
+W10 (lane w10-walk-runner, rulings D1 and D3; this paragraph edited without transfer, departure w10-5): a walk folder
+also holds check.json (the checker's reading and route, written by walk_runner.py), and a walk that died before its
+driver ledger holds preflight.json or refusal.json in its place; the rule itself is drive.walk_files, read here.
 
 ONE WALK, ONE COMMIT (lane w8d, ruling W8D-gap4-1, from W8A-R2-2; this file moved from lane w8a
 to lane w8d). The CLI's --check also reads the repository's history (history_problems): for each registered walk,
@@ -165,8 +168,10 @@ def registered(base: Path = REHEARSALS) -> list[dict]:
 
 
 def content_problems(base: Path, walks) -> list[str]:
-    """W8A (README Q2): each named walk's folder holds only a take folder's records plus grade.json, and holds
-    driver-ledger.json and grade.json (drive.walk_files, the same rule WalkRepo commits by). A folder that does not
+    """W8A (README Q2): each named walk's folder holds only a take folder's records plus grade.json and check.json, and
+    holds grade.json, check.json and driver-ledger.json, or preflight.json or refusal.json for a walk that died before
+    its first turn and holds no transcript or turn record (W10, W10-R2-3; drive.walk_files, the same rule WalkRepo
+    commits by). A folder that does not
     exist is check()'s to report, not this rule's."""
     import drive  # the closed map lives with the driver that writes it; imported here, never at module load
     out = []

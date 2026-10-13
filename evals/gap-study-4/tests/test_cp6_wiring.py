@@ -66,7 +66,11 @@ for p in (HERE, HERE / "tests"):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
+import prereg as _prereg  # noqa: E402
 import test_box_integration as tbi  # noqa: E402
+
+REAL_PREREG_LOAD = _prereg.load     # W10 (D2): captured before test_box_integration patches it; a walk's identity
+                                    # derives its session id from the pre-registered namespace
 
 SELECTED = None
 EDITS: tuple = ()
@@ -409,6 +413,11 @@ class W1WalkLaunch(Case):
         with contextlib.ExitStack() as st:
             sc = self.must("W1.walk-launch", Scene, st, records="walks")
             study_copy(sc.root)
+            # W10 (ruling D2, lane w10-walk-runner): a walk launches only under its own identity (session id from its
+            # walk id, no ledger row); the admitted walk is given it, so W1's refusals stay the ones named below
+            st.enter_context(mock.patch.object(MODS["prereg"], "load", REAL_PREREG_LOAD))
+            sc.driver.identity_for = lambda r: {"session_id": __import__("check_take").walk_session_id(r["walk"]),
+                                                "row": None, "row_commit": None}
             walk = a_walk()
             try:
                 sc.launch(walk)

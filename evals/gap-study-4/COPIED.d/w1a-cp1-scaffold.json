@@ -155,7 +155,7 @@
     {
       "path": "test_round4.py",
       "status": "new",
-      "reason": "Round 4's battery: discovers tests/test_*.py with unittest and refuses to pass on zero tests."
+      "reason": "Round 4's battery: discovers tests/test_*.py with unittest and refuses to pass on zero tests. Departure w10-7 (lane w10-walk-runner, athena fold of run gap4-w10-5ff8b2e-20261013T003648Z, no ownership transfer): HELPERS names tests/walk_mutation.py, the generator test_walk_runner imports and runs, so the battery's rule (a .py in tests/ that is neither test_*.py nor a named helper) holds with it present."
     },
     {
       "path": "tests/test_scaffold.py",

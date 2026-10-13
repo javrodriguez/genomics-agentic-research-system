@@ -191,6 +191,7 @@ def write_walk(walks: Path, entry: dict) -> Path:
     (folder / "launch.json").write_text("{}\n")
     (folder / "evidence" / "ledger.jsonl").write_text("{}\n")
     (folder / "grade.json").write_text(json.dumps({"graded": False, "why": "synthetic"}) + "\n")
+    (folder / "check.json").write_text(json.dumps({"walk": entry["walk"], "checker_reasons": []}) + "\n")  # W10, D1
     return folder
 
 

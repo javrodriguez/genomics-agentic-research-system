@@ -35,8 +35,11 @@ sys.path.insert(0, str(HERE))
 # Skip reasons a test may give and still pass the battery. Each entry needs a review that it measures nothing the
 # round relies on. Empty: no skip is allowed.
 SKIP_ALLOWED: tuple[str, ...] = ()
-# Python files in tests/ that are helpers, not test modules. Empty.
-HELPERS: tuple[str, ...] = ()
+# Python files in tests/ that are helpers, not test modules. Each entry names the test module that runs it.
+#   walk_mutation.py: the generator of tests/test_walk_runner.py's generated mutants (lane w10-walk-runner, ruling
+#   w10-R3-fold); it holds no test and is imported and run by test_walk_runner (G1, --generated-mutants).
+#   Departure w10-7 (lane w10-walk-runner, athena fold of run gap4-w10-5ff8b2e-20261013T003648Z).
+HELPERS: tuple[str, ...] = ("walk_mutation.py",)
 
 
 def suite(folder: Path | None = None) -> unittest.TestSuite:

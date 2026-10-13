@@ -2207,5 +2207,138 @@ def design_tree_problems(path: Path, design: "Design") -> list[str]:
             f"it did not run in"]
 
 
+# ---- W10 (lane w10-walk-runner; this file moved from lane w7b to lane w10 under glitch-2f's rulings D1 and D2,
+#      the Lane-orchestrator under Javier's standing delegation, Mon 12 Oct 2026). Appended here, above `if __name__`;
+#      no line above changes, so round 3's walk meaning (check(..., is_walk=True): no ledger row, the script cut before
+#      the probe) is byte for byte what it was (tests/test_walk_runner.py R5).
+#   D1  THE ROUND-4 WALK ROAD. A CP6 walk is graded, so it sends its wording's FULL script, probe included, and is
+#       read as a take is read (check(..., is_walk=False): the full script, the stop read from the driver ledger, the
+#       fixture, leak, context, reach and project checks), except for the ledger binding: a walk has no takes.json
+#       row (none exists before the freeze), so check_walk binds it to its own identity instead.
+#   D2  A WALK'S IDENTITY. Its session id is uuid5(takes.namespace(), "walk/" + <walk id>) (walk_session_id); its
+#       driver ledger and environment record carry row and row_commit None; the project name follows from the
+#       session id as a take's does.
+
+WALK_SESSION_PREFIX = "walk/"
+TAKE_ROW_NEEDED = "[invocation] " + "a graded take needs its ledger row (--row N) to check the binding"
+
+
+def walk_session_id(walk_id: str) -> str:
+    """D2: a walk's session id, from its walk id alone (a take's comes from its row's commit)."""
+    if not isinstance(walk_id, str) or not walk_id:
+        raise CheckRefused(f"a walk's session id is derived from its walk id, and {walk_id!r} is none")
+    return str(uuid.uuid5(takes_mod.namespace(), WALK_SESSION_PREFIX + walk_id))
+
+
+def check_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wording_script: list,
+               design: "Design") -> list[str]:
+    """D1: one round-4 walk's problems. check() reads it as a take with no ledger row, which ends in exactly one
+    TAKE_ROW_NEEDED line (asserted, never assumed); that line is replaced by the walk's own binding: its session id
+    is walk_session_id(walk_id), its driver ledger names this task and half, that session and no row, and the take's
+    tail (environment record with no row commit, model, constants, checkout, pinned instructions, prompt snapshot,
+    memory folder) is read as for a take."""
+    problems = check(path, task_id, half_name, None, False, wording_script=wording_script, design=design)
+    if not problems or problems[-1] != TAKE_ROW_NEEDED or problems.count(TAKE_ROW_NEEDED) != 1:
+        raise CheckRefused("check() did not end at the ledger binding as a take with no row; the walk road cannot "
+                           "be read past it")
+    problems = problems[:-1]
+    walk_pre = design.pre
+    sid = session_id_of(path)
+    want = walk_session_id(walk_id)
+    if sid != want:                                  # D2
+        problems.append("[session-binding] " + f"the session id does not match its walk. The transcript says {sid}, "
+                        f"and uuid5(namespace, {WALK_SESSION_PREFIX}{walk_id}) is {want}; this is not that walk's "
+                        f"session")
+    ledger = _ledger_beside(path)
+    if not isinstance(ledger, dict):
+        problems.append("[session-binding] " + "no driver ledger beside the walk's transcript, so nothing binds it "
+                        "to its walk")
+        return problems
+    if (ledger.get("task"), ledger.get("half")) != (task_id, half_name):
+        problems.append("[session-binding] " + f"the driver ledger is {ledger.get('task')}/{ledger.get('half')}, not "
+                        f"{task_id}/{half_name}")
+    if ledger.get("session_id") != want:
+        problems.append("[session-binding] " + f"the driver ledger records session {ledger.get('session_id')}, not "
+                        f"the walk's {want}")
+    if ledger.get("row") is not None or ledger.get("row_commit") is not None:
+        problems.append("[session-binding] " + "the driver ledger records a ledger row for a walk; a walk has none")
+    problems += environment_problems(path, ledger, walk_pre, None)          # D1: as for a take, no row commit
+    folder = path.parent
+    try:
+        rec = json.loads((folder / (walk_pre.get("environment_record") or {}).get("file", "environment.json")).read_text())
+    except (OSError, ValueError, AttributeError):
+        rec = None
+    if isinstance(rec, dict) and (rec.get("row") is not None or rec.get("row_commit") is not None):
+        problems.append("[environment-record] " + "the environment record names a ledger row for a walk; a walk has "
+                        "none")
+    if ledger.get("model_requested"):
+        problems += model_problems(path, ledger["model_requested"])
+    else:
+        problems.append("[session-binding] " + "the driver ledger names no model, so the walk's model cannot be bound")
+    problems += constant_problems(ledger, walk_pre)                     # D1: the take's tail
+    problems += checkout_problems(path, walk_pre)
+    problems += pinned_instruction_problems(path, design)               # D1: the take's tail
+    if not prompt_snapshot_present(path):
+        problems.append("[inherited-context] the session recorded no system-prompt snapshot, so whether the "
+                        "harness offered its memory folder could not be read")
+    if memory_section_offered(path):
+        problems.append("[inherited-context] the session was offered the harness's persistent memory folder "
+                        "outside its checkout; takes run with CLAUDE_CODE_DISABLE_AUTO_MEMORY=1")
+    return problems
+
+
+def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wording_script: list, arm: str,
+                design: "Design", table: dict | None = None) -> dict:
+    """D1: check4 for a round-4 walk, the same road and the same refusals, with check_walk in place of check's take
+    binding. Returns check4's shape: {"reasons", "problems", "events", "outside_reach"}."""
+    if not isinstance(wording_script, list) or not wording_script:
+        raise CheckRefused("a round-4 walk is checked against its own wording's script (a non-empty list)")
+    if not isinstance(design, Design):
+        raise CheckRefused("a round-4 walk is checked against its design view (check_take.design_view)")
+    if None in (design.half, design.script):
+        raise CheckRefused("the design view names no half or no wording script; both are the walk's own")
+    harness_guard(design.harness)
+    pending = list(design.pending)
+    if pending:
+        raise CheckRefused(f"the design view's constants {pending} are still PENDING; a value only a "
+                           f"walk can measure is never defaulted")
+    if (design.task_id, design.half) != (task_id, half_name):
+        raise CheckRefused(f"the design view is {design.task_id}/{design.half}, not {task_id}/{half_name}")
+    if design.script != wording_script:
+        raise CheckRefused("the script handed in is not the one the walk's own wording renders")
+    if not isinstance(design.run_tree, str) or not design.run_tree:
+        raise CheckRefused("the design view names no run tree; a walk is read against the tree the driver gave it")
+    ids = event_ids(table)
+    token = _PRE_IN_FORCE.set(design.pre)
+    try:
+        counts = event_counts(path)
+        if set(ids) != set(counts):
+            raise CheckRefused(f"routing.json's event ids {sorted(ids)} are not the ones this checker counts "
+                               f"{sorted(counts)}")
+        problems = check_walk(path, task_id, half_name, walk_id, wording_script=wording_script, design=design)
+    finally:
+        _PRE_IN_FORCE.reset(token)
+    problems += recorded_mode_problems(path, design.pre, arm)          # D1: as for a take
+    problems += design_tree_problems(path, design)                     # D1: as for a take
+    beside = _ledger_beside(path)
+    if isinstance(beside, dict) and beside.get("arm") != arm:
+        problems.append(f"[constant-binding] the walk's driver ledger records arm {beside.get('arm')!r}, and the walk is "
+                        f"checked as arm {arm!r}")
+    reasons, kept, as_events = [], [], set()
+    for problem in problems:
+        named = reason_ids([problem])
+        if not named:
+            raise CheckRefused(f"a refusal carries no reason id, so it cannot be routed: {problem[:80]!r}")
+        if named[0] in ids:                  # an event id: counted as an event, never a routed reason
+            as_events.add(named[0])
+        else:
+            reasons.append(named[0])
+            kept.append(problem)
+    for event in ids:
+        if (event in as_events) != (counts[event] > 0):
+            raise CheckRefused(f"{event}: check() and its reader disagree ({counts[event]} counted)")
+    return {"reasons": reasons, "problems": kept, "events": counts, "outside_reach": sum(counts.values())}
+
+
 if __name__ == "__main__":
     raise SystemExit(main())

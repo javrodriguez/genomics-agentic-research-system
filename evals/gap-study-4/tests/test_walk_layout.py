@@ -220,6 +220,7 @@ def write_walk(walks: Path, entry: dict, *, first_turn=True, grade=True, extra=N
     (folder / "evidence" / "ledger.jsonl").write_text("{}\n")
     if grade:
         (folder / "grade.json").write_text(json.dumps({"graded": False, "why": "synthetic"}) + "\n")
+    (folder / "check.json").write_text(json.dumps({"walk": entry["walk"], "checker_reasons": []}) + "\n")  # W10, D1
     if decoy:            # a session-folder file of the same name: a record, never a second session
         (folder / "session").mkdir()
         (folder / "session" / "transcript.jsonl").write_text("{}\n")

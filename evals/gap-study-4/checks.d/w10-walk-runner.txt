@@ -1,0 +1,21 @@
+# Lane w10-walk-runner: Gap Study round 4, the CP6 walk runner (glitch-2f's rulings D1, D2, D3): walks driven through
+# the walk arm one at a time, read by check4's round-4 walk road, graded and committed by WalkRepo with check.json.
+# One command per line, run from the repository root. --witnesses prints one witness line per mutant (rule B).
+# No walk, model, container, network, salt or holdout.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --witnesses
+# The generated mutation sweep (ruling w10-R3-fold): 533 mutants in 12 shards (about 45 each), each mutant capped at
+# 240 s so a line stays well under run_checks' 3600 s; each shard prints generated / killed / equivalent / survived
+# and fails on an unlisted survivor, a listed one killed, or a timeout.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 1/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 2/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 3/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 4/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 5/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 6/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 7/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 8/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 9/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 10/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 11/12 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py --generated-mutants --shard 12/12 --timeout 240
