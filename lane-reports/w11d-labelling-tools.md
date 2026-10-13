@@ -261,3 +261,37 @@ The ruling replaced the separator-list approach, and every item is folded.
 - EQUIVALENT was regenerated: 24 import-plumbing and 3 identical `return None` entries.
 
 RESUME HERE: review round 3 on `gap4/w11d-labelling-tools` (this commit), then athena's whole sweep and module list.
+
+## Review round 3 fold (ruling w11d-R3-fold), Mon 12 Oct 2026 20:27 EDT (`date`)
+
+Review: round 3 in `lane-reports/w11d-labelling-tools-review-r1.md` (91538337), CHANGES, 1 MAJOR, 1 MINOR.
+Every item is folded, and the fold touches nothing beyond them.
+
+- **R3-1 MAJOR: a number beside a mark is refused again.**
+  The tests-first commit of round 2 (`99ae098d`) had dropped this refusal, so I restored it.
+  `leak_problems` refuses any digit token next to a mark in the token stream (only separators between them).
+  K2 covers each of the reviewer's strings: "I am Gemini 3", "Gemini 3 Flash here", "I'm Claude 4", "Haiku 4", "I am Sonnet 5", "Claude Opus 5", "Gemini 3.x" and "Gemini 3-series".
+  It also covers "codex-cli 0.144", which is now refused rather than passed.
+  Numbers away from a mark stay untouched ("[hidden] has 16 files", "4 cats and a [hidden] here").
+  Witness: number-beside-mark-admitted.
+- **R3-2.** `tokens` drops invisible format characters (Unicode category Cf) before grouping.
+  "Hai" plus U+00AD, U+200D or U+200B plus "ku", and "Gem" plus U+2060 plus "ini", are each masked whole, and each raw string is refused.
+  Witness: format-characters-kept.
+- **The fence escape.** The text and the actions each sit in a code fence one backtick longer than any backtick run in them (`fence(*texts)`).
+  So a take whose text holds ``` cannot close its fence, and an action such as "read &#72;aiku" shows as written.
+  K5 tests a text holding ``` and a five-backtick run, actions with an entity and markup, and an action holding a four-backtick run.
+  The golden sheet's sha changed by design, because actions are now fenced.
+  Witnesses: fence-fixed, actions-unfenced.
+- **Residuals for Javier**, now named in the sheet docstring: look-alike letters from other scripts (NFKC does not fold scripts; a TR39 confusables fold would, and that is his call), names spelled out letter by letter, number words ("four point five"), misspellings, and digits from other scripts.
+
+**Evidence (Mac, light-ok before each batch, `timeout -s INT 120`):**
+- Red first, `a64fe4f7` against 4be4269e: 99 run, 20 failures by assertion, 0 errors.
+- Green: 99 run, OK.
+- Witnesses: 58 of 58 red.
+- Gates and both lints: exit 0.
+- Mutants:
+  - targeted runs over every changed line: all killed, after two restructurings (`fence` over several texts with no default; the free-text word filter as "underscore, or a case that is neither all lower nor capitalised", with the free-text list pinned in K4);
+  - shards 11 and 31 of 40: shard 31's survivor (`w[1:]` to `w[2:]`) was removed by that restructuring;
+  - EQUIVALENT was regenerated: 24 import-plumbing and 3 identical `return None` entries.
+
+RESUME HERE: athena. Run the whole generated sweep and the module list above on this commit. There is no round 4 unless athena finds something.

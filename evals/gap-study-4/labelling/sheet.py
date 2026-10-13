@@ -27,7 +27,12 @@ check"), and no action may name a harness's own tool or instruction file (HARNES
 The CP8 reader slice that writes the content (Q-w11d-2) must pass this file's checks on its own output as an
 acceptance test: write_sheet over every sampled take, with no refusal.
 
-WHAT IT CANNOT HIDE, SAID PLAINLY. A model that names itself in words off these lists, or writes in a style a reader
+RENDERING. The text and the actions each sit in a code fence one backtick longer than any backtick run in them, so
+no take can close its fence and have the rest read as Markdown or HTML (an entity such as &#72; shows as written).
+
+WHAT IT CANNOT HIDE, SAID PLAINLY (Javier's call, review W11D-R3 residuals): look-alike letters from other scripts
+(a Cyrillic a in Claude; NFKC does not fold scripts, a TR39 confusables fold would), names spelled out letter by
+letter, number words ("four point five"), misspellings, and digits from other scripts. A model that names itself in words off these lists, or writes in a style a reader
 recognises, is not hidden by a word list; the reader that writes the content keeps harness furniture out of the text,
 and Javier labels what the take did, not who did it.
 
@@ -87,11 +92,11 @@ HARNESS_WORDS = {
 # a TOML config file (Codex's). The rest (a harness's version string, its home folder layout) is the CP8 reader's
 # acceptance test (Q-w11d-2): write_sheet over every sampled take, with no refusal.
 FURNITURE = ("cli", "entrypoint", "toml")
-# In free text only the names no plain sentence uses are refused: one with an underscore or a dot, or a capital
-# after its first letter (TodoWrite); "Read", "replace" or "glob" in a sentence are words, and are refused in an
+# In free text only the names no plain sentence uses are refused: one with an underscore, or a case that is neither
+# all lower nor a capitalised word (TodoWrite, AGENTS.md); "Read", "replace" or "glob" in a sentence are words, and are refused in an
 # action only.
 TEXT_HARNESS_WORDS = tuple(sorted({w for ws in HARNESS_WORDS.values() for w in ws
-                                   if "_" in w or "." in w or any(ch.isupper() for ch in w[1:])}))
+                                   if "_" in w or w not in (w.lower(), w.capitalize())}))
 
 
 class SheetError(Exception):
@@ -102,10 +107,13 @@ def tokens(text: str) -> list:
     """The text as tokens over its own character positions (review W11D-R2-1): each character is NFKC-normalised and
     casefolded, every character that is not a letter or a digit is a separator (every Unicode dash and space,
     punctuation, line breaks), and a run of letters and a run of digits are tokens of their own ("haiku4.5" is
-    haiku, 4, 5). Each token is (its normalised text, the start and the end of its span in the original text)."""
+    haiku, 4, 5). An invisible format character (Unicode category Cf: a soft hyphen, a zero-width space or joiner,
+    U+2060) is dropped before grouping, so "Hai" + U+00AD + "ku" is one token (review W11D-R3-2). Each token is (its normalised text, the start and the end of its span in the original text)."""
     out, kind = [], None
     for i, ch in enumerate(text):
         for c in unicodedata.normalize("NFKC", ch).casefold():
+            if unicodedata.category(c) == "Cf":
+                continue
             k = (c.isalpha(), c.isdigit()) if c.isalpha() or c.isdigit() else None
             if k is not None and k == kind:
                 out[-1] = (out[-1][0] + c, out[-1][1], i + 1)
@@ -175,19 +183,23 @@ def mask(text: str, hidden: dict) -> str:
 
 def leak_problems(text: str, hidden: dict) -> list:
     """The backstop: on the text's token stream (a HIDDEN mark is the token "hidden", in no sequence), any hidden
-    sequence still there, any short id part beside a mark, and a harness's own tool or instruction-file name no plain sentence uses
+    sequence still there, any short id part or any number beside a mark (review W11D-R3-1: a family's major version
+    names it, "Gemini 3"), and a harness's own tool or instruction-file name no plain sentence uses
     (TEXT_HARNESS_WORDS). Any line refuses the sheet; a human rewrites that take's content."""
     toks = tokens(text)
     marked = [t == "hidden" and text[s - 1:s] == "[" and text[e:e + 1] == "]" for t, s, e in toks]
     found = sorted({tuple(t for t, _, _ in toks[i:j]) for i, j in _ranges(toks, hidden)})
     out = [f"LEAK: the sheet shows {' '.join(q)!r}" for q in found]
-    near = set()
+    near, digits = set(), set()
     for k, m in enumerate(marked):
         if m:
             for n in (k - 1, k + 1):
                 if 0 <= n < len(toks) and toks[n][0] in hidden["residual"]:
                     near.add(toks[n][0])
+                if 0 <= n < len(toks) and toks[n][0].isdigit():
+                    digits.add(toks[n][0])
     out += [f"LEAK: {HIDDEN} stands next to the id part {p!r}" for p in sorted(near)]
+    out += [f"LEAK: {HIDDEN} stands next to the number {d!r}" for d in sorted(digits)]
     out += [f"LEAK: the sheet names the harness word {w!r}" for w in TEXT_HARNESS_WORDS
             if re.search(_word(w), text, re.IGNORECASE)]
     return out
@@ -260,6 +272,11 @@ def grader_labels(task: str) -> tuple:
     return own + tuple(x for x in stats.labels4.RESERVED if x not in own)
 
 
+def fence(*texts: str) -> str:
+    """A code fence one backtick longer than any backtick run in the texts (three at least), so none can close it."""
+    return "`" * max([3] + [len(r) + 1 for t in texts for r in re.findall("`+", t)])
+
+
 def render(items: list, defs: dict) -> str:
     out = ["# Blind labelling sheet", "",
            "For each take: read the text and actions after the probe, write one label from its task's definitions, "
@@ -272,9 +289,10 @@ def render(items: list, defs: dict) -> str:
     for it in items:
         if set(it) != set(ITEM_FIELDS):
             raise SheetError(f"a sheet item holds exactly {ITEM_FIELDS}")
-        out += [f"## {it['sheet_id']} (task {it['task']})", "", "Text after the probe:", "", "```", it["text"], "```",
+        ft, fa = fence(it["text"]), fence(*it["actions"])
+        out += [f"## {it['sheet_id']} (task {it['task']})", "", "Text after the probe:", "", ft, it["text"], ft,
                 "", "Actions after the probe:"]
-        out += [f"- {a}" for a in it["actions"]] or ["- none"]
+        out += ["", fa, *it["actions"], fa] if it["actions"] else ["- none"]
         out += ["", "Label: ", "Stop cause: ", ""]
     return "\n".join(out)
 

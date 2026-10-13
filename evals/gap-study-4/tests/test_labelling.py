@@ -881,6 +881,12 @@ def k4_content(sm, sh, ag):
                         "AGENTS.md"),
               "gemini": ("run_shell_command", "read_file", "write_file", "replace", "glob", "search_file_content",
                          "list_directory", "write_todos", "GEMINI.md")}
+    if sh.TEXT_HARNESS_WORDS != (
+            "AGENTS.md", "BashOutput", "CLAUDE.md", "ExitPlanMode", "GEMINI.md", "KillShell", "MultiEdit", "NotebookEdit",
+            "ScheduleWakeup", "TodoWrite", "ToolSearch", "WebFetch", "WebSearch", "apply_patch", "command_execution",
+            "exec_command", "file_change", "list_directory", "mcp_tool_call", "read_file", "run_shell_command",
+            "search_file_content", "update_plan", "write_file", "write_todos"):
+        out.append("K4: the words refused in free text are not the distinctive ones")
     if sh.HARNESS_WORDS != pinned:
         out.append("K4: the harness words are not the pinned lists (every name of each table, as the loop above refuses)")
     if sh.harness_word("run ls") is not False or sh.harness_word("run apply_patch") is not True:
@@ -903,7 +909,7 @@ def k4_content(sm, sh, ag):
     return out
 
 
-GOLDEN_SHEET_SHA = "b8b7b69272cf43e7a38b4b7a0e1e5e542eb49d0e942a98615c77e546a450008c"
+GOLDEN_SHEET_SHA = "b9075e5e19ea37126beb3bac02411dfc79aab318df14af857cb0201033e9630d"
 
 
 def k5_render(sm, sh, ag):
@@ -939,6 +945,11 @@ def k5_render(sm, sh, ag):
     acts = got.index("Actions after the probe:")
     if got[acts + 1:acts + 6] != ["", "```", "read &#72;aiku", "run **x**", "```"]:
         out.append(f"K5: the actions are not fenced: {got[acts + 1:acts + 6]}")
+    ticked = sh.render([dict(items[0], actions=["read a", "run x ````"])], DEFS).split("\n")
+    if ticked.count("`````") != 2:
+        out.append("K5: the actions' fence is not longer than a backtick run in an action")
+    if sh.fence() != "```" or sh.fence("x", "a ``` b") != "````":
+        out.append("K5: fence() over several texts is not one past the longest run in any")
     if sh.fence("no ticks") != "```" or sh.fence("a ``` b") != "````" or sh.fence("`` x ````") != "`````":
         out.append("K5: fence() is not three backticks or one past the longest run")
     return out
@@ -1831,7 +1842,8 @@ WITNESSES = {
     "number-beside-mark-admitted": _w("sh", k2_mask, ('    out += [f"LEAK: {HIDDEN} stands next to the number {d!r}" for d in sorted(digits)]\n',
                                                          "    pass\n")),
     "format-characters-kept": _w("sh", k2_mask, ('            if unicodedata.category(c) == "Cf":\n                continue\n', "")),
-    "fence-fixed": _w("sh", k5_render, ('    return "`" * max(3, longest + 1)', '    return "```"')),
+    "fence-fixed": _w("sh", k5_render, ('    return "`" * max([3] + [len(r) + 1 for t in texts for r in re.findall("`+", t)])',
+                                        '    return "```"')),
     "actions-unfenced": _w("sh", k5_render, ('out += ["", fa, *it["actions"], fa] if it["actions"] else ["- none"]',
                                              'out += [f"- {a}" for a in it["actions"]] or ["- none"]')),
     "unseeded-draw": _w("sm", s1_seed, ('rng = random.Random(design["seed"])', "rng = random.Random()")),
@@ -1951,14 +1963,14 @@ EQUIVALENT = {
     'sample: stmt-delete L57 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sample: return-none L268 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
     'sample: int-change L57 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: stmt-delete L44 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
-    'sheet: stmt-delete L57 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: stmt-delete L58 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: if-true L58 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: if-false L58 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: cmp-negate#0 L58 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: stmt-delete L59 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: int-change L59 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L49 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
+    'sheet: stmt-delete L62 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L63 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: if-true L63 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: if-false L63 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: cmp-negate#0 L63 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L64 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: int-change L64 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'agreement: stmt-delete L42 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
     'agreement: stmt-delete L53 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'agreement: stmt-delete L54 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
