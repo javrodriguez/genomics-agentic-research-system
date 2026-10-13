@@ -488,7 +488,8 @@ class TestArmVariables(MutantCase):
         self.logins = {h: plant_login(self.tmp, rt.LOGIN_VARIABLE[h]) for h in ARMS}
 
     def exec_for(self, harness, caller=None):
-        return rt.exec_argv(ID["take"], ["agent-cli"], user=rt.AGENT_USER, workdir="/srv/w/t1/tree",
+        inner = ["gemini", "-m", "gemini-3.8-flash"] if harness == rt.GEMINI else ["agent-cli"]
+        return rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/srv/w/t1/tree",
                             harness=harness, run_tree="/srv/w/t1/tree", login_file=self.logins[harness],
                             caller_env=CALLER if caller is None else caller)
 
@@ -640,15 +641,16 @@ class TestExecArgv(MutantCase):
         except rt.NotReady:
             pass
         for h in ("codex", "gemini"):
+            inner = ["gemini", "-m", "gemini-3.8-flash"] if h == rt.GEMINI else ["x"]
             lf = plant_login(self.tmp, rt.LOGIN_VARIABLE[h])
             try:
-                rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=h,
+                rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
                              run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
                 out.append(f"a {h} exec was built while its billing-route list is PENDING")
             except rt.NotReady:
                 pass
             with filled():
-                a, e = rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=h,
+                a, e = rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
                                     run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
             home = {"codex": "CODEX_HOME=/opt/cfg", "gemini": "GEMINI_CLI_HOME=/opt/cfg"}[h]
             if home not in a or "-e" not in a or rt.LOGIN_VARIABLE[h] not in a or FAKE_VALUE in " ".join(a):

@@ -5,8 +5,7 @@
 # No model, container, network, credential, salt or holdout.
 python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py
 python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --witnesses
-# The generated mutation sweep: 166 mutants (this lane's six functions in box/run_take.py) in 8 shards (about 21
-# each), each mutant capped at 240 s; each shard fails on an unlisted survivor, a listed one killed, or an inconclusive
+# The generated mutation sweep: this lane's six functions in box/run_take.py in 8 shards; count derived at run time, each mutant capped at 240 s; each shard fails on an unlisted survivor, a listed one killed, or an inconclusive
 # run.
 python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --generated-mutants --shard 1/8 --timeout 240
 python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --generated-mutants --shard 2/8 --timeout 240

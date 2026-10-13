@@ -483,18 +483,33 @@ def launcher_argv(login: str, values: dict, inner) -> list:
 
 def check_model(harness: str, inner):
     """Arm G's call names its model exactly once, by a full pinned id; a short alias is refused by its name (it
-    resolves to another model). Returns the model, or None for a call MODEL_PINS does not cover."""
+    resolves to another model). Returns the model, or None for an arm MODEL_PINS does not cover."""
     pin = MODEL_PINS.get(harness)
-    if pin is None or not inner or inner[0] != pin["client"]:
+    if pin is None:
         return None
+    if not inner or not (inner[0] == pin["client"] or
+                         (os.path.isabs(inner[0]) and os.path.basename(inner[0]) == pin["client"])):
+        raise Refused(f"unsupported {harness} executable: {inner[0] if inner else None!r}; "
+                      f"use {pin['client']} or its absolute path; probes use agent_exec_argv")
+    # Admit only the value-taking flags used by the adapter and their long aliases. Consume their values,
+    # so prompt text is not parsed as flags. Compact/clustered flags, positional tails and -- refuse rather
+    # than letting the CLI parse a second model choice differently from this boundary.
+    value_flags = ("-p", "--prompt", "-o", "--output-format", "--approval-mode", "--resume", "-r")
     given = []
-    for i in range(1, len(inner)):
+    i = 1
+    while i < len(inner):
         tok = inner[i]
-        if tok in pin["flags"]:
-            given.append(inner[i + 1] if i + 1 < len(inner) else None)
-        for flag in pin["flags"]:
-            if tok.startswith(flag + "="):
-                given.append(tok[len(flag) + 1:])
+        flag, sep, value = tok.partition("=")
+        if flag not in pin["flags"] and flag not in value_flags:
+            raise Refused(f"unsupported {harness} turn argument {tok!r}")
+        if not sep:
+            i += 1
+            value = inner[i] if i < len(inner) else None
+        if flag in pin["flags"]:
+            given.append(value)
+        elif value is None or value.startswith("-"):
+            raise Refused(f"unsupported {harness} value for {flag!r}")
+        i += 1
     if len(given) != 1 or given[0] is None:
         raise Refused(f"a {harness} call names its model exactly once by {pin['flags'][0]}, never the default")
     model = given[0]

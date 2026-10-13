@@ -25,8 +25,7 @@ delegation).
   E5  this lane's functions one at a time (the generated sweep's first-round survivors): take_environment refuses an
       unknown arm, a relative run tree and a row whose temporary-folder names are off, waits (NotReady) on each
       PENDING value, adds Claude Code's fallback values to arm A alone and never over a row's name; launcher_argv
-      refuses a credential that is not a NAME and a value that is not a string; check_model leaves an empty call
-      alone; refuse_env_files refuses a row whose HOME is not the config mount.
+      refuses a credential that is not a NAME and a value that is not a string; check_model refuses an empty arm G call; refuse_env_files refuses a row whose HOME is not the config mount.
   G1  the generated mutants (tests/walk_mutation.py's generator over this lane's functions in box/run_take.py):
       EQUIVALENT names only generated ids, each with a reason.
 
@@ -510,9 +509,27 @@ class E4Model(Case):
         self.refuses("E4.once", "exactly once", m.check_model, "gemini",
                      ["gemini", "-m", "gemini-3.8-flash", "-m", "gemini-3.8-flash"])
         self.refuses("E4.once", "exactly once", m.check_model, "gemini", ["gemini", "-p", "x", "-m"])
-        for h, inner in (("claude-code", ["claude", "--model", "sonnet"]), ("codex", ["codex", "-m", "flash"]),
-                         ("gemini", ["agent-cli", "-m", "flash-lite"])):
+        for h, inner in (("claude-code", ["claude", "--model", "sonnet"]), ("codex", ["codex", "-m", "flash"])):
             self.assertIsNone(self.must("E4.scope", m.check_model, h, inner), "E4.scope: another call was checked")
+
+    def test_all_gemini_exec_spellings_are_checked(self):
+        m = rt()
+        with filled(), mock.patch.object(m, "read_login", return_value=FAKE_VALUE):
+            for client in ("gemini", "/usr/local/bin/gemini", "/opt/bin/gemini"):
+                for args in (["-m", "flash-lite"], ["--model=flash-lite"], ["-m=flash-lite"]):
+                    with mock.patch.object(m, "launcher_argv", side_effect=AssertionError("launcher reached")):
+                        self.refuses("E4.boundary", "flash-lite", m.exec_argv, ID, [client, *args],
+                                     user=m.AGENT_USER, workdir="/virtual/tree", harness="gemini",
+                                     run_tree="/virtual/tree", login_file="/virtual/never-read", caller_env=CALLER)
+                for args in (["-m", "gemini-3.8-flash"], ["--model=gemini-3.8-flash"], ["-m=gemini-3.8-flash"]):
+                    self.assertEqual(m.check_model("gemini", [client, *args]), "gemini-3.8-flash", "E4.boundary")
+            for client in ("agent-cli", "./gemini", "bin/gemini", "/usr/bin/env", "sh", "/opt/gemini-wrapper"):
+                self.refuses("E4.boundary", "executable", m.check_model, "gemini",
+                             [client, "-m", "gemini-3.8-flash"])
+            for args in (["-m", "gemini-3.8-flash", "-mflash-lite"],
+                         ["-m", "gemini-3.8-flash", "--", "--model", "flash-lite"],
+                         ["-m", "gemini-3.8-flash", "-xm", "flash-lite"]):
+                self.refuses("E4.boundary", "unsupported", m.check_model, "gemini", ["gemini", *args])
 
     def test_exec_refuses_an_alias(self):
         m = rt()
@@ -575,8 +592,8 @@ class E5Units(Case):
 
     def test_check_model_edges(self):
         m = rt()
-        self.assertIsNone(self.must("E5.model", m.check_model, "gemini", []), "E5.model: an empty call was checked")
-        self.assertIsNone(self.must("E5.model", m.check_model, "gemini", ()), "E5.model: an empty call was checked")
+        for inner in ([], ()):
+            self.refuses("E5.model", "executable", m.check_model, "gemini", inner)
 
     def test_home_must_be_the_config_mount(self):
         m = rt()
@@ -620,6 +637,7 @@ def mutants() -> dict:
         "root-not-read": ("E3.root", "for i in range(len(parts), -1, -1)]", "for i in range(len(parts), 0, -1)]"),
         "alias-unchecked": ("E4.alias", "    if model in pin[\"short_aliases\"]:", "    if False:"),
         "any-id": ("E4.pinned", "    if model not in pin[\"models\"]:", "    if False:"),
+        "gemini-executable-unbound": ("E4.boundary", "    if not inner or not (inner[0] == pin[\"client\"] or", "    if False and not (inner[0] == pin[\"client\"] or"),
         "exec-no-model-check": ("E4.exec", "    check_model(harness, inner)\n", ""),
     }
 
@@ -640,6 +658,7 @@ METHOD = {
     "root-not-read": "E3EnvFiles.test_the_box_root",
     "alias-unchecked": "E4Model.test_a_short_alias_is_refused_by_name",
     "any-id": "E4Model.test_the_full_ids_pass_and_others_refuse",
+    "gemini-executable-unbound": "E4Model.test_all_gemini_exec_spellings_are_checked",
     "exec-no-model-check": "E4Model.test_exec_refuses_an_alias",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
