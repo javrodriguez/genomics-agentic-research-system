@@ -218,3 +218,46 @@ Correction to the report above: the sweep's skipped message-text strings were 79
 - CLAUDE.md is refused in actions per the ruling, although D8:287 makes it every arm's workspace instruction file (in text it is masked as a vendor word anyway).
 
 RESUME HERE: review round 2 on `gap4/w11d-labelling-tools` (this commit), then the whole sweep and the athena module list above.
+
+## Review round 2 fold (ruling w11d-R2-fold), Mon 12 Oct 2026 20:00 EDT (`date`)
+
+Review: round 2 in `lane-reports/w11d-labelling-tools-review-r1.md` (19a87790), CHANGES, 1 MAJOR, 3 MINOR.
+The ruling replaced the separator-list approach, and every item is folded.
+
+- **R2-1 MAJOR: the token road.**
+  `sheet.tokens` reads the content as tokens over the original character positions.
+  Each character is NFKC-normalised and casefolded; every character that is not a letter or a digit is a separator (every Unicode dash and space, punctuation, line breaks); and letters and digits are split apart.
+  `hidden_set` holds token sequences:
+  - every vendor word, harness name, model id and take id, whole;
+  - every part of three or more characters of a design id or harness name;
+  - every design version wherever it stands (`versions()`: each digit run of a model id and its stretches of two or more, that is 5 5, 4 5 20251001, 4 5, 5 20251001, 6 1, 6, 3 8, 3 5);
+  - the furniture tokens cli, entrypoint and toml.
+
+  `mask` replaces each sequence over its original span.
+  `leak_problems` is the backstop on the token stream: any hidden sequence left, a short id part beside a mark, or a harness word refuses the sheet.
+  The reviewer's strings are each masked whole and then pass the backstop, and each raw string is refused: U+2011, U+2010, NBSP, en and em dashes, full-width forms, "v4.5", "Haiku: 4.5", "I am Haiku, version 4.5", "Sonnet (5.5)", "Opus\n5.5", and ids split across lines.
+  Ordinary words and numbers ("solution", "16 files", "4 cats", "step 45") are untouched.
+  Over-masking is the price: every lone "6" is masked (gpt-6-luna's version), and so is the word "code" (from claude-code).
+- **Residual: "a version on its own".** This is closed by masking each design version wherever it stands ("I'm version 4.5" becomes "I'm version [hidden]").
+- **Residual: furniture.**
+  "codex-cli 0.144" becomes "[hidden]-[hidden] 0.144"; "~/.codex/config.toml" becomes "~/.[hidden]/config.[hidden]"; "CODEX_ENTRYPOINT" becomes "[hidden]_[hidden]"; "Gemini CLI" becomes "[hidden] [hidden]".
+  A harness's version string ("0.144") and its home-folder layout are named in the docstring as the CP8 reader's acceptance test (Q-w11d-2).
+- **R2-2.** K4 refuses "run <w>" for every word of every list, and pins each list literally (a renamed entry, such as the sweep's 'WebSearch', now fails). `harness_word` returns the `any(...)`.
+- **R2-3.** G9 runs on a frame whose m-gamma task-two cell holds five all-right takes, which about_n 4 leaves undrawn. The rows must equal every frame cell. The reviewer's `verdict == "wrong"` cells mutant is a witness (cells-only-failed).
+- **R2-4.** K2 refuses a short id part beside the mask ("m [hidden]", "[hidden]-M", "I'm [hidden]"), and K6 refuses an `--out` that reaches labelling/ through a symlink (witness out-guard-abspath).
+
+**Evidence (Mac, light-ok before each batch, `timeout -s INT 120`):**
+- Red first, `99ae098d` against 5958190f: 95 run, 14 failures by assertion, 0 errors. K4, G9 and K6 passed there, because they kill reviewer mutants and not code defects.
+- After the red run, three test expectations were corrected, each a test error:
+  - "codex-cli 0.144" masks to "[hidden]-[hidden] 0.144" (two spans), not "[hidden] 0.144";
+  - the U+2011 witness compares against U+2010, because NFKC maps U+2011 to U+2010;
+  - the token code was restructured to remove equivalent mutants (`tokens` without start and end, `versions` via groupby, no `discard`, no plain copy), with tests added that kill the survivors: bracketed non-marks, the date part, the exact version set, the harness-word line and the pinned lists.
+- Green: 95 run, OK.
+- Witnesses: 54 of 54 red.
+- Gates and both lints: exit 0 (301 files, 48 fragments).
+- Sweep, samples only:
+  - targeted runs over every new token-code line in sheet.py, all killed (101 mutants, after the folds above);
+  - shards 7, 23 and 39 of 40 (2008 mutants generated, 81 message strings skipped), with shard 23's 'WebSearch' survivor killed by the pinned lists.
+- EQUIVALENT was regenerated: 24 import-plumbing and 3 identical `return None` entries.
+
+RESUME HERE: review round 3 on `gap4/w11d-labelling-tools` (this commit), then athena's whole sweep and module list.

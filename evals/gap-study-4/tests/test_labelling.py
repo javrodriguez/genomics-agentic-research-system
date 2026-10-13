@@ -712,7 +712,9 @@ def k2_mask(sm, sh, ag):
     leaks = sh.leak_problems("from Claude via m-gamma, s003/1", hs)
     if leaks != ["LEAK: the sheet shows 'claude'", "LEAK: the sheet shows 'm gamma'", "LEAK: the sheet shows 's 003 1'"]:
         out.append(f"K2: leak_problems {leaks}")
-    for clean in ("plain", "[hidden] and [hidden]", "hidden m", "x [hidden] y"):
+    if sh.leak_problems("[Claude] and (m-alpha)", hs) != ["LEAK: the sheet shows 'claude'", "LEAK: the sheet shows 'm alpha'"]:
+        out.append("K2: a hidden word in brackets passed as a mark")
+    for clean in ("plain", "[hidden] and [hidden]", "hidden m", "x [hidden] y", "hidden] m", "m [hidden", "[hidden m", "[x] m"):
         if sh.leak_problems(clean, hs) != []:
             out.append(f"K2: leak_problems on {clean!r}: {sh.leak_problems(clean, hs)}")
     for near in ("m [hidden]", "[hidden]-M", "I'm [hidden]"):           # R2-4: a short id part beside a mark
@@ -724,6 +726,11 @@ def k2_mask(sm, sh, ag):
               ("lite",), ("haiku",), ("opus",), ("sonnet",), ("gpt",), ("gemini",), ("claude",), ("code",)):
         if q not in rh["sequences"]:
             out.append(f"K2: {q} is not hidden on the real ids")
+    if sh.versions([m for ms in real_design()["harness_models"].values() for m in ms]) != {
+            ("5", "5"), ("4", "5", "20251001"), ("4", "5"), ("5", "20251001"), ("6", "1"), ("6",), ("3", "8"), ("3", "5")}:
+        out.append("K2: the real versions are not each digit run and its stretches of two or more")
+    if ("20251001",) not in rh["sequences"]:
+        out.append("K2: the date part of an id is not hidden on its own")
     if ("4",) in rh["sequences"] or rh["residual"] != []:
         out.append(f"K2: real residual {rh['residual']}, or a lone 4 hidden")
     real = {
@@ -746,7 +753,7 @@ def k2_mask(sm, sh, ag):
         "Opus \u2014 5.5": "[hidden] \u2014 [hidden]",
         "ＧＰＴ－６．１ Ｓｏｌ": "[hidden]",
         "I\u2019m version 4.5": "I\u2019m version [hidden]",
-        "codex-cli 0.144": "[hidden] 0.144",
+        "codex-cli 0.144": "[hidden]-[hidden] 0.144",
         "~/.codex/config.toml": "~/.[hidden]/config.[hidden]",
         "CODEX_ENTRYPOINT": "[hidden]_[hidden]",
         "Gemini CLI": "[hidden] [hidden]",
@@ -847,6 +854,14 @@ def k4_content(sm, sh, ag):
         for w in ws:
             out += refused("K4", lambda w=w: sh.blind_items(doc, {**c, first: {"text": "x", "actions": [f"run {w}"]}},
                                                             FRAME, DESIGN), E, f"run {w} ({harness})")
+    pinned = {"claude-code": tuple(tv.CC_TOOLS) + ("Task", "TodoWrite", "MultiEdit", "NotebookEdit", "WebFetch",
+                                                    "WebSearch", "ExitPlanMode", "BashOutput", "KillShell", "CLAUDE.md"),
+              "codex": ("apply_patch", "update_plan", "exec_command", "command_execution", "file_change", "mcp_tool_call",
+                        "AGENTS.md"),
+              "gemini": ("run_shell_command", "read_file", "write_file", "replace", "glob", "search_file_content",
+                         "list_directory", "write_todos", "GEMINI.md")}
+    if sh.HARNESS_WORDS != pinned:
+        out.append("K4: the harness words are not the pinned lists (every name of each table, as the loop above refuses)")
     if sh.harness_word("run ls") is not False or sh.harness_word("run apply_patch") is not True:
         out.append("K4: harness_word does not answer a bool")
     if not set(tv.CC_TOOLS) <= set(sh.HARNESS_WORDS["claude-code"]):
@@ -859,6 +874,9 @@ def k4_content(sm, sh, ag):
     for harness, text in texts.items():
         out += refused("K4", lambda text=text: sh.write_sheet(doc, contents_for(FRAME, text), FRAME, DESIGN, DEFS, GL),
                        E, f"text naming a {harness} word")
+    if sh.leak_problems("I called update_plan first", sh.hidden_set(FRAME, DESIGN)) != [
+            "LEAK: the sheet names the harness word 'update_plan'"]:
+        out.append("K4: the harness-word line is not the leak line")
     out += accepted("K4", lambda: sh.write_sheet(doc, contents_for(FRAME, "I read the file and ran grep"), FRAME, DESIGN,
                                                  DEFS, GL), "plain words that share a tool's name")
     return out
@@ -1748,16 +1766,15 @@ WITNESSES = {
     "page-without-labels-admitted": _w("ag", g5_check, ("if os.path.isfile(PAGE if page is None else page):",
                                                         "if False:")),
     "deleted-labels-admitted": _w("ag", g6r_real_git, ("    if shas:\n", "    if False:\n")),
-    "id-parts-unhidden": _w("sh", k2_mask, ('seqs |= {(p,) for n in names for p in words(n) if p.isalpha() and len(p) >= 3}',
-                                             "pass")),
-    "versions-unhidden": _w("sh", k2_mask, ("            seqs |= {r[i:j] for i in range(len(r))", "            pass; {r[i:j] for i in range(len(r))")),
+    "id-parts-unhidden": _w("sh", k2_mask, ("    seqs |= {(p,) for n in names for p in words(n) if len(p) >= 3}\n", "    pass\n")),
+    "versions-unhidden": _w("sh", k2_mask, ("    seqs |= versions(models)\n", "    pass\n")),
     "nfkc-dropped": _w("sh", k2_mask, ('for c in unicodedata.normalize("NFKC", ch).casefold():', "for c in ch.casefold():")),
     "casefold-dropped": _w("sh", k2_mask, ('for c in unicodedata.normalize("NFKC", ch).casefold():',
                                            'for c in unicodedata.normalize("NFKC", ch):')),
-    "unicode-dash-joins": _w("sh", k2_mask, ('k = "a" if c.isalpha() else "d" if c.isdigit() else None',
-                                             'k = "a" if c.isalpha() or c == "\u2011" else "d" if c.isdigit() else None')),
-    "letters-digits-joined": _w("sh", k2_mask, ('k = "a" if c.isalpha() else "d" if c.isdigit() else None',
-                                                'k = "a" if c.isalnum() else None')),
+    "unicode-dash-joins": _w("sh", k2_mask, ("k = (c.isalpha(), c.isdigit()) if c.isalpha() or c.isdigit() else None",
+                                             'k = (c.isalpha() or c == "\u2010", c.isdigit()) if c.isalpha() or c == "\u2010" or c.isdigit() else None')),
+    "letters-digits-joined": _w("sh", k2_mask, ("k = (c.isalpha(), c.isdigit()) if c.isalpha() or c.isdigit() else None",
+                                                "k = True if c.isalpha() or c.isdigit() else None")),
     "furniture-unhidden": _w("sh", k2_mask, ("    seqs |= {words(f) for f in FURNITURE}\n", "    pass\n")),
     "residual-neighbour-admitted": _w("sh", k2_mask, ('and toks[n][0] in hidden["residual"]:', "and False:")),
     "backstop-blind-to-sequences": _w("sh", k2_mask, ("    out = [f\"LEAK: the sheet shows {' '.join(q)!r}\" for q in found]\n",
@@ -1896,14 +1913,14 @@ EQUIVALENT = {
     'sample: stmt-delete L57 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'sample: return-none L268 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
     'sample: int-change L57 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: stmt-delete L41 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
-    'sheet: stmt-delete L52 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: stmt-delete L53 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: if-true L53 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: if-false L53 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: cmp-negate#0 L53 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: stmt-delete L54 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
-    'sheet: int-change L54 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L44 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
+    'sheet: stmt-delete L57 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L58 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: if-true L58 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: if-false L58 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: cmp-negate#0 L58 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: stmt-delete L59 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
+    'sheet: int-change L59 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'agreement: stmt-delete L42 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '__future__'),
     'agreement: stmt-delete L53 cd4ad08a for _p in (_STUDY, _HERE): if _p not in sys.path: sys.path.insert(0, _': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'agreement: stmt-delete L54 3a2135ba if _p not in sys.path: sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
