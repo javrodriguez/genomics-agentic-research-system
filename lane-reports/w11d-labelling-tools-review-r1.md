@@ -91,3 +91,44 @@ VERDICT: CHANGES
   - "[hidden] CLI", which separates the two non-Claude harnesses from Claude Code.
   The new acceptance-test sentence in the docstring is the right place to name them.
 - "run shell_command ls" is accepted. Whether `shell_command` is a Codex tool name is for Q-w11d-6's binding to the Codex module, which the reviewer could not check on this base.
+
+# Round 3
+
+Written Mon 12 Oct 2026, 20:04 EDT (`date`), by the same reviewer, on head `4be4269e` (the token road of ruling w11d-R2-fold; tests first at `99ae098d`).
+Only targeted runs were made, each behind `mac_slot.py light-ok` with `timeout -s INT 120` and python3.13; athena runs the sweep.
+
+VERDICT: CHANGES
+
+## Findings
+
+| ID | Severity | Path:line | Requirement | Evidence | Bounded fix | Loosens a check |
+|---|---|---|---|---|---|---|
+| R3-1 | MAJOR | evals/gap-study-4/labelling/sheet.py:147, 176-195 (tests/test_labelling.py:735 pins it) | (a) the text must not reveal the model; the round-2 refusal of a version beside the mask | The token road masks only whole design versions (5 5, 4 5, 6 1, 6, 3 8, 3 5 and the date part). The round-2 backstop that refused a digit beside a mask was dropped: the residual now holds only alphabetic parts, which are empty on the real ids, and K2 now asserts that a lone 4 is not hidden and removed the "[hidden] 5 stars" refusal. A family's major version on its own therefore passes with an empty leak list, and on this design the major version names the family: "I am Gemini 3" gives "I am [hidden] 3" (only Gemini is a 3), "Gemini 3 Flash here" gives "[hidden] 3 [hidden] here", "I'm Claude 4" and "Haiku 4" give "[hidden] 4" (only Haiku is a 4), "I am Sonnet 5", "Claude Opus 5" and "Claude 5 family" give "[hidden] 5" (Opus or Sonnet), and "I'm a Gemini 3-series model" and "Gemini 3.x" do the same. A model naming itself by family and major version is ordinary self-description. | In `leak_problems`, refuse any digit token adjacent to a mark in the token stream (only separators between them), so a human rewrites that take; ordinary numbers away from a mark ("16 files", "4 cats") stay untouched. Or add each design version's leading digit run to the sequences only where it is adjacent to a mark. Add K2 cases for the strings above. | Yes |
+| R3-2 | MINOR | evals/gap-study-4/labelling/sheet.py:101-112 | (a), and the backstop's "any hidden sequence left" | Invisible format characters (Unicode category Cf) are read as separators, so a name split by one is neither masked nor refused, yet shows to a human as the name. "Hai" + U+00AD (soft hyphen) + "ku", "Hai" + U+200D + "ku", "Hai" + U+200B + "ku" and "Gem" + U+2060 + "ini" each pass `mask` and `leak_problems` unchanged. | In `tokens`, drop characters of category Cf (no separator, no letter) before grouping, and add K2 cases for U+00AD, U+200B, U+200D and U+2060. | Yes |
+
+## Round-2 findings, re-checked
+
+- R2-1: closed for every round-2 string. "GPT‑6.1‑Sol" (U+2011) and "GPT‑6‑Luna" mask whole. "Haiku v4.5", "Haiku: 4.5", "I am Haiku, version 4.5", "Sonnet (5.5)", "Opus\n5.5", ids split across lines, NBSP, full-width forms, "I'm version 4.5" and "model: 6.1" are all masked, and each raw string is refused by the backstop. The remaining gap is R3-1's major-version digit, which this fold opened.
+- R2-2: closed. My "add a word" mutant is killed by the pinned lists, the "run <w>" loop covers every word, and `harness_word` returns `any(...)`.
+- R2-3: closed. My "cells from failed takes only" mutant is killed by G9 ("the rows are not every frame cell").
+- R2-4: closed. My `realpath` to `abspath` mutant is killed by K6's symlink case, and the short-part neighbour mutants (left-only, mark without brackets) are killed by K2.
+
+## Test expectations changed after the red run (99ae098d to 4be4269e), each checked
+
+- "codex-cli 0.144" now masks to "[hidden]-[hidden] 0.144". This is true: `cli` is a FURNITURE sequence of its own, so there are two spans.
+- The U+2011 witness now compares against U+2010. This is true: NFKC decomposes U+2011 to U+2010.
+- The removal of the digit-beside-mask assertions happened in the tests-first commit (99ae098d), not after the red run. It is the source of R3-1, not a test error.
+
+## What holds
+
+- Tests: 95 run, OK.
+- Witnesses: 54 of 54 red.
+- Targeted reviewer mutants: 12, of which 10 were killed. NFKC dropped is killed by K2's full-width case; the furniture, version stretches, mark brackets, neighbour side, sequence order and date part are each killed. The two survivors loosen nothing on this design: `casefold` to `lower`, and a residual built from models only (the harness names have no short parts).
+
+## Residuals for Javier (out of scope: a model does not write its own name this way unprompted)
+
+- Homoglyphs from other scripts pass: "Sоnnet" (Cyrillic о), "Clаude" and "Hаiku" (Cyrillic а), "Ηaiku" (Greek Eta), and "ǫpus". NFKC does not map scripts. A confusables fold (Unicode TR39 skeleton) would close them if he wants it.
+- Spelled-out names pass: "H a i k u", "C-l-a-u-d-e" and "S.o.n.n.e.t", and so do number words such as "Haiku four point five" (the name is masked but "four point five" is left).
+- Escapes and markup pass the token road: "&#72;aiku", "&#x48;aiku", "Hai&shy;ku", "**Hai**ku", "Hai`ku`" and "Haiku". Inside the text's ``` fence these show literally. `render` (sheet.py:275) puts the text between fixed ``` fences, so a take whose text holds ``` closes the fence, and what follows renders as Markdown and HTML, entities included. Actions render as list items, where entities decode. A fence longer than any backtick run in the text, and escaped actions, would close this. Worth one line in the CP8 brief.
+- Misspellings pass: "Claud", "Sonet", "Gemeni", "Antropic" and "OpenAl". Digits from other scripts ("٤.٥") also pass.
+- Over-masking is accepted by ruling: every lone "6" and the word "code" are masked.
