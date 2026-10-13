@@ -1,0 +1,832 @@
+#!/usr/bin/env python3
+"""The take environment as an ALLOWLIST (Gap Study round 4, lane w12a-env-allowlist; ruling docs-1 on the docs read of
+Tue 13 Oct 2026, plans/gap-study-round-4/docs-reads-2026-10-13.md; glitch-2f's assignment under Javier's standing
+delegation).
+
+  E1  the ONE table: box/run_take.TAKE_ENV names, per arm, everything the agent may start with: PATH, HOME, LANG, the
+      run tree's TMPDIR, TMP and TEMP, the proxy, the harness's own switches and config home, and exactly one
+      credential, by NAME only (the CREDENTIAL marker). HOME is the config mount. No row names a refused variable.
+      LOGIN_VARIABLE and HARNESS_ENV are views derived from it (by AST: comprehensions over TAKE_ENV, never literals).
+  E2  nothing else reaches the agent: with every billing and route variable the docs read found (Codex's
+      OPENAI_PROJECT, OPENAI_ORGANIZATION and the AWS chain; Gemini CLI's GOOGLE_GENAI_USE_VERTEXAI,
+      GOOGLE_GENAI_USE_GCA, GEMINI_CLI_USE_COMPUTE_ADC, CLOUD_SHELL, GOOGLE_GEMINI_BASE_URL; and the rest of both
+      lists) plus a canary set in the parent, (a) take_environment builds exactly the row; (b) exec_argv builds a
+      turn whose launcher hands the harness exactly the row and the credential, and whose client environment is the
+      runtime's needs and the credential alone; (c) the launcher itself, run in memory with every one of those names
+      and the image's own ENV in its starting environment, execs the harness with exactly the row and the credential.
+      A name the old closed refusal also names is still refused at exec (refused, never passed).
+  E3  a `.env` the CLI would read refuses, by its path: the working folder, a parent between it and the box root (the
+      run tree), the box root itself, and HOME (the config folder), each alone, under both loader names (`.env`,
+      `.gemini/.env`), a dangling link included; launch refuses before any runtime call; run_turn refuses before its
+      exec and writes no stream; no take Dockerfile writes a `.env`.
+  E4  arm G's model: a short alias (auto, pro, flash, flash-lite) is refused by its name, with what it resolves to
+      (flash-lite -> gemini-2.5-flash-lite); the full pinned ids pass; another id, no model flag, or two are refused;
+      exec_argv refuses a gemini call that names an alias; MODEL_PINS' arm G ids equal build_draft.MODELS["G"].
+  E5  this lane's functions one at a time (the generated sweep's first-round survivors): take_environment refuses an
+      unknown arm, a relative run tree and a row whose temporary-folder names are off, waits (NotReady) on each
+      PENDING value, adds Claude Code's fallback values to arm A alone and never over a row's name; launcher_argv
+      refuses a credential that is not a NAME and a value that is not a string; check_model refuses an empty arm G call; refuse_env_files refuses a row whose HOME is not the config mount.
+  G1  the generated mutants (tests/walk_mutation.py's generator over this lane's functions in box/run_take.py):
+      EQUIVALENT names only generated ids, each with a reason.
+
+Fakes and synthetic strings only: no model, vendor, network, container runtime, credential, salt or holdout. Every
+process start is a tripwire while the tests run (the witness and sweep runners start this file only, before it is
+armed). Every folder a test writes or removes is its own mkdtemp. PENDING values are filled in memory for one test.
+
+--mutant NAME compiles one altered run_take in memory before the bound test runs; --witnesses runs every registered
+mutant in its own process and requires its bound test to fail by an AssertionError carrying its clause token (rule
+B). --generated-mutants [--shard i/n] [--sample k] [--only id,id] [--timeout s] runs each generated mutant in its own
+process over this whole module (failfast) and fails on a survivor not in EQUIVALENT, a listed one killed, or an
+inconclusive run.
+"""
+from __future__ import annotations
+
+import ast
+import builtins
+import contextlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import types
+import unittest
+from pathlib import Path
+from unittest import mock
+
+sys.dont_write_bytecode = True
+HERE = Path(__file__).resolve().parent.parent
+for p in (HERE, HERE / "tests"):
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
+
+from box import run_take as REAL_RT  # noqa: E402
+
+SELECTED = None          # --mutant NAME
+GENERATED = None         # --gen-mutant ID
+MODS: dict = {}
+SOURCE = HERE / "box" / "run_take.py"
+MODULE = "run_take"
+# This lane's functions in box/run_take.py: the generated sweep's road.
+ROAD_FUNCTIONS = ("take_environment", "exec_values", "launcher_argv", "check_model", "env_file_dirs",
+                  "refuse_env_files")
+
+ID = "d" * 64
+FAKE_VALUE = "FAKEVALUE-w12a-0123456789abcdef-PLANTED"
+CANARY = "W12A_CANARY_PARENT_ONLY"
+CANARY_VALUE = "canary-value-w12a"
+CALLER = {"PATH": "/usr/bin:/bin", "HOME": "/home/op", "DOCKER_HOST": "unix:///run/user/1000/docker.sock",
+          "XDG_RUNTIME_DIR": "/run/user/1000"}
+ARMS = ("claude-code", "codex", "gemini")
+LOGINS = {"claude-code": "CLAUDE_CODE_OAUTH_TOKEN", "codex": "CODEX_API_KEY", "gemini": "GEMINI_API_KEY"}
+# The docs read of 13 Oct (section d): every billing and route variable both lists name, docs and source.
+DOCS_READ_VARIABLES = (
+    # Codex, read by the source at rust-v0.162.1 beyond its docs
+    "OPENAI_PROJECT", "OPENAI_ORGANIZATION", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY",
+    "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE", "CODEX_OSS_BASE_URL", "CODEX_OSS_PORT",
+    # Codex, documented
+    "CODEX_ACCESS_TOKEN", "OPENAI_FEDERATION_RULE_ID", "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
+    "OPENAI_BASE_URL",
+    # Gemini CLI, read by the source at v0.63.0 beyond its docs
+    "GOOGLE_GENAI_USE_VERTEXAI", "GOOGLE_GENAI_USE_GCA", "GEMINI_CLI_USE_COMPUTE_ADC", "CLOUD_SHELL",
+    "GEMINI_API_KEY_AUTH_MECHANISM", "GEMINI_CLI_CUSTOM_HEADERS",
+    # Gemini CLI, documented
+    "GOOGLE_GEMINI_BASE_URL", "GOOGLE_VERTEX_BASE_URL", "GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_PROJECT_ID",
+    "GOOGLE_CLOUD_LOCATION", "GOOGLE_APPLICATION_CREDENTIALS",
+)
+# The Gemini CLI v0.63.0 alias table (docs/cli/cli-reference.md, read 13 Oct 2026), copied by hand from the read.
+GEMINI_ALIASES = {"auto": "gemini-2.5-pro or gemini-3-pro-preview", "pro": "gemini-2.5-pro or gemini-3-pro-preview",
+                  "flash": "gemini-2.5-flash", "flash-lite": "gemini-2.5-flash-lite"}
+# A stand-in for the image's own ENV and docker exec's defaults, in the launcher's starting environment.
+IMAGE_ENV = {"PYTHONDONTWRITEBYTECODE": "1", "HOSTNAME": "take", "HOME": "/home/dana",
+             "PATH": "/usr/local/bin:/usr/bin:/bin"}
+
+
+# ---------------------------------------------------------------------------------- the process guard
+GUARDED = [(subprocess, n) for n in ("run", "Popen", "call", "check_call", "check_output")]
+GUARDED += [(os, n) for n in ("system", "popen", "kill", "killpg", "fork", "posix_spawn", "posix_spawnp")
+            if hasattr(os, n)]
+GUARDED += [(os, n) for n in dir(os) if re.fullmatch(r"(exec|spawn)[lvpe]*", n)]
+_ORIGINALS = [(m, n, getattr(m, n)) for m, n in GUARDED]
+_ENV_SET_ASIDE: dict = {}
+
+
+def _trip(name):
+    def trip(*a, **k):
+        raise AssertionError(f"process guard: a test reached {name}")
+    return trip
+
+
+def compile_module(source: str) -> types.ModuleType:
+    mod = types.ModuleType("run_take_w12a_under_test")
+    mod.__file__ = str(SOURCE)
+    sys.modules[mod.__name__] = mod          # dataclasses read the defining module from sys.modules
+    exec(compile(source, str(SOURCE) + " (witness)", "exec"), mod.__dict__)
+    return mod
+
+
+def setUpModule():
+    text = SOURCE.read_text()
+    if SELECTED is not None:
+        _, old, new = mutants()[SELECTED]
+        assert text.count(old) == 1, f"witness {SELECTED}: its anchor occurs {text.count(old)} times"
+        MODS["rt"] = compile_module(text.replace(old, new))
+    elif GENERATED is not None:
+        m = by_id()[GENERATED]
+        MODS["rt"] = compile_module(m.source(text))
+    else:
+        MODS["rt"] = compile_module(text)
+    rt = MODS["rt"]
+    # run_take always refuses a closed-list name in this process's own environment: set those aside for the module
+    # (names only; restored untouched at tearDownModule, never read or printed).
+    closed = set(rt.API_KEY_VARIABLES) | set(rt.BILLING_ROUTE_VARIABLES) | set(rt.SUBSCRIPTION_TOKEN_VARIABLES) \
+        | set(rt.VENDOR_KEY_VARIABLES) | set(DOCS_READ_VARIABLES) | {CANARY}
+    for name in list(os.environ):
+        if name in closed:
+            _ENV_SET_ASIDE[name] = os.environ.pop(name)
+    for m, n in GUARDED:
+        setattr(m, n, _trip(f"{m.__name__}.{n}"))
+
+
+def tearDownModule():
+    for m, n, orig in _ORIGINALS:
+        setattr(m, n, orig)
+    os.environ.update(_ENV_SET_ASIDE)
+    _ENV_SET_ASIDE.clear()
+
+
+def rt():
+    return MODS["rt"]
+
+
+@contextlib.contextmanager
+def filled():
+    """The PENDING values an exec needs, filled in memory for one test (interface 15)."""
+    m = rt()
+    with mock.patch.object(m, "FALLBACK_ENV", {}), \
+            mock.patch.object(m, "VENDOR_BILLING_ROUTE_VARIABLES", {m.CODEX: (), m.GEMINI: ()}):
+        yield
+
+
+class FakeRuntime:
+    def __init__(self):
+        self.calls = []
+
+    def run(self, argv, *, env=None, timeout=None):
+        self.calls.append(list(argv))
+        raise AssertionError(f"unexpected runtime call {argv}")
+
+
+class Case(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="w12a-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        # While the slice is absent (the red run on the base): a failure by assertion, never an error.
+        self.assertTrue(hasattr(rt(), "TAKE_ENV"), "w12a: box/run_take.TAKE_ENV, the module under test, is absent")
+
+    def must(self, clause, fn, *args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except AssertionError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"{clause}: {type(e).__name__}: {str(e)[:400]}")
+
+    def refuses(self, clause, words, fn, *args, **kwargs):
+        try:
+            fn(*args, **kwargs)
+        except rt().Refused as e:
+            for w in ([words] if isinstance(words, str) else words):
+                self.assertIn(w, str(e), f"{clause}: refused for another reason: {e}")
+            self.assertNotIn(FAKE_VALUE, str(e), f"{clause}: the refusal carries the value")
+            return str(e)
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"{clause}: raised {type(e).__name__}, not Refused: {str(e)[:300]}")
+        self.fail(f"{clause}: not refused ({words!r})")
+
+    def not_ready(self, clause, words, fn, *args, **kwargs):
+        try:
+            fn(*args, **kwargs)
+        except rt().NotReady as e:
+            self.assertIn(words, str(e), f"{clause}: pending for another reason: {e}")
+            return
+        except Exception as e:  # noqa: BLE001
+            self.fail(f"{clause}: raised {type(e).__name__}, not NotReady: {str(e)[:300]}")
+        self.fail(f"{clause}: did not wait on {words}")
+
+    def login(self, harness):
+        path = self.tmp / f"{harness}.line"
+        path.write_text(f"{LOGINS[harness]}={FAKE_VALUE}\n")
+        os.chmod(path, 0o600)
+        return str(path)
+
+
+def expected_row(harness, run_tree):
+    """The arm's row as the ruling words it, written here by hand (never read from the module under test)."""
+    t = f"{run_tree}/.tmp"
+    base = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME": "/opt/cfg",
+            "LANG": "C.UTF-8", "TMPDIR": t, "TMP": t, "TEMP": t, "HTTPS_PROXY": "http://proxy:3128"}
+    own = {"claude-code": {"DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+                           "ENABLE_CLAUDEAI_MCP_SERVERS": "false", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
+                           "CLAUDE_CONFIG_DIR": "/opt/cfg"},
+           "codex": {"CODEX_HOME": "/opt/cfg"},
+           "gemini": {"GEMINI_CLI_HOME": "/opt/cfg"}}[harness]
+    return {**base, **own}
+
+
+def split_turn(argv):
+    """(the docker part, the launcher argv, the credential name, the pairs as a dict, the harness argv)."""
+    i = argv.index(ID)
+    launcher = argv[i + 1:i + 1 + len(REAL_RT_LAUNCHER_LEN())]
+    rest = argv[i + 1 + len(launcher):]
+    name, n = rest[0], int(rest[1])
+    pairs = dict(x.split("=", 1) for x in rest[2:2 + n])
+    return argv[:i + 1], launcher, name, pairs, rest[2 + n:]
+
+
+def REAL_RT_LAUNCHER_LEN():
+    return getattr(rt(), "LAUNCHER", ())
+
+
+def run_launcher(launcher_and_args, start_env, present=(), cwd="/srv/w/t1/tree", recorded=None):
+    """The launcher's source run in memory: `import os,sys` answers fakes; os.execvpe is captured, never called."""
+    src = launcher_and_args[4]
+    got = {} if recorded is None else recorded
+    path = types.SimpleNamespace(join=os.path.join, dirname=os.path.dirname, lexists=lambda p: p in present)
+    fake_os = types.SimpleNamespace(environ=dict(start_env), path=path, getcwd=lambda: cwd,
+                                    execvpe=lambda f, a, e: got.update(file=f, argv=list(a), env=dict(e)))
+    fake_sys = types.SimpleNamespace(argv=["-c", *launcher_and_args[5:]])
+    real_import = builtins.__import__
+
+    def imp(name, *a, **k):
+        return {"os": fake_os, "sys": fake_sys}.get(name) or real_import(name, *a, **k)
+    exec(compile(src, "<launcher>", "exec"), {"__builtins__": dict(vars(builtins), __import__=imp)})
+    return got
+
+
+# ------------------------------------------------------------------------------------------------- E1
+class E1Table(Case):
+    def test_each_row_is_the_ruling_s_set(self):
+        m = rt()
+        table = getattr(m, "TAKE_ENV", None)
+        self.assertIsInstance(table, dict, "E1.table: run_take has no TAKE_ENV table")
+        self.assertEqual(sorted(table), sorted(ARMS), "E1.table: the arms are off")
+        for h in ARMS:
+            row = table[h]
+            creds = [k for k, v in row.items() if v == m.CREDENTIAL]
+            self.assertEqual(creds, [LOGINS[h]], f"E1.table: {h}'s credential is not its one login, by name")
+            filled = {k: (v.replace(m.RUN_TREE_TMP, "/r/t/.tmp") if v == m.RUN_TREE_TMP else v)
+                      for k, v in row.items() if v != m.CREDENTIAL}
+            self.assertEqual(filled, expected_row(h, "/r/t"), f"E1.table: {h}'s row is off the ruling's set")
+            bad = sorted(set(row) & set(m.refused_variables(h)))
+            self.assertEqual(bad, [], f"E1.table: {h}'s row names a refused variable")
+            for k, v in row.items():
+                self.assertRegex(k, r"^[A-Z_][A-Z0-9_]*$", "E1.table: a name off the variable-name form")
+                self.assertNotIn("\0", v, "E1.table: a value carries a NUL")
+
+    def test_the_views_are_derived(self):
+        m = rt()
+        self.assertEqual(m.LOGIN_VARIABLE, LOGINS, "E1.derived: LOGIN_VARIABLE off")
+        for h in ARMS:
+            want = {k: v for k, v in expected_row(h, "/r/t").items()
+                    if k not in ("PATH", "HOME", "LANG", "TMPDIR", "TMP", "TEMP")}
+            self.assertEqual(m.HARNESS_ENV[h], want, f"E1.derived: HARNESS_ENV[{h}] off")
+        tree = ast.parse(SOURCE.read_text())
+        assigned = {}
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for t in node.targets:
+                    if isinstance(t, ast.Name):
+                        assigned.setdefault(t.id, []).append(node.value)
+        self.assertEqual(len(assigned.get("TAKE_ENV", [])), 1, "E1.derived: TAKE_ENV is not assigned exactly once")
+        for name in ("LOGIN_VARIABLE", "HARNESS_ENV"):
+            vals = assigned.get(name, [])
+            self.assertEqual(len(vals), 1, f"E1.derived: {name} assigned {len(vals)} times")
+            self.assertIsInstance(vals[0], ast.DictComp, f"E1.derived: {name} is declared, not derived")
+            self.assertIn("TAKE_ENV", ast.unparse(vals[0]), f"E1.derived: {name} is not read from TAKE_ENV")
+
+
+# ------------------------------------------------------------------------------------------------- E2
+PARENT = {**{n: FAKE_VALUE for n in DOCS_READ_VARIABLES}, CANARY: CANARY_VALUE}
+
+
+class E2Allowlist(Case):
+    def test_take_environment_is_the_row_alone(self):
+        m = rt()
+        with filled(), mock.patch.dict(os.environ, PARENT):
+            for h in ARMS:
+                got = self.must("E2.built", m.take_environment, h, "/srv/w/t1/tree")
+                want = dict(expected_row(h, "/srv/w/t1/tree"), **{LOGINS[h]: m.CREDENTIAL})
+                self.assertEqual(got, want, f"E2.built: {h}'s environment is not exactly its row")
+                leaked = sorted(set(got) & set(PARENT))
+                self.assertEqual(leaked, [], f"E2.built: {h}: parent variables reached the child: {leaked}")
+                self.assertNotIn(FAKE_VALUE, json.dumps(got), "E2.built: a parent value reached the child")
+                self.assertNotIn(CANARY_VALUE, json.dumps(got), "E2.built: the canary reached the child")
+                vals = self.must("E2.built", m.exec_values, h, "/srv/w/t1/tree")
+                self.assertEqual(vals, expected_row(h, "/srv/w/t1/tree"),
+                                 f"E2.built: exec_values({h}) is not the row less its credential")
+
+    def turn(self, h, inner=None, caller=None, environ=None):
+        m = rt()
+        inner = inner or {"claude-code": ["claude", "-p", "x"], "codex": ["codex", "exec", "--json", "x"],
+                          "gemini": ["gemini", "-p", "x", "-m", "gemini-3.5-flash-lite"]}[h]
+        with filled(), mock.patch.dict(os.environ, environ or {}):
+            return m.exec_argv(ID, inner, user=m.AGENT_USER, workdir="/srv/w/t1/tree", harness=h,
+                               run_tree="/srv/w/t1/tree", login_file=self.login(h),
+                               caller_env=dict(CALLER, **(caller or {})))
+
+    def test_the_turn_hands_the_harness_the_row_alone(self):
+        m = rt()
+        on_old_list = set(m.API_KEY_VARIABLES) | set(m.BILLING_ROUTE_VARIABLES) | set(m.VENDOR_KEY_VARIABLES) \
+            | set(m.SUBSCRIPTION_TOKEN_VARIABLES)
+        passable = {k: v for k, v in PARENT.items() if k not in on_old_list}
+        self.assertIn("OPENAI_PROJECT", passable, "E2.turn: the test's own parent set is off")
+        for h in ARMS:
+            argv, env = self.must("E2.turn", self.turn, h, caller=passable, environ=passable)
+            at = argv.index(ID) + 1
+            self.assertEqual(tuple(argv[at:at + len(m.LAUNCHER)]), tuple(m.LAUNCHER),
+                             f"E2.turn: {h}'s turn is not run by the launcher")
+            head, launcher, name, pairs, inner = self.must("E2.turn", split_turn, argv)
+            self.assertEqual(tuple(launcher), tuple(m.LAUNCHER), f"E2.turn: {h}'s turn is not run by the launcher")
+            self.assertEqual(head, ["docker", "exec", "--user", m.AGENT_USER, "--workdir", "/srv/w/t1/tree",
+                                    "-e", LOGINS[h], ID], f"E2.turn: {h}'s docker part is off")
+            self.assertEqual(name, LOGINS[h], f"E2.turn: {h}'s launcher reads another credential")
+            self.assertEqual(pairs, expected_row(h, "/srv/w/t1/tree"), f"E2.turn: {h}'s pairs are not the row")
+            self.assertEqual(inner[0], {"claude-code": "claude", "codex": "codex", "gemini": "gemini"}[h],
+                             "E2.turn: the harness argv is off")
+            self.assertNotIn(FAKE_VALUE, " ".join(argv), f"E2.turn: {h}: a value rides in argv")
+            self.assertNotIn(CANARY_VALUE, " ".join(argv), f"E2.turn: {h}: the canary rides in argv")
+            self.assertEqual(env, dict(CALLER, **{LOGINS[h]: FAKE_VALUE}),
+                             f"E2.turn: {h}'s client environment is not the runtime's needs and the credential")
+            # (c) the launcher, run in memory from a dirty start: the image's ENV, docker's defaults, every parent name.
+            start = dict(IMAGE_ENV, **PARENT, **{LOGINS[h]: FAKE_VALUE})
+            got = self.must("E2.launcher", run_launcher, argv[argv.index(ID) + 1:], start)
+            self.assertEqual(got.get("argv"), inner, f"E2.launcher: {h}: the harness argv is off")
+            self.assertEqual(got.get("env"), dict(expected_row(h, "/srv/w/t1/tree"), **{LOGINS[h]: FAKE_VALUE}),
+                             f"E2.launcher: {h}: the harness does not start with exactly the row and its credential")
+
+    def test_an_old_list_name_is_still_refused(self):
+        for h in ARMS:
+            for name in ("AWS_BEARER_TOKEN_BEDROCK", "OPENAI_API_KEY", "ANTHROPIC_BASE_URL"):
+                self.refuses("E2.refused", name, self.turn, h, caller={name: FAKE_VALUE})
+
+    def test_launcher_refuses_container_ancestors_and_current_home(self):
+        # These are virtual names only: no protected path is created or inspected.
+        for h in ARMS:
+            argv, _ = self.turn(h)
+            launch = argv[argv.index(ID) + 1:]
+            home = rt().CONFIG_MOUNT
+            for folder in ("/srv/w/t1/tree", "/srv/w/t1", "/srv/w", "/srv", "/", home):
+                for name in (".env", ".gemini/.env"):
+                    path = os.path.join(folder, name)
+                    recorded = {}
+                    with self.assertRaisesRegex(SystemExit, re.escape(path), msg="E3.container: env file accepted"):
+                        run_launcher(launch, {LOGINS[h]: FAKE_VALUE}, present=(path,), recorded=recorded)
+                    self.assertEqual(recorded, {}, "E3.container: harness dispatched before refusal")
+
+    def test_the_launcher_needs_the_credential(self):
+        m = rt()
+        argv, _ = self.turn("codex")
+        with self.assertRaises(KeyError, msg="E2.launcher: a launcher without its credential ran"):
+            run_launcher(argv[argv.index(ID) + 1:], dict(IMAGE_ENV))
+        self.refuses("E2.pairs", "NAME", m.launcher_argv, "CODEX_API_KEY", {"bad name": "x"}, ["codex"])
+        self.refuses("E2.pairs", "credential", m.launcher_argv, "CODEX_API_KEY", {"CODEX_API_KEY": "x"}, ["codex"])
+        self.refuses("E2.pairs", "NUL", m.launcher_argv, "CODEX_API_KEY", {"A": "x\0y"}, ["codex"])
+        self.refuses("E2.pairs", "harness", m.launcher_argv, "CODEX_API_KEY", {"A": "x"}, [])
+        got = self.must("E2.pairs", m.launcher_argv, "CODEX_API_KEY", {"B": "2", "A": "1=1"}, ["codex", "x"])
+        self.assertEqual(got, [*m.LAUNCHER, "CODEX_API_KEY", "2", "A=1=1", "B=2", "codex", "x"],
+                         "E2.pairs: the launcher's argv is off")
+
+
+# ------------------------------------------------------------------------------------------------- E3
+class E3EnvFiles(Case):
+    def layout(self):
+        tree = self.tmp / "tree"
+        work = tree / "a" / "b"
+        cfg = self.tmp / "cfg"
+        for d in (work, cfg):
+            d.mkdir(parents=True)
+        return tree, work, cfg
+
+    def check(self, where_dir, name, *, tree, work, cfg, clause):
+        path = where_dir / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("GOOGLE_GEMINI_BASE_URL=http://synthetic.invalid\n")
+        msg = self.refuses(clause, [str(path), ".env"], rt().refuse_env_files, workdir=str(work),
+                           run_tree=str(tree), config_dir=str(cfg))
+        path.unlink()
+        self.must(clause, rt().refuse_env_files, workdir=str(work), run_tree=str(tree), config_dir=str(cfg))
+        return msg
+
+    def test_the_working_folder(self):
+        tree, work, cfg = self.layout()
+        for name in (".env", ".gemini/.env"):
+            self.check(work, name, tree=tree, work=work, cfg=cfg, clause="E3.workdir")
+
+    def test_a_parent_below_the_box_root(self):
+        tree, work, cfg = self.layout()
+        for name in (".env", ".gemini/.env"):
+            self.check(work.parent, name, tree=tree, work=work, cfg=cfg, clause="E3.parent")
+
+    def test_the_box_root(self):
+        tree, work, cfg = self.layout()
+        for name in (".env", ".gemini/.env"):
+            self.check(tree, name, tree=tree, work=work, cfg=cfg, clause="E3.root")
+
+    def test_home(self):
+        tree, work, cfg = self.layout()
+        for name in (".env", ".gemini/.env"):
+            msg = self.check(cfg, name, tree=tree, work=work, cfg=cfg, clause="E3.home")
+            self.assertIn("HOME", msg, "E3.home: the refusal does not say it is HOME")
+
+    def test_a_dangling_link_and_the_shape(self):
+        tree, work, cfg = self.layout()
+        (work / ".env").symlink_to(self.tmp / "nowhere")
+        self.refuses("E3.link", str(work / ".env"), rt().refuse_env_files, workdir=str(work), run_tree=str(tree),
+                     config_dir=str(cfg))
+        (work / ".env").unlink()
+        self.refuses("E3.shape", "inside the run tree", rt().refuse_env_files, workdir=str(self.tmp),
+                     run_tree=str(tree), config_dir=str(cfg))
+        dirs = self.must("E3.shape", rt().env_file_dirs, str(work), str(tree))
+        self.assertEqual(dirs, [str(work), str(work.parent), str(tree)], "E3.shape: the folders read are off")
+        (self.tmp / ".env").write_text("X=1\n")        # above the box root: not in the box
+        self.must("E3.shape", rt().refuse_env_files, workdir=str(work), run_tree=str(tree), config_dir=str(cfg))
+
+    def test_launch_refuses_before_any_runtime_call(self):
+        m = rt()
+        tree, work, cfg = self.layout()
+        rec = self.tmp / "rec"
+        rec.mkdir()
+        spec = m.TakeSpec(image="sha256:" + "f" * 64, run_tree=str(tree), config_dir=str(cfg), network="a" * 64,
+                          memory_reservation=512, memory=1536, cpus="2", pids_limit=256)
+        for where in (tree / ".env", cfg / ".env", cfg / ".gemini" / ".env"):
+            where.parent.mkdir(parents=True, exist_ok=True)
+            where.write_text("X=1\n")
+            fake = FakeRuntime()
+            self.refuses("E3.launch", str(where), m.launch, fake, spec, sidecar=None, proxy=None,
+                         record_dir=str(rec), caller_env=CALLER)
+            self.assertEqual(fake.calls, [], "E3.launch: a runtime call ran before the refusal")
+            where.unlink()
+        fake = FakeRuntime()
+        msg = self.refuses("E3.launch", "proxy", m.launch, fake, spec, sidecar=None, proxy=None,
+                           record_dir=str(rec), caller_env=CALLER)
+        self.assertNotIn(".env", msg, "E3.launch: a clean take was refused for a .env")
+
+    def test_run_turn_refuses_before_its_exec(self):
+        m = rt()
+        tree, work, cfg = self.layout()
+        (tree / ".env").write_text("X=1\n")
+        stream = self.tmp / "stream.jsonl"
+        fake = FakeRuntime()
+        with filled():
+            self.refuses("E3.turn", str(tree / ".env"), m.run_turn, fake, ID, ["claude", "-p", "x"],
+                         harness="claude-code", run_tree=str(tree), login_file=self.login("claude-code"),
+                         stream_path=str(stream), budget_s=10, clock=lambda: 0.0, caller_env=CALLER)
+        self.assertEqual(fake.calls, [], "E3.turn: the exec ran")
+        self.assertFalse(stream.exists(), "E3.turn: a stream was written")
+
+    def test_no_take_image_writes_an_env_file(self):
+        found = []
+        for df in sorted((HERE / "box").rglob("Dockerfile")):
+            for i, line in enumerate(df.read_text().splitlines(), 1):
+                if re.search(r"(^|[\s/'\"])\.env\b", line):
+                    found.append(f"{df.relative_to(HERE)}:{i}")
+        self.assertEqual(found, [], "E3.image: a take Dockerfile names a .env file")
+        self.assertGreaterEqual(len(list((HERE / "box").rglob("Dockerfile"))), 3, "E3.image: Dockerfiles missing")
+
+
+# ------------------------------------------------------------------------------------------------- E4
+class E4Model(Case):
+    def test_a_short_alias_is_refused_by_name(self):
+        m = rt()
+        for alias, to in GEMINI_ALIASES.items():
+            for inner in (["gemini", "-p", "x", "-m", alias], ["gemini", "-p", "x", f"--model={alias}"],
+                          ["gemini", "--model", alias, "-p", "x"]):
+                msg = self.refuses("E4.alias", [repr(alias), to, "gemini-3.5-flash-lite"], m.check_model, "gemini",
+                                   inner)
+                self.assertIn("alias", msg, "E4.alias: the refusal does not say it is an alias")
+
+    def test_the_full_ids_pass_and_others_refuse(self):
+        m = rt()
+        for model in ("gemini-3.5-flash-lite", "gemini-3.8-flash"):
+            got = self.must("E4.pinned", m.check_model, "gemini", ["gemini", "-p", "x", "-m", model])
+            self.assertEqual(got, model, "E4.pinned: the full id was not returned")
+        self.refuses("E4.pinned", "gemini-2.5-flash-lite", m.check_model, "gemini",
+                     ["gemini", "-p", "x", "-m", "gemini-2.5-flash-lite"])
+        self.refuses("E4.once", "exactly once", m.check_model, "gemini", ["gemini", "-p", "x"])
+        self.refuses("E4.once", "exactly once", m.check_model, "gemini",
+                     ["gemini", "-m", "gemini-3.8-flash", "-m", "gemini-3.8-flash"])
+        self.refuses("E4.once", "exactly once", m.check_model, "gemini", ["gemini", "-p", "x", "-m"])
+        for h, inner in (("claude-code", ["claude", "--model", "sonnet"]), ("codex", ["codex", "-m", "flash"])):
+            self.assertIsNone(self.must("E4.scope", m.check_model, h, inner), "E4.scope: another call was checked")
+
+    def test_all_gemini_exec_spellings_are_checked(self):
+        m = rt()
+        with filled(), mock.patch.object(m, "read_login", return_value=FAKE_VALUE):
+            for client in ("gemini", "/usr/local/bin/gemini", "/opt/bin/gemini"):
+                for args in (["-m", "flash-lite"], ["--model=flash-lite"], ["-m=flash-lite"]):
+                    with mock.patch.object(m, "launcher_argv", side_effect=AssertionError("launcher reached")):
+                        self.refuses("E4.boundary", "flash-lite", m.exec_argv, ID, [client, *args],
+                                     user=m.AGENT_USER, workdir="/virtual/tree", harness="gemini",
+                                     run_tree="/virtual/tree", login_file="/virtual/never-read", caller_env=CALLER)
+                for args in (["-m", "gemini-3.8-flash"], ["--model=gemini-3.8-flash"], ["-m=gemini-3.8-flash"]):
+                    self.assertEqual(m.check_model("gemini", [client, *args]), "gemini-3.8-flash", "E4.boundary")
+            for client in ("agent-cli", "./gemini", "bin/gemini", "/usr/bin/env", "sh", "/opt/gemini-wrapper"):
+                self.refuses("E4.boundary", "executable", m.check_model, "gemini",
+                             [client, "-m", "gemini-3.8-flash"])
+            for args in (["-m", "gemini-3.8-flash", "-mflash-lite"],
+                         ["-m", "gemini-3.8-flash", "--", "--model", "flash-lite"],
+                         ["-m", "gemini-3.8-flash", "-xm", "flash-lite"]):
+                self.refuses("E4.boundary", "unsupported", m.check_model, "gemini", ["gemini", *args])
+
+    def test_non_model_options_need_non_flag_values(self):
+        m = rt()
+        for flag in ("-p", "--prompt", "-o", "--output-format", "--approval-mode", "--resume", "-r"):
+            for tail in ([flag], [flag, "-unexpected"], [flag + "=-unexpected"]):
+                with self.subTest(flag=flag, tail=tail):
+                    self.refuses("E4.values", f"value for {flag!r}", m.check_model, "gemini",
+                                 ["gemini", "-m", "gemini-3.8-flash", *tail])
+
+    def test_exec_refuses_an_alias(self):
+        m = rt()
+        with filled():
+            self.refuses("E4.exec", "'flash-lite'", m.exec_argv, ID, ["gemini", "-p", "x", "-m", "flash-lite"],
+                         user=m.AGENT_USER, workdir="/srv/w/t1/tree", harness="gemini", run_tree="/srv/w/t1/tree",
+                         login_file=self.login("gemini"), caller_env=CALLER)
+
+    def test_the_table_is_the_pre_registered_one(self):
+        import build_draft
+        m = rt()
+        pin = m.MODEL_PINS["gemini"]
+        self.assertEqual(tuple(pin["models"]), tuple(build_draft.MODELS["G"]), "E4.table: arm G's ids are off")
+        self.assertEqual(pin["short_aliases"], GEMINI_ALIASES, "E4.table: the alias table is off the docs read")
+        self.assertEqual((pin["client"], tuple(pin["flags"])), ("gemini", ("-m", "--model")), "E4.table: client")
+        self.assertEqual(sorted(m.MODEL_PINS), ["gemini"], "E4.table: another arm pinned without a docs read")
+
+
+# ------------------------------------------------------------------------------------------------- E5
+class E5Units(Case):
+    """This lane's functions one at a time: the refusals the end-to-end tests above do not reach."""
+
+    def test_take_environment_refusals(self):
+        m = rt()
+        with filled():
+            for bad in ("fake-second", "", None, "Codex"):
+                self.refuses("E5.harness", "unknown harness", m.take_environment, bad, "/r/t")
+            self.refuses("E5.tree", "run_tree", m.take_environment, "codex", "r/t")
+            with mock.patch.object(m, "RUN_TREE_TMPDIR_VARIABLES", ("TMPDIR", "TMP")):
+                self.refuses("E5.tmp", "temporary-folder names", m.take_environment, "codex", "/r/t")
+        with mock.patch.object(m, "VENDOR_BILLING_ROUTE_VARIABLES", {m.CODEX: (), m.GEMINI: ()}):
+            self.not_ready("E5.pending", "FALLBACK_ENV is PENDING", m.take_environment, "claude-code", "/r/t")
+        with mock.patch.object(m, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}):
+            for h in ("codex", "gemini"):
+                self.not_ready("E5.pending", f"VENDOR_BILLING_ROUTE_VARIABLES[{h!r}] is PENDING",
+                               m.take_environment, h, "/r/t")
+
+    def test_the_fallback_values_are_arm_a_s_alone(self):
+        m = rt()
+        with mock.patch.object(m, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}), \
+                mock.patch.object(m, "VENDOR_BILLING_ROUTE_VARIABLES", {m.CODEX: (), m.GEMINI: ()}):
+            got = self.must("E5.fallback", m.take_environment, "claude-code", "/r/t")
+            self.assertEqual(got.get("FAKE_FALLBACK_A"), "1", "E5.fallback: arm A lacks its fallback value")
+            self.assertEqual(set(got) - set(expected_row("claude-code", "/r/t")),
+                             {"FAKE_FALLBACK_A", "CLAUDE_CODE_OAUTH_TOKEN"}, "E5.fallback: arm A's names are off")
+            for h in ("codex", "gemini"):
+                self.assertNotIn("FAKE_FALLBACK_A", self.must("E5.fallback", m.take_environment, h, "/r/t"),
+                                 f"E5.fallback: {h} carries arm A's fallback value")
+        for name in ("PATH", "HOME", "CLAUDE_CODE_OAUTH_TOKEN"):
+            with mock.patch.object(m, "FALLBACK_ENV", {name: "x"}):
+                self.refuses("E5.fallback", f"may not override {name}", m.take_environment, "claude-code", "/r/t")
+
+    def test_launcher_argv_refusals(self):
+        m = rt()
+        for login in (None, 5, "bad name", "lower"):
+            self.refuses("E5.login", "credential is named", m.launcher_argv, login, {"A": "1"}, ["codex"])
+        for value in (5, None, b"x"):
+            self.refuses("E5.value", "NUL", m.launcher_argv, "CODEX_API_KEY", {"A": value}, ["codex"])
+
+    def test_check_model_edges(self):
+        m = rt()
+        for inner in ([], ()):
+            self.refuses("E5.model", "executable", m.check_model, "gemini", inner)
+
+    def test_home_must_be_the_config_mount(self):
+        m = rt()
+        tree = self.tmp / "tree"
+        tree.mkdir()
+        cfg = self.tmp / "cfg"
+        cfg.mkdir()
+        for h in ARMS:
+            bad = dict(m.TAKE_ENV, **{h: dict(m.TAKE_ENV[h], HOME="/home/dana")})
+            with mock.patch.object(m, "TAKE_ENV", bad):
+                self.refuses("E5.home", "HOME is not the config mount", m.refuse_env_files, workdir=str(tree),
+                             run_tree=str(tree), config_dir=str(cfg))
+                self.must("E5.home", m.refuse_env_files, workdir=str(tree), run_tree=str(tree))
+
+
+# ------------------------------------------------------------------------------------------------- witnesses
+def mutants() -> dict:
+    """name -> (clause, old text in box/run_take.py, new text). Each weakens one guard; old occurs exactly once."""
+    return {
+        "env-from-caller": ("E2.built", "    out = {}\n    for name, value in TAKE_ENV[harness].items():",
+                            "    out = {k: v for k, v in os.environ.items() if k.startswith('OPENAI_')}\n"
+                            "    for name, value in TAKE_ENV[harness].items():"),
+        "row-base-dropped": ("E1.table", '    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,\n',
+                             '    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT,\n'),
+        "home-elsewhere": ("E1.table", '    GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT,',
+                           '    GEMINI: {"PATH": TAKE_PATH, "HOME": "/home/dana",'),
+        "values-in-client-env": ("E2.turn", "    env[login] = value\n", "    env[login] = value\n"
+                                 "    env.update(values)\n"),
+        "no-launcher": ("E2.turn", "            container_id, *launcher_argv(login, values, inner)]",
+                        "            container_id, *inner]"),
+        "launcher-keeps-env": ("E2.launcher", "                   \"e=dict(x.split('=',1) for x in a[2:2+n])\\n\"",
+                               "                   \"e=dict(os.environ,**dict(x.split('=',1) for x in a[2:2+n]))\\n\""),
+        "container-env-unchecked": ("E3.container", "  if os.path.lexists(p): raise SystemExit", "  if False: raise SystemExit"),
+        "pairs-unchecked": ("E2.pairs", "        if not _NAME.fullmatch(k):", "        if False:"),
+        "launch-no-env-check": ("E3.launch", "    refuse_env_files(workdir=spec.run_tree, run_tree=spec.run_tree, "
+                                "config_dir=spec.config_dir)\n", ""),
+        "turn-no-env-check": ("E3.turn", "    refuse_env_files(workdir=run_tree, run_tree=run_tree)\n", ""),
+        "home-unchecked": ("E3.home", "    if config_dir is not None:", "    if False:"),
+        "gemini-name-dropped": ("E3.workdir", 'ENV_FILE_NAMES = (".env", os.path.join(".gemini", ".env"))',
+                                'ENV_FILE_NAMES = (".env",)'),
+        "root-not-read": ("E3.root", "for i in range(len(parts), -1, -1)]", "for i in range(len(parts), 0, -1)]"),
+        "alias-unchecked": ("E4.alias", "    if model in pin[\"short_aliases\"]:", "    if False:"),
+        "any-id": ("E4.pinned", "    if model not in pin[\"models\"]:", "    if False:"),
+        "gemini-executable-unbound": ("E4.boundary", "    if not inner or not (inner[0] == pin[\"client\"] or", "    if False and not (inner[0] == pin[\"client\"] or"),
+        "exec-no-model-check": ("E4.exec", "    check_model(harness, inner)\n", ""),
+    }
+
+
+METHOD = {
+    "env-from-caller": "E2Allowlist.test_take_environment_is_the_row_alone",
+    "row-base-dropped": "E1Table.test_each_row_is_the_ruling_s_set",
+    "home-elsewhere": "E1Table.test_each_row_is_the_ruling_s_set",
+    "values-in-client-env": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
+    "no-launcher": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
+    "launcher-keeps-env": "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone",
+    "container-env-unchecked": "E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home",
+    "pairs-unchecked": "E2Allowlist.test_the_launcher_needs_the_credential",
+    "launch-no-env-check": "E3EnvFiles.test_launch_refuses_before_any_runtime_call",
+    "turn-no-env-check": "E3EnvFiles.test_run_turn_refuses_before_its_exec",
+    "home-unchecked": "E3EnvFiles.test_home",
+    "gemini-name-dropped": "E3EnvFiles.test_the_working_folder",
+    "root-not-read": "E3EnvFiles.test_the_box_root",
+    "alias-unchecked": "E4Model.test_a_short_alias_is_refused_by_name",
+    "any-id": "E4Model.test_the_full_ids_pass_and_others_refuse",
+    "gemini-executable-unbound": "E4Model.test_all_gemini_exec_spellings_are_checked",
+    "exec-no-model-check": "E4Model.test_exec_refuses_an_alias",
+}
+WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
+
+# Generated mutants this module does not kill that are equivalent, each with a reason a reviewer can check.
+EQUIVALENT: dict = {}
+
+
+def generate():
+    import walk_mutation
+    with mock.patch.dict(walk_mutation.ROAD, {MODULE: ROAD_FUNCTIONS}, clear=True):
+        return walk_mutation.generate_module(MODULE, SOURCE.read_text())
+
+
+def by_id() -> dict:
+    return {m.id: m for m in generate()[0]}
+
+
+class G1Generated(Case):
+    def test_the_equivalent_list_matches_the_generated_mutants(self):
+        ids = set(self.must("G1.generated", by_id))
+        self.assertGreater(len(ids), 0, "G1.generated: the generator produced nothing")
+        self.assertEqual(sorted(set(EQUIVALENT) - ids), [], "G1.generated: EQUIVALENT entries that name no mutant")
+        bare = sorted(k for k, why in EQUIVALENT.items() if not isinstance(why, str) or len(why.strip()) < 12)
+        self.assertEqual(bare, [], "G1.generated: EQUIVALENT entries without a reason")
+        fns = {i.split(":")[0].split(".", 1)[1] for i in ids}
+        self.assertEqual(fns, set(ROAD_FUNCTIONS), "G1.generated: a road function made no mutant")
+
+
+GENERATED_ORDER = ("E1Table", "E5Units", "E4Model", "E2Allowlist", "E3EnvFiles", "G1Generated")
+
+
+def _outcome(stdout):
+    record = re.findall(r"^test_env_allowlist outcomes: (\{.*\})$", stdout, re.M)
+    return json.loads(record[-1]) if record else None
+
+
+def run_witnesses(names) -> int:
+    chosen = names or sorted(WITNESSES)
+    red = 0
+    for name in chosen:
+        method, clause = WITNESSES[name]
+        got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name,
+                              method], capture_output=True, text=True, timeout=110)
+        outcome = _outcome(got.stdout)
+        blocks = re.findall(r"^FAIL: (\w+) \(__main__\.(\w+)\.\w+\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)", got.stderr,
+                            re.M | re.S)
+        attributed = any(f"{cls}.{test}" == method and "AssertionError" in body and
+                         re.search(r"(?<![\w:.-])" + re.escape(clause) + r"(?![\w.-])", body)
+                         for test, cls, body in blocks)
+        clean = bool(outcome) and set(outcome["failures"]) == {method} and outcome["errors"] == [] \
+            and outcome["skipped"] == []
+        passed = attributed and clean and got.returncode != 0
+        print(f"witness {name} -> {method} {clause}: {'RED' if passed else 'FAIL'}", flush=True)
+        if not passed:
+            print(got.stdout[-3000:] + got.stderr[-3000:], flush=True)
+            return 1
+        red += 1
+    print(f"test_env_allowlist witnesses: {red}/{len(chosen)} red; registry {len(WITNESSES)}", flush=True)
+    return 0
+
+
+def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
+    mutants_all, dropped = generate()
+    chosen = list(enumerate(mutants_all))
+    if shard:
+        i, n = shard
+        chosen = [(k, m) for k, m in chosen if k % n == i - 1]
+    if sample:
+        chosen = chosen[::sample]
+    if only is not None:
+        chosen = [(k, m) for k, m in chosen if m.id in only]
+    killed, survived, equivalent, listed_killed, inconclusive = [], [], [], [], []
+
+    def one(mid, fast):
+        argv = [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--gen-mutant", mid]
+        got = subprocess.run(argv + (["--failfast"] if fast else []), capture_output=True, text=True,
+                             timeout=timeout)
+        return got, _outcome(got.stdout)
+
+    for _, m in chosen:
+        try:
+            got, outcome = one(m.id, True)
+            if outcome is not None and not outcome["failures"] and outcome["errors"]:
+                got, outcome = one(m.id, False)
+        except subprocess.TimeoutExpired:
+            inconclusive.append(m.id)
+            print(f"generated {m.id}: TIMEOUT (inconclusive)", flush=True)
+            continue
+        if outcome is None:
+            inconclusive.append(m.id)
+            print(f"generated {m.id}: NO OUTCOME (rc {got.returncode})\n{got.stderr[-1500:]}", flush=True)
+            continue
+        if outcome["failures"]:
+            killed.append(m.id)
+            state = "KILLED"
+            if m.id in EQUIVALENT:
+                listed_killed.append(m.id)
+        elif m.id in EQUIVALENT:
+            equivalent.append(m.id)
+            state = "EQUIVALENT"
+        else:
+            survived.append(m.id)
+            state = "SURVIVED"
+        print(f"generated {m.id}: {state} by {outcome['failures'][:1]} (errors {len(outcome['errors'])}) "
+              f"[{m.kind} at line {m.line}: {m.original[:60]!r} -> {m.replacement[:40]!r}]", flush=True)
+    print(f"test_env_allowlist generated mutants: {len(mutants_all)} generated ({dropped} dropped, not compiling), "
+          f"{len(chosen)} run, {len(killed)} killed, {len(equivalent)} equivalent (listed), {len(survived)} "
+          f"survived unlisted, {len(listed_killed)} listed but killed, {len(inconclusive)} inconclusive", flush=True)
+    for name, ids in (("SURVIVED (unlisted)", survived), ("LISTED BUT KILLED", listed_killed),
+                      ("INCONCLUSIVE", inconclusive)):
+        for x in ids:
+            print(f"  {name}: {x}", flush=True)
+    return 0 if not survived and not listed_killed and not inconclusive else 1
+
+
+if __name__ == "__main__":
+    if "--generated-mutants" in sys.argv:
+        shard = sample = None
+        if "--shard" in sys.argv:
+            a, b = sys.argv[sys.argv.index("--shard") + 1].split("/")
+            shard = (int(a), int(b))
+            if not 1 <= shard[0] <= shard[1]:
+                raise SystemExit("--shard i/n with 1 <= i <= n")
+        if "--sample" in sys.argv:
+            sample = int(sys.argv[sys.argv.index("--sample") + 1])
+        per = int(sys.argv[sys.argv.index("--timeout") + 1]) if "--timeout" in sys.argv else 600
+        only = set(sys.argv[sys.argv.index("--only") + 1].split(",")) if "--only" in sys.argv else None
+        raise SystemExit(run_generated(shard, sample, per, only))
+    failfast = "--failfast" in sys.argv
+    if failfast:
+        sys.argv.remove("--failfast")
+    if "--gen-mutant" in sys.argv:
+        index = sys.argv.index("--gen-mutant")
+        GENERATED = sys.argv[index + 1]
+        del sys.argv[index:index + 2]
+        if len(sys.argv) == 1:
+            sys.argv += list(GENERATED_ORDER)
+    if "--witnesses" in sys.argv:
+        raise SystemExit(run_witnesses(sys.argv[sys.argv.index("--witnesses") + 1:]))
+    if "--mutant" in sys.argv:
+        index = sys.argv.index("--mutant")
+        SELECTED = sys.argv[index + 1]
+        if SELECTED not in WITNESSES:
+            raise SystemExit(f"unknown mutant {SELECTED!r}")
+        del sys.argv[index:index + 2]
+    result = unittest.main(verbosity=2, exit=False, failfast=failfast).result
+    ids = lambda pairs: [t.id().removeprefix("__main__.").split(" ")[0] for t, _ in pairs]  # noqa: E731
+    print(f"test_env_allowlist: {result.testsRun} run, {len(result.failures)} failures, "
+          f"{len(result.errors)} errors, {len(result.skipped)} skipped")
+    print("test_env_allowlist outcomes: " + json.dumps({"failures": ids(result.failures),
+                                                       "errors": ids(result.errors),
+                                                       "skipped": ids(result.skipped)}))
+    raise SystemExit(0 if result.wasSuccessful() else 1)

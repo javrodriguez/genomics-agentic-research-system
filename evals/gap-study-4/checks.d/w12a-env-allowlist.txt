@@ -1,0 +1,17 @@
+# Lane w12a-env-allowlist: Gap Study round 4, the take environment as an allowlist (ruling docs-1, the docs read of
+# 13 Oct): box/run_take.TAKE_ENV the one table, the launcher that starts the agent from an empty environment plus its
+# row, the .env refusals at launch and every turn, and arm G's full model id (a short alias refused by name).
+# One command per line, run from the repository root. --witnesses prints one witness line per mutant (rule B).
+# No model, container, network, credential, salt or holdout.
+python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py
+python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --witnesses
+# The generated mutation sweep: this lane's six functions in box/run_take.py in 8 shards; count derived at run time, each mutant capped at 240 s; each shard fails on an unlisted survivor, a listed one killed, or an inconclusive
+# run.
+python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --generated-mutants --shard 1/8 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --generated-mutants --shard 2/8 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --generated-mutants --shard 3/8 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --generated-mutants --shard 4/8 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --generated-mutants --shard 5/8 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --generated-mutants --shard 6/8 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --generated-mutants --shard 7/8 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_env_allowlist.py --generated-mutants --shard 8/8 --timeout 240

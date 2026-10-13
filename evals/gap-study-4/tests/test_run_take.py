@@ -488,7 +488,8 @@ class TestArmVariables(MutantCase):
         self.logins = {h: plant_login(self.tmp, rt.LOGIN_VARIABLE[h]) for h in ARMS}
 
     def exec_for(self, harness, caller=None):
-        return rt.exec_argv(ID["take"], ["agent-cli"], user=rt.AGENT_USER, workdir="/srv/w/t1/tree",
+        inner = ["gemini", "-m", "gemini-3.8-flash"] if harness == rt.GEMINI else ["agent-cli"]
+        return rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/srv/w/t1/tree",
                             harness=harness, run_tree="/srv/w/t1/tree", login_file=self.logins[harness],
                             caller_env=CALLER if caller is None else caller)
 
@@ -529,8 +530,9 @@ class TestArmVariables(MutantCase):
         out = []
         for arm in ARMS:
             other = next(rt.LOGIN_VARIABLE[h] for h in ARMS if h != arm)
-            bad = dict(rt.HARNESS_ENV, **{arm: dict(rt.HARNESS_ENV[arm], **{other: "x"})})
-            with mock.patch.object(rt, "HARNESS_ENV", bad), filled():
+            # Departure w12a-2: the one table is TAKE_ENV (ruling docs-1); HARNESS_ENV is a view derived from it.
+            bad = dict(rt.TAKE_ENV, **{arm: dict(rt.TAKE_ENV[arm], **{other: "x"})})
+            with mock.patch.object(rt, "TAKE_ENV", bad), filled():
                 try:
                     self.exec_for(arm)
                     out.append(f"{arm} exec requesting {other} accepted")
@@ -604,12 +606,14 @@ class TestExecArgv(MutantCase):
                                      workdir="/srv/w/t1/tree", harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
                                      login_file=self.login, caller_env=CALLER)
         t = "/srv/w/t1/tree/.tmp"
+        # Departure w12a-2 (ruling docs-1): the values ride as the launcher's NAME=VALUE pairs, the agent starting
+        # from an empty environment plus its TAKE_ENV row; the login still rides as `-e NAME` only.
         want = ["docker", "exec", "--user", "10001:10001", "--workdir", "/srv/w/t1/tree",
-                "-e", "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1", "-e", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
-                "-e", "CLAUDE_CONFIG_DIR=/opt/cfg", "-e", "DISABLE_AUTOUPDATER=1",
-                "-e", "ENABLE_CLAUDEAI_MCP_SERVERS=false", "-e", "FAKE_FALLBACK_A=1",
-                "-e", "HTTPS_PROXY=http://proxy:3128", "-e", f"TEMP={t}", "-e", f"TMP={t}", "-e", f"TMPDIR={t}",
-                "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], "agent-cli", "-p", "x"]
+                "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], *rt.LAUNCHER, "CLAUDE_CODE_OAUTH_TOKEN", "13",
+                "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
+                "CLAUDE_CONFIG_DIR=/opt/cfg", "DISABLE_AUTOUPDATER=1", "ENABLE_CLAUDEAI_MCP_SERVERS=false",
+                "FAKE_FALLBACK_A=1", "HOME=/opt/cfg", "HTTPS_PROXY=http://proxy:3128", "LANG=C.UTF-8",
+                f"PATH={rt.TAKE_PATH}", f"TEMP={t}", f"TMP={t}", f"TMPDIR={t}", "agent-cli", "-p", "x"]
         if argv != want:
             out.append(f"exec argv differs: {argv}")
         if any(FAKE_VALUE in a for a in argv):
@@ -637,15 +641,16 @@ class TestExecArgv(MutantCase):
         except rt.NotReady:
             pass
         for h in ("codex", "gemini"):
+            inner = ["gemini", "-m", "gemini-3.8-flash"] if h == rt.GEMINI else ["x"]
             lf = plant_login(self.tmp, rt.LOGIN_VARIABLE[h])
             try:
-                rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=h,
+                rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
                              run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
                 out.append(f"a {h} exec was built while its billing-route list is PENDING")
             except rt.NotReady:
                 pass
             with filled():
-                a, e = rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=h,
+                a, e = rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
                                     run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
             home = {"codex": "CODEX_HOME=/opt/cfg", "gemini": "GEMINI_CLI_HOME=/opt/cfg"}[h]
             if home not in a or "-e" not in a or rt.LOGIN_VARIABLE[h] not in a or FAKE_VALUE in " ".join(a):
@@ -1562,7 +1567,7 @@ SUBPROCESS_NAMES = frozenset({"run", "TimeoutExpired"})
 GUARDED_MODULES = ("os", "subprocess")
 # W4B2-2, derived once from the three box modules' source and committed (TestAuditAllowlists binds both ways).
 OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "getuid",
-                      "listdir", "lstat", "makedirs", "mkdir", "open", "path", "walk"})
+                      "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk"})
 DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 # How subprocess may appear, at DockerRuntime.run only: run as the func of a call, TimeoutExpired in an except.
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})

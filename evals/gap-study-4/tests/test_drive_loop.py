@@ -354,7 +354,9 @@ class ClaudeBox(tbi.FakeBox):
 
     def turn(self, a):
         n = len(self.turn_argv)
-        cid, line = a[a.index("claude") - 1], a[a.index("-p") + 1]
+        # Departure w12a-3: the container id is the exec's first full id (a launcher now stands before claude).
+        cid = next(x for x in a[2:] if len(x) == 64 and all(c in "0123456789abcdef" for c in x))
+        cid, line = cid, a[a.index("-p") + 1]
         sid = a[-1]
         spec = self.replies[n - 1]
         msg, req, model = f"msg_s{n}", f"req_s{n}", tbi.MODEL

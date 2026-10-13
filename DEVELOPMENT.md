@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**W12 combined integration, 2026-10-13:** wave12 `6f84c312` and reviewed W12A `355c142` are combined without conflicts or implementation edits. Their 23 changed files form a byte-exact disjoint union; the battery now enumerates 246 commands. Manifest, lints, environment 27 and walk-builders 43 tests pass locally. Independent integration review and a fresh full solo Athena proof remain pending; no public landing is claimed. See [the integration report](lane-reports/w12-combined-2026-10-13.md).
+
 **Codex adapter, 2026-10-01 (decisions 0266 and 0267; landed as the merge `f814518`):** GARS runs under
 Codex 0.154 (verified); 0.144 source-checked for the same hook, updatedInput and parser semantics; earlier untested, with the same guard decisions. `_system/codex_hook.py` translates Codex's shell and `apply_patch`
 calls into the guard's own shape and calls `guard_hook.decide`, the one decision core; `gars/.codex/` wires it

@@ -149,7 +149,9 @@ class SessionBox(tdl.ClaudeBox):
         self.model, self.opened_in, self.per_take = model, opened_in, {}
 
     def turn(self, a):
-        cid, line, sid = a[a.index("claude") - 1], a[a.index("-p") + 1], a[-1]
+        # Departure w12a-4: the container id is the exec's first full id (a launcher now stands before claude).
+        cid = next(x for x in a[2:] if len(x) == 64 and all(c in "0123456789abcdef" for c in x))
+        cid, line, sid = cid, a[a.index("-p") + 1], a[-1]
         n = self.per_take[cid] = self.per_take.get(cid, 0) + 1      # a re-run is a new container: its own turn 1
         wd = self.opened_in or a[a.index("--workdir") + 1]
         msg, req, model = f"msg_w{n}", f"req_w{n}", self.model

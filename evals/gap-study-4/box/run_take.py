@@ -14,8 +14,11 @@ the per-take config folder at `CONFIG_MOUNT`. All capabilities dropped, no new p
 reservation, a ceiling of exactly three times it, a CPU limit. No environment variable at create, `--pull=never`,
 the image by its id. Every agent action is a `docker exec --user AGENT_USER` into it.
 
-THE ENVIRONMENT PER HARNESS (D8 B2 item 10). Non-secret values ride as `-e NAME=VALUE`; the login variable rides as
-`-e NAME` only, its value only in the client environment handed to `runtime.run`. Arm A keeps round 3's refusal of
+THE ENVIRONMENT PER HARNESS (D8 B2 item 10; ruling docs-1, lane w12a: an ALLOWLIST). The agent starts from an empty
+environment plus its arm's row of TAKE_ENV, the one table: the launcher inside the container execs the harness with
+exactly the row's NAME=VALUE pairs and the credential, which rides as `-e NAME` only, its value only in the client
+environment handed to `runtime.run`. A `.env` a harness would read refuses the launch and every turn (refuse_env_files),
+and arm G's call names a full pinned model id, never a short alias (check_model). Arm A keeps round 3's refusal of
 every API-key and billing-route variable whole (drive.py's three tuples, bound by `ast` in the tests); arms O and G
 each admit exactly their own vendor's one variable and refuse every other, Anthropic's included (the named departure
 from the drive.py task's GOTCHA, D8 B2 item 7). A take is refused when any refused name is set in the caller's own
@@ -90,14 +93,75 @@ SUBSCRIPTION_TOKEN_VARIABLES = ("CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CODE_OAUTH_RE
 # The other vendors' key variables (D8 B2 item 7's closed list).
 VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY")
 
-# ------------------------------------------------------------------------------------------ per-harness tables
-LOGIN_VARIABLE = {CLAUDE_CODE: "CLAUDE_CODE_OAUTH_TOKEN", CODEX: "CODEX_API_KEY", GEMINI: "GEMINI_API_KEY"}
-HARNESS_ENV = {
-    CLAUDE_CODE: {"DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-                  "HTTPS_PROXY": PROXY_URL, **ISOLATION_ENV, "CLAUDE_CONFIG_DIR": CONFIG_MOUNT},
-    CODEX: {"HTTPS_PROXY": PROXY_URL, "CODEX_HOME": CONFIG_MOUNT},
-    GEMINI: {"HTTPS_PROXY": PROXY_URL, "GEMINI_CLI_HOME": CONFIG_MOUNT},
+# ------------------------------------------------------------------- THE TAKE ENVIRONMENT (ruling docs-1, w12a)
+# An ALLOWLIST, never a blocklist. Every agent process starts from an EMPTY environment (the turn's launcher, below,
+# execs the harness with exactly this row and nothing else: not the image's ENV, not docker exec's defaults, not the
+# caller's). Each arm's row is the whole of what may reach the agent: PATH, HOME, LANG, the run tree's temporary
+# folder, the proxy, the harness's own switches and config home, and the arm's ONE credential, by NAME only (its value
+# is read from the login file at exec time and never rides in any argv). A name not in its row never reaches the agent.
+# HOME is the per-take config mount, so a `.env` there can be read host-side before launch (refuse_env_files).
+TAKE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+TAKE_LANG = "C.UTF-8"
+RUN_TREE_TMP = "<run tree>/.tmp"            # a marker: filled with f"{run_tree}/{RUN_TREE_TMPDIR}" per take
+CREDENTIAL = "<credential, by name only>"   # a marker: the arm's one login variable
+TAKE_ENV = {
+    CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
+                  "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
+                  "DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", **ISOLATION_ENV,
+                  "CLAUDE_CONFIG_DIR": CONFIG_MOUNT, "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
+    CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
+            "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
+            "CODEX_HOME": CONFIG_MOUNT, "CODEX_API_KEY": CREDENTIAL},
+    GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
+             "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
+             "GEMINI_CLI_HOME": CONFIG_MOUNT, "GEMINI_API_KEY": CREDENTIAL},
 }
+# The base every row carries (bound by the tests); the views below are DERIVED from TAKE_ENV, never declared apart.
+BASE_NAMES = ("PATH", "HOME", "LANG")
+LOGIN_VARIABLE = {h: next(k for k, v in row.items() if v == CREDENTIAL) for h, row in TAKE_ENV.items()}
+# Each harness's own non-secret values (its switches, proxy and config home): the row less the base, the run tree's
+# temporary folder and the credential. config_home_names() and preflight read this view.
+HARNESS_ENV = {h: {k: v for k, v in row.items() if k not in BASE_NAMES and v not in (RUN_TREE_TMP, CREDENTIAL)}
+               for h, row in TAKE_ENV.items()}
+# The turn's launcher inside the take container: the image's own python3, isolated (-I -S), reads the credential by
+# its name from the exec's environment and execs the harness with exactly the row (os.execvpe: PATH from the row).
+# Before each harness exec it checks .env names in the actual container cwd, ALL its ancestors and HOME.
+# The host-side check below is an early refusal only: a mounted run tree is not the container filesystem root.
+# Its arguments: the credential's name, the count of NAME=VALUE pairs, the pairs, then the harness's argv.
+LAUNCHER_SOURCE = ("import os,sys\n"
+                   "a=sys.argv[1:]\n"
+                   "k,n=a[0],int(a[1])\n"
+                   "e=dict(x.split('=',1) for x in a[2:2+n])\n"
+                   "e[k]=os.environ[k]\n"
+                   "dirs=[e['HOME']]\n"
+                   "d=os.getcwd()\n"
+                   "while True:\n"
+                   " dirs.append(d)\n"
+                   " parent=os.path.dirname(d)\n"
+                   " if parent==d: break\n"
+                   " d=parent\n"
+                   "for d in dirs:\n"
+                   " for name in ('.env',os.path.join('.gemini','.env')):\n"
+                   "  p=os.path.join(d,name)\n"
+                   "  if os.path.lexists(p): raise SystemExit('refusing .env file: '+p)\n"
+                   "c=a[2+n:]\n"
+                   "os.execvpe(c[0],c,e)\n")
+LAUNCHER = ("/usr/bin/python3", "-I", "-S", "-c", LAUNCHER_SOURCE)
+
+# The model each arm's call names, where the harness has short aliases that resolve elsewhere (docs read 13 Oct 2026:
+# Gemini CLI v0.63.0 docs/cli/cli-reference.md, its alias table; `flash-lite` resolves to gemini-2.5-flash-lite).
+# Arm G passes a full pinned id on every call, never a short alias; an alias is refused by its name.
+MODEL_PINS = {
+    GEMINI: {"client": "gemini", "flags": ("-m", "--model"),
+             "models": ("gemini-3.8-flash", "gemini-3.5-flash-lite"),
+             "short_aliases": {"auto": "gemini-2.5-pro or gemini-3-pro-preview",
+                               "pro": "gemini-2.5-pro or gemini-3-pro-preview",
+                               "flash": "gemini-2.5-flash", "flash-lite": "gemini-2.5-flash-lite"}},
+}
+# The files a harness would load variables from, read in every folder from the working folder up to the box root (the
+# run tree) and in HOME (Gemini CLI v0.63.0 docs/reference/configuration.md: the working folder, its parents up to
+# the project root or home, then ~/.env; `.gemini/.env` is that loader's other name). Refused for every arm.
+ENV_FILE_NAMES = (".env", os.path.join(".gemini", ".env"))
 # Claude Code's refusal-fallback and model-fallback variables: {name: value} once confirmed at the pinned version.
 FALLBACK_ENV = PENDING
 # Arms O and G's own billing-route variables (a Vertex switch for Gemini CLI, for example): a tuple of names each,
@@ -349,7 +413,7 @@ def create_argv(spec: TakeSpec) -> list:
 
 # ---------------------------------------------------------------------------------- the environment per harness
 def _known_harness(harness) -> str:
-    if not isinstance(harness, str) or harness not in LOGIN_VARIABLE or harness not in HARNESS_ENV:
+    if not isinstance(harness, str) or harness not in TAKE_ENV or harness not in LOGIN_VARIABLE:
         raise Refused(f"unknown harness {harness!r}: one of {sorted(LOGIN_VARIABLE)}, never a default")
     return harness
 
@@ -365,24 +429,128 @@ def refused_variables(harness: str) -> frozenset:
     return frozenset(names - {LOGIN_VARIABLE[harness]})
 
 
-def exec_values(harness: str, run_tree: str) -> dict:
-    """The exec's non-secret values for one harness (no login). Refuses while a value it needs is PENDING."""
+def take_environment(harness: str, run_tree: str) -> dict:
+    """The agent's WHOLE starting environment for one take (ruling docs-1), built from nothing: TAKE_ENV's row for the
+    arm, the run tree's temporary folder filled in, and (arm A) Claude Code's fallback values once confirmed. The
+    credential stays the CREDENTIAL marker; its value is read at exec time and rides by name only. No caller's
+    environment is read. Refuses while a value it needs is PENDING."""
     harness = _known_harness(harness)
-    rt = _abs_path(run_tree, "run_tree")
-    values = dict(HARNESS_ENV[harness])
-    for name in RUN_TREE_TMPDIR_VARIABLES:
-        values[name] = f"{rt}/{RUN_TREE_TMPDIR}"
+    tree = _abs_path(run_tree, "run_tree")
+    if sorted(k for k, v in TAKE_ENV[harness].items() if v == RUN_TREE_TMP) != sorted(RUN_TREE_TMPDIR_VARIABLES):
+        raise Refused(f"the {harness} row's temporary-folder names are not {list(RUN_TREE_TMPDIR_VARIABLES)}")
+    out = {}
+    for name, value in TAKE_ENV[harness].items():
+        out[name] = f"{tree}/{RUN_TREE_TMPDIR}" if value == RUN_TREE_TMP else value
     if harness == CLAUDE_CODE:
         if _is_pending(FALLBACK_ENV):
             raise NotReady(f"FALLBACK_ENV is PENDING: {PENDING_WHY['FALLBACK_ENV']}")
         for k, v in FALLBACK_ENV.items():
-            if k in values:
+            if k in out:
                 raise Refused(f"a fallback variable may not override {k}")
-            values[k] = v
+            out[k] = v
     elif _is_pending(VENDOR_BILLING_ROUTE_VARIABLES.get(harness, PENDING)):
         raise NotReady(f"VENDOR_BILLING_ROUTE_VARIABLES[{harness!r}] is PENDING: "
                        f"{PENDING_WHY['VENDOR_BILLING_ROUTE_VARIABLES']}")
-    return values
+    return out
+
+
+def exec_values(harness: str, run_tree: str) -> dict:
+    """The exec's non-secret values for one harness: take_environment less the credential (no login)."""
+    return {k: v for k, v in take_environment(harness, run_tree).items() if v != CREDENTIAL}
+
+
+def launcher_argv(login: str, values: dict, inner) -> list:
+    """The turn's command inside the take container: LAUNCHER, the credential's name, the count of pairs, the
+    NAME=VALUE pairs in name order, then the harness's argv. The launcher execs the harness with exactly the pairs and
+    the credential (read by its name from the exec's environment): the agent starts from an empty environment."""
+    inner = _check_argv(inner) if inner else None
+    if inner is None:
+        raise Refused("the launcher needs the harness's argv")
+    if not isinstance(login, str) or not _NAME.fullmatch(login):
+        raise Refused("the credential is named by a variable NAME")
+    pairs = []
+    for k in sorted(values):
+        v = values[k]
+        if not _NAME.fullmatch(k):
+            raise Refused(f"{k!r} is not a variable NAME")
+        if k == login:
+            raise Refused("the credential never rides as a pair: by name only")
+        if not isinstance(v, str) or "\0" in v:
+            raise Refused(f"the value of {k} is not a string free of NUL")
+        pairs.append(f"{k}={v}")
+    return [*LAUNCHER, login, str(len(pairs)), *pairs, *inner]
+
+
+def check_model(harness: str, inner):
+    """Arm G's call names its model exactly once, by a full pinned id; a short alias is refused by its name (it
+    resolves to another model). Returns the model, or None for an arm MODEL_PINS does not cover."""
+    pin = MODEL_PINS.get(harness)
+    if pin is None:
+        return None
+    if not inner or not (inner[0] == pin["client"] or
+                         (os.path.isabs(inner[0]) and os.path.basename(inner[0]) == pin["client"])):
+        raise Refused(f"unsupported {harness} executable: {inner[0] if inner else None!r}; "
+                      f"use {pin['client']} or its absolute path; probes use agent_exec_argv")
+    # Admit only the value-taking flags used by the adapter and their long aliases. Consume their values,
+    # so prompt text is not parsed as flags. Compact/clustered flags, positional tails and -- refuse rather
+    # than letting the CLI parse a second model choice differently from this boundary.
+    value_flags = ("-p", "--prompt", "-o", "--output-format", "--approval-mode", "--resume", "-r")
+    given = []
+    i = 1
+    while i < len(inner):
+        tok = inner[i]
+        flag, sep, value = tok.partition("=")
+        if flag not in pin["flags"] and flag not in value_flags:
+            raise Refused(f"unsupported {harness} turn argument {tok!r}")
+        if not sep:
+            i += 1
+            value = inner[i] if i < len(inner) else None
+        if flag in pin["flags"]:
+            given.append(value)
+        elif value is None or value.startswith("-"):
+            raise Refused(f"unsupported {harness} value for {flag!r}")
+        i += 1
+    if len(given) != 1 or given[0] is None:
+        raise Refused(f"a {harness} call names its model exactly once by {pin['flags'][0]}, never the default")
+    model = given[0]
+    if model in pin["short_aliases"]:
+        raise Refused(f"{model!r} is a short alias (it resolves to {pin['short_aliases'][model]}): the call passes "
+                      f"a full model id, one of {', '.join(pin['models'])}")
+    if model not in pin["models"]:
+        raise Refused(f"model {model!r} is not one of the arm's pinned ids: {', '.join(pin['models'])}")
+    return model
+
+
+def env_file_dirs(workdir: str, run_tree: str) -> list:
+    """The folders a harness reads a `.env` from inside the run tree: the working folder and every parent up to and
+    including the box root (the run tree, mounted at the same path)."""
+    cur = _abs_path(workdir, "workdir")
+    root = _abs_path(run_tree, "run_tree")
+    if not _inside(cur, root):
+        raise Refused("the working folder must sit inside the run tree (the box root)")
+    rel = os.path.relpath(cur, root)
+    parts = [] if rel == "." else rel.split(os.sep)
+    return [os.path.join(root, *parts[:i]) for i in range(len(parts), -1, -1)]
+
+
+def refuse_env_files(*, workdir: str, run_tree: str, config_dir: str | None = None) -> None:
+    """Refuse, naming each file, when a `.env` a harness would read exists: in the working folder, any parent up to
+    the box root, and (given the per-take config folder, HOME's host side) in HOME. Read host-side, a link counted."""
+    found = []
+    for d in env_file_dirs(workdir, run_tree):
+        for name in ENV_FILE_NAMES:
+            if os.path.lexists(os.path.join(d, name)):
+                found.append(os.path.join(d, name))
+    if config_dir is not None:
+        cfg = _abs_path(config_dir, "config_dir")
+        for h, row in TAKE_ENV.items():
+            if row.get("HOME") != CONFIG_MOUNT:
+                raise Refused(f"the {h} row's HOME is not the config mount: its .env cannot be read")
+        for name in ENV_FILE_NAMES:
+            if os.path.lexists(os.path.join(cfg, name)):
+                found.append(f"HOME ({CONFIG_MOUNT}) {os.path.join(cfg, name)}")
+    if found:
+        raise Refused("a .env file a harness would read is present, so the take is refused: " + "; ".join(found))
 
 
 def _own_environment():
@@ -408,29 +576,29 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     """One turn's `docker exec` as the agent, and the client environment. The login rides by name only.
 
     Interface (glitch-f3's ratification, Thu 8 Oct): the required `login_file` is part of exec_argv's signature; the
-    login is read from it at exec time by `read_login`, and its value reaches only the client environment."""
+    login is read from it at exec time by `read_login`, and its value reaches only the client environment.
+
+    Ruling docs-1 (w12a): the turn runs under the launcher, so the agent starts from an empty environment plus its
+    TAKE_ENV row and the credential; the client environment is the runtime's needs and the credential alone."""
     harness = _known_harness(harness)
     src = os.environ if caller_env is None else caller_env
     login = LOGIN_VARIABLE[harness]
-    # Refused names first, from the tables alone (so a cross-arm refusal never waits on a PENDING value).
-    static = set(HARNESS_ENV[harness]) | set(RUN_TREE_TMPDIR_VARIABLES) | {login}
-    check_environment(harness, src, static)
+    # Refused names first, from the table alone (so a cross-arm refusal never waits on a PENDING value).
+    check_environment(harness, src, set(TAKE_ENV[harness]))
     if user != AGENT_USER:
         raise Refused(f"every exec into the take container runs as the agent, {AGENT_USER}")
     _check_id(container_id, "container id")
     inner = _check_argv(inner)
     workdir = _abs_path(workdir, "workdir") if workdir != "/" else "/"
+    check_model(harness, inner)
     values = exec_values(harness, run_tree)
     check_environment(harness, src, set(values))
     if login in values:
         raise Refused("the login variable never rides with a value in argv")
     value = read_login(login_file, login)
-    argv = [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, "--workdir", workdir]
-    for name in sorted(values):
-        argv += ["-e", f"{name}={values[name]}"]
-    argv += ["-e", login, container_id, *inner]
+    argv = [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, "--workdir", workdir, "-e", login,
+            container_id, *launcher_argv(login, values, inner)]
     env = runtime_env(src)
-    env.update(values)
     env[login] = value
     return argv, env
 
@@ -719,6 +887,7 @@ def launch(runtime, spec: TakeSpec, *, sidecar: SidecarLaunch, proxy: ProxyLaunc
     from box import preflight  # the take's expected inspect (interface 13); imported here, preflight imports us
 
     check_spec(spec)
+    refuse_env_files(workdir=spec.run_tree, run_tree=spec.run_tree, config_dir=spec.config_dir)
     _check_proxy(proxy)
     _check_sidecar(sidecar)
     _check_launch_ready(sidecar)
@@ -1035,6 +1204,7 @@ def run_turn(runtime, take_id: str, inner, *, harness: str, run_tree: str, login
         raise Refused("the stream path already exists: a stream is never overwritten")
     if not (isinstance(budget_s, (int, float)) and budget_s > 0):
         raise Refused("budget_s > 0")
+    refuse_env_files(workdir=run_tree, run_tree=run_tree)
     argv, env = exec_argv(take_id, inner, user=AGENT_USER, workdir=run_tree, harness=harness, run_tree=run_tree,
                           login_file=login_file, caller_env=caller_env)
     started = clock()
