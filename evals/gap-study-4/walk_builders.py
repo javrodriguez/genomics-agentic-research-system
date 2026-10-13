@@ -118,7 +118,9 @@ def login_name(harness) -> str:
 
 def login_file_by_name(path, harness) -> str:
     """The login file's path, once its placement and its variable's NAME are checked. Reads exactly
-    len(name) + 1 bytes (`NAME=`) and never the value; every refusal names the file and the rule."""
+    len(name) + 1 bytes (`NAME=`) and never the value; every refusal names the file and the rule. The file is opened
+    with O_NOFOLLOW (a link swapped in after the check is refused) and O_NONBLOCK (a FIFO never blocks), and the opened
+    descriptor's device, inode and mode must be the checked path's (W12B-R1-1)."""
     from box import run_take as rt
     name = login_name(harness)
     if not isinstance(path, str) or not os.path.isabs(path):
@@ -141,6 +143,9 @@ def login_file_by_name(path, harness) -> str:
     except OSError:
         raise BuilderRefused(f"{path}: the login file cannot be opened") from None
     try:
+        opened = os.fstat(fd)                  # W12B-R1-1: the file read is the file checked
+        if (opened.st_dev, opened.st_ino, opened.st_mode) != (st.st_dev, st.st_ino, st.st_mode):
+            raise BuilderRefused(f"{path}: the login file changed between its check and its read")
         head = os.read(fd, len(want))
     finally:
         os.close(fd)
@@ -296,10 +301,11 @@ def production_builders() -> dict:
 
 
 def missing(builders: dict) -> list[tuple[str, str]]:
-    """(name, why) for every name in NAMES that the set lacks or holds as Missing, in NAMES' order; a name the set
-    holds and NAMES does not is refused too (the set is closed)."""
+    """(name, why) for every name in NAMES that the set lacks, holds as Missing or holds as None, in NAMES' order; a
+    name the set holds and NAMES does not is refused too (the set is closed)."""
     out = [(n, "absent from the builder set") for n in NAMES if n not in builders]
     out += [(n, builders[n].why) for n in NAMES if isinstance(builders.get(n), Missing)]
+    out += [(n, "present but None") for n in NAMES if n in builders and builders[n] is None]   # W12B-R1-2
     out += [(n, "not a builder the command line knows") for n in sorted(set(builders) - set(NAMES))]
     order = {n: i for i, n in enumerate(NAMES)}
     return sorted(out, key=lambda nw: order.get(nw[0], len(NAMES)))
@@ -319,7 +325,10 @@ def prepare(builders: dict, args) -> tuple[dict, str, Path]:
     """(the walk row, its login file, its run tree): the row from the design, the login checked by name, then the
     walk's checkout built. Nothing is built for a row of another harness or a login the name check refuses."""
     import prereg
+    import walk_register
     from box import run_take as rt
+    if not walk_register.WALK_ID.fullmatch(args.walk):        # W12B-R1-3: before anything is built
+        raise BuilderRefused(f"the walk id {args.walk!r} is not one path segment (walk_register.WALK_ID)")
     cell = {k: getattr(args, k) for k in CELL}
     row = walk_row(args.walk, cell, builders["agent_version"], prereg.load()["rows"])
     harness = row["agent"]["harness"]
@@ -359,10 +368,17 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path):
 
 def cli(argv, builders=None, *, refusal: str) -> int:
     """walk_runner.main's body. Refuses (exit 2), naming every missing builder or value, before anything is built;
-    a builder that refuses also exits 2, its run tree removed; else one walk, end to end, through
-    walk_runner.run_walks, exit 0 only when it was committed (1 when refused at launch or held). A held walk keeps
-    its run tree for a human, as it keeps its folder."""
-    builders = production_builders() if builders is None else builders
+    a builder set that cannot be read (production_builders raising, a TableError say) exits 2 the same way; a walk
+    id that is not one path segment and a builder that refuses also exit 2, its run tree (if any) removed; else one
+    walk, end to end, through walk_runner.run_walks, exit 0 only when it was committed (1 when refused at launch or
+    held). A held walk keeps its run tree for a human, as it keeps its folder; so does a walk whose run_walks raised,
+    and its path is printed on its own `kept run tree:` line before the exception goes on (W12B-R1-3)."""
+    try:                                                       # W12B-R1-3: an unreadable value is a refusal too
+        builders = production_builders() if builders is None else builders
+    except Exception as e:  # noqa: BLE001
+        print(f"refused: the production builders cannot be read: {type(e).__name__}: {e}", file=sys.stderr)
+        print(f"refused: {refusal}", file=sys.stderr)
+        return 2
     gaps = missing(builders)
     if gaps:
         for name, why in gaps:
@@ -384,7 +400,11 @@ def cli(argv, builders=None, *, refusal: str) -> int:
         print(f"refused: {e}" + (f"; and {left}" if left else ""), file=sys.stderr)
         return 2
     import walk_runner
-    got = walk_runner.run_walks(driver, repo, [{"row": row, "reason": args.reason}], table=builders["table"])
+    try:
+        got = walk_runner.run_walks(driver, repo, [{"row": row, "reason": args.reason}], table=builders["table"])
+    except BaseException:
+        print(f"kept run tree: {tree} (run_walks raised; left for a human)", file=sys.stderr)   # W12B-R1-3
+        raise
     state = got[0]["state"]
     kept = None if state == walk_runner.HELD else remove_run_tree(tree)
     print(json.dumps({"walk": args.walk, "results": got, "run_tree": str(tree), "run_tree_kept": kept},

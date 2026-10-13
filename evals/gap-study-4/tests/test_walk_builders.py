@@ -134,6 +134,25 @@ def mutants() -> dict:
         "login-link-admitted": ("B2.login", "walk_builders", "    if not stat.S_ISREG(st.st_mode):",
                                 "    if stat.S_ISDIR(st.st_mode):"),
         "login-name-unchecked": ("B2.login", "walk_builders", "    if head != want:", "    if False:"),
+        "login-fstat-unchecked": ("B2.login", "walk_builders",
+                                  "        if (opened.st_dev, opened.st_ino, opened.st_mode) != (st.st_dev, st.st_ino, "
+                                  "st.st_mode):", "        if False:"),
+        "login-follows-links": ("B2.login", "walk_builders", "os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK",
+                                "os.O_RDONLY | os.O_NONBLOCK"),
+        "login-blocks-on-fifo": ("B2.login", "walk_builders", "os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK",
+                                 "os.O_RDONLY | os.O_NOFOLLOW"),
+        "missing-none-present": ("B7.production", "walk_builders",
+                                 '    out += [(n, "present but None") for n in NAMES if n in builders and builders[n] '
+                                 'is None]   # W12B-R1-2\n', ""),
+        "table-error-raises": ("B7.production", "walk_builders",
+                               "    except Exception as e:  # noqa: BLE001\n        print(f\"refused: the production "
+                               "builders cannot be read", "    except KeyError as e:  # noqa: BLE001\n        "
+                               "print(f\"refused: the production builders cannot be read"),
+        "walk-id-unchecked": ("B9.cli", "walk_builders", "    if not walk_register.WALK_ID.fullmatch(args.walk):",
+                              "    if False:"),
+        "kept-tree-unnamed": ("B9.cli", "walk_builders",
+                              '        print(f"kept run tree: {tree} (run_walks raised; left for a human)", '
+                              'file=sys.stderr)', "        pass"),
         "secrets-read-early": ("B2.login", "walk_builders", "    name = login_name(harness)\n\n    def secrets():",
                                "    name = login_name(harness)\n    scan_record.read_login(login_file, name, "
                                "allowed=tuple(rt.LOGIN_VARIABLE.values()))\n\n    def secrets():"),
@@ -196,6 +215,13 @@ METHOD = {
     "login-link-admitted": "B2Login.test_each_placement_rule_refuses",
     "login-name-unchecked": "B2Login.test_another_name_is_refused_without_its_value",
     "secrets-read-early": "B2Login.test_the_secrets_read_the_value_only_when_asked",
+    "login-fstat-unchecked": "B2Login.test_a_file_swapped_after_the_check_is_refused",
+    "login-follows-links": "B2Login.test_a_file_swapped_after_the_check_is_refused",
+    "login-blocks-on-fifo": "B2Login.test_a_file_swapped_after_the_check_is_refused",
+    "missing-none-present": "B7Production.test_missing_names_absent_and_unknown",
+    "table-error-raises": "B7Production.test_an_unreadable_table_is_refused_by_name",
+    "walk-id-unchecked": "B9Cli.test_a_refused_row_or_login_builds_nothing",
+    "kept-tree-unnamed": "B9Cli.test_a_runner_that_raises_names_its_kept_run_tree",
     "counters-folder-unchecked": "B3Counters.test_a_bad_folder_is_refused",
     "counters-zero": "B3Counters.test_the_take_s_own_counters",
     "run-tree-commit-unchecked": "B4RunTree.test_malformed_inputs_build_nothing",
@@ -220,7 +246,11 @@ WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 # Generated mutants this module does not kill that are equivalent, each with a reason a reviewer can check.
 # `--generated-mutants` fails on a survivor not listed here and on a listed one that is killed; G1 fails on an entry
 # that names no generated mutant or gives no reason.
-EQUIVALENT: dict = {}
+EQUIVALENT: dict = {
+    # athena run gap4-w12b-bc66fdf-20261013T101052Z, shard 16:
+    "walk_builders.remove_run_tree:delete:L6:C4:e3e767f5":
+        "the function's last statement `return None`; deleted, the function falls off its end and returns None",
+}
 
 
 def compile_module(name: str, source: str) -> types.ModuleType:
@@ -407,6 +437,34 @@ class B2Login(Case):
             self.refuses("B2.login", "cannot be opened", wb().login_file_by_name, str(good), "claude-code")
         self.refuses("B2.login", "no login variable", wb().login_file_by_name, str(good), "stub")
 
+    def test_a_file_swapped_after_the_check_is_refused(self):
+        """W12B-R1-1: the path is checked by lstat, then something else stands there when it is opened (lstat patched
+        to answer the checked file's stat): a regular file of another inode and mode is refused by the descriptor's
+        fstat; a link by O_NOFOLLOW; a FIFO opens without blocking (O_NONBLOCK) and is refused by the fstat."""
+        good = self.good()
+        checked = os.lstat(good)
+        real_lstat, real_open = os.lstat, os.open
+        other = login_file(f"{LOGIN}={tbi.TOKEN}\n", mode=0o644)
+        link = good.parent / "swapped-link.env"
+        link.symlink_to(good)
+        fifo = good.parent / "swapped-fifo.env"
+        os.mkfifo(fifo, 0o600)
+        flags = []
+
+        def opener(path, fl, *a, **k):
+            flags.append(fl)
+            if not fl & os.O_NONBLOCK:
+                raise OSError("synthetic: an open without O_NONBLOCK would block on a FIFO")
+            return real_open(path, fl, *a, **k)
+        for path, words in ((other, "changed between its check and its read"), (link, "cannot be opened"),
+                            (fifo, "changed between its check and its read")):
+            with self.subTest(path=path.name), \
+                    mock.patch.object(os, "lstat", lambda p, q=str(path): checked if p == q else real_lstat(p)), \
+                    mock.patch.object(os, "open", opener):
+                self.refuses("B2.login", words, wb().login_file_by_name, str(path), "claude-code")
+        self.assertTrue(all(f & os.O_NOFOLLOW and f & os.O_NONBLOCK for f in flags) and flags,
+                        f"B2.login: opened without O_NOFOLLOW or O_NONBLOCK: {flags}")
+
     def test_another_name_is_refused_without_its_value(self):
         for text in (f"CODEX_API_KEY={tbi.TOKEN}\n", f"{LOGIN[:-1]}={tbi.TOKEN}\n", LOGIN, f" {LOGIN}={tbi.TOKEN}\n",
                      ""):
@@ -451,7 +509,8 @@ class B3Counters(Case):
 
     def test_a_bad_folder_is_refused(self):
         self.refuses("B3.counters", "must be callable", wb().counters_reader, "/not/callable")
-        for folder in (None, "relative/cgroup", str(tbi.SCRATCH / "no-such-cgroup"), 7):
+        here = os.path.relpath(str(cgroup()))        # athena W12B sweep: a relative folder that exists
+        for folder in (None, "relative/cgroup", here, str(tbi.SCRATCH / "no-such-cgroup"), 7):
             with self.subTest(folder=folder):
                 fn = self.must("B3.counters", wb().counters_reader, lambda t, f=folder: f)
                 self.refuses("B3.counters", "absolute, existing folder", fn, object())
@@ -673,9 +732,13 @@ class B6Row(Case):
 # ------------------------------------------------------------------------------------------------- B7
 def run_main(argv, builders=None) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        kw = {} if builders is None else {"builders": builders}
-        code = MODS["walk_runner"].main(argv, **kw)
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            kw = {} if builders is None else {"builders": builders}
+            code = MODS["walk_runner"].main(argv, **kw)
+    except BaseException as e:
+        e.captured = (out.getvalue(), err.getvalue())     # what was printed before it raised
+        raise
     return code, out.getvalue(), err.getvalue()
 
 
@@ -711,16 +774,34 @@ class B7Production(Case):
                 named = re.findall(r"^refused: missing (\w+): ", err, re.M)
                 self.assertEqual(named, EXPECTED_MISSING, f"B7.production: {err[:600]}")
                 self.assertIn("Q-w7b-3", err, "B7.production")
+                self.assertEqual(err.strip().splitlines()[-1], f"refused: {MODS['walk_runner'].CLI_REFUSAL}",
+                                 "B7.production: the refusal line is not the last line")
                 self.assertEqual((out, list(tmp.iterdir())), ("", []), "B7.production: something was built")
+
+    def test_an_unreadable_table_is_refused_by_name(self):
+        """W12B-R1-3: routing.json that load_table refuses is a refusal by name (exit 2), never a traceback."""
+        import routing
+
+        def unreadable():
+            raise routing.TableError("synthetic: the table cannot be read")
+        with mock.patch.object(routing, "load_table", unreadable):
+            code, out, err = self.must("B7.production", run_main, ARGV)
+        self.assertEqual(code, 2, "B7.production: not refused")
+        self.assertIn("refused: the production builders cannot be read: TableError: synthetic", err, "B7.production")
+        self.assertIn("Q-w7b-3", err, "B7.production")
+        self.assertEqual(err.strip().splitlines()[-1], f"refused: {MODS['walk_runner'].CLI_REFUSAL}",
+                         "B7.production: the refusal line is not the last line")
 
     def test_missing_names_absent_and_unknown(self):
         full = {n: object() for n in wb().NAMES}
         self.assertEqual(self.must("B7.production", wb().missing, full), [], "B7.production")
         partial = {n: v for n, v in full.items() if n not in ("proxy", "clock")}
         partial["uid_map"] = wb().Missing("synthetic: measured later")
+        partial["hosts"] = None
         partial["extra"] = object()
         self.assertEqual(self.must("B7.production", wb().missing, partial),
-                         [("proxy", "absent from the builder set"), ("uid_map", "synthetic: measured later"),
+                         [("proxy", "absent from the builder set"), ("hosts", "present but None"),
+                          ("uid_map", "synthetic: measured later"),
                           ("clock", "absent from the builder set"), ("extra", "not a builder the command line knows")],
                          "B7.production")
         for why in ("", "   ", None):
@@ -885,12 +966,21 @@ def register(w) -> list:
 
 
 class B9Cli(Case):
+    def doc(self, out: str) -> dict:
+        """The command line's one JSON output line (athena W12B sweep: a deleted print must fail by assertion)."""
+        lines = out.strip().splitlines()
+        self.assertTrue(lines, "B9.cli: the command line printed no output line")
+        doc = self.must("B9.cli", json.loads, lines[-1])
+        self.assertEqual(sorted(doc), ["results", "run_tree", "run_tree_kept", "walk"], f"B9.cli: {doc}")
+        return doc
+
     def test_one_walk_end_to_end(self):
         with fake_world() as w:
             code, out, err = self.must("B9.cli", w.main, w.argv())
             self.assertEqual(code, 0, f"B9.cli: exit {code}: {err[-800:]} {out[-800:]}")
-            doc = json.loads(out.strip().splitlines()[-1])
+            doc = self.doc(out)
             self.assertEqual([r["state"] for r in doc["results"]], ["committed"], f"B9.cli: {doc}")
+            self.assertEqual(doc["walk"], "w-0001", "B9.cli")
             self.assertEqual([(e["walk"], e["reason"], e["counted"]) for e in register(w)],
                              [("w-0001", "synthetic: walk w-0001 through the command line", False)], "B9.cli")
             folder = w.walk_folder()
@@ -938,7 +1028,9 @@ class B9Cli(Case):
 
     def test_a_refused_row_or_login_builds_nothing(self):
         with fake_world() as w:
-            for argv, words in ((w.argv(wording="w99"), "not a row of the design"),
+            for argv, words in ((w.argv(walk="a/b"), "not one path segment"),
+                                (w.argv(walk="../w-0001"), "not one path segment"),
+                                (w.argv(wording="w99"), "not a row of the design"),
                                 (w.argv(arm="O", model="gpt-6.1-sol"), "admits only Claude Code")):
                 code, out, err = self.must("B9.cli", w.main, argv)
                 self.assertEqual(code, 2, f"B9.cli: {err[-300:]}")
@@ -976,12 +1068,30 @@ class B9Cli(Case):
                     self.fail("B9.cli: the construction's failure was swallowed")
             self.nothing_built(w)
 
+    def test_a_runner_that_raises_names_its_kept_run_tree(self):
+        """W12B-R1-3: an exception out of run_walks goes on as itself; the run tree is kept for a human and its path
+        printed on its own `kept run tree:` line first."""
+        with fake_world() as w:
+            def raises(*a, **k):
+                raise RuntimeError("synthetic: run_walks raised")
+            with mock.patch.object(MODS["walk_runner"], "run_walks", raises):
+                try:
+                    w.main(w.argv())
+                except RuntimeError as e:
+                    err = getattr(e, "captured", ("", ""))[1]
+                except Exception as e:  # noqa: BLE001
+                    self.fail(f"B9.cli: raised {type(e).__name__}: {str(e)[:300]}")
+                else:
+                    self.fail("B9.cli: run_walks' exception was swallowed")
+            self.assertIn(f"kept run tree: {w.run_tree()} ", err, f"B9.cli: {err[-400:]}")
+            self.assertTrue(w.run_tree().is_dir(), "B9.cli: the run tree was not kept")
+
     def test_a_registered_walk_id_is_refused_at_launch(self):
         with fake_world() as w:
             self.assertEqual(self.must("B9.cli", w.main, w.argv())[0], 0, "B9.cli")
             code, out, err = self.must("B9.cli", w.main, w.argv())
             self.assertEqual(code, 1, f"B9.cli: {err[-300:]}")
-            doc = json.loads(out.strip().splitlines()[-1])
+            doc = self.doc(out)
             self.assertEqual([r["state"] for r in doc["results"]], ["launch-refused"], f"B9.cli: {doc}")
             self.assertEqual(len(register(w)), 1, "B9.cli")
             self.assertEqual((doc["run_tree_kept"], w.run_tree().exists()), (None, False), "B9.cli")
@@ -992,7 +1102,7 @@ class B9Cli(Case):
                                                                      "rule": "synthetic-rule"}])
             code, out, err = self.must("B9.cli", w.main, w.argv(), scanner)
             self.assertEqual(code, 1, f"B9.cli: {err[-300:]}")
-            doc = json.loads(out.strip().splitlines()[-1])
+            doc = self.doc(out)
             self.assertEqual([r["state"] for r in doc["results"]], ["held"], f"B9.cli: {doc}")
             self.assertTrue(w.run_tree().is_dir(), "B9.cli: a held walk's run tree was removed")
             self.assertIsNone(doc["run_tree_kept"], "B9.cli")

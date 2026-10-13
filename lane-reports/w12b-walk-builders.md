@@ -1,6 +1,6 @@
-Status: built (the fake half of next-slices plan item 5); the generated sweep in full and the battery are athena's
+Status: review round 1 PASS; fold w12b-R1 and athena's four survivors folded (see the end); athena rerun owed on the fold head
 
-RESUME HERE: review round 1 + athena run of the module list below
+RESUME HERE: athena rerun of the module list below on the fold head
 
 # Lane w12b-walk-builders: Gap Study round 4, the walk runner's production builders (fake half)
 
@@ -116,3 +116,23 @@ Evidence (Mac, each run behind `mac_slot.py light-ok`, `timeout -s INT 120`, `/u
 - `tests/test_walk_runner.py` whole, `--witnesses` (67), and its 12 generated shards (main's body changed).
 - `tests/test_walk_wiring.py`, `test_box_integration.py` (whole), `test_scaffold.py` (whole: a new fragment), `test_pipeline.py`, `test_wave6_bindings.py`, `test_round4.py` (the battery).
 - The gates: `copy_manifest --check`, `build_draft --check`, `freeze.py --check`, `walk_register --check`, `lint_language` and `lint_pooling` over the folder.
+
+## Fold w12b-R1, Tue 13 Oct 2026 (review round 1 PASS; glitch-2f's fold list)
+
+Review: `lane-reports/w12b-walk-builders-review-r1.md` (in `/Users/javrodher/aegis-builds/gap4-w12b-review`), PASS, three MINORs and one note.
+athena run `gap4-w12b-bc66fdf-20261013T101052Z` on `bc66fdfd`: everything passed apart from four generated survivors (shards 10, 11, 15 and 16), folded here too.
+
+What changed:
+- W12B-R1-1: `login_file_by_name` fstats the opened descriptor and refuses ("changed between its check and its read") unless its device, inode and mode are the checked path's.
+  B2 swaps three things in after the check (lstat patched to answer the checked file's stat): a regular file of another inode and mode (the fstat refuses), a link (O_NOFOLLOW refuses at open) and a FIFO (opens without blocking under O_NONBLOCK, then the fstat refuses); every open is asserted to carry both flags, and an open without O_NONBLOCK is answered as an error by the test's opener so the run never blocks.
+  Witnesses login-fstat-unchecked, login-follows-links (O_NOFOLLOW at 0), login-blocks-on-fifo (O_NONBLOCK at 0).
+- W12B-R1-2: `missing()` names a value held as None ("present but None"). Witness missing-none-present.
+- W12B-R1-3: `cli` reads `production_builders()` inside the refusal, so an unreadable routing table exits 2 by name (witness table-error-raises); `prepare` refuses a walk id that is not one path segment (`walk_register.WALK_ID`) before anything is built (witness walk-id-unchecked); when `run_walks` raises, the run tree is kept and its path printed on its own `kept run tree:` line before the exception goes on (witness kept-tree-unnamed).
+- W12B-R1-4 (note): `drive.neutral_name` keeps 32 bits of the session id, so two walk ids can share a run-tree name (the reviewer found `w-105050` and `w-105131`); the second walk's build fails closed with "already exists" and the first walk's tree is left intact. Left as round 3 made it.
+- athena's survivors: the exact refusal line (`refused: <CLI_REFUSAL>` as the last stderr line) is now asserted in both refusal roads; the command line's JSON output line is parsed by assertion with its four keys; a relative cgroup folder that exists is refused (the `isabs` clause); `remove_run_tree`'s final `return None` is listed EQUIVALENT (deleted, the function falls off its end and returns None).
+
+Evidence (Mac, light-ok before each batch, `timeout -s INT 120`, python3.13):
+- Red first: the five new or tightened fold tests against `8a86a246`'s `walk_builders.py` (byte backup restored, `shasum -c` OK): 5 run, 6 failures (per subTest), 0 errors, each by assertion.
+- Green on the fold: `test_walk_builders: 43 run, 0 failures, 0 errors, 0 skipped`.
+- athena's four survivors through `--generated-mutants --only`: three killed (B7's two refusal-line tests, B9's held walk, B3's bad folder) and the listed one EQUIVALENT; the `kept run tree` print killed by its new test.
+- The generator now makes 346 mutants (the fold's new lines); the checks.d count comment says so, still 16 shards.

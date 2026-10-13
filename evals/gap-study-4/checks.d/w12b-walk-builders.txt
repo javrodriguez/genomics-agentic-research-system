@@ -6,8 +6,8 @@
 # No walk, model, container, network, salt or holdout.
 python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py
 python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --witnesses
-# The generated mutation sweep: 321 mutants (every top-level function of walk_builders.py and walk_runner.main) in 16
-# shards (about 20 each), each mutant capped at 240 s; each shard fails on an unlisted survivor, a listed one killed,
+# The generated mutation sweep: 346 mutants (every top-level function of walk_builders.py and walk_runner.main) in 16
+# shards (about 22 each), each mutant capped at 240 s; each shard fails on an unlisted survivor, a listed one killed,
 # or an inconclusive run.
 python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 1/16 --timeout 240
 python3 -B -W ignore evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --shard 2/16 --timeout 240
