@@ -295,3 +295,15 @@ Every item is folded, and the fold touches nothing beyond them.
   - EQUIVALENT was regenerated: 24 import-plumbing and 3 identical `return None` entries.
 
 RESUME HERE: athena. Run the whole generated sweep and the module list above on this commit. There is no round 4 unless athena finds something.
+
+## Before athena (glitch-2f's word), Mon 12 Oct 2026 20:29 EDT (`date`)
+
+`checks.d/w11d-labelling-tools.txt` now carries the generated sweep as 16 shard lines (`--generated-mutants --shard i/16`).
+That is about 128 mutants each of 2037, so every line stays well under run_checks' per-line limit (TIMEOUT_S, 3600 s).
+The lines beside them are the whole module, `--witnesses`, `sample.py --check` and `agreement.py --check`, 20 lines in all.
+`run_checks.file_problems()` is empty and `commands()` reads all 20.
+The lane-file test pins the new list.
+Tests: 99 run, OK.
+Gates and lints: exit 0.
+
+RESUME HERE: athena on this commit (athena_suite runs the 20 lines).

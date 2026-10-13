@@ -24,7 +24,7 @@
     {
       "path": "checks.d/w11d-labelling-tools.txt",
       "status": "new",
-      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). This lane's local checks (interface 2): tests/test_labelling.py, its --witnesses, sample.py --check and agreement.py --check."
+      "reason": "Lane w11d-labelling-tools (Gap Study round 4, CP8; glitch-2f's start-now slice of 12 Oct 2026, under Javier's standing delegation). This lane's local checks (interface 2): tests/test_labelling.py, its --witnesses, sample.py --check and agreement.py --check. glitch-2f's word before athena: the generated sweep added as 16 shard lines (--generated-mutants --shard i/16), each well under run_checks' TIMEOUT_S, beside the whole module, --witnesses and the two --check lines."
     },
     {
       "path": "COPIED.d/w11d-labelling-tools.json",

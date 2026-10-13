@@ -1732,7 +1732,9 @@ class TestTheLaneFiles(unittest.TestCase):
                  if x and not x.startswith("#")]
         self.assertEqual(lines, [
             "python3 -B -W ignore evals/gap-study-4/tests/test_labelling.py",
-            "python3 -B -W ignore evals/gap-study-4/tests/test_labelling.py --witnesses",
+            "python3 -B -W ignore evals/gap-study-4/tests/test_labelling.py --witnesses"] + [
+            f"python3 -B -W ignore evals/gap-study-4/tests/test_labelling.py --generated-mutants --shard {i}/16"
+            for i in range(1, 17)] + [
             "python3 -B -W ignore evals/gap-study-4/labelling/sample.py --check",
             "python3 -B -W ignore evals/gap-study-4/labelling/agreement.py --check"])
 
