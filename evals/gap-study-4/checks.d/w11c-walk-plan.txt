@@ -1,0 +1,10 @@
+# Lane w11c-walk-plan: Gap Study round 4, the CP6 walk list and its coverage report (rehearsals/README.md question 3,
+# ruling Q-2): walk_plan.py --list and --coverage, derived from the design files, never typed.
+# One command per line, run from the repository root. --witnesses prints one witness line per mutant (rule B).
+# No walk, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_plan.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_plan.py --witnesses
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_plan.py --generated-mutants --shard 1/4
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_plan.py --generated-mutants --shard 2/4
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_plan.py --generated-mutants --shard 3/4
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_plan.py --generated-mutants --shard 4/4
