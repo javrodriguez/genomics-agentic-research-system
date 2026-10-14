@@ -2215,9 +2215,16 @@ class TakeDriver:
         ident, rows = take.identity, take.ledger_rows
         cc = isinstance(adapter, _cc.ClaudeCodeAdapter)
         recs = list(adapter.turn_records) if cc else []
-        src = take_session_file(take.config_dir, ident["session_id"])
+        harness = row["agent"]["harness"]
+        vendor = harness in VENDOR_HARNESSES          # live harness integration: its own native evidence, never Claude's
+        src = None if vendor else take_session_file(take.config_dir, ident["session_id"])
         published, text, recorded = None, None, "unrecorded"
-        if src is not None:
+        history = (native_history_record(harness, Path(take.folder) / _native_snapshot.SESSION_DIR,
+                                         take.native_snapshots) if take.native_hook else None)
+        status = vendor_cross_check_status(harness, history) if vendor else None
+        if vendor:
+            take.cross_check = [status["why"]] if status["status"] == "refused" else None
+        elif src is not None:
             try:
                 published = publish_transcript(Path(src), Path(take.folder))
             except SystemExit as e:              # scrub.py refuses by SystemExit: a stop here, never an exit
@@ -2240,7 +2247,7 @@ class TakeDriver:
                 cost = _cc.cost_record(recs, text, model=row["model"], version=version)
             except _cc.StreamError as e:
                 take.cross_check = list(take.cross_check) + [f"the cost reader refused the session file: {e}"]
-        outcome = take.outcome if src is not None else (
+        outcome = take.outcome if (src is not None or vendor) else (
             f"{take.outcome} \u2014 no session file for {ident['session_id']}")
         pin = self.pin_for(row)
         ledger = {"kind": "take", "task": row["task"], "half": row["half"], "wording": row.get("wording"),
@@ -2258,15 +2265,15 @@ class TakeDriver:
                                        else any(t.agent_output for t in turns)),
                   "environment": {"file": ENVIRONMENT_RECORD_FILE, "sha256": env_sha},
                   "transcript": "transcript.jsonl" if src is not None else None, "published": published,
-                  "cross_check": list(take.cross_check),
+                  "cross_check": None if take.cross_check is None else list(take.cross_check),
                   "cost": cost,
                   "streams": [os.path.basename(t.stream_path) for t in turns if t.stream_path]}
         if take.native_hook:                      # live harness 3c: only for an adapter that names a native session
             ledger["native_snapshots"] = [dict(r) for r in take.native_snapshots]
             ledger["native_snapshot_refusal"] = take.native_snapshot_refusal
-            ledger["native_history"] = native_history_record(row["agent"]["harness"],
-                                                             Path(take.folder) / _native_snapshot.SESSION_DIR,
-                                                             take.native_snapshots)
+            ledger["native_history"] = history
+        if vendor:                                # live harness integration: pending is recorded as pending
+            ledger["cross_check_status"] = status
         if take.executed_refusal is not None:     # live harness 3a: only when a turn's record was refused
             ledger["executed_refusal"] = dict(take.executed_refusal)
             if take.executed_refusal["stream"] is not None:
@@ -2603,6 +2610,29 @@ import claude_code_adapter as _cc  # noqa: E402
 TIMED_OUT_EXIT = 124      # round 3's exit for a turn cut at the budget (check_take.completion_problems reads it)
 LEDGER_FILE = "driver-ledger.json"
 IDENTITY_KEYS = ("session_id", "row", "row_commit", "source", "fixture", "gars_tree_sha")
+
+
+VENDOR_HARNESSES = ("codex", "gemini")
+CODEX_NATIVE_PENDING = ("no reviewed Codex native rollout reader: the rollout source audit has not landed, so the "
+                        "streams are not cross-checked against native evidence yet")
+
+
+def vendor_cross_check_status(harness: str, history) -> dict:
+    """Live harness integration: a non-Claude take's cross-check, from its own native evidence only. Gemini: its
+    retained snapshots' history record (pending while no reviewed reader is registered; refused when the snapshots are
+    missing, unreadable or inconsistent; a joined history still leaves the stream join pending, since the projection
+    and the stream join are unregistered). Codex: pending until the rollout source audit lands. Never a pass."""
+    if harness == "gemini":
+        if history is None:
+            return {"status": "refused", "why": "the Gemini adapter retained no native snapshot record"}
+        if history["status"] == "refused":
+            return {"status": "refused", "why": f"native snapshots: {history['why']}"}
+        if history["status"] == "pending":
+            return {"status": "pending", "why": history["why"]}
+        return {"status": "pending", "why": "native snapshots join; the stream join to them is not registered yet"}
+    if harness == "codex":
+        return {"status": "pending", "why": CODEX_NATIVE_PENDING}
+    raise DriveRefused(f"no vendor cross-check road for harness {harness!r}")
 
 
 def native_history_record(harness: str, session_dir, refs, *, readers=None) -> dict:

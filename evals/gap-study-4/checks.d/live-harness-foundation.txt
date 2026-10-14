@@ -12,3 +12,4 @@ python3 -W ignore evals/gap-study-4/tests/test_gemini_stream_join.py
 python3 -W ignore evals/gap-study-4/tests/test_codex_executed_refusal.py
 python3 -W ignore evals/gap-study-4/tests/test_night_ruling_history.py
 python3 -W ignore evals/gap-study-4/tests/test_native_history_record.py
+python3 -W ignore evals/gap-study-4/tests/test_vendor_take_records.py

@@ -110,6 +110,11 @@
       "path": "tests/test_native_history_record.py",
       "status": "new",
       "reason": "Live harness integration: the driver ledger's native history record is pending through the empty production registry, joined or refused with a reviewed reader, and absent for Claude takes."
+    },
+    {
+      "path": "tests/test_vendor_take_records.py",
+      "status": "new",
+      "reason": "Live harness integration: vendor takes read their own native evidence (pending, refused), never Claude's session file; Claude takes unchanged."
     }
   ]
 }
