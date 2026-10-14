@@ -95,6 +95,10 @@ class StreamError(ValueError):
     """A stream or rollout the reader cannot use as it stands (a typed refusal, never a guess)."""
 
 
+class ExecutedStreamRefused(aa.ExecutedTurnRefused, StreamError):
+    """Live harness slice 6: a StreamError raised after the turn's exec ran, carrying what was kept of the exec."""
+
+
 def _count(v) -> bool:
     return isinstance(v, int) and not isinstance(v, bool) and v >= 0
 
@@ -276,6 +280,7 @@ class CodexAdapter(aa.AgentAdapter):
         self.thread_id = None
         self._contexts = 0
         self.turn_records: list = []
+        self.executed_turns: list = []     # live harness slice 6: each exec as kept before its stream was read
 
     def version(self) -> str:
         """`codex --version` in the take container, as the agent (a plain exec: no login), parsed; cached."""
@@ -303,6 +308,33 @@ class CodexAdapter(aa.AgentAdapter):
                           login_file=self.login_file, stream_path=self.stream_path_for(n), budget_s=budget_s,
                           clock=self.clock, caller_env=self.caller_env)
         after = self.counters_for()
+        counters = rt.counter_delta(before, after)
+        # Live harness slice 6 (3a's rule): the exec ran, so what the runtime returned is kept before anything of the
+        # turn is read; a refusal from here on is an executed turn's (ExecutedStreamRefused), never a turn that did not
+        # happen.
+        executed = {"n": n, "exit_code": got["exit_code"], "timed_out": got["timed_out"],
+                    "started_at": got["started_at"], "ended_at": got["ended_at"], "stream_path": got["stream_path"],
+                    "counters": counters, "refused": None}
+        self.executed_turns.append(executed)
+        try:
+            read, ro, init = self._read_turn(got, n, first)
+        except (StreamError, OSError, ValueError) as e:
+            executed["refused"] = f"{type(e).__name__}: {e}"
+            raise ExecutedStreamRefused(str(e), executed=executed) from e
+        self.turn_records.append({
+            "n": n, "first": first, "exit_code": got["exit_code"], "timed_out": got["timed_out"],
+            "thread_ids": read["thread_ids"], "usage": read["usage"], "tool_ids": read["tool_ids"],
+            "completed": read["completed"], "failed": read["failed"], "undecoded": read["undecoded"],
+            "why_no_init": ro["why_no_init"], "shapes_source": SHAPES_SOURCE})
+        return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
+                             end_reason=end_reason(got["exit_code"], got["timed_out"], read), init=init,
+                             api_errors=read["api_errors"], counters=counters,
+                             started_at=got["started_at"], ended_at=got["ended_at"],
+                             agent_output=read["agent_output"])
+
+    def _read_turn(self, got: dict, n: int, first: bool) -> tuple:
+        """The turn's stream read, its resumed thread checked and its rollout read; raised from here, a refusal is an
+        executed turn's (live harness slice 6: _turn keeps the exec first)."""
         with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
             read = read_stream(fh.read())
         if first:
@@ -313,16 +345,7 @@ class CodexAdapter(aa.AgentAdapter):
         ro = read_rollout(self.rollout_for(n), seen=self._contexts)
         self._contexts = ro["turn_contexts"]
         init = ro["init"]
-        self.turn_records.append({
-            "n": n, "first": first, "exit_code": got["exit_code"], "timed_out": got["timed_out"],
-            "thread_ids": read["thread_ids"], "usage": read["usage"], "tool_ids": read["tool_ids"],
-            "completed": read["completed"], "failed": read["failed"], "undecoded": read["undecoded"],
-            "why_no_init": ro["why_no_init"], "shapes_source": SHAPES_SOURCE})
-        return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
-                             end_reason=end_reason(got["exit_code"], got["timed_out"], read), init=init,
-                             api_errors=read["api_errors"], counters=rt.counter_delta(before, after),
-                             started_at=got["started_at"], ended_at=got["ended_at"],
-                             agent_output=read["agent_output"])
+        return read, ro, init
 
     def _end(self) -> None:
         """Nothing of the adapter's own to tear down: the driver removes the container by its recorded id."""

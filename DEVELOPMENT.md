@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Codex executed refusals, 2026-10-14:** the Codex adapter keeps each exec before reading its stream, thread or rollout, and a refusal after the exec is the typed `ExecutedTurnRefused`, so the driver's 3a road applies to Codex too. No Codex identity table yet (rollout source audit pending). 4/4 tests red first; four mutants killed. See [the slice report](lane-reports/codex-executed-refusal-2026-10-14.md).
+
 **Gemini stream join, 2026-10-14:** an unregistered join of one Gemini stream-json call to its native interaction: per-response recorder normalization against recorded-text segments, tool facts by id, name, order and status, completeness only from the stream's terminal result, errors kept, every disagreement refused. 8/8 tests red first; eleven mutants. See [the slice report](lane-reports/gemini-stream-join-2026-10-14.md).
 
 **Nightly stop rule, 2026-10-14:** the registered "three `harness-error`s in one night stop the run for a ruling" now runs in `batch.py`: the block's last committed take carries the stop, pauses are outside, failed-after-drive takes are counted apart. Named departures D-4-1 (window since the last nightly stop; no outcome carries a time) and D-4-2 (the ruling named at restart). 10/10 tests red first; seven mutants killed. See [the slice report](lane-reports/nightly-stop-rule-2026-10-14.md).

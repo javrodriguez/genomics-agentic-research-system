@@ -95,6 +95,11 @@
       "path": "tests/test_gemini_stream_join.py",
       "status": "new",
       "reason": "Live harness slice 5: synthetic stream and native pairs: a matching join, no terminal result, failed results and error events kept, each disagreement refused for its reason, absent sent or init unknown, unregistered."
+    },
+    {
+      "path": "tests/test_codex_executed_refusal.py",
+      "status": "new",
+      "reason": "Live harness slice 6: a Codex turn refused after its exec keeps the exec and is typed ExecutedTurnRefused; a pre-exec refusal keeps nothing; no codex identity table."
     }
   ]
 }
