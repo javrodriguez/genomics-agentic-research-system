@@ -233,20 +233,60 @@ def end_reason(exit_code, timed_out: bool, read: dict) -> str:
     return aa.END_ERROR
 
 
-def turn_identity(read: dict, *, version: str, mode: str) -> dict:
+def turn_identity(read: dict, *, version: str, mode: dict) -> dict:
     """Live harness 3b: where each pin field of this turn came from (agent_adapter.IDENTITY_SOURCES), never fabricated
     into init. model: the init event's (stream-init), else the result's single stats.models key (stream-stats; the
     reader already refused any other key), else unobserved. version: `gemini --version` in the take container
-    (version-exec). permission_mode: no Gemini record names it; the pinned mode's flags were on the submitted argv
-    (submitted-argv; vendor_provenance binds the argv to the launch journal)."""
+    (version-exec). permission_mode: no Gemini record names it; `mode` is submitted_mode's reading of the turn's
+    actual-submission journal (submitted-argv), or unobserved when there is none: never the pin echoed back."""
     if read["init_model"] is not None:
         model = {"value": read["init_model"], "source": "stream-init"}
     elif len(read["served_models"]) == 1:
         model = {"value": read["served_models"][0], "source": "stream-stats"}
     else:
         model = {"value": None, "source": aa.UNOBSERVED}
-    return {"model": model, "permission_mode": {"value": mode, "source": "submitted-argv"},
+    return {"model": model, "permission_mode": dict(mode),
             "version": {"value": version, "source": "version-exec"}}
+
+
+# Live harness 3b review fold (finding 1): the mode a turn's actual-submission journal shows. Values that are never a
+# pinned mode name an observation that differs, so routing reads a mismatch.
+MODE_ABSENT, MODE_CONTRADICTED, LAUNCH_DISAGREES = ("no-mode-flags-submitted", "contradictory-mode-flags",
+                                                    "launch-differs-from-registered-invocation")
+OTHER_MODE_FLAGS = ("--yolo", "-y", "--approval-mode")
+
+
+def submitted_mode(journal_path: str, want: dict) -> dict:
+    """The turn's permission_mode identity entry, read from the box's journal at <stream>.launch.json (written before
+    the exec: schema 1, harness, container_id, argv, cwd, stream, started_at), never from the pin.
+    No journal, a link, or bytes that are not one JSON object: unobserved. Otherwise the journal is checked against
+    the registered invocation (vendor_provenance.launch_facts with `want`) and its argv read on its own: the mode is the
+    pinned mode only when its exact flags occur once and no other approval flag occurs; else a value that is no mode."""
+    try:
+        fd = os.open(journal_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError:
+        return {"value": None, "source": aa.UNOBSERVED}
+    try:
+        with os.fdopen(fd, "rb") as fh:
+            launch = json.loads(fh.read().decode("utf-8"))
+    except (ValueError, OSError):
+        return {"value": None, "source": aa.UNOBSERVED}
+    if not isinstance(launch, dict) or not isinstance(launch.get("argv"), list):
+        return {"value": None, "source": aa.UNOBSERVED}
+    argv = launch["argv"]
+    flags = MODE_FLAGS.get(want.get("mode"), ())
+    windows = [i for i in range(len(argv) - len(flags) + 1) if flags and tuple(argv[i:i + len(flags)]) == flags]
+    approvals = [a for a in argv if a in OTHER_MODE_FLAGS]
+    if not windows and not approvals:
+        return {"value": MODE_ABSENT, "source": "submitted-argv"}
+    if len(windows) != 1 or len(approvals) != 1:
+        return {"value": MODE_CONTRADICTED, "source": "submitted-argv"}
+    import vendor_provenance as vp       # imported here: vendor_provenance imports this module
+    try:
+        vp.launch_facts(launch, want)
+    except vp.ProvenanceRefused:
+        return {"value": LAUNCH_DISAGREES, "source": "submitted-argv"}
+    return {"value": want["mode"], "source": "submitted-argv"}
 
 
 class GeminiAdapter(aa.AgentAdapter):
@@ -340,7 +380,12 @@ class GeminiAdapter(aa.AgentAdapter):
                              api_errors=read["api_errors"], counters=counters,
                              started_at=got["started_at"], ended_at=got["ended_at"],
                              agent_output=read["agent_output"],
-                             identity=turn_identity(read, version=version, mode=self.mode))
+                             identity=turn_identity(read, version=version, mode=submitted_mode(
+                                 got["stream_path"] + ".launch.json",
+                                 {"harness": NAME, "container_id": self.take_id, "model": self.model,
+                                  "mode": self.mode, "run_tree": self.run_tree, "stream": got["stream_path"],
+                                  "sent": line, "vendor_session_id": self.session_id or "first-turn",
+                                  "ordinal": n})))
 
     def _read_turn(self, got: dict, n: int, first: bool) -> tuple:
         """The exec's exit meaning and its stream read, and the resumed session checked (G-2); raised from here, a

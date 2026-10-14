@@ -53,3 +53,24 @@ Model is never accepted from the argv: the requested model on the argv is not ev
 - Codex's adapter does not state identity yet. Its rollout model and mode sources need their own slice.
 - `routing.json`'s `pin_profiles` are still PENDING (CP5), so no real take routes until those profiles exist.
 - Independent review.
+
+## Addendum, 14 Oct 2026 00:35 EDT: review CHANGES (MAJOR) and the fix
+
+The independent review of `6488380e` (`/Users/javrodher/aegis-builds/gap4-review-harness-step2-20261014/review-harness-3b.md`) found the mode evidence to be the pin echoed back. The text above stays as written; these corrections replace its claims.
+
+- Wrong above: "the pinned mode's flags were on the submitted argv" and "the argv is bound to the launch journal by `vendor_provenance`". Nothing read the argv. `turn_identity` copied `self.mode`, which comes from the pin. `launch_facts` had no production caller, and this head's `run_turn` neither writes a journal nor returns the argv.
+- Now: `gemini_adapter.submitted_mode` reads the turn's actual-submission journal at `<stream>.launch.json` after the exec. This is the box lane's schema-1 journal; the box writes it before its exec, and this head does not write it yet.
+  - No journal, a link, or bytes that are not one JSON object: the mode is `unobserved`, so routing reads a mismatch (harness-error after the first turn, as before 3b).
+  - A journal whose argv lacks the pinned flags is `no-mode-flags-submitted`.
+  - Flags doubled, or another approval flag present, is `contradictory-mode-flags`. This is checked on the journal argv itself, so a regression in `argv()` cannot agree with itself.
+  - A journal that `launch_facts` rejects against the registered invocation is `launch-differs-from-registered-invocation`.
+  - None of these values equals a pin, so each is a mismatch.
+  - Only the exact pinned flags, once, with `launch_facts` passing, give the pinned mode with source `submitted-argv`.
+- Until the box's journal lands on this head, every Gemini turn's mode is `unobserved`, and Gemini routes harness-error after its first turn. That is the honest state, not a regression.
+- Acceptance is keyed by `records["pin"]["harness"]`. Only `gemini` has a source table. An `identity` record on `claude-code` (whose mode must come from its init event) or `codex` refuses in `shape_problems`.
+- Verification:
+  - `tests/test_identity_mode_evidence.py` 8/8. Red first with 11 assertion failures; the wrong-argv-builder case was added later.
+  - `test_identity_evidence` 9/9, with its Gemini expectation now `unobserved` mode and the table keyed by harness. `test_routing` 276, `test_gemini_adapter` 138 (8 `EQUIVALENT` keys renumbered), `test_batch` 118, `test_codex_adapter` 42, `test_agent_adapter` 35, `test_vendor_provenance` 6, `test_native_snapshot` 9, `test_executed_turn_refusal` 9.
+  - The reviewer's `witness_3b.py` now fails: the finding is gone.
+  - Five mutants killed: no-journal echoes the pin, absent flags accepted, doubled flags accepted, launch check skipped, acceptance global again.
+- Not tested: a journal that is a symbolic link. The read uses `O_NOFOLLOW`, but no test drives it.

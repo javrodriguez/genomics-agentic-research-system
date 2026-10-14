@@ -130,7 +130,8 @@ class TheGeminiAdapter(unittest.TestCase):
         a, _ = tga.take(ga, [tga.fixture("turn1-tools.jsonl")])
         t = a.turn("one", first=True, budget_s=60)
         self.assertIsNone(t.init, "Gemini's init carries no mode or version: never fabricated")
-        self.assertEqual(t.identity, ident())
+        # No actual-submission journal at this head (the box writes it): the mode is unobserved, never the pin.
+        self.assertEqual(t.identity, ident(mode=None, mode_source="unobserved"))
 
     def test_without_an_init_the_model_comes_from_the_stats_or_stays_unobserved(self):
         a, _ = tga.take(ga, [tga.fixture("no-init.jsonl")])
@@ -144,9 +145,10 @@ class TheGeminiAdapter(unittest.TestCase):
 
     def test_the_two_vocabularies_are_one(self):
         self.assertEqual(tuple(aa.IDENTITY_SOURCES), tuple(routing.IDENTITY_SOURCES))
-        self.assertEqual(set(routing.ACCEPTED_IDENTITY_SOURCES), set(routing.PLAN_PIN_FIELDS))
-        self.assertNotIn("unobserved", {s for v in routing.ACCEPTED_IDENTITY_SOURCES.values() for s in v})
-        self.assertNotIn("submitted-argv", routing.ACCEPTED_IDENTITY_SOURCES["model"])
+        gem = routing.ACCEPTED_IDENTITY_SOURCES["gemini"]
+        self.assertEqual(set(gem), set(routing.PLAN_PIN_FIELDS))
+        self.assertNotIn("unobserved", {s for v in gem.values() for s in v})
+        self.assertNotIn("submitted-argv", gem["model"])
 
 
 if __name__ == "__main__":

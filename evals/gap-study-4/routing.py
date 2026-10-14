@@ -155,12 +155,14 @@ RECORD_SCHEMA = {
 # exactly as before.
 OPTIONAL_RECORDS = ("identity",)
 IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "submitted-argv", "unobserved")
-# Which source routing accepts as evidence for which pin field (D8's per-harness table: Gemini's requested model is
-# read from init.model and every result.stats.models key, its version from `gemini --version` in the take container,
-# and its mode has no record but the pinned mode's flags on the submitted argv, bound by vendor_provenance). Any other
-# source, an unobserved field or a value off the pin is a mismatch, exactly as a missing init event is.
-ACCEPTED_IDENTITY_SOURCES = {"model": ("stream-init", "stream-stats"), "version": ("version-exec",),
-                             "permission_mode": ("submitted-argv",)}
+# Which source routing accepts as evidence for which pin field, keyed by the pin's harness (D8's per-harness table).
+# Gemini: requested model from init.model and every result.stats.models key, version from `gemini --version` in the
+# take container, mode from the turn's actual-submission journal argv (gemini_adapter.submitted_mode; unobserved when
+# no journal exists). Any other source, an unobserved field or a value off the pin is a mismatch, exactly as a
+# missing init event is. A harness with no entry (claude-code, whose mode must come from its init event; codex until
+# its sources are registered) carries no identity at all: shape_problems refuses it.
+ACCEPTED_IDENTITY_SOURCES = {"gemini": {"model": ("stream-init", "stream-stats"), "version": ("version-exec",),
+                                        "permission_mode": ("submitted-argv",)}}
 OBSERVED_IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec")
 
 # The fields of one API-error record (all three required; status int or None, type str or None, text
@@ -597,6 +599,9 @@ def _identity_problems(entry) -> list[str]:
 
 
 def _identity_differs(entry, pin, fields, *, present_only: bool) -> bool:
+    accepted = ACCEPTED_IDENTITY_SOURCES.get(pin.get("harness"))
+    if accepted is None:                       # never routed: shape_problems refuses it first
+        raise RoutingRefused(f"identity on a {pin.get('harness')!r} record")
     """3b: a typed identity entry against the pin. present_only (the pin refusal): only an observed value that differs.
     Otherwise (the init-mismatch row): any field unobserved, from a source not accepted for it, or off the pin."""
     for f in fields:
@@ -604,7 +609,7 @@ def _identity_differs(entry, pin, fields, *, present_only: bool) -> bool:
         if present_only:
             if e["source"] in OBSERVED_IDENTITY_SOURCES and e["value"] != pin[f]:
                 return True
-        elif e["source"] not in ACCEPTED_IDENTITY_SOURCES.get(f, ()) or e["value"] != pin[f]:
+        elif e["source"] not in accepted.get(f, ()) or e["value"] != pin[f]:
             return True
     return False
 
@@ -644,7 +649,10 @@ def shape_problems(records: dict, table: dict) -> list[str]:
     p += _pin_problems(records["pin"], PIN_KEYS, "pin")
     if "identity" in records:                  # live harness 3b: typed, one entry per turn when present
         ids = records["identity"]
-        if not isinstance(ids, list) or not isinstance(records["init"], list) or len(ids) != len(records["init"]):
+        harness = records["pin"].get("harness") if isinstance(records["pin"], dict) else None
+        if harness not in ACCEPTED_IDENTITY_SOURCES:
+            p.append(f"identity is accepted only for harnesses with a registered source table, not {harness!r}")
+        elif not isinstance(ids, list) or not isinstance(records["init"], list) or len(ids) != len(records["init"]):
             p.append("identity must be a list with one entry per turn")
         else:
             for i, entry in enumerate(ids):
