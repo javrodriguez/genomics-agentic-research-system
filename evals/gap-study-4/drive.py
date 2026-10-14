@@ -2703,6 +2703,9 @@ class TakeDriver:
                         turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
                     except _adapter.ExecutedTurnRefused as e:     # live harness 3a: the turn ran; account for it
                         unreadable += self._executed_refused(take, n, line, e)
+                        after = self._settings_problems(take, f"post-{n}")   # review MINOR 2: this road too
+                        if after:
+                            take.settings_stop = f"post-{n}: the run tree's Claude settings: {'; '.join(after)}"
                         break
                     turns.append(turn)
                     self._evidence_line(take, {"kind": "turn", "n": n, "started_at": turn.started_at,
