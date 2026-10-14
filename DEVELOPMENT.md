@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Native history in the driver ledger, 2026-10-14:** for a take with retained native snapshots the driver ledger now records `native_history`: pending through the empty production reader registry, refused on a rewrite, joined (a stability join, never admission) with a reviewed reader. See [the slice report](lane-reports/native-history-record-2026-10-14.md).
+
 **Night ruling in the production history, 2026-10-14:** a committed night ruling is now read by the real history reader, written by its own door (`takes.commit_night_ruling`), and skipped by every outcome reader through one shared predicate (`batch.is_outcome`). See the 01:04 addendum in [the step-4 report](lane-reports/nightly-stop-rule-2026-10-14.md).
 
 **Gemini source read, 2026-10-14:** the pinned 0.64.0 bundle was read on athena (hash-verified, container created and removed, never run). A tool round trip is recorded as a user message of functionResponse parts, which the projection had been refusing on every tool-using interaction; it now continues the interaction. History-patched parallel results are admitted by sibling id and name, and displayContent only when equal to the sent text. See [the retained source](lane-reports/gemini-0.64.0-source-retained-addendum-2026-10-14.md).

@@ -1807,6 +1807,7 @@ class TakeRepo:
 import threading  # noqa: E402
 import types  # noqa: E402  (live harness 3a: the executed-refused turn's end for _quiesce)
 import native_snapshot as _native_snapshot  # noqa: E402  (live harness 3c)
+import vendor_provenance as _vendor_provenance  # noqa: E402  (live harness integration: the native history record)
 
 import agent_adapter as _adapter  # noqa: E402
 import harness_bookkeeping as _hb  # noqa: E402
@@ -2263,6 +2264,9 @@ class TakeDriver:
         if take.native_hook:                      # live harness 3c: only for an adapter that names a native session
             ledger["native_snapshots"] = [dict(r) for r in take.native_snapshots]
             ledger["native_snapshot_refusal"] = take.native_snapshot_refusal
+            ledger["native_history"] = native_history_record(row["agent"]["harness"],
+                                                             Path(take.folder) / _native_snapshot.SESSION_DIR,
+                                                             take.native_snapshots)
         if take.executed_refusal is not None:     # live harness 3a: only when a turn's record was refused
             ledger["executed_refusal"] = dict(take.executed_refusal)
             if take.executed_refusal["stream"] is not None:
@@ -2599,6 +2603,21 @@ import claude_code_adapter as _cc  # noqa: E402
 TIMED_OUT_EXIT = 124      # round 3's exit for a turn cut at the budget (check_take.completion_problems reads it)
 LEDGER_FILE = "driver-ledger.json"
 IDENTITY_KEYS = ("session_id", "row", "row_commit", "source", "fixture", "gars_tree_sha")
+
+
+def native_history_record(harness: str, session_dir, refs, *, readers=None) -> dict:
+    """Live harness integration: what the take's retained native snapshots prove, for the driver ledger. Step 1's
+    vendor_provenance.session_history_facts over them, through the PRODUCTION reader registry unless `readers` is
+    given (tests): `pending` while no reviewed reader is registered (its reason kept), `refused` when the snapshots
+    cannot be read or a later one rewrites an earlier interaction, `joined` (with the interaction count) when every
+    later snapshot reproduces every earlier interaction. `joined` is a stability join, never admission of the take."""
+    try:
+        facts = _vendor_provenance.session_history_facts(harness, Path(session_dir), list(refs), readers=readers)
+    except _vendor_provenance.ProvenancePending as e:
+        return {"status": "pending", "why": str(e), "interactions": None}
+    except _vendor_provenance.ProvenanceRefused as e:
+        return {"status": "refused", "why": str(e), "interactions": None}
+    return {"status": "joined", "why": None, "interactions": len(facts)}
 
 
 def take_session_file(config_dir: str, session_id: str) -> str | None:
