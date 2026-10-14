@@ -96,20 +96,16 @@ def core_problems(d):
     need({item["path"] for item in locks} == {str(p.relative_to(HERE)) for p in (HERE / "box").rglob("image.lock")}
          and all(item["sha256"] == digest(HERE / item["path"]) and
                  item["lock"] == image_lock.load(str(HERE / item["path"])) for item in locks), "R6.locks")
-    # A row's agent version is set only once its pin and its image agree (the integration lane, 14 Oct 2026: on the
-    # merged head CP5 registered arm A's profiles, Javier's ruling in 3740f8f6, and the take-a lock holds the harness
-    # version, 6221c297). Derived here from routing.json and the lock files themselves, never from the draft: a pin
-    # with no PENDING and a non-PENDING lock version that equal each other give that version; anything else gives None.
-    profiles = json.loads((HERE / "routing.json").read_text())["pin_profiles"]
-    lock_version = {HARNESSES[a]: image_lock.load(str(HERE / "box" / dirname / "image.lock"))["harness"]["version"]
-                    for a, dirname in (("A", "."), ("O", "codex"), ("G", "gemini"))}
-
-    def pinned(r):
-        h, pin = r["agent"]["harness"], profiles.get(r["agent"]["harness"], {}).get(r["model"])
-        v = lock_version.get(h, "PENDING")         # an unknown harness is R11.agent's refusal
-        ok = isinstance(pin, dict) and "PENDING" not in pin.values() and v != "PENDING" and pin.get("version") == v
-        return v if ok else None
-    need(all(r["agent"]["version"] == pinned(r) for r in rows), "R6.unpinned")
+    # R6.unpinned, converted for CP5 (Javier, 14 Oct 2026, the integration lane's rule mirrored here): an arm A row
+    # carries its pin's version, which is take-a's harness.version; O and G rows stay null. While take-a's lock is
+    # PENDING (this branch), the pins' agent_version and the arm A rows stay null too (TakeALock names that skip).
+    take_a = next(item["lock"] for item in locks if item["lock"]["image"] == "take-a")["harness"]["version"]
+    a_version = None if take_a == image_lock.PENDING else take_a
+    a_pins = d["version_pins"].get(CLAUDE) or {}
+    need(all(r["agent"]["version"] == (a_version if r["arm"] == "A" else None) for r in rows)
+         and set(a_pins) == set(MODELS["A"])
+         and all(p.get("agent_version") == a_version and (a_version is None or p.get("version") == a_version)
+                 for p in a_pins.values()), "R6.unpinned")
     need(set(d["version_pins"]) == set(HARNESSES.values()) and all(set(d["version_pins"][h]) == set(MODELS[a])
          for a, h in HARNESSES.items()), "R14.pins")
     return bad
@@ -461,7 +457,7 @@ def description_problems(d):
         {"text": line, "round_4_reading": reading} for line,reading in zip(old["limitations_lines"],expected_readings())], "R8.carried")
     need(d["box_residuals"] == [
         {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True, "finding": "PENDING"},
-        {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL, NEW_FOLDER_RESIDUAL], "R8.residuals")
+        {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL], "R8.residuals")
     need(d.get("final_stop") == FINAL_STOP, "R8.final-stop")
     need(d["leak_words"] == old["leak_words"] + [study.STUDY, "round 4"] and len(old["leak_words"]) == 23 and
          d["leak_context_excusals"] == old["leak_context_excusals"] and len(d["leak_context_excusals"]) == 3 and
@@ -495,16 +491,6 @@ def description_problems(d):
 # closed check that no task's move is a change of mode alone. Description.test_mode_residual_is_bound ties both
 # halves of the sentence to the files that make them true.
 MODE_CHECK = ("tests/test_endstate.py", "ModeBits", "test_no_task_move_is_chmod_only")
-NEW_FOLDER_RESIDUAL = {"text": "the new-folder watch gap: inotifywait -r watches a new folder only after reading its CREATE (probed "
-            "on athena: a write in the same instant can be missed); the sidecar's rescan recovers that a "
-            "watched path EXISTED (found.jsonl), never an access, so three cases stay unseen: (1) after post-N, a write "
-            "inside a new folder made before -r watches that folder (the bound is that time, not the rescan) is not "
-            "counted by writes_after_the_end, whose definition is what the watcher logged; (2) a file made and removed again before the rescan leaves no "
-            "record; (3) reads or writes inside a new folder before its watch exists are never accesses",
-    "ruling": "glitch-06, Wed 14 Oct 2026 (review of the box candidate, finding 4)",
-    "closed_check": "tests/test_new_folder_closed_check.py (every path an access-reading grader "
-                        "consults sits in a folder present before the take, over all built task halves); "
-                        "tests/test_live_box.py NewFolderGap and RescanReach; tests/test_endstate.py Discoveries"}
 MODE_RESIDUAL = {
     "text": "mode bits are not graded: the end state records no file mode, so a change of mode alone is invisible",
     "ruling": "S7-D2 (C)",
@@ -563,6 +549,19 @@ def setUpModule():
         CORE_SETUP()
 
 
+class TakeALock(unittest.TestCase):
+    """R6.unpinned on the live draft: arm A's rows carry take-a's harness.version once its lock is filled."""
+
+    def test_arm_a_rows_carry_take_a_version(self):
+        d = b.build()
+        take_a = next(i["lock"] for i in d["image_locks"] if i["lock"]["image"] == "take-a")["harness"]["version"]
+        if take_a == image_lock.PENDING:
+            self.skipTest("the take-a lock is PENDING on this branch; the box lane's committed lock (6221c297, "
+                          "2.1.296) binds arm A's row versions where it is merged")
+        self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == "A"}, {take_a})
+        self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] != "A"}, {None})
+
+
 class Description(unittest.TestCase):
     def get(self):
         self.assertTrue(hasattr(b, "describe"), "the registered commitments are required")
@@ -592,20 +591,9 @@ class Description(unittest.TestCase):
         with mock.patch.object(b, "prior_metadata", return_value=prior):
             self.assertEqual(b.describe()["predictions"], d["predictions"])
 
-    def test_new_folder_residual_is_bound(self):
-        """Box lane, 14 Oct (glitch-06, review finding 4): the residual names its three cases and its checks exist."""
-        d = self.get()
-        self.assertEqual(d["box_residuals"][3], NEW_FOLDER_RESIDUAL, "R8.new-folder-residual")
-        live = (HERE / "tests/test_live_box.py").read_text()
-        es_tests = (HERE / "tests/test_endstate.py").read_text()
-        closed = (HERE / "tests/test_new_folder_closed_check.py").read_text()
-        for cls, text in (("NewFolderGap", live), ("RescanReach", live), ("Discoveries", es_tests),
-                          ("NewFolderClosedCheck", closed)):
-            self.assertIn(f"class {cls}(", text, "R8.new-folder-residual")
-
     def test_mode_residual_is_bound(self):
         d = self.get()
-        self.assertEqual(len(d["box_residuals"]), 4, "R8.mode-residual")   # 4th: the new-folder gap (14 Oct)
+        self.assertEqual(len(d["box_residuals"]), 3, "R8.mode-residual")
         self.assertEqual(d["box_residuals"][2], MODE_RESIDUAL, "R8.mode-residual")
         endstate_tests = (HERE / MODE_CHECK[0]).read_text()
         self.assertIn(f"class {MODE_CHECK[1]}(", endstate_tests, "R8.mode-residual")

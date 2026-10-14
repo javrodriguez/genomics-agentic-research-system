@@ -261,7 +261,8 @@ class Wired:
             counters_for=lambda take: {"oom_kill": 0, "pids_max": 0}, pin_for=self.pin_for,
             design_for=self.design_for, project_for=lambda row: self.project, identity_for=self.identity_for,
             secrets=lambda: [("token", tbi.TOKEN)], rules_scanner=lambda paths: [], uid_map=tbi.UID_MAP,
-            budget_s=600, finalize_wait_s=tbi.CAP_S, poll_s=tbi.POLL_S, clock=self.clock, sleep=self.clock.sleep)
+            budget_s=600, finalize_wait_s=tbi.CAP_S, poll_s=tbi.POLL_S, clock=self.clock, sleep=self.clock.sleep,
+            ownership=tbi.FakeOwnership(self.box))
 
     def pin_for(self, row):
         return batch.expected_pin(row, self.table)

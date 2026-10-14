@@ -2347,7 +2347,7 @@ class TestNextTouchAgentPin(unittest.TestCase):
         self.assertEqual(set(REAL["pin_profiles"]), {CP5_HARNESS})
         for model, prof in REAL["pin_profiles"][CP5_HARNESS].items():
             self.assertEqual(set(prof), set(NT_INIT_FIELDS) - {"model"}, model)
-        self.assertTrue(REAL["pin_profiles_status"].startswith("RULED by Javier 14 Oct"))
+        self.assertTrue(REAL["pin_profiles_status"].startswith('RULED 14 Oct by Javier ("CP5: all as recommended")'))
         self.assertEqual(tuple(routing.PIN_KEYS), ("harness",) + NT_INIT_FIELDS)
 
     def test_agent_pin_check_can_fail(self):
@@ -2839,8 +2839,8 @@ CP5_HARNESS = hb.CLAUDE_CODE
 CP5_MODELS = ("claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5-20251001")   # plan 133-135; build_draft.MODELS
 CP5_MODE = "bypassPermissions"   # item 2: Claude Code's --permission-mode word, compared with init's permissionMode
 CP5_VERSION = "2.1.296"          # take-a image.lock harness.version, as the box lane committed it (6221c297)
-CP5_STATUS = ("RULED by Javier 14 Oct: arm A profiles registered; O and G follow when their rate-limit and spend-cap "
-              "rules are set")
+CP5_STATUS = ("RULED 14 Oct by Javier (\"CP5: all as recommended\"): arm A profiles registered; O and G follow when "
+              "their rate-limit and spend-cap rules are set")
 TAKE_A_LOCK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "box", "image.lock")
 
 

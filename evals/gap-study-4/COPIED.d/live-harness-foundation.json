@@ -170,6 +170,11 @@
       "path": "tests/test_pending_codex_walk.py",
       "status": "new",
       "reason": "Codex slice 3: the arm O road in scratch repositories (WalkDriver with harness_adapter_for, the production CodexAdapter on a fake box, the stub exec that reads no login, walk_runner, WalkRepo): a pending Codex walk with its retained rollouts, a positive registration and its single mutations, a marked rollout refused last, the shared join and floor, the driver's cross-check agreeing with a reader registered, and a regrade. Unmarked fixture on purpose, scratch-only. Codex road review F3, F4: CodexProfileBindings (an honest copy registers; served_model dropped, claimed without a reroute, a turn-2 journal naming another thread, a Codex source edit and a dirty path each refuse)."
+    },
+    {
+      "path": "tests/test_drive_ownership.py",
+      "status": "new",
+      "reason": "The ownership road in drive.py (the box lane's call contract at 81ede46d): grant before launch, restore after teardown and before postflight, scan and removal, a held take never committed; checks O1 to O7 on the shared fake box and fake road, five mutants."
     }
   ]
 }
