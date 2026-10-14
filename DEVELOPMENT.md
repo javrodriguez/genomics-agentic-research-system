@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Native snapshot history join, 2026-10-13:** each later retained snapshot must reproduce all previously checked native facts exactly, with stable session identity and unique snapshot filenames. Six provenance tests passed, and the final strengthened history witness kills three mutations. Focused static review passes. Extra/unassigned interaction checks and native semantic readers remain required; the production registry is still closed.
+
 **Gemini native replay foundation, 2026-10-13:** three source-derived replay tests pass after an actual red-first baseline; three in-memory mutations are killed by assertion. Independent focused static review passes; manifest passes 369 files/56 fragments. The helper is unregistered and produces raw replayed records only: native semantic projection, prior-interaction joins and recorded-stream validation remain owed. See [the replay checkpoint](lane-reports/gemini-replay-foundation-2026-10-13.md).
 
 **Vendor provenance sources, 2026-10-13:** a second bounded source-validation slice passes four synthetic tests and three refusal witnesses on an isolated twelve-file Athena subset. A fifth literal-newline regression witness ran red-first; all five then passed locally at a normal resource gate. Independent static review passed both the source-validation slice and framing correction. Native-session reader registry remains empty; production publishing/checker/mode integration remains incomplete. Codex subscription-only auth and account/quota evidence now supersede the API funding assumption. See [the provenance checkpoint](lane-reports/live-harness-provenance-2026-10-13.md).

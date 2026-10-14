@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+from copy import deepcopy
 from pathlib import Path
 from types import MappingProxyType
 
@@ -173,3 +174,31 @@ def cross_check(stream: dict, session: dict) -> list[str]:
                 got["source"] != "native-session" or key not in stream or got["value"] != stream[key]):
             problems.append(key)
     return problems
+
+
+def session_history_facts(harness: str, folder: Path, refs: list, *, readers=None) -> list:
+    """Bind each retained snapshot to every previously checked interaction.
+
+    A later snapshot must reproduce the complete original facts, including None
+    values, and preserve native session identity. This is not proof that there
+    are no extra interactions: the eventual semantic reader/aggregate admission
+    must independently reject extra or unassigned native interactions. Missing
+    ordinal errors propagate; none is read as an empty or successful turn.
+    """
+    if not isinstance(refs, list) or not refs:
+        raise ProvenanceRefused("native session history requires retained snapshots")
+    known, names = [], set()
+    for ordinal, ref in enumerate(refs, 1):
+        # Validate the reference before using its name; no registry fallback.
+        current = deepcopy(session_facts(harness, folder, ref, ordinal=ordinal, readers=readers))
+        if ref["file"] in names:
+            raise ProvenanceRefused("native session snapshots must use unique retained filenames")
+        names.add(ref["file"])
+        if known and current["session_id"] != known[0]["session_id"]:
+            raise ProvenanceRefused("native session identity changed across snapshots")
+        for previous_ordinal, previous in enumerate(known, 1):
+            repeated = session_facts(harness, folder, ref, ordinal=previous_ordinal, readers=readers)
+            if repeated != previous:
+                raise ProvenanceRefused("later native snapshot rewrites a previously checked interaction")
+        known.append(current)
+    return known

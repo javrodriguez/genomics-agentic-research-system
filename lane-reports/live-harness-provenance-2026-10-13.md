@@ -22,6 +22,12 @@ After the initial four-test checkpoint, a fifth regression witness exposed liter
 
 The independent reviewer passed this focused correction with no findings; its review loop is closed.
 
+## Native snapshot history join
+
+The subsequent `session_history_facts` API uses the existing hash-reference and fact schemas to read every earlier interaction again from each later retained snapshot. It requires exact prior-fact equality (including optional `None` fields), stable native session identity and unique retained filenames. Current facts are deep-copied before retention. Missing ordinal errors propagate. This is not a native interaction-count proof: the eventual semantic reader and aggregate admission must reject extra/unassigned interactions separately.
+
+The new witness ran red-first by one assertion; all six provenance tests then passed locally in 0.324 s at a fresh normal gate. Independent focused static review passed this new function/test with no MAJOR or check-weakening MINOR. The duplicate-filename witness was subsequently strengthened to use a repeated snapshot that actually contains both ordinals, so it cannot pass accidentally through the missing-ordinal refusal. The final targeted witness passed under a fresh normal gate; three in-memory mutations were each killed with one assertion failure and no errors: ignoring rewritten prefixes, duplicate snapshot references, or current native session changes. Candidate bytes were unchanged.
+
 ## Subscription-only OpenAI amendment
 
 The owner's 13 October amendment requires existing Codex subscriptions, with no API-paid fallback or silent account switching. Preserve both registered O model IDs and coverage. Freeze opaque account aliases and deterministic account/slot assignment before runs; prohibit cross-account session resume and outcome/quota-triggered reassignment. The box lane owns supported isolated ChatGPT authentication, actual-route preflight, refusal of API billing variables, credential isolation and verified egress changes.

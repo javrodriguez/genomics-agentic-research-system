@@ -11,6 +11,42 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 class ProvenanceTests(unittest.TestCase):
+    def test_later_native_snapshots_cannot_rewrite_earlier_interactions(self):
+        vp = self.module()
+        self.assertTrue(callable(getattr(vp, "session_history_facts", None)), "native snapshot history join is not built")
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            first = {"session_id": "native-1", "requested_model": None, "version": None,
+                     "cwd": None, "permission_mode": None, "sent": "first", "output": ["first output"]}
+            second = dict(first, sent="second", output=["second output"])
+            def retain(name, records):
+                raw = json.dumps(records).encode()
+                (folder / name).write_bytes(raw)
+                return {"file": name, "sha256": hashlib.sha256(raw).hexdigest()}
+            def reader(raw, ordinal):
+                records = json.loads(raw)
+                if ordinal > len(records):
+                    raise vp.ProvenanceRefused("snapshot lacks requested interaction")
+                return records[ordinal - 1]
+            readers = {"gemini": reader}
+            one = retain("snapshot-1.native", [first])
+            two = retain("snapshot-2.native", [first, second])
+            got = vp.session_history_facts("gemini", folder, [one, two], readers=readers)
+            self.assertEqual([turn["sent"]["value"] for turn in got], ["first", "second"])
+            for changed in (dict(first, sent="rewritten"), dict(first, output=["rewritten"]),
+                            dict(first, session_id="other"), dict(first, version="newly asserted")):
+                bad = retain("snapshot-bad.native", [changed, second])
+                with self.assertRaises(vp.ProvenanceRefused):
+                    vp.session_history_facts("gemini", folder, [one, bad], readers=readers)
+            other = retain("other-session.native", [first, dict(second, session_id="other")])
+            with self.assertRaises(vp.ProvenanceRefused):
+                vp.session_history_facts("gemini", folder, [one, other], readers=readers)
+            for refs in ([], [two, two], [one, retain("short.native", [first])]):
+                with self.assertRaises(vp.ProvenanceRefused):
+                    vp.session_history_facts("gemini", folder, refs, readers=readers)
+            with self.assertRaises(vp.ProvenancePending):
+                vp.session_history_facts("gemini", folder, [one, two])
+
     def test_native_jsonl_uses_literal_newlines(self):
         import transcript_view as tv
         with tempfile.TemporaryDirectory() as tmp:
