@@ -118,3 +118,26 @@ The patch, character offset 12566400 (`ChatRecordingService.updateMessagesFromHi
 ## Evidence kept
 
 The raw JSON of both reads is in this session's scratch folder (`srcread/extract.json`, SHA-256 `6c6e3b15…`, and `srcread/extract2.json`, SHA-256 `c48070c8…`). It is not published. The lines above are the load-bearing quotes.
+
+## Addendum, 14 Oct 2026 01:27 EDT: batch-5 review folds
+
+**Finding 2 (provenance).** Both raw extracts and the exact read scripts are now retained, with their hashes, in `lane-reports/gemini-0.64.0-source-evidence-2026-10-14/`:
+
+- `extract-1-markers.json`: SHA-256 `6c6e3b15…`, the marker windows from every bundle file.
+- `extract-2-ranges.json`: SHA-256 `c48070c8…`, the exact character ranges.
+- `read-1.sh` and `read-2.sh`.
+- `SHA256SUMS`.
+
+Both extracts record `package_version` 0.64.0 and `pinned_chunk_ok` true, and each quoted line above can be re-read from them.
+
+**Finding 1 (check-weakening).** The rule I wrote above was too loose: "each (id, name) it answers must be a call recorded earlier in that interaction". The source records one round trip per tool-calling model message, holding exactly that message's responses. The projection now requires each of the following:
+
+- A tool-response turn follows the gemini message it answers.
+- It answers exactly that message's calls, each once.
+- A tool-calling gemini message is followed by such a turn before the next gemini message.
+
+The reviewer's three accepted shapes now refuse:
+
+- the same call answered twice;
+- an older round's call answered;
+- a missing round-trip record.

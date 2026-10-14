@@ -53,8 +53,9 @@ as complete only when joined to the stream's terminal result for that turn
 From the pinned bundle read on athena (lane-reports/gemini-0.64.0-source-
 retained-addendum-2026-10-14.md): a "user" message holding only functionResponse
 parts is GeminiChat's record of a tool round trip, so it continues its
-interaction, and each (id, name) it answers must be a call recorded earlier in
-that interaction; a call's result may hold the whole round trip's responses
+interaction; it must follow the gemini message whose calls it answers and answer
+exactly those calls, each once, and a tool-calling message must be followed by
+one before the next gemini message; a call's result may hold the whole round trip's responses
 (updateMessagesFromHistory, run by GeminiChat.initialize on every chat start), so
 its parts may answer sibling calls of the same message by id and name and must
 answer this call exactly once; displayContent is recorded only when it differs
@@ -291,15 +292,24 @@ def project(raw):
         raise ProjectionRefused(f"native replay refused: {exc}") from None
     _finite(replayed)
     session_id = replayed["metadata"]["sessionId"]
-    groups = []
+    groups, previous = [], None
     for message in replayed["messages"]:
         answered = _tool_response_turn(message) if message["type"] == "user" else None
         if answered is not None:
-            called = {(t.get("id"), t.get("name")) for reply in (groups[-1][1] if groups else [])
-                      for t in (reply.get("toolCalls") or []) if isinstance(t, dict)}
-            if not answered or any(a not in called for a in answered):
-                raise ProjectionRefused("a tool-response turn names no earlier call of its interaction")
+            # Batch-5 review finding 1: GeminiChat records one round trip per tool-calling model message, holding the
+            # responses to exactly that message's calls; so the turn must follow that message and answer each of its
+            # calls once, and nothing else.
+            calls = ([(t.get("id"), t.get("name")) for t in previous.get("toolCalls") or [] if isinstance(t, dict)]
+                     if previous is not None and previous["type"] == "gemini" and groups else [])
+            if not calls or sorted(answered) != sorted(calls) or len(set(answered)) != len(answered):
+                raise ProjectionRefused("a tool-response turn must answer exactly the calls of the gemini message "
+                                        "just before it, each once")
+            previous = message
             continue                                   # a tool round trip, never a new interaction
+        if (message["type"] == "gemini" and previous is not None and previous["type"] == "gemini"
+                and previous.get("toolCalls")):
+            raise ProjectionRefused("a tool-calling gemini message has no tool-response turn before the next one")
+        previous = message
         if message["type"] == "user":
             groups.append((message, []))
         elif message["type"] == "gemini":

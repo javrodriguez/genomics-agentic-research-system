@@ -2625,6 +2625,7 @@ IDENTITY_KEYS = ("session_id", "row", "row_commit", "source", "fixture", "gars_t
 
 
 VENDOR_HARNESSES = ("codex", "gemini")
+NATIVE_HISTORY_BASIS = "unmasked retained originals, before the drive scan"   # batch-5 review nit 4
 CODEX_NATIVE_PENDING = ("no reviewed Codex native rollout reader: the rollout source audit has not landed, so the "
                         "streams are not cross-checked against native evidence yet")
 
@@ -2652,14 +2653,16 @@ def native_history_record(harness: str, session_dir, refs, *, readers=None) -> d
     vendor_provenance.session_history_facts over them, through the PRODUCTION reader registry unless `readers` is
     given (tests): `pending` while no reviewed reader is registered (its reason kept), `refused` when the snapshots
     cannot be read or a later one rewrites an earlier interaction, `joined` (with the interaction count) when every
-    later snapshot reproduces every earlier interaction. `joined` is a stability join, never admission of the take."""
+    later snapshot reproduces every earlier interaction. `joined` is a stability join, never admission of the take.
+    Each record names its basis: it is computed on the unmasked retained originals, before the drive scan, which may
+    mask session/ bytes afterwards (the open masking-provenance design; a re-join over published bytes refuses)."""
     try:
         facts = _vendor_provenance.session_history_facts(harness, Path(session_dir), list(refs), readers=readers)
     except _vendor_provenance.ProvenancePending as e:
-        return {"status": "pending", "why": str(e), "interactions": None}
+        return {"status": "pending", "why": str(e), "interactions": None, "basis": NATIVE_HISTORY_BASIS}
     except _vendor_provenance.ProvenanceRefused as e:
-        return {"status": "refused", "why": str(e), "interactions": None}
-    return {"status": "joined", "why": None, "interactions": len(facts)}
+        return {"status": "refused", "why": str(e), "interactions": None, "basis": NATIVE_HISTORY_BASIS}
+    return {"status": "joined", "why": None, "interactions": len(facts), "basis": NATIVE_HISTORY_BASIS}
 
 
 def take_session_file(config_dir: str, session_id: str) -> str | None:

@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Batch-5 review fold, 2026-10-14:** each Gemini tool-response turn is now bound to the gemini message just before it (exactly its calls, each once; a tool-calling message needs one before the next); the raw source extracts are retained with hashes in `lane-reports/gemini-0.64.0-source-evidence-2026-10-14/`; publication reads a history holding a night ruling; the native history names its basis.
+
 **Vendor checker road, 2026-10-14:** D8 grades a vendor's captured stream cross-checked with its native record, so a vendor take whose native cross-check is pending now stops typed (`NativeCrossCheckPending`) after cleanup, ledger and scan: a ruling, never graded, never readers-disagree. See [the slice report](lane-reports/vendor-checker-road-2026-10-14.md).
 
 **Vendor take records, 2026-10-14:** a Gemini or Codex take no longer looks for Claude's session file; its cross-check comes from its own native evidence and is recorded as `cross_check_status` (pending while no reviewed reader exists, refused on missing or inconsistent snapshots, Codex pending until the rollout audit), never as an empty pass or a missing file. See [the slice report](lane-reports/vendor-take-records-2026-10-14.md).

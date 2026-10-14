@@ -115,3 +115,14 @@ Verification, each run behind a fresh light gate:
   - `history_problems` skips the night semantics;
   - the door writes unchecked.
   A fourth was malformed (it recursed into itself) and was dropped, not counted.
+
+## Addendum, 14 Oct 2026 01:27 EDT: batch-5 review finding 3
+
+`cell_history_problems` skipped only take rulings, so it read a night ruling as an outcome and raised `KeyError: 'half_cell'`. `check_results.publication`, and through it `run.produce`, therefore crashed on any history holding a committed night ruling.
+
+Fix: `cell_history_problems` now skips any entry that `is_outcome` rejects.
+
+Test: `test_night_ruling_history.test_publication_reads_a_history_holding_a_night_ruling`, which uses the real repo and the real door.
+- Red against the unfixed `batch.py`: 1 failure.
+- Green: 4/4.
+- The publication equals the one without the ruling.
