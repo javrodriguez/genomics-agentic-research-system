@@ -4,7 +4,7 @@
     {
       "path": "box/measure_live.py",
       "status": "new",
-      "reason": "Lane live-box (real box bring-up, 13-14 Oct 2026, glitch-06's assignment under Javier's standing delegation): the no-model component proof and full-tree watch measurement on athena (ownership probe, oracle/always-act/always-hold/background-writer scenarios, the watcher's measured count and establish time) through the pinned images with network none; it binds measured values only inside its own ephemeral interpreter and never writes a production constant."
+      "reason": "Lane live-box (real box bring-up, 13-14 Oct 2026, glitch-06's assignment under Javier's standing delegation): the no-model component proof and full-tree watch measurement on athena (ownership probe, the four lifecycle scenarios (oracle, act on every take, hold on every take, a background writer), the watcher's measured count and establish time) through the pinned images with network none; it binds measured values only inside its own ephemeral interpreter and never writes a production constant."
     },
     {
       "path": "box/sidecar_contract.py",

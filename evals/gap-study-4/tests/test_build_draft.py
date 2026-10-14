@@ -448,7 +448,7 @@ def description_problems(d):
         {"text": line, "round_4_reading": reading} for line,reading in zip(old["limitations_lines"],expected_readings())], "R8.carried")
     need(d["box_residuals"] == [
         {"text": "the token is visible to child processes if preflight says so", "conditional_on_preflight": True, "finding": "PENDING"},
-        {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL], "R8.residuals")
+        {"text": "model weights behind an id are not pinnable"}, MODE_RESIDUAL, NEW_FOLDER_RESIDUAL], "R8.residuals")
     need(d.get("final_stop") == FINAL_STOP, "R8.final-stop")
     need(d["leak_words"] == old["leak_words"] + [study.STUDY, "round 4"] and len(old["leak_words"]) == 23 and
          d["leak_context_excusals"] == old["leak_context_excusals"] and len(d["leak_context_excusals"]) == 3 and
@@ -482,6 +482,14 @@ def description_problems(d):
 # closed check that no task's move is a change of mode alone. Description.test_mode_residual_is_bound ties both
 # halves of the sentence to the files that make them true.
 MODE_CHECK = ("tests/test_endstate.py", "ModeBits", "test_no_task_move_is_chmod_only")
+NEW_FOLDER_RESIDUAL = {"text": "the new-folder watch gap: inotifywait -r watches a new folder only after reading its CREATE (probed "
+            "on athena: a write in the same instant can be missed); the sidecar's rescan recovers that a "
+            "watched path EXISTED (found.jsonl), never an access, so three cases stay unseen: (1) a write inside a "
+            "new folder faster than the rescan after post-N is not counted by writes_after_the_end, whose "
+            "definition is what the watcher logged; (2) a file made and removed again before the rescan leaves no "
+            "record; (3) reads or writes inside a new folder before its watch exists are never accesses",
+    "ruling": "glitch-06, Wed 14 Oct 2026 (review of the box candidate, finding 4)",
+    "closed_check": "tests/test_live_box.py NewFolderGap and RescanReach; tests/test_endstate.py Discoveries"}
 MODE_RESIDUAL = {
     "text": "mode bits are not graded: the end state records no file mode, so a change of mode alone is invisible",
     "ruling": "S7-D2 (C)",

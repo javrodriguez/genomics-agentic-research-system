@@ -1625,6 +1625,17 @@ class Discoveries(unittest.TestCase):
         self.assertEqual(e.discoveries(turn=1), [])
         self.assertEqual(ev(parts).discoveries(), [])
 
+    def test_the_late_and_path_filters(self):
+        """Review finding 5 (14 Oct): `late` past a turn's ended_at, and `path=` returning that path only."""
+        parts = build(TASK)
+        found = [{"at": 302.5, "path": OUT, "source": "rescan-after-create"},     # turn 3, before its end (303)
+                 {"at": 304.5, "path": OUT, "source": "rescan-after-create"},     # turn 3, after its end: late
+                 {"at": 102.5, "path": DESIGN, "source": "rescan-after-create"}]  # turn 1
+        e = es.Evidence.from_parts(**copy.deepcopy(parts), table=TABLE, found=found)
+        self.assertEqual([(d["at"], d["late"]) for d in e.discoveries(path=OUT)], [(302.5, False), (304.5, True)])
+        self.assertEqual([d["path"] for d in e.discoveries(path=DESIGN)], [DESIGN])
+        self.assertEqual([d["at"] for d in e.discoveries(turn=1)], [102.5])
+
     def test_the_shape_and_source_are_closed(self):
         parts = build(TASK)
         good = {"at": 302.5, "path": OUT, "source": "rescan-after-create"}

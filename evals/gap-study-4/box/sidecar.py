@@ -175,8 +175,10 @@ PENDING = "PENDING"
 # Production CANDIDATE values (box lane, 14 Oct 2026; under independent review, not yet admitted). Measured by the
 # no-model stub on Athena's provisional watcher image, inotifywait 3.22.6.0 (live-box-evidence-2026-10-13/
 # stub-20261014, gap-20261014) and derived by lane-reports/watch-constants-derivation-20261014-v2.json.
-INOTIFYWAIT_ARGV = ("inotifywait", "--monitor", "--format", "%w%f|%e")      # the factory adds -e, -r and --
-INOTIFYWAIT_FORMAT = {"fields": ["path", "events"], "separator": "|", "established": "Watches established.",
+# NUL framing (review of the candidate, finding 1): probed on athena, inotifywait 3.22.6.0 prints each field
+# NUL-terminated under --format '%w%f%0%e%0' --no-newline, whatever a name holds ('|', a newline, an '|OPEN' tail).
+INOTIFYWAIT_ARGV = ("inotifywait", "--monitor", "--format", "%w%f%0%e%0", "--no-newline")  # factory adds -e, -r, --
+INOTIFYWAIT_FORMAT = {"fields": ["path", "events"], "separator": "\x00", "established": "Watches established.",
                       "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]}
 INOTIFYWAIT_SUBSECOND = False        # --timefmt %s.%N prints %N literally at 3.22.6.0: events stamped on arrival
 INOTIFYWAIT_EVENTS = ("OPEN", "MODIFY", "CLOSE_WRITE", "MOVED_TO", "CREATE", "DELETE", "MOVED_FROM", "DELETE_SELF")
@@ -690,9 +692,12 @@ class Sidecar:
         _append_line(self._ev(FOUND), {"at": at, "path": path, "source": FOUND_SOURCE})
 
     def _present_beneath(self, folder: str) -> list:
-        """The consequential paths beneath a just-created run-tree folder that exist now (lstat, never followed)."""
+        """The consequential paths beneath a just-created run-tree folder that exist now: reached through folders
+        only (no link anywhere on the way: review finding 2), the last component by lstat, never followed."""
         out = []
         for p in self._beneath(folder):
+            if not _real_dir(self.run_tree, _parent(p)):
+                continue
             try:
                 os.lstat(os.path.join(self.run_tree, p))
             except OSError:
@@ -947,6 +952,34 @@ class Sidecar:
 
 
 # ------------------------------------------------------------------------------------------------- the real watcher
+def _split_records(buf: bytes, fmt) -> tuple:
+    """(the complete records in `buf`, each a list of field bytes; the unread rest). NUL framing (separator "\\0":
+    every field NUL-terminated, --no-newline): a file name cannot hold a NUL, so no name can end a field or a record
+    (review of the candidate, 14 Oct, finding 1). Any other separator: newline-ended lines, the fields before the
+    path split from the left and those after it from the right, so a separator inside a name stays in the path
+    (a newline in a name still splits a line, and the halves fault). A count that cannot match is a fault."""
+    sep = fmt["separator"].encode()
+    n = len(fmt["fields"])
+    if sep == b"\0":
+        parts = buf.split(b"\0")
+        whole = len(parts) - 1
+        use = whole - whole % n
+        return [parts[i:i + n] for i in range(0, use, n)], b"\0".join(parts[use:])
+    lines, _, rest = buf.rpartition(b"\n")
+    if not lines:
+        return [], rest
+    i = 0
+    for k in range(n):
+        if fmt["fields"][k] == "path":
+            i = k
+    out = []
+    for ln in lines.split(b"\n"):
+        head = ln.split(sep, i) if i else [ln]
+        tail = head[-1].rsplit(sep, n - 1 - i) if len(head) == i + 1 else []
+        out.append(head[:-1] + tail if tail else head)
+    return out, rest
+
+
 def _strip_slash(path: str) -> str:
     """A folder's own event names it with a trailing slash (%w with an empty %f; inferred, for the format
     measurement): the path is the folder."""
@@ -1026,11 +1059,14 @@ class _InotifyWatcher:
             if not b:
                 break
             self._out += b
-        lines, _, self._out = self._out.rpartition(b"\n")
         out = self._stderr_events()
         fmt = INOTIFYWAIT_FORMAT
-        for raw in (lines.split(b"\n") if lines else []):
-            fields = dict(zip(fmt["fields"], raw.decode("utf-8", "surrogateescape").split(fmt["separator"])))
+        records, self._out = _split_records(self._out, fmt)
+        for rec in records:
+            if len(rec) != len(fmt["fields"]):
+                out.append(WatchEvent(None, None, ()))     # the wrong field count: a fault, never a guess
+                continue
+            fields = dict(zip(fmt["fields"], (r.decode("utf-8", "surrogateescape") for r in rec)))
             path = _strip_slash(fields.get("path", ""))
             rel = "" if path == self.run_tree else (
                 path[len(self.run_tree) + 1:] if path.startswith(self.run_tree + "/") else None)

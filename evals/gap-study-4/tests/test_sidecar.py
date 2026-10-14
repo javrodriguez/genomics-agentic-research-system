@@ -1475,6 +1475,9 @@ class TestHostHalf(unittest.TestCase):
         self.assertEqual((sidecar.LEDGER, sidecar.ACCESS, sidecar.HEALTH, sidecar.WATCHED), es.FILES)
         self.assertEqual(sidecar.SPECIAL_KINDS, es.SPECIAL_KINDS)
         self.assertEqual((sidecar.SNAPSHOTS, sidecar.BLOBS), es.FOLDERS)
+        # review nit 7 (14 Oct): the rescan's file and source are endstate's optional file and admitted source
+        self.assertEqual((sidecar.FOUND,), es.OPTIONAL_FILES)
+        self.assertIn(sidecar.FOUND_SOURCE, es.FOUND_SOURCES)
         self.assertEqual((sidecar.WATCHER_START, sidecar.WATCHER_STOP, sidecar.QUEUE_OVERFLOW),
                          (es.WATCHER_START, es.WATCHER_STOP, es.QUEUE_OVERFLOW))
         self.assertEqual((sidecar.OPEN, sidecar.MODIFY, sidecar.DELETE), es.ACCESS_OPS)
@@ -1487,8 +1490,8 @@ EXPECTED_PENDING = {"inotifywait_argv", "inotifywait_format", "inotifywait_subse
 # The production CANDIDATE values (box lane, 14 Oct 2026; under review): the no-model stub on Athena's provisional
 # watcher image (inotifywait 3.22.6.0) and lane-reports/watch-constants-derivation-20261014-v2.json.
 CANDIDATE = {
-    "INOTIFYWAIT_ARGV": ("inotifywait", "--monitor", "--format", "%w%f|%e"),
-    "INOTIFYWAIT_FORMAT": {"fields": ["path", "events"], "separator": "|", "established": "Watches established.",
+    "INOTIFYWAIT_ARGV": ("inotifywait", "--monitor", "--format", "%w%f%0%e%0", "--no-newline"),
+    "INOTIFYWAIT_FORMAT": {"fields": ["path", "events"], "separator": "\x00", "established": "Watches established.",
                            "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]},
     "INOTIFYWAIT_SUBSECOND": False,
     "INOTIFYWAIT_EVENTS": ("OPEN", "MODIFY", "CLOSE_WRITE", "MOVED_TO", "CREATE", "DELETE", "MOVED_FROM",

@@ -350,5 +350,107 @@ class NewFolderGap(unittest.TestCase):
         self.assertEqual(set(found[0]), {"at", "path", "source"})
 
 
+
+# Review of the candidate (14 Oct, finding 1 MAJOR): a file NAME was parsed as events. inotifywait 3.22.6.0 frames
+# fields with NUL under --format '%w%f%0%e%0' --no-newline (probed on athena: a name cannot hold a NUL, so a '|', a
+# newline or an '|OPEN' tail stays inside the path field).
+NUL_FORMAT = {"fields": ["path", "events"], "separator": "\x00", "established": "Watches established.",
+              "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]}
+SETUP = b"Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+
+
+class HostileNames(unittest.TestCase):
+    def parse(self, out: bytes):
+        proc = _Proc(out, SETUP)
+        self.addCleanup(proc.stdout.close)
+        self.addCleanup(proc.stderr.close)
+        with mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", NUL_FORMAT), \
+                mock.patch.object(sidecar, "INOTIFYWAIT_SUBSECOND", False):
+            w = sidecar._InotifyWatcher(proc, "/tree")
+            self.assertTrue(w.established())
+            return w.read_ready()
+
+    def test_the_candidate_frames_with_nul(self):
+        self.assertEqual(sidecar.INOTIFYWAIT_FORMAT["separator"], "\x00")
+        self.assertIn("--no-newline", sidecar.INOTIFYWAIT_ARGV)
+        self.assertIn("%w%f%0%e%0", sidecar.INOTIFYWAIT_ARGV)
+
+    def test_a_name_never_becomes_events(self):
+        # the bytes athena's probe printed for these names (paths rebased onto /tree)
+        out = (b"/tree/a|b.txt\x00CREATE\x00/tree/x\nqc|OPEN\x00CREATE\x00/tree/qc/planted.tsv|OPEN\x00CREATE\x00"
+               b"/tree/.git|CREATE,ISDIR\x00CREATE\x00")
+        evs = self.parse(out)
+        self.assertEqual([(e.path, e.names) for e in evs],
+                         [("a|b.txt", ("CREATE",)), ("x\nqc|OPEN", ("CREATE",)),
+                          ("qc/planted.tsv|OPEN", ("CREATE",)), (".git|CREATE,ISDIR", ("CREATE",))])
+
+    def test_a_partial_record_waits_for_its_end(self):
+        evs = self.parse(b"/tree/a\x00CREATE\x00/tree/b\x00")
+        self.assertEqual([(e.path, e.names) for e in evs], [("a", ("CREATE",))])
+
+    def test_a_malformed_events_field_is_a_fault(self):
+        d = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        (d / "ev").mkdir(); (d / "tree").mkdir()
+        sc = sidecar.Sidecar(run_tree=str(d / "tree"), evidence=str(d / "ev"), watch=["a.txt"], factory=None,
+                             clock=lambda: 1.0e9)
+        for e in self.parse(b"/tree/a.txt\x00OPEN|x\x00"):
+            self.assertFalse(sc._event(e))
+
+
+class LineFraming(unittest.TestCase):
+    """The non-NUL road kept for other formats: the path keeps any separator, and a short line is a fault."""
+
+    def test_separators_in_a_name_stay_in_the_path(self):
+        fmt = {"fields": ["path", "events"], "separator": "|"}
+        recs, rest = sidecar._split_records(b"/t/a|b.txt|CREATE\n/t/p.tsv|OPEN|CREATE\n/t/x\nqc|OPEN|CREATE\npart", fmt)
+        self.assertEqual(recs, [[b"/t/a|b.txt", b"CREATE"], [b"/t/p.tsv|OPEN", b"CREATE"], [b"/t/x"],
+                                [b"qc|OPEN", b"CREATE"]])
+        self.assertEqual(rest, b"part")
+        fmt3 = {"fields": ["at", "path", "events"], "separator": "\t"}
+        recs, _ = sidecar._split_records(b"1.5\t/t/a\tb\tOPEN\n", fmt3)
+        self.assertEqual(recs, [[b"1.5", b"/t/a\tb", b"OPEN"]])
+
+
+class RescanReach(unittest.TestCase):
+    """Review findings 2 and 3: the rescan reports only paths that exist, through folders only, on folder CREATEs."""
+
+    def make(self, watch):
+        d = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        tree, ev = d / "tree", d / "ev"
+        tree.mkdir(); ev.mkdir()
+        sc = sidecar.Sidecar(run_tree=str(tree), evidence=str(ev), watch=list(watch), factory=None,
+                             clock=lambda: 1.0e9)
+        found = lambda: [json.loads(x)["path"] for x in (ev / sidecar.FOUND).read_text().splitlines()] \
+            if (ev / sidecar.FOUND).exists() else []
+        return tree, sc, found
+
+    def test_an_absent_watched_path_is_not_found(self):
+        tree, sc, found = self.make(["new/here.txt", "new/absent.txt"])
+        (tree / "new").mkdir(); (tree / "new" / "here.txt").write_text("x")
+        sc._event(sidecar.WatchEvent(None, "new", ("CREATE", "ISDIR")))
+        self.assertEqual(found(), ["new/here.txt"])
+
+    def test_a_path_behind_a_link_folder_is_not_found(self):
+        tree, sc, found = self.make(["new/a/b.txt"])
+        outside = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(outside))
+        (outside / "b.txt").write_text("x")
+        (tree / "new").mkdir(); (tree / "new" / "a").symlink_to(outside)
+        sc._event(sidecar.WatchEvent(None, "new", ("CREATE", "ISDIR")))
+        self.assertEqual(found(), [])
+
+    def test_a_watched_link_itself_is_found(self):
+        tree, sc, found = self.make(["new/l.txt"])
+        (tree / "new").mkdir(); (tree / "new" / "l.txt").symlink_to("/nonexistent")
+        sc._event(sidecar.WatchEvent(None, "new", ("CREATE", "ISDIR")))
+        self.assertEqual(found(), ["new/l.txt"])        # lstat: the link exists, never followed
+
+    def test_only_a_folder_create_rescans(self):
+        tree, sc, found = self.make(["new/here.txt"])
+        (tree / "new").mkdir(); (tree / "new" / "here.txt").write_text("x")
+        for names in (("CREATE",), ("MODIFY", "ISDIR"), ("OPEN", "ISDIR")):
+            sc._event(sidecar.WatchEvent(None, "new", names))
+        self.assertEqual(found(), [])
+
+
 if __name__ == "__main__":
     unittest.main()
