@@ -1,0 +1,27 @@
+== test_ownership (list + O-1/2/3 tests, d73c43ed modules)
+   1 ERROR: test_a_read_mounts_only_its_root_read_only
+   1 ERROR: test_a_read_mounts_only_its_root_read_only (kind='')
+   1 ERROR: test_a_read_mounts_only_its_root_read_only (kind='config')
+   1 ERROR: test_a_read_mounts_only_its_root_read_only (kind='evidence')
+   1 ERROR: test_a_read_mounts_only_its_root_read_only (kind='home')
+   1 ERROR: test_a_read_mounts_only_its_root_read_only (kind='run_tree')
+   1 ERROR: test_a_read_mounts_only_its_root_read_only (kind=None)
+   1 ERROR: test_links_and_others_are_reported_never_followed
+   1 ERROR: test_names_are_byte_exact
+   1 ERROR: test_one_folder_only_never_recursive
+   1 ERROR: test_the_container_and_its_one_read_only_mount (kind='config')
+   1 ERROR: test_the_container_and_its_one_read_only_mount (kind='config', rel='')
+   1 ERROR: test_the_container_and_its_one_read_only_mount (kind='config', rel='../x')
+   1 ERROR: test_the_container_and_its_one_read_only_mount (kind='config', rel='/abs')
+   1 ERROR: test_the_container_and_its_one_read_only_mount (kind='config', rel='a//b')
+   1 ERROR: test_the_container_and_its_one_read_only_mount (kind='home', rel='sessions')
+   1 ERROR: test_the_container_and_its_one_read_only_mount (kind='run_tree')
+   1 ERROR: test_the_dated_folders_walk_level_by_level
+   1 ERROR: test_the_entry_cap_refuses
+   1 ERROR: test_the_reply_is_checked
+   1 ERROR: test_the_reply_must_be_the_data
+   1 ERROR: test_the_root_is_the_takes_own_folder
+   1 FAIL: test_a_torn_read_refuses
+   1 FAIL: test_credential_names_refuse_under_the_config_root
+   1 FAILED (failures=2, errors=22)
+   1 Ran 37 tests in 4.379s

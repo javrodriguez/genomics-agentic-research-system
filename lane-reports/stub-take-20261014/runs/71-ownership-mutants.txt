@@ -1,0 +1,65 @@
+control 0 of 34
+RED   3/34 grant to keepalive
+RED   1/34 evidence to agent
+RED   2/34 grant goes on after a failure
+RED   1/34 restore ignores present containers
+RED   1/34 restore not verified
+RED   1/34 restore to the agent
+RED   3/34 links followed
+RED   2/34 specials admitted
+RED   4/34 link check skipped
+RED   2/34 overlap admitted
+RED   2/34 cfg repo check off
+RED   1/34 extra capability
+RED   1/34 DAC_OVERRIDE back
+RED   1/34 network on
+RED   2/34 write follows the final link
+RED   2/34 write nlink unchecked
+RED   2/34 write follows a folder link
+RED   3/34 write reply unchecked
+RED   2/34 read size unchecked
+RED   5/34 operator runs as root
+RED   1/34 rv: O_NOFOLLOW dropped on child open
+RED   2/34 rv: O_NONBLOCK dropped on child open
+RED   1/34 rv: verify follows links
+RED   1/34 rv: verify ignores unreadable subtrees
+RED   1/34 rv: verify top-level owner skipped
+RED   2/34 rv: restore stops at first failed step
+RED   3/34 rv: timeout counted ok in restore
+RED   1/34 rv: no-new-privileges dropped
+RED   1/34 rv: leaked checked with no ids
+RED   2/34 rv: restore folders check skipped
+RED   4/34 restore Refused not wrapped
+RED   2/34 timed-out container not removed
+RED   2/34 left container ignored
+RED   2/34 unreadable id ignored
+RED   1/34 grant not strict
+RED   2/34 strict ignores hard links
+RED   2/34 restore leaves 0000
+RED   2/34 restore widens to group and other
+RED   1/34 restore runs as grant mode
+RED   2/34 read: a final link followed
+RED   2/34 read: a folder link followed
+RED   2/34 read: the wrong root mounted
+RED   2/34 read: a write mount
+RED   4/34 read: readonly spelled away
+RED   1/34 read: hard links admitted
+RED   2/34 read: reply hash unchecked
+RED   2/34 read: reply length unchecked
+RED   1/34 read: config cap is the run tree's
+RED   4/34 read: any root kind
+RED   5/34 read: capability added
+RED   1/34 list: a link listed as a dir
+RED   4/34 list: recursion
+RED   1/34 list: recursion admitted by the host
+RED   3/34 list: the wrong root mounted
+RED   2/34 list: a write mount
+RED   1/34 list: listed through a folder link
+RED   1/34 list: entry cap unchecked
+RED   1/34 list: host cap unchecked
+RED   1/34 list: reply hash unchecked
+RED   1/34 list: any kind
+RED   1/34 list: duplicates admitted
+RED   2/34 list: any root kind
+RED   4/34 operator path escapes
+ALIVE: none

@@ -144,8 +144,10 @@ LEAK_WORDS = ("evaluation", "eval", "benchmark", "test case", "grading", "graded
 # the walk (Review A, glitch-f3's ruling "fold all of it"), and CREDENTIAL_LIKE stays the backstop that catches them.
 CREDENTIAL_FILES = {
     run_take.CLAUDE_CODE: (),
-    run_take.CODEX: (("auth.json", "D8 section 3: 'so no auth.json is written' (forced_login_method api, "
-                                   "cli_auth_credentials_store ephemeral)"),),
+    run_take.CODEX: (("auth.json", "the owner's 13 Oct subscription amendment (take_config.CODEX_TOP: "
+                                   "forced_login_method chatgpt, cli_auth_credentials_store file): the login is "
+                                   "stored in CODEX_HOME/auth.json, the config folder; superseding D8 section 3's "
+                                   "'so no auth.json is written' (api, ephemeral)"),),
     run_take.GEMINI: (),
 }
 CREDENTIAL_LIKE = re.compile(r"(cred|oauth|token|secret|auth|account|\.pem$|\.key$)", re.IGNORECASE)

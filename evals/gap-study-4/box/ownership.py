@@ -268,7 +268,10 @@ os.fsync(f); os.close(f); os.close(fd)
 print(json.dumps({"sha256":hashlib.sha256(data).hexdigest(),"bytes":len(data)}))
 '''
 # The read's one size check counts the bytes actually read, not fstat's size, so a session file the still-running agent
-# grows during the read cannot pass the cap. A file with another hard link refuses, as for a write.
+# grows during the read cannot pass the cap. A file with another hard link refuses, as for a write. A TORN read refuses
+# (review-operator-read O-1): the file's size, mtime_ns, inode and device before and after the read must match each
+# other and the bytes read, else the read refuses, never retried silently; the contract reads the config folder only
+# after the turn's quiescence, so a change means a writer the drive did not expect.
 READ_PROGRAM = '''import base64,hashlib,json,os,stat,sys
 parts=sys.argv[1].split("/"); limit=int(sys.argv[2])
 fd=os.open("/scratch",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
@@ -281,14 +284,49 @@ except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)
 st=os.fstat(f)
 if not stat.S_ISREG(st.st_mode):raise SystemExit("refused: not a regular file")
 if st.st_nlink!=1:raise SystemExit("refused: a file with another hard link")
-data=b""
+data=bytearray()
 while True:
  c=os.read(f,65536)
  if not c:break
  data+=c
  if len(data)>limit:raise SystemExit("refused: larger than the limit")
+after=os.fstat(f)
+if (after.st_size,after.st_mtime_ns,after.st_ino,after.st_dev)!=(st.st_size,st.st_mtime_ns,st.st_ino,st.st_dev) or len(data)!=st.st_size:raise SystemExit("refused: the file changed during the read")
+data=bytes(data)
 print(json.dumps({"exists":True,"b64":base64.b64encode(data).decode("ascii"),"sha256":hashlib.sha256(data).hexdigest(),"bytes":len(data)}))
 '''
+
+
+def _take_root(root_kind, run_tree, config_dir) -> str:
+    """Review-operator-read O-3: the root is the take's own run tree or config folder, chosen by kind from the take's
+    pair: both exact absolute paths, existing folders, never links, neither inside the other, the config folder outside
+    every repository (the host checks with lstat on the folder entries, never opening them)."""
+    if root_kind not in READ_ROOTS:
+        raise run_take.Refused(f"an operator root is one of {sorted(READ_ROOTS)}")
+    tree = run_take._abs_path(run_tree, "run_tree")
+    cfg = run_take._abs_path(config_dir, "config_dir")
+    if run_take._inside(tree, cfg) or run_take._inside(cfg, tree):
+        raise run_take.Refused("the run tree and the config folder must not contain each other")
+    for name, path in (("run_tree", tree), ("config_dir", cfg)):
+        if os.path.islink(path) or not os.path.isdir(path):
+            raise run_take.Refused(f"{name} must be an existing folder, never a link")
+    if not run_take.outside_every_repository(cfg):
+        raise run_take.Refused("the per-take config folder must sit outside every repository")
+    return tree if root_kind == "run_tree" else cfg
+
+
+def credential_name(name: str) -> bool:
+    """Review-operator-read O-2: a name the config folder's reads and listings refuse (preflight's CREDENTIAL_FILES of
+    every harness, auth.json among them, and the CREDENTIAL_LIKE backstop). Once the Codex file store lands CODEX_HOME
+    holds the login, and the host never receives it."""
+    from box import preflight
+    names = {n for files in preflight.CREDENTIAL_FILES.values() for n, _source in files}
+    return name in names or bool(preflight.CREDENTIAL_LIKE.search(name))
+
+
+def _no_credential_path(root_kind: str, rel: str) -> None:
+    if root_kind == "config" and rel != "." and any(credential_name(part) for part in rel.split("/")):
+        raise run_take.Refused("a credential file's name in the config folder is never read or listed by the host")
 
 
 def _rel(rel_path) -> str:
@@ -332,20 +370,22 @@ def operator_write(runtime, *, image: str, run_tree: str, rel_path: str, data: b
     return {"ok": True, "path": rel, **want}
 
 
-def operator_read(runtime, *, image: str, root_kind: str, root: str, rel_path: str, caller_env=None):
-    """The bytes at `rel_path` under `root`, read as the agent's uid, or None when it does not exist.
+def operator_read(runtime, *, image: str, root_kind: str, run_tree: str, config_dir: str, rel_path: str,
+                  caller_env=None):
+    """The bytes at `rel_path` under the take's root of `root_kind`, read as the agent's uid, or None when absent.
 
-    root_kind "run_tree" (root: the take's run tree; cap OPERATOR_READ_MAX_BYTES) or "config" (root: the take's
-    per-take config folder, CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_CLI_HOME; cap CONFIG_READ_MAX_BYTES). Only `root`
-    is mounted, read-only. Every path step is opened O_NOFOLLOW through directory descriptors; a link anywhere, a
+    root_kind "run_tree" (the take's run tree; cap OPERATOR_READ_MAX_BYTES) or "config" (the take's per-take config
+    folder, CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_CLI_HOME; cap CONFIG_READ_MAX_BYTES), chosen from the take's pair
+    (`run_tree`, `config_dir`; O-3). Under the config root a credential file's name refuses before any call (O-2).
+    Only that root is mounted, read-only. Every path step is opened O_NOFOLLOW through directory descriptors; a link anywhere, a
     non-folder parent, a final entry that is not a regular file, a file with another hard link, or a file over the cap
     refuses (OwnershipError). The reply carries the bytes' sha256 and length, checked here."""
     import base64
     import hashlib
-    if root_kind not in READ_ROOTS:
-        raise run_take.Refused(f"an operator read's root is one of {sorted(READ_ROOTS)}")
+    root = _take_root(root_kind, run_tree, config_dir)          # refuses an unknown kind first
     limit = READ_ROOTS[root_kind]
     rel = _rel(rel_path)
+    _no_credential_path(root_kind, rel)
     argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=True)
     step = _run(runtime, f"operator-read-{root_kind}", argv, run_take.runtime_env(caller_env))
     if step["returncode"] != 0:
@@ -365,3 +405,90 @@ def operator_read(runtime, *, image: str, root_kind: str, root: str, rel_path: s
         pass
     raise OwnershipError(f"operator read of {rel}: the container's reply is off its shape", {"ok": False,
                                                                                           "steps": [step]})
+
+
+# Mid-take discovery of native session files (glitch-06, 14 Oct 2026): Gemini's session-<minute>[-k]-<id8>.jsonl under
+# tmp/<project>/chats and Codex's sessions/YYYY/MM/DD/rollout-<ts>-<thread>.jsonl cannot be named in advance, so the
+# driver lists ONE named folder at a time (never recursively) and walks the dated folders level by level. Same
+# container, mount and refusal rules as operator_read. Each entry's kind comes from an lstat through the folder's
+# descriptor (never following a link): "file", "dir", "link" (reported, so the caller refuses it) or "other" (any
+# other type, and any name that is not valid UTF-8). Names travel base64 and are returned byte-exact (a non-UTF-8 name
+# decodes with surrogateescape and is kind "other"). LIST_MAX_ENTRIES is a POLICY cap: a per-take config folder holds a
+# few session files per folder; more entries refuse loudly, never truncate.
+LIST_MAX_ENTRIES = 4096
+LIST_KINDS = ("file", "dir", "link", "other")
+LIST_PROGRAM = '''import base64,hashlib,json,os,stat,sys
+rel=sys.argv[1]; limit=int(sys.argv[2])
+parts=[] if rel=="." else rel.split("/")
+fd=os.open("/scratch",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+for p in parts:
+ try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)
+ except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)
+ os.close(fd); fd=nfd
+names=os.listdir(fd)
+if len(names)>limit:raise SystemExit("refused: more entries than the limit")
+out=[]
+for n in names:
+ m=os.stat(n,dir_fd=fd,follow_symlinks=False).st_mode
+ k="link" if stat.S_ISLNK(m) else "dir" if stat.S_ISDIR(m) else "file" if stat.S_ISREG(m) else "other"
+ out.append((os.fsencode(n),k))
+out=[[base64.b64encode(r).decode("ascii"),k] for r,k in sorted(out)]
+canon=json.dumps(out,separators=(",",":"))
+print(json.dumps({"exists":True,"entries":out,"sha256":hashlib.sha256(canon.encode("ascii")).hexdigest()}))
+'''
+
+
+def _rel_dir(rel_dir) -> str:
+    return "." if rel_dir == "." else _rel(rel_dir)
+
+
+def operator_list(runtime, *, image: str, root_kind: str, run_tree: str, config_dir: str, rel_dir: str,
+                  caller_env=None):
+    """[(name, kind)] of the ONE folder `rel_dir` under the take's root of `root_kind` ("." is the root itself), sorted
+    by name bytes, or None when it does not exist. kind is "file", "dir", "link" or "other"; the caller refuses a link
+    and skips "other". Under the config root a credential file's name is listed as "other", and a path through one
+    refuses (O-2).
+    Read as the agent's uid in the operator container (only `root`, read-only); every path step O_NOFOLLOW; the reply
+    is checked by sha256 over its canonical JSON. More than LIST_MAX_ENTRIES entries, a link or non-folder on the
+    path, or a reply off its shape is an OwnershipError."""
+    import base64
+    import hashlib
+    root = _take_root(root_kind, run_tree, config_dir)          # refuses an unknown kind first
+    rel = _rel_dir(rel_dir)
+    _no_credential_path(root_kind, rel)
+    argv = operator_argv(image, root, LIST_PROGRAM, rel, str(LIST_MAX_ENTRIES), readonly=True)
+    step = _run(runtime, f"operator-list-{root_kind}", argv, run_take.runtime_env(caller_env))
+    rec = {"ok": False, "steps": [step]}
+    if step["returncode"] != 0:
+        raise OwnershipError(f"operator list of {rel} refused or failed", rec)
+    try:
+        got = json.loads(step.get("stdout", ""))
+    except ValueError:
+        got = None
+    if isinstance(got, dict) and got == {"exists": False}:
+        return None
+    if not (isinstance(got, dict) and set(got) == {"exists", "entries", "sha256"} and got["exists"] is True
+            and isinstance(got["entries"], list) and len(got["entries"]) <= LIST_MAX_ENTRIES):
+        raise OwnershipError(f"operator list of {rel}: the container's reply is off its shape", rec)
+    entries = got["entries"]
+    canon = json.dumps(entries, separators=(",", ":"))
+    if got["sha256"] != hashlib.sha256(canon.encode("utf-8")).hexdigest():
+        raise OwnershipError(f"operator list of {rel}: the reply is not its sha256", rec)
+    out, seen = [], set()
+    for e in entries:
+        try:
+            raw = base64.b64decode(e[0], validate=True)
+        except (TypeError, ValueError, IndexError, KeyError):
+            raise OwnershipError(f"operator list of {rel}: an entry is off its shape", rec) from None
+        if not (isinstance(e, list) and len(e) == 2 and e[1] in LIST_KINDS) or not raw or raw in (b".", b"..") \
+                or b"/" in raw or b"\0" in raw or raw in seen:
+            raise OwnershipError(f"operator list of {rel}: an entry is off its shape", rec)
+        seen.add(raw)
+        try:
+            name, kind = raw.decode("utf-8"), e[1]
+        except UnicodeDecodeError:
+            name, kind = raw.decode("utf-8", "surrogateescape"), "other"
+        if root_kind == "config" and credential_name(name):
+            kind = "other"                  # O-2: listed so the caller sees it, never readable (operator_read refuses)
+        out.append((name, kind))
+    return out
