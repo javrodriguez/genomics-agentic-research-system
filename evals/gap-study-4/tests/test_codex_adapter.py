@@ -30,8 +30,14 @@ transcript_codex.py compiled in memory (the registry pattern of lane w6j):
   A3-usage     a usage key that is missing is refused, never 0; a failed turn has no usage (None).
                Witness: usage-zero.
   A4-argv      `-m <model>` on every exec; `resume <thread id>` after turn 1 only, the id read from turn 1's stream;
-               a PENDING or unknown mode refuses the adapter; a line starting with "-" is refused; the login rides
-               by name only. Witnesses: resume-first, model-first-only.
+               a PENDING or unknown mode refuses the adapter; a line starting with "-" is refused; no turn's argv
+               carries the planted login value. Witnesses: resume-first, model-first-only.
+               Retired 14 Oct 2026 (glitch-06's Codex ruling, option a): the clause "the login rides by name only"
+               described the API-key route, which the reviewed subscription transition removed (run_take refuses a
+               Codex turn NotReady before any login read; that refusal is bound by its own test outside this module).
+               These checks cover the adapter's stream and record road, which does not depend on the login route, so
+               every turn here runs through stub_run_turn: an exec that never reads a login and carries no
+               credential. Nothing here enables an API-key route.
   A5-model     the init's model is the rollout's turn_context model (a served-other id reads as that id), and a
                rollout with no turn_context for the turn gives init None, never the requested model.
                Witness: model-defaulted.
@@ -135,6 +141,35 @@ def setUpModule():
             _STACK.enter_context(mock.patch.object(os, name, _trip(f"os.{name}")))
     # Codex's own billing-route names are PENDING until named from its documentation: none, for the fake only.
     _STACK.enter_context(mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: rt.PENDING}))
+    # glitch-06's Codex ruling (a), 14 Oct 2026: the turn exec is stubbed, never the login route enabled.
+    _STACK.enter_context(mock.patch.object(rt, "run_turn", stub_run_turn))
+
+
+def stub_run_turn(runtime, take_id, inner, *, harness, run_tree, login_file, stream_path, budget_s, clock,
+                  caller_env=None):
+    """run_take.run_turn's contract for the adapter, minus every login: the turn is a plain agent exec (no variable,
+    no login file opened, `login_file` never read), its stdout written once to the host-side stream path, the times
+    from the injected clock. A timeout is a timed-out exec, as in run_take."""
+    if harness != rt.CODEX:
+        raise GuardTripped(f"the Codex stub runs Codex turns only, not {harness!r}")
+    if not os.path.isabs(stream_path) or os.path.lexists(stream_path):
+        raise rt.Refused("the stream path is absolute and new: a stream is never overwritten")
+    if not (isinstance(budget_s, (int, float)) and budget_s > 0):
+        raise rt.Refused("budget_s > 0")
+    argv = rt.agent_exec_argv(take_id, list(inner), workdir=run_tree)
+    started = clock()
+    timed_out, code, out, err = False, None, "", ""
+    try:
+        c = runtime.run(argv, env=rt.runtime_env(caller_env), timeout=budget_s)
+        code, out, err = c.returncode, c.stdout, c.stderr
+    except TimeoutError as e:
+        timed_out, out = True, getattr(e, "stdout", "") or ""
+    ended = clock()
+    fd = os.open(stream_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8", errors="surrogateescape") as fh:
+        fh.write(out)
+    return {"exit_code": code, "timed_out": timed_out, "started_at": started, "ended_at": ended,
+            "stream_path": stream_path, "stderr": err}
 
 
 def tearDownModule():
@@ -441,9 +476,9 @@ def a4_argv(mod, p):
             out.append(f"{p}: turn {n} lacks the pinned mode's flag")
     if len(turns) != 3:
         out.append(f"{p}: {len(turns)} turn exec(s), not 3")
-    for c in box.calls:
-        if any(LOGIN_VALUE in x for x in c) or ("--json" in c and LOGIN not in c):
-            out.append(f"{p}: a turn's login does not ride by name only")
+    for c in box.calls:              # the "rides by name" clause is retired (see A4 above); the value never rides
+        if any(LOGIN_VALUE in x for x in c):
+            out.append(f"{p}: a turn's argv carries the login value")
     return out
 
 
@@ -977,6 +1012,16 @@ class TestTheShapes(unittest.TestCase):
 
 
 class TestTheAdapter(unittest.TestCase):
+    def test_every_turn_here_runs_through_the_login_free_stub(self):
+        """glitch-06's Codex ruling (a): the stub is in place, and a turn through it never opens the login file."""
+        self.assertIs(rt.run_turn, stub_run_turn)
+        box = FakeRuntime([fixture("turn1-tools.jsonl")])
+        a = adapter(ca, box, rollouts=[fixture("rollout-two-turns.jsonl")])
+        a.login_file = str(SCRATCH / "no-such-login-file")      # a read would raise; the stub never reads it
+        a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+        a.turn("first line", first=True, budget_s=60)
+        self.assertFalse(any(LOGIN in x or LOGIN_VALUE in x for c in box.calls for x in c))
+
     def test_a1_the_stream_read(self):
         self.assertEqual(a1_stream(ca), [])
 
