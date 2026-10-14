@@ -237,22 +237,43 @@ def read_stream(text: str) -> dict:
             "served_models": models, "model_usage": usage}
 
 
+# Review MINOR 5 (glitch-06's ruling, 14 Oct 2026): a modelUsage key beside the pin's is a side call only for a model on
+# this closed list (the one observed: the recorded sonnet probe's claude-haiku-4-5-20251001, Claude Code's small and
+# fast model); any other extra key is a mismatch. The side calls' token counts are recorded (side_calls).
+SIDE_MODELS = ("claude-haiku-4-5-20251001",)
+# A first-walk acceptance item (the same ruling): a turn that uses the Agent tool shows its subagent's assistant records
+# in the 2.1.296 stream (parent_tool_use_id set), each carrying message.model; until a walk shows it, a subagent on
+# another model may leave only a modelUsage key, which the closed list above then reads as a mismatch.
+FIRST_WALK_ACCEPTANCE = ("a turn that uses the Agent tool shows its subagent's assistant records in the 2.1.296 "
+                         "stream (parent_tool_use_id set), each carrying message.model",)
+
+
+def side_calls(read: dict, model: str) -> dict:
+    """{side model: {inputTokens, outputTokens}} for the result's modelUsage keys beside the pin's (as printed)."""
+    usage = (read.get("result") or {}).get("modelUsage") or {}
+    return {k: {t: v.get(t) for t in ("inputTokens", "outputTokens")} for k, v in usage.items()
+            if k != model and isinstance(v, dict)}
+
+
 def served_model_off(read: dict, model: str):
     """THE SERVED-MODEL BACKSTOP (ownership review MAJOR 1, glitch-06, 14 Oct 2026): routing compares each turn's init
     model with the pin, so a switch after an init that carried the pin would pass. The first model the turn served
     that is not the pin's `model`, else None:
       - every agent assistant record's message.model (read_stream's served_models) must be the pin's model;
       - the result's modelUsage, when present and the turn made an agent call, must name the pin's model.
-    Another key BESIDE the pin's in modelUsage is a side call, recorded and not a mismatch: the recorded sonnet probe
-    (haiku-prestudy/verification/probes/claude-sonnet-5.auto.jsonl) carries claude-haiku-4-5-20251001 there (915 in,
-    11 out) while each of its assistant records is claude-sonnet-5, so "every key equals the pin" would route a sound
-    take as a mismatch (a departure from the assignment's wording, named in the lane report)."""
+    A key BESIDE the pin's in modelUsage is a side call only for a model on SIDE_MODELS (glitch-06's ruling on review
+    MINOR 5): the recorded sonnet probe (haiku-prestudy/verification/probes/claude-sonnet-5.auto.jsonl) carries
+    claude-haiku-4-5-20251001 there (915 in, 11 out) while each of its assistant records is claude-sonnet-5; any other
+    extra key is a mismatch, and the side calls' tokens are recorded (side_calls)."""
     for m in read["served_models"]:
         if m != model:
             return m
     if read["model_usage"] is not None and read["served_models"] and model not in read["model_usage"]:
         others = [k for k in read["model_usage"] if k != model]
         return others[0] if others else "<modelUsage names no model>"
+    for k in read["model_usage"] or ():
+        if k != model and k not in SIDE_MODELS:     # a side key off the closed list is a mismatch
+            return k
     return None
 
 
@@ -365,7 +386,7 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
             "tools": read["init_extra"]["tools"], "inits": read["inits"], "calls": read["calls"],
             "tool_use_ids": read["tool_use_ids"], "result": read["result"], "session_ids": read["session_ids"],
             "undecoded": read["undecoded"], "served_models": read["served_models"],
-            "model_usage": read["model_usage"], "served_off": off})
+            "model_usage": read["model_usage"], "served_off": off, "side_calls": side_calls(read, self.model)})
         return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
                              end_reason=end_reason(got["exit_code"], got["timed_out"]), init=init,
                              api_errors=read["api_errors"], counters=counters,

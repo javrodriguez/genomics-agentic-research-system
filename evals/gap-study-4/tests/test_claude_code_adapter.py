@@ -372,6 +372,23 @@ def a7_served(mod, p):
     r = mod.read_stream(recorded("claude-sonnet-5.auto.jsonl"))
     if r.get("model_usage") != ["claude-haiku-4-5-20251001", "claude-sonnet-5"]:
         out.append(f"{p}: the sonnet probe's modelUsage keys read as {r.get('model_usage')}")
+    # Review MINOR 5 (glitch-06's ruling): a side key is accepted only from the closed list, its tokens recorded.
+    if getattr(mod, "SIDE_MODELS", None) != ("claude-haiku-4-5-20251001",) or not callable(getattr(mod, "side_calls",
+                                                                                                    None)):
+        out.append(f"{p}: the side models are not the closed list of the one observed")
+    elif mod.side_calls(r, "claude-sonnet-5") != {"claude-haiku-4-5-20251001": {"inputTokens": 915,
+                                                                                "outputTokens": 11}}:
+        out.append(f"{p}: the sonnet probe's side call is recorded as {mod.side_calls(r, 'claude-sonnet-5')}")
+    unlisted = mod.read_stream(synthetic_turn().replace(
+        json.dumps({MODEL: {"costUSD": 0.01}})[1:-1],
+        json.dumps({MODEL: {"costUSD": 0.01}, "claude-sonnet-5-5": {"costUSD": 0.01}})[1:-1]))
+    side_only = mod.read_stream(synthetic_turn(model="claude-sonnet-5-5").replace(
+        json.dumps({"claude-sonnet-5-5": {"costUSD": 0.01}})[1:-1],
+        json.dumps({"claude-haiku-4-5-20251001": {"costUSD": 0.01}})[1:-1]))
+    if mod.served_model_off(side_only, "claude-sonnet-5-5") != "claude-haiku-4-5-20251001":
+        out.append(f"{p}: a modelUsage naming only a side model, never the pin's, is not a mismatch")
+    if mod.served_model_off(unlisted, MODEL) != "claude-sonnet-5-5":
+        out.append(f"{p}: a side key off the closed list is not a mismatch: {mod.served_model_off(unlisted, MODEL)!r}")
     if mod.served_model_off(mod.read_stream(api_error_stream()), "no-such-model") is not None:
         out.append(f"{p}: the harness's <synthetic> API-error record was read as a served model")
     other = "claude-sonnet-5-5"                          # a model other than the pin's (MODEL)
@@ -607,6 +624,8 @@ WITNESSES.update({
                              "read[\"model_usage\"]:", "    if False:"),), a7_served, "A7-served"),
     "modelless-accepted": ((("            if not isinstance(served, str) or not served:",
                              "            if False:"),), a7_served, "A7-served"),
+    "side-list-open": ((("        if k != model and k not in SIDE_MODELS:     # a side key off the closed list is a mismatch",
+                         "        if False:"),), a7_served, "A7-served"),
     "read-unwrapped": ((("        except (StreamError, OSError) as e:\n            executed[\"refused\"] = f\"{type(e).__name__}: "
                          "{e}\"\n            raise ExecutedStreamRefused(str(e), executed=executed) from e\n",
                          "        except ZeroDivisionError as e:\n            raise\n"),), a7_served, "A7-served"),
@@ -662,6 +681,9 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_read_unwrapped(self):
         self.kill("read-unwrapped")
 
+    def test_witness_side_list_open(self):
+        self.kill("side-list-open")
+
     def test_witness_count_records(self):
         self.kill("count-records")
 
@@ -680,7 +702,7 @@ class TestWitnesses(unittest.TestCase):
                                                     "missing-class-as-zero", "zero-dollars-per-call",
                                                     "null-id-unreported", "served-unread", "model-usage-unread",
                                                     "modelless-accepted", "routed-init-unchanged",
-                                                    "read-unwrapped"]))
+                                                    "read-unwrapped", "side-list-open"]))
 
 
 if __name__ == "__main__":
