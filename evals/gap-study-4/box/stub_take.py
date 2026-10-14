@@ -64,14 +64,15 @@ if str(HERE) not in sys.path:
 
 from box import ownership, preflight, rules_scanner, run_take, scan_record, sidecar, sidecar_contract  # noqa: E402
 from box.egress import proxy_conf  # noqa: E402
+import mode_binding  # noqa: E402  (the record roots' one home; shipped beside box/ to athena)
 
 RECORD_KIND = "stub-take-measurement"
 NOT_A_STUDY_RECORD = ("a no-model measurement of the box (CP2's real-box step); never a study take, walk, rehearsal, "
                       "cell or registered attempt")
 FOLDER_PREFIX = "stub-take-"
-# The study's record folders (mode_binding.WALKS_DIR and mode_binding.TAKES_DIR; the test binds them). The output may
-# not sit under a folder of either name.
-STUDY_RECORD_DIRS = ("rehearsals", "takes")
+# The study's record folders, imported from the one place the layout rule allows (mode_binding.RECORD_ROOTS:
+# TAKES_DIR and WALKS_DIR; test_walk_layout L1). The output may not sit under a folder of either name.
+STUDY_RECORD_DIRS = mode_binding.RECORD_ROOTS
 HARNESS = run_take.CLAUDE_CODE
 IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")
 IMAGE_ROLES = ("take", "sidecar", "egress", "codex", "gemini")
