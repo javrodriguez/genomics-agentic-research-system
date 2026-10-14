@@ -55,6 +55,36 @@
       "path": "tests/test_stub_take.py",
       "status": "new",
       "reason": "Lane live-box: the stub-take road's refusals (full image ids, lock ids, the output rule), that the production driver can never select it, that its records are labelled and refused by the walk and batch readers, and that its launch mirror is run_take.launch's steps argv for argv; fakes only."
+    },
+    {
+      "path": "box/ownership.py",
+      "status": "new",
+      "reason": "Lane live-box (stub-take review finding 9; glitch-06's assignment, 14 Oct 2026): the take's ownership road. grant() gives the run tree and the config folder to the agent and the evidence folder to the watcher before launch; restore() returns all three to the host user after teardown, before postflight, the scan and the config folder's removal. One-shot root containers of the take image running measure_live.OWN's reviewed walk (plus a link branch that lchowns and never follows); fails closed."
+    },
+    {
+      "path": "tests/test_ownership.py",
+      "status": "new",
+      "reason": "Lane live-box: the ownership road with a fake runtime (argv, order, uids bound to the locks, refusals before any call, grant stopping at the first failure, restore running every step, refusing while a container is present and verifying host-side ownership), and OWN_PROGRAM run on a local folder (links never followed, special files refused)."
+    },
+    {
+      "path": "box/rules_scanner.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's ruling, 14 Oct 2026): the production rules scanner for scan_record.scan, the reviewed gitleaks adapter (one `gitleaks dir <file> --redact` per path) pinned to 8.30.1 by version line and binary sha256 at its athena path; it refuses on a mismatch and never reads a failed scan as clean."
+    },
+    {
+      "path": "tests/test_rules_scanner.py",
+      "status": "new",
+      "reason": "Lane live-box: the scanner with a fake runtime (argv, findings by path/line/rule, feeding scan_record), every refusal (sha, version, exit, missing or malformed report, used report folder), and the pin bound to the four stub takes' athena readings."
+    },
+    {
+      "path": "box/settings_guard.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's ruling on review finding 1, 14 Oct 2026): the run tree's Claude Code settings files: a host-side baseline before grant and launch refusing env, model, fallbackModel, switchModelsOnFlag or availableModels, and a pre-turn check on the sidecar's own pre-k snapshot refusing any changed, new, removed or linked settings file."
+    },
+    {
+      "path": "tests/test_settings_guard.py",
+      "status": "new",
+      "reason": "Lane live-box: the settings guard against GARS's shipped gars/.claude/settings.json at the pinned commit and stub take 5's athena pre-1 snapshot, each forbidden key, links, shapes and every snapshot change."
     }
   ]
 }

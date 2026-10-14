@@ -252,13 +252,17 @@ class TestBinding3Proxy(Binding):
             ports = [args for _, d, args in pc.parse(fh.read()) if d == "http_port"]
         if ports != [[str(pc.PORT)]]:
             out.append(f"proxy.conf listens on {ports}, not {pc.PORT}")
-        # USER is PENDING on both sides until a built egress image tells it: both refuse.
-        with self.assertRaises(pc.NotReady):
-            pc.launch_fields()
-        pending_launch = rt.ProxyLaunch(image=IMAGE, conf_source="/srv/w/t1/proxy.conf", conf_target=pc.CONF_PATH,
-                                        command=pc.COMMAND, user=pc.USER, alias=pc.ALIAS)
-        with self.assertRaises(rt.NotReady):
-            rt.proxy_create_argv("b" * 64, pending_launch)
+        # USER is FILLED (13:13, 14 Oct 2026); while it is PENDING both sides refuse (kept red-tested by patching it back).
+        with mock.patch.object(pc, "USER", pc.PENDING):
+            with self.assertRaises(pc.NotReady):
+                pc.launch_fields()
+            pending_launch = rt.ProxyLaunch(image=IMAGE, conf_source="/srv/w/t1/proxy.conf",
+                                            conf_target=pc.CONF_PATH, command=pc.COMMAND, user=pc.USER,
+                                            alias=pc.ALIAS)
+            with self.assertRaises(rt.NotReady):
+                rt.proxy_create_argv("b" * 64, pending_launch)
+        if pc.launch_fields()["user"] != "13:13":
+            out.append("the committed USER is not squid's measured 13:13")
         # The drive step puts launch_fields() into ProxyLaunch: with USER filled in memory only, every field lands.
         with mock.patch.object(pc, "USER", "13:13"):
             fields = pc.launch_fields()

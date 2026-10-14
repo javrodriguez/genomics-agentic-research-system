@@ -499,9 +499,10 @@ WITNESSES = {
                           "        if kind == INIT_TYPE or kind == \"assistant\":"),), a1_recorded, "A1-recorded"),
     "api-error-as-agent": ((("    return rec.get(API_ERROR_FLAG) is True or msg.get(\"model\") == SYNTHETIC_MODEL",
                              "    return False"),), a2_api_error, "A2-api-error"),
-    "allowed-tools-back": ((("\"--model\", model, *ISOLATION_FLAGS, \"--disallowedTools\", *DISALLOWED_TOOLS]",
-                             "\"--model\", model, *ISOLATION_FLAGS, \"--allowedTools\", \"Bash\", "
-                             "\"--disallowedTools\", *DISALLOWED_TOOLS]"),), a3_argv, "A3-argv"),
+    # The anchor follows the box lane's --settings insertion (14 Oct 2026, review finding 1); the witness is unchanged.
+    "allowed-tools-back": ((("           \"--disallowedTools\", *DISALLOWED_TOOLS]",
+                             "           \"--allowedTools\", \"Bash\", \"--disallowedTools\", *DISALLOWED_TOOLS]"),),
+                           a3_argv, "A3-argv"),
     "mode-constant": ((("        self.session_id, self.model, self.permission_mode = session_id, model, mode",
                         "        self.session_id, self.model, self.permission_mode = session_id, model, \"default\""),),
                       a3_argv, "A3-argv"),

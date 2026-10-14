@@ -187,18 +187,36 @@ class ConstantsTest(unittest.TestCase):
                 self.assertTrue(pc.check(pc._template_text().replace(pc.SLOT, HOSTS[harness]), harness))
 
     def test_the_pending_user(self):
-        self.assertEqual(pc.USER, pc.PENDING)
-        self.assertEqual(set(pc.pending()), {"USER"})
-        self.assertTrue(pc.pending()["USER"].strip())
-        with self.assertRaises(pc.NotReady):
-            pc.launch_fields()
+        # FILLED 14 Oct 2026 (glitch-06's ruling): squid's package user measured in the locked egress image; the
+        # PENDING clause stays red-tested by putting PENDING back.
+        with mock.patch.object(pc, "USER", pc.PENDING):
+            self.assertEqual(set(pc.pending()), {"USER"})
+            self.assertTrue(pc.pending()["USER"].strip())
+            with self.assertRaises(pc.NotReady):
+                pc.launch_fields()
+        self.assertEqual(pc.USER, "13:13")
+        self.assertEqual(pc.pending(), {})
         with mock.patch.object(pc, "USER", "13:13"):
             self.assertEqual(pc.pending(), {})
             self.assertEqual(pc.launch_fields(), {"conf_target": "/etc/squid/squid.conf", "command": pc.COMMAND,
                                                   "user": "13:13", "alias": "proxy"})
         # The mutant that drops the refusal hands out the PENDING user.
-        with mock.patch.object(pc, "pending", lambda: {}):
+        with mock.patch.object(pc, "USER", pc.PENDING), mock.patch.object(pc, "pending", lambda: {}):
             self.assertEqual(pc.launch_fields()["user"], pc.PENDING)
+
+    def test_the_user_is_the_measured_one(self):
+        """The egress image's `getent passwd proxy`, read in each stub take on athena (lane-reports/stub-take-20261014,
+        stub-take-run1..4.json `squid_user`), is proxy:x:13:13; USER is its uid:gid, and never root."""
+        runs = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "lane-reports",
+                            "stub-take-20261014")
+        seen = set()
+        for i in (1, 2, 3, 4):
+            with open(os.path.join(runs, f"stub-take-run{i}.json"), encoding="utf-8") as fh:
+                seen.add(json.load(fh)["squid_user"]["getent"])
+        self.assertEqual(seen, {"proxy:x:13:13:proxy:/bin:/usr/sbin/nologin\n"})
+        f = next(iter(seen)).split(":")
+        self.assertEqual(pc.USER, f"{f[2]}:{f[3]}")
+        self.assertNotEqual(f[2], "0")
 
     def test_no_parameter_can_override_a_pending_value(self):
         self.assertEqual(list(pyinspect.signature(pc.launch_fields).parameters), [])

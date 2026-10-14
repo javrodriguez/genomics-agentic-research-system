@@ -218,7 +218,8 @@ def argv(line: str, *, model: str, permission_mode: str, session_id: str, first:
         if not isinstance(v, str) or not v:
             raise StreamError(f"the turn's {what} must be a non-empty string")
     out = [CLIENT, "-p", line, *OUTPUT_FLAGS, "--permission-mode", permission_mode, *PERMISSION_PROMPTS,
-           "--model", model, *ISOLATION_FLAGS, "--disallowedTools", *DISALLOWED_TOOLS]
+           "--model", model, *ISOLATION_FLAGS, rt.CLAUDE_SETTINGS_FLAG, rt.claude_study_settings(model),
+           "--disallowedTools", *DISALLOWED_TOOLS]
     out += ["--session-id", session_id] if first else ["--resume", session_id]
     return out
 

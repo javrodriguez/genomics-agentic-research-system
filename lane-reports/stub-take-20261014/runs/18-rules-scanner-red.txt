@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_rules_scanner.py", line 17, in <module>
+    from box import rules_scanner as rs, run_take as rt, scan_record  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: cannot import name 'rules_scanner' from 'box' (unknown location)

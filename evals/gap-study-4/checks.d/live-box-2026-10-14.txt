@@ -1,9 +1,2 @@
-# Lane live-box-2026-10-14: Gap Study round 4, the real box bring-up's own focused modules (box/measure_live's
-# regressions, the scanner transformation witness and the staging-admission adapter with its measure helper).
-# One command per line, run from the repository root. No container, model, network, credential or scanner run.
-python3 -B -W ignore evals/gap-study-4/tests/test_live_box.py
-python3 -B -W ignore evals/gap-study-4/tests/test_scan_witness.py
-python3 -B -W ignore evals/gap-study-4/tests/test_staging_admission.py
-python3 -B -W ignore evals/gap-study-4/tests/test_write_image_lock.py
-python3 -B -W ignore evals/gap-study-4/tests/test_new_folder_closed_check.py
-python3 -B -W ignore evals/gap-study-4/tests/test_stub_take.py
+
+python3 -B -W ignore evals/gap-study-4/tests/test_settings_guard.py

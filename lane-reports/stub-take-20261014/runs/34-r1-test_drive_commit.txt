@@ -1,0 +1,46 @@
+test_a_failed_take_with_no_records_commits_the_outcome_alone (__main__.TestCommitStep.test_a_failed_take_with_no_records_commits_the_outcome_alone) ... ok
+test_a_rules_scanner_finding_refuses (__main__.TestCommitStep.test_a_rules_scanner_finding_refuses) ... ok
+test_a_take_with_nothing_to_mask_commits_its_files_and_outcome (__main__.TestCommitStep.test_a_take_with_nothing_to_mask_commits_its_files_and_outcome) ... ok
+test_a_value_in_a_file_that_cannot_be_masked_refuses_and_commits_nothing (__main__.TestCommitStep.test_a_value_in_a_file_that_cannot_be_masked_refuses_and_commits_nothing) ... ok
+test_bad_record_lists_and_outcomes_refuse_before_any_write (__main__.TestCommitStep.test_bad_record_lists_and_outcomes_refuse_before_any_write) ... ok
+test_c1_masked_files_are_restaged_and_committed_masked (__main__.TestCommitStep.test_c1_masked_files_are_restaged_and_committed_masked) ... ok
+test_c2_a_staged_blob_that_is_not_the_scanned_bytes_refuses (__main__.TestCommitStep.test_c2_a_staged_blob_that_is_not_the_scanned_bytes_refuses) ... ok
+test_c5_a_stray_staged_file_refuses (__main__.TestCommitStep.test_c5_a_stray_staged_file_refuses) ... ok
+test_c10_the_commit_is_the_checked_tree (__main__.TestFold.test_c10_the_commit_is_the_checked_tree) ... ok
+test_c7_the_same_slot_and_attempt_twice_refuses (__main__.TestFold.test_c7_the_same_slot_and_attempt_twice_refuses) ... ok
+test_c8_a_ledger_as_a_record_file_refuses (__main__.TestFold.test_c8_a_ledger_as_a_record_file_refuses) ... ok
+test_c9_a_tracked_file_as_a_record_file_refuses (__main__.TestFold.test_c9_a_tracked_file_as_a_record_file_refuses) ... ok
+test_a_process_start_outside_scratch_git_trips (__main__.TestGuardArmed.test_a_process_start_outside_scratch_git_trips) ... ok
+test_git_identity_comes_only_from_the_scratch_repo (__main__.TestGuardArmed.test_git_identity_comes_only_from_the_scratch_repo) ... ok
+test_a_listing_that_fails_refuses_the_restart_unread (__main__.TestHistoryAndRestart.test_a_listing_that_fails_refuses_the_restart_unread) ... ok
+test_c3_history_is_in_commit_order (__main__.TestHistoryAndRestart.test_c3_history_is_in_commit_order) ... ok
+test_c4_a_leaked_container_still_present_refuses_the_restart (__main__.TestHistoryAndRestart.test_c4_a_leaked_container_still_present_refuses_the_restart) ... ok
+test_leaked_ids_come_from_the_committed_history_only (__main__.TestHistoryAndRestart.test_leaked_ids_come_from_the_committed_history_only) ... ok
+test_c6_the_driver_takes_s1s_entry_point (__main__.TestPreflightRoad.test_c6_the_driver_takes_s1s_entry_point) ... ok
+test_drive_never_reads_a_lock_itself (__main__.TestPreflightRoad.test_drive_never_reads_a_lock_itself) ... ok
+test_the_witnesses_are_named_and_each_bound_to_its_own_check (__main__.TestWitnesses.test_the_witnesses_are_named_and_each_bound_to_its_own_check) ... ok
+test_witness_admit_duplicate_outcome (__main__.TestWitnesses.test_witness_admit_duplicate_outcome) ... 
+WITNESS admit-duplicate-outcome: red by C7-duplicate (3 own, 0 collateral, 0 errors) ok
+test_witness_admit_reserved_names (__main__.TestWitnesses.test_witness_admit_reserved_names) ... 
+WITNESS admit-reserved-names: red by C8-reserved (1 own, 0 collateral, 0 errors) ok
+test_witness_admit_stray_staged (__main__.TestWitnesses.test_witness_admit_stray_staged) ... 
+WITNESS admit-stray-staged: red by C5-staged (2 own, 0 collateral, 0 errors) ok
+test_witness_admit_tracked_paths (__main__.TestWitnesses.test_witness_admit_tracked_paths) ... 
+WITNESS admit-tracked-paths: red by C9-tracked (1 own, 0 collateral, 0 errors) ok
+test_witness_bypass_entry_point (__main__.TestWitnesses.test_witness_bypass_entry_point) ... 
+WITNESS bypass-entry-point: red by C6-preflight (1 own, 0 collateral, 0 errors) ok
+test_witness_commit_the_index (__main__.TestWitnesses.test_witness_commit_the_index) ... 
+WITNESS commit-the-index: red by C10-bound (2 own, 0 collateral, 0 errors) ok
+test_witness_concatenated_history (__main__.TestWitnesses.test_witness_concatenated_history) ... 
+WITNESS concatenated-history: red by C3-history (1 own, 0 collateral, 0 errors) ok
+test_witness_omit_rehash (__main__.TestWitnesses.test_witness_omit_rehash) ... 
+WITNESS omit-rehash: red by C2-rehash (2 own, 0 collateral, 0 errors) ok
+test_witness_omit_restage (__main__.TestWitnesses.test_witness_omit_restage) ... 
+WITNESS omit-restage: red by C1-restage (1 own, 0 collateral, 0 errors) ok
+test_witness_omit_restart_refusal (__main__.TestWitnesses.test_witness_omit_restart_refusal) ... 
+WITNESS omit-restart-refusal: red by C4-restart (3 own, 0 collateral, 0 errors) ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 34.550s
+
+OK

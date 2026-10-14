@@ -176,12 +176,24 @@ ENV_FILE_NAMES = (".env", os.path.join(".gemini", ".env"))
 # claude-fallback-probe-20261014.json, claude-settings-names-probe-20261014.json). Only the documented, relevant one:
 # NO_MODEL_FALLBACK, REFUSAL_FALLBACK_CATCH_ALL and DISABLE_REFUSAL_RETRY are undocumented; LEGACY_MODEL_REMAP (Opus 4
 # and 4.1 pins), MODEL_ACCESS_FALLBACK (Bedrock and Agent Platform) and NONSTREAMING (transport) do not apply. The
-# per-take settings add switchModelsOnFlag false (take_config), and exec_argv refuses --fallback-model. Named residual:
-# the docs do not say whether the variable covers a subagent re-running a flagged request; routing's served-model check
-# (init and stats model against the pin) is the backstop.
+# study's settings ride inline by --settings (CLAUDE_SETTINGS_FLAG, below), and exec_argv refuses --fallback-model.
+# Named residual: the docs do not say whether the variable covers a subagent re-running a flagged request; routing
+# compares each turn's init model with the pin, and the served-model check over every message is the harness lane's.
 FALLBACK_ENV = {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}
 # Claude Code's availability-fallback flag (on only if configured: model-config.md, "Fallback model chains").
 FALLBACK_MODEL_FLAG = "--fallback-model"
+# The study's Claude Code settings, one take (glitch-06's ruling on review finding 1, 14 Oct 2026). Every turn runs
+# --setting-sources project,local, so the user scope (the config folder) never loads, and the project and local files
+# sit in the agent-owned run tree. The settings therefore ride INLINE in the exec argv, `--settings <json>`
+# (claude 2.1.296 --help: "--settings <file-or-json>  Path to a settings JSON file or a JSON string"), which is the
+# command-line level, above local and project and below managed (docs settings.md, "Settings precedence", sha256
+# a8cc395a..., read 14 Oct 2026). Inline, not a file on a third mount: the take keeps exactly its two mounts.
+#   switchModelsOnFlag false   a safety-flagged request in a -p run ends as an error instead of switching
+#   fallbackModel []           the chain is taken whole from the highest file that defines it: here, none
+#   availableModels [model]    the take's pinned model only (non-managed lists merge, so box/settings_guard.py also
+#                              refuses a run tree whose settings files carry the key)
+#   env                        FALLBACK_ENV again, at a level above the run tree's files
+CLAUDE_SETTINGS_FLAG = "--settings"
 # Arms O and G's own billing-route variables (a Vertex switch for Gemini CLI, for example): a tuple of names each,
 # named from the harness's documentation at the pinned version. Until then the refused set is the closed list above,
 # and an exec of either harness is refused (NotReady): this lane's stricter reading.
@@ -516,6 +528,46 @@ def launcher_argv(login: str, values: dict, inner) -> list:
     return [*LAUNCHER, login, str(len(pairs)), *pairs, *inner]
 
 
+def claude_study_settings(model: str) -> str:
+    """The inline --settings JSON for one Claude Code take (canonical: sorted keys, no spaces). NotReady while
+    FALLBACK_ENV is PENDING."""
+    if not isinstance(model, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", model):
+        raise Refused("the take's model is a plain model id")
+    if _is_pending(FALLBACK_ENV):
+        raise NotReady(f"FALLBACK_ENV is PENDING: {PENDING_WHY['FALLBACK_ENV']}")
+    return json.dumps({"availableModels": [model], "env": dict(FALLBACK_ENV), "fallbackModel": [],
+                       "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
+
+
+def _flag_values(inner, flag: str) -> list:
+    """Every value of `flag` in a Claude Code argv (`flag v` or `flag=v`), never reading the prompt after -p."""
+    out, i = [], 1
+    while i < len(inner):
+        tok = inner[i]
+        if tok == "-p":
+            i += 2
+            continue
+        if tok == flag:
+            out.append(inner[i + 1] if i + 1 < len(inner) else None)
+            i += 2
+            continue
+        if tok.startswith(flag + "="):
+            out.append(tok[len(flag) + 1:])
+        i += 1
+    return out
+
+
+def check_claude_settings(inner) -> None:
+    """A Claude Code turn names its model once and carries exactly the study's inline settings for that model."""
+    models = _flag_values(inner, "--model")
+    if len(models) != 1 or not models[0]:
+        raise Refused("a claude-code turn names its model exactly once by --model")
+    given = _flag_values(inner, CLAUDE_SETTINGS_FLAG)
+    if given != [claude_study_settings(models[0])]:
+        raise Refused(f"a claude-code turn carries exactly one {CLAUDE_SETTINGS_FLAG}: the study's settings for its "
+                      f"model (switchModelsOnFlag false, no fallback chain, availableModels [model])")
+
+
 def check_model(harness: str, inner):
     """Arm G's call names its model exactly once, by a full pinned id; a short alias is refused by its name (it
     resolves to another model). Returns the model, or None for an arm MODEL_PINS does not cover."""
@@ -630,6 +682,8 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     check_model(harness, inner)
     if harness == CLAUDE_CODE and [a for a in inner if a == FALLBACK_MODEL_FLAG or a.startswith(FALLBACK_MODEL_FLAG + "=")]:
         raise Refused(f"{FALLBACK_MODEL_FLAG} would configure a model fallback chain: a take runs its pinned model only")
+    if harness == CLAUDE_CODE:
+        check_claude_settings(inner)
     values = exec_values(harness, run_tree)
     check_environment(harness, src, set(values))
     if login in values:
@@ -885,11 +939,30 @@ def _check_sidecar(sidecar: SidecarLaunch) -> None:
         raise Refused("the sidecar's expectation is a dict")
 
 
+# glitch-06's ruling on P-2 (14 Oct 2026): the egress proxy's and the sidecar's memory caps. The sidecar's is applied
+# here, by launch, to the caller's sidecar create argv (sidecar_create_argv), so box/sidecar.py stays byte-identical
+# to the program baked into the locked sidecar image (the lock's re-derivation guard, tests/test_image.py).
+# Policy beside it (P-1 and P-2, the same ruling): a take's cgroup counters are read every turn and an oom_kill rise is
+# routed by routing.json (row cgroup-kill); the first walk records each turn's memory.peak and pids.peak, and a cap is
+# re-ruled before measured takes if a rehearsal OOMs, never mid-run; no athena_suite or other heavy job runs while any
+# take runs.
+PROXY_MEMORY_BYTES = 512 * 1024 * 1024
+SIDECAR_MEMORY_BYTES = 512 * 1024 * 1024
+
+
+def sidecar_create_argv(sidecar: SidecarLaunch) -> list:
+    """The sidecar's `docker create` as launch runs it: the caller's argv with the memory cap after `create`."""
+    argv = _check_argv(sidecar.create_argv)
+    if argv[:2] != [RUNTIME_CLIENT, "create"] or "--memory" in argv or any(a.startswith("--memory") for a in argv):
+        raise Refused("the sidecar's create argv starts with docker create and sets no memory value of its own")
+    return argv[:2] + ["--memory", str(SIDECAR_MEMORY_BYTES)] + argv[2:]
+
+
 def proxy_create_argv(network_id: str, proxy: ProxyLaunch) -> list:
     _check_proxy(proxy)
     return [RUNTIME_CLIENT, "create", "--pull=never", "--network", _check_id(network_id, "network id"),
             "--network-alias", PROXY_ALIAS, "--user", proxy.user,
-            "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+            "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--memory", str(PROXY_MEMORY_BYTES),
             "--mount", f"type=bind,source={proxy.conf_source},target={proxy.conf_target},readonly",
             proxy.image, *proxy.command]
 
@@ -946,7 +1019,7 @@ def launch(runtime, spec: TakeSpec, *, sidecar: SidecarLaunch, proxy: ProxyLaunc
         _step(runtime, launched, "proxy-connect",
               [RUNTIME_CLIENT, "network", "connect", DEFAULT_NETWORK, launched.proxy_id], env)
         _step(runtime, launched, "proxy-start", [RUNTIME_CLIENT, "start", launched.proxy_id], env)
-        c = _step(runtime, launched, "sidecar-create", list(sidecar.create_argv), env)
+        c = _step(runtime, launched, "sidecar-create", sidecar_create_argv(sidecar), env)
         launched.sidecar_id = _new_id(c, "sidecar-create")
         got = _inspect(runtime, launched, "sidecar-inspect", launched.sidecar_id, env)
         bad = preflight.inspect_mismatches(got, sidecar.expect, kind="sidecar")

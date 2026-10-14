@@ -28,8 +28,8 @@ WHAT DOES NOT, AND WHY (each recorded in the output's `departures`):
     run_take.launch itself (`use_launch`).
   - sidecar.expect_from_argv leaves `cap_add` PENDING by design; the road fills it from
     sidecar_contract.BOOT_INSPECT_CAPABILITIES (the committed, measured spelling preflight's own check requires).
-  - proxy_conf.USER is PENDING; the road measures squid's package user from the locked egress image (getent) and
-    passes it as ProxyLaunch.user.
+  - squid's package user is read again from the locked egress image (getent) and must equal proxy_conf.USER (13:13,
+    filled 14 Oct 2026 from these readings); the road passes proxy_conf.USER as ProxyLaunch.user.
   - TakeSpec's resources are the documented caller parameter: the run's values are passed on the command line and
     recorded; the candidates are derived on the Mac by a written rule, never here.
 
@@ -62,16 +62,17 @@ HERE = Path(__file__).resolve().parent.parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
-from box import preflight, run_take, scan_record, sidecar, sidecar_contract  # noqa: E402
+from box import ownership, preflight, rules_scanner, run_take, scan_record, sidecar, sidecar_contract  # noqa: E402
 from box.egress import proxy_conf  # noqa: E402
+import mode_binding  # noqa: E402  (the record roots' one home; shipped beside box/ to athena)
 
 RECORD_KIND = "stub-take-measurement"
 NOT_A_STUDY_RECORD = ("a no-model measurement of the box (CP2's real-box step); never a study take, walk, rehearsal, "
                       "cell or registered attempt")
 FOLDER_PREFIX = "stub-take-"
-# The study's record folders (mode_binding.WALKS_DIR and mode_binding.TAKES_DIR; the test binds them). The output may
-# not sit under a folder of either name.
-STUDY_RECORD_DIRS = ("rehearsals", "takes")
+# The study's record folders, imported from the one place the layout rule allows (mode_binding.RECORD_ROOTS:
+# TAKES_DIR and WALKS_DIR; test_walk_layout L1). The output may not sit under a folder of either name.
+STUDY_RECORD_DIRS = mode_binding.RECORD_ROOTS
 HARNESS = run_take.CLAUDE_CODE
 IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")
 IMAGE_ROLES = ("take", "sidecar", "egress", "codex", "gemini")
@@ -98,14 +99,15 @@ TOP_FORMS = {"default": [], "eo-pid-uid-comm": ["-eo", "pid,uid,comm"], "o-pid-u
 CGROUP_FILES = ("cpu.max", "memory.max", "memory.low", "memory.min", "memory.high", "pids.max", "memory.current",
                 "memory.peak", "pids.current", "pids.peak", "memory.events", "pids.events", "cpu.stat")
 FALLBACK_PROGRAM = r'''import json,os,re,sys
-root=sys.argv[1]; names={}; files=0
+root=sys.argv[1]; names={}; files=0; skipped=[]
 pat=re.compile(rb"[A-Z][A-Z0-9_]*FALLBACK[A-Z0-9_]*")
 for base,dirs,fs in os.walk(root):
     dirs.sort()
     for f in sorted(fs):
         p=os.path.join(base,f)
         try:
-            if os.path.islink(p) or os.path.getsize(p)>200*1024*1024: continue
+            if os.path.islink(p): continue
+            if os.path.getsize(p)>200*1024*1024: skipped.append([os.path.relpath(p,root),os.path.getsize(p)]); continue
             data=open(p,"rb").read()
         except OSError: continue
         files+=1
@@ -118,7 +120,7 @@ for base,dirs,fs in os.walk(root):
             if len(e["contexts"])<3:
                 s=data[max(0,m.start()-120):m.end()+120].decode("latin-1")
                 e["contexts"].append("".join(c if 32<=ord(c)<127 else "." for c in s))
-print(json.dumps({"root":root,"files_read":files,"names":names},sort_keys=True))
+print(json.dumps({"root":root,"files_read":files,"skipped_over_200MiB":skipped,"names":names},sort_keys=True))
 '''
 CLAUDE_PACKAGE = "/usr/local/lib/node_modules/@anthropic-ai/claude-code"
 VERSION_HOME = "/tmp"
@@ -219,7 +221,7 @@ def launch_mirror(runtime, spec, *, sidecar: run_take.SidecarLaunch, proxy: run_
         run_take._step(runtime, launched, "proxy-connect",
                        [client, "network", "connect", run_take.DEFAULT_NETWORK, launched.proxy_id], env)
         run_take._step(runtime, launched, "proxy-start", [client, "start", launched.proxy_id], env)
-        c = run_take._step(runtime, launched, "sidecar-create", list(sidecar.create_argv), env)
+        c = run_take._step(runtime, launched, "sidecar-create", run_take.sidecar_create_argv(sidecar), env)
         launched.sidecar_id = run_take._new_id(c, "sidecar-create")
         run_take._inspect(runtime, launched, "sidecar-inspect", launched.sidecar_id, env)
         run_take._step(runtime, launched, "sidecar-start", list(sidecar.start_argv_for(launched.sidecar_id)), env)
@@ -303,30 +305,6 @@ def _sha256_file(path: str) -> str:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
-
-
-def gitleaks_rules_scanner(binary: str, pinned_sha256: str, runtime, env: dict, report_dir: str):
-    """CANDIDATE for scan_record.RULES_SCANNER: gitleaks' default rules over each named file, one `gitleaks dir <file>`
-    per path, its report redacted; refused unless the binary's sha256 is the pinned one. -> (paths) ->
-    [{"path", "line", "rule"}]. A scanner exit other than 0 refuses (the scan never passes on a failed scanner)."""
-    if _sha256_file(binary) != pinned_sha256:
-        raise StubTakeRefused("the gitleaks binary is not the pinned one")
-    counter = [0]
-
-    def scan(paths):
-        out = []
-        for p in paths:
-            counter[0] += 1
-            report = os.path.join(report_dir, f"gitleaks-{counter[0]}.json")
-            c = runtime.run([binary, "dir", p, "--no-banner", "--redact", "--report-format", "json",
-                             "--report-path", report, "--exit-code", "0", "--log-level", "warn"], env=env, timeout=120)
-            if c.returncode != 0:
-                raise RuntimeError(f"gitleaks exited {c.returncode} on {p}")
-            with open(report, encoding="utf-8") as fh:
-                for f in json.load(fh) or []:
-                    out.append({"path": p, "line": int(f["StartLine"]), "rule": str(f["RuleID"])})
-        return out
-    return scan
 
 
 def _turn(runtime, env, take_id: str, run_tree: str, name: str, script: str, args) -> dict:
@@ -419,7 +397,8 @@ def run_stub_take(a) -> dict:
                           "sidecar.create_argv", "sidecar.expect_from_argv", "sidecar.ctl_argv",
                           "sidecar.parse_completed", "preflight.collect_and_evaluate", "preflight.probes",
                           "preflight.run", "preflight.evaluate", "preflight.postflight", "scan_record.scan",
-                          "proxy_conf.render", "proxy_conf.check"]}
+                          "proxy_conf.render", "proxy_conf.check", "ownership.grant", "ownership.restore",
+                          "run_take.launch (when use_launch())"]}
     rec["runtime"] = {"version": runtime.run(["docker", "version", "--format", "{{json .}}"], env=env, timeout=60).stdout,
                       "driver_status": runtime.run(["docker", "info", "--format", "{{json .DriverStatus}}"], env=env,
                                                    timeout=60).stdout,
@@ -430,7 +409,7 @@ def run_stub_take(a) -> dict:
                       "max_user_watches": _host_read("/proc/sys/fs/inotify/max_user_watches"),
                       # review finding 3: the user slice's pids.max, read raw (the resources policy divides it)
                       "user_slice_pids_max": _host_read(f"/sys/fs/cgroup/user.slice/user-{os.getuid()}.slice/pids.max")}
-    # squid's package user, from the locked egress image (proxy_conf.USER is PENDING)
+    # squid's package user, read again from the locked egress image: it must be proxy_conf.USER
     g = runtime.run(["docker", "run", "--rm", "--pull=never", "--network", "none", "--cap-drop", "ALL",
                      "--security-opt", "no-new-privileges", "--entrypoint", "getent", images["egress"], "passwd",
                      "proxy"], env=env, timeout=120)
@@ -438,9 +417,9 @@ def run_stub_take(a) -> dict:
     if g.returncode != 0 or len(fields) != 7 or not fields[2].isdigit() or not fields[3].isdigit():
         raise RuntimeError("squid's package user could not be read from the egress image")
     proxy_user = f"{fields[2]}:{fields[3]}"
+    if proxy_user != proxy_conf.USER:
+        raise StubTakeRefused(f"squid's user in the egress image is {proxy_user}, not proxy_conf.USER")
     rec["squid_user"] = {"getent": g.stdout, "user": proxy_user}
-    rec["departures"].append("ProxyLaunch.user is squid's package user read from the locked egress image "
-                             "(proxy_conf.USER is PENDING)")
     # --version forms of the three take images (no network, no login: a fresh one-shot container as the agent)
     rec["versions"] = {}
     for role, (harness, _rel) in TAKE_LOCKS.items():
@@ -464,7 +443,14 @@ def run_stub_take(a) -> dict:
 
     base = tempfile.mkdtemp(prefix="st-", dir=parent)
     run_tree, evidence, records = (os.path.join(base, n) for n in ("t", "e", "r"))
-    os.mkdir(run_tree, 0o755)
+    if a.seed_tree:   # an admitted run tree already on the box, copied (links kept as links) to size the snapshots
+        seed = run_take._abs_path(a.seed_tree, "seed_tree")
+        shutil.copytree(seed, run_tree, symlinks=True)
+        os.chmod(run_tree, 0o755)
+        rec["seed_tree"] = {"source": seed, "files": sum(len(f) for _b, _d, f in os.walk(run_tree)),
+                            "folders": sum(len(d) for _b, d, _f in os.walk(run_tree))}
+    else:
+        os.mkdir(run_tree, 0o755)
     os.mkdir(evidence, 0o755)
     os.mkdir(records, 0o755)
     for rel, text in PLANTED.items():
@@ -492,9 +478,9 @@ def run_stub_take(a) -> dict:
                                                                      "caller parameter); not a candidate"}
     launched = None
     try:
-        _own(runtime, env, images["take"], run_tree, run_take._uid_of(run_take.AGENT_USER))
-        _own(runtime, env, images["take"], cfg, run_take._uid_of(run_take.AGENT_USER))
-        _own(runtime, env, images["take"], evidence, preflight.WATCHER_UID)
+        # the ownership road, as production will run it (review finding 9; box/ownership.py)
+        rec["grant"] = ownership.grant(runtime, image=images["take"], run_tree=run_tree, config_dir=cfg,
+                                       evidence_dir=evidence, caller_env=env)
         if use_launch():
             launched = run_take.launch(runtime, spec, sidecar=sl, proxy=proxy, record_dir=records, caller_env=env)
             rec["launch_road"] = "run_take.launch"
@@ -557,6 +543,14 @@ def run_stub_take(a) -> dict:
             rec["turns"].append({"snapshot": f"post-{k}", **_ctl(runtime, env, launched.sidecar_id, "snapshot",
                                                                  f"post-{k}")})
         rec["cgroup_after"] = _cgroup(pid)
+        # the sidecar's and the proxy's caps and peaks (P-2): their own cgroups, read host-side
+        rec["companions"] = {}
+        for role, cid in (("sidecar", launched.sidecar_id), ("proxy", launched.proxy_id)):
+            obj = json.loads(runtime.run(["docker", "container", "inspect", cid], env=env, timeout=60).stdout)[0]
+            cgc = _cgroup(obj.get("State", {}).get("Pid"))
+            rec["companions"][role] = {"HostConfig.Memory": obj.get("HostConfig", {}).get("Memory"),
+                                       "cgroup": {k: (cgc.get("files") or {}).get(k) for k in
+                                                  ("memory.max", "memory.peak", "memory.current", "memory.events")}}
         after = run_take.counters(cg) if cg else None
         rec["counters"] = {"before": before, "after": after,
                            "delta": run_take.counter_delta(before, after) if before and after else None}
@@ -577,12 +571,17 @@ def run_stub_take(a) -> dict:
             nets = runtime.run(["docker", "network", "ls", "--no-trunc", "-q", "--filter", f"id={launched.network_id}"],
                                env=env, timeout=60)
             rec["network_left"] = nets.stdout.strip()
-        rec["postflight_before_restore"] = preflight.postflight(cfg, HARNESS)
         rec["ownership_before_restore"] = {n: {"uid": os.stat(p).st_uid, "mode": oct(os.stat(p).st_mode & 0o7777)}
                                            for n, p in (("run_tree", run_tree), ("evidence", evidence),
                                                         ("config", cfg))}
-        for p in (run_tree, cfg, evidence):
-            _own(runtime, env, images["take"], p, 0)
+        try:   # after teardown, before postflight, the scan and the removal: production's order
+            rec["restore"] = ownership.restore(runtime, image=images["take"], run_tree=run_tree, config_dir=cfg,
+                                               evidence_dir=evidence, ids=launched.ids() if launched else [],
+                                               caller_env=env)
+        except ownership.OwnershipError as e:
+            rec["restore"] = {"error": str(e), **e.record}
+            for p in (run_tree, cfg, evidence):   # the scratch is still removed; the failure stays recorded
+                _own(runtime, env, images["take"], p, 0)
         rec["postflight"] = preflight.postflight(cfg, HARNESS)
         rec["evidence"] = _evidence_files(evidence)
         rec["run_tree_after"] = {os.path.relpath(os.path.join(b, f), run_tree): _host_read(os.path.join(b, f))
@@ -599,7 +598,9 @@ def run_stub_take(a) -> dict:
     files.append((stream, "stream"))
     reports = os.path.join(base, "gl")
     os.mkdir(reports, 0o700)
-    scanner = gitleaks_rules_scanner(a.gitleaks, a.gitleaks_sha256, runtime, env, reports)
+    if a.gitleaks_sha256 != rules_scanner.GITLEAKS_SHA256:
+        raise StubTakeRefused("the gitleaks sha256 given is not the production pin")
+    scanner = rules_scanner.gitleaks_scanner(runtime, reports, binary=a.gitleaks, caller_env=env)
     clean = scan_record.scan(files, [("token", fake)], rules_scanner=scanner)
     with open(stream, encoding="utf-8") as fh:
         rec["scan_clean"] = {"result": clean, "value_gone": fake not in fh.read(),
@@ -632,6 +633,7 @@ def main(argv=None) -> int:
     p.add_argument("--memory-reservation", type=int, required=True)
     p.add_argument("--cpus", required=True)
     p.add_argument("--pids-limit", type=int, required=True)
+    p.add_argument("--seed-tree", help="an admitted run tree on the box, copied into the stub's run tree")
     a = p.parse_args(argv)
     check_images({r: getattr(a, f"{r}_image") for r in IMAGE_ROLES})
     output = check_output(a.output)

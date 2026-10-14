@@ -45,7 +45,7 @@ ADAPTER_CHECK_SHA256 = "47cdad3847800a32b04755f40ec11ba1f78678a6b45ba52bf0ab3305
 def _ns(**over):
     d = {"box": BOX, "scratch_parent": "/nonexistent-parent", "output": "/tmp/stub-take-x/stub-take.json",
          "gitleaks": "/nonexistent", "gitleaks_sha256": "0" * 64, "memory_reservation": 1 << 30, "cpus": "1",
-         "pids_limit": 64}
+         "pids_limit": 64, "seed_tree": None}
     d.update({f"{r}_image": LOCK_IDS[r] for r in st.IMAGE_ROLES})
     d.update(over)
     return argparse.Namespace(**d)
@@ -109,13 +109,13 @@ class Refusals(unittest.TestCase):
     def test_study_record_dirs_are_mode_bindings(self):
         self.assertEqual(set(st.STUDY_RECORD_DIRS), {mode_binding.WALKS_DIR, mode_binding.TAKES_DIR})
 
-    def test_the_gitleaks_adapter_refuses_an_unpinned_binary(self):
-        with tempfile.TemporaryDirectory() as d:
-            b = os.path.join(d, "gitleaks")
-            Path(b).write_bytes(b"not the pinned binary")
-            with self.assertRaises(st.StubTakeRefused):
-                st.gitleaks_rules_scanner(b, "0" * 64, None, {}, d)
-            st.gitleaks_rules_scanner(b, hashlib.sha256(b"not the pinned binary").hexdigest(), None, {}, d)
+    def test_the_scan_uses_the_production_scanner(self):
+        src = Path(st.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("def gitleaks_rules_scanner", src)
+        tree = ast.parse(src)
+        used = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)
+                and isinstance(n.value, ast.Name) and n.value.id == "rules_scanner"}
+        self.assertEqual(used, {"gitleaks_scanner", "GITLEAKS_SHA256"})
 
 
 def _imports(tree) -> set:
@@ -154,6 +154,12 @@ class NeverSelected(unittest.TestCase):
         self.assertIn("agent_exec_argv", used)
         names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
         self.assertFalse(names & {"exec_argv", "run_turn", "read_login"})
+
+    def test_the_road_uses_the_ownership_road(self):
+        tree = ast.parse(Path(st.__file__).read_text(encoding="utf-8"))
+        used = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)
+                and isinstance(n.value, ast.Name) and n.value.id == "ownership"}
+        self.assertEqual(used, {"grant", "restore", "OwnershipError"})
 
     def test_turns_go_through_the_plain_agent_exec(self):
         calls = []

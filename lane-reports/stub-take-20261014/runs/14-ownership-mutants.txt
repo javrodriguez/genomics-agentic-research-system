@@ -1,0 +1,15 @@
+control 0 of 11
+RED   2/11 grant to keepalive
+RED   1/11 evidence to agent
+RED   1/11 grant goes on after a failure
+RED   1/11 restore ignores present containers
+RED   1/11 restore not verified
+RED   1/11 restore to the agent
+RED   2/11 links followed
+RED   2/11 specials admitted
+RED   2/11 link check skipped
+RED   2/11 overlap admitted
+RED   2/11 cfg repo check off
+RED   1/11 extra capability
+RED   1/11 network on
+ALIVE: none

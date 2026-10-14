@@ -20,7 +20,6 @@ MUTANTS = [
  ("cap_add from boot names", "    expect[\"cap_add\"] = list(sidecar_contract.BOOT_INSPECT_CAPABILITIES)", "    expect[\"cap_add\"] = list(sidecar_contract.BOOT_CAPABILITIES)"),
  ("launch never used", "    return not run_take._is_pending(run_take.INSPECT_STATUS)", "    return False"),
  ("main writes unlabelled", "    rec = _labelled(run_stub_take(a))", "    rec = run_stub_take(a)"),
- ("gitleaks pin unchecked", "    if _sha256_file(binary) != pinned_sha256:\n", "    if False:\n"),
  ("refusal after runtime", "    images = check_images({r: getattr(a, f\"{r}_image\") for r in IMAGE_ROLES})\n    output = check_output(a.output)\n    locks = load_locks(a.box, images)\n", "    Recorder()\n    images = check_images({r: getattr(a, f\"{r}_image\") for r in IMAGE_ROLES})\n    output = check_output(a.output)\n    locks = load_locks(a.box, images)\n"),
  ("main checks no ids", "    check_images({r: getattr(a, f\"{r}_image\") for r in IMAGE_ROLES})\n    output = check_output(a.output)\n    rec =", "    output = check_output(a.output)\n    Recorder()\n    rec ="),
 ]
