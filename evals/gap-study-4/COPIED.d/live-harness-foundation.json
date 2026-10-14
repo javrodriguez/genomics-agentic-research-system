@@ -89,7 +89,7 @@
     {
       "path": "gemini_stream_join.py",
       "status": "new",
-      "reason": "Live harness slice 5: unregistered join of one Gemini stream-json call to its projected native interaction: per-response recorder normalization against recorded-text segments, tool facts by id, name, order and status, completeness only from the terminal result, errors kept, every disagreement refused."
+      "reason": "Live harness slice 5: unregistered join of one Gemini stream-json call to its projected native interaction: per-response recorder normalization against recorded-text segments, tool facts by id, name, order and status, completeness only from the terminal result, errors kept, every disagreement refused. Review nit 2: tool arguments compared as exact JSON."
     },
     {
       "path": "tests/test_gemini_stream_join.py",

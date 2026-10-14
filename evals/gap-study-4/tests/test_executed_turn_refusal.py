@@ -73,6 +73,23 @@ class AdapterKeepsTheExec(unittest.TestCase):
                 self.assertEqual(a.executed_turns, [got], "the exec was not kept before the read")
                 self.assertEqual(a.turn_records, [], "a refused read never becomes a turn record")
 
+    def test_any_exception_after_the_exec_is_an_executed_refusal(self):
+        real = ga.read_stream
+        ga.read_stream = lambda text, model: (_ for _ in ()).throw(KeyError("synthetic defect after the exec"))
+        try:
+            a, _ = tga.take(ga, [tga.fixture("turn1-tools.jsonl")])
+            try:
+                a.turn("one", first=True, budget_s=60)
+            except Exception as exc:  # noqa: BLE001 - judged below
+                got = exc
+            else:
+                self.fail("the turn was not refused")
+        finally:
+            ga.read_stream = real
+        self.assertIsInstance(got, aa.ExecutedTurnRefused, f"escaped untyped: {got!r}")
+        self.assertNotIsInstance(got, ga.StreamError, "a defect is never dressed as a reader refusal")
+        self.assertEqual(a.executed_turns[-1]["refused"][:8], "KeyError")
+
     def test_a_resumed_other_session_is_an_executed_refusal_on_turn_two(self):
         ok, resume = tga.fixture("turn1-tools.jsonl"), tga.fixture("turn2-resume.jsonl")
         other = resume.replace(tga.SID, "other-session-1")

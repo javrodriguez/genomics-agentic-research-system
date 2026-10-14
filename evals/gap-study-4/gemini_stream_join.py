@@ -56,6 +56,7 @@ def _records(text: str) -> list:
 def read_call(text: str) -> dict:
     """One call's stream, read for the join: sent, init model, per-response raw texts, tools, errors, terminal."""
     sent, init_model, responses, tools, results, errors, terminal = None, None, [[]], [], {}, [], None
+    params = {}
     after_result = False
     for rec in _records(text):
         t = rec["type"]
@@ -80,6 +81,7 @@ def read_call(text: str) -> dict:
             if any(rec["tool_id"] == x[0] for x in tools):
                 raise JoinRefused("tool_use id reused")
             tools.append((rec["tool_id"], rec["tool_name"]))
+            params[rec["tool_id"]] = rec["parameters"]
         elif t == tg.TOOL_RESULT:
             if rec["tool_id"] not in {x[0] for x in tools}:
                 raise JoinRefused("a tool_result names no tool_use before it")
@@ -99,7 +101,14 @@ def read_call(text: str) -> dict:
     if missing:
         raise JoinRefused(f"no tool_result for tool_use {missing}")
     return {"sent": sent, "init_model": init_model, "responses": ["".join(r) for r in responses],
-            "tools": [(i, n, results.get(i)) for i, n in tools], "errors": errors, "terminal": terminal}
+            "tools": [(i, n, results.get(i)) for i, n in tools], "args": [params[i] for i, _ in tools],
+            "errors": errors, "terminal": terminal}
+
+
+def _canonical(value) -> str:
+    """Exact JSON equality after both sides are parsed: one canonical spelling (sorted keys), so 1, 1.0 and true
+    stay three different values, as JSON says they are."""
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False)
 
 
 def _native(fact: dict) -> tuple:
@@ -111,7 +120,7 @@ def _native(fact: dict) -> tuple:
         if kind == "recorded-text":
             texts.append(item["text"])
         elif kind == "tool":
-            tools.append((item["id"], item["name"], item["emitted_status"]))
+            tools.append((item["id"], item["name"], item["emitted_status"], _canonical(item["args"])))
         else:
             raise JoinRefused(f"the native fact holds an output item of unknown kind {kind!r}")
     return texts, tools
@@ -124,8 +133,10 @@ def join(fact: dict, stream_text: str) -> dict:
     segments = [s for s in (gp.recorder_normalize(r) for r in call["responses"]) if s]
     if segments != native_texts:
         raise JoinRefused("recorded text disagrees: the stream's normalized responses are not the native segments")
-    if call["tools"] != native_tools:
+    if call["tools"] != [t[:3] for t in native_tools]:
         raise JoinRefused("tool facts disagree (id, name, order or status)")
+    if [_canonical(a) for a in call["args"]] != [t[3] for t in native_tools]:
+        raise JoinRefused("tool arguments disagree (the stream's parameters against the native args, as exact JSON)")
     if call["sent"] is not None and call["sent"] != fact.get("sent"):
         raise JoinRefused("sent text disagrees")
     if call["init_model"] is not None and fact.get("requested_model") is not None \

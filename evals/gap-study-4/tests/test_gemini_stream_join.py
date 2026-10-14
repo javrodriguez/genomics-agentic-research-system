@@ -141,6 +141,12 @@ class Join(unittest.TestCase):
         case("no tool_result", lambda r: r.pop(5))
         case("tool_result names no tool_use", lambda r: r.insert(6, ev("tool_result", tool_id="call-7",
                                                                        status="success")))
+        case("tool arguments disagree", lambda r: r[4].__setitem__("parameters", {"file_path": "other.txt"}))
+        case("tool arguments disagree", lambda r: r[4].__setitem__("parameters", {"file_path": "synthetic.txt",
+                                                                                   "offset": 1}))
+        case("tool arguments disagree", edit_fact=lambda f: f["output"][2].__setitem__("args", {"file_path": True}))
+        case("tool arguments disagree", lambda r: r[4]["parameters"].__setitem__("limit", 1),
+             lambda f: f["output"][2]["args"].__setitem__("limit", True))      # equal in Python, not in JSON
         case("tool_use id reused", lambda r: r.insert(5, copy.deepcopy(r[4])))
         case("sent text disagrees", lambda r: r[1].__setitem__("content", "other sent"))
         case("model disagrees", edit_fact=lambda f: f.__setitem__("requested_model", "other-model"))

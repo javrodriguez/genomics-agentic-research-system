@@ -39,3 +39,19 @@ Red evidence: `tests/test_codex_executed_refusal.py` ran 4 tests, with 3 failure
 - `test_codex_adapter.py --generated-mutants`.
 - The merged-head athena suite.
 - Independent review.
+
+## Addendum, 14 Oct 2026 01:08 EDT: review nit 3
+
+Any exception after the exec is now the exec's: it is typed `agent_adapter.ExecutedTurnRefused`, so the exec record always reaches the ledger. This applies to both adapters, Codex and Gemini.
+`BaseException` subclasses such as `KeyboardInterrupt` still propagate.
+
+Two kinds of failure are kept apart:
+- A reader refusal stays the harness's `StreamError`, as `ExecutedStreamRefused`. For Codex that covers `StreamError`, `OSError` and `ValueError`; for Gemini, `StreamError` and `OSError`.
+- Any other exception is a defect. It becomes a plain `ExecutedTurnRefused` and is never presented as a `StreamError`.
+
+The first attempt wrapped every exception as a `StreamError`. The w11b witness "unknown exit accepted" then survived, because a `KeyError` from a defect read as a typed refusal. Keeping the two kinds apart killed the witness again.
+
+Verification:
+- **Red first:** a Codex rollout-callback `KeyError` and a Gemini reader `KeyError` each escaped untyped.
+- **Green:** `test_codex_executed_refusal` 5/5 (including an interrupt that still propagates), `test_executed_turn_refusal` 10/10, `test_codex_adapter` 42/42, `test_gemini_adapter` 138/138. Two `EQUIVALENT` keys were renumbered for shifted lines only.
+- **Mutants:** three were killed by assertion: Codex defect escapes, Codex defect dressed as a `StreamError`, and Gemini defect escapes.

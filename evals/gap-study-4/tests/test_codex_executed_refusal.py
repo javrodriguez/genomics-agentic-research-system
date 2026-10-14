@@ -44,8 +44,11 @@ class CodexKeepsTheExec(unittest.TestCase):
             got = exc
         else:
             self.fail("the turn was not refused")
-        self.assertIsInstance(got, ca.StreamError, f"a post-exec failure escaped untyped: {got!r}")
-        self.assertIsInstance(got, aa.ExecutedTurnRefused, "an executed turn's refusal is not typed")
+        self.assertIsInstance(got, aa.ExecutedTurnRefused, f"a post-exec failure escaped untyped: {got!r}")
+        if isinstance(got.__cause__, (ca.StreamError, OSError, ValueError)):
+            self.assertIsInstance(got, ca.StreamError, "a reader refusal stays a codex StreamError")
+        else:
+            self.assertNotIsInstance(got, ca.StreamError, "a defect is never dressed as a reader refusal")
         return got
 
     def test_a_refusal_after_the_exec_carries_the_runtime_outcome(self):
@@ -53,7 +56,8 @@ class CodexKeepsTheExec(unittest.TestCase):
         for name, streams, rollouts, codes in (
                 ("stream off the tables", [tca.fixture("unknown-event.jsonl")], None, [0]),
                 ("rollout refused", [ok], ["{not a rollout record\n"], [1]),
-                ("rollout not available", [ok], ["__raise__"], [0])):
+                ("rollout not available", [ok], ["__raise__"], [0]),
+                ("rollout callback defect", [ok], ["__defect__"], [0])):
             with self.subTest(name):
                 box = tca.FakeRuntime(streams, exit_codes=codes)
                 texts = rollouts or [tca.fixture("rollout-two-turns.jsonl")]
@@ -61,6 +65,8 @@ class CodexKeepsTheExec(unittest.TestCase):
                 def rollout(n, _t=texts):
                     if _t[n - 1] == "__raise__":
                         raise OSError("synthetic: the rollout file was not copied out")
+                    if _t[n - 1] == "__defect__":
+                        raise KeyError("synthetic defect after the exec")
                     return _t[n - 1]
                 a = tca.adapter(ca, box)
                 a.rollout_for = rollout
@@ -87,6 +93,12 @@ class CodexKeepsTheExec(unittest.TestCase):
             a.turn("-flag-shaped line", first=True, budget_s=60)
         self.assertNotIsInstance(cm.exception, aa.ExecutedTurnRefused)
         self.assertEqual(a.executed_turns, [])
+
+    def test_an_interrupt_still_propagates(self):
+        a, box = tca.take_with(ca, [tca.fixture("turn1-tools.jsonl")])
+        a.rollout_for = lambda n: (_ for _ in ()).throw(KeyboardInterrupt())
+        with self.assertRaises(KeyboardInterrupt):
+            a.turn("one", first=True, budget_s=60)
 
     def test_a_codex_identity_stays_refused(self):
         self.assertNotIn("codex", routing.ACCEPTED_IDENTITY_SOURCES)

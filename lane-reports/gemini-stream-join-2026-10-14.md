@@ -56,3 +56,10 @@ Inferred, not shown in the retained source: the stream's `tool_result` events co
 - A real recorded 0.64.0 stream and session pair.
 - The driver does not call the join yet. Wiring it in, and its registration, wait for that recording and its review.
 - Independent review.
+
+## Addendum, 14 Oct 2026 01:08 EDT: review nit 2
+
+Tool arguments are now compared as well. Each stream `tool_use`'s `parameters` must equal the native tool fact's `args` as exact JSON: both are parsed, then spelled canonically with sorted keys. So `1`, `1.0` and `true` stay three different values, as JSON says they are, even where Python would call them equal.
+A disagreement refuses with "tool arguments disagree".
+
+The test gained four cases. They failed red with "JoinRefused not raised" before the change. Two mutants, "args not compared" and "Python equality", were killed by assertion.

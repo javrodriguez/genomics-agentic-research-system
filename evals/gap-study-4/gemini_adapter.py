@@ -369,6 +369,9 @@ class GeminiAdapter(aa.AgentAdapter):
         except (StreamError, OSError) as e:
             executed["refused"] = f"{type(e).__name__}: {e}"
             raise ExecutedStreamRefused(str(e), executed=executed) from e
+        except Exception as e:  # noqa: BLE001 - review nit: any other failure after the exec is still the exec's
+            executed["refused"] = f"{type(e).__name__}: {e}"           # a defect: typed, never a StreamError
+            raise aa.ExecutedTurnRefused(executed["refused"], executed=executed) from e
         self.turn_records.append({
             "n": n, "first": first, "exit_code": got["exit_code"], "exit_meaning": meaning,
             "timed_out": got["timed_out"], "init_model": read["init_model"], "session_id": read["session_id"],
