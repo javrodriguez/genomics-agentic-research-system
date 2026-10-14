@@ -21,7 +21,24 @@ Rollout (native JSONL), the initial supported subset:
   - item_completed items, TurnItem PascalCase tags (protocol/src/items.rs:46-78): UserMessage (one `text` input,
     protocol/src/user_input.rs:16-26), AgentMessage (its Text parts concatenated, items.rs:125-127), Reasoning (summary
     joined by newline) and CommandExecution (items.rs:244-281) are projected; every other tag refuses in this subset.
-  - aggregated_output keeps the persistence truncation marker (policy.rs:17-19) and is flagged `truncated`.
+  - aggregated_output is kept as written; `marker_text` says only that the persistence marker's text occurs in it
+    (policy.rs:17-19), which an agent can print too, so it is never read as proof that the writer truncated.
+  - a blank or whitespace-only line anywhere but after the last record refuses (the writer frames every line as one
+    JSON object, recorder.rs:2079-2086; upstream's reader skips blank lines, recorder.rs:1116; this one is stricter).
+  - a Reasoning item whose summary joins to whitespace only refuses: exec drops it from its stream
+    (exec/src/event_processor_with_jsonl_output.rs:152-156, 354-356), so no join could ever prove it.
+
+Known false-refusal risks, for the first recorded pair to confirm (review nit N11; never admitted unseen): a
+whitespace-only Reasoning summary (above); a turn_aborted whose turn_id is null (TurnAbortedEvent.turn_id is
+Option<String>); and the line types the paginated policy persists but this subset refuses, world_state,
+retained_context, security_risk_score, compacted, inter_agent_communication, inter_agent_communication_metadata and
+realtime_item: if a plain exec session writes any of them, every rollout of it refuses.
+
+Command output in the join (review finding 3): the writer truncates aggregated_output only when it exceeds
+PERSISTED_COMMAND_OUTPUT_MAX_BYTES (64 KiB, policy.rs:16-17, 253-258), through codex_utils_string::
+truncate_middle_with_marker, whose source is not in the retained copy. So an exec output over 64 KiB refuses the join
+(its truncation cannot be reproduced exactly), and every other output must equal the rollout's exactly, the marker's
+text compared as ordinary text.
   - turn_context: the requested model and cwd; approval_policy and sandbox_policy values are placeholders the audit
     did not verify, so they are carried raw and never accepted (permission_mode stays None).
 Exec stream: EXEC_EVENTS and EXEC_ITEMS (exec/src/exec_events.rs:9-37, 120-133). The stream holds no user prompt and
@@ -82,9 +99,12 @@ def _json_lines(raw, error):
         except UnicodeError:
             raise error("not UTF-8") from None
     out = []
-    for n, text in enumerate(raw.split("\n"), 1):
+    lines = raw.split("\n")
+    for n, text in enumerate(lines, 1):
         if not text.strip():
-            continue
+            if n == len(lines) and text == "":
+                continue                         # the newline after the last record
+            raise error(f"line {n} is blank: every line is one JSON object (upstream skips it; this reader refuses)")
 
         def pairs(items):
             d = {}
@@ -130,6 +150,10 @@ def _item(item, turn):
         summary = item.get("summary_text")
         if not isinstance(summary, list) or not all(isinstance(s, str) for s in summary):
             raise ReaderRefused("a Reasoning item's summary_text is a list of strings")
+        if summary and not "\n".join(summary).strip():
+            raise ReaderRefused("a Reasoning item whose summary is whitespace only: exec drops it from its stream "
+                                "(event_processor_with_jsonl_output.rs:152-156), so its join cannot be proven; a known "
+                                "false-refusal risk, refused until a recorded pair shows it")
         if summary:
             turn["output"].append({"kind": "reasoning", "text": "\n".join(summary)})
     else:
@@ -141,7 +165,7 @@ def _item(item, turn):
         if not (exit_code is None or (isinstance(exit_code, int) and not isinstance(exit_code, bool))):
             raise ReaderRefused("a CommandExecution exit_code is an int or absent")
         turn["output"].append({"kind": "command", "status": item["status"], "exit_code": exit_code, "output": out,
-                               "truncated": isinstance(out, str) and TRUNCATION_MARKER in out})
+                               "marker_text": isinstance(out, str) and TRUNCATION_MARKER in out})
 
 
 def read_rollout(raw) -> dict:
@@ -286,12 +310,18 @@ def read_exec(text) -> dict:
     return {"thread_id": thread, "items": items, "errors": errors, "served_model": served, "terminal": terminal}
 
 
+PERSISTED_COMMAND_OUTPUT_MAX_BYTES = 64 * 1024        # rollout/src/policy.rs:17
+
+
 def _output_agrees(native, shown) -> bool:
+    """Review finding 3: exact equality only. An exec output over the writer's 64 KiB limit was truncated in the
+    rollout by a function whose source is not retained, so it refuses rather than being compared by its ends."""
     if native is None:
         return shown == ""
-    if TRUNCATION_MARKER in native:
-        head, _, tail = native.partition(TRUNCATION_MARKER)
-        return shown.startswith(head) and shown.endswith(tail) and len(shown) >= len(head) + len(tail)
+    if isinstance(shown, str) and len(shown.encode("utf-8")) > PERSISTED_COMMAND_OUTPUT_MAX_BYTES:
+        raise JoinRefused("the exec output exceeds the writer's 64 KiB persistence limit, so the rollout holds its "
+                          "truncation, which cannot be reproduced exactly (truncate_middle_with_marker is not in the "
+                          "retained source)")
     return native == shown
 
 
@@ -327,5 +357,5 @@ def join(turn: dict, exec_text: str, *, exit_code, session_id: str) -> dict:
         raise JoinRefused(f"terminal disagrees: rollout {native_end}, exec {shown}, exit {exit_code}")
     return {"complete": native_end == "complete" and shown == "complete", "terminal": native_end,
             "served_model": call["served_model"], "agent_texts": shown_text, "commands": len(shown_cmds),
-            "truncated": any(n["truncated"] for n in native_cmds),
+            "marker_text": any(n["marker_text"] for n in native_cmds),
             "command_text": "presentation-derived, not compared"}
