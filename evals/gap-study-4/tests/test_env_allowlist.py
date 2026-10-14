@@ -644,9 +644,10 @@ class E5Units(Case):
             with mock.patch.object(m, "FALLBACK_ENV", m.PENDING):   # FILLED 14 Oct 2026; the clause stays red-tested
                 self.not_ready("E5.pending", "FALLBACK_ENV is PENDING", m.take_environment, "claude-code", "/r/t")
         with mock.patch.object(m, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}):
-            for h in ("gemini",):              # codex's was FILLED 14 Oct 2026 (glitch-06's ruling 3)
-                self.not_ready("E5.pending", f"VENDOR_BILLING_ROUTE_VARIABLES[{h!r}] is PENDING",
-                               m.take_environment, h, "/r/t")
+            # both FILLED 14 Oct 2026 (Codex's binary and Gemini's package sweeps); the clause stays red-tested
+            with mock.patch.dict(m.VENDOR_BILLING_ROUTE_VARIABLES, {m.GEMINI: m.PENDING}):
+                self.not_ready("E5.pending", "VENDOR_BILLING_ROUTE_VARIABLES['gemini'] is PENDING",
+                               m.take_environment, "gemini", "/r/t")
 
     def test_the_fallback_values_are_arm_a_s_alone(self):
         m = rt()

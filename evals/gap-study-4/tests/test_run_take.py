@@ -174,6 +174,14 @@ class MutantCase(unittest.TestCase):
             self.assertNotEqual(got, [], f"mutant {name} survived")
 
 
+@contextlib.contextmanager
+def _patches(*triples):
+    with contextlib.ExitStack() as stack:
+        for obj, attr, value in triples:
+            stack.enter_context(mock.patch.object(obj, attr, value))
+        yield
+
+
 def patched(obj, attr, value):
     return lambda: mock.patch.object(obj, attr, value)
 
@@ -565,7 +573,7 @@ class TestArmVariables(MutantCase):
         closed = (set(rt.API_KEY_VARIABLES) | set(rt.BILLING_ROUTE_VARIABLES) | set(rt.SUBSCRIPTION_TOKEN_VARIABLES)
                   | {"CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"}
                   | set(CODEX_ROUTE_NAMED) | set(CODEX_ROUTE_DOCS_READ)    # glitch-06's rulings: every arm
-                  | set(sweep_refused()))
+                  | set(sweep_refused()) | set(_gemini_refused()))
         for arm in ARMS:
             got = rt.refused_variables(arm)
             expected = closed - {LOGINS[arm]}
@@ -584,7 +592,13 @@ class TestArmVariables(MutantCase):
             ("own-login-refused", patched(rt, "LOGIN_VARIABLE", dict(rt.LOGIN_VARIABLE,
                                                                      **{rt.CLAUDE_CODE: "NOT_A_VAR"}))),
             ("codex-key-admitted", patched(rt, "LOGIN_VARIABLE", dict(rt.LOGIN_VARIABLE, codex="CODEX_API_KEY"))),
-            ("vendor-list-short", patched(rt, "VENDOR_KEY_VARIABLES", ("CODEX_API_KEY", "GEMINI_API_KEY"))),
+            # OPENAI_API_KEY and GOOGLE_API_KEY are also in the Codex and Gemini sweep lists since 14 Oct 2026, so the
+            # short vendor list is held with those two names taken out of the sweep lists too (nothing else moves)
+            ("vendor-list-short", lambda: _patches(
+                (rt, "VENDOR_KEY_VARIABLES", ("CODEX_API_KEY", "GEMINI_API_KEY")),
+                (rt, "VENDOR_BILLING_ROUTE_VARIABLES",
+                 {h: tuple(n for n in v if n not in ("OPENAI_API_KEY", "GOOGLE_API_KEY"))
+                  for h, v in rt.VENDOR_BILLING_ROUTE_VARIABLES.items()}))),
         ])
 
     def check_own_environ(self):
@@ -687,8 +701,11 @@ class TestExecArgv(MutantCase):
             inner = ["gemini", "-m", "gemini-3.8-flash"] if h == rt.GEMINI else ["x"]
             lf = plant_login(self.tmp, rt.LOGIN_VARIABLE[h])
             try:
-                rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
-                             run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
+                # Gemini's list was FILLED 14 Oct 2026 (its package sweep); the PENDING clause stays red-tested with
+                # the entry put back. Codex is refused by its subscription gate whatever its list holds.
+                with mock.patch.dict(rt.VENDOR_BILLING_ROUTE_VARIABLES, {rt.GEMINI: rt.PENDING}):
+                    rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
+                                 run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
                 out.append(f"a {h} exec was built while its billing-route list is PENDING")
             except rt.NotReady:
                 pass
@@ -2114,6 +2131,11 @@ def _sweep_files():
             os.path.join(SWEEP_DIR, "codex-env-name-classification-20261014.json"))
 
 
+def _gemini_refused() -> tuple:
+    with open(os.path.join(SWEEP_DIR, "gemini-env-name-classification-20261014.json"), encoding="utf-8") as fh:
+        return tuple(json.load(fh)["refuse_if_present"])
+
+
 def sweep_refused() -> tuple:
     with open(_sweep_files()[1], encoding="utf-8") as fh:
         return tuple(json.load(fh)["refuse_if_present"])
@@ -2193,6 +2215,58 @@ class TestRefusedPrefixes(MutantCase):
         return out
 
     def test_refused_prefixes(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+class TestGeminiPackageSweep(MutantCase):
+    """glitch-06's ruling (14 Oct 2026): the pinned Gemini CLI's environment-name sweep and its deterministic
+    classification (committed under probes/) fill VENDOR_BILLING_ROUTE_VARIABLES[GEMINI]: every credential, route and
+    ambiguous name is refused if present for every arm; GEMINI_API_KEY stays the Gemini arm's own login; no row's own
+    name is refused; take_environment no longer waits on a PENDING Gemini entry."""
+
+    def check(self):
+        out = []
+        sweep_path = os.path.join(SWEEP_DIR, "gemini-env-name-sweep-athena-20261014.json")
+        class_path = os.path.join(SWEEP_DIR, "gemini-env-name-classification-20261014.json")
+        with open(sweep_path, "rb") as fh:
+            sweep_raw = fh.read()
+        sweep = json.loads(sweep_raw)
+        with open(class_path, encoding="utf-8") as fh:
+            cls = json.load(fh)
+        with open(os.path.join(os.path.dirname(rt.__file__), "gemini", "image.lock"), encoding="utf-8") as fh:
+            pinned = json.load(fh)["harness"]["version"]
+        if cls["sweep_sha256"] != hashlib.sha256(sweep_raw).hexdigest():
+            out.append("the classification does not bind the committed sweep's bytes")
+        if sweep["package_version"] != pinned or cls["package_version"] != pinned:
+            out.append(f"the sweep is not of the pinned Gemini CLI {pinned}")
+        if sorted(r["name"] for r in cls["rows"]) != sorted(sweep["names"]):
+            out.append("the classification does not place every name the sweep found")
+        refuse = set(cls["refuse_if_present"])
+        if refuse != {r["name"] for r in cls["rows"] if r["class"] in ("credential", "route", "ambiguous")}:
+            out.append("the refuse list is not every credential, route and ambiguous name")
+        if tuple(rt.GEMINI_PACKAGE_SWEEP_REFUSED) != tuple(cls["refuse_if_present"]):
+            out.append("run_take's Gemini sweep tuple drifted from the committed classification")
+        entry = rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.GEMINI]
+        if rt._is_pending(entry) or set(entry) != refuse:
+            out.append("VENDOR_BILLING_ROUTE_VARIABLES[gemini] is not the sweep's refuse list")
+        for arm in (rt.CODEX, rt.CLAUDE_CODE, rt.GEMINI):
+            missing = sorted(refuse - set(rt.refused_variables(arm)))
+            if missing:
+                out.append(f"{arm}: the Gemini sweep's names not refused: {missing[:5]}")
+            in_row = sorted(set(rt.TAKE_ENV[arm]) & set(rt.refused_variables(arm)))
+            if in_row:
+                out.append(f"{arm}: its own row's names are refused: {in_row}")
+        if "GEMINI_API_KEY" in rt.refused_variables(rt.GEMINI):
+            out.append("GEMINI_API_KEY, the Gemini arm's own login, is refused for it")
+        if "GEMINI_API_KEY" not in rt.refused_variables(rt.CLAUDE_CODE):
+            out.append("GEMINI_API_KEY is not refused for another arm")
+        try:
+            rt.take_environment(rt.GEMINI, "/srv/w/t1/tree")
+        except rt.NotReady as e:
+            out.append(f"take_environment still waits for Gemini: {e}")
+        return out
+
+    def test_the_gemini_sweep_is_refused(self):
         self.assertEqual(problems_of(self.check), [])
 
 
@@ -2336,7 +2410,8 @@ class TestPendingAndNames(MutantCase):
     # TOP_FORMAT and INSPECT_STATUS FILLED 14 Oct 2026 (stub-take review PASS); FALLBACK_ENV FILLED the same day from
     # the docs (glitch-06's ruling, Addendum D).
     # CLAUDE_BYPASS_KEY RULED not required in -p (glitch-06, 14 Oct 2026; CLAUDE_BYPASS_RULING).
-    EXPECT = {"VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources"}
+    # VENDOR_BILLING_ROUTE_VARIABLES FILLED 14 Oct 2026: Codex from its binary's sweep, Gemini from its package's.
+    EXPECT = {"TakeSpec.resources"}
     FILLED_TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
                   "uid_namespace": "container"}
     # "XDG_RUNTIME_DIR in the take" RETIRED 14 Oct 2026 (glitch-06): measured not needed (test_xdg_runtime_dir_*).
@@ -2417,7 +2492,9 @@ class TestPendingAndNames(MutantCase):
                 rt.INSPECT_STATUS["evidence"][1])))),
             ("resources-said-measured", patched(rt, "PENDING_WHY", dict(rt.PENDING_WHY, **{
                 "TakeSpec.resources": "measured at the cold-start stub take"}))),
-            ("billing-filled", patched(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {"codex": (), "gemini": ()})),
+            # FILLED 14 Oct 2026: the clause now guards the fill (a list put back to PENDING shows in pending())
+            ("billing-back-to-pending", patched(rt, "VENDOR_BILLING_ROUTE_VARIABLES",
+                                                {"codex": rt.PENDING, "gemini": rt.PENDING})),
         ])
 
     def check_no_override(self):
