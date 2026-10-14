@@ -171,6 +171,13 @@ ACCEPTED_IDENTITY_SOURCES = {"gemini": {"model": ("stream-init", "stream-stats")
                              "codex": {"model": ("stream-reroute",), "version": ("version-exec",),
                                        "permission_mode": ("submitted-argv",)}}
 OBSERVED_IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "stream-reroute")
+# Departure D-INT-2 (ruled by glitch-06 under the standing delegation, 14 Oct 2026; flagged first for Javier's review
+# before the freeze): for arm O (codex) only, a served model that is unobserved (no reroute) is accepted by the
+# init-mismatch row, so the requested model is assumed; an observed reroute to another model is still a mismatch, two
+# reroutes still refuse (codex_adapter), and every other harness and field is unchanged. The study's limit, verbatim:
+UNOBSERVED_ACCEPTED = {"codex": ("model",)}
+SERVED_MODEL_LIMIT = ("for the OpenAI arm, the served model is verified only when the CLI reports a reroute; otherwise "
+                      "the requested model is assumed")
 
 # The fields of one API-error record (all three required; status int or None, type str or None, text
 # str or None: the harness-side error text, never the agent's reply). glitch-f3's ruling added text.
@@ -616,6 +623,8 @@ def _identity_differs(entry, pin, fields, *, present_only: bool) -> bool:
         if present_only:
             if e["source"] in OBSERVED_IDENTITY_SOURCES and e["value"] != pin[f]:
                 return True
+        elif e["source"] == "unobserved" and f in UNOBSERVED_ACCEPTED.get(pin.get("harness"), ()):
+            continue                           # D-INT-2: arm O's served model, unobserved without a reroute
         elif e["source"] not in accepted.get(f, ()) or e["value"] != pin[f]:
             return True
     return False

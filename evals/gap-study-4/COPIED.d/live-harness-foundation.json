@@ -164,7 +164,7 @@
     {
       "path": "tests/test_codex_identity.py",
       "status": "new",
-      "reason": "Codex slice 2: the Codex identity-source table as routing reads it: every field observed by its accepted source and on the pin passes; no reroute (model unobserved), a reroute elsewhere, the requested model as if observed, an unobserved or off-invocation mode and another version are init mismatches; the pin refusal reads only an observed difference."
+      "reason": "Codex slice 2: the Codex identity-source table as routing reads it: every field observed by its accepted source and on the pin passes; no reroute (model unobserved), a reroute elsewhere, the requested model as if observed, an unobserved or off-invocation mode and another version are init mismatches; the pin refusal reads only an observed difference. D-INT-2: an unobserved served model accepted for codex only (mode, version and Gemini unchanged), a reroute elsewhere still a mismatch, the limit sentence pinned, and the per-take ledger record; four routing mutants and the ledger-line mutant killed."
     }
   ]
 }

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+import unittest.mock
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
@@ -48,8 +49,7 @@ class CodexTable(unittest.TestCase):
 
     def test_the_init_mismatch_row(self):
         self.assertFalse(differs(ident()), "every field observed by its accepted source and on the pin")
-        for why, entry in (("no reroute: the model is unobserved", ident(model=(None, "unobserved"))),
-                           ("a reroute elsewhere", ident(model=("gpt-6-sol", "stream-reroute"))),
+        for why, entry in (("a reroute elsewhere", ident(model=("gpt-6-sol", "stream-reroute"))),
                            ("the requested model as if observed", ident(model=("gpt-6-luna", "stream-init"))),
                            ("the mode unobserved", ident(mode=(None, "unobserved"))),
                            ("a journal off the invocation",
@@ -58,10 +58,55 @@ class CodexTable(unittest.TestCase):
             with self.subTest(why=why):
                 self.assertTrue(differs(entry))
 
+    def test_d_int_2_an_unobserved_served_model_is_accepted_for_codex_only(self):
+        """D-INT-2 (glitch-06, 14 Oct 2026; for Javier's review before the freeze): for arm O only, a served model that
+        is unobserved (no reroute) is accepted in the init-mismatch row; the requested model is then assumed."""
+        self.assertFalse(differs(ident(model=(None, "unobserved"))), "codex: no reroute, the requested model assumed")
+        self.assertTrue(differs(ident(model=("gpt-6-sol", "stream-reroute"))), "a reroute elsewhere is a mismatch")
+        self.assertTrue(differs(ident(mode=(None, "unobserved"))), "only the model is accepted unobserved")
+        self.assertTrue(differs(ident(version=(None, "unobserved"))), "only the model is accepted unobserved")
+        gem = dict(PIN, harness="gemini", model="gemini-3.8-flash", permission_mode="yolo", version="0.64.0")
+        gem_ident = {"model": {"value": None, "source": "unobserved"},
+                     "permission_mode": {"value": "yolo", "source": "submitted-argv"},
+                     "version": {"value": "0.64.0", "source": "version-exec"}}
+        self.assertTrue(routing._identity_differs(gem_ident, gem, FIELDS, present_only=False),
+                        "Gemini's unobserved model stays a mismatch")
+        self.assertEqual(routing.UNOBSERVED_ACCEPTED, {"codex": ("model",)})
+        self.assertEqual(routing.SERVED_MODEL_LIMIT, "for the OpenAI arm, the served model is verified only when the "
+                                                     "CLI reports a reroute; otherwise the requested model is assumed")
+
     def test_the_pin_refusal_reads_only_an_observed_difference(self):
         self.assertFalse(differs(ident(model=(None, "unobserved")), present_only=True))
         self.assertTrue(differs(ident(model=("gpt-6-sol", "stream-reroute")), present_only=True))
         self.assertTrue(differs(ident(version=("0.161.0", "version-exec")), present_only=True))
+
+
+class ServedModelRecorded(unittest.TestCase):
+    """D-INT-2: each Codex turn's served-model evidence is recorded per take in the driver ledger, as identity carried
+    it ({value: null, source: unobserved} without a reroute); other harnesses' ledgers carry no such key."""
+
+    def test_the_ledger_records_it(self):
+        import dataclasses
+        sys.path.insert(0, str(HERE / "tests"))
+        import test_box_integration as tbi
+        import test_vendor_take_records as tvr
+        tbi.setUpModule()
+        self.addCleanup(tbi.tearDownModule)
+        unobserved = {"value": None, "source": "unobserved"}
+        real = tbi.FakeAdapter._turn
+
+        def turn(adapter, line, *, first, budget_s):
+            got = real(adapter, line, first=first, budget_s=budget_s)
+            if adapter.name != "codex":
+                return got
+            return dataclasses.replace(got, identity={"model": dict(unobserved),
+                                                      "permission_mode": {"value": "bypass", "source": "submitted-argv"},
+                                                      "version": {"value": "0.162.1", "source": "version-exec"}})
+        with unittest.mock.patch.object(tbi.FakeAdapter, "_turn", turn):
+            rig, ledger, refused = tvr.drive_vendor(self, "codex", native=False)
+        self.assertEqual(ledger["served_model"], [unobserved, unobserved])
+        rig, ledger, refused = tvr.drive_vendor(self, "gemini")
+        self.assertNotIn("served_model", ledger)
 
 
 if __name__ == "__main__":

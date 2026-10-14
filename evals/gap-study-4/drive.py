@@ -2283,6 +2283,8 @@ class TakeDriver:
             ledger["native_snapshots"] = [dict(r) for r in take.native_snapshots]
             ledger["native_snapshot_refusal"] = take.native_snapshot_refusal
             ledger["native_history"] = history
+        if harness == "codex":                    # D-INT-2: each turn's served-model evidence, recorded per take
+            ledger["served_model"] = [None if t.identity is None else dict(t.identity["model"]) for t in turns]
         if vendor:                                # live harness integration: pending is recorded as pending
             ledger["cross_check_status"] = status
             take.cross_check_status = dict(status)
