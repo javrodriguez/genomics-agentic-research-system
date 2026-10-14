@@ -47,6 +47,14 @@ def _json(text):
         raise tv.ViewError(f"invalid bound record: {exc}") from None
 
 
+def _jsonl_lines(text):
+    """JSONL is framed by LF, never Unicode separators within JSON strings."""
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    return lines
+
+
 def bound_items(harness, path):
     """Read only an on-disk envelope alongside its ledger and native streams."""
     if harness not in HARNESSES or not isinstance(path, (str, Path)):
@@ -55,7 +63,7 @@ def bound_items(harness, path):
     ledger_path = path.parent / "driver-ledger.json"
     try:
         ledger = _json(_regular_bytes(ledger_path).decode("utf-8"))
-        envelopes = [_json(line) for line in _regular_bytes(path).decode("utf-8").splitlines()]
+        envelopes = [_json(line) for line in _jsonl_lines(_regular_bytes(path).decode("utf-8"))]
     except (OSError, UnicodeError) as exc:
         raise tv.ViewError(f"missing bound record: {exc}") from None
     if not isinstance(ledger, dict) or not isinstance(ledger.get("agent"), dict):
@@ -100,7 +108,7 @@ def bound_items(harness, path):
         names.append(name)
         out.append(tv.RawItem("harness-turn", tv.OPERATOR, text=env["sent"]))
         native_ids, operators = [], []
-        for line in text.splitlines():
+        for line in _jsonl_lines(text):
             record = _json(line)
             if isinstance(record, dict):
                 if harness == "codex" and record.get("type") == "thread.started":

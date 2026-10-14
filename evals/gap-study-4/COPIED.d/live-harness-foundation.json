@@ -20,6 +20,16 @@
       "path": "COPIED.d/live-harness-foundation.json",
       "status": "new",
       "reason": "This foundation slice copy record; existing owned-file departures recorded in their owning fragments."
+    },
+    {
+      "path": "vendor_provenance.py",
+      "status": "new",
+      "reason": "Typed actual-submission, native-session, observed-version and pinned-file source validation; production session reader registry remains empty pending reviewed native schemas."
+    },
+    {
+      "path": "tests/test_vendor_provenance.py",
+      "status": "new",
+      "reason": "Synthetic source-join checks; independently decoded session source mandatory, wrong invocation/hash/pin/identity rejected; no live readiness claim."
     }
   ]
 }

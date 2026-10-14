@@ -1,1 +1,2 @@
 python3 -W ignore evals/gap-study-4/tests/test_vendor_record_binding.py
+python3 -W ignore evals/gap-study-4/tests/test_vendor_provenance.py

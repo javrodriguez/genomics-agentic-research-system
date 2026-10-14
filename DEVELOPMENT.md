@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Vendor provenance sources, 2026-10-13:** a second bounded source-validation slice passes four synthetic tests and three refusal witnesses on an isolated twelve-file Athena subset. A fifth literal-newline regression witness ran red-first; all five then passed locally at a normal resource gate. Independent static review passed both the source-validation slice and framing correction. Native-session reader registry remains empty; production publishing/checker/mode integration remains incomplete. Codex subscription-only auth and account/quota evidence now supersede the API funding assumption. See [the provenance checkpoint](lane-reports/live-harness-provenance-2026-10-13.md).
+
 **Three-harness foundation, 2026-10-13:** isolated checkpoint adds a native-stream envelope reader and explicit adapter factory; nine synthetic tests and fourteen neighboring parser shape tests passed, copy manifest passes, and focused independent static review closed its two findings. Vendor production checker, record publishing and mode integration remain incomplete. See [the foundation report](lane-reports/live-harness-foundation-2026-10-13.md).
 
 **W12 combined integration, 2026-10-13:** wave12 `6f84c312` and reviewed W12A `355c142` are combined without conflicts or implementation edits. Their 23 changed files form a byte-exact disjoint union; the battery now enumerates 246 commands. Manifest, lints, environment 27 and walk-builders 43 tests pass locally. Independent integration review and a fresh full solo Athena proof remain pending; no public landing is claimed. See [the integration report](lane-reports/w12-combined-2026-10-13.md).
