@@ -20,6 +20,8 @@ MUTANTS = [
  ("second credential-shaped file admitted", '        if name in _credential_names() or CREDENTIAL_LIKE.search(name):\n            problems.append(f"{rel}: a credential-shaped', '        if False:\n            problems.append(f"{rel}: a credential-shaped'),
  ("renamed copy admitted", '            if same:', '            if False:'),
  ("registered file not exempted by path", '        if rel == reg:\n            continue', '        if False:\n            continue'),
+ ("the read not bound to the check", '    if (opened.st_dev, opened.st_ino, opened.st_nlink, opened.st_mode, opened.st_uid) != \\\n            (checked.st_dev, checked.st_ino, checked.st_nlink, checked.st_mode, checked.st_uid):', '    if False:'),
+ ("registered unreadable raises", '            except OSError:\n                problems.append(f"{reg}: the registered credential is unreadable', '            except ZeroDivisionError:\n                problems.append(f"{reg}: the registered credential is unreadable'),
  ("absent credential admitted", '        problems.append(f"{reg}: absent; the lease home must hold exactly one registered credential file")', '        pass'),
 ]
 HUNG = []

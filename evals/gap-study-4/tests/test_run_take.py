@@ -1985,8 +1985,15 @@ SUBPROCESS_NAMES = frozenset({"run", "TimeoutExpired"})
 GUARDED_MODULES = ("os", "subprocess")
 # W4B2-2, derived once from the three box modules' source and committed (TestAuditAllowlists binds both ways).
 # Box lane 14 Oct: run_turn's launch journal is flushed to disk before the exec (os.fsync), 0b6f60f9.
+# Box lane 14 Oct (glitch-06's ruling on the lease postflight review's NIT 5, exactly these three, nothing else):
+# preflight._read_capped opens the registered auth.json and then fstats the descriptor, so the file cannot be swapped
+# between the lstat check and the read:
+#   O_NONBLOCK - the open never blocks on a FIFO swapped in after the check;
+#   fstat      - the opened descriptor's device, inode, type, links, mode and owner are compared with the check's lstat;
+#   close      - the descriptor is closed when that comparison refuses, before any byte is read.
 OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "fsync",
-                      "getuid", "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk"})
+                      "getuid", "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk",
+                      "O_NONBLOCK", "fstat", "close"})
 DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 # How subprocess may appear, at DockerRuntime.run only: run as the func of a call, TimeoutExpired in an except.
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})

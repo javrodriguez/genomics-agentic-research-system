@@ -1030,10 +1030,17 @@ LEASE_CREDENTIAL = {run_take.CODEX: "auth.json"}
 LEASE_CREDENTIAL_MAX_BYTES = 1024 * 1024
 
 
-def _read_capped(path: str, cap: int):
-    """The bytes of a regular file opened without following a link, or None past `cap`. Never logged or returned in a
-    message: callers compare them only. Callers open only what lstat showed a regular file (a FIFO would block)."""
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+def _read_capped(path: str, cap: int, checked):
+    """The bytes of the regular file the caller's lstat `checked` saw, opened without following a link, or None past
+    `cap`. Never logged or returned in a message: callers compare them only. Opened non-blocking (a FIFO never blocks)
+    and compared on the descriptor with `checked`: the same device, inode, links, mode (the file type with it) and
+    owner, so the file read is the file checked (glitch-06, NIT 5). Anything else raises OSError, naming no contents."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    opened = os.fstat(fd)
+    if (opened.st_dev, opened.st_ino, opened.st_nlink, opened.st_mode, opened.st_uid) != \
+            (checked.st_dev, checked.st_ino, checked.st_nlink, checked.st_mode, checked.st_uid):
+        os.close(fd)
+        raise OSError(f"{os.path.basename(path)}: not the regular file that was checked")
     with os.fdopen(fd, "rb") as fh:
         data = fh.read(cap + 1)
     return None if len(data) > cap else data
@@ -1067,9 +1074,10 @@ def lease_credential_problems(config_dir: str, harness: str, listing: list) -> t
             problems.append(f"{reg}: the registered credential must be owned by the host user")
         else:
             try:
-                reg_bytes = _read_capped(reg_path, LEASE_CREDENTIAL_MAX_BYTES)
+                reg_bytes = _read_capped(reg_path, LEASE_CREDENTIAL_MAX_BYTES, checked=st)
             except OSError:
-                problems.append(f"{reg}: the registered credential is unreadable")
+                problems.append(f"{reg}: the registered credential is unreadable, or changed between its check "
+                                f"and its read")
             else:
                 if reg_bytes is None:
                     problems.append(f"{reg}: the registered credential is larger than "
@@ -1101,7 +1109,7 @@ def lease_credential_problems(config_dir: str, harness: str, listing: list) -> t
             continue
         if reg_bytes is not None and stat.S_ISREG(st.st_mode) and st.st_size == len(reg_bytes):
             try:
-                same = _read_capped(path, LEASE_CREDENTIAL_MAX_BYTES) == reg_bytes
+                same = _read_capped(path, LEASE_CREDENTIAL_MAX_BYTES, checked=st) == reg_bytes
             except OSError:
                 problems.append(f"{rel}: unreadable after the take; the lease home must be readable whole")
                 continue

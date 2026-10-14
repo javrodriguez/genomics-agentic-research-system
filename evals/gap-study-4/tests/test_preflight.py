@@ -813,6 +813,52 @@ class TestLeasePostflight(MutantCase):
             out.append("another harness admitted auth.json")
         return out
 
+    def check_read(self):
+        """glitch-06's NIT 5 ruling: the registered file read is the file checked. A swap between the lstat and the
+        open (a FIFO, or another regular file with the same bytes) refuses, never hangs; and an unreadable registered
+        file refuses, never raises."""
+        out = []
+        for label, swap in (("a same-bytes file with a second link", "relink"), ("a FIFO", "fifo")):
+            d = self.home()
+            reg = os.path.join(d, "auth.json")
+            real_lstat, done, calls = os.lstat, [], []
+
+            def swapping(p, *a, _reg=reg, _swap=swap, _d=d, **k):
+                st = real_lstat(p, *a, **k)
+                if p == _reg:
+                    calls.append(1)
+                # the first lstat of auth.json is lexists; the second is the check, whose result the read must match
+                if p == _reg and len(calls) == 2 and not done:
+                    done.append(1)
+                    os.unlink(_reg)
+                    if _swap == "fifo":
+                        os.mkfifo(_reg, 0o600)
+                    else:
+                        fd = os.open(_reg, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                        os.write(fd, self.FAKE_AUTH)
+                        os.close(fd)
+                        os.link(_reg, os.path.join(_d, "outside-link"))
+                return st
+            with mock.patch.object(pf.os, "lstat", swapping):
+                r = pf.postflight(d, rt.CODEX)
+            detail = r["checks"][0]["detail"]
+            if not done:
+                out.append(f"{label}: the swap never ran (the check did not lstat auth.json)")
+            elif r["ok"] or "changed between its check and its read" not in detail or "auth.json" not in detail:
+                out.append(f"{label} swapped in after the check was not refused by file and rule: {detail}")
+            if "PLANTED" in json.dumps(r):
+                out.append(f"{label}: the record carries the credential's contents")
+        d = self.home()
+        with mock.patch.object(pf, "_read_capped", side_effect=PermissionError("planted")):
+            try:
+                self.refused(out, "an unreadable registered file", d, "auth.json", "unreadable")
+            except OSError as e:
+                out.append(f"an unreadable registered file raised {type(e).__name__} instead of refusing")
+        return out
+
+    def test_the_registered_file_read_is_the_file_checked(self):
+        self.assertEqual(_problems(self.check_read), [])
+
     def test_the_lease_admits_exactly_its_one_credential(self):
         self.assert_green_then_red(self.check, [
             ("no-lease", patched(pf, "LEASE_CREDENTIAL", {})),
