@@ -92,6 +92,25 @@ TARGETS = ("walk_builders", "walk_runner")
 EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts",
                     "rules_scanner", "login_path", "agent_version", "design_for",
                     "budgets", "run_tree_exclude"]
+# take_spec (harness ce2bdef4) is built once take-a's image lock holds no PENDING value: missing, by name, on a tree
+# whose take-a lock is PENDING, and present where the box lane's reviewed locks are in (6221c297; on the merged head,
+# the integration lane). B7.production checks it is then callable. Read from the lock file itself.
+def _take_a_lock_ready() -> bool:
+    import json
+    lock = json.loads((Path(__file__).resolve().parents[1] / "box" / "image.lock").read_text())
+    def held(v):
+        return v == "PENDING" or (isinstance(v, dict) and any(held(x) for x in v.values()))
+    return not lock.get("pending") and not any(held(v) for k, v in lock.items() if k != "pending")
+
+
+TAKE_A_LOCK_READY = _take_a_lock_ready()
+if TAKE_A_LOCK_READY:
+    EXPECTED_MISSING.remove("take_spec")
+# The walk token's login file is the box's record, run_take.WALK_LOGIN_FILES["claude1"] (box lane 1eb02a9e): missing, by
+# name, on a tree whose run_take has no such record, and that exact path where it does (B7.login checks both ways).
+WALK_LOGIN_ON_TREE = isinstance(getattr(rt, "WALK_LOGIN_FILES", None), dict) and "claude1" in rt.WALK_LOGIN_FILES
+if WALK_LOGIN_ON_TREE:
+    EXPECTED_MISSING.remove("login_path")
 # CP5 (Javier, "CP5: all as recommended", 14 Oct 2026) registered arm A's pin profiles, so pin_for is no longer missing
 # in production (B8's rule, on the real table); it is checked present in B7.production.
 # The ownership road is the box lane's box/ownership.py (81ede46d): missing, by name, on a tree without that module, and
@@ -336,6 +355,20 @@ class Case(unittest.TestCase):
         except Exception as e:  # noqa: BLE001
             self.fail(f"{clause}: raised {type(e).__name__}, not BuilderRefused: {str(e)[:300]}")
         self.fail(f"{clause}: not refused ({words!r})")
+
+
+def problems_by_assertion(prefix):
+    """A check that raises reports it as its own line, so a mutant that makes the code raise fails the test by
+    assertion (a kill), never by an error the generated sweep does not count."""
+    def wrap(fn):
+        def check(mod):
+            try:
+                return fn(mod)
+            except Exception as e:  # noqa: BLE001
+                return [f"{prefix}: raised {type(e).__name__}: {str(e)[:300]}"]
+        check.__name__ = fn.__name__
+        return check
+    return wrap
 
 
 def wb():
@@ -780,10 +813,15 @@ class B7Production(Case):
         self.assertTrue(all(isinstance(why, str) and len(why) > 20 for _, why in gaps), "B7.production")
         why = dict(gaps)
         for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"),
-                            ("login_path", "walk token"),
+                            ("login_path", "WALK_LOGIN_FILES['claude1']"),
                             ("design_for", "PENDING"), ("run_tree_exclude", "run_location"),
                             ("agent_version", "version_pins"), ("rules_scanner", "gitleaks")):
-            self.assertIn(words, why[name], f"B7.production: {name} does not say why")
+            if name in why or name in EXPECTED_MISSING:
+                self.assertIn(words, why[name], f"B7.production: {name} does not say why")
+        if WALK_LOGIN_ON_TREE:
+            self.assertEqual(got["login_path"], rt.WALK_LOGIN_FILES["claude1"], "B7.login: not the box's record")
+        if TAKE_A_LOCK_READY:
+            self.assertTrue(callable(got["take_spec"]), "B7.production: take-a's ready lock gives no take spec")
         import time
         import drive
         import routing
@@ -843,6 +881,70 @@ class B7Production(Case):
             with self.assertRaises(TypeError, msg="B7.production: a Missing without its reason"):
                 wb().Missing(why)
         self.assertEqual(repr(wb().Missing("x y")), "Missing('x y')", "B7.production")
+
+
+    def test_the_walk_login_is_the_box_record(self):
+        self.assertEqual(b7_login_problems(wb()), [])
+
+
+@contextlib.contextmanager
+def walk_login_files(value):
+    """run_take.WALK_LOGIN_FILES set to `value` for the block, or absent when value is ABSENT; put back after."""
+    had = hasattr(rt, "WALK_LOGIN_FILES")
+    old = getattr(rt, "WALK_LOGIN_FILES", None)
+    if value is ABSENT:
+        if had:
+            delattr(rt, "WALK_LOGIN_FILES")
+    else:
+        rt.WALK_LOGIN_FILES = value
+    try:
+        yield
+    finally:
+        if had:
+            rt.WALK_LOGIN_FILES = old
+        elif hasattr(rt, "WALK_LOGIN_FILES"):
+            delattr(rt, "WALK_LOGIN_FILES")
+
+
+ABSENT = object()
+SYNTHETIC_LOGIN = "/synthetic/gap4-secrets/claude1/claude-walk-token"
+
+
+@problems_by_assertion("B7.login")
+def b7_login_problems(mod) -> list:
+    """B7.login: login_path is run_take.WALK_LOGIN_FILES["claude1"] as the box records it (only the path; prepare
+    checks the file by name), Missing by name while the record is absent or lacks claude1, refused when not absolute."""
+    out = []
+    if getattr(mod, "WALK_ACCOUNT", None) != "claude1":
+        out.append(f"B7.login: the walk account is {getattr(mod, 'WALK_ACCOUNT', None)!r}, not claude1")
+    with walk_login_files({"claude2": "/synthetic/other", "claude1": SYNTHETIC_LOGIN}):
+        got = mod.walk_login_path()
+        if got != SYNTHETIC_LOGIN:
+            out.append(f"B7.login: login_path is {got!r}, not the record's claude1 file")
+        got = mod.production_builders()["login_path"]
+        if got != SYNTHETIC_LOGIN:
+            out.append(f"B7.login: the production builders' login_path is {got!r}")
+    for label, value in (("absent", ABSENT), ("without claude1", {"claude2": "/synthetic/other"}),
+                         ("not a mapping", ["claude1"]), ("None", None)):
+        with walk_login_files(value):
+            got = mod.walk_login_path()
+            if not isinstance(got, mod.Missing):
+                out.append(f"B7.login: a record {label} gave {got!r}, not Missing")
+            elif "WALK_LOGIN_FILES['claude1']" not in got.why or "walk token" not in got.why:
+                out.append(f"B7.login: a record {label} is Missing without saying why: {got.why!r}")
+            if label == "absent":
+                prod = mod.production_builders()["login_path"]
+                if not isinstance(prod, mod.Missing):
+                    out.append(f"B7.login: the production builders hold {prod!r} with no record")
+    for bad in ("relative/claude-walk-token", "", None, 3):
+        with walk_login_files({"claude1": bad}):
+            try:
+                got = mod.walk_login_path()
+                out.append(f"B7.login: a record of {bad!r} was taken: {got!r}")
+            except mod.BuilderRefused as e:
+                if "WALK_LOGIN_FILES['claude1']" not in str(e):
+                    out.append(f"B7.login: the refusal of {bad!r} does not name the record: {e}")
+    return out
 
 
 # ------------------------------------------------------------------------------------------------- B8
@@ -1278,20 +1380,6 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
 BOX_RESOURCES = {"memory_reservation": 2147483648, "memory": 6442450944, "cpus": "8", "pids_limit": 4096}
 
 
-def problems_by_assertion(prefix):
-    """A check that raises reports it as its own line, so a mutant that makes the code raise fails the test by
-    assertion (a kill), never by an error the generated sweep does not count."""
-    def wrap(fn):
-        def check(mod):
-            try:
-                return fn(mod)
-            except Exception as e:  # noqa: BLE001
-                return [f"{prefix}: raised {type(e).__name__}: {str(e)[:300]}"]
-        check.__name__ = fn.__name__
-        return check
-    return wrap
-
-
 @problems_by_assertion("B10.resources")
 def b10_problems(mod) -> list:
     """B10.resources: the policy values, run_take's own spec check passing them, and the take spec built by the row's
@@ -1330,9 +1418,60 @@ def b10_problems(mod) -> list:
     return out
 
 
+@problems_by_assertion("B10.take-a")
+def b10_take_a_problems(mod) -> list:
+    """B10.take-a: take_a_spec reads take-a's own lock (TAKE_LOCKS["A"] beside walk_builders); a lock holding PENDING
+    values gives Missing naming the lock and each held field; a ready one gives the take spec builder, which builds
+    the arm's spec from its lock's image id (the ready-lock branch, as on the merged head: 6e965d12)."""
+    from box import image_lock
+    out = []
+    real = image_lock.load(str(HERE / mod.TAKE_LOCKS["A"]))
+    seen = []
+
+    def load(path):
+        seen.append(path)
+        return lock_now[0]
+    lock_now = [dict(real, image_id="sha256:" + "b" * 64)]
+    with mock.patch.object(image_lock, "load", load), \
+            mock.patch.object(image_lock, "pending", lambda lock: ("base", "image_id") if lock is held else ()), \
+            mock.patch.object(image_lock, "require_ready", lambda lock: lock):
+        held = dict(real)
+        lock_now[0] = held
+        got = mod.take_a_spec()
+        if not isinstance(got, mod.Missing):
+            out.append(f"B10.take-a: a pending lock gave {got!r}, not Missing")
+        else:
+            for words in (mod.TAKE_LOCKS["A"], "PENDING (base, image_id)", "TAKE_RESOURCES"):
+                if words not in got.why:
+                    out.append(f"B10.take-a: the pending lock's Missing does not say {words!r}: {got.why!r}")
+        if seen != [str(HERE / mod.TAKE_LOCKS["A"])]:
+            out.append(f"B10.take-a: read {seen}, not take-a's own lock")
+        lock_now[0] = dict(real, image_id="sha256:" + "b" * 64)
+        got = mod.take_a_spec()
+        if isinstance(got, mod.Missing) or not callable(got):
+            out.append(f"B10.take-a: a ready lock gave {got!r}, not a take spec builder")
+        else:
+            spec = got({"arm": "A"}, "/synthetic/cfg", "/synthetic/tree")
+            want = {"image": "sha256:" + "b" * 64, "run_tree": "/synthetic/tree", "config_dir": "/synthetic/cfg",
+                    "network": mod.NETWORK_PLACEHOLDER, **BOX_RESOURCES}
+            if {k: getattr(spec, k, None) for k in want} != want:
+                out.append(f"B10.take-a: a ready lock's take spec is {spec}")
+    on_tree = mod.take_a_spec()                    # the lock as it is on this tree, unpatched
+    if TAKE_A_LOCK_READY != (not isinstance(on_tree, mod.Missing)):
+        out.append(f"B10.take-a: this tree's lock (ready {TAKE_A_LOCK_READY}) gave {on_tree!r}")
+    elif not TAKE_A_LOCK_READY:
+        fields = image_lock.pending(real)
+        if f"PENDING ({', '.join(fields)})" not in on_tree.why:
+            out.append(f"B10.take-a: this tree's pending lock names another list: {on_tree.why!r}")
+    return out
+
+
 class B10Resources(Case):
     def test_the_take_spec_carries_the_box_policy(self):
         self.assertEqual(b10_problems(wb()), [])
+
+    def test_take_a_spec_on_a_pending_and_a_ready_lock(self):
+        self.assertEqual(b10_take_a_problems(wb()), [])
 
     def test_a_resource_drift_is_red(self):
         mod = wb()
