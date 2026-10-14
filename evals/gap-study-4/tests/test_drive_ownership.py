@@ -49,6 +49,8 @@ box/ownership.py is the box lane's and may be absent from this tree.
                executed-refusal road) still gets its post-n settings check: recorded, and the stop names the settings
   O9-early     (review MINOR 4) run_take.launch refusing before any container (not a LaunchError), after the grant: the
                grant is undone by a restore with no ids, and the take's records are not held
+  R6-ruling    (review NOTE 6, glitch-06's ruling) a failed grant or a refused settings baseline is recorded BLOCKED
+               before launch (drive_started false), stops the loop and needs a ruling; never re-driven on its own
 
 Mutants (MUTANTS, each killed by its own check's line): grant skipped; restore moved after postflight; restore skipped
 on a LaunchError; a scan running after a failed restore; a commit reading a held take's records; a host-side save and a
@@ -816,12 +818,32 @@ def o9_early(mod, p):
     return out
 
 
+@tbi.guarded("R6-ruling")
+def r6_ruling(mod, p):
+    import batch
+    out = []
+    for why, kw in (("a failed grant", {"ownership": "grant"}), ("a refused baseline", {"settings_guard": "refuse"})):
+        with tbi.scratch_repo() as root:
+            rig = tbi.Rig(mod, root)
+            if "ownership" in kw:
+                rig.driver.ownership = rig.ownership = tbi.FakeOwnership(rig.box, fail_grant=True)
+            else:
+                rig.driver.settings_guard = rig.settings_guard = tbi.FakeSettingsGuard(refuse=True)
+            b, got = tbi.run_batch(rig, [tbi.row(1)])
+            o = got[0]
+            if (o["state"] != tbi.labels4.BLOCKED or o["drive_started"] is not False or not batch.needs_ruling(o)
+                    or "ruling" not in (o["reason"] or "") or b.stopped is None):
+                out.append(f"{p}: {why} is {o['state']} (drive_started {o['drive_started']}, needs a ruling "
+                           f"{batch.needs_ruling(o)}): {o['reason']}")
+    return out
+
+
 CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch, "O4-held": o4_held,
           "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator,
           "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road,
           "U1-uid-map": u1_uid_map, "P2-machine": p2_machine,
           "L1-ledger": l1_ledger, "N1-native": n1_native,
-          "S4-executed": s4_executed, "O9-early": o9_early}
+          "S4-executed": s4_executed, "O9-early": o9_early, "R6-ruling": r6_ruling}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -871,6 +893,14 @@ MUTANTS = {
                                   "container, after the grant\n            if take.launched is None:",
                                   "        except Exception:                    # review MINOR 4: refused before any "
                                   "container, after the grant\n            if False:"),), "O9-early"),
+    "grant-refusal-redriven": ((("            raise LaunchNeedsRuling(f\"ownership grant failed, the take is not launched: {e}\") "
+                                 "from e",
+                                 "            raise DriveRefused(f\"ownership grant failed, the take is not launched: {e}\") "
+                                 "from e"),), "R6-ruling"),
+    "baseline-refusal-redriven": ((("            raise LaunchNeedsRuling(f\"the run tree's Claude settings refused before "
+                                    "launch: {e}\") from e",
+                                    "            raise DriveRefused(f\"the run tree's Claude settings refused before "
+                                    "launch: {e}\") from e"),), "R6-ruling"),
     "uid-map-unread": ((("        uid_map = self.uid_map(take) if callable(self.uid_map) else self.uid_map",
                          "        uid_map = self.uid_map"),), "U1-uid-map"),
     "one-turn-reached": ((("        take.driven = True\n",
@@ -943,6 +973,9 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_o9_early(self):
         self.assertEqual(o9_early(tbi.drive), [])
+
+    def test_r6_ruling(self):
+        self.assertEqual(r6_ruling(tbi.drive), [])
 
 
 class TestOwnershipMutants(unittest.TestCase):
@@ -1024,6 +1057,12 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_early_launch_unrestored(self):
         self.kill("early-launch-unrestored")
+
+    def test_grant_refusal_redriven(self):
+        self.kill("grant-refusal-redriven")
+
+    def test_baseline_refusal_redriven(self):
+        self.kill("baseline-refusal-redriven")
 
 
 if __name__ == "__main__":

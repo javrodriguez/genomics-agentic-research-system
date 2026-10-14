@@ -1143,7 +1143,12 @@ class Batch:
         """Drive, remove the container by its recorded id, then annotate and route before the
         commit. Never raises: every failure is this take's terminal state."""
         records, out = None, None
-        if launch_error is not None:                       # nothing ran: re-driven on a restart (W1B3-1)
+        if launch_error is not None and getattr(launch_error, "needs_ruling", False) is True:
+            # Review NOTE 6 (glitch-06): a pre-launch refusal a restart would only meet again (a refused settings
+            # baseline, a failed grant): nothing ran, and it stops for a ruling, never re-driven on its own.
+            out = self._outcome(row, attempt, cid, state=labels4.BLOCKED,
+                                reason=f"failed before launch, a ruling needed: {launch_error}", drive_started=False)
+        elif launch_error is not None:                     # nothing ran: re-driven on a restart (W1B3-1)
             out = self._outcome(row, attempt, cid, state=labels4.FAILED, reason=f"launch failed: {launch_error}",
                                 drive_started=False)
         else:
