@@ -30,6 +30,16 @@
       "path": "tests/test_vendor_provenance.py",
       "status": "new",
       "reason": "Synthetic source-join checks; independently decoded session source mandatory, wrong invocation/hash/pin/identity rejected; no live readiness claim."
+    },
+    {
+      "path": "gemini_session_replay.py",
+      "status": "new",
+      "reason": "Unregistered source-derived Gemini native JSONL replay; preserves upsert order and patches, refuses unsupported operations; no semantic projection or production admission."
+    },
+    {
+      "path": "tests/test_gemini_session_replay.py",
+      "status": "new",
+      "reason": "Synthetic native replay witnesses for replacement, patches, immutable earlier snapshots and fail-closed unsupported or malformed records."
     }
   ]
 }
