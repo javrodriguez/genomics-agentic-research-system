@@ -1,0 +1,17 @@
+control 0 of 18
+RED   5/18 short ids admitted
+RED   1/18 output prefix rule off
+RED   2/18 study record dirs rule off
+RED   1/18 existing output overwritten
+RED   10/18 lock ids not compared
+RED   2/18 record may relabel itself
+RED   2/18 mirror skips proxy-connect
+RED   1/18 mirror compares inspects
+RED   1/18 turn runs at /
+RED   1/18 cap_add from boot names
+RED   1/18 launch never used
+RED   1/18 main writes unlabelled
+RED   1/18 gitleaks pin unchecked
+RED   5/18 refusal after runtime
+RED   5/18 main checks no ids
+ALIVE: none

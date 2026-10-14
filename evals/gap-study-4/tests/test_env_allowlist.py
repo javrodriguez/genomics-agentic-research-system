@@ -591,7 +591,8 @@ class E5Units(Case):
             with mock.patch.object(m, "RUN_TREE_TMPDIR_VARIABLES", ("TMPDIR", "TMP")):
                 self.refuses("E5.tmp", "temporary-folder names", m.take_environment, "codex", "/r/t")
         with mock.patch.object(m, "VENDOR_BILLING_ROUTE_VARIABLES", {m.CODEX: (), m.GEMINI: ()}):
-            self.not_ready("E5.pending", "FALLBACK_ENV is PENDING", m.take_environment, "claude-code", "/r/t")
+            with mock.patch.object(m, "FALLBACK_ENV", m.PENDING):   # FILLED 14 Oct 2026; the clause stays red-tested
+                self.not_ready("E5.pending", "FALLBACK_ENV is PENDING", m.take_environment, "claude-code", "/r/t")
         with mock.patch.object(m, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}):
             for h in ("codex", "gemini"):
                 self.not_ready("E5.pending", f"VENDOR_BILLING_ROUTE_VARIABLES[{h!r}] is PENDING",

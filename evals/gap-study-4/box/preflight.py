@@ -114,11 +114,29 @@ POSTFLIGHT_CHECKS = ("no-credential-file",)
 # `<harness> --version`'s output form, per harness: a regex with one group (the version) once a walk measures it.
 VERSION_COMMANDS = {run_take.CLAUDE_CODE: ("claude", "--version"), run_take.CODEX: ("codex", "--version"),
                     run_take.GEMINI: ("gemini", "--version")}
-VERSION_PATTERNS = {run_take.CLAUDE_CODE: PENDING, run_take.CODEX: PENDING, run_take.GEMINI: PENDING}
+# FILLED 14 Oct 2026 (box lane; stub-take review PASS, rule R-VERSION): the lock's version replaced by one group in the
+# output measured on athena: claude-code through this module's own harness-version probe in a stub take; codex and
+# gemini from a one-shot container of their locked images (confirm at their first preflight; a mismatch fails closed).
+VERSION_PATTERNS = {run_take.CLAUDE_CODE: '([0-9]+(?:\\.[0-9]+){2})\\ \\(Claude\\ Code\\)',
+                    run_take.CODEX: 'codex\\-cli\\ ([0-9]+(?:\\.[0-9]+){2})',
+                    run_take.GEMINI: '([0-9]+(?:\\.[0-9]+){2})'}
 # The pre-registered study folders that must be absent from the run tree (run-tree-relative; CP5's list).
-STUDY_PATHS = PENDING
-# The round's leak words (CP5's list; interface 16). Round 3's are never committed here.
-LEAK_WORDS = PENDING
+# RULED by Javier, "CP5: all as recommended" (08:11 EDT, 14 Oct 2026), on the draft's value 1
+# (plans/gap-study-round-4/cp5-values-draft-2026-10-14.md): round 3's run_location.excluded_from_the_run_tree,
+# verbatim and in order, read from e2979b31:evals/gap-study-3/prereg.json (the round 4 run tree is exported from the
+# same pinned commit, 844a4ce0, where all seven exist). tests/test_preflight.py binds the two.
+STUDY_PATHS = ("evals", "docs/EVALS.md", ".github", "docs/implementation", "docs/reviews", "docs/specs",
+               "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md")
+# The round's leak words for the run tree's PATH only (CP5's list; interface 16; never matched against transcripts).
+# RULED by Javier, "CP5: all as recommended" (08:11 EDT, 14 Oct 2026), the draft's value 2 with items 3 and 4:
+# prereg-draft.json's 25 leak_words (round 3's 23 plus gap-study-4 and round 4), the box users' names from the image
+# locks' users.agent.name and users.watcher.name (dana, eli: bound to the committed locks by tests/test_preflight.py),
+# and gap4. 28 words. Departure from the earlier note "Round 3's are never committed here": the owner's ruling names
+# this literal list, and prereg-draft.json already carries round 3's words.
+LEAK_WORDS = ("evaluation", "eval", "benchmark", "test case", "grading", "graded", "score", "correct answer",
+              "we are testing", "under test", "gap-study", "gap study", "prereg", "pre-registration",
+              "pre-registered", "gap-study-2", "gars-eval-v3", "round 2", "gap-study-3", "gars-eval-v4", "round 3",
+              "allowlist", "allowedTools", "gap-study-4", "round 4", "dana", "eli", "gap4")
 
 # Credential files a harness could leave in its config folder, each with the source that names it. A file whose
 # name merely looks like a credential (CREDENTIAL_LIKE) fails the check too: this lane's stricter reading.

@@ -195,8 +195,18 @@ class TestContents(MutantCase):
         d, rec = written(tc.CLAUDE_CODE, None)
         with open(os.path.join(d, "settings.json")) as fh:
             doc = json.load(fh)
-        if doc != {"skipDangerousModePermissionPrompt": True}:
-            out.append(f"claude settings hold {doc}, not only the bypass acceptance")
+        # The bypass acceptance and, since glitch-06's ruling of 14 Oct 2026, switchModelsOnFlag false; no fallbackModel.
+        if doc != {"skipDangerousModePermissionPrompt": True, "switchModelsOnFlag": False}:
+            out.append(f"claude settings hold {doc}, not the bypass acceptance and switchModelsOnFlag false")
+        if "fallbackModel" in doc:
+            out.append("claude settings configure a fallback model")
+        for fixed in ((("switchModelsOnFlag", True),), (("switchModelsOnFlag", False), ("fallbackModel", "x"))):
+            with filled(), mock.patch.object(tc, "CLAUDE_FIXED_SETTINGS", fixed):
+                try:
+                    tc.files_for(tc.CLAUDE_CODE, model=None)
+                    out.append(f"claude settings {fixed} were rendered")
+                except tc.Refused:
+                    pass
         if rec["files"] != ["settings.json"] or len(rec["sha256"]) != 64:
             out.append("the write record is off")
         return out
@@ -216,6 +226,11 @@ class TestContents(MutantCase):
             ("claude-extra", lambda: mock.patch.dict(tc.WRITERS, {tc.CLAUDE_CODE: lambda m: {
                 "settings.json": b'{"a": 1, "skipDangerousModePermissionPrompt": true}\n'}})),
             ("model-dropped", patched(tc, "GEMINI_MODEL_PATH", "model.alias")),
+            ("switch-models-on-flag-true", patched(tc, "CLAUDE_FIXED_SETTINGS", (("switchModelsOnFlag", True),))),
+            ("switch-guard-dropped", patched(tc, "CLAUDE_FIXED_SETTINGS", ())),
+            ("fallback-model-present", lambda: mock.patch.dict(tc.WRITERS, {tc.CLAUDE_CODE: lambda m: {
+                "settings.json": b'{"fallbackModel": "x", "skipDangerousModePermissionPrompt": true, '
+                                 b'"switchModelsOnFlag": false}\n'}})),
         ])
 
     def test_refusals(self):

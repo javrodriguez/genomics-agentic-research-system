@@ -45,6 +45,16 @@
       "path": "tests/test_new_folder_closed_check.py",
       "status": "new",
       "reason": "Lane live-box (glitch-06's ruling on review r2-3, 14 Oct 2026): the new-folder gap's task-level closed check: over every built task half, each path an access-reading grader consults (scope_read planted, approval-scope link_paths) sits in a folder present before the take, so no registered task outcome rests on the gap; the access readers are pinned by a repository search."
+    },
+    {
+      "path": "box/stub_take.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's stub-take rulings, 14 Oct 2026): CP2's real-box step as a measurement road, one no-model stub take on athena's box through run_take's own step functions, sidecar and egress, preflight's real checks, teardown and the scan; fixed stub scripts through run_take.agent_exec_argv, no harness exec and no login; records labelled stub-take-measurement, never a study record; it writes no production constant."
+    },
+    {
+      "path": "tests/test_stub_take.py",
+      "status": "new",
+      "reason": "Lane live-box: the stub-take road's refusals (full image ids, lock ids, the output rule), that the production driver can never select it, that its records are labelled and refused by the walk and batch readers, and that its launch mirror is run_take.launch's steps argv for argv; fakes only."
     }
   ]
 }

@@ -1,0 +1,51 @@
+test_contents (__main__.TestContents.test_contents) ... FAIL
+test_refusals (__main__.TestContents.test_refusals) ... ok
+test_guard_is_armed (__main__.TestGuard.test_guard_is_armed) ... ok
+test_module_is_this_rounds (__main__.TestGuard.test_module_is_this_rounds) ... ok
+test_the_guard_starts_no_patch_at_import (__main__.TestGuard.test_the_guard_starts_no_patch_at_import)
+Recorded at the very end of this module's import: no guarded name was patched then. Inside a test every ... ok
+test_hash (__main__.TestHashAndNames.test_hash) ... ok
+test_names (__main__.TestHashAndNames.test_names) ... ok
+test_no_parameter_overrides_a_pending_constant (__main__.TestPending.test_no_parameter_overrides_a_pending_constant) ... ok
+test_pending (__main__.TestPending.test_pending) ... ok
+
+======================================================================
+FAIL: test_contents (__main__.TestContents.test_contents)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_take_config.py", line 205, in test_contents
+    self.assert_green_then_red(self.check, [
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+        ("web-search-on", patched(tc, "CODEX_TOP", (("web_search", "live"),) + tc.CODEX_TOP[1:])),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+        ("model-dropped", patched(tc, "GEMINI_MODEL_PATH", "model.alias")),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_take_config.py", line 122, in assert_green_then_red
+    self.assertEqual(problems_of(check), [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["claude settings hold {'skipDangerousMode[82 chars]nce"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"claude settings hold {'skipDangerousModePermissionPrompt': True, 'switchModelsOnFlag': False}, not only the bypass acceptance"
+
++ []
+- ["claude settings hold {'skipDangerousModePermissionPrompt': True, "
+-  "'switchModelsOnFlag': False}, not only the bypass acceptance"] : the guard is red on the real module
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.074s
+
+FAILED (failures=1)
+  mutant digests-only: red - the hash does not see a renamed file
+  mutant names-only: red - the hash does not see the model
+  mutant study-word: red - codex config.toml carries ['sidecar']
+  mutant key-in-file: red - codex config.toml carries a key
+  mutant writer-missing: red - raised Refused: no config writer for 'claude-code'
+  mutant override-parameter: red - write_with(bypass_key)
+  mutant no-ready-gate: red - raised Refused: a measured setting is {'path', 'value'}
+  mutant needs-dropped: red - raised Refused: a measured setting is {'path', 'value'}
+  mutant bypass-filled: red - pending() = ['CODEX_REASONING_EFFORT', 'GEMINI_AUTH_SETTING', 'GEMINI_THINKING']
