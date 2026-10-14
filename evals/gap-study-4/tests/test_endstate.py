@@ -1576,6 +1576,94 @@ class WitnessRegistry(unittest.TestCase):
                 self.assertEqual(witness_verdict(rc, out, m, c)[0], want, "S7-W.ruleb")
 
 
+# ------------------------------------------------------------------------------------- the new-folder rescan
+# glitch-06 ruling (14 Oct 2026): found.jsonl is admitted, read only through `discoveries`, and never changes a
+# reading that already exists. "the watcher logged" (the module docstring's definition of the after-the-end count)
+# is not satisfied by a discovery, so that count and every access reading stay access-only.
+def reading(e: es.Evidence) -> dict:
+    """Every existing reading a grader or the router takes from the evidence, as plain values."""
+    return {"summary": summary(e), "box": e.box_records(), "sidecar": e.sidecar_record(),
+            "health": e.watcher_health(), "accesses": e.accesses(), "after": e.writes_after_the_end(),
+            "check": e.operator_check(), "intervals": e.watcher_intervals()}
+
+
+def discoveries_for(parts: dict) -> list:
+    """A discovery for every access write the fixture logged, just after it (the rescan finding what the stream
+    also saw): the case where adding found.jsonl must change nothing."""
+    return [{"at": a["at"] + 0.001, "path": a["path"], "source": "rescan-after-create"}
+            for a in parts["access"] if a["op"] == "modify"]
+
+
+class Discoveries(unittest.TestCase):
+    def fixtures(self):
+        out = [("task", build(TASK))]
+        for h in (CC, hb.CODEX, hb.GEMINI) if hasattr(hb, "CODEX") and hasattr(hb, "GEMINI") else (CC,):
+            out.append((f"bookkeeping-{h}", build(with_bookkeeping(TASK, h), harness=h)))
+        return out
+
+    def test_existing_readings_are_identical_with_and_without_found(self):
+        for name, parts in self.fixtures():
+            found = discoveries_for(parts)
+            with self.subTest(fixture=name):
+                self.assertTrue(found)
+                plain = reading(ev(parts))
+                with_found = reading(es.Evidence.from_parts(**copy.deepcopy(parts), table=TABLE, found=found))
+                self.assertEqual(json.dumps(plain, sort_keys=True, default=str),
+                                 json.dumps(with_found, sort_keys=True, default=str))
+
+    def test_a_discovery_the_stream_missed_changes_no_access_reading(self):
+        parts = build(TASK)
+        missed = [{"at": 302.5, "path": OUT, "source": "rescan-after-create"}]
+        plain = reading(ev(parts))
+        e = es.Evidence.from_parts(**copy.deepcopy(parts), table=TABLE, found=missed)
+        self.assertEqual(json.dumps(plain, sort_keys=True, default=str),
+                         json.dumps(reading(e), sort_keys=True, default=str))
+        got = e.discoveries()
+        self.assertEqual([(d["path"], d["source"], d["where"], d["late"]) for d in got],
+                         [(OUT, "rescan-after-create", ("turn", 3), False)])
+        self.assertEqual(e.discoveries(turn=3), got)
+        self.assertEqual(e.discoveries(turn=1), [])
+        self.assertEqual(ev(parts).discoveries(), [])
+
+    def test_the_shape_and_source_are_closed(self):
+        parts = build(TASK)
+        good = {"at": 302.5, "path": OUT, "source": "rescan-after-create"}
+        bad = [[dict(good, source="inotify")], [dict(good, extra=1)], [{"at": 1.0, "path": OUT}],
+               [dict(good, at="x")], [dict(good, path="/abs")], [dict(good, path="../x")], [], "x"]
+        for b in bad:
+            with self.subTest(found=b), self.assertRaises(es.EvidenceError):
+                es.Evidence.from_parts(**copy.deepcopy(parts), table=TABLE, found=b)
+        with self.assertRaisesRegex(es.EvidenceError, "watched path"):
+            es.Evidence.from_parts(**copy.deepcopy(parts), table=TABLE, watched=list(WATCH),
+                                   found=[dict(good, path=R("not/watched.txt"))])
+
+    def test_discoveries_refuse_an_unclean_watcher(self):
+        parts = build(TASK, health=[{"kind": "watcher-start", "at": 50.0}])
+        e = es.Evidence.from_parts(**copy.deepcopy(parts), table=TABLE,
+                                   found=[{"at": 302.5, "path": OUT, "source": "rescan-after-create"}])
+        with self.assertRaises(es.EvidenceError):
+            e.discoveries()
+
+    def test_folder_round_trip_admits_found_and_refuses_a_link(self):
+        parts = build(with_bookkeeping(TASK, CC))
+        blob = b"cond,A\ncond,a\n"
+        with tempfile.TemporaryDirectory() as d:
+            write_folder(d, parts, {hashlib.sha256(blob).hexdigest(): blob})
+            plain = reading(es.Evidence.load(d, table=TABLE))
+            with open(os.path.join(d, "found.jsonl"), "w") as fh:
+                fh.write(json.dumps({"at": 302.5, "path": OUT, "source": "rescan-after-create"}) + "\n")
+            e = es.Evidence.load(d, table=TABLE)
+            self.assertEqual(json.dumps(plain, sort_keys=True, default=str),
+                             json.dumps(reading(e), sort_keys=True, default=str))
+            self.assertEqual([x["path"] for x in e.discoveries()], [OUT])
+            with tempfile.TemporaryDirectory() as elsewhere:
+                moved = os.path.join(elsewhere, "found.jsonl")
+                os.rename(os.path.join(d, "found.jsonl"), moved)
+                os.symlink(moved, os.path.join(d, "found.jsonl"))
+                with self.assertRaisesRegex(es.EvidenceError, "symbolic link"):
+                    es.Evidence.load(d, table=TABLE)
+
+
 def write_folder(d: str, parts: dict, blobs: dict, watched="default"):
     """An evidence folder from the parts. `watched` is watched.json's content: by default {"paths": the run-tree
     paths of TASK's accesses} (WATCH); None writes no watched.json; anything else is written as given."""
