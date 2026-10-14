@@ -43,7 +43,9 @@ def tearDownModule():
 
 
 class Journal:
-    """Wraps run_take.run_turn the way the box's run_turn does: the journal written before the exec."""
+    """Around the box's own run_turn, which writes the journal before the exec (0b6f60f9; before the integration
+    merge this fake wrote it, since the harness lane's box had none). After the real turn, `write=False` removes the
+    box's journal (a turn with no journal) and `edit` rewrites the journal's argv (a submission that differs)."""
 
     def __init__(self, edit=None, write=True):
         self.edit, self.write, self.real = edit, write, rt.run_turn
@@ -51,13 +53,18 @@ class Journal:
     def __enter__(self):
         def run_turn(runtime, take_id, inner, *, harness, run_tree, login_file, stream_path, budget_s, clock,
                      caller_env=None):
-            if self.write:
-                argv = list(inner) if self.edit is None else self.edit(list(inner))
-                with open(stream_path + ".launch.json", "w", encoding="utf-8") as fh:
-                    json.dump({"schema": 1, "harness": harness, "container_id": take_id, "argv": argv,
-                               "cwd": run_tree, "stream": stream_path, "started_at": 1.0}, fh)
-            return self.real(runtime, take_id, inner, harness=harness, run_tree=run_tree, login_file=login_file,
-                             stream_path=stream_path, budget_s=budget_s, clock=clock, caller_env=caller_env)
+            got = self.real(runtime, take_id, inner, harness=harness, run_tree=run_tree, login_file=login_file,
+                            stream_path=stream_path, budget_s=budget_s, clock=clock, caller_env=caller_env)
+            path = stream_path + ".launch.json"
+            if not self.write:
+                os.unlink(path)
+            elif self.edit is not None:
+                with open(path, encoding="utf-8") as fh:
+                    launch = json.load(fh)
+                launch["argv"] = self.edit(list(launch["argv"]))
+                with open(path, "w", encoding="utf-8") as fh:
+                    json.dump(launch, fh)
+            return got
         rt.run_turn = run_turn
         return self
 

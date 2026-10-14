@@ -130,8 +130,10 @@ class TheGeminiAdapter(unittest.TestCase):
         a, _ = tga.take(ga, [tga.fixture("turn1-tools.jsonl")])
         t = a.turn("one", first=True, budget_s=60)
         self.assertIsNone(t.init, "Gemini's init carries no mode or version: never fabricated")
-        # No actual-submission journal at this head (the box writes it): the mode is unobserved, never the pin.
-        self.assertEqual(t.identity, ident(mode=None, mode_source="unobserved"))
+        # The box's run_turn writes the actual-submission journal (0b6f60f9, merged with the harness lane in the
+        # integration lane), so the mode is read from the submitted argv, never from the pin. A turn with no journal
+        # stays unobserved: test_identity_mode_evidence.test_no_journal_is_an_unobserved_mode_never_the_pin.
+        self.assertEqual(t.identity, ident())
 
     def test_without_an_init_the_model_comes_from_the_stats_or_stays_unobserved(self):
         a, _ = tga.take(ga, [tga.fixture("no-init.jsonl")])
