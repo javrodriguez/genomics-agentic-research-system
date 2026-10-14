@@ -697,6 +697,23 @@ def _lock_user_names() -> tuple:
     return seen.pop()
 
 
+class TestCodexCreateEnvironment(unittest.TestCase):
+    """glitch-06's ruling 1: preflight refuses a Codex take whose create-time environment carries CODEX_API_KEY or
+    OPENAI_API_KEY at all, naming the variable, never its value."""
+
+    def test_codex_api_key_names_refused_at_create(self):
+        for name in ("CODEX_API_KEY", "OPENAI_API_KEY"):
+            w = World(rt.CODEX)
+            raw = w.raw()
+            edit_json("take-inspect", lambda d, n=name: d[0]["Config"]["Env"].append(
+                f"{n}=FAKEVALUE-0123456789abcdef-PLANTED"))(raw, w)
+            rec = w.evaluate(raw)
+            check = [c for c in rec["checks"] if c["id"] == "no-container-socket"][0]
+            self.assertFalse(check["ok"], name)
+            self.assertIn(name, check["detail"])
+            self.assertNotIn("PLANTED", json.dumps(rec))
+
+
 class TestLeasePostflight(MutantCase):
     """The Codex lease postflight (glitch-06, 14 Oct 2026): the lease home (the per-take config folder, CODEX_HOME)
     admits exactly its one registered credential file, auth.json at its root, mode 600, owned by the host user, one

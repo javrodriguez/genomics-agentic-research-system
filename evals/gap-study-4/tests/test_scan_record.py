@@ -1073,6 +1073,20 @@ class TestLeaseTokens(unittest.TestCase):
         with mock.patch.object(sr.os, "lstat", lambda p, _st=checked: _st):
             self.refused(folder, "cannot be read")
 
+    def test_a_codex_row_has_no_environment_login(self):
+        """glitch-06's ruling 1: run_take.LOGIN_VARIABLE[codex] is NO_LOGIN ("-"); read_login refuses it by name,
+        explicitly, whatever the allowed set holds, and never reads the file."""
+        d = self.folder()
+        p = os.path.join(d, "login")
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, b"-=" + LEASE_ACCESS.encode() + b"\n")
+        os.close(fd)
+        for allowed in (("-",), ("-", "CLAUDE_CODE_OAUTH_TOKEN")):
+            with self.assertRaises(sr.LoginError) as cm:
+                sr.read_login(p, "-", allowed=allowed)
+            self.assertIn("no environment login", str(cm.exception))
+            self.assertNotIn(LEASE_ACCESS, str(cm.exception))
+
     def test_lease_secrets_reads_at_take_start_and_keeps_every_value(self):
         d = self.folder()
         path = lease_auth(d)

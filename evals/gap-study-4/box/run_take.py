@@ -114,14 +114,18 @@ TAKE_ENV = {
                   "CLAUDE_CONFIG_DIR": CONFIG_MOUNT, "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
     CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
             "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
-            "CODEX_HOME": CONFIG_MOUNT, "CODEX_API_KEY": CREDENTIAL},
+            "CODEX_HOME": CONFIG_MOUNT},     # no credential: subscriptions only (glitch-06, 14 Oct; the 13 Oct amendment)
     GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
              "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
              "GEMINI_CLI_HOME": CONFIG_MOUNT, "GEMINI_API_KEY": CREDENTIAL},
 }
 # The base every row carries (bound by the tests); the views below are DERIVED from TAKE_ENV, never declared apart.
 BASE_NAMES = ("PATH", "HOME", "LANG")
-LOGIN_VARIABLE = {h: next(k for k, v in row.items() if v == CREDENTIAL) for h, row in TAKE_ENV.items()}
+# Codex has no environment login (glitch-06's ruling 1, 14 Oct 2026): its login is the lease file in CODEX_HOME
+# (place_lease), and LOGIN_VARIABLE[CODEX] is the launcher's reserved NO_LOGIN, set below where it is defined. Every
+# road that expects an environment login refuses it explicitly (read_login; exec_argv refuses Codex outright).
+LOGIN_VARIABLE = {h: next(k for k, v in row.items() if v == CREDENTIAL) for h, row in TAKE_ENV.items()
+                  if CREDENTIAL in row.values()}
 # Owner amendment, 13 Oct 2026: Codex must use an isolated ChatGPT subscription.
 # The historical API row above is not an admissible route. All execution and
 # builder login entry points refuse until the reviewed subscription lease exists.
@@ -162,6 +166,9 @@ LAUNCHER = ("/usr/bin/python3", "-I", "-S", "-c", LAUNCHER_SOURCE)
 # copies no credential into the agent's environment; launcher_argv admits it only for a Codex row behind the closed
 # lease gate (codex_lease_gate). Every other road still copies its one credential by name.
 NO_LOGIN = "-"
+if CREDENTIAL in TAKE_ENV[CODEX].values():
+    raise RuntimeError("the Codex row carries an environment credential: subscriptions only")
+LOGIN_VARIABLE[CODEX] = NO_LOGIN
 
 # The model each arm's call names, where the harness has short aliases that resolve elsewhere (docs read 13 Oct 2026:
 # Gemini CLI v0.63.0 docs/cli/cli-reference.md, its alias table; `flash-lite` resolves to gemini-2.5-flash-lite).
@@ -249,7 +256,20 @@ CLAUDE_BARE_FLAG = "--bare"
 # Arms O and G's own billing-route variables (a Vertex switch for Gemini CLI, for example): a tuple of names each,
 # named from the harness's documentation at the pinned version. Until then the refused set is the closed list above,
 # and an exec of either harness is refused (NotReady): this lane's stricter reading.
-VENDOR_BILLING_ROUTE_VARIABLES = {CODEX: PENDING, GEMINI: PENDING}
+# CODEX FILLED 14 Oct 2026 (glitch-06's ruling 3), from the pinned Codex binary's own strings only
+# (lane-reports/live-box-evidence-2026-10-13/codex-auth-binary-markers.json, sources[0].matches[N].context; the strings
+# run together, so each name ends at the next CODEX_/OPENAI_ prefix or a lower-case byte). Refused if present, like
+# every other vendor's names. What the evidence cannot settle is listed in the lane report, never guessed.
+VENDOR_BILLING_ROUTE_VARIABLES = {
+    CODEX: ("CODEX_AUTHAPI_BASE_URL",                  # matches[46], [50]: before https://auth.openai.com/api/accounts
+            "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL",   # matches[68]
+            "CODEX_AGENT_IDENTITY_JWKS_BASE_URL",      # matches[46], [68]
+            "CODEX_REVOKE_TOKEN_URL_OVERRIDE",         # matches[65]: before https://auth.openai.com/oauth/revoke
+            "CODEX_CONNECTORS_TOKEN",                  # matches[33]
+            "OPENAI_ORGANIZATION",                     # matches[40]: beside the OpenAI-Organization header
+            "OPENAI_FEDERATION_RULE_ID",               # matches[31]
+            "OPENAI_IDENTITY_TOKEN_FILE"),             # matches[31]
+    GEMINI: PENDING}
 
 # What the runtime client itself needs from the caller's environment, and nothing else.
 RUNTIME_ENV_NAMES = ("PATH", "HOME", "DOCKER_HOST", "XDG_RUNTIME_DIR")
@@ -862,6 +882,8 @@ def check_login_place(path: str, run_tree: str) -> None:
 def read_login(path: str, name: str) -> str:
     """The one value of a login file: exactly `name=<20+ chars, no whitespace, no double quote>\\n`, mode 600, owned by
     the reading uid, outside every repository. Every refusal names the file and the rule, never the value."""
+    if name == NO_LOGIN:
+        raise LoginRefused("a Codex row has no environment login: its login is the lease (place_lease)")
     if not isinstance(name, str) or name not in LOGIN_VARIABLE.values():
         raise LoginRefused(f"the login variable must be one of {sorted(LOGIN_VARIABLE.values())}")
     if not isinstance(path, str) or not os.path.isabs(path):

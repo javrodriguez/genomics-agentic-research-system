@@ -197,6 +197,8 @@ def read_login(path: str, name: str, *, allowed) -> str:
     """The value of a login file `NAME=<value>`, read at run time and never written down. Refused (LoginError, whose
     message names the rule broken and never the content) unless the file keeps the rule. `allowed` is the caller's
     closed set of login names (binding 5: run_take.LOGIN_VARIABLE's values)."""
+    if name == "-":            # run_take.NO_LOGIN (this module never imports run_take): glitch-06's ruling 1
+        raise LoginError("a Codex row has no environment login: its login is the lease (read_lease_tokens)")
     if not isinstance(name, str) or not _NAME.fullmatch(name):
         raise LoginError("the variable name is upper-case letters, digits and underscores")
     if not _name_allowed(name, allowed):

@@ -1,0 +1,13 @@
+== test_run_take.py -k TestCodexRow against 41428177's box modules
+FAIL: test_codex_row (test_run_take.TestCodexRow.test_codex_row)
+AssertionError: Lists differ: ['the Codex row still carries an environme[2098 chars]Y']"] != []
+Ran 1 test in 0.010s
+FAILED (failures=1)
+== test_scan_record.py -k test_a_codex_row_has_no_environment_login against 41428177's box modules
+FAIL: test_a_codex_row_has_no_environment_login (test_scan_record.TestLeaseTokens.test_a_codex_row_has_no_environment_login)
+AssertionError: 'no environment login' not found in 'the variable name is upper-case letters, digits and underscores'
+Ran 1 test in 0.003s
+FAILED (failures=1)
+== test_preflight.py -k TestCodexCreateEnvironment against 41428177's box modules
+Ran 1 test in 0.018s
+OK
