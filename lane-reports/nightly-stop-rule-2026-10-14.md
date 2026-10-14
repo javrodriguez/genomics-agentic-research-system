@@ -55,3 +55,31 @@ Before this slice the rule had no code at all, which the 3b reviewer confirmed i
 - `test_box_integration.py`, `test_drive_loop.py`, `test_walk_runner.py`, `test_pipeline.py` and the full battery: these go to the merged-head athena suite.
 - A committed ruling record for the nightly stop (D-4-2).
 - Independent review.
+
+## Addendum, 14 Oct 2026 00:54 EDT: review CHANGES (MAJOR) and the fix; D-4-2 superseded
+
+The independent review of `eacd901f` (`/Users/javrodher/aegis-builds/gap4-review-harness-step2-20261014/review-harness-step4.md`) found a crash bypass. The text above stays as written, and this addendum corrects it.
+
+What was wrong, and the fix:
+- **Wrong above:** "a stop is pending when the last committed outcome carries the stop". The take that reaches 3 commits first, and the stop text rode only on the block's last outcome, which commits later.
+  - A crash in between, or a failed commit of that outcome (which rewrote `stop` to "commit failed"), left three harness-errors and no carrier.
+  - The restart then ran on with no ruling. The reviewer's `witness_step4.py` showed this.
+- **Now:** on replay a stop is pending whenever the harness-errors committed since the last committed night ruling are already at 3. The stop text is a marker for a reader, never what the replay trusts. A restart with a pending stop always refuses (`BatchConfigError`).
+- **Commit failures:** a failed commit of the carrier keeps the nightly text, as `nightly stop rule: …; commit failed: …`.
+- **D-4-2 is superseded and retired.** The `nightly_stop_ruled_by` restart argument is gone. A stop is resolved only by a committed, closed run-level record, `{"kind": "nightly-stop-ruling", "slot", "attempt", "by"}`:
+  - It must name the harness-error that brought the window to 3, and it must come while the count stands there.
+  - Its `by` is checked exactly as batch's existing take rulings check theirs (a non-empty string). Note that those rulings have no closed principal set either, so I did not invent one.
+  - The record closes the window, and the next one starts at 0.
+  - The loop reads it and never writes one.
+- **D-4-1 sentence, corrected:** I wrote that harness-errors committed in the same block after the reaching take "are counted toward the next window". Wrong: in-process the loop stops after the block, and on replay those harness-errors fall in the stopped window, which only a night ruling closes.
+
+Verification, each run behind a fresh light gate:
+- **Red:** the new `test_nightly_stop.py` run against `03a4f489`'s module gave 2 assertion failures (crash bypass, lost stop text) and 3 errors (no night ruling API).
+- **Green:**
+  - `test_nightly_stop.py` 13/13.
+  - `test_batch.py` 118/118. The cap test now also restarts after a committed night ruling and drives exactly the granted re-runs (1,2) and (2,2), with `history_problems` clean (nit 4).
+  - `test_spend_wiring` 25, `test_cp6_wiring` 5, `test_drive_commit` 31.
+- **The reviewer's `witness_step4.py`:** the crash witness now errors with `BatchConfigError` (the finding is gone). Its mutant witnesses still kill.
+- **Ten in-memory mutants**, tests passing `batch.Batch` at call time. Nine are killed by assertion; "count of four" fails 4 tests and also raises errors in others.
+  - The killed mutants: pending only with a committed carrier, a ruling for any take, a ruling by anyone, a ruling that keeps the count, a failed commit that drops the stop, pauses counted, failed takes consumed, the stop on the reaching take, and count of four.
+  - One survives as equivalent: "a ruling with no stop pending". The reaching take is set only when the count reaches 3 and is cleared with it, so the name check already refuses. The guard stays for its clearer message.

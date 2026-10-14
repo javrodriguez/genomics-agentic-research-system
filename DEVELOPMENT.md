@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Nightly stop fold, 2026-10-14:** the step-4 review found a crash could bypass the stop. A restart now refuses whenever three harness-errors are committed since the last committed night ruling, whatever stop text was committed; a failed commit keeps the stop text; a closed, committed night ruling naming the reaching harness-error replaces the restart argument (D-4-2 retired). See the addendum in [the step-4 report](lane-reports/nightly-stop-rule-2026-10-14.md).
+
 **Codex executed refusals, 2026-10-14:** the Codex adapter keeps each exec before reading its stream, thread or rollout, and a refusal after the exec is the typed `ExecutedTurnRefused`, so the driver's 3a road applies to Codex too. No Codex identity table yet (rollout source audit pending). 4/4 tests red first; four mutants killed. See [the slice report](lane-reports/codex-executed-refusal-2026-10-14.md).
 
 **Gemini stream join, 2026-10-14:** an unregistered join of one Gemini stream-json call to its native interaction: per-response recorder normalization against recorded-text segments, tool facts by id, name, order and status, completeness only from the stream's terminal result, errors kept, every disagreement refused. 8/8 tests red first; eleven mutants. See [the slice report](lane-reports/gemini-stream-join-2026-10-14.md).
