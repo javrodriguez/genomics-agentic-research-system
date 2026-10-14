@@ -131,16 +131,17 @@ class Road:
     """One scratch study (the reader's sources, the draft and tasks, an empty register) and one Gemini walk through
     the real road: WalkDriver(records="walks") with harness_adapter_for, walk_runner.run_walks, WalkRepo."""
 
-    def __init__(self, test, *, summary=UNMARKED, reason=UNMARKED, turns=2, fail_rm=()):
+    def __init__(self, test, *, summary=UNMARKED, reason=UNMARKED, turns=2, fail_rm=(), harness="gemini", box=None,
+                 run_turn=None, row=None):
         import drive
         import native_reader_registration as nrr
         import walk_register
-        self.test, self.drive, self.nrr, self.reason = test, drive, nrr, reason
+        self.test, self.drive, self.nrr, self.reason, self.harness = test, drive, nrr, reason, harness
         cm = tbi.scratch_repo()
         self.root = cm.__enter__()
         test.addCleanup(cm.__exit__, None, None, None)
         for name, value in (("VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: ()}),
-                            ("run_turn", journaling(rt.run_turn))):
+                            ("run_turn", journaling(run_turn or rt.run_turn))):
             patch = mock.patch.object(rt, name, value)
             patch.start()
             test.addCleanup(patch.stop)
@@ -151,7 +152,7 @@ class Road:
         test.addCleanup(patch.stop)
         self.study = self.root / "study"
         (self.study / "rehearsals").mkdir(parents=True)
-        for name in nrr.READER_SOURCES:
+        for name in sorted(set(nrr.READER_SOURCES) | set(nrr.CODEX_SOURCES)):     # every profile's sources
             shutil.copyfile(HERE / name, self.study / name)
         shutil.copyfile(HERE / "prereg-draft.json", self.study / "prereg-draft.json")
         shutil.copytree(HERE / "tasks", self.study / "tasks")
@@ -165,7 +166,8 @@ class Road:
                     "wording": design["tasks"][task]["wordings"][0], "arm": "G", "model": MODEL,
                     "agent": {"harness": "gemini", "version": VERSION}, "pressure": None, "repeat": 1,
                     "half_cell": "c1"}
-        self.rig = tbi.Rig(drive, self.root, box=GeminiBox(summary=summary, fail_rm=fail_rm))
+        self.row.update(row or {})
+        self.rig = tbi.Rig(drive, self.root, box=box or GeminiBox(summary=summary, fail_rm=fail_rm))
         login = tbi.SCRATCH / f"login-{self.root.name}"
         login.write_text(f"{LOGIN}={LOGIN_VALUE}\n")
         os.chmod(login, 0o600)
@@ -190,6 +192,9 @@ class Road:
 
     @staticmethod
     def pin_for(row):
+        if row["agent"]["harness"] == "codex":
+            return {"permission_mode": "bypass", "version": row["agent"]["version"], "model": row["model"],
+                    "harness": "codex"}
         return {"permission_mode": "yolo", "version": VERSION, "model": row["model"], "harness": "gemini"}
 
     def never_checked(self, row, take, turns):
@@ -212,21 +217,22 @@ class Road:
 
     def accept(self, *, reviewer="a-fresh-reviewer", accepted_by="javier", review=UNMARKED, edit=None):
         """The review and Javier's acceptance record, each committed (the record as his own window would)."""
-        nrr = self.nrr
+        nrr, h = self.nrr, self.harness
+        prof = nrr.PROFILES[h]
         (self.study / nrr.READER_DIR).mkdir(exist_ok=True)
-        (self.study / nrr.READER_DIR / "gemini-review.md").write_text(f"# {review}\nVerdict: PASS\n")
+        (self.study / nrr.READER_DIR / f"{h}-review.md").write_text(f"# {review}\nVerdict: PASS\n")
         git(self.root, "add", "-A")
         git(self.root, "commit", "-q", "-m", "an independent review")
         ledger = json.loads((self.folder / "driver-ledger.json").read_text())
         sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()  # noqa: E731
         last = ledger["native_snapshots"][-1]
-        record = {"schema": 1, "harness": "gemini", "cli_version": nrr.PINNED_CLI,
-                  "reader_sources_sha256": nrr.reader_sources_sha256(self.study), "walk": WALK,
+        record = {"schema": 1, "harness": h, "cli_version": prof["cli"],
+                  "reader_sources_sha256": nrr.reader_sources_sha256(self.study, sources=prof["sources"]), "walk": WALK,
                   "native": {"file": "session/" + last["file"], "sha256": last["sha256"]},
                   "streams": [{"file": s, "sha256": sha(self.folder / s)} for s in ledger["streams"]],
                   "join": {"status": "PASS", "interactions": len(ledger["streams"])},
-                  "review": {"verdict": "PASS", "file": "gemini-review.md",
-                             "sha256": sha(self.study / nrr.READER_DIR / "gemini-review.md"), "reviewer": reviewer},
+                  "review": {"verdict": "PASS", "file": f"{h}-review.md",
+                             "sha256": sha(self.study / nrr.READER_DIR / f"{h}-review.md"), "reviewer": reviewer},
                   "accepted_by": accepted_by}
         if edit:
             edit(record)
@@ -234,7 +240,7 @@ class Road:
         return record
 
     def commit_record(self, record, msg="acceptance"):
-        (self.study / self.nrr.ACCEPTANCE_FILE).write_text(json.dumps(record))
+        (self.study / self.nrr.PROFILES[self.harness]["acceptance"]).write_text(json.dumps(record))
         git(self.root, "add", "-A")
         git(self.root, "commit", "-q", "-m", msg)
 

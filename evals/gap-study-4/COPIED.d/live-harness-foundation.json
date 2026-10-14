@@ -9,7 +9,7 @@
     {
       "path": "tests/test_vendor_record_binding.py",
       "status": "new",
-      "reason": "Synthetic foundation checks for all three adapter classes and factory selection, native-stream binding and refusal mutations; no live evidence."
+      "reason": "Synthetic foundation checks for all three adapter classes and factory selection, native-stream binding and refusal mutations; no live evidence. Codex slice 3: without rollout_for, the factory's Codex adapter reads the live rollout in the take's config folder, and refuses when none is there."
     },
     {
       "path": "checks.d/live-harness-foundation.txt",
@@ -69,12 +69,12 @@
     {
       "path": "native_snapshot.py",
       "status": "new",
-      "reason": "Live harness 3c: locates Gemini CLI 0.64.0's native session file by directory names only, where the pinned source writes it, and retains each turn's snapshot under session/ with a {file, sha256} reference, never overwriting or following a link."
+      "reason": "Live harness 3c: locates Gemini CLI 0.64.0's native session file by directory names only, where the pinned source writes it, and retains each turn's snapshot under session/ with a {file, sha256} reference, never overwriting or following a link. Codex slice 3: codex_rollout_file locates <CODEX_HOME>/sessions/<Y>/<MM>/<DD>/rollout-<YYYY-MM-DDTHH-MM-SS>-<thread>.jsonl exactly (audit Addendum B; rollout_file_name.rs blob 61ad43cd), the name dated as its folder, a revert or .jsonl.zst refused; CODEX_HOME is the take's config mount (box run_take TAKE_ENV)."
     },
     {
       "path": "tests/test_native_snapshot.py",
       "status": "new",
-      "reason": "Live harness 3c: the locator's confinement, the copy's reference and no-overwrite, the driver's retention before each next resume and its stop on failure, an unchanged plain adapter, and the join through session_history_facts."
+      "reason": "Live harness 3c: the locator's confinement, the copy's reference and no-overwrite, the driver's retention before each next resume and its stop on failure, an unchanged plain adapter, and the join through session_history_facts. Codex slice 3: CodexRollout (the exact name and eleven refusals, a link refused)."
     },
     {
       "path": "tests/test_identity_mode_evidence.py",
@@ -114,17 +114,17 @@
     {
       "path": "tests/test_vendor_take_records.py",
       "status": "new",
-      "reason": "Live harness integration: vendor takes read their own native evidence (pending, refused), never Claude's session file; Claude takes unchanged. Checker road: a pending take now stops typed."
+      "reason": "Live harness integration: vendor takes read their own native evidence (pending, refused), never Claude's session file; Claude takes unchanged. Checker road: a pending take now stops typed. Codex slice 3: a Codex take retains its rollouts and stays pending until a Codex reader is registered; one that retained none is a disagreement."
     },
     {
       "path": "tests/test_vendor_checker_road.py",
       "status": "new",
-      "reason": "Live harness integration: a pending vendor take stops typed (never graded, never readers-disagree), waits for a ruling through batch, and the checker never reads None as agreement; refused stays readers-disagree. Batch-6 N8: the Gemini through-batch twin."
+      "reason": "Live harness integration: a pending vendor take stops typed (never graded, never readers-disagree), waits for a ruling through batch, and the checker never reads None as agreement; refused stays readers-disagree. Batch-6 N8: the Gemini through-batch twin. Codex slice 3: the Codex takes use the native fake (their rollouts retained)."
     },
     {
       "path": "native_reader_registration.py",
       "status": "new",
-      "reason": "The Gemini native-reader registration road: the reader candidate, the acceptance check tool, and production_readers, empty unless a committed acceptance record re-derives in full (reader sources, pinned CLI, a registered arm-G walk's recorded evidence, the join, an independent review). Registration review fold (finding 1 MAJOR, findings 2 and 3, N9): every bound input read from the committed tree (git show HEAD) and a working-tree difference refuses; the walk passes drive.walk_files on its committed bytes and is exactly one WalkRepo commit; native and stream refs equal the walk's driver-ledger refs; the evidence label derived, never asserted; a synthetic marker in the session metadata, register entry, review or record refuses, last; the acceptor is javier and never the reviewer; join_session is the one join the acceptance check and drive's cross-check share (incomplete refused in both); acceptance needs 2 interactions, 1 tool round trip and the snapshot-history join; drive.py and vendor_provenance.py bound into the source hash; the check tool prints the exercised and unverified shapes and HEAD; local unsigned records, so the final guarantee is procedural. Findings 1 and 2 of fd4177e0's review: the acceptance walk is a pending walk committed by the runner: its WalkRepo commit adds exactly rehearsals/<walk>/** and its register entry (later commits touching the folder only regrade commits of regrade.json); check.json and grade.json are their writers' pending bytes; the driver ledger holds the full take schema of a Gemini walk at the pinned CLI with environment.json re-hashed; each turn's launch journal passes vendor_provenance.launch_facts; verify prints the walk commit's author and committer. glitch-06's manifest ruling: the review's file is exactly gemini-review.md, the one review name copy_manifest claims. Batch-8 review findings 3 and 4: the docstring, the section heading and verify say plainly that the gates are consistency checks over producer-written bytes that cannot tell a consistent fabrication from a real walk, the guarantee being procedural; a regrade.json the walk carries must re-derive through the candidate reader to its bytes."
+      "reason": "The Gemini native-reader registration road: the reader candidate, the acceptance check tool, and production_readers, empty unless a committed acceptance record re-derives in full (reader sources, pinned CLI, a registered arm-G walk's recorded evidence, the join, an independent review). Registration review fold (finding 1 MAJOR, findings 2 and 3, N9): every bound input read from the committed tree (git show HEAD) and a working-tree difference refuses; the walk passes drive.walk_files on its committed bytes and is exactly one WalkRepo commit; native and stream refs equal the walk's driver-ledger refs; the evidence label derived, never asserted; a synthetic marker in the session metadata, register entry, review or record refuses, last; the acceptor is javier and never the reviewer; join_session is the one join the acceptance check and drive's cross-check share (incomplete refused in both); acceptance needs 2 interactions, 1 tool round trip and the snapshot-history join; drive.py and vendor_provenance.py bound into the source hash; the check tool prints the exercised and unverified shapes and HEAD; local unsigned records, so the final guarantee is procedural. Findings 1 and 2 of fd4177e0's review: the acceptance walk is a pending walk committed by the runner: its WalkRepo commit adds exactly rehearsals/<walk>/** and its register entry (later commits touching the folder only regrade commits of regrade.json); check.json and grade.json are their writers' pending bytes; the driver ledger holds the full take schema of a Gemini walk at the pinned CLI with environment.json re-hashed; each turn's launch journal passes vendor_provenance.launch_facts; verify prints the walk commit's author and committer. glitch-06's manifest ruling: the review's file is exactly gemini-review.md, the one review name copy_manifest claims. Batch-8 review findings 3 and 4: the docstring, the section heading and verify say plainly that the gates only check that producer-written bytes agree with one another and cannot tell a coherent fabrication from a real walk, the guarantee being procedural; a regrade.json the walk carries must re-derive through the candidate reader to its bytes. Codex slice 3: one profile per harness (PROFILES); Codex (arm O, 0.162.1, codex-acceptance.json and codex-review.md) with codex_reader and the shared codex_join_session, its own sources, floor (2 interactions, 1 command round trip), ledger keys (with served_model) and session source; every Gemini gate applies unchanged; production_readers returns each harness whose record holds."
     },
     {
       "path": "tests/test_native_reader_registration.py",
@@ -149,12 +149,12 @@
     {
       "path": "walk_regrade.py",
       "status": "new",
-      "reason": "Registration review finding 2: after a reader is registered, re-derive a pending walk's cross-check (the one shared join) and grade from its committed bytes into rehearsals/<walk>/regrade.json, a new superseding record committed alone under its own subject through the commit scan; --check re-derives every committed regrade to its bytes. Batch-8 review finding 4: wired into checks.d (--check); a registration refusal met while reading the readers is a regrade refusal."
+      "reason": "Registration review finding 2: after a reader is registered, re-derive a pending walk's cross-check (the one shared join) and grade from its committed bytes into rehearsals/<walk>/regrade.json, a new superseding record committed alone under its own subject through the commit scan; --check re-derives every committed regrade to its bytes. Batch-8 review finding 4: wired into checks.d (--check); a registration refusal met while reading the readers is a regrade refusal. Codex slice 3: a Codex walk regrades through drive.codex_cross_check."
     },
     {
       "path": "tests/test_pending_walk.py",
       "status": "new",
-      "reason": "Registration review findings 1 and 2: a Gemini walk through the real road (WalkDriver with harness_adapter_for, the production GeminiAdapter on a fake box, walk_runner, WalkRepo) in a scratch repository, committed pending; every registration gate refusing for its own reason on road-made walks; a positive registration and its single mutations; the reviewer's hand-fabricated walks refused; the regrade road. Unmarked fixture on purpose, scratch-only. The review file is gemini-review.md (the manifest ruling). Batch-8 review findings 1 and 4: a hand-made regrade refuses the registration; a verified regrade supersedes the pending grade for coverage and a mismatched one does not. Batch-8 fix: a second, non-acceptance pending walk with a hand-made regrade stays pending, and with an honest refused regrade stays uncounted as regrade refused (the reviewer's two survivors, now killed); fixture_walk.walk_coverage never counts a pending walk, even one holding a transcript."
+      "reason": "Registration review findings 1 and 2: a Gemini walk through the real road (WalkDriver with harness_adapter_for, the production GeminiAdapter on a fake box, walk_runner, WalkRepo) in a scratch repository, committed pending; every registration gate refusing for its own reason on road-made walks; a positive registration and its single mutations; the reviewer's hand-fabricated walks refused; the regrade road. Unmarked fixture on purpose, scratch-only. The review file is gemini-review.md (the manifest ruling). Batch-8 review findings 1 and 4: a hand-made regrade refuses the registration; a verified regrade supersedes the pending grade for coverage and a mismatched one does not. Batch-8 fix: a second, non-acceptance pending walk with a hand-made regrade stays pending, and with an honest refused regrade stays uncounted as regrade refused (the reviewer's two survivors, now killed); fixture_walk.walk_coverage never counts a pending walk, even one holding a transcript. Codex slice 3: the Road takes the harness (box, stub exec, row), copies every profile's sources and accepts through the harness's profile."
     },
     {
       "path": "native-readers/**",
@@ -165,6 +165,11 @@
       "path": "tests/test_codex_identity.py",
       "status": "new",
       "reason": "Codex slice 2: the Codex identity-source table as routing reads it: every field observed by its accepted source and on the pin passes; no reroute (model unobserved), a reroute elsewhere, the requested model as if observed, an unobserved or off-invocation mode and another version are init mismatches; the pin refusal reads only an observed difference. D-INT-2: an unobserved served model accepted for codex only (mode, version and Gemini unchanged), a reroute elsewhere still a mismatch, the limit sentence pinned, and the per-take ledger record; four routing mutants and the ledger-line mutant killed."
+    },
+    {
+      "path": "tests/test_pending_codex_walk.py",
+      "status": "new",
+      "reason": "Codex slice 3: the arm O road in scratch repositories (WalkDriver with harness_adapter_for, the production CodexAdapter on a fake box, the stub exec that reads no login, walk_runner, WalkRepo): a pending Codex walk with its retained rollouts, a positive registration and its single mutations, a marked rollout refused last, the shared join and floor, the driver's cross-check agreeing with a reader registered, and a regrade. Unmarked fixture on purpose, scratch-only."
     }
   ]
 }

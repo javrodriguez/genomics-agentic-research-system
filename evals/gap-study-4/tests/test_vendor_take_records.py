@@ -84,14 +84,18 @@ class VendorRecords(unittest.TestCase):
         self.assertIsNone(ledger["transcript"])
         self.assertIsNone(rig.take().cross_check)
 
-    def test_a_codex_take_stays_pending_until_the_rollout_audit(self):
-        rig, ledger, refused = drive_vendor(self, "codex", native=False)
+    def test_a_codex_take_reads_its_own_rollouts_and_records_pending(self):
+        """Codex slice 3: a Codex take retains its rollout per turn and stays pending until a Codex reader is
+        registered, exactly as a Gemini take does; a Codex adapter that retained none is a real disagreement."""
+        rig, ledger, refused = drive_vendor(self, "codex")
         self.assertIsInstance(refused, tbi.drive.NativeCrossCheckPending)   # the checker road slice: never graded
         self.assertNotIn("no session file", json.dumps(ledger))
         self.assertIsNone(ledger["cross_check"])
         self.assertEqual(ledger["cross_check_status"]["status"], "pending")
-        self.assertIn("rollout", ledger["cross_check_status"]["why"])
-        self.assertNotIn("native_history", ledger)
+        self.assertEqual(ledger["native_history"]["status"], "pending")
+        rig, ledger, refused = drive_vendor(self, "codex", native=False)
+        self.assertEqual(ledger["cross_check_status"]["status"], "refused")
+        self.assertIn("retained no native snapshot record", ledger["cross_check_status"]["why"])
 
     def test_missing_native_evidence_is_a_real_disagreement(self):
         rig, ledger, refused = drive_vendor(self, "gemini", fail_at=1)

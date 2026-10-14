@@ -14,7 +14,8 @@ supersedes its pending grade.json and is committed alone, under its own subject,
 
 regrade_doc(walk) refuses (RegradeRefused) unless the walk is registered, its committed grade.json is the pending
 document, its harness has a regrade road (Gemini; Codex comes with its registration slice) and a reader is
-registered (production_readers, or `readers` in tests). The document:
+registered (production_readers, or `readers` in tests). Codex walks regrade the same way since Codex slice 3, through
+drive.codex_cross_check. The document:
   {"schema": 1, "walk", "walk_commit": the commit that added its driver ledger, "supersedes": "grade.json",
    "cross_check": drive.gemini_cross_check over the committed snapshots and streams, the one shared join,
    "graded", and either "row" and "grade" (run.walk_row and run.grade_walk_folder, or `grade` in tests) when the
@@ -43,7 +44,7 @@ import walk_register  # noqa: E402
 
 REGRADE_FILE = "regrade.json"
 REGRADE_SUBJECT = "Regrade one pending walk; never counted"
-REGRADE_HARNESSES = ("gemini",)
+REGRADE_HARNESSES = ("gemini", "codex")      # Codex since Codex slice 3
 
 
 class RegradeRefused(ValueError):
@@ -106,8 +107,11 @@ def regrade_doc(walk: str, study: Path = HERE, *, readers=None, grade=None) -> d
             readers = nrr.production_readers(study) if readers is None else readers
         except nrr.RegistrationRefused as e:
             raise RegradeRefused(f"the reader registration refuses: {e}") from None
-        cross = drive.gemini_cross_check(base, list(ledger.get("native_snapshots") or []),
-                                         len(ledger.get("streams") or []), readers=readers)
+        refs = list(ledger.get("native_snapshots") or [])
+        cross = (drive.gemini_cross_check(base, refs, len(ledger.get("streams") or []), readers=readers)
+                 if harness == "gemini" else
+                 drive.codex_cross_check(base, refs, [t.get("exit") for t in ledger.get("turns") or []],
+                                         readers=readers))
         if cross["status"] == "pending":
             raise RegradeRefused(f"no registered reader: {cross['why']}")
         doc = {"schema": 1, "walk": walk, "walk_commit": walk_commit(root, walk_rel), "supersedes": drive.WALK_GRADE,

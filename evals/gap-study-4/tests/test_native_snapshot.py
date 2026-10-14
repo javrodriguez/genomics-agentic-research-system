@@ -248,5 +248,63 @@ class GeminiAdapterNamesItsSession(unittest.TestCase):
             self.assertEqual(a.native_session_path(tmp), str(f))
 
 
+class CodexRollout(unittest.TestCase):
+    """Codex slice 3: <home>/sessions/<Y>/<MM>/<DD>/rollout-<YYYY-MM-DDTHH-MM-SS>-<thread>.jsonl, exactly (audit
+    Addendum B); a reverted or compressed rollout, a name dated off its folder, none or two refuse."""
+    TID = "00000000-0000-7000-8000-0000000000c1"
+
+    def home(self, names, folder=("2026", "10", "14")):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        d = Path(tmp.name, "sessions", *folder)
+        d.mkdir(parents=True)
+        for name in names:
+            (d / name).write_text("{}\n")
+        return tmp.name, d
+
+    def test_the_one_rollout(self):
+        home, d = self.home([f"rollout-2026-10-14T05-00-00-{self.TID}.jsonl",
+                             "rollout-2026-10-14T05-00-00-00000000-0000-7000-8000-0000000000c2.jsonl"])
+        self.assertEqual(ns().codex_rollout_file(home, self.TID), str(d / f"rollout-2026-10-14T05-00-00-{self.TID}.jsonl"))
+
+    def test_each_refusal(self):
+        t = self.TID
+        for why, names, folder in (
+                ("none", [], ("2026", "10", "14")),
+                ("two", [f"rollout-2026-10-14T05-00-00-{t}.jsonl", f"rollout-2026-10-14T06-00-00-{t}.jsonl"],
+                 ("2026", "10", "14")),
+                ("reverted", [f"rollout-2026-10-14T05-00-00-{t}_11111111-0000-7000-8000-000000000001.jsonl"],
+                 ("2026", "10", "14")),
+                ("compressed", [f"rollout-2026-10-14T05-00-00-{t}.jsonl.zst"], ("2026", "10", "14")),
+                ("dated off its folder", [f"rollout-2026-10-13T05-00-00-{t}.jsonl"], ("2026", "10", "14")),
+                ("a name with fractional seconds", [f"rollout-2026-10-14T05-00-00.123-{t}.jsonl"], ("2026", "10", "14")),
+                ("a padded year folder", [f"rollout-2026-10-14T05-00-00-{t}.jsonl"], ("02026", "10", "14")),
+                ("a one-digit month folder", [f"rollout-2026-10-14T05-00-00-{t}.jsonl"], ("2026", "1", "14")),
+                ("a zero-padded year folder and name", [f"rollout-02026-10-14T05-00-00-{t}.jsonl"],
+                 ("02026", "10", "14")),
+                ("a revert beside the rollout", [f"rollout-2026-10-14T05-00-00-{t}.jsonl",
+                                                 f"rollout-2026-10-14T05-00-00-{t}_11111111-0000-7000-8000-0000000001.jsonl"],
+                 ("2026", "10", "14")),
+                ("a compressed copy beside the rollout", [f"rollout-2026-10-14T05-00-00-{t}.jsonl",
+                                                          f"rollout-2026-10-13T05-00-00-{t}.jsonl.zst"],
+                 ("2026", "10", "14"))):
+            with self.subTest(why=why):
+                home, _ = self.home(names, folder)
+                with self.assertRaises(ns().SnapshotRefused):
+                    ns().codex_rollout_file(home, t)
+        home, _ = self.home([])
+        for bad in ("", "a/b", "../x", None):
+            with self.subTest(thread=bad), self.assertRaises(ns().SnapshotRefused):
+                ns().codex_rollout_file(home, bad)
+
+    def test_a_linked_rollout_refuses(self):
+        home, d = self.home([])
+        target = d / "elsewhere.json"
+        target.write_text("{}\n")
+        os.symlink(target, d / f"rollout-2026-10-14T05-00-00-{self.TID}.jsonl")
+        with self.assertRaises(ns().SnapshotRefused):
+            ns().codex_rollout_file(home, self.TID)
+
+
 if __name__ == "__main__":
     unittest.main()

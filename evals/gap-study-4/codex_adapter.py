@@ -406,6 +406,13 @@ class CodexAdapter(aa.AgentAdapter):
                                   "sent": line, "vendor_session_id": "first-turn" if first else self.thread_id,
                                   "ordinal": n})))
 
+    def native_session_path(self, home: str) -> str:
+        """Codex slice 3: the rollout this take resumes, under CODEX_HOME `home` (the take's config folder, box
+        run_take TAKE_ENV[CODEX]), located by the thread id turn 1's stream named (native_snapshot.codex_rollout_file;
+        directory names only)."""
+        import native_snapshot
+        return native_snapshot.codex_rollout_file(home, self.thread_id)
+
     def _read_turn(self, got: dict, n: int, first: bool) -> tuple:
         """The turn's stream read, its resumed thread checked and its rollout read; raised from here, a refusal is an
         executed turn's (live harness slice 6: _turn keeps the exec first)."""

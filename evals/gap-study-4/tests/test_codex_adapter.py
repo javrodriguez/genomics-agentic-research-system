@@ -1133,6 +1133,22 @@ def b12_executed(mod, p):
             out.append(f"{p}: the defect is kept as {rec}")
     return out
 
+@guarded("B13-native", CA_API + ("ExecutedStreamRefused",))
+def b13_native(mod, p):
+    """Codex slice 3: the rollout this take resumes is the one under CODEX_HOME named by turn 1's thread id."""
+    out = []
+    a, _ = take_with(mod, [fixture("turn1-tools.jsonl")])
+    a.turn("first line", first=True, budget_s=60)
+    home = Path(tempfile.mkdtemp(dir=SCRATCH))
+    folder = home / "sessions" / "2026" / "10" / "14"
+    folder.mkdir(parents=True)
+    want = folder / f"rollout-2026-10-14T05-00-00-{TID}.jsonl"
+    want.write_text("{}\n")
+    (folder / "rollout-2026-10-14T05-00-00-another-thread.jsonl").write_text("{}\n")
+    if a.native_session_path(str(home)) != str(want):
+        out.append(f"{p}: the rollout located is not {want.name}")
+    return out
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheShapes(unittest.TestCase):
     def test_s1_an_unknown_event_is_refused(self):
@@ -1221,6 +1237,9 @@ class TestTheAdapter(unittest.TestCase):
 
     def test_b12_an_executed_turn_is_kept_before_its_refusal(self):
         self.assertEqual(b12_executed(ca), [])
+
+    def test_b13_the_rollout_is_located_by_turn_ones_thread(self):
+        self.assertEqual(b13_native(ca), [])
 
     def test_b10_a_cut_line_only_last(self):
         self.assertEqual(b10_cut(ca), [])
@@ -1408,7 +1427,7 @@ NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: as
           ast.IsNot: ast.Is, ast.Lt: ast.GtE, ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt}
 TC_CHECKS = (s1_event, s2_item, s3_key, p1_view, b3_required, b8_types)
 CA_CHECKS = (a1_stream, a2_error, a3_usage, a4_argv, a5_model, a8_journal, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
-             b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version, b12_executed)
+             b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version, b12_executed, b13_native)
 
 _PREAMBLE = "the import preamble: this test puts the module folder on sys.path before it imports either module"
 _LABEL = "a what-label passed to _keys or _types, which use it only in their refusal's words"
