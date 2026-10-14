@@ -2,11 +2,15 @@
   "schema": 1,
   "image": "egress",
   "dockerfile": "egress/Dockerfile",
-  "base": "docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+  "base": "PENDING",
   "harness": null,
   "python": null,
-  "squid": "5.7-2+deb12u6",
-  "image_id": "sha256:6af01a7bc74f31a802163ddd1576db590b73fbc2c54149c0c670788c501abcfa",
+  "squid": "PENDING",
+  "image_id": "PENDING",
   "users": null,
-  "pending": {}
+  "pending": {
+    "base": "the egress image's own base digest, read and pinned when CP2 builds on the real box",
+    "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box",
+    "squid": "the squid package version the pinned base's archive offers, read and pinned when CP2 builds the egress image; squid -k parse on that build is a real-box check"
+  }
 }

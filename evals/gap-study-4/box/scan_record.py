@@ -50,8 +50,9 @@ THE WITNESS. scan_with_witness(...) -> (the same result, {path: witness}) throug
 [{"start", "end", "kind", "replacement_id"}]}: absolute byte offsets in the original, end exclusive, nonempty,
 disjoint and increasing; replacement_id fixed per kind by REPLACEMENT_IDS over the pinned MARKERS; derived only from
 the masked entries (an unchanged or refused file carries an empty list); checked to rebuild the masked bytes before
-the file is written. A witness never carries a secret's value or a digest of one. Hashes alone do not prove the
-transformation: a verifier needs the private original bytes.
+the file is written. A witness never carries a secret's value, nor a digest of a value alone (its whole-file
+original_sha256, like files[].sha256_before, can with the spans test a guess at a low-entropy value offline). Hashes
+alone do not prove the transformation: a verifier needs the private original bytes.
 
 No model, no network, stdlib only (plus the round's own scrub.py, for its marker).
 """
@@ -473,7 +474,7 @@ def scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict:
 def scan_with_witness(files, secrets, *, rules_scanner, holdout_matcher=None) -> tuple:
     """scan's result unchanged, plus {path: witness} for every scanned file (unchanged files carry an empty
     replacement list). A witness carries offsets, lengths, kinds, fixed marker ids and whole-file sha256s only: never
-    a secret's value or a digest of one."""
+    a secret's value, nor a digest of a value alone."""
     return _scan_core(files, secrets, rules_scanner, holdout_matcher)
 
 

@@ -366,6 +366,9 @@ BREAKS = {
         ("tree-writable", edit_json("sidecar-inspect", lambda d: d[0]["Mounts"][0].update(RW=True))),
         ("two-caps", edit_json("sidecar-inspect", lambda d: d[0]["HostConfig"].update(CapAdd=CAP_ADD + ["KILL"]))),
         ("expect-pending", edit_world(lambda w: w.sidecar_expect.update(cap_add=pf.PENDING))),
+        # Review B-6 (14 Oct): the inspected command must equal the expected one in order and content.
+        ("inspect-cmd-reordered", edit_json("sidecar-inspect", lambda d: d[0]["Config"].update(
+            Cmd=d[0]["Config"]["Cmd"][:-2] + d[0]["Config"]["Cmd"][-2:][::-1]))),
         ("expect-network", edit_world(lambda w: w.sidecar_expect.update(network_mode="bridge"))),
         ("expect-user", edit_world(lambda w: w.sidecar_expect.update(user="10001:10001"))),
         ("expect-tree-rw", edit_world(lambda w: w.sidecar_expect["mounts"][0].update(rw=True))),

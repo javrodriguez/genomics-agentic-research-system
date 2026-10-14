@@ -2,13 +2,13 @@
   "schema": 1,
   "image": "take-o",
   "dockerfile": "codex/Dockerfile",
-  "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+  "base": "PENDING",
   "harness": {
     "package": "@openai/codex",
-    "version": "0.162.1"
+    "version": "PENDING"
   },
-  "python": "3.11.2",
-  "image_id": "sha256:ac201dbe3b3a7dfa3620f0a842b8f15df7a361fe9086961b9cfed8ae885fa1d1",
+  "python": "PENDING",
+  "image_id": "PENDING",
   "users": {
     "agent": {
       "name": "dana",
@@ -25,5 +25,10 @@
       "gid": 10003
     }
   },
-  "pending": {}
+  "pending": {
+    "base": "the shared base digest is read and pinned when CP2 builds on the real box; that base must also supply node and npm, confirmed at the same pin",
+    "harness.version": "the latest stable on the day CP2 builds the image (D8 B2 item 2), never bumped after the first counted walk; D8's 6 Oct reading is history, never the pin",
+    "python": "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16)",
+    "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box"
+  }
 }

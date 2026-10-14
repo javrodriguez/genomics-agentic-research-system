@@ -222,6 +222,10 @@ class TestBinding3Proxy(Binding):
 
 # ------------------------------------------------------------------------------------------------ binding 4
 class TestBinding4SidecarExpect(Binding):
+    # The registered boot set's inspect spellings (the statically accepted, measured setpriv delta; review
+    # review-box-witness-locks.md B-3, 14 Oct, glitch-06's narrow ownership extension): what fills cap_add in memory.
+    FILL = list(sc.BOOT_INSPECT_CAPABILITIES)
+
     def expect(self):
         return sc.expect_from_argv(sc.create_argv(image=IMAGE, run_tree=RUN_TREE, evidence=EVIDENCE,
                                                   watch=["out/result.txt", "notes.md"]))
@@ -239,8 +243,9 @@ class TestBinding4SidecarExpect(Binding):
                 out.append("a parsed mount carries `type` (W4B2-5)")
             if not set(m) <= set(pf._MOUNT_FIELDS):
                 out.append(f"a parsed mount names {sorted(m)}, outside preflight's mount fields")
-        if exp["cap_add"] != [rt.PENDING]:
-            out.append(f"cap_add is {exp['cap_add']}, not one PENDING (PENDING until the stub take)")
+        if exp["cap_add"] != [rt.PENDING] * len(sc.BOOT_CAPABILITIES):
+            out.append(f"cap_add is {exp['cap_add']}, not one PENDING per boot capability "
+                       f"(PENDING until the stub take)")
         spec = types.SimpleNamespace(run_tree=RUN_TREE)
         # As parsed: preflight's check refuses only on the PENDING cap_add.
         try:
@@ -251,7 +256,7 @@ class TestBinding4SidecarExpect(Binding):
                 out.append(f"as parsed, preflight refuses for another reason: {e}")
         # With cap_add filled in memory, every field rule passes: the check reaches the inspect probe.
         try:
-            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=["DAC_READ_SEARCH"]), EVIDENCE)
+            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=list(self.FILL)), EVIDENCE)
             out.append("preflight passed without the sidecar inspect")
         except pf._Fail as e:
             if str(e) != "probe sidecar-inspect is missing":
@@ -259,7 +264,7 @@ class TestBinding4SidecarExpect(Binding):
         # Lane w6a: the parsed evidence source is the folder preflight judges; any other folder fails before the
         # inspect is read.
         try:
-            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=["DAC_READ_SEARCH"]), "/srv/e/t2")
+            pf._check_sidecar({}, spec, None, None, None, dict(exp, cap_add=list(self.FILL)), "/srv/e/t2")
             out.append("preflight passed a sidecar whose evidence source is not the judged folder")
         except pf._Fail as e:
             if "evidence" not in str(e) or str(e) == "probe sidecar-inspect is missing":
@@ -269,6 +274,12 @@ class TestBinding4SidecarExpect(Binding):
     def test_binding_4(self):
         self.green_then_red("binding 4: sidecar.EVIDENCE_MOUNT moved off preflight's /srv/ev",
                             mock.patch.object(sc, "EVIDENCE_MOUNT", "/srv/ex"))
+
+    def test_binding_4_boot_set(self):
+        self.green_then_red("binding 4: the filled boot set gains a fifth capability",
+                            mock.patch.object(type(self), "FILL", self.FILL + ["CAP_SYS_ADMIN"]))
+        self.green_then_red("binding 4: the filled boot set drops SETPCAP",
+                            mock.patch.object(type(self), "FILL", [c for c in self.FILL if c != "CAP_SETPCAP"]))
 
 
 # ------------------------------------------------------------------------------------------------ binding 5

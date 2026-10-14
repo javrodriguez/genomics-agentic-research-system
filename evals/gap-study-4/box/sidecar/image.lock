@@ -2,10 +2,10 @@
   "schema": 1,
   "image": "sidecar",
   "dockerfile": "sidecar/Dockerfile",
-  "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+  "base": "PENDING",
   "harness": null,
-  "python": "3.11.2",
-  "image_id": "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+  "python": "PENDING",
+  "image_id": "PENDING",
   "users": {
     "agent": {
       "name": "dana",
@@ -22,5 +22,9 @@
       "gid": 10003
     }
   },
-  "pending": {}
+  "pending": {
+    "base": "the shared base digest (the take images' base), read and pinned when CP2 builds on the real box",
+    "python": "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16); the sidecar program's floor is 3.11",
+    "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box"
+  }
 }
