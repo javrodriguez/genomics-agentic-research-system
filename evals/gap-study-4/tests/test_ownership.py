@@ -531,6 +531,19 @@ class OperatorSteps(unittest.TestCase):
                            capture_output=True, text=True, timeout=60)
         self.assertNotEqual(p.returncode, 0)
         self.assertIn("changed during the read", p.stderr)
+        # review-operator-list L-1: the name replaced or removed during the read (the open descriptor alone sees neither)
+        same = (f"open({path!r}+'.new','wb').write(b'z'*200000);m=os.stat({path!r}).st_mtime_ns;"
+                f"os.utime({path!r}+'.new',ns=(m,m));os.replace({path!r}+'.new',{path!r})")
+        for label, act in (("replaced", f"open({path!r}+'.new','wb').write(b'z'*200000);os.replace({path!r}+'.new',{path!r})"),
+                           ("replaced by a twin (same size and mtime, another inode)", same),
+                           ("removed", f"os.unlink({path!r})")):
+            Path(path).write_bytes(b"z" * 200000)
+            swap = prog.replace(hook, hook + f" if c and not data:{act}\n")
+            p = subprocess.run([sys.executable, "-I", "-S", "-c", swap, "s.jsonl", str(10 ** 7)], capture_output=True,
+                               text=True, timeout=60)
+            with self.subTest(label):
+                self.assertNotEqual(p.returncode, 0)
+                self.assertIn("changed during the read", p.stderr)
         Path(path).write_bytes(b"z" * 200000)
         p = subprocess.run([sys.executable, "-I", "-S", "-c", prog, "s.jsonl", str(10 ** 7)], capture_output=True,
                            text=True, timeout=60)
@@ -657,6 +670,22 @@ class OperatorList(unittest.TestCase):
         got = dict(self.via_host("sessions"))
         names = [os.fsencode(n) if k == "other" else n.encode() for n, k in got.items()]
         self.assertIn(raw, names)
+
+    def test_a_non_utf8_name_lists_as_other(self):
+        """Review-operator-list L-2: a name that is not valid UTF-8 comes back byte-exact (surrogateescape) as "other",
+        so the caller never reads it. The host path is tested everywhere; the program path on a file system that keeps
+        such names (APFS refuses them)."""
+        raw = b"session-\xff\xfe.jsonl"
+        got = ow.operator_list(Fake(reply=list_reply([(raw, "file"), (b"ok.jsonl", "file")])), image=IMAGE,
+                               root_kind="config", run_tree=self.tree, config_dir=self.cfg, rel_dir="x")
+        self.assertEqual([(os.fsencode(n) if k == "other" else n.encode(), k) for n, k in got],
+                         [(b"ok.jsonl", "file"), (raw, "other")])
+        try:
+            Path(os.fsdecode(os.path.join(os.fsencode(self.cfg), b"sessions", raw))).write_text("x")
+        except OSError:
+            return                                       # this file system refuses the name (macOS APFS)
+        got = dict((os.fsencode(n), k) for n, k in self.via_host("sessions"))
+        self.assertEqual(got[raw], "other")
 
     def test_the_entry_cap_refuses(self):
         for i in range(3):

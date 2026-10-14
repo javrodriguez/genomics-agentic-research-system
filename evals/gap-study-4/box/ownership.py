@@ -269,9 +269,16 @@ print(json.dumps({"sha256":hashlib.sha256(data).hexdigest(),"bytes":len(data)}))
 '''
 # The read's one size check counts the bytes actually read, not fstat's size, so a session file the still-running agent
 # grows during the read cannot pass the cap. A file with another hard link refuses, as for a write. A TORN read refuses
-# (review-operator-read O-1): the file's size, mtime_ns, inode and device before and after the read must match each
-# other and the bytes read, else the read refuses, never retried silently; the contract reads the config folder only
-# after the turn's quiescence, so a change means a writer the drive did not expect.
+# (review-operator-read O-1, corrected by L-1): after the read, the NAME is stat'ed through its folder's descriptor
+# (never followed) and must still be the inode the descriptor opened, on the same device, with the size and mtime_ns
+# fstat gave at the open. One comparison covers an append, a truncation or a
+# rewrite of the open file (same inode, so its size or mtime moved) and a rename, replacement or removal of the name
+# (another inode, or none): the descriptor alone cannot see the last three. The read is refused,
+# never retried silently; the contract reads the config folder only after the turn's quiescence, so a change means a
+# writer the drive did not expect. A PAIR, named: for a final link, O_NOFOLLOW refuses the open, and the name's lstat
+# (a link's own inode) would also differ from a followed target's; each guards the other (mutants/ownership_mutants.py
+# kills them together). NAMED RESIDUAL (N-2): an in-place rewrite of the same size within one mtime
+# timestamp tick is not seen; quiescence before the read is the control for it.
 READ_PROGRAM = '''import base64,hashlib,json,os,stat,sys
 parts=sys.argv[1].split("/"); limit=int(sys.argv[2])
 fd=os.open("/scratch",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
@@ -290,8 +297,9 @@ while True:
  if not c:break
  data+=c
  if len(data)>limit:raise SystemExit("refused: larger than the limit")
-after=os.fstat(f)
-if (after.st_size,after.st_mtime_ns,after.st_ino,after.st_dev)!=(st.st_size,st.st_mtime_ns,st.st_ino,st.st_dev) or len(data)!=st.st_size:raise SystemExit("refused: the file changed during the read")
+try:post=os.stat(parts[-1],dir_fd=fd,follow_symlinks=False)
+except FileNotFoundError:raise SystemExit("refused: the file changed during the read")
+if (post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns):raise SystemExit("refused: the file changed during the read")
 data=bytes(data)
 print(json.dumps({"exists":True,"b64":base64.b64encode(data).decode("ascii"),"sha256":hashlib.sha256(data).hexdigest(),"bytes":len(data)}))
 '''

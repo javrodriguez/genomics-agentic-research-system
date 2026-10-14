@@ -49,7 +49,7 @@ MUTANTS = [
  ("restore widens to group and other", '|(0o700 if stat.S_ISDIR(st.st_mode) else 0o600))', '|(0o777 if stat.S_ISDIR(st.st_mode) else 0o666))'),
  ("restore runs as grant mode", '"strict" if strict is True else "restore"]', '"strict" if strict is True else "loose"]'),
  # glitch-06, 14 Oct 2026: the config-folder read (native sessions mid-take)
- ("read: a final link followed", 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)', 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NONBLOCK,dir_fd=fd)'),
+
  ("read: a folder link followed", ' try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)\n except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)\n os.close(fd); fd=nfd\ntry:f=', ' try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY,dir_fd=fd)\n except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)\n os.close(fd); fd=nfd\ntry:f='),
  ("read: the wrong root mounted", '    argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=True)', '    argv = operator_argv(image, os.path.dirname(root), READ_PROGRAM, rel, str(limit), readonly=True)'),
  ("read: a write mount", '    argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=True)', '    argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=False)'),
@@ -72,8 +72,12 @@ MUTANTS = [
  ("list: any kind", ' and e[1] in LIST_KINDS)', ')'),
  ("list: duplicates admitted", ' or raw in seen:', ':'),
  # review-operator-read O-1, O-2, O-3 (14 Oct 2026)
- ("O-1: a torn read admitted", 'or len(data)!=st.st_size:raise SystemExit("refused: the file changed during the read")', 'and False:raise SystemExit("refused: the file changed during the read")'),
- ("O-1: only the size compared", '(after.st_size,after.st_mtime_ns,after.st_ino,after.st_dev)!=(st.st_size,st.st_mtime_ns,st.st_ino,st.st_dev)', 'after.st_size!=st.st_size'),
+ ("O-1: a torn read admitted", '(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns):raise SystemExit("refused: the file changed during the read")', '(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns) and False:raise SystemExit("refused: the file changed during the read")'),
+ ("O-1: only the size compared", '(post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns)', 'post.st_size!=st.st_size'),
+ ("O-1: mtime not compared", '(post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns)', '(post.st_ino,post.st_dev,post.st_size)!=(st.st_ino,st.st_dev,st.st_size)'),
+ ("L-1: a removed name admitted", 'except FileNotFoundError:raise SystemExit("refused: the file changed during the read")', 'except FileNotFoundError:post=st'),
+ ("L-1: the name's inode not compared", '(post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns)', '(post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_dev,st.st_size,st.st_mtime_ns)'),
+ ("L-2: a non-UTF-8 name keeps its kind", '            name, kind = raw.decode("utf-8", "surrogateescape"), "other"', '            name, kind = raw.decode("utf-8", "surrogateescape"), e[1]'),
  ("O-2: credential path admitted", '    if root_kind == "config" and rel != "." and any(credential_name(part) for part in rel.split("/")):', '    if False:'),
  ("O-2: only the last part checked", 'any(credential_name(part) for part in rel.split("/"))', 'credential_name(rel.split("/")[-1])'),
  ("O-2: the backstop dropped", '    return name in names or bool(preflight.CREDENTIAL_LIKE.search(name))', '    return name in names'),
@@ -93,7 +97,27 @@ def run(mod):
         tt.ow = ow
 c = run(ow); print("control", len(c.failures) + len(c.errors), "of", c.testsRun)
 alive = []
+PAIRS = [
+ # the named pair (box/ownership.py READ_PROGRAM comment): O_NOFOLLOW on the final open and the name's post-read lstat
+ # each refuse a final link; removing one alone is masked by the other, so they are killed together.
+ ("read: a final link followed (the pair)", (
+  ('try:f=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)', 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NONBLOCK,dir_fd=fd)'),
+  ('try:post=os.stat(parts[-1],dir_fd=fd,follow_symlinks=False)', 'try:post=os.stat(parts[-1],dir_fd=fd,follow_symlinks=True)'))),
+]
+for name, swaps in PAIRS:
+    src = SRC
+    for old, new in swaps:
+        assert src.count(old) == 1, name
+        src = src.replace(old, new)
+    MUTANTS.append((name, SRC, src))
 for name, old, new in MUTANTS:
+    if old is SRC:
+        mod = types.ModuleType(ow.__name__); mod.__file__ = ow.__file__
+        exec(compile(new, ow.__file__, "exec"), mod.__dict__)
+        r = run(mod); bad = len(r.failures) + len(r.errors)
+        print(("RED  " if bad else "ALIVE"), f"{bad}/{r.testsRun}", name)
+        if not bad: alive.append(name)
+        continue
     assert SRC.count(old) == 1, name
     mod = types.ModuleType(ow.__name__); mod.__file__ = ow.__file__
     exec(compile(SRC.replace(old, new), ow.__file__, "exec"), mod.__dict__)
