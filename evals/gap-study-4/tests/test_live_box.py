@@ -411,6 +411,18 @@ class LineFraming(unittest.TestCase):
         self.assertEqual(recs, [[b"1.5", b"/t/a\tb", b"OPEN"]])
 
 
+    def test_a_short_line_is_a_fault_event(self):
+        proc = _Proc(b"/tree/x\n/tree/a|b.txt|CREATE\n", SETUP)
+        self.addCleanup(proc.stdout.close)
+        self.addCleanup(proc.stderr.close)
+        fmt = dict(NUL_FORMAT, separator="|")
+        with mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", fmt), mock.patch.object(sidecar, "INOTIFYWAIT_SUBSECOND", False):
+            w = sidecar._InotifyWatcher(proc, "/tree")
+            self.assertTrue(w.established())
+            evs = w.read_ready()
+        self.assertEqual([(e.path, e.names) for e in evs], [(None, ()), ("a|b.txt", ("CREATE",))])
+
+
 class RescanReach(unittest.TestCase):
     """Review findings 2 and 3: the rescan reports only paths that exist, through folders only, on folder CREATEs."""
 
