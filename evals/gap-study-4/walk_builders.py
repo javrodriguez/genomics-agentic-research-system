@@ -41,7 +41,8 @@ them: a value is either measured and recorded where it lives, or the command lin
 Claude Code and, on the lease road, Codex: a Codex row has no login file (login_name gives run_take.NO_LOGIN); prepare
 refuses it while run_take.CODEX_SUBSCRIPTION_READY is closed or its lease source is missing, and its walk places the
 lease (run_take.place_lease) and reads it (lease_secrets) through CodexLeaseRoad, whose secrets() the walk's driver
-and its WalkRepo both get. A Gemini row is refused before anything is built. No model, no network and no spend here; the walk itself is walk_runner's.
+and its WalkRepo both get. A Gemini row is refused before anything is built. No model, no network and no spend here;
+the walk itself is walk_runner's.
 """
 from __future__ import annotations
 

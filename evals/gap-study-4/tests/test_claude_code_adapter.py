@@ -438,9 +438,59 @@ def a7_served(mod, p):
     # D-INT-2c (glitch-06, 14 Oct 2026, window 2): a side model off SIDE_MODELS stops the take (an executed turn's
     # refusal: the driver's ledger, scan and ruling road) and its refusal reports the model and its tokens; a listed
     # side model does not stop the take, and is recorded in side_calls.
-    def with_side(side, pin=MODEL):
+    def with_side(side, pin=MODEL, tokens=(7, 3)):
         return synthetic_turn(model=pin).replace(json.dumps({pin: {"costUSD": 0.01}})[1:-1], json.dumps(
-            {pin: {"costUSD": 0.01}, side: {"costUSD": 0.01, "inputTokens": 7, "outputTokens": 3}})[1:-1])
+            {pin: {"costUSD": 0.01}, side: {"costUSD": 0.01, "inputTokens": tokens[0],
+                                            "outputTokens": tokens[1]}})[1:-1])
+
+    def stopped_reason(stream):
+        a = adapter(mod, FakeRuntime([stream]))
+        a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+        try:
+            a.turn("one", first=True, budget_s=60)
+        except aa.ExecutedTurnRefused as e:
+            return str(e.executed.get("refused") or "")
+        except Exception as e:  # noqa: BLE001
+            return f"raised {type(e).__name__}"
+        return "not stopped"
+    # Review MINOR 2: the refusal reason is exactly this template; a side key's repr is capped at 120 characters and a
+    # token count that is not an int (never a bool) is None, so no stream text rides the reason.
+    tail = (", not on SIDE_MODELS ['claude-haiku-4-5-20251001']; its tokens {}: the take stops for a ruling "
+            "(glitch-06, 14 Oct 2026)")
+    expect = ("SideModelOffList: turn 1 called side model 'claude-sonnet-5-5'" +
+              tail.format("{'inputTokens': 7, 'outputTokens': 3}"))
+    got = stopped_reason(with_side("claude-sonnet-5-5"))
+    if got != expect:
+        out.append(f"{p}: the side model's refusal is not the template: {got!r}")
+    long_key = "claude-" + "stream text " * 40
+    expect = (f"SideModelOffList: turn 1 called side model {repr(long_key)[:120]}" +
+              tail.format("{'inputTokens': None, 'outputTokens': None}"))
+    got = stopped_reason(with_side(long_key, tokens=("stream text in a count", True)))
+    if got != expect:
+        out.append(f"{p}: a long side key or a non-int count rode the refusal: {got[:300]!r}")
+    r = mod.read_stream(with_side("claude-sonnet-5-5", tokens=(7.5, False)))
+    if mod.side_calls(r, MODEL) != {"claude-sonnet-5-5": {"inputTokens": None, "outputTokens": None}}:
+        out.append(f"{p}: side_calls kept a count that is not an int: {mod.side_calls(r, MODEL)}")
+    # Review MINOR 1: a turn with no assistant records whose modelUsage omits the pin's model is a switch (the
+    # init-mismatch route), never a side call nor a stop, whether the other key is on SIDE_MODELS or not.
+    def no_assistant(usage, pin="claude-sonnet-5"):
+        lines = synthetic_turn(model=pin).splitlines()
+        res = json.loads(lines[2])
+        res["modelUsage"] = usage
+        return lines[0] + "\n" + json.dumps(res) + "\n"
+    for other in ("claude-haiku-4-5-20251001", "claude-sonnet-5-5"):
+        r = mod.read_stream(no_assistant({other: {"costUSD": 0.01}}))
+        if r["served_models"] or mod.served_model_off(r, "claude-sonnet-5") != other:
+            off = mod.served_model_off(r, "claude-sonnet-5")
+            out.append(f"{p}: no assistant records, modelUsage only {other}: off {off!r}")
+        a = adapter(mod, FakeRuntime([no_assistant({other: {"costUSD": 0.01}})]), model="claude-sonnet-5")
+        a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+        try:
+            t = a.turn("one", first=True, budget_s=60)
+            if (t.init or {}).get("model") != other:
+                out.append(f"{p}: no assistant records, modelUsage only {other}: the routed init is {t.init}")
+        except Exception as e:  # noqa: BLE001
+            out.append(f"{p}: no assistant records, modelUsage only {other}: stopped ({type(e).__name__})")
     assert MODEL != "claude-sonnet-5-5"
     a = adapter(mod, FakeRuntime([with_side("claude-sonnet-5-5")]))
     a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
@@ -652,8 +702,8 @@ WITNESSES = {
 WITNESSES.update({
     "served-unread": ((("    for m in read[\"served_models\"]:\n        if m != model:\n            return m\n",
                         "    pass\n"),), a7_served, "A7-served"),
-    "model-usage-unread": ((("    if read[\"model_usage\"] is not None and read[\"served_models\"] and model not in "
-                             "read[\"model_usage\"]:", "    if False:"),), a7_served, "A7-served"),
+    "model-usage-unread": ((("    if usage is not None and ((read[\"served_models\"] and model not in usage) or "
+                             "(usage and model not in usage)):", "    if False:"),), a7_served, "A7-served"),
     "modelless-accepted": ((("            if not isinstance(served, str) or not served:",
                              "            if False:"),), a7_served, "A7-served"),
     "side-list-open": ((("        if k != model and k not in SIDE_MODELS:     # a side key off the closed list is a mismatch",

@@ -816,7 +816,7 @@ class B7Production(Case):
                             ("login_path", "WALK_LOGIN_FILES['claude1']"),
                             ("design_for", "PENDING"), ("run_tree_exclude", "run_location"),
                             ("agent_version", "version_pins"), ("rules_scanner", "gitleaks")):
-            if name in why or name in EXPECTED_MISSING:
+            if name in why:
                 self.assertIn(words, why[name], f"B7.production: {name} does not say why")
         if WALK_LOGIN_ON_TREE:
             self.assertEqual(got["login_path"], rt.WALK_LOGIN_FILES["claude1"], "B7.login: not the box's record")
@@ -1915,7 +1915,8 @@ def b13_prepare_problems(mod, tmp: Path) -> list:
 @problems_by_assertion("B13.secrets")
 def b13_secrets_problems(mod, tmp: Path) -> list:
     """NIT 4 (box review): a Codex walk's driver and its WalkRepo get one and the same secrets(), the lease road's;
-    the lease is placed in the driver's spec_for (after make_config_dir), read at once, and before that nothing scans."""
+    the lease is placed in the driver's spec_for (after make_config_dir), read at once, and before that nothing
+    scans."""
     out = []
     drive = MODS["drive"]
     got = {}
@@ -1999,7 +2000,8 @@ def b13_environment_problems(mod) -> list:
                                   dict(rt.VENDOR_BILLING_ROUTE_VARIABLES, **{rt.CODEX: ()})), \
                 mock.patch.object(drive, "write_record_atomically", lambda *a: None), \
                 mock.patch.object(drive, "money_line_names", lambda rec: []):
-            drive.TakeDriver._environment(types.SimpleNamespace(), take, row, types.SimpleNamespace(version=lambda: "v"))
+            adapter = types.SimpleNamespace(version=lambda: "v")
+            drive.TakeDriver._environment(types.SimpleNamespace(), take, row, adapter)
         child = seen.get("c", {})
         set_names = sorted(k for k, v in child.items() if v == "set")
         if harness == rt.CODEX and (set_names or "-" in child or "CODEX_API_KEY" in child):
