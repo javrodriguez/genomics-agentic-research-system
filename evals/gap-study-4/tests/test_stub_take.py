@@ -43,7 +43,7 @@ ADAPTER_CHECK_SHA256 = "6fb87b70ba09a1c19dce5bdace0ac03a969803a5d4810e95086c19d4
 def _ns(**over):
     d = {"box": BOX, "scratch_parent": "/nonexistent-parent", "output": "/tmp/stub-take-x/stub-take.json",
          "gitleaks": "/nonexistent", "gitleaks_sha256": "0" * 64, "memory_reservation": 1 << 30, "cpus": "1",
-         "pids_limit": 64}
+         "pids_limit": 64, "seed_tree": None}
     d.update({f"{r}_image": LOCK_IDS[r] for r in st.IMAGE_ROLES})
     d.update(over)
     return argparse.Namespace(**d)

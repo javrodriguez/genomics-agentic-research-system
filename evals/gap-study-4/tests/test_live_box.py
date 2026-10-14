@@ -557,5 +557,34 @@ class NewlinePaths(unittest.TestCase):
         self.assertEqual(set(recs[-1]), {"kind", "at", "exit_code", "ignored_newline_paths"})
 
 
+class MemoryCaps(unittest.TestCase):
+    """glitch-06's ruling on P-2 (14 Oct 2026): the sidecar and the egress proxy each run under a 512 MiB memory cap,
+    so the host reserve beside three takes is bounded. The watcher's full-tree measurement ran under 256 MiB
+    (live-box-evidence-2026-10-13/measure-20261014), and the stub takes' peaks are recorded beside the cap."""
+    CAP = 512 * 1024 * 1024
+
+    def test_the_caps(self):
+        self.assertEqual(sidecar.MEMORY_BYTES, self.CAP)
+        self.assertEqual(rt.PROXY_MEMORY_BYTES, self.CAP)
+
+    def test_the_sidecar_is_created_under_its_cap(self):
+        argv = sidecar.create_argv(image="sha256:" + "1" * 64, run_tree="/srv/w/t", evidence="/srv/w/e",
+                                   watch=["plan/approved.json"])
+        i = argv.index("--memory")
+        self.assertEqual(argv[i + 1], str(self.CAP))
+        self.assertEqual(argv.count("--memory"), 1)
+        self.assertLess(i, argv.index("sha256:" + "1" * 64))
+        sidecar.expect_from_argv(argv)          # the closed flag list admits it
+
+    def test_the_proxy_is_created_under_its_cap(self):
+        proxy = rt.ProxyLaunch(image="sha256:" + "5" * 64, conf_source="/srv/p.conf", conf_target="/etc/squid/squid.conf",
+                               command=("squid", "-N"), user="13:13", alias=rt.PROXY_ALIAS)
+        argv = rt.proxy_create_argv("a" * 64, proxy)
+        i = argv.index("--memory")
+        self.assertEqual(argv[i + 1], str(self.CAP))
+        self.assertEqual(argv.count("--memory"), 1)
+        self.assertLess(i, argv.index("sha256:" + "5" * 64))
+
+
 if __name__ == "__main__":
     unittest.main()

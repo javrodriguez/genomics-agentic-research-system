@@ -885,11 +885,19 @@ def _check_sidecar(sidecar: SidecarLaunch) -> None:
         raise Refused("the sidecar's expectation is a dict")
 
 
+# glitch-06's ruling on P-2 (14 Oct 2026): the egress proxy's memory cap (the sidecar's is sidecar.MEMORY_BYTES).
+# Policy beside it (P-1 and P-2, the same ruling): a take's cgroup counters are read every turn and an oom_kill rise is
+# routed by routing.json (row cgroup-kill); the first walk records each turn's memory.peak and pids.peak, and a cap is
+# re-ruled before measured takes if a rehearsal OOMs, never mid-run; no athena_suite or other heavy job runs while any
+# take runs.
+PROXY_MEMORY_BYTES = 512 * 1024 * 1024
+
+
 def proxy_create_argv(network_id: str, proxy: ProxyLaunch) -> list:
     _check_proxy(proxy)
     return [RUNTIME_CLIENT, "create", "--pull=never", "--network", _check_id(network_id, "network id"),
             "--network-alias", PROXY_ALIAS, "--user", proxy.user,
-            "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+            "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--memory", str(PROXY_MEMORY_BYTES),
             "--mount", f"type=bind,source={proxy.conf_source},target={proxy.conf_target},readonly",
             proxy.image, *proxy.command]
 

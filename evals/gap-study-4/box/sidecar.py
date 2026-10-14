@@ -109,6 +109,9 @@ PROGRAM = "/opt/w/sidecar.py"
 INTERPRETER = ("python3", "-I", "-B")
 WATCHER_USER = "10002:10002"
 ADDED_CAPABILITY = "DAC_READ_SEARCH"
+# glitch-06's ruling on P-2 (14 Oct 2026): the sidecar's memory cap, so the host reserve beside three takes is bounded.
+# Host-side create_argv only; the program the image runs is unchanged. tests/test_live_box.py binds it.
+MEMORY_BYTES = 512 * 1024 * 1024
 # Boot-only capabilities: setpriv execs the watcher as PID 1 after discarding every other privilege.
 # Measured on Athena's pinned image; see live-box-evidence-2026-10-13/sidecar-setpriv-probe.json.
 BOOT_USER = "0:0"
@@ -326,7 +329,7 @@ def create_argv(*, image, run_tree, evidence, watch, user=WATCHER_USER) -> list:
             "--cap-drop", "ALL"]
     for cap in BOOT_CAPABILITIES:
         argv += ["--cap-add", cap]
-    argv += ["--security-opt", "no-new-privileges",
+    argv += ["--security-opt", "no-new-privileges", "--memory", str(MEMORY_BYTES),
             "--mount", f"type=bind,source={run_tree},target={run_tree},readonly",
             "--mount", f"type=bind,source={evidence},target={EVIDENCE_MOUNT}",
             image, *WATCHER_LAUNCHER, *INTERPRETER, PROGRAM, "serve", "--run-tree", run_tree, "--evidence", EVIDENCE_MOUNT]
@@ -337,7 +340,7 @@ def create_argv(*, image, run_tree, evidence, watch, user=WATCHER_USER) -> list:
 
 # The flags create_argv may emit, each with whether it takes a value. expect_from_argv refuses any other.
 _CREATE_FLAGS = {"--pull=never": False, "--network": True, "--user": True, "--cap-drop": True, "--cap-add": True,
-                 "--security-opt": True, "--mount": True}
+                 "--security-opt": True, "--memory": True, "--mount": True}
 
 
 def expect_from_argv(argv) -> dict:

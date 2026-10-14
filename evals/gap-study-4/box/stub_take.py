@@ -441,7 +441,14 @@ def run_stub_take(a) -> dict:
 
     base = tempfile.mkdtemp(prefix="st-", dir=parent)
     run_tree, evidence, records = (os.path.join(base, n) for n in ("t", "e", "r"))
-    os.mkdir(run_tree, 0o755)
+    if a.seed_tree:   # an admitted run tree already on the box, copied (links kept as links) to size the snapshots
+        seed = run_take._abs_path(a.seed_tree, "seed_tree")
+        shutil.copytree(seed, run_tree, symlinks=True)
+        os.chmod(run_tree, 0o755)
+        rec["seed_tree"] = {"source": seed, "files": sum(len(f) for _b, _d, f in os.walk(run_tree)),
+                            "folders": sum(len(d) for _b, d, _f in os.walk(run_tree))}
+    else:
+        os.mkdir(run_tree, 0o755)
     os.mkdir(evidence, 0o755)
     os.mkdir(records, 0o755)
     for rel, text in PLANTED.items():
@@ -534,6 +541,14 @@ def run_stub_take(a) -> dict:
             rec["turns"].append({"snapshot": f"post-{k}", **_ctl(runtime, env, launched.sidecar_id, "snapshot",
                                                                  f"post-{k}")})
         rec["cgroup_after"] = _cgroup(pid)
+        # the sidecar's and the proxy's caps and peaks (P-2): their own cgroups, read host-side
+        rec["companions"] = {}
+        for role, cid in (("sidecar", launched.sidecar_id), ("proxy", launched.proxy_id)):
+            obj = json.loads(runtime.run(["docker", "container", "inspect", cid], env=env, timeout=60).stdout)[0]
+            cgc = _cgroup(obj.get("State", {}).get("Pid"))
+            rec["companions"][role] = {"HostConfig.Memory": obj.get("HostConfig", {}).get("Memory"),
+                                       "cgroup": {k: (cgc.get("files") or {}).get(k) for k in
+                                                  ("memory.max", "memory.peak", "memory.current", "memory.events")}}
         after = run_take.counters(cg) if cg else None
         rec["counters"] = {"before": before, "after": after,
                            "delta": run_take.counter_delta(before, after) if before and after else None}
@@ -616,6 +631,7 @@ def main(argv=None) -> int:
     p.add_argument("--memory-reservation", type=int, required=True)
     p.add_argument("--cpus", required=True)
     p.add_argument("--pids-limit", type=int, required=True)
+    p.add_argument("--seed-tree", help="an admitted run tree on the box, copied into the stub's run tree")
     a = p.parse_args(argv)
     check_images({r: getattr(a, f"{r}_image") for r in IMAGE_ROLES})
     output = check_output(a.output)
