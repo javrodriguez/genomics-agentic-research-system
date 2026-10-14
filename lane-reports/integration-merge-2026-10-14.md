@@ -46,7 +46,15 @@ The harness lane's tests had simulated the box's launch journal, because its bra
 
 These edits are in commit `fa98717e`; athena subset `gap4-merge-fa98717-20261014T060727Z` read PASS-SUBSET (2 of 2).
 
-## Not changed, and why
+A third came from the battery on `a1f74059` (`gap4-merge-a1f7405-20261014T065439Z`).
+
+- `tests/test_walk_runner.py` `R3DeadWalk.test_a_ledgerless_walk_with_only_a_launch_journal_is_refused` (harness `97fb09fe`): its control strips every turn sign from a committed walk. It did not strip the `turn-N.jsonl.launch.json` files that the box's `run_turn` now writes (`0b6f60f9`), so the control was refused. The strip now removes them too; the refusal assertion is unchanged.
+
+This edit is in commit `492af633`; athena subset `gap4-merge-492af63-20261014T073256Z` read PASS-SUBSET (1 of 1).
+
+The Codex adapter tests were moved to a login-free stub exec by the harness lane itself (`86ca78e6`, glitch-06's option a). This lane did not edit them.
+
+## Not changed, and why (as of the 01:28 merge; superseded where the lanes since fixed them)
 
 - `tests/test_codex_adapter.py`: every Codex turn check (A4, A5, A6, A7's turn clause, B1, B2, B9 and six witnesses) drives a turn through `run_take.run_turn`, which the transition refuses.
   Moving it to the transition would mean either bypassing the refusal in a fake (re-enabling the API-key route in the test) or retiring checks and witnesses (loosening the instrument).
