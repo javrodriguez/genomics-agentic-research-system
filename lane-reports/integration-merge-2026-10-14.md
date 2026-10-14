@@ -23,6 +23,8 @@ Nothing was pushed.
 | `9a92e4ce` | box head `1bbc2e77` (`e05805c1`, `1bbc2e77`: tests and evidence only) | none |
 | `34c5098f` | box head `6c775f67` (`ba1fcf42` CP5 STUDY_PATHS and LEAK_WORDS; `f5c17498` TOP_FORMAT, INSPECT_STATUS, VERSION_PATTERNS; `6c775f67` FALLBACK_ENV) | none |
 | `47632770` | harness head `3740f8f6` (CP5 arm A pin_profiles and status) | prereg-draft.json: see below |
+| `e3309476` | box head `d65d81b8` (the ownership, settings, caps and scanner set, `6a29d6e2..32246b0c`; the STUDY_RECORD_DIRS fix `20237a3d`) | none |
+| `bfed7c44` | harness head `e3f5010b` (ownership wiring `4c2d805f`, operator-step routing, the three CP5 checks.d lines) | one hunk: see below |
 
 How "no conflict" was checked: `comm -12` of `git diff --name-only a12569a <box head>` and `git diff --name-only a12569a <harness head>` printed no path for the first merge, so no file was changed on both sides.
 For `0d2085ee` and `7b5a9dd4`, `comm -12` of the two heads' changed paths since `fa98717e` (`git diff --name-only HEAD...<head>`) printed no path, so again no file was changed on both sides.
@@ -40,6 +42,14 @@ Each later merge reported "Automatic merge went well" and left no unmerged path 
 - `34c5098f`, `evals/gap-study-4/tests/test_env_allowlist.py`: the box hunks and this lane's `daf4311b` `EXEC_ARMS` hunks merged with no conflict marker; both are kept.
 - `47632770`, `evals/gap-study-4/tests/test_walk_builders.py` and `tests/test_walk_wiring.py`: the harness CP5 hunks (`EXPECTED_MISSING` without `pin_for`, `CP5_PROFILES`) and this lane's sidecar-fake hunks touch separate lines, so there was no conflict marker and both are kept.
 - `47632770`, `evals/gap-study-4/prereg-draft.json`: a real conflict between the two lanes' generated drafts. In the merge commit it is resolved with the harness lane's text as a placeholder only. `d1b018e5` then regenerates it with `build_draft.py`, as glitch-06 ruled.
+- `e3309476`, `evals/gap-study-4/tests/test_stub_take.py`: the box hunks and this lane's `e0a4f957` repin (`ADAPTER_CHECK_SHA256 = 47cdad38…2717`, ruled by glitch-06 and citing `c35fc915`) do not overlap, so there was no conflict marker and the repin is kept.
+- `bfed7c44`, `evals/gap-study-4/tests/test_build_draft.py`, `R6.unpinned` (a conflict): this lane's `32e688ae` form met the harness lane's mirror of the same ruled rule. I took the harness lane's text: it is the owner's, it uses the same rule, and it also binds `version_pins`' `agent_version`.
+  Direct reads of `core_problems` on the merged draft: the clean draft gives `[]`. The `0.0.0-fake` mutant, an O row given a version and an A row set to null each give `['R6.unpinned']`.
+  Correction (the follow-up commit "restore the box hunks"): `bfed7c44` took the harness lane's whole file, not only that hunk, and that dropped the box lane's `NEW_FOLDER_RESIDUAL` lines (`b2a470f8`). The Mac showed `R8.residuals` and `R8.mode-residual` red.
+  The follow-up commit reruns the three-way merge (`git merge-file --diff3`), keeps every non-conflicting hunk from both sides, and takes the harness lane's text only in the `R6.unpinned` hunk. test_build_draft: Ran 47, OK.
+- `bfed7c44`, `prereg-draft.json`, `tests/test_box_integration.py`, `tests/test_walk_builders.py`, `tests/test_walk_wiring.py` and `walk_builders.py`: no conflict marker.
+  `build_draft.py --check` printed ok on `bfed7c44`, so the draft was not regenerated.
+- `claude_code_adapter.py`: glitch-06 expected the box's `--settings` argv edit to meet the harness lane's version. The harness branch did not change this file after the last merge, so the box's argv change came in without a conflict.
 
 There were no conflict hunks in any of the three merges, so there are no resolution lines.
 
