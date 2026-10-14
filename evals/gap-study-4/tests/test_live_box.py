@@ -423,6 +423,20 @@ class LineFraming(unittest.TestCase):
         self.assertEqual([(e.path, e.names) for e in evs], [(None, ()), ("a|b.txt", ("CREATE",))])
 
 
+    def test_any_read_split_gives_the_same_records(self):
+        """Reviewer r2's witness R2 (14 Oct, ported): a partial read at every byte offset yields exactly the records
+        of one whole read, with nothing left over (kills mutant P4)."""
+        rec = lambda path, ev: f"/tree/{path}".encode() + b"\0" + ev.encode() + b"\0"  # noqa: E731
+        stream = rec("a", "CREATE") + rec("x\nq|OPEN", "CREATE") + rec("dir/", "CREATE,ISDIR") + rec("b", "MODIFY")
+        whole, rest = sidecar._split_records(stream, NUL_FORMAT)
+        self.assertEqual(rest, b"")
+        for cut in range(len(stream) + 1):
+            got, buf = sidecar._split_records(stream[:cut], NUL_FORMAT)
+            more, buf = sidecar._split_records(buf + stream[cut:], NUL_FORMAT)
+            self.assertEqual(got + more, whole, cut)
+            self.assertEqual(buf, b"")
+
+
 class RescanReach(unittest.TestCase):
     """Review findings 2 and 3: the rescan reports only paths that exist, through folders only, on folder CREATEs."""
 
