@@ -14,6 +14,8 @@ Nothing was pushed.
 | `01e12172` | box head `c6a6637e` (the box lane's fix of the preflight audit defect, `3a3716a0`, and its sidecar-contract follow-ups) | none |
 | `0d2085ee` | box head `0f7cdbfd` (audit and importlib fixes, the r2 rulings incl. `b2a470f8`'s strict `ignored_newline_paths`) | none |
 | `7b5a9dd4` | harness head `86ca78e6` (the Codex stub exec on glitch-06's option a, and the harness-owned fixes queued after run `gap4-merge-01e1217`) | none |
+| `2189a8e5` | box head `0dbe18ed` (the reviewed lock writer and the build records; the real locks had not landed by 05:03) | none |
+| `71b1cc7f` | harness head `9649aa0a` (batch 8 and the three harness reds of run `gap4-merge-a1f7405`) | none: see the R3DeadWalk line below |
 
 How "no conflict" was checked: `comm -12` of `git diff --name-only a12569a <box head>` and `git diff --name-only a12569a <harness head>` printed no path for the first merge, so no file was changed on both sides.
 For `0d2085ee` and `7b5a9dd4`, `comm -12` of the two heads' changed paths since `fa98717e` (`git diff --name-only HEAD...<head>`) printed no path, so again no file was changed on both sides.
@@ -23,6 +25,8 @@ That record feeds the lenient `drive.sidecar_health`, not endstate, and the box 
 Each later merge reported "Automatic merge went well" and left no unmerged path in `git status`.
 
 ## Conflict resolutions, one line per hunk
+
+- `71b1cc7f`, `evals/gap-study-4/tests/test_walk_runner.py`, `R3DeadWalk.test_a_ledgerless_walk_with_only_a_launch_journal_is_refused` strip loop: the harness lane mirrored `492af633` byte for byte, so git merged it with no conflict marker. `git diff harness/<head> -- tests/test_walk_runner.py` is empty, so the merged file is the harness lane's text, as glitch-06 ruled.
 
 There were no conflict hunks in any of the three merges, so there are no resolution lines.
 
@@ -53,6 +57,13 @@ A third came from the battery on `a1f74059` (`gap4-merge-a1f7405-20261014T065439
 This edit is in commit `492af633`; athena subset `gap4-merge-492af63-20261014T073256Z` read PASS-SUBSET (1 of 1).
 
 The Codex adapter tests were moved to a login-free stub exec by the harness lane itself (`86ca78e6`, glitch-06's option a). This lane did not edit them.
+
+A fourth came on the merged head after `71b1cc7f`.
+
+- `tests/test_gemini_adapter.py` A11 and A14 (harness `eace8897`, `da021cde`): A11 expected an end-to-end turn's mode unobserved, and A14 planted each turn's journal before the turn. The box's `run_turn` now writes the journal and refuses one already there (`0b6f60f9`). A11 now expects the submitted argv's mode, and A14 no longer plants the journal; every mode assertion is unchanged. This is in commit `ce852b01`.
+  Mac: 143 tests OK, 114/114 witnesses red, generated-mutant shards 1-16 each with 0 survivors and 0 stale.
+
+Harness `a36a5743` (newer than `9649aa0a`, not in the harness's green subset) was left for the next re-merge. It touches `tests/test_identity_mode_evidence.py`, which `fa98717e` also changed, so that merge may carry a hunk.
 
 ## Not changed, and why (as of the 01:28 merge; superseded where the lanes since fixed them)
 
