@@ -63,6 +63,7 @@ for p in (HERE, HERE / "tests"):
         sys.path.insert(0, str(p))
 
 from box import run_take as REAL_RT  # noqa: E402
+import claude_code_adapter as CCA  # noqa: E402  (the box's real Claude Code turn builder, C15)
 
 SELECTED = None          # --mutant NAME
 GENERATED = None         # --gen-mutant ID
@@ -74,6 +75,8 @@ ROAD_FUNCTIONS = ("take_environment", "exec_values", "launcher_argv", "check_mod
                   "refuse_env_files")
 
 ID = "d" * 64
+CLAUDE_MODEL = "claude-opus-5-5"
+CLAUDE_SID = "00000000-0000-4000-8000-000000000001"
 FAKE_VALUE = "FAKEVALUE-w12a-0123456789abcdef-PLANTED"
 CANARY = "W12A_CANARY_PARENT_ONLY"
 CANARY_VALUE = "canary-value-w12a"
@@ -328,14 +331,42 @@ class E2Allowlist(Case):
                 self.assertEqual(vals, expected_row(h, "/srv/w/t1/tree"),
                                  f"E2.built: exec_values({h}) is not the row less its credential")
 
+    def inner_for(self, h):
+        """Each arm's harness argv. Claude Code's is the box's real launch form (box lane, 14 Oct 2026: since d3fd5305
+        exec_argv refuses a Claude turn without its --model and the study's inline --settings), built by the real
+        builder, claude_code_adapter.argv, over the module under test (so a witness's run_take builds it too)."""
+        if h == "claude-code":
+            with filled(), mock.patch.object(CCA, "rt", rt()):
+                return CCA.argv("x", model=CLAUDE_MODEL, permission_mode="bypassPermissions", session_id=CLAUDE_SID,
+                                first=True)
+        return {"codex": ["codex", "exec", "--json", "x"],
+                "gemini": ["gemini", "-p", "x", "-m", "gemini-3.5-flash-lite"]}[h]
+
     def turn(self, h, inner=None, caller=None, environ=None):
         m = rt()
-        inner = inner or {"claude-code": ["claude", "-p", "x"], "codex": ["codex", "exec", "--json", "x"],
-                          "gemini": ["gemini", "-p", "x", "-m", "gemini-3.5-flash-lite"]}[h]
+        inner = inner or self.inner_for(h)
         with filled(), mock.patch.dict(os.environ, environ or {}):
             return m.exec_argv(ID, inner, user=m.AGENT_USER, workdir="/srv/w/t1/tree", harness=h,
                                run_tree="/srv/w/t1/tree", login_file=self.login(h),
                                caller_env=dict(CALLER, **(caller or {})))
+
+    def launch_for(self, h):
+        """The launcher argv a turn runs in the container (everything after the container id). Codex's exec is
+        refused until its subscription binding is built (run_take.CODEX_SUBSCRIPTION_NOT_READY, test_codex_turn_*), so
+        its launcher is built by the same launcher_argv over the same exec_values that exec_argv would use."""
+        m = rt()
+        if h == m.CODEX:
+            with filled():
+                return m.launcher_argv(LOGINS[h], m.exec_values(h, "/srv/w/t1/tree"), self.inner_for(h))
+        argv, _ = self.turn(h)
+        return argv[argv.index(ID) + 1:]
+
+    def test_codex_turn_is_refused_until_its_subscription_binding(self):
+        m = rt()
+        with mock.patch.object(m, "read_login", side_effect=AssertionError("E2.codex: the login was read")):
+            with self.assertRaises(m.NotReady, msg="E2.codex: a Codex turn was built") as cm:
+                self.turn(m.CODEX)
+        self.assertIn("subscription", str(cm.exception), "E2.codex: refused for another reason")
 
     def test_the_turn_hands_the_harness_the_row_alone(self):
         m = rt()
@@ -344,6 +375,16 @@ class E2Allowlist(Case):
         passable = {k: v for k, v in PARENT.items() if k not in on_old_list}
         self.assertIn("OPENAI_PROJECT", passable, "E2.turn: the test's own parent set is off")
         for h in ARMS:
+            if h == m.CODEX:
+                # No Codex turn exists until its subscription binding (test_codex_turn_*); its launcher, built from
+                # the same exec_values, is held to (c) below exactly as the other arms' are.
+                launch = self.must("E2.launcher", self.launch_for, h)
+                start = dict(IMAGE_ENV, **PARENT, **{LOGINS[h]: FAKE_VALUE})
+                got = self.must("E2.launcher", run_launcher, launch, start)
+                self.assertEqual(got.get("argv"), self.inner_for(h), f"E2.launcher: {h}: the harness argv is off")
+                self.assertEqual(got.get("env"), dict(expected_row(h, "/srv/w/t1/tree"), **{LOGINS[h]: FAKE_VALUE}),
+                                 f"E2.launcher: {h}: the harness does not start with exactly the row and its credential")
+                continue
             argv, env = self.must("E2.turn", self.turn, h, caller=passable, environ=passable)
             at = argv.index(ID) + 1
             self.assertEqual(tuple(argv[at:at + len(m.LAUNCHER)]), tuple(m.LAUNCHER),
@@ -368,15 +409,21 @@ class E2Allowlist(Case):
                              f"E2.launcher: {h}: the harness does not start with exactly the row and its credential")
 
     def test_an_old_list_name_is_still_refused(self):
+        m = rt()
         for h in ARMS:
             for name in ("AWS_BEARER_TOKEN_BEDROCK", "OPENAI_API_KEY", "ANTHROPIC_BASE_URL"):
-                self.refuses("E2.refused", name, self.turn, h, caller={name: FAKE_VALUE})
+                if h == m.CODEX:
+                    # exec_argv's first environment step for every arm, the refused-name table alone; Codex's exec
+                    # stops earlier, at its subscription refusal (test_codex_turn_*).
+                    self.refuses("E2.refused", name, m.check_environment, h, dict(CALLER, **{name: FAKE_VALUE}),
+                                 set(m.TAKE_ENV[h]))
+                else:
+                    self.refuses("E2.refused", name, self.turn, h, caller={name: FAKE_VALUE})
 
     def test_launcher_refuses_container_ancestors_and_current_home(self):
         # These are virtual names only: no protected path is created or inspected.
         for h in ARMS:
-            argv, _ = self.turn(h)
-            launch = argv[argv.index(ID) + 1:]
+            launch = self.launch_for(h)
             home = rt().CONFIG_MOUNT
             for folder in ("/srv/w/t1/tree", "/srv/w/t1", "/srv/w", "/srv", "/", home):
                 for name in (".env", ".gemini/.env"):
@@ -388,9 +435,9 @@ class E2Allowlist(Case):
 
     def test_the_launcher_needs_the_credential(self):
         m = rt()
-        argv, _ = self.turn("codex")
-        with self.assertRaises(KeyError, msg="E2.launcher: a launcher without its credential ran"):
-            run_launcher(argv[argv.index(ID) + 1:], dict(IMAGE_ENV))
+        for h in ARMS:
+            with self.assertRaises(KeyError, msg=f"E2.launcher: {h}: a launcher without its credential ran"):
+                run_launcher(self.launch_for(h), dict(IMAGE_ENV))
         self.refuses("E2.pairs", "NAME", m.launcher_argv, "CODEX_API_KEY", {"bad name": "x"}, ["codex"])
         self.refuses("E2.pairs", "credential", m.launcher_argv, "CODEX_API_KEY", {"CODEX_API_KEY": "x"}, ["codex"])
         self.refuses("E2.pairs", "NUL", m.launcher_argv, "CODEX_API_KEY", {"A": "x\0y"}, ["codex"])
