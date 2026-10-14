@@ -169,5 +169,101 @@ class OwnProgram(unittest.TestCase):
             self.assertIn("nonregular refused", p.stderr)
 
 
+class OperatorSteps(unittest.TestCase):
+    """Review finding 2: the operator's mid-take reads and writes run in a one-shot container as the agent's uid,
+    through directory descriptors with O_NOFOLLOW."""
+
+    def setUp(self):
+        self.d = tempfile.mkdtemp(prefix="op-")
+        self.root = os.path.join(self.d, "tree")
+        os.makedirs(os.path.join(self.root, "p", "00_data"))
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.d)
+
+    def run_program(self, program, *args):
+        prog = program.replace('"/scratch"', repr(self.root))
+        return subprocess.run([sys.executable, "-I", "-S", "-c", prog, *args], capture_output=True, text=True,
+                              timeout=60)
+
+    def write(self, rel, data=b"sample_id\nS1\n"):
+        import base64
+        return self.run_program(ow.WRITE_PROGRAM, rel, base64.b64encode(data).decode())
+
+    def test_argv_runs_as_the_agent_without_capabilities(self):
+        argv = ow.operator_argv(IMAGE, self.root, ow.WRITE_PROGRAM, "p/x.csv", "eA==")
+        self.assertEqual(argv[:12], ["docker", "run", "--rm", "--pull=never", "--network", "none", "--user",
+                                     rt.AGENT_USER, "--cap-drop", "ALL", "--security-opt", "no-new-privileges"])
+        self.assertNotIn("--cap-add", argv)
+        self.assertEqual(argv[12:14], ["--mount", f"type=bind,source={self.root},target=/scratch"])
+
+    def test_the_write_program(self):
+        p = self.write("p/00_data/samples.csv")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(Path(self.root, "p", "00_data", "samples.csv").read_bytes(), b"sample_id\nS1\n")
+        self.assertEqual(json.loads(p.stdout)["bytes"], 13)
+        self.assertEqual(self.write("p/00_data/samples.csv", b"x").returncode, 0)          # an overwrite
+        self.assertEqual(Path(self.root, "p", "00_data", "samples.csv").read_bytes(), b"x")
+        outside = os.path.join(self.d, "outside.txt")
+        Path(outside).write_text("host")
+        os.symlink(outside, os.path.join(self.root, "p", "00_data", "link.csv"))
+        os.symlink(os.path.join(self.d), os.path.join(self.root, "p", "dirlink"))
+        os.mkfifo(os.path.join(self.root, "p", "fifo.csv"))
+        os.link(os.path.join(self.root, "p", "00_data", "samples.csv"), os.path.join(self.root, "p", "hard.csv"))
+        for rel in ("p/00_data/link.csv", "p/dirlink/outside.txt", "p/fifo.csv", "p/hard.csv", "p/absent/x.csv"):
+            with self.subTest(rel=rel):
+                self.assertNotEqual(self.write(rel).returncode, 0)
+        self.assertEqual(Path(outside).read_text(), "host")
+
+    def test_the_read_program(self):
+        Path(self.root, "p", "00_data", "samples.csv").write_bytes(b"sample_id\n")
+        import base64
+        p = self.run_program(ow.READ_PROGRAM, "p/00_data/samples.csv", "1048576")
+        self.assertEqual(base64.b64decode(json.loads(p.stdout)["b64"]), b"sample_id\n")
+        for rel in ("p/00_data/none.csv", "p/none/x.csv"):
+            self.assertEqual(json.loads(self.run_program(ow.READ_PROGRAM, rel, "10").stdout), {"exists": False})
+        outside = os.path.join(self.d, "secret.txt")
+        Path(outside).write_text("host")
+        os.symlink(outside, os.path.join(self.root, "p", "link.csv"))
+        os.mkfifo(os.path.join(self.root, "p", "fifo.csv"))
+        for rel, limit in (("p/link.csv", "100"), ("p/fifo.csv", "100"), ("p/00_data/samples.csv", "3")):
+            with self.subTest(rel=rel):
+                self.assertNotEqual(self.run_program(ow.READ_PROGRAM, rel, limit).returncode, 0)
+
+    def test_paths_and_sizes_refuse_before_any_call(self):
+        for rel in ("", "/abs", "../x", "p/../x", "p//x", ".", "p/\0x"):
+            f = Fake()
+            with self.subTest(rel=rel), self.assertRaises(rt.Refused):
+                ow.operator_write(f, image=IMAGE, run_tree=self.root, rel_path=rel, data=b"x")
+            self.assertEqual(f.calls, [])
+        with self.assertRaises(rt.Refused):
+            ow.operator_write(Fake(), image=IMAGE, run_tree=self.root, rel_path="p/x", data=b"x" * 65537)
+
+    def test_the_reply_must_be_the_data(self):
+        class Reply(Fake):
+            def __init__(self, out, rc=0):
+                super().__init__()
+                self.out, self.rc = out, rc
+
+            def run(self, argv, *, env=None, timeout=None):
+                self.calls.append(list(argv))
+                return rt.Completed(self.rc, self.out, "refused" if self.rc else "")
+        import hashlib
+        good = json.dumps({"sha256": hashlib.sha256(b"x").hexdigest(), "bytes": 1})
+        self.assertTrue(ow.operator_write(Reply(good), image=IMAGE, run_tree=self.root, rel_path="p/x",
+                                          data=b"x")["ok"])
+        for reply, rc in ((good, 1), ("{}", 0), ("", 0), (json.dumps({"sha256": "0" * 64, "bytes": 1}), 0)):
+            with self.subTest(reply=reply, rc=rc), self.assertRaises(ow.OwnershipError):
+                ow.operator_write(Reply(reply, rc), image=IMAGE, run_tree=self.root, rel_path="p/x", data=b"x")
+        self.assertIsNone(ow.operator_read(Reply('{"exists": false}'), image=IMAGE, run_tree=self.root,
+                                           rel_path="p/x"))
+        self.assertEqual(ow.operator_read(Reply('{"exists": true, "b64": "eA=="}'), image=IMAGE,
+                                          run_tree=self.root, rel_path="p/x"), b"x")
+        for reply in ('{"exists": true}', '{"exists": false, "b64": ""}', "nope"):
+            with self.subTest(reply=reply), self.assertRaises(ow.OwnershipError):
+                ow.operator_read(Reply(reply), image=IMAGE, run_tree=self.root, rel_path="p/x")
+
+
 if __name__ == "__main__":
     unittest.main()

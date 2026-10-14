@@ -20,6 +20,14 @@ MUTANTS = [
  ("cfg repo check off", "    if not run_take.outside_every_repository(out[1][1]):", "    if False:"),
  ("extra capability", 'CAPS = ("CHOWN", "DAC_OVERRIDE")', 'CAPS = ("CHOWN", "DAC_OVERRIDE", "SYS_ADMIN")'),
  ("network on", '"--network", "none", "--user", "0:0"', '"--network", "bridge", "--user", "0:0"'),
+ ("write follows the final link", 'f=os.open(parts[-1],os.O_WRONLY|os.O_CREAT|os.O_NOFOLLOW|os.O_NONBLOCK,0o644,dir_fd=fd)', 'f=os.open(parts[-1],os.O_WRONLY|os.O_CREAT|os.O_NONBLOCK,0o644,dir_fd=fd)'),
+ ("write nlink unchecked", 'if not stat.S_ISREG(st.st_mode) or st.st_nlink!=1:raise SystemExit("refused: not a regular file with one link")', 'if not stat.S_ISREG(st.st_mode):raise SystemExit("refused: not a regular file with one link")'),
+ ("write follows a folder link", ' nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd); os.close(fd); fd=nfd', ' nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY,dir_fd=fd); os.close(fd); fd=nfd'),
+ ("write reply unchecked", "    if got != want:\n", "    if False:\n"),
+ ("read follows a link", 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)', 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NONBLOCK,dir_fd=fd)'),
+ ("read size unchecked", 'if st.st_size>limit:raise SystemExit("refused: larger than the limit")', 'pass'),
+ ("operator runs as root", '"--network", "none", "--user", run_take.AGENT_USER,', '"--network", "none", "--user", "0:0",'),
+ ("operator path escapes", ' or ".." in rel_path.split("/") or rel_path == ".":', ' or rel_path == ".":'),
 ]
 def run(mod):
     tt.ow = mod

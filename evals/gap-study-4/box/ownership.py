@@ -29,6 +29,7 @@ No model, no login, no network. Standard library only (plus run_take's runtime p
 
 from __future__ import annotations
 
+import json
 import os
 import re
 
@@ -116,7 +117,8 @@ def _run(runtime, name: str, argv: list, env: dict) -> dict:
         c = runtime.run(argv, env=env, timeout=STEP_TIMEOUT_S)
     except TimeoutError:
         return {"step": name, "returncode": None, "timed_out": True}
-    return {"step": name, "returncode": c.returncode, "stderr": c.stderr[-500:] if c.returncode else ""}
+    return {"step": name, "returncode": c.returncode, "stderr": c.stderr[-500:] if c.returncode else "",
+            "stdout": c.stdout if name.startswith("operator-") else ""}
 
 
 def grant(runtime, *, image: str, run_tree: str, config_dir: str, evidence_dir: str, caller_env=None) -> dict:
@@ -179,3 +181,107 @@ def restore(runtime, *, image: str, run_tree: str, config_dir: str, evidence_dir
         raise OwnershipError(f"restore failed ({len(problems)} problem(s)): the take's folders are kept for a human",
                              record)
     return record
+
+
+# ------------------------------------------------------------------------------------------- the operator's steps
+# Review finding 2 (glitch-06's ruling, 14 Oct 2026): a mid-take operator step (explain-not-act's save, the
+# confounded design's finalize) reads and writes inside the agent-owned run tree. The host may not: it cannot write an
+# agent-owned file, and a host open follows a link the agent planted. So each read or write is one one-shot container
+# of the take image, running AS THE AGENT'S UID (10001): the file it writes is then owned like every other run-tree
+# file the agent could have made (as round 3's host write was, when host and agent were one user), the agent keeps the
+# same rights over it, and the write needs no capability at all (cap-drop ALL). A dedicated operator uid would leave
+# a file the agent cannot edit, changing the task. Every path step is opened through directory descriptors with
+# O_NOFOLLOW; a link anywhere on the path, a non-folder parent, a final entry that is not a regular file, or a file
+# with another hard link refuses. Data rides base64 in the argv (OPERATOR_MAX_BYTES), the reply on stdout.
+OPERATOR_MAX_BYTES = 64 * 1024
+OPERATOR_READ_MAX_BYTES = 1024 * 1024
+WRITE_PROGRAM = '''import base64,hashlib,json,os,stat,sys
+parts=sys.argv[1].split("/"); data=base64.b64decode(sys.argv[2],validate=True)
+fd=os.open("/scratch",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+for p in parts[:-1]:
+ nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd); os.close(fd); fd=nfd
+f=os.open(parts[-1],os.O_WRONLY|os.O_CREAT|os.O_NOFOLLOW|os.O_NONBLOCK,0o644,dir_fd=fd)
+st=os.fstat(f)
+if not stat.S_ISREG(st.st_mode) or st.st_nlink!=1:raise SystemExit("refused: not a regular file with one link")
+os.ftruncate(f,0); v=memoryview(data)
+while v: v=v[os.write(f,v):]
+os.fsync(f); os.close(f); os.close(fd)
+print(json.dumps({"sha256":hashlib.sha256(data).hexdigest(),"bytes":len(data)}))
+'''
+READ_PROGRAM = '''import base64,json,os,stat,sys
+parts=sys.argv[1].split("/"); limit=int(sys.argv[2])
+fd=os.open("/scratch",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+for p in parts[:-1]:
+ try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)
+ except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)
+ os.close(fd); fd=nfd
+try:f=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)
+except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)
+st=os.fstat(f)
+if not stat.S_ISREG(st.st_mode):raise SystemExit("refused: not a regular file")
+if st.st_size>limit:raise SystemExit("refused: larger than the limit")
+data=b""
+while True:
+ c=os.read(f,65536)
+ if not c:break
+ data+=c
+print(json.dumps({"exists":True,"b64":base64.b64encode(data).decode("ascii")}))
+'''
+
+
+def _rel(rel_path) -> str:
+    if not isinstance(rel_path, str) or not rel_path or rel_path.startswith("/") or "\0" in rel_path \
+            or os.path.normpath(rel_path) != rel_path or ".." in rel_path.split("/") or rel_path == ".":
+        raise run_take.Refused("an operator path is a normalised path relative to the run tree, never leaving it")
+    return rel_path
+
+
+def operator_argv(image: str, run_tree: str, program: str, *args: str) -> list:
+    tree = run_take._abs_path(run_tree, "run_tree")
+    return [run_take.RUNTIME_CLIENT, "run", "--rm", "--pull=never", "--network", "none", "--user", run_take.AGENT_USER,
+            "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
+            "--mount", f"type=bind,source={tree},target={MOUNT}", _image(image),
+            "/usr/bin/python3", "-I", "-S", "-c", program, *args]
+
+
+def operator_write(runtime, *, image: str, run_tree: str, rel_path: str, data: bytes, caller_env=None) -> dict:
+    """Write `data` at `rel_path` in the run tree as the agent's uid; {"path", "sha256", "bytes"} or OwnershipError."""
+    import base64
+    import hashlib
+    rel = _rel(rel_path)
+    if not isinstance(data, bytes) or len(data) > OPERATOR_MAX_BYTES:
+        raise run_take.Refused(f"an operator write is bytes of at most {OPERATOR_MAX_BYTES}")
+    argv = operator_argv(image, run_tree, WRITE_PROGRAM, rel, base64.b64encode(data).decode("ascii"))
+    step = _run(runtime, "operator-write", argv, run_take.runtime_env(caller_env))
+    rec = {"ok": False, "path": rel, "steps": [step]}
+    if step["returncode"] != 0:
+        raise OwnershipError(f"operator write of {rel} refused or failed", rec)
+    reply = step.get("stdout", "")
+    want = {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+    try:
+        got = json.loads(reply)
+    except ValueError:
+        got = None
+    if got != want:
+        raise OwnershipError(f"operator write of {rel}: the container's reply is not the data's hash", rec)
+    return {"ok": True, "path": rel, **want}
+
+
+def operator_read(runtime, *, image: str, run_tree: str, rel_path: str, caller_env=None):
+    """The bytes at `rel_path` in the run tree, read as the agent's uid, or None when it does not exist."""
+    import base64
+    rel = _rel(rel_path)
+    argv = operator_argv(image, run_tree, READ_PROGRAM, rel, str(OPERATOR_READ_MAX_BYTES))
+    step = _run(runtime, "operator-read", argv, run_take.runtime_env(caller_env))
+    if step["returncode"] != 0:
+        raise OwnershipError(f"operator read of {rel} refused or failed", {"ok": False, "steps": [step]})
+    try:
+        got = json.loads(step.get("stdout", ""))
+        if got.get("exists") is False and set(got) == {"exists"}:
+            return None
+        if got.get("exists") is True and set(got) == {"exists", "b64"}:
+            return base64.b64decode(got["b64"], validate=True)
+    except (ValueError, AttributeError, TypeError):
+        pass
+    raise OwnershipError(f"operator read of {rel}: the container's reply is off its shape", {"ok": False,
+                                                                                          "steps": [step]})
