@@ -101,7 +101,8 @@ MODEL = "synthetic-model"
 PROJECT = "run-0000abcd"                                   # S6b: the operator steps' project name (synthetic)
 SESSION_ID = "0000abcd-1b3d-5c7e-9a1f-2b4d6f8a0c11"          # S6c: the take's imposed session id (synthetic)
 PROFILE = {"permission_mode": "bypassPermissions", "version": "0.0.1"}
-TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID"}
+TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
+       "uid_namespace": "host"}
 UID_MAP = [(0, 1000, 1), (1, 100000, 65536)]
 AGENT_HOST_UID = 100000 + 10001 - 1
 CAP_S, POLL_S = 30, 5
@@ -318,7 +319,7 @@ class FakeBox:
         if a[:2] == ["docker", "exec"] and a[2] != "--user" and self.kind(a[2]) == "sidecar":
             return self.ctl(a[2], a[a.index("ctl") + 1], a[a.index("ctl") + 2] if len(a) > a.index("ctl") + 2
                             else None)
-        if a[:4] == ["docker", "exec", "--user", rt.AGENT_USER] and a[5:] == ["kill", "-s", "KILL", "--", "-1"]:
+        if a[:4] == ["docker", "exec", "--user", rt.AGENT_USER] and a[5:] == ["/usr/bin/python3", "-I", "-S", "-c", "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"]:
             self.kills.append((a[4], a[3]))
             if not self.stubborn:
                 self.procs[a[4]] = []
@@ -876,7 +877,7 @@ def b6_quiesce(mod, p):
         if recs["quiescence_kill"] is not True or recs["quiescence_cap_survivors"] != 1:
             out.append(f"{p}: the cap kill is not recorded: kill {recs['quiescence_kill']}, survivors "
                        f"{recs['quiescence_cap_survivors']}")
-        first_kill = next((i for i, a in enumerate(rig.box.calls) if a[-2:] == ["--", "-1"]), None)
+        first_kill = next((i for i, a in enumerate(rig.box.calls) if a[5:] == ["/usr/bin/python3", "-I", "-S", "-c", "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"]), None)
         post = {a[-1]: i for i, a in enumerate(rig.box.calls) if "snapshot" in a}
         if first_kill is None or not (post.get("post-1", 10 ** 9) < first_kill < post.get("post-2", -1)):
             out.append(f"{p}: the cap kill did not come between post-1 and post-2 (turn 2's cap)")

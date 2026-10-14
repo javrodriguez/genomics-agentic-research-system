@@ -111,6 +111,8 @@ def identity_for(prepared: dict):
 # ------------------------------------------------------------------------------------------------ the login file
 def login_name(harness) -> str:
     from box import run_take as rt
+    if harness == rt.CODEX:
+        raise BuilderRefused(rt.CODEX_SUBSCRIPTION_NOT_READY)
     if harness not in rt.LOGIN_VARIABLE:
         raise BuilderRefused(f"harness {harness!r} has no login variable in run_take.LOGIN_VARIABLE")
     return rt.LOGIN_VARIABLE[harness]

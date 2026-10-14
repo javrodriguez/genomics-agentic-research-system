@@ -2,13 +2,13 @@
   "schema": 1,
   "image": "take-g",
   "dockerfile": "gemini/Dockerfile",
-  "base": "PENDING",
+  "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
   "harness": {
     "package": "@google/gemini-cli",
-    "version": "PENDING"
+    "version": "0.64.0"
   },
-  "python": "PENDING",
-  "image_id": "PENDING",
+  "python": "3.11.2",
+  "image_id": "sha256:4294b1ce3fc0f3c0a9ca7b789f73c613c2baa56e4e0381229a8db3301a707216",
   "users": {
     "agent": {
       "name": "dana",
@@ -25,10 +25,5 @@
       "gid": 10003
     }
   },
-  "pending": {
-    "base": "the shared base digest is read and pinned when CP2 builds on the real box; that base must also supply node and npm, confirmed at the same pin",
-    "harness.version": "the latest stable on the day CP2 builds the image (D8 B2 item 2), never bumped after the first counted walk; D8's 6 Oct reading is history, never the pin",
-    "python": "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16)",
-    "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box"
-  }
+  "pending": {}
 }

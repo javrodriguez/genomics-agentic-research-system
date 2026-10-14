@@ -106,6 +106,15 @@ PROGRAM = "/opt/w/sidecar.py"
 INTERPRETER = ("python3", "-I", "-B")
 WATCHER_USER = "10002:10002"
 ADDED_CAPABILITY = "DAC_READ_SEARCH"
+# Boot-only capabilities: setpriv execs the watcher as PID 1 after discarding every other privilege.
+# Measured on Athena's pinned image; see live-box-evidence-2026-10-13/sidecar-setpriv-probe.json.
+BOOT_USER = "0:0"
+BOOT_CAPABILITIES = (ADDED_CAPABILITY, "SETUID", "SETGID", "SETPCAP")
+# Docker 29.8.1 inspect spelling/order, measured in sidecar-launch-inspect.json.
+BOOT_INSPECT_CAPABILITIES = ("CAP_DAC_READ_SEARCH", "CAP_SETGID", "CAP_SETPCAP", "CAP_SETUID")
+WATCHER_LAUNCHER = ("/usr/bin/setpriv", "--reuid=10002", "--regid=10002", "--clear-groups",
+                    "--inh-caps=-all,+dac_read_search", "--ambient-caps=-all,+dac_read_search",
+                    "--bounding-set=-all,+dac_read_search", "--no-new-privs", "--")
 CTL_DIR = "/tmp/w-ctl"         # under the sidecar container's own /tmp: never the evidence folder or a run tree
 CTL_SOCKET = CTL_DIR + "/sock"
 TEMP_PREFIX = ".tmp-"
@@ -292,14 +301,19 @@ def create_argv(*, image, run_tree, evidence, watch, user=WATCHER_USER) -> list:
     m = _USER.fullmatch(user) if isinstance(user, str) else None
     if not m or int(m.group(1)) == 0 or int(m.group(2)) == 0:
         raise ValueError("user is uid:gid, never root")
+    if user != WATCHER_USER:
+        raise ValueError("the fixed privilege-drop launcher requires the registered watcher uid:gid")
     watch = list(watch) if isinstance(watch, (list, tuple)) else None
     if not watch or not all(watch_path_ok(p) for p in watch) or len(set(watch)) != len(watch):
         raise ValueError("watch is a non-empty list of distinct run-tree-relative paths")
-    argv = [DOCKER, "create", "--pull=never", "--network", "none", "--user", user,
-            "--cap-drop", "ALL", "--cap-add", ADDED_CAPABILITY, "--security-opt", "no-new-privileges",
+    argv = [DOCKER, "create", "--pull=never", "--network", "none", "--user", BOOT_USER,
+            "--cap-drop", "ALL"]
+    for cap in BOOT_CAPABILITIES:
+        argv += ["--cap-add", cap]
+    argv += ["--security-opt", "no-new-privileges",
             "--mount", f"type=bind,source={run_tree},target={run_tree},readonly",
             "--mount", f"type=bind,source={evidence},target={EVIDENCE_MOUNT}",
-            image, *INTERPRETER, PROGRAM, "serve", "--run-tree", run_tree, "--evidence", EVIDENCE_MOUNT]
+            image, *WATCHER_LAUNCHER, *INTERPRETER, PROGRAM, "serve", "--run-tree", run_tree, "--evidence", EVIDENCE_MOUNT]
     for p in watch:
         argv += ["--watch", p]
     return argv
@@ -339,9 +353,14 @@ def expect_from_argv(argv) -> dict:
     one = {f: (seen.get(f) or [None]) for f in ("--network", "--user")}
     if any(len(v) != 1 for v in one.values()):
         raise ValueError("--network and --user appear exactly once")
+    command = argv[i + 1:]
+    prefix = [*WATCHER_LAUNCHER, *INTERPRETER, PROGRAM, "serve"]
+    if command[:len(prefix)] != prefix:
+        raise ValueError("the sidecar command must use the fixed privilege-drop launcher")
     return {"user": one["--user"][0], "network_mode": one["--network"][0], "cap_drop": seen.get("--cap-drop", []),
             "cap_add": [PENDING for _ in seen.get("--cap-add", [])], "security_opt": seen.get("--security-opt", []),
-            "privileged": False, "pid_mode": "", "mounts": mounts}
+            "privileged": False, "pid_mode": "", "mounts": mounts,
+            "image": argv[i], "cmd": command, "entrypoint": []}
 
 
 def start_argv(container_id) -> list:
@@ -365,7 +384,7 @@ def ctl_argv(container_id, command, label=None) -> list:
             raise ValueError(f"label {label!r} is not pre-<k> (k >= 2) or post-<k> (k >= 1)")
     elif label is not None:
         raise ValueError(f"{command} takes no label")
-    return [DOCKER, "exec", container_id, *INTERPRETER, PROGRAM, "ctl", command] + ([label] if label else [])
+    return [DOCKER, "exec", "--user", WATCHER_USER, container_id, *INTERPRETER, PROGRAM, "ctl", command] + ([label] if label else [])
 
 
 def rm_argv(container_id) -> list:

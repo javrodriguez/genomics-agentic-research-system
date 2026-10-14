@@ -92,6 +92,9 @@ SUBSCRIPTION_TOKEN_VARIABLES = ("CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CODE_OAUTH_RE
                                 "CLAUDE_CODE_SESSION_ACCESS_TOKEN")
 # The other vendors' key variables (D8 B2 item 7's closed list).
 VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY")
+# Installed Gemini 0.64.0 getter: this variable independently enables the ADK path.
+# The current independently grounded transcript projection admits the legacy path.
+GEMINI_MODE_ROUTE_VARIABLES = ("GEMINI_CLI_EXP_AGENT",)
 
 # ------------------------------------------------------------------- THE TAKE ENVIRONMENT (ruling docs-1, w12a)
 # An ALLOWLIST, never a blocklist. Every agent process starts from an EMPTY environment (the turn's launcher, below,
@@ -119,6 +122,10 @@ TAKE_ENV = {
 # The base every row carries (bound by the tests); the views below are DERIVED from TAKE_ENV, never declared apart.
 BASE_NAMES = ("PATH", "HOME", "LANG")
 LOGIN_VARIABLE = {h: next(k for k, v in row.items() if v == CREDENTIAL) for h, row in TAKE_ENV.items()}
+# Owner amendment, 13 Oct 2026: Codex must use an isolated ChatGPT subscription.
+# The historical API row above is not an admissible route. All execution and
+# builder login entry points refuse until the reviewed subscription lease exists.
+CODEX_SUBSCRIPTION_NOT_READY = "Codex subscription binding not ready; API-key login is not permitted"
 # Each harness's own non-secret values (its switches, proxy and config home): the row less the base, the run tree's
 # temporary folder and the credential. config_home_names() and preflight read this view.
 HARNESS_ENV = {h: {k: v for k, v in row.items() if k not in BASE_NAMES and v not in (RUN_TREE_TMP, CREDENTIAL)}
@@ -172,7 +179,9 @@ VENDOR_BILLING_ROUTE_VARIABLES = {CODEX: PENDING, GEMINI: PENDING}
 # What the runtime client itself needs from the caller's environment, and nothing else.
 RUNTIME_ENV_NAMES = ("PATH", "HOME", "DOCKER_HOST", "XDG_RUNTIME_DIR")
 
-# `docker top`'s column form under rootless Docker: {"ps_options": [...], "pid_column": str, "uid_column": str}
+# `docker top`'s column form under rootless Docker: {"ps_options": [...], "pid_column": str, "uid_column": str,
+# "uid_namespace": "host" | "container"}. Docker 29.8.1 on Athena reports container UIDs even though its PIDs
+# are host PIDs (live probe 13 Oct 2026). The namespace must be measured, never inferred from rootless mode.
 # once measured on the box.
 TOP_FORMAT = PENDING
 
@@ -423,6 +432,8 @@ def refused_variables(harness: str) -> frozenset:
     harness = _known_harness(harness)
     names = set(API_KEY_VARIABLES) | set(BILLING_ROUTE_VARIABLES) | set(SUBSCRIPTION_TOKEN_VARIABLES)
     names |= set(VENDOR_KEY_VARIABLES)
+    if harness == GEMINI:
+        names |= set(GEMINI_MODE_ROUTE_VARIABLES)
     for h, extra in VENDOR_BILLING_ROUTE_VARIABLES.items():
         if not _is_pending(extra):
             names |= set(extra)
@@ -581,6 +592,8 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     Ruling docs-1 (w12a): the turn runs under the launcher, so the agent starts from an empty environment plus its
     TAKE_ENV row and the credential; the client environment is the runtime's needs and the credential alone."""
     harness = _known_harness(harness)
+    if harness == CODEX:
+        raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)
     src = os.environ if caller_env is None else caller_env
     login = LOGIN_VARIABLE[harness]
     # Refused names first, from the table alone (so a cross-arm refusal never waits on a PENDING value).
@@ -1069,10 +1082,14 @@ def _uid_of(user: str) -> int:
 
 
 def agent_processes(runtime, take_id: str, *, agent_uid: int, uid_map, caller_env=None) -> list:
-    """Host pids of the agent's processes in the take container, from `docker top` (host-side, mapped uids)."""
+    """Host pids of the agent's processes, comparing UIDs in docker top's measured namespace."""
     if _is_pending(TOP_FORMAT):
         raise NotReady(f"TOP_FORMAT is PENDING: {PENDING_WHY['TOP_FORMAT']}")
-    want = host_uid(agent_uid, uid_map)
+    mapped = host_uid(agent_uid, uid_map)  # validate the real mapping even when top reports container UIDs
+    namespace = TOP_FORMAT.get("uid_namespace")
+    if namespace not in ("host", "container"):
+        raise Refused("docker top's UID namespace must be measured as host or container")
+    want = mapped if namespace == "host" else agent_uid
     argv = [RUNTIME_CLIENT, "top", _check_id(take_id, "take id"), *TOP_FORMAT["ps_options"]]
     c = runtime.run(argv, env=runtime_env(caller_env), timeout=STEP_TIMEOUT_S)
     if c.returncode != 0:
@@ -1099,8 +1116,10 @@ def kill_agent(runtime, take_id: str, *, agent_user: str, caller_env=None) -> Co
     """An exec as the agent's own uid that sends KILL to all of that uid's processes (no capability needed)."""
     if agent_user != AGENT_USER:
         raise Refused(f"the kill runs as the agent's own uid, {AGENT_USER}, never root or the keep-alive")
+    # The pinned procps kill rejects the old `kill -s KILL -- -1` form. The image's isolated Python invokes
+    # the same-user kernel primitive directly; the distinct keepalive uid survives (live probe 13 Oct 2026).
     argv = [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, _check_id(take_id, "take id"),
-            "kill", "-s", "KILL", "--", "-1"]
+            "/usr/bin/python3", "-I", "-S", "-c", "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"]
     return runtime.run(argv, env=runtime_env(caller_env), timeout=STEP_TIMEOUT_S)
 
 
@@ -1196,18 +1215,32 @@ def run_turn(runtime, take_id: str, inner, *, harness: str, run_tree: str, login
              budget_s: float, clock, caller_env=None) -> dict:
     """One exec per turn in the kept-alive container; stdout written to the host-side stream path; times from the
     injected clock. A timeout is recorded as a timed-out exec: the caller then kills the agent's processes inside
-    (killing the client alone leaves them running)."""
+    (killing the client alone leaves them running). The launch journal records the submitted exec request,
+    not proof that Docker started it; started_at is submission time. The returned exit/timeout record and retained
+    stream must be bound to it before the checker claims an executed interaction."""
     stream_path = _abs_path(stream_path, "stream_path")
     if _inside(stream_path, _abs_path(run_tree, "run_tree")):
         raise Refused("the host-side stream never sits inside the run tree")
     if os.path.lexists(stream_path):
         raise Refused("the stream path already exists: a stream is never overwritten")
+    launch_path = stream_path + ".launch.json"
+    if os.path.lexists(launch_path):
+        raise Refused("the launch journal already exists: an attempted turn is never overwritten")
     if not (isinstance(budget_s, (int, float)) and budget_s > 0):
         raise Refused("budget_s > 0")
     refuse_env_files(workdir=run_tree, run_tree=run_tree)
+    inner = _check_argv(inner)
     argv, env = exec_argv(take_id, inner, user=AGENT_USER, workdir=run_tree, harness=harness, run_tree=run_tree,
                           login_file=login_file, caller_env=caller_env)
     started = clock()
+    launch = {"schema": 1, "harness": harness, "container_id": take_id, "argv": inner,
+              "cwd": run_tree, "stream": stream_path, "started_at": started}
+    fd = os.open(launch_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        json.dump(launch, fh, separators=(",", ":"))
+        fh.write("\n")
+        fh.flush()
+        os.fsync(fh.fileno())
     timed_out, code, out, err = False, None, "", ""
     try:
         c = runtime.run(argv, env=env, timeout=budget_s)
@@ -1220,4 +1253,4 @@ def run_turn(runtime, take_id: str, inner, *, harness: str, run_tree: str, login
     with os.fdopen(fd, "w", encoding="utf-8", errors="surrogateescape") as fh:
         fh.write(out)
     return {"exit_code": code, "timed_out": timed_out, "started_at": started, "ended_at": ended,
-            "stream_path": stream_path, "stderr": err}
+            "stream_path": stream_path, "stderr": err, "launch_path": launch_path}

@@ -40,6 +40,7 @@ from typing import Callable
 
 from box import image_lock
 from box import run_take
+from box import sidecar as sidecar_module
 
 PENDING = run_take.PENDING
 NotReady = run_take.NotReady
@@ -55,7 +56,7 @@ LOCK_KEYS = ("image_id", "harness.version", "users.agent.uid", "users.watcher.ui
 # Each harness's own take image (image_lock.TAKE_IMAGES; arms A and C share take-a). Merge binding 8 binds it.
 TAKE_IMAGE = {run_take.CLAUDE_CODE: "take-a", run_take.CODEX: "take-o", run_take.GEMINI: "take-g"}
 SIDECAR_EXPECT_KEYS = ("user", "network_mode", "cap_drop", "cap_add", "security_opt", "privileged", "pid_mode",
-                       "mounts")
+                       "mounts", "image", "cmd", "entrypoint")
 # The take container's mount target for the sidecar's evidence folder; the agent must fail to list it.
 SIDECAR_EVIDENCE_MOUNT = "/srv/ev"
 # Names that must never resolve from the take, beside the other two harnesses' hosts (plan; D8 B2 item 8).
@@ -270,7 +271,15 @@ for name in os.listdir("/proc"):
         rows.append({"pid": int(name), "unreadable": type(e).__name__})
         continue
     rows.append({"pid": int(name), "uid": int(fields["Uid"].split()[0]), "name": fields.get("Name", "").strip(),
-                 "cap_eff": int(fields.get("CapEff", "0").strip(), 16)})
+                 "uids": [int(x) for x in fields["Uid"].split()],
+                 "gids": [int(x) for x in fields["Gid"].split()],
+                 "groups": [int(x) for x in fields["Groups"].split()],
+                 "no_new_privs": int(fields["NoNewPrivs"].strip()),
+                 "cap_eff": int(fields["CapEff"].strip(), 16),
+                 "cap_prm": int(fields["CapPrm"].strip(), 16),
+                 "cap_inh": int(fields["CapInh"].strip(), 16),
+                 "cap_bnd": int(fields["CapBnd"].strip(), 16),
+                 "cap_amb": int(fields["CapAmb"].strip(), 16)})
 print(json.dumps(sorted(rows, key=lambda r: r["pid"])))
 """
 
@@ -407,7 +416,8 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
         Probe("processes", agent(_py(PROCESSES_PROGRAM))),
         Probe("sidecar-inspect", inspect(sidecar_id)),
         Probe("health", read=lambda: _read_health(os.path.join(evidence_dir, HEALTH))),
-        Probe("watcher-caps", (run_take.RUNTIME_CLIENT, "exec", sidecar_id, *_py(PROCESSES_PROGRAM))),
+        Probe("watcher-caps", (run_take.RUNTIME_CLIENT, "exec", "--user", sidecar_module.WATCHER_USER,
+                               sidecar_id, *_py(PROCESSES_PROGRAM))),
         Probe("sockets", agent(_py(SOCKETS_PROGRAM))),
         Probe("egress", agent(_py(EGRESS_PROGRAM, run_take.PROXY_ALIAS, _proxy_port(), hosts[harness],
                                   OTHER_HOST_VIA_PROXY, *refused_names(harness, hosts)))),
@@ -583,23 +593,29 @@ def _check_sidecar(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir
           f"sidecar_expect must name exactly {list(SIDECAR_EXPECT_KEYS)}")
     still = sorted(k for k, v in exp.items() if _is_pending(v))
     _need(not still, f"sidecar_expect PENDING: {', '.join(still)}")
-    _need(exp["user"] == f"{WATCHER_UID}:{WATCHER_UID}", "the sidecar does not run as the watcher")
+    _need(exp["user"] == sidecar_module.BOOT_USER, "the sidecar launch does not use the fixed privilege-drop bootstrap")
     _need(exp["network_mode"] == "none", "the sidecar's expected network is not none")
     _need(exp["security_opt"] == ["no-new-privileges"], "the sidecar's expected security option is not no-new-privileges")
     _need([m.get("destination") for m in exp["mounts"] if isinstance(m, dict) and m.get("rw") is True]
           == [SIDECAR_EVIDENCE_MOUNT], f"the sidecar's one read-write mount is not {SIDECAR_EVIDENCE_MOUNT}")
-    _need(exp["cap_drop"] == ["ALL"] and isinstance(exp["cap_add"], list) and len(exp["cap_add"]) == 1,
-          "the sidecar drops ALL and adds exactly one capability")
+    _need(exp["cap_drop"] == ["ALL"] and isinstance(exp["cap_add"], list)
+          and sorted(exp["cap_add"]) == sorted(sidecar_module.BOOT_INSPECT_CAPABILITIES),
+          "the sidecar drops ALL and adds exactly its registered bootstrap capabilities")
     _need(exp["privileged"] is False and exp["pid_mode"] == "", "the sidecar is privileged or shares a pid space")
+    prefix = [*sidecar_module.WATCHER_LAUNCHER, *sidecar_module.INTERPRETER, sidecar_module.PROGRAM, "serve"]
+    _need(isinstance(exp["cmd"], list) and exp["cmd"][:len(prefix)] == prefix and exp["entrypoint"] == [],
+          "the sidecar does not exec the fixed privilege-drop launcher")
     want_mounts = [{"source": spec.run_tree, "destination": spec.run_tree, "rw": False}]
     _need(isinstance(exp["mounts"], list) and len(exp["mounts"]) == 2
           and [m for m in exp["mounts"] if m.get("destination") == spec.run_tree] == want_mounts
           and [m.get("rw") for m in exp["mounts"] if m.get("destination") != spec.run_tree] == [True],
           "the sidecar's mounts are not the run tree read-only and one read-write evidence folder")
     _need(not _evidence_source_problems(exp, evidence_dir), "; ".join(_evidence_source_problems(exp, evidence_dir)))
-    bad = inspect_mismatches(_inspect_obj(raw, "sidecar-inspect"), exp, kind="sidecar")
+    inspected = _inspect_obj(raw, "sidecar-inspect")
+    _need(inspected.get("Config", {}).get("Cmd") == exp["cmd"], "the sidecar command differs in order or content")
+    bad = inspect_mismatches(inspected, exp, kind="sidecar")
     _need(not bad, "; ".join(bad))
-    return "no network, its own process space, the run tree read-only, ALL dropped and one added"
+    return "no network, its own process space, the run tree read-only, fixed boot-only capability set"
 
 
 def _check_watcher_started(raw, *_):
@@ -618,7 +634,11 @@ def _check_watcher_cap(raw, *_):
                                          and _int(r.get("uid")) for r in rows), "the sidecar's table is off its shape")
     others = [r for r in rows if r["pid"] != 1]
     _need(others, "no watcher process is running in the sidecar")
-    bad = [r for r in others if r["uid"] != WATCHER_UID or r["cap_eff"] != WATCHER_CAP_EFF]
+    _need(sum(r["pid"] == 1 for r in rows) == 1, "the sidecar has no unique PID 1 watcher")
+    bad = [r for r in rows if r["uid"] != WATCHER_UID
+           or r.get("uids") != [WATCHER_UID] * 4 or r.get("gids") != [WATCHER_UID] * 4
+           or r.get("groups") != [] or r.get("no_new_privs") != 1
+           or any(r.get(k) != WATCHER_CAP_EFF for k in ("cap_eff", "cap_prm", "cap_inh", "cap_bnd", "cap_amb"))]
     _need(not bad, f"a watcher process does not hold exactly CAP_DAC_READ_SEARCH as {WATCHER_UID}: "
                    f"{[(r['pid'], r['uid'], hex(r['cap_eff'])) for r in bad]}")
     return "the watcher holds exactly CAP_DAC_READ_SEARCH"
@@ -645,6 +665,8 @@ def _check_socket(raw, spec, *_):
     _need(isinstance(env, list) and not [e for e in env if str(e).split("=", 1)[0] == "DOCKER_HOST"],
           "DOCKER_HOST is in the take's create-time environment")
     names = {str(e).split("=", 1)[0] for e in env}
+    _need(not names.intersection(run_take.GEMINI_MODE_ROUTE_VARIABLES),
+          "Gemini mode-route variable is in the take's create-time environment")
     leaked = sorted(names & (set(run_take.LOGIN_VARIABLE.values()) | set(run_take.refused_variables(
         run_take.CLAUDE_CODE))))
     _need(not leaked, f"credential names in the take's create-time environment: {leaked}")

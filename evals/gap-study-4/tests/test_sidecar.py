@@ -1333,14 +1333,14 @@ def create_problems(argv) -> list:
     pairs = list(zip(flags, flags[1:]))
     if flags[:2] != ["docker", "create"]:
         p.append("not docker create")
-    for want in [("--network", "none"), ("--user", "10002:10002"), ("--cap-drop", "ALL"),
+    for want in [("--network", "none"), ("--user", "0:0"), ("--cap-drop", "ALL"),
                  ("--cap-add", "DAC_READ_SEARCH"), ("--security-opt", "no-new-privileges")]:
         if want not in pairs:
             p.append(f"missing {want}")
     if "--pull=never" not in flags:
         p.append("missing --pull=never")
-    if [f for f in flags if f == "--cap-add"] != ["--cap-add"]:
-        p.append("not exactly one added capability")
+    if sorted(b for a, b in pairs if a == "--cap-add") != sorted(["DAC_READ_SEARCH", "SETUID", "SETGID", "SETPCAP"]):
+        p.append("not exactly the boot-only capability set")
     mounts = [b for a, b in pairs if a == "--mount"]
     if sorted(mounts) != sorted([f"type=bind,source={RUN_TREE},target={RUN_TREE},readonly",
                                  f"type=bind,source={EVIDENCE},target=/srv/ev"]):
@@ -1349,6 +1349,10 @@ def create_problems(argv) -> list:
                 "--env-file", "-v", "--volume"):
         if any(f == bad or f.startswith(bad + "=") for f in flags):
             p.append(f"forbidden {bad}")
+    launcher = list(sidecar.WATCHER_LAUNCHER)
+    if cmd[:len(launcher)] != launcher:
+        p.append("wrong privilege-drop launcher")
+    cmd = cmd[len(launcher):]
     if cmd[:6] != ["python3", "-I", "-B", "/opt/w/sidecar.py", "serve", "--run-tree"]:
         p.append(f"command {cmd[:6]}")
     if cmd[6:9] != [RUN_TREE, "--evidence", "/srv/ev"] or cmd[9:] != ["--watch", PLAN, "--watch", "out/x"]:
@@ -1370,7 +1374,7 @@ class TestHostHalf(unittest.TestCase):
         mutants = {
             "the run tree mounted read-write": [x.replace(",readonly", "") for x in base],
             "a network": [("bridge" if x == "none" else x) for x in base],
-            "root user": [("0:0" if x == "10002:10002" else x) for x in base],
+            "root watcher": [("--reuid=0" if x == "--reuid=10002" else x) for x in base],
             "no cap drop": [x for j, x in enumerate(base) if not (x == "--cap-drop" or (j and base[j - 1] ==
                                                                                        "--cap-drop"))],
             "a second capability": base[:3] + ["--cap-add", "SYS_ADMIN"] + base[3:],
@@ -1412,7 +1416,8 @@ class TestHostHalf(unittest.TestCase):
 
     def test_expect_from_argv(self):
         self.assertEqual(sidecar.expect_from_argv(create()), {
-            "user": "10002:10002", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": ["PENDING"],
+            "user": "0:0", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": ["PENDING"] * 4,
+            "image": IMAGE, "cmd": create()[create().index(IMAGE) + 1:], "entrypoint": [],
             "security_opt": ["no-new-privileges"], "privileged": False, "pid_mode": "",
             "mounts": [{"source": RUN_TREE, "destination": RUN_TREE, "rw": False},
                        {"source": EVIDENCE, "destination": "/srv/ev", "rw": True}]})
@@ -1424,7 +1429,7 @@ class TestHostHalf(unittest.TestCase):
         self.assertEqual(sidecar.start_argv(CID), ["docker", "start", CID])
         self.assertEqual(sidecar.rm_argv(CID), ["docker", "rm", "-f", CID])
         self.assertEqual(sidecar.ctl_argv(CID, "begin"),
-                         ["docker", "exec", CID, "python3", "-I", "-B", "/opt/w/sidecar.py", "ctl", "begin"])
+                         ["docker", "exec", "--user", "10002:10002", CID, "python3", "-I", "-B", "/opt/w/sidecar.py", "ctl", "begin"])
         self.assertEqual(sidecar.ctl_argv(CID, "snapshot", "post-1")[-2:], ["snapshot", "post-1"])
         self.assertEqual(sidecar.ctl_argv(CID, "snapshot", "pre-2")[-1], "pre-2")
         for bad in [("snapshot", "post-01"), ("snapshot", "pre-1"), ("snapshot", "post-0"), ("snapshot", None),

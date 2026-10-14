@@ -122,7 +122,7 @@ REFUSED_NAMES = {
     rt.GEMINI: ["github.com", "huggingface.co", "api.anthropic.com", "api.openai.com"],
 }
 CONFIG_HOME = {rt.CLAUDE_CODE: "CLAUDE_CONFIG_DIR", rt.CODEX: "CODEX_HOME", rt.GEMINI: "GEMINI_CLI_HOME"}
-CAP_ADD = ["CAP_DAC_READ_SEARCH"]
+CAP_ADD = ["CAP_DAC_READ_SEARCH", "CAP_SETGID", "CAP_SETPCAP", "CAP_SETUID"]
 
 
 class FakeRuntime:
@@ -184,10 +184,14 @@ class World:
         self.lock = {"image_id": IMAGE, "harness.version": VERSION_OUT[harness][2], "users.agent.uid": 10001,
                      "users.watcher.uid": 10002, "users.keepalive.uid": 10003}
         self.sidecar_expect = {
-            "user": "10002:10002", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": list(CAP_ADD),
+            "user": "0:0", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": list(CAP_ADD),
             "security_opt": ["no-new-privileges"], "privileged": False, "pid_mode": "",
             "mounts": [{"source": self.tree, "destination": self.tree, "rw": False},
                        {"source": self.ev, "destination": "/srv/ev", "rw": True}]}
+        self.sidecar_expect.update(image=IMAGE, entrypoint=[],
+                                   cmd=[*pf.sidecar_module.WATCHER_LAUNCHER, *pf.sidecar_module.INTERPRETER,
+                                        pf.sidecar_module.PROGRAM, "serve", "--run-tree", self.tree,
+                                        "--evidence", "/srv/ev", "--watch", "plan"])
         self.begin = {"ok": True, "command": "begin", "label": None, "taken_at": 1.0, "rearmed_at": None,
                       "unreadable": [], "unreadable_consequential": [], "problems": []}
         s = self.spec
@@ -212,7 +216,7 @@ class World:
             "listing": {"/srv/ev": "FileNotFoundError", self.ev: "FileNotFoundError"},
             "processes": [{"pid": 1, "uid": 10003, "name": "sleep", "cap_eff": 0}],
             "sidecar-inspect": [{
-                "Config": {"User": "10002:10002"},
+                "Image": IMAGE, "Config": {"User": "0:0", "Entrypoint": [], "Cmd": self.sidecar_expect["cmd"]},
                 "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"], "CapAdd": list(CAP_ADD),
                                "SecurityOpt": ["no-new-privileges"], "Privileged": False, "PidMode": ""},
                 "Mounts": [{"Type": "bind", "Source": self.tree, "Destination": self.tree, "RW": False},
@@ -224,6 +228,9 @@ class World:
                        "direct": {"connected": False, "error": "gaierror"},
                        "resolves": {n: False for n in REFUSED_NAMES[harness]}},
         }
+        for row in self.answers["watcher-caps"]:
+            row.update(uids=[10002] * 4, gids=[10002] * 4, groups=[], no_new_privs=1,
+                       cap_eff=4, cap_prm=4, cap_inh=4, cap_bnd=4, cap_amb=4)
 
     def probes(self):
         return pf.probes(self.spec, take_id=ID["take"], sidecar_id=ID["side"], harness=self.harness, hosts=HOSTS,
@@ -360,13 +367,13 @@ BREAKS = {
         ("two-caps", edit_json("sidecar-inspect", lambda d: d[0]["HostConfig"].update(CapAdd=CAP_ADD + ["KILL"]))),
         ("expect-pending", edit_world(lambda w: w.sidecar_expect.update(cap_add=pf.PENDING))),
         ("expect-network", edit_world(lambda w: w.sidecar_expect.update(network_mode="bridge"))),
-        ("expect-user", edit_world(lambda w: w.sidecar_expect.update(user="0:0"))),
+        ("expect-user", edit_world(lambda w: w.sidecar_expect.update(user="10001:10001"))),
         ("expect-tree-rw", edit_world(lambda w: w.sidecar_expect["mounts"][0].update(rw=True))),
         ("expect-key-missing", edit_world(lambda w: w.sidecar_expect.pop("security_opt"))),
         ("both-bridge", lambda raw, w: (w.sidecar_expect.update(network_mode="bridge"), edit_json(
             "sidecar-inspect", lambda d: d[0]["HostConfig"].update(NetworkMode="bridge"))(raw, w))),
-        ("both-root", lambda raw, w: (w.sidecar_expect.update(user="0:0"), edit_json(
-            "sidecar-inspect", lambda d: d[0]["Config"].update(User="0:0"))(raw, w))),
+        ("both-wrong-bootstrap-user", lambda raw, w: (w.sidecar_expect.update(user="10001:10001"), edit_json(
+            "sidecar-inspect", lambda d: d[0]["Config"].update(User="10001:10001"))(raw, w))),
         ("both-privileged", lambda raw, w: (w.sidecar_expect.update(privileged=True), edit_json(
             "sidecar-inspect", lambda d: d[0]["HostConfig"].update(Privileged=True))(raw, w))),
         ("both-host-pid", lambda raw, w: (w.sidecar_expect.update(pid_mode="host"), edit_json(
@@ -807,7 +814,9 @@ class TestProcessesProgram(MutantCase):
         import io
         src = [q for q in World().probes() if q.id == "processes"][0].argv
         src = src[list(src).index("-c") + 1]
-        status = {"/proc/1/status": "Name:\tsleep\nUid:\t10003\t10003\t10003\t10003\nCapEff:\t0\n"}
+        status = {"/proc/1/status": ("Name:\tsleep\nUid:\t10003\t10003\t10003\t10003\n"
+                    "Gid:\t10003\t10003\t10003\t10003\nGroups:\t\nNoNewPrivs:\t1\n"
+                    "CapEff:\t0\nCapPrm:\t0\nCapInh:\t0\nCapBnd:\t0\nCapAmb:\t0\n")}
         real_open = builtins.open
 
         def fake_open(path, *a, **k):

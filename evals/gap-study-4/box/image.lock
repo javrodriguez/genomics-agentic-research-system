@@ -2,22 +2,28 @@
   "schema": 1,
   "image": "take-a",
   "dockerfile": "Dockerfile",
-  "base": "PENDING",
+  "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
   "harness": {
     "package": "@anthropic-ai/claude-code",
-    "version": "PENDING"
+    "version": "2.1.296"
   },
-  "python": "PENDING",
-  "image_id": "PENDING",
+  "python": "3.11.2",
+  "image_id": "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
   "users": {
-    "agent": {"name": "dana", "uid": 10001, "gid": 10001},
-    "watcher": {"name": "eli", "uid": 10002, "gid": 10002},
-    "keepalive": {"uid": 10003, "gid": 10003}
+    "agent": {
+      "name": "dana",
+      "uid": 10001,
+      "gid": 10001
+    },
+    "watcher": {
+      "name": "eli",
+      "uid": 10002,
+      "gid": 10002
+    },
+    "keepalive": {
+      "uid": 10003,
+      "gid": 10003
+    }
   },
-  "pending": {
-    "base": "the shared base digest is read and pinned when CP2 builds on the real box; that base must also supply node and npm, confirmed at the same pin",
-    "harness.version": "walked before it is pinned (the checker reads record shapes specific to each version); the latest stable on the day CP2 builds the image, never bumped after the first counted walk",
-    "python": "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16)",
-    "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box"
-  }
+  "pending": {}
 }

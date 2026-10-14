@@ -505,8 +505,14 @@ class TestArmVariables(MutantCase):
                     try:
                         if where == "caller":
                             with filled():
+                                if arm == rt.CODEX:
+                                    # Subscription transition blocks launch independently; keep
+                                    # witnessing the underlying name refusal without a login read.
+                                    rt.check_environment(arm, dict(CALLER, **{var: FAKE_VALUE}))
                                 self.exec_for(arm, dict(CALLER, **{var: FAKE_VALUE}))
                         else:
+                            if arm == rt.CODEX:
+                                rt.check_environment(arm, dict(CALLER, **{var: FAKE_VALUE}))
                             self.exec_for(arm, dict(CALLER, **{var: FAKE_VALUE}))
                         out.append(f"{arm} take carrying {var} ({where}) accepted")
                     except rt.Refused as e:
@@ -534,7 +540,10 @@ class TestArmVariables(MutantCase):
             bad = dict(rt.TAKE_ENV, **{arm: dict(rt.TAKE_ENV[arm], **{other: "x"})})
             with mock.patch.object(rt, "TAKE_ENV", bad), filled():
                 try:
-                    self.exec_for(arm)
+                    if arm == rt.CODEX:
+                        rt.check_environment(arm, CALLER, rt.TAKE_ENV[arm])
+                    else:
+                        self.exec_for(arm)
                     out.append(f"{arm} exec requesting {other} accepted")
                 except rt.Refused:
                     pass
@@ -550,8 +559,11 @@ class TestArmVariables(MutantCase):
                   | {"CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"})
         for arm in ARMS:
             got = rt.refused_variables(arm)
-            if got != closed - {LOGINS[arm]}:
-                out.append(f"{arm}: refused set {sorted(got ^ (closed - {LOGINS[arm]}))} off")
+            expected = closed - {LOGINS[arm]}
+            if arm == rt.GEMINI:
+                expected |= {"GEMINI_CLI_EXP_AGENT"}
+            if got != expected:
+                out.append(f"{arm}: refused set {sorted(got ^ expected)} off")
         if "CLAUDE_CODE_OAUTH_TOKEN" not in rt.refused_variables(rt.CODEX):
             out.append("arm O admits Anthropic's token")
         return out
@@ -649,6 +661,15 @@ class TestExecArgv(MutantCase):
                 out.append(f"a {h} exec was built while its billing-route list is PENDING")
             except rt.NotReady:
                 pass
+            if h == rt.CODEX:
+                try:
+                    with filled():
+                        rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
+                                     run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
+                    out.append("Codex legacy API exec was admitted during subscription transition")
+                except rt.NotReady:
+                    pass
+                continue
             with filled():
                 a, e = rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=h,
                                     run_tree="/srv/w/t1/tree", login_file=lf, caller_env=CALLER)
@@ -1245,7 +1266,8 @@ class TestLeaked(MutantCase):
 
 # ---------------------------------------------------------------------------- the agent's leftover processes
 UID_MAP = ((0, 1000, 1), (1, 100000, 65536))
-TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID"}
+TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
+       "uid_namespace": "host"}
 
 
 class TestProcesses(MutantCase):
@@ -1278,8 +1300,9 @@ class TestProcesses(MutantCase):
             pass
         fake = FakeRuntime([(["docker", "exec"], ok())])
         rt.kill_agent(fake, ID["take"], agent_user=rt.AGENT_USER, caller_env=CALLER)
-        if fake.calls[0][0] != ["docker", "exec", "--user", "10001:10001", ID["take"], "kill", "-s", "KILL", "--",
-                                "-1"]:
+        if fake.calls[0][0] != ["docker", "exec", "--user", "10001:10001", ID["take"],
+                                "/usr/bin/python3", "-I", "-S", "-c",
+                                "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"]:
             out.append(f"kill argv {fake.calls[0][0]}")
         for u in ("0:0", rt.KEEPALIVE_USER):
             try:
@@ -1419,6 +1442,8 @@ class TestRunTurn(MutantCase):
                 out.append(f"stream path {bad} accepted")
             except rt.Refused:
                 pass
+            if bad == stream and (not os.path.exists(stream) or open(stream).read() != '{"type":"x"}\n'):
+                out.append("a refused repeated turn destroyed its original stream")
         return out
 
     def test_run_turn(self):
