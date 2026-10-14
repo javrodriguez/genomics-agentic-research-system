@@ -826,10 +826,14 @@ def pyinspect_params(fn):
 
 # ------------------------------------------------------------------------------------------ launch and teardown
 def sidecar_launch(expect=None, tree="/srv/w/t1/tree", ev="/srv/w/t1/rec/ev"):
-    exp = expect or {"user": "10002:10002", "network_mode": "none", "cap_drop": ["ALL"],
-                     "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
+    # The sidecar's fixed privilege-drop launch (0b6f60f9's accepted delta): boot user 0:0, the four boot
+    # capabilities in Docker's inspect spelling, no entrypoint, the setpriv launcher in the command.
+    exp = expect or {"user": "0:0", "network_mode": "none", "cap_drop": ["ALL"],
+                     "cap_add": ["CAP_DAC_READ_SEARCH", "CAP_SETGID", "CAP_SETPCAP", "CAP_SETUID"],
+                     "security_opt": ["no-new-privileges"], "privileged": False,
                      "pid_mode": "", "mounts": [{"source": tree, "destination": tree, "rw": False},
-                                                {"source": ev, "destination": "/srv/ev", "rw": True}]}
+                                                {"source": ev, "destination": "/srv/ev", "rw": True}],
+                     "image": SIDE_IMAGE, "cmd": side_cmd(tree), "entrypoint": []}
     return rt.SidecarLaunch(
         create_argv=("docker", "create", "--network", "none", "side-image"),
         start_argv_for=lambda i: ["docker", "start", i],
@@ -845,9 +849,20 @@ def proxy_launch(user="13:13"):
                           user=user, alias="proxy")
 
 
+SIDE_IMAGE = "sha256:" + "5" * 64
+
+
+def side_cmd(tree):
+    return ["/usr/bin/setpriv", "--reuid=10002", "--regid=10002", "--clear-groups",
+            "--inh-caps=-all,+dac_read_search", "--ambient-caps=-all,+dac_read_search",
+            "--bounding-set=-all,+dac_read_search", "--no-new-privs", "--", "python3", "-I", "-B", "/opt/w/sidecar.py",
+            "serve", "--run-tree", tree, "--evidence", "/srv/ev"]
+
+
 def side_inspect(tree, ev):
-    return [{"Config": {"User": "10002:10002"},
-             "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"], "CapAdd": ["CAP_DAC_READ_SEARCH"],
+    return [{"Image": SIDE_IMAGE, "Config": {"User": "0:0", "Entrypoint": [], "Cmd": side_cmd(tree)},
+             "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"],
+                            "CapAdd": ["CAP_DAC_READ_SEARCH", "CAP_SETGID", "CAP_SETPCAP", "CAP_SETUID"],
                             "SecurityOpt": ["no-new-privileges"], "Privileged": False, "PidMode": ""},
              "Mounts": [{"Type": "bind", "Source": tree, "Destination": tree, "RW": False},
                         {"Type": "bind", "Source": ev, "Destination": "/srv/ev", "RW": True}]}]
@@ -1591,8 +1606,9 @@ SUBPROCESS_SITE = ("DockerRuntime", "run")
 SUBPROCESS_NAMES = frozenset({"run", "TimeoutExpired"})
 GUARDED_MODULES = ("os", "subprocess")
 # W4B2-2, derived once from the three box modules' source and committed (TestAuditAllowlists binds both ways).
-OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "getuid",
-                      "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk"})
+# Box lane 14 Oct: run_turn's launch journal is flushed to disk before the exec (os.fsync), 0b6f60f9.
+OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "fsync",
+                      "getuid", "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk"})
 DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 # How subprocess may appear, at DockerRuntime.run only: run as the func of a call, TimeoutExpired in an except.
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})

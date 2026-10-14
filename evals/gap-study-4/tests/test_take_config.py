@@ -167,7 +167,9 @@ class TestContents(MutantCase):
             doc = tomllib.load(fh)
         want = {"model": "gpt-6.1-sol", "model_reasoning_effort": "medium", "web_search": "disabled",
                 "project_doc_fallback_filenames": ["CLAUDE.md"], "check_for_update_on_startup": False,
-                "forced_login_method": "api", "cli_auth_credentials_store": "ephemeral",
+                # The renderer fold (owner amendment, 13 Oct): Codex reads a ChatGPT subscription login from a
+                # file store; no API-key route.
+                "forced_login_method": "chatgpt", "cli_auth_credentials_store": "file",
                 "features": {"hooks": False}}
         if doc != want:
             out.append(f"codex config.toml reads {doc}")
@@ -178,7 +180,9 @@ class TestContents(MutantCase):
                 "hooksConfig.enabled": False, "general.enableAutoUpdate": False,
                 "general.enableAutoUpdateNotification": False, "privacy.usageStatisticsEnabled": False,
                 "telemetry.enabled": False, "model.name": "gemini-3.8-flash", "model.thinkingLevel": "default",
-                "security.auth.selectedType": "api-key-stand-in"}
+                "security.auth.selectedType": "api-key-stand-in",
+                # The frozen legacy noninteractive path (pinned 0.64.0 evidence; the renderer fold).
+                "experimental.adk.agentSessionNoninteractiveEnabled": False}
         for k, v in want.items():
             try:
                 if get(doc, k) != v:
@@ -202,7 +206,9 @@ class TestContents(MutantCase):
             ("web-search-on", patched(tc, "CODEX_TOP", (("web_search", "live"),) + tc.CODEX_TOP[1:])),
             ("hooks-on", patched(tc, "CODEX_FEATURES", (("hooks", True),))),
             ("codex-login-store", patched(tc, "CODEX_TOP", tc.CODEX_TOP[:-1] + (("cli_auth_credentials_store",
-                                                                                  "file"),))),
+                                                                                  "ephemeral"),))),
+            ("codex-login-method", patched(tc, "CODEX_TOP", tc.CODEX_TOP[:-2] + (("forced_login_method", "api"),)
+                                           + tc.CODEX_TOP[-1:])),
             ("gemini-web-fetch", patched(tc, "GEMINI_SETTINGS", (("tools.exclude", ["google_web_search"]),)
                                          + tc.GEMINI_SETTINGS[1:])),
             ("gemini-telemetry", patched(tc, "GEMINI_SETTINGS", tc.GEMINI_SETTINGS[:-1])),
@@ -241,8 +247,8 @@ def _leaves(doc):
 
 
 class TestPending(MutantCase):
-    EXPECT = {"CLAUDE_BYPASS_KEY", "CODEX_REASONING_EFFORT", "GEMINI_THINKING", "GEMINI_AUTH_SETTING",
-              "GEMINI_SETTINGS_PATH"}
+    # GEMINI_SETTINGS_PATH is measured at the pinned 0.64.0 (Storage.getGlobalSettingsPath; the renderer fold).
+    EXPECT = {"CLAUDE_BYPASS_KEY", "CODEX_REASONING_EFFORT", "GEMINI_THINKING", "GEMINI_AUTH_SETTING"}
 
     def check(self):
         out = []

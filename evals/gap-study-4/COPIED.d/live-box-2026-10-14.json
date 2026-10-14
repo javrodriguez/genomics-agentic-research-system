@@ -1,0 +1,35 @@
+{
+  "lane": "live-box-2026-10-14",
+  "files": [
+    {
+      "path": "box/measure_live.py",
+      "status": "new",
+      "reason": "Lane live-box (real box bring-up, 13-14 Oct 2026, glitch-06's assignment under Javier's standing delegation): the no-model component proof and full-tree watch measurement on athena (ownership probe, oracle/always-act/always-hold/background-writer scenarios, the watcher's measured count and establish time) through the pinned images with network none; it binds measured values only inside its own ephemeral interpreter and never writes a production constant."
+    },
+    {
+      "path": "tests/test_live_box.py",
+      "status": "new",
+      "reason": "Lane live-box: focused regressions for the live findings (docker top's uid namespace measured and used, the same-user kill primitive, the launch journal before exec, the sidecar's fixed bootstrap and exact final privileges, the Codex subscription transition refusing before any login read, the Gemini legacy-path settings)."
+    },
+    {
+      "path": "tests/test_scan_witness.py",
+      "status": "new",
+      "reason": "Lane live-box: scan_record.scan_with_witness, the per-file scanner transformation witness (absolute original spans, fixed replacement ids, empty lists for unchanged and refused files, fail-closed rebuild before any write, scan's result unchanged); planted fake values only."
+    },
+    {
+      "path": "tests/test_staging_admission.py",
+      "status": "new",
+      "reason": "Lane live-box: ops/gap4_staging_admission.py (the one owner-approved directory finding, bound to managed byte-ruling metadata; reviews r3 and r4 folded, closure CLOSED) and lane-reports/measure_gap_box_tree.py's field-by-field admission re-check; no scanner or process runs."
+    },
+    {
+      "path": "checks.d/live-box-2026-10-14.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): the three focused modules above."
+    },
+    {
+      "path": "COPIED.d/live-box-2026-10-14.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    }
+  ]
+}

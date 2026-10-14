@@ -104,6 +104,13 @@ PROFILE = {"permission_mode": "bypassPermissions", "version": "0.0.1"}
 TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
        "uid_namespace": "host"}
 UID_MAP = [(0, 1000, 1), (1, 100000, 65536)]
+SIDECAR_IMAGE = "sha256:" + "5" * 64                       # synthetic sidecar image id
+
+
+def sidecar_cmd(tree):
+    """The sidecar's launch command as create_argv builds it (setpriv launcher, interpreter, program, serve)."""
+    return [*sc.WATCHER_LAUNCHER, *sc.INTERPRETER, sc.PROGRAM, "serve", "--run-tree", tree,
+            "--evidence", sc.EVIDENCE_MOUNT]
 AGENT_HOST_UID = 100000 + 10001 - 1
 CAP_S, POLL_S = 30, 5
 REAL_BOX_STEP = ("CP2's real-box step: one stub take on athena's box with no model (plan, CREATE "
@@ -356,8 +363,12 @@ class FakeBox:
             return rt.Completed(1, "", "no such container")
         if c["kind"] == "sidecar":
             tree = c["tree"]
-            doc = [{"Config": {"User": sc.WATCHER_USER},
-                    "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"], "CapAdd": ["CAP_DAC_READ_SEARCH"],
+            # The sidecar's fixed privilege-drop launch (0b6f60f9's accepted delta): boot user, the four boot
+            # capabilities as Docker 29.8.1 spells them, no entrypoint, setpriv's launcher in Cmd.
+            doc = [{"Image": SIDECAR_IMAGE,
+                    "Config": {"User": sc.BOOT_USER, "Entrypoint": [], "Cmd": sidecar_cmd(tree)},
+                    "HostConfig": {"NetworkMode": "none", "CapDrop": ["ALL"],
+                                   "CapAdd": list(sc.BOOT_INSPECT_CAPABILITIES),
                                    "SecurityOpt": ["no-new-privileges"], "Privileged": False, "PidMode": ""},
                     "Mounts": [{"Type": "bind", "Source": tree, "Destination": tree, "RW": False},
                                {"Type": "bind", "Source": c["ev"], "Destination": sc.EVIDENCE_MOUNT, "RW": True}]}]
@@ -578,8 +589,9 @@ class Rig:
 
     def sidecar_for(self, r, ev):
         tree = str(SCRATCH / f"tree-{self.root.name}-{self.count}")
-        expect = {"user": sc.WATCHER_USER, "network_mode": "none", "cap_drop": ["ALL"],
-                  "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
+        expect = {"user": sc.BOOT_USER, "network_mode": "none", "cap_drop": ["ALL"],
+                  "cap_add": list(sc.BOOT_INSPECT_CAPABILITIES), "security_opt": ["no-new-privileges"],
+                  "privileged": False, "image": SIDECAR_IMAGE, "cmd": sidecar_cmd(tree), "entrypoint": [],
                   "pid_mode": "", "mounts": [{"source": tree, "destination": tree, "rw": False},
                                              {"source": ev, "destination": sc.EVIDENCE_MOUNT, "rw": True}]}
         return rt.SidecarLaunch(
