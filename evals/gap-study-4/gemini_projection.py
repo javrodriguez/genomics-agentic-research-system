@@ -44,7 +44,12 @@ content function calls that disagree with the recorded tool calls by id, name
 or args, ANSI escape bytes, info/error/warning messages, interactions without a
 user message, an assistant message or recorded text, and an interaction whose
 last gemini message carries tool calls (the follow-up model reply was never
-recorded: killed or timed out after the tool; never projected as complete).
+recorded: killed or timed out after the tool).
+The native record alone never establishes that an interaction completed: a kill
+while a tool is still running leaves an ordinary-looking text message with no
+toolCalls (recordToolCalls runs only once tools complete). An interaction counts
+as complete only when joined to the stream's terminal result for that turn
+(the stream-side slice owes that join); this projection makes no such claim.
 Known false-refusal risks for the first recorded walk, kept refusing because the
 pinned source lines are not retained (lane-reports/gemini-0.64.0-source-
 retained-2026-10-14.md): user displayContent (GeminiChat's user-message

@@ -233,6 +233,22 @@ def end_reason(exit_code, timed_out: bool, read: dict) -> str:
     return aa.END_ERROR
 
 
+def turn_identity(read: dict, *, version: str, mode: str) -> dict:
+    """Live harness 3b: where each pin field of this turn came from (agent_adapter.IDENTITY_SOURCES), never fabricated
+    into init. model: the init event's (stream-init), else the result's single stats.models key (stream-stats; the
+    reader already refused any other key), else unobserved. version: `gemini --version` in the take container
+    (version-exec). permission_mode: no Gemini record names it; the pinned mode's flags were on the submitted argv
+    (submitted-argv; vendor_provenance binds the argv to the launch journal)."""
+    if read["init_model"] is not None:
+        model = {"value": read["init_model"], "source": "stream-init"}
+    elif len(read["served_models"]) == 1:
+        model = {"value": read["served_models"][0], "source": "stream-stats"}
+    else:
+        model = {"value": None, "source": aa.UNOBSERVED}
+    return {"model": model, "permission_mode": {"value": mode, "source": "submitted-argv"},
+            "version": {"value": version, "source": "version-exec"}}
+
+
 class GeminiAdapter(aa.AgentAdapter):
     """One take's Gemini CLI turns in the box.
 
@@ -295,6 +311,7 @@ class GeminiAdapter(aa.AgentAdapter):
     def _turn(self, line: str, *, first: bool, budget_s: float) -> aa.TurnResult:
         n = self._turns + 1
         inner = argv(line, model=self.model, mode=self.mode, session_id=self.session_id, first=first)
+        version = self.version()     # live harness 3b: observed before the exec (cached; a failure here is pre-exec)
         before = self.counters_for()
         got = rt.run_turn(self.runtime, self.take_id, inner, harness=NAME, run_tree=self.run_tree,
                           login_file=self.login_file, stream_path=self.stream_path_for(n), budget_s=budget_s,
@@ -322,7 +339,8 @@ class GeminiAdapter(aa.AgentAdapter):
                              end_reason=end_reason(got["exit_code"], got["timed_out"], read), init=None,
                              api_errors=read["api_errors"], counters=counters,
                              started_at=got["started_at"], ended_at=got["ended_at"],
-                             agent_output=read["agent_output"])
+                             agent_output=read["agent_output"],
+                             identity=turn_identity(read, version=version, mode=self.mode))
 
     def _read_turn(self, got: dict, n: int, first: bool) -> tuple:
         """The exec's exit meaning and its stream read, and the resumed session checked (G-2); raised from here, a

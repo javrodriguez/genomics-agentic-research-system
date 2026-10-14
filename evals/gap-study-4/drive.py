@@ -2173,7 +2173,8 @@ class TakeDriver:
                                  "then": None, "refused": take.executed_refusal["refused"]})
         self._evidence_line(take, {"kind": "turn", "n": n, "started_at": x["started_at"], "ended_at": x["ended_at"]})
         ended = types.SimpleNamespace(end_reason=_adapter.END_TIMED_OUT if x["timed_out"] else _adapter.END_ERROR)
-        left, _ = self._quiesce(take, ended)
+        left, killed = self._quiesce(take, ended)
+        take.executed_refusal["quiescence_kill"] = bool(killed)     # review r2 nit 4: carried, never dropped
         if left:
             take.survivors.append({"turn": n, "pids": list(left)})
             stopped = self.clock()

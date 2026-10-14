@@ -110,9 +110,9 @@ class AdapterKeepsTheExec(unittest.TestCase):
 class RefusingAdapter(tbi.FakeAdapter):
     """FakeAdapter whose turn `refuse_at` executes (its stream written) and then refuses its own record."""
 
-    def __init__(self, *a, refuse_at, **kw):
+    def __init__(self, *a, refuse_at, timed_out=False, **kw):
         super().__init__(*a, **kw)
-        self.refuse_at = refuse_at
+        self.refuse_at, self.timed_out = refuse_at, timed_out
 
     def _turn(self, line, *, first, budget_s):
         n = self._turns + 1
@@ -124,26 +124,27 @@ class RefusingAdapter(tbi.FakeAdapter):
         with open(path, "w", encoding="utf-8") as fh:
             fh.write("{\"type\": \"unreadable\"}\n")
         raise aa.ExecutedTurnRefused("synthetic: the stream is off the tables", executed={
-            "n": n, "exit_code": 0, "timed_out": False, "started_at": started, "ended_at": self.box.tick(),
+            "n": n, "exit_code": None if self.timed_out else 0, "timed_out": self.timed_out,
+            "started_at": started, "ended_at": self.box.tick(),
             "stream_path": path, "counters": {"oom_kill_delta": 0, "pids_max_delta": 0},
             "refused": "synthetic: the stream is off the tables"})
 
 
 class DriverAccountsForTheTurn(unittest.TestCase):
-    def drive_with(self, refuse_at):
+    def drive_with(self, refuse_at, timed_out=False):
         tbi.need(self, "TakeDriver", "TakeRepo", "DriveRefused", "sidecar_health")
         root_cm = tbi.scratch_repo()
         root = root_cm.__enter__()
         self.addCleanup(root_cm.__exit__, None, None, None)
         rig = tbi.Rig(tbi.drive, root)
         rig.adapter_for = lambda r, take: rig.adapters.append(
-            RefusingAdapter(rig.box, take, rig.turns, refuse_at=refuse_at)) or rig.adapters[-1]
+            RefusingAdapter(rig.box, take, rig.turns, refuse_at=refuse_at, timed_out=timed_out)) or rig.adapters[-1]
         rig.driver.adapter_for = rig.adapter_for
         b, got = tbi.run_batch(rig, [tbi.row(1)])
         return rig, got
 
-    def check(self, refuse_at):
-        rig, got = self.drive_with(refuse_at)
+    def check(self, refuse_at, timed_out=False):
+        rig, got = self.drive_with(refuse_at, timed_out)
         self.assertEqual(len(got), 1)
         o = got[0]
         self.assertEqual(o["state"], labels4.FAILED)
@@ -160,7 +161,10 @@ class DriverAccountsForTheTurn(unittest.TestCase):
         self.assertIsNone(ledger["first_agent_turn"], "unknown agent output must stay unknown, never False")
         self.assertIn("executed", ledger["outcome"])
         refusal = ledger["executed_refusal"]
-        self.assertEqual((refusal["n"], refusal["exit_code"], refusal["timed_out"]), (refuse_at, 0, False))
+        self.assertEqual((refusal["n"], refusal["exit_code"], refusal["timed_out"]),
+                         (refuse_at, None if timed_out else 0, timed_out))
+        self.assertIs(refusal["quiescence_kill"], timed_out, "a timed-out turn's processes are killed at once")
+        self.assertEqual(ledger["turns"][-1]["exit"], 124 if timed_out else 0)
         self.assertEqual(refusal["stream"], f"turn-{refuse_at}.jsonl")
         self.assertIn(f"turn-{refuse_at}.jsonl", ledger["streams"])
         self.assertEqual(len(ledger["turns"]), refuse_at)
@@ -173,6 +177,9 @@ class DriverAccountsForTheTurn(unittest.TestCase):
 
     def test_turn_one_refused_after_execution(self):
         self.check(1)
+
+    def test_a_timed_out_turn_refused_after_execution(self):
+        self.check(2, timed_out=True)
 
 
 class WalkLaunchJournal(unittest.TestCase):

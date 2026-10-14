@@ -60,6 +60,11 @@
       "path": "tests/test_executed_turn_refusal.py",
       "status": "new",
       "reason": "Live harness 3a: an executed turn whose record the adapter refuses keeps its exec, is accounted for by the driver (ledger mandatory, unknown output stays unknown) and is refused for a human, never a rehearsal or re-run; a walk launch journal requires the driver ledger."
+    },
+    {
+      "path": "tests/test_identity_evidence.py",
+      "status": "new",
+      "reason": "Live harness 3b: typed identity evidence beside init is closed and typed, carried only when stated, and routed so a matching typed identity is no mismatch while every unobserved, unaccepted or differing field still is; Gemini states its sources."
     }
   ]
 }

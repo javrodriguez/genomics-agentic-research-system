@@ -23,7 +23,9 @@ class ProjectionTests(unittest.TestCase):
         return {"id": "call-1", "name": "read_file", "args": {"file_path": "synthetic.txt"}}
 
     def native(self):
-        """One interaction on the recorder's synthetic road (a part array) then its follow-up reply."""
+        """One interaction whose first model message is a part array (the history road, as updateMessagesFromHistory
+        writes it, not recordSyntheticMessage's road, which runs only without text, thoughts or tool calls), then its
+        follow-up reply."""
         call = self.call()
         return [{"sessionId": "native-1", "projectHash": "project-1"},
                 {"id": "user-1", "type": "user", "content": [{"text": "exact sent"}]},

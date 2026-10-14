@@ -9,7 +9,7 @@
     {
       "path": "agent_adapter.py",
       "status": "new",
-      "reason": "The runner's only agent interface (interface 5); new in round 4. TurnResult's init, api_errors (every API error of the turn, in order) and counters are required keywords, and the agent's first turn starts only with completed agent output (review round 2: W1B2-1, W1B2-4, W1B2-7). started_at and ended_at are required keywords too, the host clock as an int or a float (review round 3, W1B3-6, fold 4). Live harness 3a (edit without transfer, under glitch-06's step-3 order, 14 Oct 2026): ExecutedTurnRefused and EXECUTED_FIELDS, an executed turn's own-record refusal carrying the exec kept before the read; bound by tests/test_executed_turn_refusal.py."
+      "reason": "The runner's only agent interface (interface 5); new in round 4. TurnResult's init, api_errors (every API error of the turn, in order) and counters are required keywords, and the agent's first turn starts only with completed agent output (review round 2: W1B2-1, W1B2-4, W1B2-7). started_at and ended_at are required keywords too, the host clock as an int or a float (review round 3, W1B3-6, fold 4). Live harness 3a (edit without transfer, under glitch-06's step-3 order, 14 Oct 2026): ExecutedTurnRefused and EXECUTED_FIELDS, an executed turn's own-record refusal carrying the exec kept before the read; bound by tests/test_executed_turn_refusal.py. Live harness 3b: TurnResult.identity (typed identity evidence, IDENTITY_SOURCES, identity_problems), carried by harness_records only when some turn states it."
     },
     {
       "path": "tests/test_labels4.py",
