@@ -368,7 +368,8 @@ def _survived(after: bytes, needles) -> bool:
 
 def _require_scanner(scanner):
     if scanner is None or not callable(scanner):
-        raise NotReady("a real scan needs a callable rules scanner (gitleaks on athena: PENDING)")
+        raise NotReady("a real scan needs a callable rules scanner: build it per walk with "
+                       "real_rules_scanner().build(runtime, report_dir)")
 
 
 def _require_files(files):

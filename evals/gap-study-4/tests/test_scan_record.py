@@ -761,6 +761,41 @@ class TestRulesScannerFilled(unittest.TestCase):
                 self.assertNotEqual(self.check(), [], f"mutant {name} survived")
             red(f"rules scanner: {name}")
 
+    # Review S-1: each of real_rules_scanner's three structural guards, bound alone (each mutant leaves the others).
+    def test_the_record_key_set_is_closed(self):
+        for name, ctx in {"extra key": lambda: mock.patch.dict(sr.RULES_SCANNER, note="x"),
+                          "missing key": lambda: mock.patch.object(sr, "RULES_SCANNER", {
+                              k: v for k, v in sr.RULES_SCANNER.items() if k != "binary"})}.items():
+            with self.subTest(name), ctx():
+                with self.assertRaises(sr.NotReady):
+                    sr.real_rules_scanner()
+
+    def factory_named(self, module, name):
+        def fake(runtime, report_dir, **kw):
+            return lambda paths: []
+        fake.__module__, fake.__name__ = module, name
+        return fake
+
+    def test_the_factory_module_is_the_adapter(self):
+        from box import rules_scanner as rs
+        with mock.patch.object(rs, "gitleaks_scanner", self.factory_named("box.stub_take", "gitleaks_scanner")):
+            with self.assertRaises(sr.NotReady):
+                sr.real_rules_scanner()
+
+    def test_the_factory_name_is_its_own(self):
+        from box import rules_scanner as rs
+        with mock.patch.object(rs, "gitleaks_scanner", self.factory_named("box.rules_scanner", "fake_scanner")):
+            with self.assertRaises(sr.NotReady):
+                sr.real_rules_scanner()
+
+    def test_passing_the_unbuilt_scanner_names_the_build(self):
+        c = Commit()
+        self.addCleanup(c.close)
+        with self.assertRaises(sr.NotReady) as cm:
+            sr.scan(c.files(), SECRETS, rules_scanner=sr.real_rules_scanner())
+        self.assertIn("real_rules_scanner().build(runtime, report_dir)", str(cm.exception))
+        self.assertNotIn("PENDING", str(cm.exception))
+
     def test_the_built_scanner_is_the_pinned_gate(self):
         """What real_rules_scanner returns builds through the reviewed factory, which refuses a binary off the pin."""
         d = tempfile.mkdtemp(prefix="rs-")
