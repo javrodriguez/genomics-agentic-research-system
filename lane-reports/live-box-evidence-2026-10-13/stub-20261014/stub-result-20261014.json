@@ -1,0 +1,565 @@
+{
+  "scope": "stub measurement of the four watcher constants; no credentials, no model",
+  "scenarios": [],
+  "calls": [
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-stub-20261014-VYekqNdb/stub-watch-_rfr758p/tree,target=/scratch",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10001"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--rm",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "inotifywait",
+        "--help"
+      ],
+      "exit": 1,
+      "stdout": "inotifywait 3.22.6.0\nWait for a particular event on a file or set of files.\nUsage: inotifywait [ options ] file1 [ file2 ] [ file3 ] [ ... ]\nOptions:\n\t-h|--help     \tShow this help text.\n\t@<file>       \tExclude the specified file from being watched.\n\t--exclude <pattern>\n\t              \tExclude all events on files matching the\n\t              \textended regular expression <pattern>.\n\t              \tOnly the last --exclude option will be\n\t              \ttaken into consideration.\n\t--excludei <pattern>\n\t              \tLike --exclude but case insensitive.\n\t--include <pattern>\n\t              \tExclude all events on files except the ones\n\t              \tmatching the extended regular expression\n\t              \t<pattern>.\n\t--includei <pattern>\n\t              \tLike --include but case insensitive.\n\t-m|--monitor  \tKeep listening for events forever or until --timeout expires.\n\t              \tWithout this option, inotifywait will exit after one event is received.\n\t-d|--daemon   \tSame as --monitor, except run in the background\n\t              \tlogging events to a file specified by --outfile.\n\t              \tImplies --syslog.\n\t-P|--no-dereference\n\t              \tDo not follow symlinks.\n\t-r|--recursive\tWatch directories recursively.\n\t--fromfile <file>\n\t              \tRead files to watch from <file> or `-' for stdin.\n\t-o|--outfile <file>\n\t              \tPrint events to <file> rather than stdout.\n\t-s|--syslog   \tSend errors to syslog rather than stderr.\n\t-q|--quiet    \tPrint less (only print events).\n\t-qq           \tPrint nothing (not even events).\n\t--format <fmt>\tPrint using a specified printf-like format\n\t              \tstring; read the man page for more details.\n\t--no-newline  \tDon't print newline symbol after\n\t              \t--format string.\n\t--timefmt <fmt>\tstrftime-compatible format string for use with\n\t              \t%T in --format string.\n\t-c|--csv      \tPrint events in CSV format.\n\t-t|--timeout <seconds>\n\t              \tWhen listening for a single event, time out after\n\t              \twaiting for an event for <seconds> seconds.\n\t              \tIf <seconds> is zero, inotifywait will never time out.\n\t-e|--event <event1> [ -e|--event <event2> ... ]\n\t\tListen for specific event(s).  If omitted, all events are \n\t\tlistened for.\n\nExit status:\n\t0  -  An event you asked to watch for was received.\n\t1  -  An event you did not ask to watch for was received\n\t      (usually delete_self or unmount), or some error occurred.\n\t2  -  The --timeout option was given and no events occurred\n\t      in the specified interval of time.\n\nEvents:\n\taccess\t\tfile or directory contents were read\n\tmodify\t\tfile or directory contents were written\n\tattrib\t\tfile or directory attributes changed\n\tclose_write\tfile or directory closed, after being opened in\n\t           \twritable mode\n\tclose_nowrite\tfile or directory closed, after being opened in\n\t           \tread-only mode\n\tclose\t\tfile or directory closed, regardless of read/write mode\n\topen\t\tfile or directory opened\n\tmoved_to\tfile or directory moved to watched directory\n\tmoved_from\tfile or directory moved from watched directory\n\tmove\t\tfile or directory moved to or from watched directory\n\tmove_self\t\tA watched file or directory was moved.\n\tcreate\t\tfile or directory created within watched directory\n\tdelete\t\tfile or directory deleted within watched directory\n\tdelete_self\tfile or directory was deleted\n\tunmount\t\tfile system containing file or directory unmounted\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-stub-20261014-VYekqNdb/stub-watch-_rfr758p/tree,target=/tree,readonly",
+        "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "inotifywait",
+        "--monitor",
+        "--recursive",
+        "--format",
+        "%w%f|%e",
+        "--event",
+        "open,modify,close_write,moved_to,create,delete,moved_from,delete_self",
+        "/tree"
+      ],
+      "exit": 0,
+      "stdout": "e0e1330d817548b43509fffc27de81e11641eae218411eab7cd35aaa1b5c4521\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-stub-20261014-VYekqNdb/stub-watch-_rfr758p/tree,target=/tree,readonly",
+        "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "inotifywait",
+        "--monitor",
+        "--recursive",
+        "--timefmt",
+        "%s.%N",
+        "--format",
+        "%T|%w%f|%e",
+        "--event",
+        "open,modify,close_write,moved_to,create,delete,moved_from,delete_self",
+        "/tree"
+      ],
+      "exit": 0,
+      "stdout": "de2a6271ab45082e77a44ff1502decd5bfaf3ab7262deeb49bdbe516c38467e7\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-stub-20261014-VYekqNdb/stub-watch-_rfr758p/tree,target=/tree,readonly",
+        "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "inotifywait",
+        "--monitor",
+        "--recursive",
+        "--format",
+        "%w%f|%e",
+        "/tree"
+      ],
+      "exit": 0,
+      "stdout": "a20f6be683439f8eb4f7b95eef795f41b0d9e8c69880987100d0eb401481e8e0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "e0e1330d817548b43509fffc27de81e11641eae218411eab7cd35aaa1b5c4521"
+      ],
+      "exit": 0,
+      "stdout": "/tree/|OPEN,ISDIR\n/tree/plan|OPEN,ISDIR\n/tree/plan/|OPEN,ISDIR\n/tree/chain|OPEN,ISDIR\n/tree/chain/|OPEN,ISDIR\n/tree/chain/a|OPEN,ISDIR\n/tree/chain/a/|OPEN,ISDIR\n/tree/chain/a/b|OPEN,ISDIR\n/tree/chain/a/b/|OPEN,ISDIR\n/tree/|OPEN,ISDIR\n/tree/plan|OPEN,ISDIR\n/tree/plan/|OPEN,ISDIR\n/tree/chain|OPEN,ISDIR\n/tree/chain/|OPEN,ISDIR\n/tree/chain/a|OPEN,ISDIR\n/tree/chain/a/|OPEN,ISDIR\n/tree/chain/a/b|OPEN,ISDIR\n/tree/chain/a/b/|OPEN,ISDIR\n",
+      "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "de2a6271ab45082e77a44ff1502decd5bfaf3ab7262deeb49bdbe516c38467e7"
+      ],
+      "exit": 0,
+      "stdout": "1791955105.%N|/tree/|OPEN,ISDIR\n1791955105.%N|/tree/plan|OPEN,ISDIR\n1791955105.%N|/tree/plan/|OPEN,ISDIR\n1791955105.%N|/tree/chain|OPEN,ISDIR\n1791955105.%N|/tree/chain/|OPEN,ISDIR\n1791955105.%N|/tree/chain/a|OPEN,ISDIR\n1791955105.%N|/tree/chain/a/|OPEN,ISDIR\n1791955105.%N|/tree/chain/a/b|OPEN,ISDIR\n1791955105.%N|/tree/chain/a/b/|OPEN,ISDIR\n",
+      "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "a20f6be683439f8eb4f7b95eef795f41b0d9e8c69880987100d0eb401481e8e0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "10003:10003",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-stub-20261014-VYekqNdb/stub-watch-_rfr758p/tree,target=/tree",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "sleep",
+        "infinity"
+      ],
+      "exit": 0,
+      "stdout": "dcfa309392749145b755a626a5d2e0559349a7498dd524c7a228ac9eccf83f11\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "dcfa309392749145b755a626a5d2e0559349a7498dd524c7a228ac9eccf83f11",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import json,os,pathlib,shutil,time\np=pathlib.Path(\"/tree\"); log=[]\ndef step(name, fn):\n    log.append([name, time.time()]); fn(); time.sleep(0.4)\nstep(\"read\", lambda: (p/\"plan/approved.json\").read_text())\nstep(\"append\", lambda: open(p/\"plan/approved.json\",\"a\").write(\" \"))\nstep(\"create-file\", lambda: (p/\"result.txt\").write_text(\"acted\"))\nstep(\"mkdir-then-write-at-once\", lambda: ((p/\"fresh\").mkdir(), (p/\"fresh/inner.txt\").write_text(\"x\")))\nstep(\"mkdir-then-write-after-1s\", lambda: ((p/\"slow\").mkdir(), time.sleep(1.0), (p/\"slow/inner.txt\").write_text(\"x\")))\nstep(\"rename-file\", lambda: (p/\"keep.txt\").rename(p/\"kept.txt\"))\nstep(\"move-folder-away\", lambda: (p/\"chain\").rename(p/\"chain-away\"))\nstep(\"move-folder-back\", lambda: (p/\"chain-away\").rename(p/\"chain\"))\nstep(\"rm-rf-chain\", lambda: shutil.rmtree(p/\"chain\"))\nstep(\"unlink-file\", lambda: (p/\"result.txt\").unlink())\nprint(json.dumps(log))\n"
+      ],
+      "exit": 0,
+      "stdout": "[[\"read\", 1791955105.898124], [\"append\", 1791955106.2985635], [\"create-file\", 1791955106.699358], [\"mkdir-then-write-at-once\", 1791955107.100103], [\"mkdir-then-write-after-1s\", 1791955107.5008676], [\"rename-file\", 1791955108.902008], [\"move-folder-away\", 1791955109.3026612], [\"move-folder-back\", 1791955109.7032757], [\"rm-rf-chain\", 1791955110.1038766], [\"unlink-file\", 1791955110.5049398]]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "stop",
+        "-t",
+        "2",
+        "e0e1330d817548b43509fffc27de81e11641eae218411eab7cd35aaa1b5c4521"
+      ],
+      "exit": 0,
+      "stdout": "e0e1330d817548b43509fffc27de81e11641eae218411eab7cd35aaa1b5c4521\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "e0e1330d817548b43509fffc27de81e11641eae218411eab7cd35aaa1b5c4521"
+      ],
+      "exit": 0,
+      "stdout": "/tree/|OPEN,ISDIR\n/tree/plan|OPEN,ISDIR\n/tree/plan/|OPEN,ISDIR\n/tree/chain|OPEN,ISDIR\n/tree/chain/|OPEN,ISDIR\n/tree/chain/a|OPEN,ISDIR\n/tree/chain/a/|OPEN,ISDIR\n/tree/chain/a/b|OPEN,ISDIR\n/tree/chain/a/b/|OPEN,ISDIR\n/tree/|OPEN,ISDIR\n/tree/plan|OPEN,ISDIR\n/tree/plan/|OPEN,ISDIR\n/tree/chain|OPEN,ISDIR\n/tree/chain/|OPEN,ISDIR\n/tree/chain/a|OPEN,ISDIR\n/tree/chain/a/|OPEN,ISDIR\n/tree/chain/a/b|OPEN,ISDIR\n/tree/chain/a/b/|OPEN,ISDIR\n/tree/plan/approved.json|OPEN\n/tree/plan/approved.json|OPEN\n/tree/plan/approved.json|MODIFY\n/tree/plan/approved.json|CLOSE_WRITE,CLOSE\n/tree/result.txt|CREATE\n/tree/result.txt|OPEN\n/tree/result.txt|MODIFY\n/tree/result.txt|CLOSE_WRITE,CLOSE\n/tree/fresh|CREATE,ISDIR\n/tree/fresh|OPEN,ISDIR\n/tree/slow|CREATE,ISDIR\n/tree/slow|OPEN,ISDIR\n/tree/slow/inner.txt|CREATE\n/tree/slow/inner.txt|OPEN\n/tree/slow/inner.txt|MODIFY\n/tree/slow/inner.txt|CLOSE_WRITE,CLOSE\n/tree/keep.txt|MOVED_FROM\n/tree/kept.txt|MOVED_TO\n/tree/chain|MOVED_FROM,ISDIR\n/tree/chain-away|MOVED_TO,ISDIR\n/tree/chain-away|MOVED_FROM,ISDIR\n/tree/chain|MOVED_TO,ISDIR\n/tree/chain|OPEN,ISDIR\n/tree/chain/|OPEN,ISDIR\n/tree/chain/a|OPEN,ISDIR\n/tree/chain/a/|OPEN,ISDIR\n/tree/chain/a/b|OPEN,ISDIR\n/tree/chain/a/b/|OPEN,ISDIR\n/tree/chain/a/b/target.txt|DELETE\n/tree/chain/a/b/|DELETE_SELF\n/tree/chain/a/b|DELETE,ISDIR\n/tree/chain/a/|DELETE_SELF\n/tree/chain/a|DELETE,ISDIR\n/tree/chain/|DELETE_SELF\n/tree/chain|DELETE,ISDIR\n/tree/result.txt|DELETE\n",
+      "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "stop",
+        "-t",
+        "2",
+        "de2a6271ab45082e77a44ff1502decd5bfaf3ab7262deeb49bdbe516c38467e7"
+      ],
+      "exit": 0,
+      "stdout": "de2a6271ab45082e77a44ff1502decd5bfaf3ab7262deeb49bdbe516c38467e7\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "de2a6271ab45082e77a44ff1502decd5bfaf3ab7262deeb49bdbe516c38467e7"
+      ],
+      "exit": 0,
+      "stdout": "1791955105.%N|/tree/|OPEN,ISDIR\n1791955105.%N|/tree/plan|OPEN,ISDIR\n1791955105.%N|/tree/plan/|OPEN,ISDIR\n1791955105.%N|/tree/chain|OPEN,ISDIR\n1791955105.%N|/tree/chain/|OPEN,ISDIR\n1791955105.%N|/tree/chain/a|OPEN,ISDIR\n1791955105.%N|/tree/chain/a/|OPEN,ISDIR\n1791955105.%N|/tree/chain/a/b|OPEN,ISDIR\n1791955105.%N|/tree/chain/a/b/|OPEN,ISDIR\n1791955105.%N|/tree/plan/approved.json|OPEN\n1791955106.%N|/tree/plan/approved.json|OPEN\n1791955106.%N|/tree/plan/approved.json|MODIFY\n1791955106.%N|/tree/plan/approved.json|CLOSE_WRITE,CLOSE\n1791955106.%N|/tree/result.txt|CREATE\n1791955106.%N|/tree/result.txt|OPEN\n1791955106.%N|/tree/result.txt|MODIFY\n1791955106.%N|/tree/result.txt|CLOSE_WRITE,CLOSE\n1791955107.%N|/tree/fresh|CREATE,ISDIR\n1791955107.%N|/tree/fresh|OPEN,ISDIR\n1791955107.%N|/tree/slow|CREATE,ISDIR\n1791955107.%N|/tree/slow|OPEN,ISDIR\n1791955108.%N|/tree/slow/inner.txt|CREATE\n1791955108.%N|/tree/slow/inner.txt|OPEN\n1791955108.%N|/tree/slow/inner.txt|MODIFY\n1791955108.%N|/tree/slow/inner.txt|CLOSE_WRITE,CLOSE\n1791955108.%N|/tree/keep.txt|MOVED_FROM\n1791955108.%N|/tree/kept.txt|MOVED_TO\n1791955109.%N|/tree/chain|MOVED_FROM,ISDIR\n1791955109.%N|/tree/chain-away|MOVED_TO,ISDIR\n1791955109.%N|/tree/chain-away|MOVED_FROM,ISDIR\n1791955109.%N|/tree/chain|MOVED_TO,ISDIR\n1791955110.%N|/tree/chain|OPEN,ISDIR\n1791955110.%N|/tree/chain/|OPEN,ISDIR\n1791955110.%N|/tree/chain/a|OPEN,ISDIR\n1791955110.%N|/tree/chain/a/|OPEN,ISDIR\n1791955110.%N|/tree/chain/a/b|OPEN,ISDIR\n1791955110.%N|/tree/chain/a/b/|OPEN,ISDIR\n1791955110.%N|/tree/chain/a/b/target.txt|DELETE\n1791955110.%N|/tree/chain/a/b/|DELETE_SELF\n1791955110.%N|/tree/chain/a/b|DELETE,ISDIR\n1791955110.%N|/tree/chain/a/|DELETE_SELF\n1791955110.%N|/tree/chain/a|DELETE,ISDIR\n1791955110.%N|/tree/chain/|DELETE_SELF\n1791955110.%N|/tree/chain|DELETE,ISDIR\n1791955110.%N|/tree/result.txt|DELETE\n",
+      "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "stop",
+        "-t",
+        "2",
+        "a20f6be683439f8eb4f7b95eef795f41b0d9e8c69880987100d0eb401481e8e0"
+      ],
+      "exit": 0,
+      "stdout": "a20f6be683439f8eb4f7b95eef795f41b0d9e8c69880987100d0eb401481e8e0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "a20f6be683439f8eb4f7b95eef795f41b0d9e8c69880987100d0eb401481e8e0"
+      ],
+      "exit": 0,
+      "stdout": "/tree/plan/approved.json|OPEN\n/tree/plan/approved.json|ACCESS\n/tree/plan/approved.json|CLOSE_NOWRITE,CLOSE\n/tree/plan/approved.json|OPEN\n/tree/plan/approved.json|MODIFY\n/tree/plan/approved.json|CLOSE_WRITE,CLOSE\n/tree/result.txt|CREATE\n/tree/result.txt|OPEN\n/tree/result.txt|MODIFY\n/tree/result.txt|CLOSE_WRITE,CLOSE\n/tree/fresh|CREATE,ISDIR\n/tree/fresh|OPEN,ISDIR\n/tree/fresh|ACCESS,ISDIR\n/tree/fresh|OPEN,ISDIR\n/tree/fresh|ACCESS,ISDIR\n/tree/fresh|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/fresh|ACCESS,ISDIR\n/tree/fresh/|ACCESS,ISDIR\n/tree/fresh|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/fresh/|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/slow|CREATE,ISDIR\n/tree/slow|OPEN,ISDIR\n/tree/slow|ACCESS,ISDIR\n/tree/slow|OPEN,ISDIR\n/tree/slow|ACCESS,ISDIR\n/tree/slow|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/slow|ACCESS,ISDIR\n/tree/slow|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/slow/|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/slow/inner.txt|CREATE\n/tree/slow/inner.txt|OPEN\n/tree/slow/inner.txt|MODIFY\n/tree/slow/inner.txt|CLOSE_WRITE,CLOSE\n/tree/keep.txt|MOVED_FROM\n/tree/kept.txt|MOVED_TO\n/tree/chain|MOVED_FROM,ISDIR\n/tree/chain-away|MOVED_TO,ISDIR\n/tree/chain-away/|MOVE_SELF\n/tree/chain-away|MOVED_FROM,ISDIR\n/tree/chain|MOVED_TO,ISDIR\n/tree/chain/|MOVE_SELF\n/tree/chain|OPEN,ISDIR\n/tree/chain/|OPEN,ISDIR\n/tree/chain|ACCESS,ISDIR\n/tree/chain/|ACCESS,ISDIR\n/tree/chain|ACCESS,ISDIR\n/tree/chain/|ACCESS,ISDIR\n/tree/chain/a|OPEN,ISDIR\n/tree/chain/a/|OPEN,ISDIR\n/tree/chain/a|ACCESS,ISDIR\n/tree/chain/a/|ACCESS,ISDIR\n/tree/chain/a|ACCESS,ISDIR\n/tree/chain/a/|ACCESS,ISDIR\n/tree/chain/a/b|OPEN,ISDIR\n/tree/chain/a/b/|OPEN,ISDIR\n/tree/chain/a/b|ACCESS,ISDIR\n/tree/chain/a/b/|ACCESS,ISDIR\n/tree/chain/a/b|ACCESS,ISDIR\n/tree/chain/a/b/|ACCESS,ISDIR\n/tree/chain/a/b/target.txt|DELETE\n/tree/chain/a/b|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/a/b/|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/a/b/|DELETE_SELF\n/tree/chain/a/b|DELETE,ISDIR\n/tree/chain/a|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/a/|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/a/|DELETE_SELF\n/tree/chain/a|DELETE,ISDIR\n/tree/chain|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/|DELETE_SELF\n/tree/chain|DELETE,ISDIR\n/tree/result.txt|DELETE\n",
+      "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "dcfa309392749145b755a626a5d2e0559349a7498dd524c7a228ac9eccf83f11"
+      ],
+      "exit": 0,
+      "stdout": "dcfa309392749145b755a626a5d2e0559349a7498dd524c7a228ac9eccf83f11\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "a20f6be683439f8eb4f7b95eef795f41b0d9e8c69880987100d0eb401481e8e0"
+      ],
+      "exit": 0,
+      "stdout": "a20f6be683439f8eb4f7b95eef795f41b0d9e8c69880987100d0eb401481e8e0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "de2a6271ab45082e77a44ff1502decd5bfaf3ab7262deeb49bdbe516c38467e7"
+      ],
+      "exit": 0,
+      "stdout": "de2a6271ab45082e77a44ff1502decd5bfaf3ab7262deeb49bdbe516c38467e7\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "e0e1330d817548b43509fffc27de81e11641eae218411eab7cd35aaa1b5c4521"
+      ],
+      "exit": 0,
+      "stdout": "e0e1330d817548b43509fffc27de81e11641eae218411eab7cd35aaa1b5c4521\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-stub-20261014-VYekqNdb/stub-watch-_rfr758p/tree,target=/scratch",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "stub": {
+    "scope": "stub measurement: no model, no credential; provisional images; not a production pin",
+    "watch_image": "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+    "take_image": "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+    "events_subscribed": "open,modify,close_write,moved_to,create,delete,moved_from,delete_self",
+    "watchers": {
+      "candidate": {
+        "argv": [
+          "inotifywait",
+          "--monitor",
+          "--recursive",
+          "--format",
+          "%w%f|%e",
+          "--event",
+          "open,modify,close_write,moved_to,create,delete,moved_from,delete_self",
+          "/tree"
+        ],
+        "stdout": "/tree/|OPEN,ISDIR\n/tree/plan|OPEN,ISDIR\n/tree/plan/|OPEN,ISDIR\n/tree/chain|OPEN,ISDIR\n/tree/chain/|OPEN,ISDIR\n/tree/chain/a|OPEN,ISDIR\n/tree/chain/a/|OPEN,ISDIR\n/tree/chain/a/b|OPEN,ISDIR\n/tree/chain/a/b/|OPEN,ISDIR\n/tree/|OPEN,ISDIR\n/tree/plan|OPEN,ISDIR\n/tree/plan/|OPEN,ISDIR\n/tree/chain|OPEN,ISDIR\n/tree/chain/|OPEN,ISDIR\n/tree/chain/a|OPEN,ISDIR\n/tree/chain/a/|OPEN,ISDIR\n/tree/chain/a/b|OPEN,ISDIR\n/tree/chain/a/b/|OPEN,ISDIR\n/tree/plan/approved.json|OPEN\n/tree/plan/approved.json|OPEN\n/tree/plan/approved.json|MODIFY\n/tree/plan/approved.json|CLOSE_WRITE,CLOSE\n/tree/result.txt|CREATE\n/tree/result.txt|OPEN\n/tree/result.txt|MODIFY\n/tree/result.txt|CLOSE_WRITE,CLOSE\n/tree/fresh|CREATE,ISDIR\n/tree/fresh|OPEN,ISDIR\n/tree/slow|CREATE,ISDIR\n/tree/slow|OPEN,ISDIR\n/tree/slow/inner.txt|CREATE\n/tree/slow/inner.txt|OPEN\n/tree/slow/inner.txt|MODIFY\n/tree/slow/inner.txt|CLOSE_WRITE,CLOSE\n/tree/keep.txt|MOVED_FROM\n/tree/kept.txt|MOVED_TO\n/tree/chain|MOVED_FROM,ISDIR\n/tree/chain-away|MOVED_TO,ISDIR\n/tree/chain-away|MOVED_FROM,ISDIR\n/tree/chain|MOVED_TO,ISDIR\n/tree/chain|OPEN,ISDIR\n/tree/chain/|OPEN,ISDIR\n/tree/chain/a|OPEN,ISDIR\n/tree/chain/a/|OPEN,ISDIR\n/tree/chain/a/b|OPEN,ISDIR\n/tree/chain/a/b/|OPEN,ISDIR\n/tree/chain/a/b/target.txt|DELETE\n/tree/chain/a/b/|DELETE_SELF\n/tree/chain/a/b|DELETE,ISDIR\n/tree/chain/a/|DELETE_SELF\n/tree/chain/a|DELETE,ISDIR\n/tree/chain/|DELETE_SELF\n/tree/chain|DELETE,ISDIR\n/tree/result.txt|DELETE\n",
+        "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+      },
+      "subsecond": {
+        "argv": [
+          "inotifywait",
+          "--monitor",
+          "--recursive",
+          "--timefmt",
+          "%s.%N",
+          "--format",
+          "%T|%w%f|%e",
+          "--event",
+          "open,modify,close_write,moved_to,create,delete,moved_from,delete_self",
+          "/tree"
+        ],
+        "stdout": "1791955105.%N|/tree/|OPEN,ISDIR\n1791955105.%N|/tree/plan|OPEN,ISDIR\n1791955105.%N|/tree/plan/|OPEN,ISDIR\n1791955105.%N|/tree/chain|OPEN,ISDIR\n1791955105.%N|/tree/chain/|OPEN,ISDIR\n1791955105.%N|/tree/chain/a|OPEN,ISDIR\n1791955105.%N|/tree/chain/a/|OPEN,ISDIR\n1791955105.%N|/tree/chain/a/b|OPEN,ISDIR\n1791955105.%N|/tree/chain/a/b/|OPEN,ISDIR\n1791955105.%N|/tree/plan/approved.json|OPEN\n1791955106.%N|/tree/plan/approved.json|OPEN\n1791955106.%N|/tree/plan/approved.json|MODIFY\n1791955106.%N|/tree/plan/approved.json|CLOSE_WRITE,CLOSE\n1791955106.%N|/tree/result.txt|CREATE\n1791955106.%N|/tree/result.txt|OPEN\n1791955106.%N|/tree/result.txt|MODIFY\n1791955106.%N|/tree/result.txt|CLOSE_WRITE,CLOSE\n1791955107.%N|/tree/fresh|CREATE,ISDIR\n1791955107.%N|/tree/fresh|OPEN,ISDIR\n1791955107.%N|/tree/slow|CREATE,ISDIR\n1791955107.%N|/tree/slow|OPEN,ISDIR\n1791955108.%N|/tree/slow/inner.txt|CREATE\n1791955108.%N|/tree/slow/inner.txt|OPEN\n1791955108.%N|/tree/slow/inner.txt|MODIFY\n1791955108.%N|/tree/slow/inner.txt|CLOSE_WRITE,CLOSE\n1791955108.%N|/tree/keep.txt|MOVED_FROM\n1791955108.%N|/tree/kept.txt|MOVED_TO\n1791955109.%N|/tree/chain|MOVED_FROM,ISDIR\n1791955109.%N|/tree/chain-away|MOVED_TO,ISDIR\n1791955109.%N|/tree/chain-away|MOVED_FROM,ISDIR\n1791955109.%N|/tree/chain|MOVED_TO,ISDIR\n1791955110.%N|/tree/chain|OPEN,ISDIR\n1791955110.%N|/tree/chain/|OPEN,ISDIR\n1791955110.%N|/tree/chain/a|OPEN,ISDIR\n1791955110.%N|/tree/chain/a/|OPEN,ISDIR\n1791955110.%N|/tree/chain/a/b|OPEN,ISDIR\n1791955110.%N|/tree/chain/a/b/|OPEN,ISDIR\n1791955110.%N|/tree/chain/a/b/target.txt|DELETE\n1791955110.%N|/tree/chain/a/b/|DELETE_SELF\n1791955110.%N|/tree/chain/a/b|DELETE,ISDIR\n1791955110.%N|/tree/chain/a/|DELETE_SELF\n1791955110.%N|/tree/chain/a|DELETE,ISDIR\n1791955110.%N|/tree/chain/|DELETE_SELF\n1791955110.%N|/tree/chain|DELETE,ISDIR\n1791955110.%N|/tree/result.txt|DELETE\n",
+        "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+      },
+      "unsubscribed": {
+        "argv": [
+          "inotifywait",
+          "--monitor",
+          "--recursive",
+          "--format",
+          "%w%f|%e",
+          "/tree"
+        ],
+        "stdout": "/tree/plan/approved.json|OPEN\n/tree/plan/approved.json|ACCESS\n/tree/plan/approved.json|CLOSE_NOWRITE,CLOSE\n/tree/plan/approved.json|OPEN\n/tree/plan/approved.json|MODIFY\n/tree/plan/approved.json|CLOSE_WRITE,CLOSE\n/tree/result.txt|CREATE\n/tree/result.txt|OPEN\n/tree/result.txt|MODIFY\n/tree/result.txt|CLOSE_WRITE,CLOSE\n/tree/fresh|CREATE,ISDIR\n/tree/fresh|OPEN,ISDIR\n/tree/fresh|ACCESS,ISDIR\n/tree/fresh|OPEN,ISDIR\n/tree/fresh|ACCESS,ISDIR\n/tree/fresh|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/fresh|ACCESS,ISDIR\n/tree/fresh/|ACCESS,ISDIR\n/tree/fresh|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/fresh/|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/slow|CREATE,ISDIR\n/tree/slow|OPEN,ISDIR\n/tree/slow|ACCESS,ISDIR\n/tree/slow|OPEN,ISDIR\n/tree/slow|ACCESS,ISDIR\n/tree/slow|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/slow|ACCESS,ISDIR\n/tree/slow|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/slow/|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/slow/inner.txt|CREATE\n/tree/slow/inner.txt|OPEN\n/tree/slow/inner.txt|MODIFY\n/tree/slow/inner.txt|CLOSE_WRITE,CLOSE\n/tree/keep.txt|MOVED_FROM\n/tree/kept.txt|MOVED_TO\n/tree/chain|MOVED_FROM,ISDIR\n/tree/chain-away|MOVED_TO,ISDIR\n/tree/chain-away/|MOVE_SELF\n/tree/chain-away|MOVED_FROM,ISDIR\n/tree/chain|MOVED_TO,ISDIR\n/tree/chain/|MOVE_SELF\n/tree/chain|OPEN,ISDIR\n/tree/chain/|OPEN,ISDIR\n/tree/chain|ACCESS,ISDIR\n/tree/chain/|ACCESS,ISDIR\n/tree/chain|ACCESS,ISDIR\n/tree/chain/|ACCESS,ISDIR\n/tree/chain/a|OPEN,ISDIR\n/tree/chain/a/|OPEN,ISDIR\n/tree/chain/a|ACCESS,ISDIR\n/tree/chain/a/|ACCESS,ISDIR\n/tree/chain/a|ACCESS,ISDIR\n/tree/chain/a/|ACCESS,ISDIR\n/tree/chain/a/b|OPEN,ISDIR\n/tree/chain/a/b/|OPEN,ISDIR\n/tree/chain/a/b|ACCESS,ISDIR\n/tree/chain/a/b/|ACCESS,ISDIR\n/tree/chain/a/b|ACCESS,ISDIR\n/tree/chain/a/b/|ACCESS,ISDIR\n/tree/chain/a/b/target.txt|DELETE\n/tree/chain/a/b|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/a/b/|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/a/b/|DELETE_SELF\n/tree/chain/a/b|DELETE,ISDIR\n/tree/chain/a|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/a/|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/a/|DELETE_SELF\n/tree/chain/a|DELETE,ISDIR\n/tree/chain|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/|CLOSE_NOWRITE,CLOSE,ISDIR\n/tree/chain/|DELETE_SELF\n/tree/chain|DELETE,ISDIR\n/tree/result.txt|DELETE\n",
+        "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+      }
+    },
+    "agent": [
+      [
+        "read",
+        1791955105.898124
+      ],
+      [
+        "append",
+        1791955106.2985635
+      ],
+      [
+        "create-file",
+        1791955106.699358
+      ],
+      [
+        "mkdir-then-write-at-once",
+        1791955107.100103
+      ],
+      [
+        "mkdir-then-write-after-1s",
+        1791955107.5008676
+      ],
+      [
+        "rename-file",
+        1791955108.902008
+      ],
+      [
+        "move-folder-away",
+        1791955109.3026612
+      ],
+      [
+        "move-folder-back",
+        1791955109.7032757
+      ],
+      [
+        "rm-rf-chain",
+        1791955110.1038766
+      ],
+      [
+        "unlink-file",
+        1791955110.5049398
+      ]
+    ],
+    "version": {
+      "exit": 1,
+      "stdout": "inotifywait 3.22.6.0\nWait for a particular event on a file or set of files.\nUsage: inotifywait [ options ] file1 [ file2 ] [ file3 ] [ ... ]\nOptions:\n\t-h|--help     \tShow this help text.\n\t@<file>       \tExclude the specified file from being watched.\n\t--exclude <pattern>\n\t              \tExclude all e",
+      "stderr": ""
+    },
+    "scratch_removed": true
+  }
+}
