@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Executed turn refusal, 2026-10-14:** a Gemini turn whose own record is refused after its exec keeps the exec (exit, timeout, times, stream) and is accounted for by the driver: ledger written even on turn 1, agent output left unknown, scanned, then refused for a human ruling, never a rehearsal or re-run. A walk launch journal requires the driver ledger. 8/8 new tests red first, Gemini adapter 138/138, seven mutants killed. See [the slice report](lane-reports/executed-turn-refusal-2026-10-14.md).
+
 **Gemini projection and launch record kinds, 2026-10-14:** an unregistered source-derived projection returns per-interaction native facts with exact visible text and ordered tool facts, never model-facing response parts as display; unsupported or contradictory shapes refuse. `public-config.json` and `turn-N.jsonl.launch.json` are exact unmaskable launch records. Both tests ran red first, then 4/4 and 2/2; seven mutations killed; manifest 372 files/56 fragments. Independent review pending. See [the slice report](lane-reports/gemini-projection-record-kinds-2026-10-14.md).
 
 **Native snapshot history join, 2026-10-13:** each later retained snapshot must reproduce all previously checked native facts exactly, with stable session identity and unique snapshot filenames. Six provenance tests passed, and the final strengthened history witness kills three mutations. Focused static review passes. Extra/unassigned interaction checks and native semantic readers remain required; the production registry is still closed.

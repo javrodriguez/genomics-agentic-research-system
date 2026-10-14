@@ -103,6 +103,10 @@ class StreamError(ValueError):
     """A stream or exit the reader cannot use as it stands (a typed refusal, never a guess)."""
 
 
+class ExecutedStreamRefused(aa.ExecutedTurnRefused, StreamError):
+    """Live harness 3a: a StreamError raised after the turn's exec ran, carrying what was kept of the exec."""
+
+
 def read_stream(text: str, *, model: str) -> dict:
     """One call's `-o stream-json` stdout, read for its harness-side records and the agent's words, kept apart.
 
@@ -268,6 +272,7 @@ class GeminiAdapter(aa.AgentAdapter):
         self._version = None
         self.session_id = None
         self.turn_records: list = []
+        self.executed_turns: list = []     # live harness 3a: each exec as kept before its stream was read
 
     def version(self) -> str:
         """`gemini --version` in the take container, as the agent (a plain exec: no login), parsed; cached."""
@@ -295,13 +300,18 @@ class GeminiAdapter(aa.AgentAdapter):
                           login_file=self.login_file, stream_path=self.stream_path_for(n), budget_s=budget_s,
                           clock=self.clock, caller_env=self.caller_env)
         after = self.counters_for()
-        meaning = exit_meaning(got["exit_code"], got["timed_out"])
-        with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
-            read = read_stream(fh.read(), model=self.model)
-        if first:
-            self.session_id = read["session_id"]
-        elif read["session_id"] is not None and read["session_id"] != self.session_id:
-            raise StreamError(f"turn {n} resumed another session than turn 1's")
+        counters = rt.counter_delta(before, after)
+        # Live harness 3a: the exec ran, so what the runtime returned is kept before anything of the turn is read; a
+        # refusal from here on is an executed turn's (ExecutedStreamRefused), never a turn that did not happen.
+        executed = {"n": n, "exit_code": got["exit_code"], "timed_out": got["timed_out"],
+                    "started_at": got["started_at"], "ended_at": got["ended_at"], "stream_path": got["stream_path"],
+                    "counters": counters, "refused": None}
+        self.executed_turns.append(executed)
+        try:
+            meaning, read = self._read_turn(got, n, first)
+        except (StreamError, OSError) as e:
+            executed["refused"] = f"{type(e).__name__}: {e}"
+            raise ExecutedStreamRefused(str(e), executed=executed) from e
         self.turn_records.append({
             "n": n, "first": first, "exit_code": got["exit_code"], "exit_meaning": meaning,
             "timed_out": got["timed_out"], "init_model": read["init_model"], "session_id": read["session_id"],
@@ -310,9 +320,21 @@ class GeminiAdapter(aa.AgentAdapter):
             "shapes_source": SHAPES_SOURCE})
         return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
                              end_reason=end_reason(got["exit_code"], got["timed_out"], read), init=None,
-                             api_errors=read["api_errors"], counters=rt.counter_delta(before, after),
+                             api_errors=read["api_errors"], counters=counters,
                              started_at=got["started_at"], ended_at=got["ended_at"],
                              agent_output=read["agent_output"])
+
+    def _read_turn(self, got: dict, n: int, first: bool) -> tuple:
+        """The exec's exit meaning and its stream read, and the resumed session checked (G-2); raised from here, a
+        refusal is an executed turn's (live harness 3a: _turn keeps the exec first)."""
+        meaning = exit_meaning(got["exit_code"], got["timed_out"])
+        with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
+            read = read_stream(fh.read(), model=self.model)
+        if first:
+            self.session_id = read["session_id"]
+        elif read["session_id"] is not None and read["session_id"] != self.session_id:
+            raise StreamError(f"turn {n} resumed another session than turn 1's")
+        return meaning, read
 
     def _end(self) -> None:
         """Nothing of the adapter's own to tear down: the driver removes the container by its recorded id."""

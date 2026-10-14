@@ -55,6 +55,11 @@
       "path": "tests/test_vendor_record_kinds.py",
       "status": "new",
       "reason": "Exact public-config.json and turn-N.jsonl.launch.json classification as unmaskable launch records; nearby and nested names still refuse."
+    },
+    {
+      "path": "tests/test_executed_turn_refusal.py",
+      "status": "new",
+      "reason": "Live harness 3a: an executed turn whose record the adapter refuses keeps its exec, is accounted for by the driver (ledger mandatory, unknown output stays unknown) and is refused for a human, never a rehearsal or re-run; a walk launch journal requires the driver ledger."
     }
   ]
 }

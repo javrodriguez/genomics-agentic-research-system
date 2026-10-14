@@ -4,12 +4,12 @@
     {
       "path": "graders/labels4.py",
       "status": "new",
-      "reason": "Round 4's closed vocabulary (interface 4); round 3 has no such module. Its reserved labels repeat round 3's graders/labels.py strings, imported nowhere from there. It also holds the turn ends (TURN_ENDS, GRADED_ENDS) that agent_adapter.py and routing.json use instead of retyping them (review round 1, W1B-7). It also holds the cell state `incomplete \u2014 mechanical` (INCOMPLETE_MECHANICAL, CELL_STATES), round 3's word for a cell at its rehearsal or pause cap, which batch.py commits under glitch-f3's cap ruling (6 Oct 2026, fold 3). It also holds the ruling words (RULING, RULE_RERUN, RULE_ROUTE, RULINGS) a restart reads before it drives a blocked take, or one that failed after its drive started, again (review round 3, W1B3-1, fold 4)."
+      "reason": "Round 4's closed vocabulary (interface 4); round 3 has no such module. Its reserved labels repeat round 3's graders/labels.py strings, imported nowhere from there. It also holds the turn ends (TURN_ENDS, GRADED_ENDS) that agent_adapter.py and routing.json use instead of retyping them (review round 1, W1B-7). It also holds the cell state `incomplete — mechanical` (INCOMPLETE_MECHANICAL, CELL_STATES), round 3's word for a cell at its rehearsal or pause cap, which batch.py commits under glitch-f3's cap ruling (6 Oct 2026, fold 3). It also holds the ruling words (RULING, RULE_RERUN, RULE_ROUTE, RULINGS) a restart reads before it drives a blocked take, or one that failed after its drive started, again (review round 3, W1B3-1, fold 4)."
     },
     {
       "path": "agent_adapter.py",
       "status": "new",
-      "reason": "The runner's only agent interface (interface 5); new in round 4. TurnResult's init, api_errors (every API error of the turn, in order) and counters are required keywords, and the agent's first turn starts only with completed agent output (review round 2: W1B2-1, W1B2-4, W1B2-7). started_at and ended_at are required keywords too, the host clock as an int or a float (review round 3, W1B3-6, fold 4)."
+      "reason": "The runner's only agent interface (interface 5); new in round 4. TurnResult's init, api_errors (every API error of the turn, in order) and counters are required keywords, and the agent's first turn starts only with completed agent output (review round 2: W1B2-1, W1B2-4, W1B2-7). started_at and ended_at are required keywords too, the host clock as an int or a float (review round 3, W1B3-6, fold 4). Live harness 3a (edit without transfer, under glitch-06's step-3 order, 14 Oct 2026): ExecutedTurnRefused and EXECUTED_FIELDS, an executed turn's own-record refusal carrying the exec kept before the read; bound by tests/test_executed_turn_refusal.py."
     },
     {
       "path": "tests/test_labels4.py",

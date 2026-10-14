@@ -113,6 +113,24 @@ class BoxRecordError(ValueError):
     """The box's records given to `harness_records` miss a required key or carry an unknown one."""
 
 
+# Live harness step 3a (14 Oct 2026): what an adapter kept of a turn's exec before it read anything of the turn.
+EXECUTED_FIELDS = ("n", "exit_code", "timed_out", "started_at", "ended_at", "stream_path", "counters", "refused")
+
+
+class ExecutedTurnRefused(Exception):
+    """The turn's exec ran (the runtime returned or timed out), and then the harness refused its own record of it (an
+    unreadable stream, an exit code off the table, a resumed session that is not the take's). Raised only after the
+    exec, carrying `executed`: exactly EXECUTED_FIELDS, as kept before the read (refused: why). The driver accounts
+    for the turn as launched and refuses the take for a human; it is never a pre-turn refusal, a rehearsal or a
+    re-run. A harness adapter may mix this into its own error type so its existing callers still catch that."""
+
+    def __init__(self, message, *, executed):
+        if not isinstance(executed, dict) or set(executed) != set(EXECUTED_FIELDS):
+            raise TypeError(f"executed must carry exactly {EXECUTED_FIELDS}")
+        super().__init__(message)
+        self.executed = dict(executed)
+
+
 def _count(v) -> bool:
     return isinstance(v, int) and not isinstance(v, bool) and v >= 0
 
