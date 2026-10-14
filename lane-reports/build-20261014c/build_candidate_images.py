@@ -12,6 +12,10 @@ The record is schema 3 (glitch-06's rulings on the lock-writer review, 14 Oct 20
     come from; each must equal HEAD's blob before the build. `lock_inputs_sha256` is the canonical JSON of the inputs.
   - LW-2: each build adds only --iidfile and --metadata-file to image_lock.build_argv(the unfilled lock); its
     metadata file and its build log (BuildKit plain progress) sit beside build-record.json and are committed with it.
+    Measured on athena (14 Oct 03:37 EDT, docker 29.8.1, buildx 0.37.1, containerd store): the metadata file names
+    only the image index (containerimage.digest and containerimage.descriptor), never containerimage.config.digest.
+    So the index id is bound to the metadata, and the manifest and config digests to the log's one `exporting
+    manifest` and one `exporting config` line; the manifest is also read back by `docker image inspect --platform`.
   - LW-4: the image store (`docker info`: Driver and DriverStatus) is recorded.
   - the sidecar's baked /opt/w/sidecar.py is hashed and must equal the recorded sidecar.py input (script b's check).
 Nothing is written at any lock path; no push, login, credential or model. It exits 1 on any problem.
@@ -125,12 +129,18 @@ def main() -> int:
             if rc == 0:
                 row["image_id"] = iid.read_text().strip()
                 md = json.loads(meta.read_text())
-                row["config_digest"] = md.get("containerimage.config.digest")
+                desc = md.get("containerimage.descriptor") or {}
+                if md.get("containerimage.digest") != row["image_id"] or desc.get("digest") != row["image_id"]:
+                    problems.append(f"{name}: the metadata file's index is not the iidfile's {row['image_id']}")
+                text = log.read_text()
+                configs = sorted(set(re.findall(r"^#\d+ exporting config (sha256:[0-9a-f]{64})(?: |$)", text, re.MULTILINE)))
+                row["config_digest"] = configs[0] if len(configs) == 1 else None
+                if row["config_digest"] is None:
+                    problems.append(f"{name}: the build log exported configs {configs}, not one")
                 got = subprocess.run(["docker", "image", "inspect", "--platform", PLATFORM, "--format", "{{json .Id}}",
                                       row["image_id"]], env=ENV, capture_output=True, text=True, timeout=60)
                 row["manifest_digest"] = json.loads(got.stdout) if got.returncode == 0 else None
-                logged = re.findall(r"^#\d+ exporting manifest (sha256:[0-9a-f]{64})(?: |$)", log.read_text(),
-                                    re.MULTILINE)
+                logged = re.findall(r"^#\d+ exporting manifest (sha256:[0-9a-f]{64})(?: |$)", text, re.MULTILINE)
                 row["logged_manifests"] = sorted(set(logged))
                 if row["logged_manifests"] != [row["manifest_digest"]]:
                     problems.append(f"{name}: the build log's manifest {row['logged_manifests']} is not the inspected "

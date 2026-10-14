@@ -66,11 +66,13 @@ def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def build_log(manifests) -> str:
+def build_log(manifests, configs=(CONFIG,)) -> str:
+    """BuildKit's plain export lines, as measured on athena (14 Oct 03:37 EDT)."""
     lines = ["#1 [internal] load build definition from Dockerfile", "#11 exporting to image",
              "#11 exporting layers done"]
     lines += [f"#11 exporting manifest {m} done" for m in manifests]
-    lines += [f"#11 exporting config {CONFIG} done", f"#11 exporting attestation manifest {ATTESTATION} 0.0s done",
+    lines += [f"#11 exporting config {c} done" for c in configs]
+    lines += [f"#11 exporting attestation manifest {ATTESTATION} 0.0s done",
               f"#11 exporting manifest list {INDEX} done", "#11 DONE 0.1s"]
     return "\n".join(lines) + "\n"
 
@@ -103,7 +105,9 @@ class Repo:
         self.out.mkdir()
         self.record_path = self.out / "build-record.json"
         self.row = self.fresh_row()
-        self.meta = {"containerimage.config.digest": CONFIG, "containerimage.digest": INDEX}
+        # the metadata file as measured on athena: the image index only, no config digest
+        self.meta = {"containerimage.digest": INDEX, "containerimage.descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json", "digest": INDEX, "size": 856}}
         self.log = build_log([MANIFEST])
         self.record = {"schema": 3, "source_commit": self.base, "checkout": ATHENA, "box_dir": ATHENA + "/box",
                        "store": {"driver": "overlayfs", "driver_status": [["driver-type", "io.containerd.snapshotter.v1"]]},
@@ -387,7 +391,26 @@ class BuildLW2(unittest.TestCase):
         r = Repo(self)
         r.row["config_digest"] = OTHER
         r.commit_record()
-        self.refuse(r, "config_digest is not its metadata file's")
+        self.refuse(r, "config_digest is not its build log's one exported config")
+
+    def test_a_log_with_two_or_no_configs(self):
+        for configs in ((CONFIG, OTHER), ()):
+            with self.subTest(configs=configs):
+                r = Repo(self)
+                r.log = build_log([MANIFEST], configs)
+                r.commit_record()
+                self.refuse(r, "config_digest is not its build log's one exported config")
+
+    def test_an_image_id_that_is_not_the_metadata_index(self):
+        for label, edit in (("row", lambda r: r.row.update(image_id=OTHER)),
+                            ("digest", lambda r: r.meta.update({"containerimage.digest": OTHER})),
+                            ("descriptor", lambda r: r.meta["containerimage.descriptor"].update(digest=OTHER)),
+                            ("no descriptor", lambda r: r.meta.pop("containerimage.descriptor"))):
+            with self.subTest(label=label):
+                r = Repo(self)
+                edit(r)
+                r.commit_record()
+                self.refuse(r, "image_id is not its metadata file's image index")
 
     def test_a_metadata_file_or_log_not_committed(self):
         for key in ("metadata_file", "build_log"):
@@ -465,7 +488,7 @@ class CheckoutLW3StoreLW4(unittest.TestCase):
     def test_a_manifest_digest_equal_to_the_config_digest(self):
         r = Repo(self)
         r.row["manifest_digest"] = CONFIG
-        r.log = build_log([CONFIG])
+        r.log = build_log([CONFIG], [CONFIG])
         r.commit_record()
         self.refuse(r, "classic-store reading")
 

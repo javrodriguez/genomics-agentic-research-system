@@ -43,7 +43,9 @@ mutants = [
  ("LW-3 baked sidecar not checked", '_need(row.get("baked_sidecar_sha256") == inputs[program],', '_need(True,'),
  # LW-2
  ("LW-2 build check not called", '    check_build(il, repo, Path(record_path), record, row, new)\n', ''),
- ("LW-2 metadata config not compared", '_need(isinstance(meta, dict) and meta.get("containerimage.config.digest") == row["config_digest"],', '_need(True,'),
+ ("LW-2 metadata index not compared", '_need(isinstance(meta, dict) and meta.get("containerimage.digest") == row["image_id"]', '_need(True'),
+ ("LW-2 metadata descriptor not compared", 'and isinstance(desc, dict) and desc.get("digest") == row["image_id"],', ','),
+ ("LW-2 log config not compared", '_need(configs == [row["config_digest"]],', '_need(True,'),
  ("LW-2 log manifest not compared", '_need(logged == [row["manifest_digest"]],', '_need(True,'),
  ("LW-2 side files not committed", 'side[key] = committed_bytes(repo, Path(record_path).parent / name)',
   'side[key] = (Path(record_path).parent / name).read_bytes()'),

@@ -10,10 +10,13 @@ by lane-reports/build-20261014c/build_candidate_images.py, and refuses, writing 
   - LW-1: every input the build read is recorded (the lock's Dockerfile, each COPY source of HEAD's Dockerfile, and
     the lock-inputs file), and each recorded sha256 equals the sha256 of HEAD's blob at that path, so a build of
     source HEAD no longer holds is refused; the row's lock inputs equal that file's entry for the lock;
-  - LW-2: the row's metadata file and build log sit beside the record, committed and unchanged; config_digest equals
-    the metadata's containerimage.config.digest; manifest_digest equals the build log's one `exporting manifest`
-    line; the row's argv equals image_lock.build_argv(the new lock) with only --iidfile and --metadata-file added
-    (the record's box folder mapped to this repository's);
+  - LW-2: the row's metadata file and build log sit beside the record, committed and unchanged; image_id equals the
+    metadata's image index (containerimage.digest and its descriptor); manifest_digest and config_digest equal the
+    build log's one `exporting manifest` and one `exporting config` line; the row's argv equals
+    image_lock.build_argv(the new lock) with only --iidfile and --metadata-file added (the record's box folder mapped
+    to this repository's). Departure from the ruling's wording, measured on athena 14 Oct 03:37 EDT (docker 29.8.1,
+    buildx 0.37.1, containerd store): the metadata file carries no containerimage.config.digest, so the config digest
+    is bound to the log's `exporting config` line and the metadata binds the index id instead;
   - LW-4: the record names its image store, and manifest_digest differs from config_digest (equal digests are
     what a classic-store inspect would give, never a platform manifest);
   - the sidecar's baked program hash equals its recorded sidecar.py input;
@@ -47,6 +50,7 @@ DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 RECORD_SCHEMA = 3
 INPUT_FIELDS = ("base", "harness", "python", "users", "squid")
 LOGGED_MANIFEST = re.compile(r"^#\d+ exporting manifest (sha256:[0-9a-f]{64})(?: |$)", re.MULTILINE)
+LOGGED_CONFIG = re.compile(r"^#\d+ exporting config (sha256:[0-9a-f]{64})(?: |$)", re.MULTILINE)
 SIDE_FILE = re.compile(r"[a-z0-9-]+\.(metadata\.json|build\.log)")
 SIDECAR_PROGRAM_SRC = "sidecar.py"
 
@@ -154,11 +158,17 @@ def check_build(il, repo: Path, record_path: Path, record: dict, row: dict, new:
               f"{image}'s {key} is not a file named for it beside the record")
         side[key] = committed_bytes(repo, Path(record_path).parent / name)
     meta = json.loads(side["metadata_file"])
-    _need(isinstance(meta, dict) and meta.get("containerimage.config.digest") == row["config_digest"],
-          f"{image}'s config_digest is not its metadata file's")
-    logged = sorted(set(LOGGED_MANIFEST.findall(side["build_log"].decode("utf-8", "replace"))))
+    desc = meta.get("containerimage.descriptor") if isinstance(meta, dict) else None
+    _need(isinstance(meta, dict) and meta.get("containerimage.digest") == row["image_id"]
+          and isinstance(desc, dict) and desc.get("digest") == row["image_id"],
+          f"{image}'s image_id is not its metadata file's image index")
+    log = side["build_log"].decode("utf-8", "replace")
+    logged = sorted(set(LOGGED_MANIFEST.findall(log)))
     _need(logged == [row["manifest_digest"]], f"{image}'s build log exported manifest {logged}, not "
                                               f"{row['manifest_digest']}")
+    configs = sorted(set(LOGGED_CONFIG.findall(log)))
+    _need(configs == [row["config_digest"]], f"{image}'s config_digest is not its build log's one exported config "
+                                             f"{configs}")
     _need(row["manifest_digest"] != row["config_digest"],
           f"{image}'s manifest digest equals its config digest: a classic-store reading, not a platform manifest")
     rbox, checkout = record.get("box_dir"), record.get("checkout")
