@@ -45,6 +45,12 @@ box/ownership.py is the box lane's and may be absent from this tree.
   N1-native    (review MAJOR 1) a native session in the agent's config folder (0000 to the host during the take, on the
                faithful road) is located through the box's operator_list and read through operator_read with root
                "config", never host-side: each turn's snapshot is retained with the bytes' sha256
+  S4-executed  (review MINOR 2) a turn that changes the settings and whose record the harness then refuses (the
+               executed-refusal road) still gets its post-n settings check: recorded, and the stop names the settings
+  O9-early     (review MINOR 4) run_take.launch refusing before any container (not a LaunchError), after the grant: the
+               grant is undone by a restore with no ids, and the take's records are not held
+  R6-ruling    (review NOTE 6, glitch-06's ruling) a failed grant or a refused settings baseline is recorded BLOCKED
+               before launch (drive_started false), stops the loop and needs a ruling; never re-driven on its own
 
 Mutants (MUTANTS, each killed by its own check's line): grant skipped; restore moved after postflight; restore skipped
 on a LaunchError; a scan running after a failed restore; a commit reading a held take's records; a host-side save and a
@@ -763,11 +769,81 @@ def n1_native(mod, p):
     return out
 
 
+@tbi.guarded("S4-executed")
+def s4_executed(mod, p):
+    import test_executed_turn_refusal as tet
+    out = []
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root, turns=[{"text": "a"}, {"text": "b"}])
+
+        class Planting(tet.RefusingAdapter):
+            def _turn(self, line, *, first, budget_s):
+                plant(self.take.launched.spec.run_tree)
+                return super()._turn(line, first=first, budget_s=budget_s)
+
+        def make(r, take):
+            rig.adapters.append(Planting(rig.box, take, rig.turns, refuse_at=1))
+            return rig.adapters[-1]
+        rig.adapter_for = rig.driver.adapter_for = make
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        rec = read(os.path.join(rig.take().folder, mod.SETTINGS_RECORD)) or {}
+        checks = [(c["snapshot"], bool(c["problems"])) for c in rec.get("checks", [])]
+        if checks != [("pre-1", False), ("post-1", True)]:
+            out.append(f"{p}: the executed-refusal road's checks are {checks}")
+        if "post-1" not in (got[0]["reason"] or "") or got[0]["state"] != tbi.labels4.FAILED:
+            out.append(f"{p}: the stop does not name the post-1 settings: {got[0]['state']} ({got[0]['reason']})")
+    return out
+
+
+@tbi.guarded("O9-early")
+def o9_early(mod, p):
+    out = []
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+
+        def refuse(*a, **kw):
+            raise rt.NotReady("synthetic: launch refused before any container")
+        with mock.patch.object(mod._run_take, "launch", refuse):
+            try:
+                rig.driver.launch(tbi.row(1))
+                out.append(f"{p}: the refused launch did not raise")
+            except rt.NotReady:
+                pass
+        if rig.ownership.names() != ["grant", "restore"] or rig.ownership.events[1][1]["ids"] != []:
+            out.append(f"{p}: the early refusal was not followed by one restore with no ids: {rig.ownership.names()}")
+        try:
+            rig.driver.record_files(tbi.row(1), 1)
+        except mod.DriveRefused as e:
+            out.append(f"{p}: the restored take's records are held: {e}")
+    return out
+
+
+@tbi.guarded("R6-ruling")
+def r6_ruling(mod, p):
+    import batch
+    out = []
+    for why, kw in (("a failed grant", {"ownership": "grant"}), ("a refused baseline", {"settings_guard": "refuse"})):
+        with tbi.scratch_repo() as root:
+            rig = tbi.Rig(mod, root)
+            if "ownership" in kw:
+                rig.driver.ownership = rig.ownership = tbi.FakeOwnership(rig.box, fail_grant=True)
+            else:
+                rig.driver.settings_guard = rig.settings_guard = tbi.FakeSettingsGuard(refuse=True)
+            b, got = tbi.run_batch(rig, [tbi.row(1)])
+            o = got[0]
+            if (o["state"] != tbi.labels4.BLOCKED or o["drive_started"] is not False or not batch.needs_ruling(o)
+                    or "ruling" not in (o["reason"] or "") or b.stopped is None):
+                out.append(f"{p}: {why} is {o['state']} (drive_started {o['drive_started']}, needs a ruling "
+                           f"{batch.needs_ruling(o)}): {o['reason']}")
+    return out
+
+
 CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch, "O4-held": o4_held,
           "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator,
           "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road,
           "U1-uid-map": u1_uid_map, "P2-machine": p2_machine,
-          "L1-ledger": l1_ledger, "N1-native": n1_native}
+          "L1-ledger": l1_ledger, "N1-native": n1_native,
+          "S4-executed": s4_executed, "O9-early": o9_early, "R6-ruling": r6_ruling}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -809,6 +885,22 @@ MUTANTS = {
                                 "reader(rel)))",
                                 "            take.native_snapshots.append(_native_snapshot.retain(take.folder, n, "
                                 "os.path.join(take.config_dir, rel)))"),), "N1-native"),
+    "executed-post-unchecked": ((("                        after = self._settings_problems(take, f\"post-{n}\")   "
+                                  "# review MINOR 2: this road too",
+                                  "                        after = []   # review MINOR 2: this road too"),),
+                                "S4-executed"),
+    "early-launch-unrestored": ((("        except Exception:                    # review MINOR 4: refused before any "
+                                  "container, after the grant\n            if take.launched is None:",
+                                  "        except Exception:                    # review MINOR 4: refused before any "
+                                  "container, after the grant\n            if False:"),), "O9-early"),
+    "grant-refusal-redriven": ((("            raise LaunchNeedsRuling(f\"ownership grant failed, the take is not launched: {e}\") "
+                                 "from e",
+                                 "            raise DriveRefused(f\"ownership grant failed, the take is not launched: {e}\") "
+                                 "from e"),), "R6-ruling"),
+    "baseline-refusal-redriven": ((("            raise LaunchNeedsRuling(f\"the run tree's Claude settings refused before "
+                                    "launch: {e}\") from e",
+                                    "            raise DriveRefused(f\"the run tree's Claude settings refused before "
+                                    "launch: {e}\") from e"),), "R6-ruling"),
     "uid-map-unread": ((("        uid_map = self.uid_map(take) if callable(self.uid_map) else self.uid_map",
                          "        uid_map = self.uid_map"),), "U1-uid-map"),
     "one-turn-reached": ((("        take.driven = True\n",
@@ -875,6 +967,15 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_n1_native(self):
         self.assertEqual(n1_native(tbi.drive), [])
+
+    def test_s4_executed(self):
+        self.assertEqual(s4_executed(tbi.drive), [])
+
+    def test_o9_early(self):
+        self.assertEqual(o9_early(tbi.drive), [])
+
+    def test_r6_ruling(self):
+        self.assertEqual(r6_ruling(tbi.drive), [])
 
 
 class TestOwnershipMutants(unittest.TestCase):
@@ -950,6 +1051,18 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_native_read_host_side(self):
         self.kill("native-read-host-side")
+
+    def test_executed_post_unchecked(self):
+        self.kill("executed-post-unchecked")
+
+    def test_early_launch_unrestored(self):
+        self.kill("early-launch-unrestored")
+
+    def test_grant_refusal_redriven(self):
+        self.kill("grant-refusal-redriven")
+
+    def test_baseline_refusal_redriven(self):
+        self.kill("baseline-refusal-redriven")
 
 
 if __name__ == "__main__":

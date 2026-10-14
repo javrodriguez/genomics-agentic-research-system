@@ -1962,6 +1962,13 @@ class DriveRefused(RuntimeError):
     """The drive step cannot hand the take to routing: the loop records it `failed` and stops for a human."""
 
 
+class LaunchNeedsRuling(DriveRefused):
+    """Review NOTE 6 (glitch-06's ruling, 14 Oct 2026): a refusal before launch that a restart would only meet again
+    (a refused settings baseline, a failed grant): nothing launched, and batch records it BLOCKED for a ruling, never
+    re-driven on its own. Departure, named: the box contract said "a rehearsal" for both."""
+    needs_ruling = True
+
+
 class OperatorStepRefused(DriveRefused):
     """A mid-take operator step's read or write through the ownership road failed (ownership review MAJOR 2): the
     take stopped after its drive started, for a human ruling, never a re-run."""
@@ -2147,6 +2154,10 @@ class TakeDriver:
                     self._by_id[e.container_id] = take
             self._restore_ownership(take)    # after the launch's partial teardown; a failure holds the take
             raise
+        except Exception:                    # review MINOR 4: refused before any container, after the grant
+            if take.launched is None:
+                self._restore_ownership(take, ids=[])
+            raise
         with self._lock:
             self._by_id[take.launched.take_id] = take
         return take.launched.take_id
@@ -2160,7 +2171,7 @@ class TakeDriver:
         except Exception as e:  # noqa: BLE001 - SettingsRefused or any other failure: no launch
             take.settings = {"baseline": None, "refused": f"{type(e).__name__}: {str(e)[:500]}", "checks": []}
             self._write(take, SETTINGS_RECORD, take.settings)
-            raise DriveRefused(f"the run tree's Claude settings refused before launch: {e}") from e
+            raise LaunchNeedsRuling(f"the run tree's Claude settings refused before launch: {e}") from e
         take.settings = {"baseline": base, "refused": None, "checks": []}   # written once, by the cleanup
 
     def _settings_problems(self, take, label: str) -> list:
@@ -2194,7 +2205,7 @@ class TakeDriver:
                           "record": getattr(e, "record", None)}
             self._restore_ownership(take, ids=[])
             self._write(take, OWNERSHIP_GRANT_RECORD, take.grant)
-            raise DriveRefused(f"ownership grant failed, the take is not launched: {e}") from e
+            raise LaunchNeedsRuling(f"ownership grant failed, the take is not launched: {e}") from e
         take.grant = {"ok": True, "why": None, "record": record}
         self._write(take, OWNERSHIP_GRANT_RECORD, take.grant)
 
@@ -2703,6 +2714,9 @@ class TakeDriver:
                         turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
                     except _adapter.ExecutedTurnRefused as e:     # live harness 3a: the turn ran; account for it
                         unreadable += self._executed_refused(take, n, line, e)
+                        after = self._settings_problems(take, f"post-{n}")   # review MINOR 2: this road too
+                        if after:
+                            take.settings_stop = f"post-{n}: the run tree's Claude settings: {'; '.join(after)}"
                         break
                     turns.append(turn)
                     self._evidence_line(take, {"kind": "turn", "n": n, "started_at": turn.started_at,
