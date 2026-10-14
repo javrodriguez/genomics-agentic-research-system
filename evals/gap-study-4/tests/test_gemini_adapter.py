@@ -549,8 +549,8 @@ def p1_view(mod, p):
     got = [e.kind for e in view_events(mod, "error-result.jsonl")]
     if got != [h, tv.OPERATOR, h, h]:
         out.append(f"{p}: error-result reads as {got}")
-    if "gemini" in tv.PARSERS:
-        out.append(f"{p}: the parser was registered in transcript_view.PARSERS")
+    if not isinstance(tv.PARSERS.get("gemini"), tv.VendorBoundParser):
+        out.append(f"{p}: the published parser does not require bound native records")
     if mod.GeminiParser.event_types != mod.EVENT_TYPES or mod.GeminiParser.tools is not mod.GEMINI_TOOLS:
         out.append(f"{p}: the parser does not name its own tables")
     return out

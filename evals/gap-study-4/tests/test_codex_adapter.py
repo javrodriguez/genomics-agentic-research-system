@@ -350,8 +350,8 @@ def p1_view(mod, p):
                 "item.completed:file_change", "item.completed:file_change", "item.completed:agent_message",
                 "turn.completed"]:
         out.append(f"{p}: the parser's raw types read {raws}")
-    if "codex" in tv.PARSERS:
-        out.append(f"{p}: the parser was registered in transcript_view.PARSERS")
+    if not isinstance(tv.PARSERS.get("codex"), tv.VendorBoundParser):
+        out.append(f"{p}: the published parser does not require bound native records")
     return out
 
 

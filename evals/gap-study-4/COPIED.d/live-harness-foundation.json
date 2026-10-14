@@ -1,0 +1,25 @@
+{
+  "lane": "live-harness-foundation",
+  "files": [
+    {
+      "path": "vendor_record_binding.py",
+      "status": "new",
+      "reason": "Closed host-authored interaction envelope with native bytes, identity, ledger and operator binding; no production admission."
+    },
+    {
+      "path": "tests/test_vendor_record_binding.py",
+      "status": "new",
+      "reason": "Synthetic foundation checks for all three adapter classes and factory selection, native-stream binding and refusal mutations; no live evidence."
+    },
+    {
+      "path": "checks.d/live-harness-foundation.txt",
+      "status": "new",
+      "reason": "Targeted synthetic foundation battery entry."
+    },
+    {
+      "path": "COPIED.d/live-harness-foundation.json",
+      "status": "new",
+      "reason": "This foundation slice copy record; existing owned-file departures recorded in their owning fragments."
+    }
+  ]
+}

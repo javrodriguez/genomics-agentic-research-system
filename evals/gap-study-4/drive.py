@@ -2660,6 +2660,37 @@ def claude_code_adapter_for(*, runtime, login_file: str, counters_for, pin_for, 
     return make
 
 
+def harness_adapter_for(*, runtime, login_file: str, counters_for, pin_for, clock,
+                        rollout_for=None, caller_env=None):
+    """The three production adapters, with no default harness or invented evidence.
+
+    Codex rollout_for(take, interaction_n) must retain and return the native
+    rollout bytes through the box's measured retrieval road. Its absence refuses
+    before a turn. This factory alone grants neither checker nor walk admission.
+    """
+    claude = claude_code_adapter_for(runtime=runtime, login_file=login_file,
+                                     counters_for=counters_for, pin_for=pin_for,
+                                     clock=clock, caller_env=caller_env)
+
+    def make(row, take):
+        harness = (row.get("agent") or {}).get("harness")
+        if harness == "claude-code":
+            return claude(row, take)
+        if harness not in ("codex", "gemini"):
+            raise AdapterIdentityRefused(f"no production adapter for harness {harness!r}")
+        common = dict(runtime=runtime, take_id=take.launched.take_id,
+                      run_tree=take.launched.spec.run_tree, login_file=login_file,
+                      model=row["model"], pin=pin_for(row),
+                      stream_path_for=lambda n: stream_path(take, n),
+                      counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env)
+        if harness == "codex":
+            if not callable(rollout_for):
+                raise DriveRefused("Codex requires a retained native rollout reader")
+            return _codex.CodexAdapter(**common, rollout_for=lambda n: rollout_for(take, n))
+        return _gemini.GeminiAdapter(**common)
+    return make
+
+
 READERS_DISAGREE = "readers-disagree"
 
 
@@ -2747,17 +2778,23 @@ def take_folder_in(root):
 # or reloaded while ClaudeCodeAdapter was patched.
 PRODUCTION_ADAPTER = _cc.ClaudeCodeAdapter
 PRODUCTION_ADAPTER_MODULE = "claude_code_adapter"
+import codex_adapter as _codex  # noqa: E402
+import gemini_adapter as _gemini  # noqa: E402
+
+PRODUCTION_ADAPTERS = {
+    "claude-code": (PRODUCTION_ADAPTER, PRODUCTION_ADAPTER_MODULE),
+    "codex": (_codex.CodexAdapter, "codex_adapter"),
+    "gemini": (_gemini.GeminiAdapter, "gemini_adapter"),
+}
 
 
 def adapter_class_problems(adapter) -> None:
-    """W7B-R1-4 (lane w8d, ruling W8D-gap4-1): the walk driver's adapter is exactly the production class,
-    claude_code_adapter.ClaudeCodeAdapter, never another object that declares its name (a stub, a fake, a subclass)."""
-    if type(adapter) is not PRODUCTION_ADAPTER or \
-            type(adapter).__module__ != PRODUCTION_ADAPTER_MODULE:
+    """The adapter is its harness's captured production class, never a stub or subclass."""
+    expected = PRODUCTION_ADAPTERS.get(getattr(adapter, "name", None))
+    if expected is None or type(adapter) is not expected[0] or type(adapter).__module__ != expected[1]:
         raise AdapterIdentityRefused(f"the walk driver built an adapter of class {type(adapter).__module__}."
-                                     f"{type(adapter).__qualname__}, not {PRODUCTION_ADAPTER_MODULE}."
-                                     f"ClaudeCodeAdapter; a walk or take of claude-code runs on the production adapter "
-                                     f"only, whatever name an object declares")
+                                     f"{type(adapter).__qualname__}; the declared harness requires its exact "
+                                     f"production adapter class, whatever name an object declares")
 
 
 def take_k_problems(records_root, row: dict, attempt, take) -> None:

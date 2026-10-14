@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Three-harness foundation, 2026-10-13:** isolated checkpoint adds a native-stream envelope reader and explicit adapter factory; nine synthetic tests and fourteen neighboring parser shape tests passed, copy manifest passes, and focused independent static review closed its two findings. Vendor production checker, record publishing and mode integration remain incomplete. See [the foundation report](lane-reports/live-harness-foundation-2026-10-13.md).
+
 **W12 combined integration, 2026-10-13:** wave12 `6f84c312` and reviewed W12A `355c142` are combined without conflicts or implementation edits. Their 23 changed files form a byte-exact disjoint union; the battery now enumerates 246 commands. Manifest, lints, environment 27 and walk-builders 43 tests pass locally. Independent integration review and a fresh full solo Athena proof remain pending; no public landing is claimed. See [the integration report](lane-reports/w12-combined-2026-10-13.md).
 
 **Codex adapter, 2026-10-01 (decisions 0266 and 0267; landed as the merge `f814518`):** GARS runs under
