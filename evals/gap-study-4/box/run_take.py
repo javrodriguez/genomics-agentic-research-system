@@ -142,7 +142,7 @@ LAUNCHER_SOURCE = ("import os,sys\n"
                    "a=sys.argv[1:]\n"
                    "k,n=a[0],int(a[1])\n"
                    "e=dict(x.split('=',1) for x in a[2:2+n])\n"
-                   "e[k]=os.environ[k]\n"
+                   "if k!='-':e[k]=os.environ[k]\n"
                    "dirs=[e['HOME']]\n"
                    "d=os.getcwd()\n"
                    "while True:\n"
@@ -157,6 +157,11 @@ LAUNCHER_SOURCE = ("import os,sys\n"
                    "c=a[2+n:]\n"
                    "os.execvpe(c[0],c,e)\n")
 LAUNCHER = ("/usr/bin/python3", "-I", "-S", "-c", LAUNCHER_SOURCE)
+# glitch-06's ruling (14 Oct 2026), the Codex lease road: LAUNCHER_SOURCE is supplied at run time (the exec's argv),
+# never baked into the image, so it carries one variant. The reserved name NO_LOGIN, which no variable NAME can be,
+# copies no credential into the agent's environment; launcher_argv admits it only for a Codex row behind the closed
+# lease gate (codex_lease_gate). Every other road still copies its one credential by name.
+NO_LOGIN = "-"
 
 # The model each arm's call names, where the harness has short aliases that resolve elsewhere (docs read 13 Oct 2026:
 # Gemini CLI v0.63.0 docs/cli/cli-reference.md, its alias table; `flash-lite` resolves to gemini-2.5-flash-lite).
@@ -559,14 +564,19 @@ def exec_values(harness: str, run_tree: str) -> dict:
     return {k: v for k, v in take_environment(harness, run_tree).items() if v != CREDENTIAL}
 
 
-def launcher_argv(login: str, values: dict, inner) -> list:
+def launcher_argv(login: str, values: dict, inner, *, harness=None) -> list:
     """The turn's command inside the take container: LAUNCHER, the credential's name, the count of pairs, the
     NAME=VALUE pairs in name order, then the harness's argv. The launcher execs the harness with exactly the pairs and
-    the credential (read by its name from the exec's environment): the agent starts from an empty environment."""
+    the credential (read by its name from the exec's environment): the agent starts from an empty environment. The
+    reserved NO_LOGIN copies no credential: admitted only for a Codex row (`harness`) behind the closed lease gate."""
     inner = _check_argv(inner) if inner else None
     if inner is None:
         raise Refused("the launcher needs the harness's argv")
-    if not isinstance(login, str) or not _NAME.fullmatch(login):
+    if login == NO_LOGIN:
+        codex_lease_gate()
+        if harness != CODEX:
+            raise Refused("the no-login launcher name is admitted only for a Codex row")
+    elif not isinstance(login, str) or not _NAME.fullmatch(login):
         raise Refused("the credential is named by a variable NAME")
     pairs = []
     for k in sorted(values):

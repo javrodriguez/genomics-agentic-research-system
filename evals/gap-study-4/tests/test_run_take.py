@@ -1979,6 +1979,81 @@ class TestLeasePlacement(MutantCase):
             self.assertEqual(problems_of(self.check), [])
 
 
+# ------------------------------------------------------------- the no-login launcher variant (glitch-06, 14 Oct)
+class TestNoLoginLauncher(MutantCase):
+    """glitch-06's ruling 2: LAUNCHER_SOURCE is supplied at run time (docker exec ... python3 -I -S -c SOURCE), never
+    baked into the image, so a variant is built here: the reserved name NO_LOGIN copies no credential into the agent's
+    environment, and launcher_argv admits it only for a Codex row behind the closed lease gate. Claude Code's road is
+    unchanged. The launcher program runs in-process here with os.execvpe faked: no process starts."""
+
+    def run_launcher(self, argv, environ):
+        """The environment the launcher would exec the harness with, or the exception it raised."""
+        import os as real_os
+        got = {}
+
+        def fake_exec(prog, args, env):
+            got["env"] = dict(env)
+            got["args"] = list(args)
+            raise SystemExit(0)
+        cwd = real_os.getcwd()
+        home = tempfile.mkdtemp(prefix="w-")
+        real_os.chdir(home)
+        try:
+            with mock.patch.object(real_os, "execvpe", fake_exec), mock.patch.dict(real_os.environ, environ,
+                                                                                    clear=True), \
+                    mock.patch.object(sys, "argv", ["-c", *argv]):
+                try:
+                    exec(compile(rt.LAUNCHER_SOURCE, "<launcher>", "exec"), {"__name__": "__main__"})
+                except SystemExit:
+                    pass
+                except Exception as e:  # noqa: BLE001 - reported as the launcher's failure
+                    return e
+        finally:
+            real_os.chdir(cwd)
+        return got
+
+    def check(self):
+        out = []
+        home = tempfile.mkdtemp(prefix="w-")
+        # Claude Code's road: the one credential is copied from the exec's environment by its name
+        got = self.run_launcher(["CLAUDE_CODE_OAUTH_TOKEN", "1", f"HOME={home}", "claude", "-p"],
+                                {"CLAUDE_CODE_OAUTH_TOKEN": "FAKE-claude-0123456789-PLANTED"})
+        if not isinstance(got, dict) or got["env"] != {"HOME": home,
+                                                       "CLAUDE_CODE_OAUTH_TOKEN": "FAKE-claude-0123456789-PLANTED"}:
+            out.append(f"the credential road changed: {got!r}"[:200])
+        # the no-login road: nothing is copied, whatever the exec's environment holds
+        got = self.run_launcher([rt.NO_LOGIN, "1", f"HOME={home}", "codex", "exec"],
+                                {"CODEX_API_KEY": "FAKE-api-0123456789-PLANTED", "OPENAI_API_KEY": "FAKE-oa-PLANTED"})
+        if not isinstance(got, dict) or got["env"] != {"HOME": home}:
+            out.append(f"the no-login launcher copied something or failed: {type(got).__name__}")
+        if rt.NO_LOGIN != "-" or rt._NAME.fullmatch(rt.NO_LOGIN):
+            out.append("NO_LOGIN is not the reserved '-' (a name no variable can have)")
+        # launcher_argv: the reserved name only for a Codex row, only behind the open gate
+        try:
+            rt.launcher_argv(rt.NO_LOGIN, {"A": "1"}, ["codex", "exec"], harness=rt.CODEX)
+            out.append("the closed gate admitted the no-login launcher")
+        except rt.NotReady as e:
+            if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
+                out.append(f"the closed gate refused with another message: {e}")
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
+            argv = rt.launcher_argv(rt.NO_LOGIN, {"B": "2", "A": "1"}, ["codex", "exec"], harness=rt.CODEX)
+            if argv != [*rt.LAUNCHER, "-", "2", "A=1", "B=2", "codex", "exec"]:
+                out.append(f"the no-login launcher argv is {argv!r}"[:200])
+            for harness in (rt.CLAUDE_CODE, rt.GEMINI, None):
+                try:
+                    rt.launcher_argv(rt.NO_LOGIN, {"A": "1"}, ["x"], harness=harness)
+                    out.append(f"the no-login launcher was admitted for {harness!r}")
+                except rt.NotReady:
+                    out.append(f"{harness!r}: NotReady, not a refusal")
+                except rt.Refused as e:
+                    if "only for a Codex row" not in str(e):
+                        out.append(f"{harness!r}: refused without naming the rule: {e}")
+        return out
+
+    def test_no_login_launcher(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
 def stat_reg(st) -> bool:
     import stat as _stat
     return _stat.S_ISREG(st.st_mode)
