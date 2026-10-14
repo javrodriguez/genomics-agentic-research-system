@@ -49,8 +49,8 @@ MUTANTS = [
  ("restore widens to group and other", '|(0o700 if stat.S_ISDIR(st.st_mode) else 0o600))', '|(0o777 if stat.S_ISDIR(st.st_mode) else 0o666))'),
  ("restore runs as grant mode", '"strict" if strict is True else "restore"]', '"strict" if strict is True else "loose"]'),
  # glitch-06, 14 Oct 2026: the config-folder read (native sessions mid-take)
- ("read: a final link followed", 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)', 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NONBLOCK,dir_fd=fd)'),
- ("read: a folder link followed", ' try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)', ' try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY,dir_fd=fd)'),
+
+ ("read: a folder link followed", ' try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)\n except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)\n os.close(fd); fd=nfd\ntry:f=', ' try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY,dir_fd=fd)\n except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)\n os.close(fd); fd=nfd\ntry:f='),
  ("read: the wrong root mounted", '    argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=True)', '    argv = operator_argv(image, os.path.dirname(root), READ_PROGRAM, rel, str(limit), readonly=True)'),
  ("read: a write mount", '    argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=True)', '    argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=False)'),
  ("read: readonly spelled away", '(",readonly" if readonly is True else "")', '("" if readonly is True else "")'),
@@ -58,8 +58,35 @@ MUTANTS = [
  ("read: reply hash unchecked", '                    and got["sha256"] == hashlib.sha256(data).hexdigest():', '                    and True:'),
  ("read: reply length unchecked", '            if len(data) <= limit and got["bytes"] == len(data) \\', '            if len(data) <= limit and True \\'),
  ("read: config cap is the run tree's", 'READ_ROOTS = {"run_tree": OPERATOR_READ_MAX_BYTES, "config": CONFIG_READ_MAX_BYTES}', 'READ_ROOTS = {"run_tree": OPERATOR_READ_MAX_BYTES, "config": OPERATOR_READ_MAX_BYTES}'),
- ("read: any root kind", '    if root_kind not in READ_ROOTS:', '    if False:'),
  ("read: capability added", '    return [run_take.RUNTIME_CLIENT, "run", "--rm", "--pull=never", "--network", "none", "--user", run_take.AGENT_USER,\n            "--cap-drop", "ALL",', '    return [run_take.RUNTIME_CLIENT, "run", "--rm", "--pull=never", "--network", "none", "--user", run_take.AGENT_USER,\n            "--cap-add", "DAC_READ_SEARCH",'),
+ # glitch-06, 14 Oct 2026: operator_list (session discovery, one folder at a time)
+ ("list: a link listed as a dir", ' m=os.stat(n,dir_fd=fd,follow_symlinks=False).st_mode', ' m=os.stat(n,dir_fd=fd,follow_symlinks=True).st_mode'),
+ ("list: recursion", 'names=os.listdir(fd)\n', 'names=os.listdir(fd)+[a+"/"+b for a in os.listdir(fd) if stat.S_ISDIR(os.stat(a,dir_fd=fd,follow_symlinks=False).st_mode) for b in os.listdir(os.open(a,os.O_RDONLY|os.O_DIRECTORY,dir_fd=fd))]\n'),
+ ("list: recursion admitted by the host", '                or b"/" in raw or b"\\0" in raw or raw in seen:', '                or b"\\0" in raw or raw in seen:'),
+ ("list: the wrong root mounted", '    argv = operator_argv(image, root, LIST_PROGRAM, rel, str(LIST_MAX_ENTRIES), readonly=True)', '    argv = operator_argv(image, os.path.dirname(root), LIST_PROGRAM, rel, str(LIST_MAX_ENTRIES), readonly=True)'),
+ ("list: a write mount", '    argv = operator_argv(image, root, LIST_PROGRAM, rel, str(LIST_MAX_ENTRIES), readonly=True)', '    argv = operator_argv(image, root, LIST_PROGRAM, rel, str(LIST_MAX_ENTRIES), readonly=False)'),
+ ("list: listed through a folder link", ' try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)\n except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)\n os.close(fd); fd=nfd\nnames', ' try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY,dir_fd=fd)\n except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)\n os.close(fd); fd=nfd\nnames'),
+ ("list: entry cap unchecked", 'if len(names)>limit:raise SystemExit("refused: more entries than the limit")', 'pass'),
+ ("list: host cap unchecked", 'and isinstance(got["entries"], list) and len(got["entries"]) <= LIST_MAX_ENTRIES):', 'and isinstance(got["entries"], list)):'),
+ ("list: reply hash unchecked", '    if got["sha256"] != hashlib.sha256(canon.encode("utf-8")).hexdigest():', '    if False:'),
+ ("list: any kind", ' and e[1] in LIST_KINDS)', ')'),
+ ("list: duplicates admitted", ' or raw in seen:', ':'),
+ # review-operator-read O-1, O-2, O-3 (14 Oct 2026)
+ ("O-1: a torn read admitted", '(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns):raise SystemExit("refused: the file changed during the read")', '(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns) and False:raise SystemExit("refused: the file changed during the read")'),
+ ("O-1: only the size compared", '(post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns)', 'post.st_size!=st.st_size'),
+ ("O-1: mtime not compared", '(post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns)', '(post.st_ino,post.st_dev,post.st_size)!=(st.st_ino,st.st_dev,st.st_size)'),
+ ("L-1: a removed name admitted", 'except FileNotFoundError:raise SystemExit("refused: the file changed during the read")', 'except FileNotFoundError:post=st'),
+ ("L-1: the name's inode not compared", '(post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns)', '(post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_dev,st.st_size,st.st_mtime_ns)'),
+ ("L-2: a non-UTF-8 name keeps its kind", '            name, kind = raw.decode("utf-8", "surrogateescape"), "other"', '            name, kind = raw.decode("utf-8", "surrogateescape"), e[1]'),
+ ("O-2: credential path admitted", '    if root_kind == "config" and rel != "." and any(credential_name(part) for part in rel.split("/")):', '    if False:'),
+ ("O-2: only the last part checked", 'any(credential_name(part) for part in rel.split("/"))', 'credential_name(rel.split("/")[-1])'),
+ ("O-2: the backstop dropped", '    return name in names or bool(preflight.CREDENTIAL_LIKE.search(name))', '    return name in names'),
+ ("O-2: listed credential readable", '            kind = "other"                  # O-2', '            pass                            # O-2'),
+ ("O-3: a link root admitted", '        if os.path.islink(path) or not os.path.isdir(path):\n            raise run_take.Refused(f"{name} must be an existing folder, never a link")\n    if not run_take.outside_every_repository(cfg):', '        if not os.path.isdir(path):\n            raise run_take.Refused(f"{name} must be an existing folder, never a link")\n    if not run_take.outside_every_repository(cfg):'),
+ ("O-3: nesting admitted", '    if run_take._inside(tree, cfg) or run_take._inside(cfg, tree):\n        raise run_take.Refused("the run tree and the config folder must not contain each other")', '    if False:\n        raise run_take.Refused("the run tree and the config folder must not contain each other")'),
+ ("O-3: config in a repository admitted", '    if not run_take.outside_every_repository(cfg):\n        raise run_take.Refused("the per-take config folder must sit outside every repository")\n    return tree if', '    if False:\n        raise run_take.Refused("the per-take config folder must sit outside every repository")\n    return tree if'),
+ ("O-3: any root kind", '    if root_kind not in READ_ROOTS:\n        raise run_take.Refused(f"an operator root is one of {sorted(READ_ROOTS)}")', '    if root_kind not in READ_ROOTS and False:\n        raise run_take.Refused(f"an operator root is one of {sorted(READ_ROOTS)}")'),
+ ("O-3: the other root mounted", '    return tree if root_kind == "run_tree" else cfg', '    return cfg if root_kind == "run_tree" else tree'),
  ("operator path escapes", ' or ".." in rel_path.split("/") or rel_path == ".":', ' or rel_path == ".":'),
 ]
 def run(mod):
@@ -70,7 +97,27 @@ def run(mod):
         tt.ow = ow
 c = run(ow); print("control", len(c.failures) + len(c.errors), "of", c.testsRun)
 alive = []
+PAIRS = [
+ # the named pair (box/ownership.py READ_PROGRAM comment): O_NOFOLLOW on the final open and the name's post-read lstat
+ # each refuse a final link; removing one alone is masked by the other, so they are killed together.
+ ("read: a final link followed (the pair)", (
+  ('try:f=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)', 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NONBLOCK,dir_fd=fd)'),
+  ('try:post=os.stat(parts[-1],dir_fd=fd,follow_symlinks=False)', 'try:post=os.stat(parts[-1],dir_fd=fd,follow_symlinks=True)'))),
+]
+for name, swaps in PAIRS:
+    src = SRC
+    for old, new in swaps:
+        assert src.count(old) == 1, name
+        src = src.replace(old, new)
+    MUTANTS.append((name, SRC, src))
 for name, old, new in MUTANTS:
+    if old is SRC:
+        mod = types.ModuleType(ow.__name__); mod.__file__ = ow.__file__
+        exec(compile(new, ow.__file__, "exec"), mod.__dict__)
+        r = run(mod); bad = len(r.failures) + len(r.errors)
+        print(("RED  " if bad else "ALIVE"), f"{bad}/{r.testsRun}", name)
+        if not bad: alive.append(name)
+        continue
     assert SRC.count(old) == 1, name
     mod = types.ModuleType(ow.__name__); mod.__file__ = ow.__file__
     exec(compile(SRC.replace(old, new), ow.__file__, "exec"), mod.__dict__)

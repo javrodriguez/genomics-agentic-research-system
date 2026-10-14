@@ -330,6 +330,9 @@ class OperatorSteps(unittest.TestCase):
         self.d = tempfile.mkdtemp(prefix="op-")
         self.root = os.path.join(self.d, "tree")
         os.makedirs(os.path.join(self.root, "p", "00_data"))
+        self.cfg = os.path.join(self.d, "cfg")
+        os.mkdir(self.cfg)
+        self.pair = {"run_tree": self.root, "config_dir": self.cfg}
 
     def tearDown(self):
         import shutil
@@ -419,27 +422,26 @@ class OperatorSteps(unittest.TestCase):
                 ow.operator_write(Reply(reply, rc), image=IMAGE, run_tree=self.root, rel_path="p/x", data=b"x")
         for kind in ("run_tree", "config"):
             self.assertIsNone(ow.operator_read(Reply('{"exists": false}'), image=IMAGE, root_kind=kind,
-                                               root=self.root, rel_path="p/x"))
+                                               **self.pair, rel_path="p/x"))
             self.assertEqual(ow.operator_read(Reply(read_reply(b"x")), image=IMAGE, root_kind=kind,
-                                              root=self.root, rel_path="p/x"), b"x")
+                                              **self.pair, rel_path="p/x"), b"x")
             bad_sha = json.dumps(dict(json.loads(read_reply(b"x")), sha256="0" * 64))
             bad_len = json.dumps(dict(json.loads(read_reply(b"x")), bytes=2))
             for reply in ('{"exists": true}', '{"exists": false, "b64": ""}', "nope",
                           '{"exists": true, "b64": "eA=="}', bad_sha, bad_len):
                 with self.subTest(kind=kind, reply=reply), self.assertRaises(ow.OwnershipError):
-                    ow.operator_read(Reply(reply), image=IMAGE, root_kind=kind, root=self.root, rel_path="p/x")
+                    ow.operator_read(Reply(reply), image=IMAGE, root_kind=kind, **self.pair, rel_path="p/x")
 
     def test_a_read_mounts_only_its_root_read_only(self):
         """glitch-06 (14 Oct 2026): a mid-take read of the agent-owned config folder (native sessions) or of the run
         tree is one container as the agent, no capabilities, no network, no new privileges, ONLY the named root
         mounted, read-only, with the root's own cap."""
-        cfg = os.path.join(self.d, "cfg")
-        os.mkdir(cfg)
+        cfg = self.cfg
         for kind, root, cap in (("config", cfg, ow.CONFIG_READ_MAX_BYTES),
                                 ("run_tree", self.root, ow.OPERATOR_READ_MAX_BYTES)):
             f = Fake(reply='{"exists": false}')
             with self.subTest(kind=kind):
-                self.assertIsNone(ow.operator_read(f, image=IMAGE, root_kind=kind, root=root,
+                self.assertIsNone(ow.operator_read(f, image=IMAGE, root_kind=kind, **self.pair,
                                                    rel_path="sessions/s1.jsonl", caller_env=CALLER))
                 runs = [strip(c) for c in f.calls if c[1:2] == ["run"]]
                 self.assertEqual(len(runs), 1)
@@ -456,10 +458,96 @@ class OperatorSteps(unittest.TestCase):
         for kind in ("home", "", None, "evidence"):
             f = Fake()
             with self.subTest(kind=kind), self.assertRaises(rt.Refused):
-                ow.operator_read(f, image=IMAGE, root_kind=kind, root=cfg, rel_path="x")
+                ow.operator_read(f, image=IMAGE, root_kind=kind, **self.pair, rel_path="x")
             self.assertEqual(f.calls, [])
         with self.assertRaises(TypeError):
             ow.operator_read(Fake(), image=IMAGE, run_tree=self.root, rel_path="x")   # no implicit root
+        with self.assertRaises(TypeError):
+            ow.operator_read(Fake(), image=IMAGE, root_kind="config", root=self.cfg, rel_path="x")  # the old API
+
+    # review-operator-read O-2: credential files in the config folder are never read or listed by the host
+    def test_credential_names_refuse_under_the_config_root(self):
+        from box import preflight
+        self.assertIn("auth.json", [n for n, _ in preflight.CREDENTIAL_FILES[rt.CODEX]])
+        src = dict(preflight.CREDENTIAL_FILES[rt.CODEX])["auth.json"]
+        self.assertIn("subscription amendment", src)
+        self.assertIn("cli_auth_credentials_store file", src)
+        for rel in ("auth.json", ".credentials.json", "oauth_creds.json", "google_accounts.json", "x/token.txt",
+                    "secrets/s.jsonl", "a/b/key.pem", "AUTH.JSON"):
+            for fn, kw in ((ow.operator_read, {"rel_path": rel}), (ow.operator_list, {"rel_dir": rel})):
+                f = Fake(reply='{"exists": false}')
+                with self.subTest(rel=rel, fn=fn.__name__), self.assertRaises(rt.Refused):
+                    fn(f, image=IMAGE, root_kind="config", **self.pair, **kw)
+                self.assertEqual(f.calls, [])
+        # a session path passes, and the run tree is not under this rule (its files are the task's)
+        self.assertIsNone(ow.operator_read(Fake(reply='{"exists": false}'), image=IMAGE, root_kind="config",
+                                           **self.pair, rel_path="sessions/2026/10/14/rollout-1.jsonl"))
+        self.assertIsNone(ow.operator_read(Fake(reply='{"exists": false}'), image=IMAGE, root_kind="run_tree",
+                                           **self.pair, rel_path="p/tokenize.py"))
+        listed = ow.operator_list(Fake(reply=list_reply([(b"auth.json", "file"), (b"sessions", "dir")])), image=IMAGE,
+                                  root_kind="config", **self.pair, rel_dir=".")
+        self.assertEqual(listed, [("auth.json", "other"), ("sessions", "dir")])
+
+    # review-operator-read O-3: the root is the take's own, an existing folder, never a link
+    def test_the_root_is_the_takes_own_folder(self):
+        link = os.path.join(self.d, "cfglink")
+        os.symlink(self.cfg, link)
+        repo = os.path.join(self.d, "repo")
+        os.makedirs(os.path.join(repo, ".git"))
+        os.mkdir(os.path.join(repo, "cfg"))
+        cases = {"config a link": dict(self.pair, config_dir=link),
+                 "config absent": dict(self.pair, config_dir=os.path.join(self.d, "none")),
+                 "config inside the tree": dict(self.pair, config_dir=os.path.join(self.root, "p")),
+                 "tree inside the config": dict(self.pair, run_tree=self.cfg + "/x"),
+                 "config in a repository": dict(self.pair, config_dir=os.path.join(repo, "cfg")),
+                 "relative": dict(self.pair, run_tree="tree")}
+        os.mkdir(self.cfg + "/x")
+        for name, pair in cases.items():
+            for fn, kw in ((ow.operator_read, {"rel_path": "a"}), (ow.operator_list, {"rel_dir": "."})):
+                f = Fake(reply='{"exists": false}')
+                with self.subTest(name, fn=fn.__name__), self.assertRaises(rt.Refused):
+                    fn(f, image=IMAGE, root_kind="config", **pair, **kw)
+                self.assertEqual(f.calls, [])
+
+    # review-operator-read O-1: a torn read refuses, never retried
+    def test_a_torn_read_refuses(self):
+        path = os.path.join(self.cfg, "s.jsonl")
+        Path(path).write_bytes(b"x" * 200000)
+        prog = ow.READ_PROGRAM.replace('"/scratch"', repr(self.cfg))
+        hook = " c=os.read(f,65536)\n"
+        self.assertEqual(prog.count(hook), 1)
+        writer = prog.replace(hook, hook + f" if c and not data:open({path!r},'ab').write(b'y')\n")   # one append mid-read
+        p = subprocess.run([sys.executable, "-I", "-S", "-c", writer, "s.jsonl", str(10 ** 7)], capture_output=True,
+                           text=True, timeout=60)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("changed during the read", p.stderr)
+        truncate = prog.replace(hook, hook + f" if c and not data:os.truncate({path!r},10)\n")   # shrinks mid-read
+        p = subprocess.run([sys.executable, "-I", "-S", "-c", truncate, "s.jsonl", str(10 ** 7)], capture_output=True,
+                           text=True, timeout=60)
+        self.assertNotEqual(p.returncode, 0)
+        Path(path).write_bytes(b"z" * 200000)
+        rewrite = prog.replace(hook, hook + f" if c and not data:import time;time.sleep(0.05);fd2=os.open({path!r},os.O_WRONLY);os.pwrite(fd2,b'q',0);os.close(fd2)\n")
+        p = subprocess.run([sys.executable, "-I", "-S", "-c", rewrite, "s.jsonl", str(10 ** 7)],    # same size, new mtime
+                           capture_output=True, text=True, timeout=60)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("changed during the read", p.stderr)
+        # review-operator-list L-1: the name replaced or removed during the read (the open descriptor alone sees neither)
+        same = (f"open({path!r}+'.new','wb').write(b'z'*200000);m=os.stat({path!r}).st_mtime_ns;"
+                f"os.utime({path!r}+'.new',ns=(m,m));os.replace({path!r}+'.new',{path!r})")
+        for label, act in (("replaced", f"open({path!r}+'.new','wb').write(b'z'*200000);os.replace({path!r}+'.new',{path!r})"),
+                           ("replaced by a twin (same size and mtime, another inode)", same),
+                           ("removed", f"os.unlink({path!r})")):
+            Path(path).write_bytes(b"z" * 200000)
+            swap = prog.replace(hook, hook + f" if c and not data:{act}\n")
+            p = subprocess.run([sys.executable, "-I", "-S", "-c", swap, "s.jsonl", str(10 ** 7)], capture_output=True,
+                               text=True, timeout=60)
+            with self.subTest(label):
+                self.assertNotEqual(p.returncode, 0)
+                self.assertIn("changed during the read", p.stderr)
+        Path(path).write_bytes(b"z" * 200000)
+        p = subprocess.run([sys.executable, "-I", "-S", "-c", prog, "s.jsonl", str(10 ** 7)], capture_output=True,
+                           text=True, timeout=60)
+        self.assertEqual(p.returncode, 0, p.stderr)
 
     def test_the_read_program_over_a_config_folder(self):
         """A Codex rollout and a Gemini session file read back with their sha256; a hard-linked file, a link, a
@@ -495,6 +583,164 @@ class OperatorSteps(unittest.TestCase):
             with self.subTest(rel=rel):
                 self.assertNotEqual(run(rel, limit).returncode, 0)
         self.assertEqual(Path(outside).read_text(), "host")
+
+
+
+def list_reply(entries) -> str:
+    """The list program's reply for [(raw name bytes, kind)], canonical as the program prints it."""
+    import base64
+    import hashlib
+    out = [[base64.b64encode(r).decode(), k] for r, k in sorted(entries)]
+    return json.dumps({"exists": True, "entries": out,
+                       "sha256": hashlib.sha256(json.dumps(out, separators=(",", ":")).encode()).hexdigest()})
+
+
+class OperatorList(unittest.TestCase):
+    """glitch-06 (14 Oct 2026): the harness discovers native session files it cannot name in advance (Gemini's
+    tmp/<project>/chats/session-*.jsonl, Codex's sessions/YYYY/MM/DD/rollout-*.jsonl) by listing ONE folder at a time,
+    under the operator read's container, mount and refusal rules."""
+
+    def setUp(self):
+        self.d = tempfile.mkdtemp(prefix="ol-")
+        self.tree = os.path.join(self.d, "tree")
+        os.mkdir(self.tree)
+        self.cfg = os.path.join(self.d, "cfg")
+        day = os.path.join(self.cfg, "sessions", "2026", "10", "14")
+        os.makedirs(day)
+        Path(day, "rollout-2026-10-14T12-00-00-abc.jsonl").write_text("{}\n")
+        os.makedirs(os.path.join(self.cfg, "tmp", "proj1", "chats"))
+        Path(self.cfg, "tmp", "proj1", "chats", "session-2026-10-14T12-00-ab12cd34.jsonl").write_text("{}\n")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.d)
+
+    def run_program(self, rel, limit="4096", program=None):
+        prog = (program or ow.LIST_PROGRAM).replace('"/scratch"', repr(self.cfg))
+        return subprocess.run([sys.executable, "-I", "-S", "-c", prog, rel, limit], capture_output=True, text=True,
+                              timeout=60)
+
+    def listed(self, rel, **kw):
+        p = self.run_program(rel, **kw)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        return p.stdout
+
+    def via_host(self, rel):
+        """The real program's output fed through operator_list's own checks (a fake runtime answering with it)."""
+        out = self.listed(rel)
+        return ow.operator_list(Fake(reply=out), image=IMAGE, root_kind="config", run_tree=self.tree,
+                                config_dir=self.cfg, rel_dir=rel,
+                                caller_env=CALLER)
+
+    def test_the_dated_folders_walk_level_by_level(self):
+        self.assertEqual(self.via_host("."), [("sessions", "dir"), ("tmp", "dir")])
+        self.assertEqual(self.via_host("sessions"), [("2026", "dir")])
+        self.assertEqual(self.via_host("sessions/2026/10/14"), [("rollout-2026-10-14T12-00-00-abc.jsonl", "file")])
+        self.assertEqual(self.via_host("tmp/proj1/chats"), [("session-2026-10-14T12-00-ab12cd34.jsonl", "file")])
+        self.assertIsNone(self.via_host("sessions/2026/10/15"))
+
+    def test_one_folder_only_never_recursive(self):
+        got = self.via_host("sessions/2026")
+        self.assertEqual(got, [("10", "dir")])
+        self.assertTrue(all("/" not in n for n, _ in self.via_host("tmp")))
+
+    def test_links_and_others_are_reported_never_followed(self):
+        outside = os.path.join(self.d, "outside")
+        os.mkdir(outside)
+        Path(outside, "secret.jsonl").write_text("host")
+        chats = os.path.join(self.cfg, "tmp", "proj1", "chats")
+        os.symlink(outside, os.path.join(chats, "dirlink"))
+        os.symlink(os.path.join(outside, "secret.jsonl"), os.path.join(chats, "filelink.jsonl"))
+        os.mkfifo(os.path.join(chats, "fifo"))
+        got = dict(self.via_host("tmp/proj1/chats"))
+        self.assertEqual(got["dirlink"], "link")
+        self.assertEqual(got["filelink.jsonl"], "link")
+        self.assertEqual(got["fifo"], "other")
+        os.symlink(outside, os.path.join(self.cfg, "tmp", "linkproj"))
+        self.assertNotEqual(self.run_program("tmp/linkproj").returncode, 0)          # never listed through a link
+        Path(self.cfg, "tmp", "afile").write_text("x")
+        self.assertNotEqual(self.run_program("tmp/afile").returncode, 0)             # a file is not a folder
+
+    def test_names_are_byte_exact(self):
+        if sys.platform == "darwin":
+            raw = "caf\u00e9-\u2603.jsonl".encode()       # APFS keeps names as valid UTF-8
+        else:
+            raw = b"bad-\xff.jsonl"
+        Path(os.fsdecode(os.path.join(os.fsencode(self.cfg), b"sessions", raw))).write_text("x")
+        got = dict(self.via_host("sessions"))
+        names = [os.fsencode(n) if k == "other" else n.encode() for n, k in got.items()]
+        self.assertIn(raw, names)
+
+    def test_a_non_utf8_name_lists_as_other(self):
+        """Review-operator-list L-2: a name that is not valid UTF-8 comes back byte-exact (surrogateescape) as "other",
+        so the caller never reads it. The host path is tested everywhere; the program path on a file system that keeps
+        such names (APFS refuses them)."""
+        raw = b"session-\xff\xfe.jsonl"
+        got = ow.operator_list(Fake(reply=list_reply([(raw, "file"), (b"ok.jsonl", "file")])), image=IMAGE,
+                               root_kind="config", run_tree=self.tree, config_dir=self.cfg, rel_dir="x")
+        self.assertEqual([(os.fsencode(n) if k == "other" else n.encode(), k) for n, k in got],
+                         [(b"ok.jsonl", "file"), (raw, "other")])
+        try:
+            Path(os.fsdecode(os.path.join(os.fsencode(self.cfg), b"sessions", raw))).write_text("x")
+        except OSError:
+            return                                       # this file system refuses the name (macOS APFS)
+        got = dict((os.fsencode(n), k) for n, k in self.via_host("sessions"))
+        self.assertEqual(got[raw], "other")
+
+    def test_the_entry_cap_refuses(self):
+        for i in range(3):
+            Path(self.cfg, "sessions", "2026", f"x{i}").write_text("x")
+        self.assertNotEqual(self.run_program("sessions/2026", limit="3").returncode, 0)
+        self.assertEqual(self.run_program("sessions/2026", limit="4").returncode, 0)
+        self.assertEqual(ow.LIST_MAX_ENTRIES, 4096)
+
+    def test_the_container_and_its_one_read_only_mount(self):
+        for kind, root in (("config", self.cfg), ("run_tree", self.tree)):
+            f = Fake(reply='{"exists": false}')
+            with self.subTest(kind=kind):
+                self.assertIsNone(ow.operator_list(f, image=IMAGE, root_kind=kind, run_tree=self.tree,
+                                                   config_dir=self.cfg, rel_dir="sessions", caller_env=CALLER))
+                runs = [strip(c) for c in f.calls if c[1:2] == ["run"]]
+                self.assertEqual(len(runs), 1)
+                argv = runs[0]
+                self.assertEqual(argv[:12], ["docker", "run", "--rm", "--pull=never", "--network", "none", "--user",
+                                             rt.AGENT_USER, "--cap-drop", "ALL", "--security-opt",
+                                             "no-new-privileges"])
+                self.assertNotIn("--cap-add", argv)
+                mounts = [argv[i + 1] for i, a in enumerate(argv) if a in ("--mount", "-v", "--volume")]
+                self.assertEqual(mounts, [f"type=bind,source={root},target=/scratch,readonly"])
+                self.assertEqual(argv[argv.index(ow.LIST_PROGRAM) + 1:], ["sessions", str(ow.LIST_MAX_ENTRIES)])
+        for kind, rel in (("home", "sessions"), ("config", "../x"), ("config", "/abs"), ("config", ""),
+                          ("config", "a//b")):
+            f = Fake()
+            with self.subTest(kind=kind, rel=rel), self.assertRaises(rt.Refused):
+                ow.operator_list(f, image=IMAGE, root_kind=kind, run_tree=self.tree, config_dir=self.cfg,
+                                 rel_dir=rel)
+            self.assertEqual(f.calls, [])
+
+    def test_the_reply_is_checked(self):
+        good = list_reply([(b"a.jsonl", "file"), (b"d", "dir")])
+        self.assertEqual(ow.operator_list(Fake(reply=good), image=IMAGE, root_kind="config", run_tree=self.tree,
+                                          config_dir=self.cfg, rel_dir="x"), [("a.jsonl", "file"), ("d", "dir")])
+        doc = json.loads(good)
+        bad = {
+            "hash": dict(doc, sha256="0" * 64),
+            "kind": json.loads(list_reply([(b"a", "symlink")])),
+            "slash": json.loads(list_reply([(b"a/b", "file")])),
+            "dot": json.loads(list_reply([(b"..", "dir")])),
+            "dupe": json.loads(list_reply([(b"a", "file"), (b"a", "dir")])),
+            "shape": {"exists": True, "entries": doc["entries"]},
+            "too-many": json.loads(list_reply([(f"f{i}".encode(), "file") for i in range(ow.LIST_MAX_ENTRIES + 1)])),
+        }
+        for name, reply in bad.items():
+            with self.subTest(name), self.assertRaises(ow.OwnershipError):
+                ow.operator_list(Fake(reply=json.dumps(reply)), image=IMAGE, root_kind="config", run_tree=self.tree,
+                                 config_dir=self.cfg,
+                                 rel_dir="x")
+        with self.assertRaises(ow.OwnershipError):
+            ow.operator_list(Fake(reply=good, fail=(self.cfg,)), image=IMAGE, root_kind="config", run_tree=self.tree,
+                             config_dir=self.cfg,
+                             rel_dir="x")
 
 
 if __name__ == "__main__":

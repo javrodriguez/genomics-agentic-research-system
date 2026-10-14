@@ -1,0 +1,30 @@
+planted an alias rebound (x = os): refused
+planted getattr(os, 'kill'): refused
+planted vars(os)['system']: refused
+planted os.__dict__['kill']: refused
+planted socket.os.kill: refused
+planted os.popen: refused
+planted __import__('subprocess'): refused
+planted r = subprocess.run; r(): refused
+planted exec('import subprocess'): refused
+planted signal.pidfd_send_signal: refused
+planted **{'shell': True} in the factory: refused
+planted shell=True in the factory: refused
+planted Popen referenced, not called, in the factory: refused
+planted subprocess elsewhere: refused
+planted os.posix_spawn: refused
+planted import os as o; o.kill: refused
+planted from os import system: refused
+planted os.fork: refused
+planted import pty: refused
+planted import ctypes: refused
+planted argparse._os: refused
+planted os.path.os: refused
+planted sys.modules['os']: refused
+planted globals()['os']: refused
+planted eval: refused
+planted compile: refused
+planted __builtins__: refused
+box/sidecar.py: ok
+box/scan_record.py: ok
+process check: ok

@@ -46,7 +46,10 @@ import json
 import os
 import re
 
-FORBIDDEN_KEYS = ("env", "model", "fallbackModel", "switchModelsOnFlag", "availableModels")
+# apiKeyHelper (box lane, 14 Oct 2026, with the walk-token road): its output outranks CLAUDE_CODE_OAUTH_TOKEN in Claude
+# Code's authentication precedence (code.claude.com/docs/en/authentication, items 4 and 5), so a run-tree settings file
+# carrying it would replace the walk's subscription login with another credential.
+FORBIDDEN_KEYS = ("env", "model", "fallbackModel", "switchModelsOnFlag", "availableModels", "apiKeyHelper")
 SETTINGS_NAMES = ("settings.json", "settings.local.json")
 SETTINGS_PATH = re.compile(r"(?:^|.*/)\.claude/settings(?:\.local)?\.json")
 # The `.claude` folders whose files can name a model in their frontmatter: agent definitions (R2-6), skills and
