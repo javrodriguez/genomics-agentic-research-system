@@ -7,3 +7,4 @@ python3 -B -W ignore evals/gap-study-4/tests/test_staging_admission.py
 python3 -B -W ignore evals/gap-study-4/tests/test_write_image_lock.py
 python3 -B -W ignore evals/gap-study-4/tests/test_new_folder_closed_check.py
 python3 -B -W ignore evals/gap-study-4/tests/test_stub_take.py
+python3 -B -W ignore evals/gap-study-4/tests/test_ownership.py

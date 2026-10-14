@@ -55,6 +55,16 @@
       "path": "tests/test_stub_take.py",
       "status": "new",
       "reason": "Lane live-box: the stub-take road's refusals (full image ids, lock ids, the output rule), that the production driver can never select it, that its records are labelled and refused by the walk and batch readers, and that its launch mirror is run_take.launch's steps argv for argv; fakes only."
+    },
+    {
+      "path": "box/ownership.py",
+      "status": "new",
+      "reason": "Lane live-box (stub-take review finding 9; glitch-06's assignment, 14 Oct 2026): the take's ownership road. grant() gives the run tree and the config folder to the agent and the evidence folder to the watcher before launch; restore() returns all three to the host user after teardown, before postflight, the scan and the config folder's removal. One-shot root containers of the take image running measure_live.OWN's reviewed walk (plus a link branch that lchowns and never follows); fails closed."
+    },
+    {
+      "path": "tests/test_ownership.py",
+      "status": "new",
+      "reason": "Lane live-box: the ownership road with a fake runtime (argv, order, uids bound to the locks, refusals before any call, grant stopping at the first failure, restore running every step, refusing while a container is present and verifying host-side ownership), and OWN_PROGRAM run on a local folder (links never followed, special files refused)."
     }
   ]
 }
