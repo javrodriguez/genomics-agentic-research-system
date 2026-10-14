@@ -19,6 +19,10 @@ by lane-reports/build-20261014c/build_candidate_images.py, and refuses, writing 
     is bound to the log's `exporting config` line and the metadata binds the index id instead;
   - LW-4: the record names its image store, and manifest_digest differs from config_digest (equal digests are
     what a classic-store inspect would give, never a platform manifest);
+  - review 2: each input's git mode and blob at HEAD equal the build commit's (R2-1, and a record's own ls-tree
+    entries must equal them); the log's one `exporting manifest list` line is image_id and BuildKit's provenance
+    names source_commit and this box folder (R2-2); the record lists no problem (R2-3); HEAD's bytes are read with
+    `git cat-file blob`, so a tree is never read as a file (R2-4);
   - the sidecar's baked program hash equals its recorded sidecar.py input;
   - the record holds exactly one row for the image, with exit 0, no label problem and valid digests;
   - the lock loads through image_lock.load (closed schema, its own Dockerfile beside it), is schema 1 and is the
@@ -50,6 +54,7 @@ DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 RECORD_SCHEMA = 3
 INPUT_FIELDS = ("base", "harness", "python", "users", "squid")
 LOGGED_MANIFEST = re.compile(r"^#\d+ exporting manifest (sha256:[0-9a-f]{64})(?: |$)", re.MULTILINE)
+LOGGED_LIST = re.compile(r"^#\d+ exporting manifest list (sha256:[0-9a-f]{64})(?: |$)", re.MULTILINE)
 LOGGED_CONFIG = re.compile(r"^#\d+ exporting config (sha256:[0-9a-f]{64})(?: |$)", re.MULTILINE)
 SIDE_FILE = re.compile(r"[a-z0-9-]+\.(metadata\.json|build\.log)")
 SIDECAR_PROGRAM_SRC = "sidecar.py"
@@ -70,9 +75,21 @@ def _git(repo: Path, *args) -> subprocess.CompletedProcess:
 
 
 def head_blob(repo: Path, rel: str) -> bytes:
-    head = _git(repo, "show", "HEAD:" + rel)
+    """HEAD's blob at `rel` (R2-4: `cat-file blob`, so a tree, a missing path or anything else refuses)."""
+    head = _git(repo, "cat-file", "blob", "HEAD:" + rel)
     _need(head.returncode == 0, f"{rel} is not a file committed at HEAD")
     return head.stdout
+
+
+def tree_entry(repo: Path, rev: str, rel: str) -> list:
+    """[mode, blob id] of the one blob at `rel` in `rev`'s tree (R2-1: Docker COPY keeps the mode)."""
+    got = _git(repo, "ls-tree", "--full-tree", rev, "--", rel)
+    lines = got.stdout.decode("utf-8", "replace").splitlines() if got.returncode == 0 else []
+    _need(len(lines) == 1, f"{rel} is not one entry in {rev}'s tree")
+    meta, _, path = lines[0].partition("\t")
+    mode, kind, oid = (meta.split(" ") + ["", "", ""])[:3]
+    _need(kind == "blob" and path == rel, f"{rel} is not a blob in {rev}'s tree")
+    return [mode, oid]
 
 
 def committed_bytes(repo: Path, path: Path) -> bytes:
@@ -115,7 +132,7 @@ def required_inputs(il, repo: Path, lock: dict) -> tuple:
     return want, program
 
 
-def check_inputs(il, repo: Path, record: dict, row: dict, lock: dict, lock_path: Path) -> None:
+def check_inputs(il, repo: Path, record: dict, row: dict, lock: dict, lock_path: Path, commit: str) -> None:
     """LW-1: every input the build read equals HEAD's blob, and the lock inputs are the committed file's."""
     inputs = row.get("inputs")
     _need(isinstance(inputs, dict) and inputs, f"{lock['image']}'s row records no build inputs")
@@ -128,6 +145,13 @@ def check_inputs(il, repo: Path, record: dict, row: dict, lock: dict, lock_path:
         _need(isinstance(sha, str) and HEX64.fullmatch(sha) is not None, f"{rel}'s recorded sha256 is not 64 hex")
         _need(hashlib.sha256(head_blob(repo, rel)).hexdigest() == sha,
               f"{rel} at HEAD is not the {rel} the image was built from")
+    # R2-1: each input's git mode and blob at HEAD are the build commit's (the build ran in a clean checkout of it);
+    # a record that carries its own ls-tree entries (script c from review 2 on) must name exactly those.
+    built = {rel: tree_entry(repo, commit, rel) for rel in sorted(inputs)}
+    for rel in sorted(inputs):
+        _need(tree_entry(repo, "HEAD", rel) == built[rel], f"{rel}'s mode or blob at HEAD is not the build commit's")
+    if "tree_entries" in row:
+        _need(row["tree_entries"] == built, f"{lock['image']}'s recorded tree entries are not the build commit's")
     src = record.get("lock_inputs_source")
     _need(isinstance(src, dict) and set(src) == {"path", "sha256"} and isinstance(src["path"], str),
           "the record names no lock-inputs file")
@@ -169,10 +193,20 @@ def check_build(il, repo: Path, record_path: Path, record: dict, row: dict, new:
     configs = sorted(set(LOGGED_CONFIG.findall(log)))
     _need(configs == [row["config_digest"]], f"{image}'s config_digest is not its build log's one exported config "
                                              f"{configs}")
+    lists = sorted(set(LOGGED_LIST.findall(log)))
+    _need(lists == [row["image_id"]], f"{image}'s build log exported manifest list {lists}, not its image_id")
     _need(row["manifest_digest"] != row["config_digest"],
           f"{image}'s manifest digest equals its config digest: a classic-store reading, not a platform manifest")
     rbox, checkout = record.get("box_dir"), record.get("checkout")
     rel_box = Path(il.BOX_DIR).resolve().relative_to(Path(repo).resolve()).as_posix()
+    # R2-2: BuildKit's own provenance names the revision and the context folder it built.
+    try:
+        args = meta["buildx.build.provenance"]["invocation"]["parameters"]["root"]["request"]["args"]
+    except (KeyError, TypeError):
+        args = None
+    _need(isinstance(args, dict) and args.get("vcs:revision") == record["source_commit"]
+          and args.get("vcs:localdir:context") == rel_box,
+          f"{image}'s provenance is not the build of {record['source_commit']} from {rel_box}")
     _need(isinstance(rbox, str) and isinstance(checkout, str) and os.path.isabs(checkout)
           and rbox == checkout.rstrip("/") + "/" + rel_box, "the record's box folder is not its checkout's box folder")
     argv = row.get("argv")
@@ -197,6 +231,7 @@ def plan(il, repo: Path, record_path: Path, lock_path: Path, image: str) -> tupl
     _need(isinstance(commit, str) and HEX40.fullmatch(commit) is not None, "the record's source_commit is not 40 hex")
     _need(is_ancestor(repo, commit), f"the build commit {commit} is not an ancestor of HEAD")
     _need(record.get("clean_after") is True, "the record does not show its checkout clean after the builds")
+    _need(record.get("problems") == [], "the record lists problems, or names none")   # R2-3
     store = record.get("store")
     _need(isinstance(store, dict) and isinstance(store.get("driver"), str) and store["driver"]
           and isinstance(store.get("driver_status"), list), "the record does not name its image store")
@@ -214,7 +249,7 @@ def plan(il, repo: Path, record_path: Path, lock_path: Path, image: str) -> tupl
     lock = il.load(str(lock_path))
     _need(lock["schema"] == il.SCHEMA, "the lock is not the unfilled schema-1 lock")
     _need(lock["image"] == image, f"the lock is {lock['image']}'s, not {image}'s")
-    check_inputs(il, repo, record, row, lock, Path(lock_path))
+    check_inputs(il, repo, record, row, lock, Path(lock_path), commit)
     new = copy.deepcopy(lock)
     for field in INPUT_FIELDS:
         if field not in lock:

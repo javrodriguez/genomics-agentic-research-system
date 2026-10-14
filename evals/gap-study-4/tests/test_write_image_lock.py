@@ -66,14 +66,14 @@ def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def build_log(manifests, configs=(CONFIG,)) -> str:
+def build_log(manifests, configs=(CONFIG,), lists=(INDEX,)) -> str:
     """BuildKit's plain export lines, as measured on athena (14 Oct 03:37 EDT)."""
     lines = ["#1 [internal] load build definition from Dockerfile", "#11 exporting to image",
              "#11 exporting layers done"]
     lines += [f"#11 exporting manifest {m} done" for m in manifests]
     lines += [f"#11 exporting config {c} done" for c in configs]
     lines += [f"#11 exporting attestation manifest {ATTESTATION} 0.0s done",
-              f"#11 exporting manifest list {INDEX} done", "#11 DONE 0.1s"]
+              *[f"#11 exporting manifest list {i} done" for i in lists], "#11 DONE 0.1s"]
     return "\n".join(lines) + "\n"
 
 
@@ -107,7 +107,10 @@ class Repo:
         self.row = self.fresh_row()
         # the metadata file as measured on athena: the image index only, no config digest
         self.meta = {"containerimage.digest": INDEX, "containerimage.descriptor": {
-            "mediaType": "application/vnd.oci.image.index.v1+json", "digest": INDEX, "size": 856}}
+            "mediaType": "application/vnd.oci.image.index.v1+json", "digest": INDEX, "size": 856},
+            "buildx.build.provenance": {"invocation": {"parameters": {"root": {"request": {"args": {
+                "vcs:revision": self.base, "vcs:localdir:context": "box",
+                "vcs:source": "/nonexistent-promisor-never-fetched"}}}}}}}
         self.log = build_log([MANIFEST])
         self.record = {"schema": 3, "source_commit": self.base, "checkout": ATHENA, "box_dir": ATHENA + "/box",
                        "store": {"driver": "overlayfs", "driver_status": [["driver-type", "io.containerd.snapshotter.v1"]]},
@@ -139,6 +142,14 @@ class Repo:
             ins["box/sidecar.py"] = self.blob_sha("box/sidecar.py")
             row["baked_sidecar_sha256"] = ins["box/sidecar.py"]
         return row
+
+    def entries(self) -> dict:
+        """Each recorded input's [mode, blob id] at the build commit, as script c records them (R2-1)."""
+        out = {}
+        for rel in self.row["inputs"]:
+            mode, _, oid = self.git("ls-tree", self.base, "--", rel).split("\t")[0].split(" ")
+            out[rel] = [mode, oid]
+        return out
 
     def git(self, *args) -> str:
         return subprocess.run(GIT + ["-C", str(self.root), *args], check=True, capture_output=True,
@@ -462,6 +473,68 @@ class BuildLW2(unittest.TestCase):
         r.record["checkout"] = "/srv/elsewhere"
         r.commit_record()
         self.refuse(r, "box folder is not its checkout's")
+
+
+class Review2(unittest.TestCase):
+    """Review 2 (gap4-review-box-lockwriter2-20261014): R2-1 the git mode of an input, R2-2 the log's manifest list
+    and the provenance revision, R2-3 the record's problems, R2-4 a tree is never a blob."""
+
+    def refuse(self, r, pattern):
+        with self.assertRaisesRegex(w.Refused, pattern):
+            r.plan()
+
+    def test_R2_1_a_mode_only_change_after_the_build(self):
+        r = Repo(self, "sidecar")
+        os.chmod(r.box / "sidecar.py", 0o755)
+        r.git("add", "-A"); r.git("commit", "-q", "-m", "mode only")
+        before, after = (r.git("ls-tree", rev, "--", "box/sidecar.py").split("\t")[0].split(" ") for rev in (r.base, "HEAD"))
+        self.assertEqual((before[0], after[0], before[2] == after[2]), ("100644", "100755", True))   # the blob is unchanged
+        self.refuse(r, "box/sidecar.py's mode or blob at HEAD is not the build commit's")
+
+    def test_R2_1_recorded_tree_entries_must_be_the_build_commits(self):
+        r = Repo(self, "sidecar")
+        r.row["tree_entries"] = {k: ["100755", v[1]] for k, v in r.entries().items()}
+        r.commit_record()
+        self.refuse(r, "recorded tree entries are not the build commit's")
+        r.row["tree_entries"] = r.entries()
+        r.commit_record()
+        self.assertEqual(r.plan()[0]["image"], "sidecar")
+
+    def test_R2_2_a_log_whose_manifest_list_is_not_the_image_id(self):
+        for lists in ((OTHER,), (INDEX, OTHER), ()):
+            with self.subTest(lists=lists):
+                r = Repo(self)
+                r.log = build_log([MANIFEST], lists=lists)
+                r.commit_record()
+                self.refuse(r, "build log exported manifest list")
+
+    def test_R2_2_a_provenance_of_another_revision_or_context(self):
+        for label, edit in (("revision", lambda a: a.update({"vcs:revision": "e" * 40})),
+                            ("no revision", lambda a: a.pop("vcs:revision")),
+                            ("context", lambda a: a.update({"vcs:localdir:context": "elsewhere"}))):
+            with self.subTest(label=label):
+                r = Repo(self)
+                edit(r.meta["buildx.build.provenance"]["invocation"]["parameters"]["root"]["request"]["args"])
+                r.commit_record()
+                self.refuse(r, "provenance is not the build of")
+        r = Repo(self)
+        r.meta.pop("buildx.build.provenance")
+        r.commit_record()
+        self.refuse(r, "provenance is not the build of")
+
+    def test_R2_3_a_record_with_problems(self):
+        r = Repo(self)
+        r.record["problems"] = ["take-a: something"]
+        r.commit_record()
+        self.refuse(r, "the record lists problems")
+        del r.record["problems"]
+        r.commit_record()
+        self.refuse(r, "the record lists problems")
+
+    def test_R2_4_a_tree_is_never_a_blob(self):
+        r = Repo(self)
+        with self.assertRaisesRegex(w.Refused, "is not a file committed at HEAD"):
+            w.head_blob(r.root, "box")
 
 
 class CheckoutLW3StoreLW4(unittest.TestCase):
