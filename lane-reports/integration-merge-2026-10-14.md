@@ -18,6 +18,8 @@ Nothing was pushed.
 | `71b1cc7f` | harness head `9649aa0a` (batch 8 and the three harness reds of run `gap4-merge-a1f7405`) | none: see the R3DeadWalk line below |
 | `0afb6825` | box head `6221c297` (the five reviewed image locks, schema 2, with the post-write guard) | none |
 | `9588a563` | harness head `840048ab` (carries `a36a5743`, `19ec4c41` and the lint fix) | none: see the test_identity_mode_evidence line below |
+| `fe2f5bdf` | harness head `8a598b49` (carries `75a8074d`, D-INT-2: `served_model_rule.codex`) | none: see the draft-file lines below |
+| `c3a0cb77` | box head `ba2995ee` (the test_egress fix; its parent `2dd00dc7`, the egress pin at preflight, is under review) | none |
 
 How "no conflict" was checked: `comm -12` of `git diff --name-only a12569a <box head>` and `git diff --name-only a12569a <harness head>` printed no path for the first merge, so no file was changed on both sides.
 For `0d2085ee` and `7b5a9dd4`, `comm -12` of the two heads' changed paths since `fa98717e` (`git diff --name-only HEAD...<head>`) printed no path, so again no file was changed on both sides.
@@ -31,6 +33,7 @@ Each later merge reported "Automatic merge went well" and left no unmerged path 
 - `71b1cc7f`, `evals/gap-study-4/tests/test_walk_runner.py`, `R3DeadWalk.test_a_ledgerless_walk_with_only_a_launch_journal_is_refused` strip loop: the harness lane mirrored `492af633` byte for byte, so git merged it with no conflict marker. `git diff harness/<head> -- tests/test_walk_runner.py` is empty, so the merged file is the harness lane's text, as glitch-06 ruled.
 - `9588a563`, `evals/gap-study-4/tests/test_identity_mode_evidence.py`: harness `a36a5743` changed `AcceptancePerHarness` (Codex now has an identity source table), and this lane's `fa98717e` changed the `Journal` fake. The lines do not overlap, so git merged them with no conflict marker and both are kept. The merged-head `Journal` that wraps the box's real `run_turn` stays, as glitch-06 ruled.
 - `9588a563`, `evals/gap-study-4/tests/test_gemini_adapter.py`: the harness branch did not change this file after `ce852b01`, so this lane's A11/A14 change carries through unchanged.
+- `fe2f5bdf`, `evals/gap-study-4/build_draft.py`, `prereg-draft.json` and `tests/test_build_draft.py`: the harness hunks (`served_model_rule.codex` from routing) and the box hunks (the new-folder residual) are on separate lines. Git merged them with no conflict marker, and both are kept.
 
 There were no conflict hunks in any of the three merges, so there are no resolution lines.
 
@@ -77,3 +80,138 @@ Harness `a36a5743` (newer than `9649aa0a`, not in the harness's green subset) wa
 - `tests/test_run_take.py` audit (5 failures): this is the box lane's second real finding, that preflight reads `run_take.GEMINI_MODE_ROUTE_VARIABLES`, which `MODULE_ATTRS` does not list.
   The box lane holds it for a ruling (`3a3716a0`), and it is not this lane's to change.
 - COPIED.d and checks.d: no declaration was needed. On the merged head `copy_manifest.py --check` and `freeze.py --check` both report ok (390 files from 57 fragments).
+
+## The draft regenerated on the merged head (`75ba79ef`)
+
+glitch-06 ruled that `prereg-draft.json` be regenerated where both lanes' inputs meet: box `6221c297` (the image locks) and harness `75a8074d` (`served_model_rule.codex`).
+It was run on `fe2f5bdf` by the writer's own path, `python3 -B -W ignore evals/gap-study-4/build_draft.py` with no arguments.
+That run wrote 1260 planned tries and 126 half-cells, with 51 pending inputs.
+The diff below compares JSON paths in the regenerated draft against the merged head's committed draft (`git show fe2f5bdf:evals/gap-study-4/prereg-draft.json`); long values are cut at 160 characters.
+- `served_model_rule.codex` does not appear in it, because the harness merge already carried that rule into the committed draft.
+- Every entry is derived from the image locks: the five `image_locks` entries, the seven `version_pins/*/image_version` values, and the 25 lock keys leaving the pending map and the pending-key list `/stats_design/PENDING` (76 entries before).
+- For each of the five locks, the `sha256` and `lock` in the draft equal the committed lock file's bytes.
+- Nothing else moved.
+- After the commit, `build_draft.py --check` printed ok.
+- After the box re-merge `c3a0cb77`, it is still ok, so no second regeneration was needed.
+
+```
+changed /image_locks/0/lock/base | "PENDING" -> "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562"
+added /image_locks/0/lock/config_digest | null -> "sha256:4647fdaace69f1e9083d0c1424192f81ac3ad43c4382ce5f7d1ec8cfda52c175"
+changed /image_locks/0/lock/harness/version | "PENDING" -> "0.162.1"
+changed /image_locks/0/lock/image_id | "PENDING" -> "sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381"
+added /image_locks/0/lock/manifest_digest | null -> "sha256:46deefc20439372cbdfabbaa023fe71aed4d4dbee518c729d3b23b52c8d03aa3"
+removed /image_locks/0/lock/pending/base | "the shared base digest is read and pinned when CP2 builds on the real box; that base must also supply node and npm, confirmed at the same pin" -> null
+removed /image_locks/0/lock/pending/harness.version | "the latest stable on the day CP2 builds the image (D8 B2 item 2), never bumped after the first counted walk; D8's 6 Oct reading is history, never the pin" -> null
+removed /image_locks/0/lock/pending/image_id | "only a built image has an id; recorded when CP2 builds the image on the real box" -> null
+removed /image_locks/0/lock/pending/python | "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16)" -> null
+changed /image_locks/0/lock/python | "PENDING" -> "3.11.2"
+changed /image_locks/0/lock/schema | 1 -> 2
+added /image_locks/0/lock/source_commit | null -> "ad766f016693b60e94a2819368a206fa580176d2"
+changed /image_locks/0/sha256 | "0970bf678e251cd9b67c73f6b659fe170261e2c169c8d10ada2b55691c4871f8" -> "b668a1263536730385cc0894b696473c51d1c2aa3e0452aadb45d78cb8748467"
+changed /image_locks/1/lock/base | "PENDING" -> "docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91"
+added /image_locks/1/lock/config_digest | null -> "sha256:388fbbc4d0cc6ea5ad8a942a779643d7842e2da4eeb96f5fd2930a888ec8161f"
+changed /image_locks/1/lock/image_id | "PENDING" -> "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674"
+added /image_locks/1/lock/manifest_digest | null -> "sha256:24c9fbdf938114d2ff412a70f5b2f2d08f2c4f7735ab7c229c8ad254dc02a89d"
+removed /image_locks/1/lock/pending/base | "the egress image's own base digest, read and pinned when CP2 builds on the real box" -> null
+removed /image_locks/1/lock/pending/image_id | "only a built image has an id; recorded when CP2 builds the image on the real box" -> null
+removed /image_locks/1/lock/pending/squid | "the squid package version the pinned base's archive offers, read and pinned when CP2 builds the egress image; squid -k parse on that build is a real-box check" -> null
+changed /image_locks/1/lock/schema | 1 -> 2
+added /image_locks/1/lock/source_commit | null -> "ad766f016693b60e94a2819368a206fa580176d2"
+changed /image_locks/1/lock/squid | "PENDING" -> "5.7-2+deb12u6"
+changed /image_locks/1/sha256 | "0d840c02f881f96121a9cb68f5f176183447c44437d9a7d970f084cc6b448f50" -> "3480fe6c72730e4a8159e3e867b08e43ffeb23050a6d6ef43bfb28d8221d9a20"
+changed /image_locks/2/lock/base | "PENDING" -> "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562"
+added /image_locks/2/lock/config_digest | null -> "sha256:6bba97e7c55af01c1831ab214fb8eb343772859ee152c7702e00f108ecd7c1f6"
+changed /image_locks/2/lock/harness/version | "PENDING" -> "0.64.0"
+changed /image_locks/2/lock/image_id | "PENDING" -> "sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013"
+added /image_locks/2/lock/manifest_digest | null -> "sha256:7eb4c799f29fe5330d9cf76deae8988ea04f8183ee451a5dad4f12bcb00eee9f"
+removed /image_locks/2/lock/pending/base | "the shared base digest is read and pinned when CP2 builds on the real box; that base must also supply node and npm, confirmed at the same pin" -> null
+removed /image_locks/2/lock/pending/harness.version | "the latest stable on the day CP2 builds the image (D8 B2 item 2), never bumped after the first counted walk; D8's 6 Oct reading is history, never the pin" -> null
+removed /image_locks/2/lock/pending/image_id | "only a built image has an id; recorded when CP2 builds the image on the real box" -> null
+removed /image_locks/2/lock/pending/python | "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16)" -> null
+changed /image_locks/2/lock/python | "PENDING" -> "3.11.2"
+changed /image_locks/2/lock/schema | 1 -> 2
+added /image_locks/2/lock/source_commit | null -> "ad766f016693b60e94a2819368a206fa580176d2"
+changed /image_locks/2/sha256 | "f2157dca8e8bd9db98d4ae96343951ee56b061a72eeba4f34bb2757bafdfeead" -> "e9e5dab642c93530a7995c1237962459ee9dc468ea53549e41f81025dcd6e4f5"
+changed /image_locks/3/lock/base | "PENDING" -> "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562"
+added /image_locks/3/lock/config_digest | null -> "sha256:da2067d3ee9f1eeea61afc39cdeddadfed2bd9d339382f8b1ccd8cbd1b9d33a6"
+changed /image_locks/3/lock/harness/version | "PENDING" -> "2.1.296"
+changed /image_locks/3/lock/image_id | "PENDING" -> "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49"
+added /image_locks/3/lock/manifest_digest | null -> "sha256:c8d50caa6de74e8c1761aaf572e2ef8f6d2d573a69bb851af02395f6106366e8"
+removed /image_locks/3/lock/pending/base | "the shared base digest is read and pinned when CP2 builds on the real box; that base must also supply node and npm, confirmed at the same pin" -> null
+removed /image_locks/3/lock/pending/harness.version | "walked before it is pinned (the checker reads record shapes specific to each version); the latest stable on the day CP2 builds the image, never bumped after th -> null
+removed /image_locks/3/lock/pending/image_id | "only a built image has an id; recorded when CP2 builds the image on the real box" -> null
+removed /image_locks/3/lock/pending/python | "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16)" -> null
+changed /image_locks/3/lock/python | "PENDING" -> "3.11.2"
+changed /image_locks/3/lock/schema | 1 -> 2
+added /image_locks/3/lock/source_commit | null -> "ad766f016693b60e94a2819368a206fa580176d2"
+changed /image_locks/3/sha256 | "82db89a8825781db0a9c1f0cee78fc2f4c739295d32a2ff0bdb05f8fbd6e0d57" -> "f181a29f204fb37b2621d81654b908049ad97e83860ba8e3dba36920da3ab513"
+changed /image_locks/4/lock/base | "PENDING" -> "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562"
+added /image_locks/4/lock/config_digest | null -> "sha256:80951705c2ce29d10782ca4b664c4ee14b680c6ed6fdc8197f45caabad828dfe"
+changed /image_locks/4/lock/image_id | "PENDING" -> "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d"
+added /image_locks/4/lock/manifest_digest | null -> "sha256:c1409b3323bc991d9c86ed99411455ffba3aabbe6159384d0786216aba092a82"
+removed /image_locks/4/lock/pending/base | "the shared base digest (the take images' base), read and pinned when CP2 builds on the real box" -> null
+removed /image_locks/4/lock/pending/image_id | "only a built image has an id; recorded when CP2 builds the image on the real box" -> null
+removed /image_locks/4/lock/pending/python | "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16); the sidecar program's floor is 3.11" -> null
+changed /image_locks/4/lock/python | "PENDING" -> "3.11.2"
+changed /image_locks/4/lock/schema | 1 -> 2
+added /image_locks/4/lock/source_commit | null -> "ad766f016693b60e94a2819368a206fa580176d2"
+changed /image_locks/4/sha256 | "4c139b3c4fe40e6e375eb123384d5ddff6b48ac2dd251ec32cb22d84382881c1" -> "90aacb863532a9e7472127f70d7257c44ca87d02440cbdfa8b5f7bb5933fb7a4"
+removed /pending//image_locks/0/lock/base | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/0/lock/harness/version | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/0/lock/image_id | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/0/lock/python | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/1/lock/base | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/1/lock/image_id | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/1/lock/squid | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/2/lock/base | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/2/lock/harness/version | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/2/lock/image_id | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/2/lock/python | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/3/lock/base | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/3/lock/harness/version | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/3/lock/image_id | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/3/lock/python | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/4/lock/base | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/4/lock/image_id | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//image_locks/4/lock/python | "R6 plan 828: CP2 supplies built image and version pins." -> null
+removed /pending//version_pins/claude-code/claude-haiku-4-5-20251001/image_version | "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version." -> null
+removed /pending//version_pins/claude-code/claude-opus-5-5/image_version | "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version." -> null
+removed /pending//version_pins/claude-code/claude-sonnet-5-5/image_version | "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version." -> null
+removed /pending//version_pins/codex/gpt-6-luna/image_version | "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version." -> null
+removed /pending//version_pins/codex/gpt-6.1-sol/image_version | "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version." -> null
+removed /pending//version_pins/gemini/gemini-3.5-flash-lite/image_version | "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version." -> null
+removed /pending//version_pins/gemini/gemini-3.8-flash/image_version | "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version." -> null
+list-removed /stats_design/PENDING | "/image_locks/0/lock/base" -> null
+list-removed /stats_design/PENDING | "/image_locks/0/lock/harness/version" -> null
+list-removed /stats_design/PENDING | "/image_locks/0/lock/image_id" -> null
+list-removed /stats_design/PENDING | "/image_locks/0/lock/python" -> null
+list-removed /stats_design/PENDING | "/image_locks/1/lock/base" -> null
+list-removed /stats_design/PENDING | "/image_locks/1/lock/image_id" -> null
+list-removed /stats_design/PENDING | "/image_locks/1/lock/squid" -> null
+list-removed /stats_design/PENDING | "/image_locks/2/lock/base" -> null
+list-removed /stats_design/PENDING | "/image_locks/2/lock/harness/version" -> null
+list-removed /stats_design/PENDING | "/image_locks/2/lock/image_id" -> null
+list-removed /stats_design/PENDING | "/image_locks/2/lock/python" -> null
+list-removed /stats_design/PENDING | "/image_locks/3/lock/base" -> null
+list-removed /stats_design/PENDING | "/image_locks/3/lock/harness/version" -> null
+list-removed /stats_design/PENDING | "/image_locks/3/lock/image_id" -> null
+list-removed /stats_design/PENDING | "/image_locks/3/lock/python" -> null
+list-removed /stats_design/PENDING | "/image_locks/4/lock/base" -> null
+list-removed /stats_design/PENDING | "/image_locks/4/lock/image_id" -> null
+list-removed /stats_design/PENDING | "/image_locks/4/lock/python" -> null
+list-removed /stats_design/PENDING | "/version_pins/claude-code/claude-haiku-4-5-20251001/image_version" -> null
+list-removed /stats_design/PENDING | "/version_pins/claude-code/claude-opus-5-5/image_version" -> null
+list-removed /stats_design/PENDING | "/version_pins/claude-code/claude-sonnet-5-5/image_version" -> null
+list-removed /stats_design/PENDING | "/version_pins/codex/gpt-6-luna/image_version" -> null
+list-removed /stats_design/PENDING | "/version_pins/codex/gpt-6.1-sol/image_version" -> null
+list-removed /stats_design/PENDING | "/version_pins/gemini/gemini-3.5-flash-lite/image_version" -> null
+list-removed /stats_design/PENDING | "/version_pins/gemini/gemini-3.8-flash/image_version" -> null
+changed /version_pins/claude-code/claude-haiku-4-5-20251001/image_version | "PENDING" -> "2.1.296"
+changed /version_pins/claude-code/claude-opus-5-5/image_version | "PENDING" -> "2.1.296"
+changed /version_pins/claude-code/claude-sonnet-5-5/image_version | "PENDING" -> "2.1.296"
+changed /version_pins/codex/gpt-6-luna/image_version | "PENDING" -> "0.162.1"
+changed /version_pins/codex/gpt-6.1-sol/image_version | "PENDING" -> "0.162.1"
+changed /version_pins/gemini/gemini-3.5-flash-lite/image_version | "PENDING" -> "0.64.0"
+changed /version_pins/gemini/gemini-3.8-flash/image_version | "PENDING" -> "0.64.0"
+TOTAL 118
+```
