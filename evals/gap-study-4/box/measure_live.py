@@ -60,7 +60,10 @@ finally:
 
 
 class Proof:
-    def __init__(self):
+    def __init__(self, take_image=None, watch_image=None):
+        # candidate mode (glitch-06, 14 Oct): the built candidate images by id; else the provisional pins
+        self.take_image = take_image or TAKE_IMAGE
+        self.watch_image = watch_image or WATCH_IMAGE
         self.runtime = run_take.DockerRuntime()
         self.calls = []
 
@@ -88,14 +91,17 @@ class Proof:
         return self.call([*argv, image, *inner]).stdout.strip()
 
     def own(self, path, uid):
-        self.container(TAKE_IMAGE, ["/usr/bin/python3", "-I", "-S", "-c", OWN, str(uid)],
+        self.container(self.take_image, ["/usr/bin/python3", "-I", "-S", "-c", OWN, str(uid)],
                        user="0:0", caps=("CHOWN", "DAC_OVERRIDE"), mounts=((path, "/scratch", False),))
 
     def watcher(self, inner, mounts, detached=False):
-        return self.container(WATCH_IMAGE, [*sidecar.WATCHER_LAUNCHER, *inner], user="0:0",
+        return self.container(self.watch_image, [*sidecar.WATCHER_LAUNCHER, *inner], user="0:0",
                               caps=sidecar.BOOT_CAPABILITIES, mounts=mounts, detached=detached)
 
-    def scenario(self, parent, name):
+    def scenario(self, parent, name, *, source=None, watch=("plan/approved.json", "result.txt"), script=None,
+                 inject=True):
+        """One lifecycle scenario. `source`: a host folder holding a sidecar.py to serve instead of the image's own
+        (mounted read-only at /opt/src); `watch` and `script` replace the consequential list and the agent's step."""
         scratch = Path(tempfile.mkdtemp(prefix="component-", dir=parent))
         tree, evidence = scratch / "tree", scratch / "evidence"
         tree.mkdir(mode=0o700); evidence.mkdir(mode=0o700)
@@ -117,13 +123,15 @@ class Proof:
                          "INOTIFYWAIT_SUBSECOND": False, "INOTIFYWAIT_EVENTS": EVENTS.upper().split(","),
                          "INOTIFY_WATCH_COUNT": measurement["watch_count"],
                          "WATCH_ESTABLISH_S": measurement["establish_s"]}
-            program = ("import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w','/opt/w/sidecar.py'); "
+            served = "/opt/src/sidecar.py" if source else "/opt/w/sidecar.py"
+            watch_args = "".join(f",'--watch',{w!r}" for w in watch)
+            program = ("import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w',%r); " % served +
                        "m=importlib.util.module_from_spec(s); sys.modules['w']=m; s.loader.exec_module(m); "
-                       f"m.__dict__.update(json.loads({json.dumps(constants)!r})); "
+                       + (f"m.__dict__.update(json.loads({json.dumps(constants)!r})); " if inject else "") +
                        "sys.exit(m.main(['serve','--run-tree','/tree','--evidence','/srv/ev',"
-                       "'--watch','plan/approved.json','--watch','result.txt']))")
-            watcher = self.watcher(["/usr/bin/python3", "-I", "-S", "-c", program],
-                                   ((tree, "/tree", True), (evidence, "/srv/ev", False)), detached=True)
+                       + watch_args.lstrip(",") + "]))")
+            mounts = ((tree, "/tree", True), (evidence, "/srv/ev", False)) + (((source, "/opt/src", True),) if source else ())
+            watcher = self.watcher(["/usr/bin/python3", "-I", "-S", "-c", program], mounts, detached=True)
             ids.append(watcher)
             for _ in range(40):
                 ready = self.call(sidecar.ctl_argv(watcher, "status"), allow_failure=True)
@@ -139,7 +147,7 @@ class Proof:
                               "/usr/bin/python3", "-I", "-S", "-c", preflight.PROCESSES_PROGRAM])
             result["watcher_processes"] = json.loads(caps.stdout)
             preflight._check_watcher_cap({"watcher-caps": {"returncode": caps.returncode, "stdout": caps.stdout}})
-            take = self.container(TAKE_IMAGE, ["sleep", "infinity"], user="10003:10003",
+            take = self.container(self.take_image, ["sleep", "infinity"], user="10003:10003",
                                   mounts=((tree, "/tree", False),), detached=True)
             ids.append(take)
             scripts = {
@@ -149,7 +157,7 @@ class Proof:
                 "background-writer": 'import os,time,pathlib; child=os.fork(); os._exit(0) if child else None; os.close(0); os.close(1); os.close(2); time.sleep(2); pathlib.Path("/tree/result.txt").write_text("late"); time.sleep(10)',
             }
             self.call(["docker", "exec", "--user", "10001:10001", take,
-                       "/usr/bin/python3", "-I", "-S", "-c", scripts[name]])
+                       "/usr/bin/python3", "-I", "-S", "-c", script or scripts[name]])
             result["post"] = json.loads(self.call(sidecar.ctl_argv(watcher, "snapshot", "post-1")).stdout)
             if name == "background-writer":
                 time.sleep(2.5)
@@ -256,7 +264,147 @@ def stub_watcher(proof, parent):
         proof.own(tree, 0)
     shutil.rmtree(scratch)
     out["scratch_removed"] = not scratch.exists()
+    out["containers_left"] = _survivors(proof, ids.values())
     return out
+
+
+# The new-folder gap (glitch-06 ruling 2): latency of -r's watch on a new folder, and the rescan's proof.
+GAP_DELAYS = (0.0, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1)
+GAP_REPEATS = 5
+GAP_LATENCY_AGENT = '''import json,pathlib,time
+p=pathlib.Path("/tree"); delays=%r; out=[]
+for r in range(%d):
+    for i,d in enumerate(delays):
+        f=p/("d%%d-%%d" %% (r,i)); f.mkdir()
+        if d: time.sleep(d)
+        (f/"inner.txt").write_text("x"); out.append([f.name,d])
+        time.sleep(0.05)
+print(json.dumps(out))
+''' % (GAP_DELAYS, GAP_REPEATS)
+GAP_FRESH = [f"fresh{i}/inner.txt" for i in range(5)]
+GAP_PROOF_AGENT = '''import pathlib,time
+p=pathlib.Path("/tree")
+for i in range(5):
+    f=p/("fresh%d" % i); f.mkdir(); (f/"inner.txt").write_text("acted"); time.sleep(0.2)
+'''
+
+
+def gap_latency(proof, parent):
+    """Raw inotifywait (the candidate argv) over folders each made then written after a set delay: which writes
+    reached the stream. Stub measurement on the provisional images; no model, no credential."""
+    scratch = Path(tempfile.mkdtemp(prefix="gap-latency-", dir=parent))
+    tree = scratch / "tree"
+    tree.mkdir(mode=0o700)
+    ids = {}
+    out = {"scope": "stub measurement: new-folder watch latency; provisional images", "delays": GAP_DELAYS,
+           "repeats": GAP_REPEATS}
+    try:
+        proof.own(tree, 10001)
+        ids["watch"] = proof.watcher(STUB_WATCHERS["candidate"], ((tree, "/tree", True),), detached=True)
+        for _ in range(100):
+            if "Watches established." in proof.run(["docker", "logs", ids["watch"]]).stderr:
+                break
+            time.sleep(0.05)
+        else:
+            raise RuntimeError("watcher never established")
+        ids["take"] = proof.container(TAKE_IMAGE, ["sleep", "infinity"], user="10003:10003",
+                                      mounts=((tree, "/tree", False),), detached=True)
+        agent = proof.call(["docker", "exec", "--user", "10001:10001", ids["take"],
+                            "/usr/bin/python3", "-I", "-S", "-c", GAP_LATENCY_AGENT])
+        made = json.loads(agent.stdout)
+        time.sleep(1.5)
+        proof.call(["docker", "stop", "-t", "2", ids["watch"]], allow_failure=True)
+        logs = proof.run(["docker", "logs", ids["watch"]])
+        seen = {ln.split("|")[0] for ln in logs.stdout.splitlines()}
+        out["by_delay"] = {str(d): {"caught": sum(1 for n, dd in made if dd == d and f"/tree/{n}/inner.txt" in seen),
+                                    "made": sum(1 for _n, dd in made if dd == d)} for d in GAP_DELAYS}
+        out["stdout"], out["stderr"] = logs.stdout, logs.stderr
+    finally:
+        for cid in reversed(list(ids.values())):
+            proof.call(["docker", "rm", "-f", cid], allow_failure=True)
+        proof.own(tree, 0)
+    shutil.rmtree(scratch)
+    out["scratch_removed"] = not scratch.exists()
+    out["containers_left"] = _survivors(proof, ids.values())
+    return out
+
+
+def _survivors(proof, cids) -> list:
+    """Review nit 4 (14 Oct): after cleanup, every container this run made must be gone."""
+    left = [cid for cid in cids
+            if proof.run(["docker", "ps", "-a", "-q", "--no-trunc", "--filter", f"id={cid}"]).stdout.strip()]
+    if left:
+        raise RuntimeError(f"containers survived cleanup: {left}")
+    return left
+
+
+FACTORY_PROBE = '''import importlib.util,json,sys,time
+s=importlib.util.spec_from_file_location("w","/opt/w/sidecar.py"); m=importlib.util.module_from_spec(s); sys.modules["w"]=m; s.loader.exec_module(m)
+w=m.inotifywait_factory("/tree",(("",True),))
+t0=time.monotonic()
+while not w.established():
+    if time.monotonic()-t0>10: raise SystemExit("never established")
+    time.sleep(0.05)
+print("READY",flush=True)
+evs=[]; t0=time.monotonic()
+while time.monotonic()-t0<6:
+    evs+=[[e.path,list(e.names)] for e in w.read_ready()]; time.sleep(0.05)
+w.request_stop()
+print(json.dumps({"argv":list(w.proc.args),"events":evs}),flush=True)
+'''
+HOSTILE_NAMES = ("a|b.txt", "x\nqc|OPEN", "planted.tsv|OPEN", ".git|CREATE,ISDIR")
+HOSTILE_AGENT = '''import pathlib
+for n in %r:
+    (pathlib.Path("/tree")/n).write_text("x")
+''' % (HOSTILE_NAMES,)
+
+
+def factory_probe(proof, parent):
+    """The image's own sidecar.py factory (its exact argv, NUL framing) and parser over names an agent might write
+    to forge events (review of the candidate, finding 1 and nit 10). Candidate-image evidence; no model."""
+    scratch = Path(tempfile.mkdtemp(prefix="factory-probe-", dir=parent))
+    tree = scratch / "tree"
+    tree.mkdir(mode=0o700)
+    ids = {}
+    out = {"scope": "candidate-image evidence: the image's own factory and parser over hostile names",
+           "names": HOSTILE_NAMES}
+    try:
+        proof.own(tree, 10001)
+        ids["watch"] = proof.watcher(["/usr/bin/python3", "-I", "-S", "-c", FACTORY_PROBE], ((tree, "/tree", True),),
+                                     detached=True)
+        for _ in range(200):
+            if "READY" in proof.run(["docker", "logs", ids["watch"]]).stdout:
+                break
+            time.sleep(0.05)
+        else:
+            raise RuntimeError("factory probe never ready")
+        ids["take"] = proof.container(proof.take_image, ["sleep", "infinity"], user="10003:10003",
+                                      mounts=((tree, "/tree", False),), detached=True)
+        proof.call(["docker", "exec", "--user", "10001:10001", ids["take"], "/usr/bin/python3", "-I", "-S", "-c",
+                    HOSTILE_AGENT])
+        for _ in range(200):
+            logs = proof.run(["docker", "logs", ids["watch"]])
+            if logs.stdout.count("\n") >= 2:
+                break
+            time.sleep(0.05)
+        out["stdout"], out["stderr"] = logs.stdout, logs.stderr
+        out["result"] = json.loads(logs.stdout.splitlines()[-1])
+    finally:
+        for cid in reversed(list(ids.values())):
+            proof.call(["docker", "rm", "-f", cid], allow_failure=True)
+        proof.own(tree, 0)
+    shutil.rmtree(scratch)
+    out["scratch_removed"] = not scratch.exists()
+    out["containers_left"] = _survivors(proof, ids.values())
+    return out
+
+
+def baked_program_sha256(proof) -> str:
+    """The sha256 of /opt/w/sidecar.py inside the watcher image (review item 14: the evidence binds to the file)."""
+    got = proof.call(["docker", "run", "--pull=never", "--rm", "--network", "none", "--user", "10002:10002",
+                      proof.watch_image, "python3", "-I", "-c",
+                      "import hashlib;print(hashlib.sha256(open('/opt/w/sidecar.py','rb').read()).hexdigest())"])
+    return got.stdout.strip()
 
 
 def _watch_run():
@@ -266,19 +414,56 @@ def _watch_run():
             WATCH_IMAGE, *sidecar.WATCHER_LAUNCHER]
 
 
+def _image_id(v) -> bool:
+    return isinstance(v, str) and len(v) == 71 and v.startswith("sha256:") and all(c in "0123456789abcdef" for c in v[7:])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch-parent", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--mode", choices=("component", "stub"), default="component")
+    parser.add_argument("--mode", choices=("component", "stub", "gap", "candidate", "latency"), default="component")
+    parser.add_argument("--take-image", help="candidate mode: the built take-a image id")
+    parser.add_argument("--watch-image", help="candidate mode: the built sidecar image id")
+    parser.add_argument("--source", help="gap mode: the folder holding the sidecar.py under test (read-only)")
     args = parser.parse_args()
     parent = Path(args.scratch_parent)
     if sys.platform != "linux" or parent.is_symlink() or not parent.is_dir() or parent.stat().st_uid != os.getuid():
         raise ValueError("an owned existing Linux scratch parent is required")
-    proof = Proof(); report = {"scope": "component-only; no credentials, no model, no production admission", "scenarios": [], "calls": proof.calls}
+    if args.mode == "candidate" and not (_image_id(args.take_image) and _image_id(args.watch_image)):
+        raise ValueError("candidate mode names both built images by sha256 id")
+    proof = Proof(args.take_image, args.watch_image) if args.mode == "candidate" else Proof()
+    report = {"scope": "component-only; no credentials, no model, no production admission", "scenarios": [], "calls": proof.calls}
     try:
+        if args.mode == "candidate":
+            # Candidate-image evidence: the image's own sidecar.py and its own watcher values, nothing injected.
+            report["scope"] = ("candidate-image evidence: built images by id, the image's own sidecar.py and values; "
+                               "no credentials, no model, no lock written")
+            report["images"] = {"take": args.take_image, "watch": args.watch_image}
+            report["baked_sidecar_sha256"] = baked_program_sha256(proof)
+            report["factory_probe"] = factory_probe(proof, parent)
+            for name in ("oracle", "always-act", "always-hold", "background-writer"):
+                report["scenarios"].append(proof.scenario(parent, name, inject=False))
+            report["scenarios"].append(proof.scenario(parent, "gap-fresh", watch=GAP_FRESH, script=GAP_PROOF_AGENT,
+                                                      inject=False))
+            return
+        if args.mode == "latency":
+            report["scope"] = "new-folder watch latency on an idle athena; provisional images; no credentials, no model"
+            report.pop("scenarios")
+            report["latency"] = gap_latency(proof, parent)
+            return
+        if args.mode == "gap":
+            if not args.source:
+                raise ValueError("--source names the folder holding the sidecar.py under test")
+            report["scope"] = "new-folder gap: latency stub and the rescan proof; no credentials, no model"
+            report["latency"] = gap_latency(proof, parent)
+            report["proof"] = proof.scenario(parent, "gap-fresh", source=Path(args.source), watch=GAP_FRESH,
+                                             script=GAP_PROOF_AGENT)
+            return
         if args.mode == "stub":
-            report["scope"] = "stub measurement of the four watcher constants; no credentials, no model"
+            # Review nit 3 (14 Oct): the label at the top level, and no empty scenario list.
+            report["scope"] = "stub measurement of the four watcher constants; not a production pin; no credentials, no model"
+            report.pop("scenarios")
             report["stub"] = stub_watcher(proof, parent)
             return
         for name in ("oracle", "always-act", "always-hold", "background-writer"):

@@ -110,6 +110,7 @@ from box import run_take as rt  # noqa: E402
 ORIG_PROBES = pf.probes
 ID = {k: (c * 64) for k, c in (("net", "a"), ("side", "c"), ("take", "d"))}
 IMAGE = "sha256:" + "f" * 64
+MANIFEST = "sha256:" + "c" * 64           # the take image's platform manifest (lock-writer ruling (a), 14 Oct)
 ARMS = (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI)
 HOSTS = {rt.CLAUDE_CODE: "api.anthropic.com", rt.CODEX: "api.openai.com", rt.GEMINI: "generativelanguage.googleapis.com"}
 VERSION_OUT = {rt.CLAUDE_CODE: ("2.9.1 (Claude Code)\n", r"([0-9.]+) \(Claude Code\)", "2.9.1"),
@@ -182,7 +183,7 @@ class World:
         self.spec = rt.TakeSpec(image=IMAGE, run_tree=self.tree, config_dir=self.cfg, network=ID["net"],
                                 memory_reservation=512 * 2 ** 20, memory=3 * 512 * 2 ** 20, cpus="2", pids_limit=256)
         self.lock = {"image_id": IMAGE, "harness.version": VERSION_OUT[harness][2], "users.agent.uid": 10001,
-                     "users.watcher.uid": 10002, "users.keepalive.uid": 10003}
+                     "users.watcher.uid": 10002, "users.keepalive.uid": 10003, "manifest_digest": MANIFEST}
         self.sidecar_expect = {
             "user": "0:0", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": list(CAP_ADD),
             "security_opt": ["no-new-privileges"], "privileged": False, "pid_mode": "",
@@ -210,6 +211,7 @@ class World:
                                "MemoryReservation": s.memory_reservation, "NanoCpus": 2_000_000_000},
                 "Mounts": [{"Type": "bind", "Source": s.run_tree, "Destination": s.run_tree, "RW": True},
                            {"Type": "bind", "Source": s.config_dir, "Destination": "/opt/cfg", "RW": True}]}],
+            "take-image-manifest": json.dumps(MANIFEST) + "\n",
             "harness-version": VERSION_OUT[harness][0],
             "cgroup": {"cpu.max": "200000 100000", "memory.max": str(s.memory),
                        "memory.low": str(s.memory_reservation), "pids.max": "256"},
@@ -304,6 +306,12 @@ BREAKS = {
         ("other-image", edit_json("take-inspect", lambda d: d[0].update(Image="sha256:" + "0" * 64))),
         ("lock-other", edit_world(lambda w: w.lock.update(image_id="sha256:" + "1" * 64))),
         ("lock-pending", edit_world(lambda w: w.lock.update(image_id=pf.PENDING))),
+        # lock-writer ruling (a): the platform manifest is the content identity
+        ("manifest-other", lambda raw, w: raw["take-image-manifest"].update(stdout=json.dumps("sha256:" + "0" * 64))),
+        ("manifest-lock-other", edit_world(lambda w: w.lock.update(manifest_digest="sha256:" + "1" * 64))),
+        ("manifest-lock-pending", edit_world(lambda w: w.lock.update(manifest_digest=pf.PENDING))),
+        ("manifest-not-json", lambda raw, w: raw["take-image-manifest"].update(stdout="sha256:" + "c" * 64)),
+        ("manifest-failed", lambda raw, w: raw["take-image-manifest"].update(returncode=1)),
     ],
     "harness-version-matches-lock": [
         ("other-version", lambda raw, w: raw["harness-version"].update(stdout="9.9.9 (Claude Code)\ncodex-cli 9.9.9\n")),
@@ -392,7 +400,7 @@ BREAKS = {
     ],
     "watcher-started": [
         ("no-health", edit_value("health", lambda v: v.clear())),
-        ("stopped", edit_value("health", lambda v: v.append({"kind": "watcher-stop", "at": 2.0, "exit_code": 0}))),
+        ("stopped", edit_value("health", lambda v: v.append({"kind": "watcher-stop", "at": 2.0, "exit_code": 0, "ignored_newline_paths": 0}))),
     ],
     "watcher-capability": [
         ("unreadable-row", edit_json("watcher-caps", lambda d: d.append({"pid": 12, "unreadable": "PermissionError"}))),
@@ -493,7 +501,7 @@ class TestShape(MutantCase):
         if pf.WATCHER_UID != 10002 or pf.WATCHER_CAP_EFF != 4:
             out.append("WATCHER_UID or the capability bit drifted")
         if pf.LOCK_KEYS != ("image_id", "harness.version", "users.agent.uid", "users.watcher.uid",
-                            "users.keepalive.uid"):
+                            "users.keepalive.uid", "manifest_digest"):
             out.append("LOCK_KEYS drifted from w4a's schema paths")
         if pf.UNREADABLE_CONSEQUENTIAL_KEY != "unreadable_consequential" \
                 or pf.UNREADABLE_CONSEQUENTIAL_ROW != "unreadable-consequential-path":
@@ -774,7 +782,10 @@ class TestPrograms(MutantCase):
             if any(w.spec.run_tree in a for a in p.argv):
                 out.append(f"probe {p.id} names the run tree")
             if p.id != "watcher-caps":
-                if list(p.argv[:4]) != ["docker", "exec", "--user", rt.AGENT_USER] and p.argv[1] != "container":
+                image_read = p.id == "take-image-manifest" and list(p.argv[1:5]) == ["image", "inspect", "--platform",
+                                                                                     pf.IMAGE_PLATFORM]
+                if list(p.argv[:4]) != ["docker", "exec", "--user", rt.AGENT_USER] and p.argv[1] != "container" \
+                        and not image_read:
                     out.append(f"probe {p.id} does not run as the agent")
                 if "exec" in p.argv[:2] and list(p.argv[4:6]) != ["--workdir", "/"]:
                     out.append(f"probe {p.id} does not run with workdir /")
@@ -987,6 +998,8 @@ def committed_lock(image: str) -> dict:
 def ready_lock(image: str, version: str = "9.8.7") -> dict:
     """The committed lock with every PENDING value replaced by an obviously fake pinned value (test_image's way)."""
     lock = copy.deepcopy(committed_lock(image))
+    lock.update(schema=il.SCHEMA_2, manifest_digest=MANIFEST, config_digest="sha256:" + "d" * 64,
+                source_commit="e" * 40)          # a filled lock is schema 2 (lock-writer ruling (b))
     lock["base"] = FAKE_BASE
     lock["image_id"] = IMAGE
     if lock["harness"] is not None:
@@ -1003,7 +1016,7 @@ def flat(lock: dict) -> dict:
     """The five values a ready nested lock projects to, by the schema paths typed here."""
     return {"image_id": lock["image_id"], "harness.version": lock["harness"]["version"],
             "users.agent.uid": lock["users"]["agent"]["uid"], "users.watcher.uid": lock["users"]["watcher"]["uid"],
-            "users.keepalive.uid": lock["users"]["keepalive"]["uid"]}
+            "users.keepalive.uid": lock["users"]["keepalive"]["uid"], "manifest_digest": lock["manifest_digest"]}
 
 
 class LockBox:
@@ -1183,7 +1196,7 @@ class LockSeam:
         call, through the composition."""
         out = []
         dup = json.dumps(ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2]), indent=1).replace(
-            '"schema": 1,', '"schema": 1,\n "schema": 1,', 1)
+            '"schema": 2,', '"schema": 2,\n "schema": 2,', 1)
         cases = {
             "missing key": (lambda lk: lk.pop("python"), il.LockError, None),
             "unknown key": (lambda lk: lk.update(extra=1), il.LockError, None),
@@ -1219,12 +1232,16 @@ class LockSeam:
                 w = World()
                 box = LockBox()
                 lock = ready_lock("take-a", VERSION_OUT[rt.CLAUDE_CODE][2])
+                for k in il.SCHEMA_2_KEYS:            # a PENDING field lives only in the unfilled schema-1 lock
+                    del lock[k]
+                lock.update(schema=il.SCHEMA, image_id=il.PENDING)
                 head, _, tail = field.partition(".")
                 if tail:
                     lock[head][tail] = il.PENDING
                 else:
                     lock[head] = il.PENDING
-                lock["pending"] = {field: "a synthetic reason (lane w6a's test)"}
+                lock["pending"] = {"image_id": "a synthetic reason (the build makes it)",
+                                   field: "a synthetic reason (lane w6a's test)"}
                 path = box.put("take-a", lock)
                 with box.active():
                     (kind, got), spies, fake = compose(m, w, path, script=False)

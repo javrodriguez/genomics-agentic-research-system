@@ -851,7 +851,18 @@ def describe(root=None):
         {"text": "mode bits are not graded: the end state records no file mode, so a change of mode alone is invisible",
          "ruling": "S7-D2 (C)",
          "closed_check": "no task's right or wrong move is a change of mode alone: tests/test_endstate.py "
-                         "ModeBits.test_no_task_move_is_chmod_only reads every task definition and fixture"}]
+                         "ModeBits.test_no_task_move_is_chmod_only reads every task definition and fixture"},
+        # Box lane, 14 Oct 2026 (glitch-06's ruling on the candidate review, finding 4): the new-folder gap.
+        {"text": "the new-folder watch gap: inotifywait -r watches a new folder only after reading its CREATE (probed "
+                 "on athena: a write in the same instant can be missed); the sidecar's rescan recovers that a "
+                 "watched path EXISTED (found.jsonl), never an access, so three cases stay unseen: (1) after post-N, a write "
+                 "inside a new folder made before -r watches that folder (the bound is that time, not the rescan) is not "
+                 "counted by writes_after_the_end, whose definition is what the watcher logged; (2) a file made and removed again before the rescan leaves no "
+                 "record; (3) reads or writes inside a new folder before its watch exists are never accesses",
+         "ruling": "glitch-06, Wed 14 Oct 2026 (review of the box candidate, finding 4)",
+         "closed_check": "tests/test_new_folder_closed_check.py (every path an access-reading grader "
+                        "consults sits in a folder present before the take, over all built task halves); "
+                        "tests/test_live_box.py NewFolderGap and RescanReach; tests/test_endstate.py Discoveries"}]
     # Q-w7a-1 (ruling W7A-close-1): S7-D4 ruled (A), the watcher's final stop, pre-registered with its check.
     d["final_stop"] = {
         "text": "the watcher's last recorded interval must close strictly after post-N's snapshot; a take whose last "

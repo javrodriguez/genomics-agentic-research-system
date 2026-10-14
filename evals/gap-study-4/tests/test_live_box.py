@@ -240,25 +240,321 @@ class SidecarContractRegression(unittest.TestCase):
             self.assertEqual(getattr(sidecar, name), getattr(c, name), name)
         import ast
         side = ast.parse((BOX / "sidecar.py").read_text(encoding="utf-8"))
-        # sidecar.py may only re-export each contract name as `NAME = _contract.NAME`, never define it.
-        for n in side.body:
-            if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id in CONTRACT_NAMES for t in n.targets):
-                name = n.targets[0].id
-                self.assertTrue(isinstance(n.value, ast.Attribute) and isinstance(n.value.value, ast.Name)
-                                and n.value.value.id == "_contract" and n.value.attr == name,
-                                f"sidecar.py defines {name} itself")
+        # sidecar.py carries each contract value literally (its own audit admits no import of another file); the
+        # equality above binds the two, and each must be a literal assignment, never derived elsewhere.
+        literal = {t.id for n in side.body if isinstance(n, ast.Assign) for t in n.targets
+                   if isinstance(t, ast.Name) and t.id in CONTRACT_NAMES}
+        self.assertEqual(sorted(literal), sorted(CONTRACT_NAMES))
+        # Review nit 1 (14 Oct): the whole module, not only its top level, assigns each contract name exactly once.
+        every = [t.id for n in ast.walk(side) if isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign))
+                 for t in (n.targets if isinstance(n, ast.Assign) else [n.target])
+                 if isinstance(t, ast.Name) and t.id in CONTRACT_NAMES]
+        self.assertEqual(sorted(every), sorted(CONTRACT_NAMES))
         pre = ast.parse((BOX / "preflight.py").read_text(encoding="utf-8"))
         froms = [(n.module, a.name, a.asname) for n in ast.walk(pre) if isinstance(n, ast.ImportFrom)
                  for a in n.names]
         self.assertIn(("box", "sidecar_contract", None), froms)
         self.assertEqual([f for f in froms if f[1] == "sidecar"], [], "preflight imports the sidecar program")
 
-    def test_sidecar_image_carries_the_contract(self):
+    def test_sidecar_image_carries_the_program_alone(self):
         from box import image_lock as il
-        self.assertEqual(il.SIDECAR_COPIES, ("sidecar.py /opt/w/sidecar.py",
-                                             "sidecar_contract.py /opt/w/sidecar_contract.py"))
+        self.assertFalse(hasattr(il, "SIDECAR_COPIES"))
         lines = [ln.strip() for ln in (BOX / "sidecar" / "Dockerfile").read_text(encoding="utf-8").splitlines()]
-        self.assertEqual([ln for ln in lines if ln.startswith("COPY ")], ["COPY " + c for c in il.SIDECAR_COPIES])
+        self.assertEqual([ln for ln in lines if ln.startswith("COPY ")], ["COPY " + il.SIDECAR_COPY])
+
+    def test_a_drifted_sidecar_value_is_caught(self):
+        c = self.contract()
+        with mock.patch.object(sidecar, "BOOT_USER", "10002:10002"):
+            self.assertNotEqual(sidecar.BOOT_USER, c.BOOT_USER)
+            with self.assertRaises(AssertionError):
+                self.test_sidecar_and_preflight_read_the_contract()
+
+# The new-folder watch gap (glitch-06 ruling 2, 14 Oct): athena's stub measurement (evidence stub-20261014) shows a
+# file written straight into a just-created folder (`fresh/inner.txt`) never reached inotifywait's stream, while the
+# same write a second later (`slow/inner.txt`) did. These tests replay that stream byte for byte through the real
+# line parser and the sidecar's own event logging.
+STUB_EVIDENCE = (Path(__file__).resolve().parents[3] / "lane-reports" / "live-box-evidence-2026-10-13" /
+                 "stub-20261014" / "stub-result-20261014.json")
+STUB_FORMAT = {"fields": ["path", "events"], "separator": "|", "established": "Watches established.",
+               "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]}
+
+
+class _Pipe:
+    def __init__(self, data: bytes):
+        import os
+        r, w = os.pipe()
+        os.write(w, data)
+        os.close(w)
+        self._r = open(r, "rb", buffering=0)
+
+    def fileno(self):
+        return self._r.fileno()
+
+    def close(self):
+        self._r.close()
+
+
+class _Proc:
+    def __init__(self, out: bytes, err: bytes):
+        self.stdout, self.stderr = _Pipe(out), _Pipe(err)
+
+    def poll(self):
+        return None
+
+
+class NewFolderGap(unittest.TestCase):
+    WATCH = ("fresh/inner.txt", "slow/inner.txt", "plan/approved.json")
+
+    def events(self):
+        stub = json.loads(STUB_EVIDENCE.read_text())["stub"]["watchers"]["candidate"]
+        proc = _Proc(stub["stdout"].encode(), stub["stderr"].encode())
+        self.addCleanup(proc.stdout.close)
+        self.addCleanup(proc.stderr.close)
+        with mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", STUB_FORMAT), \
+                mock.patch.object(sidecar, "INOTIFYWAIT_SUBSECOND", False):
+            w = sidecar._InotifyWatcher(proc, "/tree")
+            self.assertTrue(w.established())
+            return w.read_ready()
+
+    def run_sidecar(self, evs):
+        d = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        tree, ev = d / "tree", d / "ev"
+        for rel in self.WATCH:
+            (tree / rel).parent.mkdir(parents=True, exist_ok=True)
+            (tree / rel).write_text("x")
+        ev.mkdir()
+        sc = sidecar.Sidecar(run_tree=str(tree), evidence=str(ev), watch=list(self.WATCH), factory=None,
+                             clock=lambda: 1.0e9)
+        for e in evs:
+            self.assertTrue(sc._event(e), e)
+        read = lambda name: [json.loads(x) for x in (ev / name).read_text().splitlines()] if (ev / name).exists() else []
+        return read(sidecar.ACCESS), read(sidecar.FOUND)
+
+    def test_the_gap_reproduces_from_the_stub_stream(self):
+        evs = self.events()
+        paths = {e.path for e in evs}
+        self.assertIn("fresh", paths)                       # the folder's CREATE reached the stream
+        self.assertNotIn("fresh/inner.txt", paths)          # the file written straight into it did not
+        self.assertIn("slow/inner.txt", paths)              # the file written 1 s later did
+        with mock.patch.object(sidecar.Sidecar, "_present_beneath", lambda self, folder: []):
+            access, found = self.run_sidecar(evs)
+        self.assertEqual([a for a in access if a["path"] == "fresh/inner.txt"], [])
+        self.assertTrue([a for a in access if a["path"] == "slow/inner.txt"])
+        self.assertEqual(found, [])
+
+    def test_the_rescan_records_what_the_stream_missed_apart_from_accesses(self):
+        access, found = self.run_sidecar(self.events())
+        self.assertEqual([a for a in access if a["path"] == "fresh/inner.txt"], [])   # never an inotify event
+        self.assertEqual([(f["path"], f["source"]) for f in found],
+                         [("fresh/inner.txt", sidecar.FOUND_SOURCE), ("slow/inner.txt", sidecar.FOUND_SOURCE)])
+        self.assertEqual(set(found[0]), {"at", "path", "source"})
+
+
+
+# Review of the candidate (14 Oct, finding 1 MAJOR): a file NAME was parsed as events. inotifywait 3.22.6.0 frames
+# fields with NUL under --format '%w%f%0%e%0' --no-newline (probed on athena: a name cannot hold a NUL, so a '|', a
+# newline or an '|OPEN' tail stays inside the path field).
+NUL_FORMAT = {"fields": ["path", "events"], "separator": "\x00", "established": "Watches established.",
+              "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]}
+SETUP = b"Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+
+
+class HostileNames(unittest.TestCase):
+    def parse(self, out: bytes):
+        proc = _Proc(out, SETUP)
+        self.addCleanup(proc.stdout.close)
+        self.addCleanup(proc.stderr.close)
+        with mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", NUL_FORMAT), \
+                mock.patch.object(sidecar, "INOTIFYWAIT_SUBSECOND", False):
+            w = sidecar._InotifyWatcher(proc, "/tree")
+            self.assertTrue(w.established())
+            return w.read_ready()
+
+    def test_the_candidate_frames_with_nul(self):
+        self.assertEqual(sidecar.INOTIFYWAIT_FORMAT["separator"], "\x00")
+        self.assertIn("--no-newline", sidecar.INOTIFYWAIT_ARGV)
+        self.assertIn("%w%f%0%e%0", sidecar.INOTIFYWAIT_ARGV)
+
+    def test_a_name_never_becomes_events(self):
+        # the bytes athena's probe printed for these names (paths rebased onto /tree)
+        out = (b"/tree/a|b.txt\x00CREATE\x00/tree/x\nqc|OPEN\x00CREATE\x00/tree/qc/planted.tsv|OPEN\x00CREATE\x00"
+               b"/tree/.git|CREATE,ISDIR\x00CREATE\x00")
+        evs = self.parse(out)
+        self.assertEqual([(e.path, e.names) for e in evs],
+                         [("a|b.txt", ("CREATE",)), ("x\nqc|OPEN", ("CREATE",)),
+                          ("qc/planted.tsv|OPEN", ("CREATE",)), (".git|CREATE,ISDIR", ("CREATE",))])
+
+    def test_a_partial_record_waits_for_its_end(self):
+        evs = self.parse(b"/tree/a\x00CREATE\x00/tree/b\x00")
+        self.assertEqual([(e.path, e.names) for e in evs], [("a", ("CREATE",))])
+
+    def test_a_malformed_events_field_is_a_fault(self):
+        d = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        (d / "ev").mkdir(); (d / "tree").mkdir()
+        sc = sidecar.Sidecar(run_tree=str(d / "tree"), evidence=str(d / "ev"), watch=["a.txt"], factory=None,
+                             clock=lambda: 1.0e9)
+        for e in self.parse(b"/tree/a.txt\x00OPEN|x\x00"):
+            self.assertFalse(sc._event(e))
+
+
+class LineFraming(unittest.TestCase):
+    """The non-NUL road kept for other formats: the path keeps any separator, and a short line is a fault."""
+
+    def test_separators_in_a_name_stay_in_the_path(self):
+        fmt = {"fields": ["path", "events"], "separator": "|"}
+        recs, rest = sidecar._split_records(b"/t/a|b.txt|CREATE\n/t/p.tsv|OPEN|CREATE\n/t/x\nqc|OPEN|CREATE\npart", fmt)
+        self.assertEqual(recs, [[b"/t/a|b.txt", b"CREATE"], [b"/t/p.tsv|OPEN", b"CREATE"], [b"/t/x"],
+                                [b"qc|OPEN", b"CREATE"]])
+        self.assertEqual(rest, b"part")
+        fmt3 = {"fields": ["at", "path", "events"], "separator": "\t"}
+        recs, _ = sidecar._split_records(b"1.5\t/t/a\tb\tOPEN\n", fmt3)
+        self.assertEqual(recs, [[b"1.5", b"/t/a\tb", b"OPEN"]])
+
+
+    def test_a_short_line_is_a_fault_event(self):
+        proc = _Proc(b"/tree/x\n/tree/a|b.txt|CREATE\n", SETUP)
+        self.addCleanup(proc.stdout.close)
+        self.addCleanup(proc.stderr.close)
+        fmt = dict(NUL_FORMAT, separator="|")
+        with mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", fmt), mock.patch.object(sidecar, "INOTIFYWAIT_SUBSECOND", False):
+            w = sidecar._InotifyWatcher(proc, "/tree")
+            self.assertTrue(w.established())
+            evs = w.read_ready()
+        self.assertEqual([(e.path, e.names) for e in evs], [(None, ()), ("a|b.txt", ("CREATE",))])
+
+
+    def test_any_read_split_gives_the_same_records(self):
+        """Reviewer r2's witness R2 (14 Oct, ported): a partial read at every byte offset yields exactly the records
+        of one whole read, with nothing left over (kills mutant P4)."""
+        rec = lambda path, ev: f"/tree/{path}".encode() + b"\0" + ev.encode() + b"\0"  # noqa: E731
+        stream = rec("a", "CREATE") + rec("x\nq|OPEN", "CREATE") + rec("dir/", "CREATE,ISDIR") + rec("b", "MODIFY")
+        whole, rest = sidecar._split_records(stream, NUL_FORMAT)
+        self.assertEqual(rest, b"")
+        for cut in range(len(stream) + 1):
+            got, buf = sidecar._split_records(stream[:cut], NUL_FORMAT)
+            more, buf = sidecar._split_records(buf + stream[cut:], NUL_FORMAT)
+            self.assertEqual(got + more, whole, cut)
+            self.assertEqual(buf, b"")
+
+
+class RescanReach(unittest.TestCase):
+    """Review findings 2 and 3: the rescan reports only paths that exist, through folders only, on folder CREATEs."""
+
+    def make(self, watch):
+        d = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        tree, ev = d / "tree", d / "ev"
+        tree.mkdir(); ev.mkdir()
+        sc = sidecar.Sidecar(run_tree=str(tree), evidence=str(ev), watch=list(watch), factory=None,
+                             clock=lambda: 1.0e9)
+        found = lambda: [json.loads(x)["path"] for x in (ev / sidecar.FOUND).read_text().splitlines()] \
+            if (ev / sidecar.FOUND).exists() else []
+        return tree, sc, found
+
+    def test_an_absent_watched_path_is_not_found(self):
+        tree, sc, found = self.make(["new/here.txt", "new/absent.txt"])
+        (tree / "new").mkdir(); (tree / "new" / "here.txt").write_text("x")
+        sc._event(sidecar.WatchEvent(None, "new", ("CREATE", "ISDIR")))
+        self.assertEqual(found(), ["new/here.txt"])
+
+    def test_a_path_behind_a_link_folder_is_not_found(self):
+        tree, sc, found = self.make(["new/a/b.txt"])
+        outside = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(outside))
+        (outside / "b.txt").write_text("x")
+        (tree / "new").mkdir(); (tree / "new" / "a").symlink_to(outside)
+        sc._event(sidecar.WatchEvent(None, "new", ("CREATE", "ISDIR")))
+        self.assertEqual(found(), [])
+
+    def test_a_watched_link_itself_is_found(self):
+        tree, sc, found = self.make(["new/l.txt"])
+        (tree / "new").mkdir(); (tree / "new" / "l.txt").symlink_to("/nonexistent")
+        sc._event(sidecar.WatchEvent(None, "new", ("CREATE", "ISDIR")))
+        self.assertEqual(found(), ["new/l.txt"])        # lstat: the link exists, never followed
+
+    def test_only_a_folder_create_rescans(self):
+        tree, sc, found = self.make(["new/here.txt"])
+        (tree / "new").mkdir(); (tree / "new" / "here.txt").write_text("x")
+        for names in (("CREATE",), ("MODIFY", "ISDIR"), ("OPEN", "ISDIR")):
+            sc._event(sidecar.WatchEvent(None, "new", names))
+        self.assertEqual(found(), [])
+
+class CandidateMode(unittest.TestCase):
+    """Review item 14 (14 Oct): candidate mode names both built images by id, binds the baked program's sha256,
+    runs the factory probe, and serves every scenario with nothing injected. No Docker: Proof is a fake."""
+
+    def run_main(self, argv):
+        from box import measure_live as ml
+        d = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        calls = []
+
+        class FakeProof:
+            def __init__(self, take=None, watch=None):
+                self.take_image, self.watch_image, self.calls = take, watch, []
+                calls.append(("proof", take, watch))
+
+            def scenario(self, parent, name, **kw):
+                calls.append(("scenario", name, kw.get("inject", True), kw.get("source")))
+                return {"scenario": name}
+        out = d / "out.json"
+        with mock.patch.object(ml, "Proof", FakeProof), mock.patch.object(ml.sys, "platform", "linux"), \
+                mock.patch.object(ml, "factory_probe", lambda proof, parent: {"probe": True}), \
+                mock.patch.object(ml, "baked_program_sha256", lambda proof: "f" * 64), \
+                mock.patch.object(ml.sys, "argv", ["measure_live", "--scratch-parent", str(d), "--output", str(out)]
+                                  + argv):
+            ml.main()
+        return json.loads(out.read_text()), calls
+
+    def test_candidate_mode_binds_images_and_injects_nothing(self):
+        a, b = "sha256:" + "a" * 64, "sha256:" + "b" * 64
+        rep, calls = self.run_main(["--mode", "candidate", "--take-image", a, "--watch-image", b])
+        self.assertEqual(calls[0], ("proof", a, b))
+        self.assertEqual([c[1:] for c in calls[1:]], [(n, False, None) for n in
+                                                    ("oracle", "always-act", "always-hold", "background-writer",
+                                                     "gap-fresh")])
+        self.assertEqual((rep["baked_sidecar_sha256"], rep["factory_probe"]), ("f" * 64, {"probe": True}))
+        self.assertIn("candidate-image evidence", rep["scope"])
+
+    def test_candidate_mode_refuses_an_image_not_named_by_id(self):
+        for take, watch in (("take-a", "sha256:" + "b" * 64), ("sha256:" + "a" * 64, "sha256:" + "B" * 64)):
+            with self.subTest(take=take), self.assertRaisesRegex(ValueError, "by sha256 id"):
+                self.run_main(["--mode", "candidate", "--take-image", take, "--watch-image", watch])
+
+class NewlinePaths(unittest.TestCase):
+    """Review r2-1 (glitch-06's ruling, 14 Oct): a newline in a name under the tree is ignored, never a fault, and
+    counted in the watcher-stop health record as ignored_newline_paths (no watched path or chain folder can hold one)."""
+
+    def make(self):
+        d = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        (d / "tree").mkdir(); (d / "ev").mkdir()
+        return d, sidecar.Sidecar(run_tree=str(d / "tree"), evidence=str(d / "ev"), watch=["a.txt"], factory=None,
+                                  clock=lambda: 1.0e9)
+
+    def test_ignored_and_counted(self):
+        d, sc = self.make()
+        for path in ("x\ny.txt", "deep/q\n|OPEN", "a.txt"):
+            self.assertTrue(sc._event(sidecar.WatchEvent(None, path, ("CREATE",))), path)
+        self.assertEqual(sc._ignored_newline, 2)
+        acc = [json.loads(x)["path"] for x in (d / "ev" / sidecar.ACCESS).read_text().splitlines()] \
+            if (d / "ev" / sidecar.ACCESS).exists() else []
+        self.assertNotIn("x\ny.txt", acc)
+
+    def test_outside_the_tree_still_faults(self):
+        _, sc = self.make()
+        self.assertFalse(sc._event(sidecar.WatchEvent(None, None, ("CREATE",))))
+
+    def test_the_stop_record_carries_the_count(self):
+        d, sc = self.make()
+
+        class W:
+            def poll(self): return 0 if self.stopped else None
+            def request_stop(self): self.stopped = True
+            def read_ready(self): return []
+            stopped = False
+        sc.watcher, sc.state = W(), "running"
+        sc._ignored_newline = 3
+        sc._stop()
+        recs = [json.loads(x) for x in (d / "ev" / sidecar.HEALTH).read_text().splitlines()]
+        self.assertEqual(recs[-1]["ignored_newline_paths"], 3)
+        self.assertEqual(set(recs[-1]), {"kind", "at", "exit_code", "ignored_newline_paths"})
 
 
 if __name__ == "__main__":

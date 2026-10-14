@@ -76,6 +76,14 @@ NULLABLE = {
 }
 
 KEYS = ("schema", "image", "dockerfile", "base", "harness", "python", "image_id", "users", "pending")
+# Schema 2 (glitch-06's lock-writer rulings, 14 Oct 2026): the filled lock, written only by ops/write_image_lock.py
+# from a committed build record. Schema 1 is the unfilled lock: its image_id is always PENDING. A schema-2 lock
+# carries the content identity preflight checks (`manifest_digest`, the platform image manifest, which names the
+# config and every layer), the config digest from BuildKit's metadata, and the commit the image was built from;
+# `image_id` (the index digest, new on every build: BuildKit's provenance attestation) stays a recorded field.
+SCHEMA_2 = 2
+SCHEMA_2_KEYS = ("manifest_digest", "config_digest", "source_commit")
+COMMIT_RE = re.compile(r"[0-9a-f]{40}")
 # Keys only some images carry: the egress lock, and only it, carries `squid`.
 EXTRA_KEYS = {EGRESS_IMAGE: ("squid",)}
 
@@ -174,15 +182,25 @@ def problems(lock) -> list:
     if image not in IMAGES:
         return [f"image: {image!r} is not one of {list(IMAGES)}"]
     out = []
-    want = set(KEYS) | set(EXTRA_KEYS.get(image, ()))
+    want = set(KEYS) | set(EXTRA_KEYS.get(image, ())) | (set(SCHEMA_2_KEYS) if lock.get("schema") == SCHEMA_2 else set())
     for k in sorted(want - set(lock)):
         out.append(f"missing key {k!r}")
     for k in sorted(set(lock) - want):
         out.append(f"unknown key {k!r}")
     if out:
         return out
-    if not _is_int(lock["schema"]) or lock["schema"] != SCHEMA:
-        out.append(f"schema: must be {SCHEMA}")
+    if not _is_int(lock["schema"]) or lock["schema"] not in (SCHEMA, SCHEMA_2):
+        out.append(f"schema: must be {SCHEMA} (unfilled) or {SCHEMA_2} (filled by the lock writer)")
+    elif lock["schema"] == SCHEMA and lock["image_id"] != PENDING:
+        out.append(f"schema {SCHEMA} is the unfilled lock: an image id is pinned only in a schema-{SCHEMA_2} lock, "
+                   f"written by the lock writer from a committed build record")
+    elif lock["schema"] == SCHEMA_2:
+        for k in ("manifest_digest", "config_digest"):
+            _value(lock[k], IMAGE_ID_RE, k, out, pendable=False)
+        if not isinstance(lock["source_commit"], str) or not COMMIT_RE.fullmatch(lock["source_commit"]):
+            out.append("source_commit: a 40-hex commit id")
+        if _pending_fields(lock) or lock["pending"] != {}:
+            out.append(f"schema {SCHEMA_2} holds no {PENDING} value and no pending reason")
     if lock["dockerfile"] != DOCKERFILES[image]:
         out.append(f"dockerfile: must be {DOCKERFILES[image]!r} for {image}")
     _value(lock["base"], BASE_RE, "base", out)
@@ -486,9 +504,6 @@ USERS_LINE = ("groupadd --gid {a[gid]} {a[name]}"
 # The sidecar program's path inside the sidecar image (interface 11; merge binding 6 reads it).
 SIDECAR_PROGRAM = "/opt/w/sidecar.py"
 SIDECAR_COPY = "sidecar.py " + SIDECAR_PROGRAM
-# The sidecar program's launch contract beside it (glitch-06 ruling 1, 14 Oct 2026): sidecar.py loads it from its folder.
-SIDECAR_CONTRACT_COPY = "sidecar_contract.py /opt/w/sidecar_contract.py"
-SIDECAR_COPIES = (SIDECAR_COPY, SIDECAR_CONTRACT_COPY)
 SQUID_PACKAGE = "squid=${SQUID_VERSION}"
 # The ENV lines each image carries, exactly.
 ENVS = {
@@ -632,8 +647,8 @@ def check_dockerfile(text: str, lock) -> list:
         out.append("exactly one ENTRYPOINT [] (the base's entrypoint reset)")
     copies = [i.args for i in ins if i.keyword == "COPY"]
     if image == SIDECAR_IMAGE:
-        if copies != list(SIDECAR_COPIES):
-            out.append(f"the sidecar image copies exactly {list(SIDECAR_COPIES)!r}")
+        if copies != [SIDECAR_COPY]:
+            out.append(f"the sidecar image copies exactly {SIDECAR_COPY!r}")
     elif copies:
         out.append("no COPY in this image")
     # The RUN lines are a closed sequence (expected_runs): nothing else can run at build, so no deny list of words,

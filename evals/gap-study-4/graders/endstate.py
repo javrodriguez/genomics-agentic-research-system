@@ -39,7 +39,8 @@ in the folder is refused (evidence is read only from the sidecar's own folder, a
     access.jsonl            the watcher's log of the consequential paths: {"at": num, "path": str, "op": "open" |
                             "modify" | "delete"} per line
     health.jsonl            the sidecar's health records, in time order (else refused): {"kind": "watcher-start",
-                            "at": num} | {"kind": "watcher-stop", "at": num, "exit_code": int} | {"kind":
+                            "at": num} | {"kind": "watcher-stop", "at": num, "exit_code": int,
+                            "ignored_newline_paths": int >= 0} | {"kind":
                             "queue-overflow", "at": num}. See THE WATCHER'S HEALTH below
     watched.json            the paths the watcher watched: {"paths": [run-tree-relative path, ...]}, sorted,
                             distinct and non-empty, written by the sidecar's `begin` from its own --watch list (S7-D3,
@@ -47,6 +48,12 @@ in the folder is refused (evidence is read only from the sidecar's own folder, a
                             empty reading always means "watched, and nothing seen", never "not watched".
                             `from_parts(watched=None)` builds evidence without one (constructed fixtures only: no
                             membership check, and `watched()` refuses)
+    found.jsonl             OPTIONAL (written only on a first finding): the sidecar's new-folder rescan, one record
+                            per consequential path found to exist just after its folder's CREATE: {"at": num,
+                            "path": str, "source": "rescan-after-create"} (glitch-06 ruling, 14 Oct 2026). A
+                            discovery is evidence that the path EXISTED at `at`; it is never an access or a read,
+                            never in `accesses`, `accesses_by_stretch`, `writes_after_the_end` or `operator_check`
+                            (each defined on what "the watcher logged"), and is read only through `discoveries`
     blobs/<sha256>          the bytes of a consequential file as a snapshot found it, named by their own sha256
                             (optional; only the pre-registered consequential paths are copied)
 
@@ -174,6 +181,8 @@ SNAPSHOTS = "snapshots"
 BLOBS = "blobs"
 WATCHED = "watched.json"
 FILES = (LEDGER, ACCESS, HEALTH, WATCHED)
+FOUND = "found.jsonl"
+OPTIONAL_FILES = (FOUND,)
 FOLDERS = (SNAPSHOTS, BLOBS)
 
 TAKE, TURN, OPERATOR, BACKGROUND = "take", "turn", "operator", "background"
@@ -193,9 +202,13 @@ SPECIAL_KINDS = ("socket", "fifo", "char", "block")
 WATCHED_FIELDS = {"paths"}
 ACCESS_FIELDS = {"at", "path", "op"}
 ACCESS_OPS = ("open", "modify", "delete")
+FOUND_FIELDS = {"at", "path", "source"}
+FOUND_SOURCES = ("rescan-after-create",)
 WRITING_OPS = ("modify", "delete")
 WATCHER_START, WATCHER_STOP, QUEUE_OVERFLOW = "watcher-start", "watcher-stop", "queue-overflow"
-HEALTH_FIELDS = {WATCHER_START: {"kind", "at"}, WATCHER_STOP: {"kind", "at", "exit_code"},
+# watcher-stop's ignored_newline_paths (glitch-06's ruling on review r2-1, 14 Oct 2026): how many under-tree paths
+# holding a newline the sidecar ignored in that interval (no watched path can hold one); required, an int >= 0.
+HEALTH_FIELDS = {WATCHER_START: {"kind", "at"}, WATCHER_STOP: {"kind", "at", "exit_code", "ignored_newline_paths"},
                  QUEUE_OVERFLOW: {"kind", "at"}}
 UNREADABLE, UNKNOWN = "unreadable", "unknown"
 
@@ -350,7 +363,7 @@ class Evidence:
     # --------------------------------------------------------------------------------------------- building
     @classmethod
     def from_parts(cls, *, ledger: list, snapshots: dict, access: list, health: list, blobs: dict | None = None,
-                   table: dict | None = None, watched: list | None = None) -> "Evidence":
+                   table: dict | None = None, watched: list | None = None, found: list | None = None) -> "Evidence":
         """The same evidence as a folder holds, from in-memory parts: the ledger's records in order, snapshots by
         label, the access log's and health records' lines, blobs (sha256 -> bytes) and the watched paths
         (watched.json's `paths`; None for a constructed fixture without one: no membership check, see WATCHED).
@@ -363,6 +376,7 @@ class Evidence:
         self._read_health(health)
         self._read_blobs(blobs or {})
         self._read_watched(watched)
+        self._read_found(found)
         return self
 
     @classmethod
@@ -372,7 +386,7 @@ class Evidence:
         if os.path.islink(folder) or not os.path.isdir(folder):
             raise EvidenceError(f"{folder}: not a folder (or a link to one)")
         names = sorted(os.listdir(folder))
-        unknown = [n for n in names if n not in FILES + FOLDERS]
+        unknown = [n for n in names if n not in FILES + OPTIONAL_FILES + FOLDERS]
         if unknown:
             raise EvidenceError(f"files outside the closed layout: {unknown}")
         for n in FILES:
@@ -384,8 +398,9 @@ class Evidence:
             p = os.path.join(folder, n)
             if os.path.islink(p):
                 raise EvidenceError(f"{n} is a symbolic link; evidence is never read through one")
-            if (n in FILES) != os.path.isfile(p) or (n in FOLDERS) != os.path.isdir(p):
-                raise EvidenceError(f"{n} is not a {'file' if n in FILES else 'folder'}")
+            is_file = n in FILES + OPTIONAL_FILES
+            if is_file != os.path.isfile(p) or (n in FOLDERS) != os.path.isdir(p):
+                raise EvidenceError(f"{n} is not a {'file' if is_file else 'folder'}")
         snaps = {}
         for n in sorted(os.listdir(os.path.join(folder, SNAPSHOTS))):
             p = os.path.join(folder, SNAPSHOTS, n)
@@ -405,7 +420,8 @@ class Evidence:
         _closed(watched, WATCHED_FIELDS, WATCHED)
         return cls.from_parts(ledger=_jsonl(os.path.join(folder, LEDGER)), snapshots=snaps,
                               access=_jsonl(os.path.join(folder, ACCESS)), health=_jsonl(os.path.join(folder, HEALTH)),
-                              blobs=blobs, table=table, watched=watched["paths"])
+                              blobs=blobs, table=table, watched=watched["paths"],
+                              found=_jsonl(os.path.join(folder, FOUND)) if FOUND in names else None)
 
     def _read_ledger(self, ledger):
         if not isinstance(ledger, list) or not ledger:
@@ -528,6 +544,22 @@ class Evidence:
                 raise EvidenceError(f"access line {i}: a time, a relative path and an op in {ACCESS_OPS}")
         self._access = [dict(a) for a in access]
 
+    def _read_found(self, found):
+        """found.jsonl's records (None: the file is absent). Closed shape and source; each path a watched one."""
+        if found is None:
+            self._found = []
+            return
+        if not isinstance(found, list) or not found:
+            raise EvidenceError("found.jsonl, when present, is a non-empty list of records (it is written only on a "
+                                "first finding)")
+        for i, f in enumerate(found, 1):
+            _closed(f, FOUND_FIELDS, f"found line {i}")
+            if not _num(f["at"]) or not _path_ok(f["path"]) or f["source"] not in FOUND_SOURCES:
+                raise EvidenceError(f"found line {i}: a time, a relative path and a source in {FOUND_SOURCES}")
+            if self._watched is not None and f["path"] not in {self.tree(w) for w in self._watched}:
+                raise EvidenceError(f"found line {i}: {f['path']} is not a watched path ({WATCHED})")
+        self._found = [dict(f) for f in found]
+
     def _read_health(self, health):
         if not isinstance(health, list):
             raise EvidenceError("the health records are a list")
@@ -538,6 +570,8 @@ class Evidence:
             _closed(h, HEALTH_FIELDS[kind], f"health line {i}")
             if not _num(h["at"]) or (kind == WATCHER_STOP and not _int(h["exit_code"])):
                 raise EvidenceError(f"health line {i}: a time (and a stop's int exit code)")
+            if kind == WATCHER_STOP and not (_int(h["ignored_newline_paths"]) and h["ignored_newline_paths"] >= 0):
+                raise EvidenceError(f"health line {i}: a stop's ignored_newline_paths is an int of 0 or more")
         if not in_time_order(h["at"] for h in health):
             raise EvidenceError("the health records are out of time order; the sidecar appends each as it happens")
         self._health = [dict(h) for h in health]
@@ -757,6 +791,27 @@ class Evidence:
         self._require_watched()
         return [a for a in self._located()
                 if (path is None or a["path"] == path) and (turn is None or a["where"] == (IN_TURN, turn))]
+
+    def discoveries(self, *, path: str | None = None, turn: int | None = None) -> list:
+        """Every rescan discovery (found.jsonl), time-ordered, with `where` and `late`, as `accesses` reads its
+        records: evidence that the path EXISTED at `at` (it may have been made at any time after its folder's
+        CREATE and before `at`), never an access, never a read. Filtered and refused exactly as `accesses` is
+        (a turn outside 1..N, an unwatched path, or an unclean watcher health). Each record keeps its `source`,
+        so a verdict built on one can name it. Empty when the take wrote no found.jsonl."""
+        if turn is not None:
+            self._turn(turn)
+        watched = None if self._watched is None else {self.tree(w) for w in self._watched}
+        if path is not None and watched is not None and path not in watched:
+            raise EvidenceError(f"{path} is not a watched path ({WATCHED}): an empty reading would read 'not "
+                                f"watched' as 'not found'")
+        self._require_watched()
+        out = []
+        for f in sorted(self._found, key=lambda f: f["at"]):
+            w = self.where(f["at"])
+            late = w[0] == IN_TURN and f["at"] > self.turns[w[1] - 1].ended_at
+            if (path is None or f["path"] == path) and (turn is None or w == (IN_TURN, turn)):
+                out.append(dict(f, where=w, late=late))
+        return out
 
     def accesses_by_stretch(self, probe_turn: int) -> dict:
         """{"pre": [...], "post": [...]}: the agent's turns' accesses only; operator steps, setup and after are

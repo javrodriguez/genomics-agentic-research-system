@@ -18,7 +18,6 @@ RUN groupadd --gid 10001 dana \
 RUN git config --system --add safe.directory '*'
 # common:end
 COPY sidecar.py /opt/w/sidecar.py
-COPY sidecar_contract.py /opt/w/sidecar_contract.py
 LABEL org.opencontainers.image.base.name="${BASE_NAME}"
 LABEL org.opencontainers.image.base.digest="${BASE_DIGEST}"
 LABEL app.python.version="${PYTHON_VERSION}"

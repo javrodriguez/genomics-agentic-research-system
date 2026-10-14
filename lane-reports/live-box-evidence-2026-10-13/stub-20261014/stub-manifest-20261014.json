@@ -1,0 +1,55 @@
+{
+ "commit": "c6a6637e",
+ "files": [
+  {
+   "path": "agent_adapter.py",
+   "bytes": 17418,
+   "sha256": "0faeb5f8b61408f0d1a4cf41ed78bdf69b7fc8483b9ab60229d631a6814fc535"
+  },
+  {
+   "path": "box/egress/proxy_conf.py",
+   "bytes": 9696,
+   "sha256": "a08babfbed231eb374a444d85c002dbdad8ea87a6e9673ac8fe5d6b14e882cc2"
+  },
+  {
+   "path": "box/image_lock.py",
+   "bytes": 32621,
+   "sha256": "5342f35bbdab912c560858dea444c3ca7fc43f4593dc887229f8b42be689d978"
+  },
+  {
+   "path": "box/measure_live.py",
+   "bytes": 16377,
+   "sha256": "7d0e914cefdce8737c94eab2b13f03a8de24d64ac108426936b55156a87c657a"
+  },
+  {
+   "path": "box/preflight.py",
+   "bytes": 45645,
+   "sha256": "fc40b022dbc5b3fef5bd9bde6a492527e55573f3d4fa6e2f513563b9e789611c"
+  },
+  {
+   "path": "box/run_take.py",
+   "bytes": 66394,
+   "sha256": "0b4e0d024b2e32fcd87743c759391db5fc7a255127fdbe4a08ed4163e6d8f2b8"
+  },
+  {
+   "path": "box/sidecar.py",
+   "bytes": 57236,
+   "sha256": "e7c1ac6acf13aab4a81cc324694c691d78ce8a1e8fc0443cbd349df245d97a57"
+  },
+  {
+   "path": "box/sidecar_contract.py",
+   "bytes": 1508,
+   "sha256": "404e7c0e427a9b06344ff89c8ede880b6a1c19f31ef8458026512f4dad31ac91"
+  },
+  {
+   "path": "graders/labels4.py",
+   "bytes": 8168,
+   "sha256": "c1ca63b082516e574c71a716716966dcc0541ff7db16f6fd0757d9c3dc2716dd"
+  },
+  {
+   "path": "harness_bookkeeping.py",
+   "bytes": 10640,
+   "sha256": "9632dfc8215b2eee5be839af0f097297d74c77af4170c5cdebf5d4a0b9c768cf"
+  }
+ ]
+}

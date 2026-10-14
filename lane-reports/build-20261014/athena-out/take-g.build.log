@@ -1,0 +1,48 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.79kB done
+#1 WARN: InvalidDefaultArgInFrom: Default value for ARG ${BASE} results in empty or invalid base image name (line 6)
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/7] FROM docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562
+#4 resolve docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562 done
+#4 DONE 0.0s
+
+#5 [5/7] RUN git config --system --add safe.directory '*'
+#5 CACHED
+
+#6 [4/7] RUN groupadd --gid 10001 dana  && useradd --uid 10001 --gid 10001 --create-home --home-dir /home/dana --shell /bin/bash dana  && groupadd --gid 10002 eli  && useradd --uid 10002 --gid 10002 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin eli
+#6 CACHED
+
+#7 [3/7] RUN test "$(python3 -c 'import platform; print(platform.python_version())')" = "3.11.2"
+#7 CACHED
+
+#8 [6/7] RUN npm install -g "@google/gemini-cli@0.64.0"
+#8 CACHED
+
+#9 [2/7] RUN apt-get update  && apt-get install -y --no-install-recommends python3 git inotify-tools procps ca-certificates  && rm -rf /var/lib/apt/lists/*
+#9 CACHED
+
+#10 [7/7] RUN test "$(node -p 'require(process.argv[1]).version' "$(npm root -g)/@google/gemini-cli/package.json")" = "0.64.0"
+#10 CACHED
+
+#11 exporting to image
+#11 exporting layers done
+#11 exporting manifest sha256:7eb4c799f29fe5330d9cf76deae8988ea04f8183ee451a5dad4f12bcb00eee9f done
+#11 exporting config sha256:6bba97e7c55af01c1831ab214fb8eb343772859ee152c7702e00f108ecd7c1f6 done
+#11 exporting attestation manifest sha256:995e5249b5020bb0935e7199301d603b36365f5c7f84effa1b41eef02ae2c736 0.0s done
+#11 exporting manifest list sha256:6ff95466637039f8c7d2f1c39dd2b52499c8138a9c825f1d91e7665fc5010e7a done
+#11 naming to moby-dangling@sha256:6ff95466637039f8c7d2f1c39dd2b52499c8138a9c825f1d91e7665fc5010e7a done
+#11 unpacking to moby-dangling@sha256:6ff95466637039f8c7d2f1c39dd2b52499c8138a9c825f1d91e7665fc5010e7a done
+#11 DONE 0.1s
+
+ [33m1 warning found (use docker --debug to expand):
+[0m - InvalidDefaultArgInFrom: Default value for ARG ${BASE} results in empty or invalid base image name (line 6)

@@ -52,7 +52,12 @@ KEEPALIVE_UID = int(run_take.KEEPALIVE_USER.split(":")[0])
 # CAP_DAC_READ_SEARCH is capability 2: the one capability the watcher holds.
 WATCHER_CAP_EFF = 1 << 2
 
-LOCK_KEYS = ("image_id", "harness.version", "users.agent.uid", "users.watcher.uid", "users.keepalive.uid")
+LOCK_KEYS = ("image_id", "harness.version", "users.agent.uid", "users.watcher.uid", "users.keepalive.uid",
+             "manifest_digest")
+# The platform whose image manifest is the content identity (glitch-06's lock-writer ruling (a), 14 Oct 2026):
+# `docker image inspect --platform linux/amd64` returns that manifest's digest as its Id on athena's containerd
+# store, the same across rebuilds of identical content (measured: candidate2-20261014/index-reading-all).
+IMAGE_PLATFORM = "linux/amd64"
 # Each harness's own take image (image_lock.TAKE_IMAGES; arms A and C share take-a). Merge binding 8 binds it.
 TAKE_IMAGE = {run_take.CLAUDE_CODE: "take-a", run_take.CODEX: "take-o", run_take.GEMINI: "take-g"}
 SIDECAR_EXPECT_KEYS = ("user", "network_mode", "cap_drop", "cap_add", "security_opt", "privileged", "pid_mode",
@@ -361,7 +366,7 @@ class Probe:
     read: Callable | None = None
 
 
-PROBE_IDS = ("identity", "take-inspect", "harness-version", "cgroup", "listing", "processes", "sidecar-inspect",
+PROBE_IDS = ("identity", "take-inspect", "take-image-manifest", "harness-version", "cgroup", "listing", "processes", "sidecar-inspect",
              "health", "watcher-caps", "sockets", "egress", "study-folders")
 PROBE_TIMEOUT_S = 60
 
@@ -410,6 +415,8 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
     return (
         Probe("identity", agent(_py(IDENTITY_PROGRAM))),
         Probe("take-inspect", inspect(take_id)),
+        Probe("take-image-manifest", (run_take.RUNTIME_CLIENT, "image", "inspect", "--platform", IMAGE_PLATFORM,
+                                      "--format", "{{json .Id}}", spec.image)),
         Probe("harness-version", agent(list(VERSION_COMMANDS[harness]), _config_home_values(harness))),
         Probe("cgroup", agent(_py(CGROUP_PROGRAM, CGROUP_ROOT, "cpu.max", "memory.max", "memory.low", "pids.max"))),
         Probe("listing", agent(_py(LISTING_PROGRAM, SIDECAR_EVIDENCE_MOUNT, evidence_dir))),
@@ -516,7 +523,15 @@ def _check_image(raw, spec, lock, *_):
     image = _lock(lock, "image_id")
     got = _facts(obj, ("image",))["image"]
     _need(got == image and spec.image == image, f"the take's image {got} is not the lock's {image}")
-    return "the take's image is the lock's"
+    # The content identity (ruling (a)): the platform image manifest, which names the config and every layer.
+    want = _lock(lock, "manifest_digest")
+    try:
+        manifest = json.loads(_plain(raw, "take-image-manifest"))
+    except ValueError:
+        raise _Fail("probe take-image-manifest is not one JSON string") from None
+    _need(isinstance(manifest, str) and manifest == want,
+          f"the take image's {IMAGE_PLATFORM} manifest {manifest} is not the lock's {want}")
+    return "the take's image is the lock's, by its id and by its platform manifest"
 
 
 def _check_version(raw, spec, lock, harness, *_):
@@ -805,7 +820,9 @@ def load_take_lock(lock_path: str, *, harness: str) -> dict:
         raise run_take.Refused(f"the lock is the {lock['image']} image's, not {harness}'s take image "
                                f"{TAKE_IMAGE[harness]}")
     image_lock.require_ready(lock)
-    return {k: run_take._path_get(lock, k) for k in LOCK_KEYS}
+    # A schema-1 lock is never ready (its image_id is PENDING); were it to pass, its absent schema-2 field projects
+    # as PENDING, which every check refuses, never as a value.
+    return {k: (run_take._path_get(lock, k) if k != "manifest_digest" or k in lock else PENDING) for k in LOCK_KEYS}
 
 
 def _launched_parts(launched) -> tuple:

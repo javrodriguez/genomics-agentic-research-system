@@ -426,13 +426,12 @@ class TestBinding6Program(Binding):
     def check(self):
         out = []
         copies = [i.args for i in dockerfile(il.SIDECAR_IMAGE) if i.keyword == "COPY"]
-        if not copies or copies[0].split()[-1] != sc.PROGRAM:
+        if len(copies) != 1 or copies[0].split()[-1] != sc.PROGRAM:
             out.append(f"the sidecar Dockerfile copies to {copies}, not {sc.PROGRAM}")
         if il.SIDECAR_PROGRAM != sc.PROGRAM:
             out.append(f"image_lock.SIDECAR_PROGRAM {il.SIDECAR_PROGRAM} != sidecar.PROGRAM {sc.PROGRAM}")
-        # glitch-06 ruling 1 (14 Oct): the program and its launch contract, in that order.
-        if copies != list(il.SIDECAR_COPIES) or il.SIDECAR_COPIES[0] != il.SIDECAR_COPY:
-            out.append("the Dockerfile's COPY lines are not image_lock.SIDECAR_COPIES")
+        if copies != [il.SIDECAR_COPY]:
+            out.append("the Dockerfile's COPY is not image_lock.SIDECAR_COPY")
         argv = sc.create_argv(image=IMAGE, run_tree=RUN_TREE, evidence="/srv/e/t1", watch=["a"])
         if sc.PROGRAM not in argv:
             out.append("the sidecar's create argv does not run sidecar.PROGRAM")
@@ -505,8 +504,11 @@ class TestBinding8LockKeys(Binding):
                 pass
             except Exception as e:  # the committed lock must reach require_ready, nothing earlier
                 out.append(f"{h}: the committed {image} lock refused before readiness ({type(e).__name__}: {e})")
+            # a filled lock is schema 2, as the lock writer writes it (lock-writer rulings, 14 Oct 2026)
             filled = dict(loaded[image], base="registry.example/fake-base@sha256:" + "a" * 64, image_id=IMAGE,
-                          python="3.12.99", harness=dict(loaded[image]["harness"], version="9.8.7"), pending={})
+                          python="3.12.99", harness=dict(loaded[image]["harness"], version="9.8.7"), pending={},
+                          schema=il.SCHEMA_2, manifest_digest="sha256:" + "c" * 64,
+                          config_digest="sha256:" + "d" * 64, source_commit="e" * 40)
             with tempfile.TemporaryDirectory(prefix="w-") as d:
                 p = os.path.join(d, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
                 os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -537,8 +539,10 @@ class TestBinding8LockKeys(Binding):
         loaded = locks()
         for key in pf.LOCK_KEYS:
             top = key.split(".")[0]
-            if top not in il.KEYS:
+            if top not in il.KEYS and top not in il.SCHEMA_2_KEYS:
                 out.append(f"{key}: {top} is not a key of w4a's schema")
+            if top in il.SCHEMA_2_KEYS:
+                continue   # a filled (schema-2) key: the committed locks are schema 1; the loader case projects it
             for n in il.TAKE_IMAGES:
                 try:
                     v = path_get(loaded[n], key)
