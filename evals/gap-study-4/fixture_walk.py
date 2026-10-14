@@ -268,11 +268,15 @@ def half_equivalence() -> dict:
     return out
 
 
-def walk_coverage() -> dict:
-    """What has been walked, against what each task needs. Says plainly where it is short."""
+def walk_coverage(base: Path | None = None) -> dict:
+    """What has been walked, against what each task needs. Says plainly where it is short. A pending vendor walk, and
+    one whose verified regrade refused, is never counted (batch-8 fix ruling, glitch-06, 14 Oct 2026)."""
+    import pending_walk
     need = half_equivalence()
     have: dict[str, list[str]] = {}
-    for entry, _ in registered_walks():                 # W8A: task and half from the register entry
+    for entry, t in registered_walks(base):             # W8A: task and half from the register entry
+        if pending_walk.coverage_status(t.parent.parent, entry["walk"]) in ("pending", "regrade refused"):
+            continue
         have.setdefault(entry["task"], []).append(entry["half"])
     out = {}
     for task, n in need.items():

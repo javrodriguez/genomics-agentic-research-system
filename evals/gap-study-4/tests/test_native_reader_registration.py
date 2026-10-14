@@ -158,6 +158,10 @@ class ManifestClaim(unittest.TestCase):
                     frag.write_text(json.dumps(dict(doc, files=doc["files"] + [entry])))
                     self.assertTrue(any(why in g for g in cm.problems(folder=folder, pinned=False)))
             pattern = [e for e in doc["files"] if e["path"] == "native-readers/**"]
+            others = [e for e in doc["files"] if e["path"] != "native-readers/**"]
+            frag.write_text(json.dumps(dict(doc, files=others + [dict(pattern[0], source="native-readers/x.json")])))
+            self.assertTrue(any("claimed only by" in g for g in cm.problems(folder=folder, pinned=False)),
+                            "a stray source key on the pattern entry is refused (batch-8 fix NIT)")
             frag.write_text(json.dumps(dict(doc, files=[e for e in doc["files"] if e["path"] != "native-readers/**"]
                                             + [dict(pattern[0], reason=" ")])))
             self.assertTrue(any("claimed only by" in g for g in cm.problems(folder=folder, pinned=False)))

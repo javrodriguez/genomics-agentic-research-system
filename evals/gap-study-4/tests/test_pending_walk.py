@@ -358,7 +358,8 @@ def _edit_source(road):
 
 def walked(test, **kw) -> Road:
     road = Road(test, **kw)
-    test.assertEqual(road.walk()[0]["state"], "pending-native-reader")
+    got = road.walk()
+    test.assertEqual(got[0]["state"], "pending-native-reader", got)
     return road
 
 
@@ -509,6 +510,57 @@ class FabricatedWalks(unittest.TestCase):
         self.assertIn("does not add exactly", road.refused())
 
 
+class CoverageOfASecondPendingWalk(unittest.TestCase):
+    """Batch-8 fix review finding 1 (the reviewer's witness_survivors): the acceptance walk is walk-g2, and walk-g1 is a
+    second, non-acceptance pending walk, so the registration gate never reads walk-g1's regrade. Its coverage standing
+    comes from _regrade_state alone: a hand-made regrade that does not re-derive leaves it pending, and an honest
+    regrade whose cross-check refused leaves it uncounted as "regrade refused"."""
+
+    def setUp(self):
+        import run
+        self.road = fabricate(self, lambda d: None)                       # walk-g2 accepted, walk-g1 still pending
+        patch = mock.patch.object(run, "grade_walk_folder", stand_in_grade)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.assertEqual(set(self.road.nrr.production_readers(self.road.study)), {"gemini"})
+
+    def test_a_hand_made_regrade_on_another_pending_walk_stays_pending(self):
+        import pending_walk
+        (self.road.folder / "regrade.json").write_text('{"graded": true, "hand": "made"}\n')
+        self.assertEqual(pending_walk.uncounted_walks(self.road.study / "rehearsals", [WALK]), {WALK: "pending"})
+
+    def test_an_honest_refused_regrade_stays_uncounted(self):
+        import drive
+        import pending_walk
+        import walk_regrade
+        refused = lambda *a, **k: {"status": "refused", "why": "a stand-in refusal"}   # noqa: E731
+        with mock.patch.object(drive, "gemini_cross_check", refused):
+            doc = walk_regrade.regrade_doc(WALK, self.road.study)
+            self.assertEqual((doc["cross_check"]["status"], doc["graded"]), ("refused", False))
+            (self.road.folder / "regrade.json").write_bytes(walk_regrade.regrade_bytes(doc))
+            self.assertEqual(pending_walk.uncounted_walks(self.road.study / "rehearsals", [WALK]),
+                             {WALK: "regrade refused"})
+
+
+class FixtureWalkCoverage(unittest.TestCase):
+    """Batch-8 fix ruling item 3: fixture_walk.walk_coverage never counts a pending walk, even one holding a
+    transcript (the road writes none today; this binds it rather than relying on that)."""
+
+    def test_a_pending_walk_is_never_counted_there(self):
+        road = walked(self)
+        import fixture_walk               # after the walk: it puts round 3's evals/ on sys.path, ahead of check_take
+        (road.folder / "transcript.jsonl").write_text("{}\n")
+        task = road.row["task"]
+        need = {task: {"walks_needed": 1, "one_walk_covers_both_halves": True}}   # tbi's prereg stand-in names no tasks
+        patch = mock.patch.object(fixture_walk, "half_equivalence", lambda: need)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.assertEqual(fixture_walk.walk_coverage(road.study)[task]["walks_committed"], 0)
+        grade = road.folder / "grade.json"
+        grade.write_text(json.dumps({"graded": True, "row": {}, "grade": {}}))
+        self.assertEqual(fixture_walk.walk_coverage(road.study)[task]["walks_committed"], 1, "the control counts")
+
+
 class Regrade(unittest.TestCase):
     def test_only_a_pending_walk_is_regraded(self):
         import walk_regrade
@@ -545,8 +597,8 @@ class Regrade(unittest.TestCase):
         import pending_walk
         with mock.patch.object(run, "grade_walk_folder", stand_in_grade):
             self.assertEqual(walk_regrade.regrade_problems(road.study, grade=stand_in_grade), [])
-            self.assertEqual(pending_walk.pending_walks(road.study / "rehearsals", [WALK]), frozenset(),
-                             "a verified regrade supersedes the pending grade (batch-8 finding 1)")
+            self.assertEqual(pending_walk.uncounted_walks(road.study / "rehearsals", [WALK]), {},
+                             "a verified graded regrade supersedes the pending grade (batch-8 finding 1)")
         stored = json.loads((road.folder / "grade.json").read_text())
         self.assertEqual(stored["status"], "pending-native-reader")                  # the walk's own record stays
         refusing = {"gemini": lambda raw, n: (_ for _ in ()).throw(road.nrr.vp.ProvenanceRefused("a stand-in"))}
@@ -559,7 +611,7 @@ class Regrade(unittest.TestCase):
         self.assertTrue(walk_regrade.regrade_problems(road.study, grade=stand_in_grade))
         with mock.patch.object(run, "grade_walk_folder", stand_in_grade):     # batch-8 finding 4: a hand-made
             self.assertIn("does not re-derive", road.refused())               # regrade refuses the registration
-            self.assertEqual(pending_walk.pending_walks(road.study / "rehearsals", [WALK]), frozenset({WALK}),
+            self.assertEqual(pending_walk.uncounted_walks(road.study / "rehearsals", [WALK]), {WALK: "pending"},
                              "a regrade that does not re-derive supersedes nothing")
 
 

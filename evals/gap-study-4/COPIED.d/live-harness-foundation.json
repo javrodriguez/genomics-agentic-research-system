@@ -129,7 +129,7 @@
     {
       "path": "tests/test_native_reader_registration.py",
       "status": "new",
-      "reason": "Registration road on synthetic, labelled fixtures: the check prints PASS or the exact disagreement; no record means an empty registry; every forged, mismatched or synthetic record refuses; the driver reads the production registry. The registration gates, the positive registration and its mutations moved to tests/test_pending_walk.py (walks made by the real road); kept here: the shared join and the check tool. ManifestClaim: only the named records under native-readers/ are claimed, a fragment cannot claim inside the folder, the pattern entry needs its status and reason, and without it nothing is claimed; four mutants."
+      "reason": "Registration road on synthetic, labelled fixtures: the check prints PASS or the exact disagreement; no record means an empty registry; every forged, mismatched or synthetic record refuses; the driver reads the production registry. The registration gates, the positive registration and its mutations moved to tests/test_pending_walk.py (walks made by the real road); kept here: the shared join and the check tool. ManifestClaim: only the named records under native-readers/ are claimed, a fragment cannot claim inside the folder, the pattern entry needs its status and reason, and without it nothing is claimed; four mutants. Batch-8 fix NIT: a stray source key on the native-readers pattern entry is refused."
     },
     {
       "path": "codex_native.py",
@@ -144,7 +144,7 @@
     {
       "path": "pending_walk.py",
       "status": "new",
-      "reason": "Registration review finding 2 (glitch-06, 14 Oct 2026): the pending-native-reader records of a vendor walk whose native cross-check is pending: grade.json's document (status) and check.json's (check_doc), both derived from the driver ledger alone, so a regrade and the registration road re-derive them byte for byte. Batch-8 review finding 1: pending_walks (the walks whose grade is the pending document and no verified regrade supersedes), read by walk_plan's coverage."
+      "reason": "Registration review finding 2 (glitch-06, 14 Oct 2026): the pending-native-reader records of a vendor walk whose native cross-check is pending: grade.json's document (status) and check.json's (check_doc), both derived from the driver ledger alone, so a regrade and the registration road re-derive them byte for byte. Batch-8 review finding 1: pending_walks (the walks whose grade is the pending document and no verified regrade supersedes), read by walk_plan's coverage. Batch-8 fix ruling (glitch-06, 14 Oct 2026): coverage_status and uncounted_walks replace pending_walks: a walk covers its spec only when graded true, or a pending walk a verified graded-true regrade supersedes; pending, regrade refused, not graded and grade unreadable (fail closed) are reported, never counted; _regrade_state separates a regrade that does not re-derive (supersedes nothing) from an honest refused one."
     },
     {
       "path": "walk_regrade.py",
@@ -154,7 +154,7 @@
     {
       "path": "tests/test_pending_walk.py",
       "status": "new",
-      "reason": "Registration review findings 1 and 2: a Gemini walk through the real road (WalkDriver with harness_adapter_for, the production GeminiAdapter on a fake box, walk_runner, WalkRepo) in a scratch repository, committed pending; every registration gate refusing for its own reason on road-made walks; a positive registration and its single mutations; the reviewer's hand-fabricated walks refused; the regrade road. Unmarked fixture on purpose, scratch-only. The review file is gemini-review.md (the manifest ruling). Batch-8 review findings 1 and 4: a hand-made regrade refuses the registration; a verified regrade supersedes the pending grade for coverage and a mismatched one does not."
+      "reason": "Registration review findings 1 and 2: a Gemini walk through the real road (WalkDriver with harness_adapter_for, the production GeminiAdapter on a fake box, walk_runner, WalkRepo) in a scratch repository, committed pending; every registration gate refusing for its own reason on road-made walks; a positive registration and its single mutations; the reviewer's hand-fabricated walks refused; the regrade road. Unmarked fixture on purpose, scratch-only. The review file is gemini-review.md (the manifest ruling). Batch-8 review findings 1 and 4: a hand-made regrade refuses the registration; a verified regrade supersedes the pending grade for coverage and a mismatched one does not. Batch-8 fix: a second, non-acceptance pending walk with a hand-made regrade stays pending, and with an honest refused regrade stays uncounted as regrade refused (the reviewer's two survivors, now killed); fixture_walk.walk_coverage never counts a pending walk, even one holding a transcript."
     },
     {
       "path": "native-readers/**",
