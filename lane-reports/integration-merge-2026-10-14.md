@@ -29,6 +29,11 @@ Nothing was pushed.
 | `daf5d94c` | harness head `9425bf62` (wiring `4c2d805f..9425bf62`, merged for signal: **review MAJOR open on `4c2d805f`**, the driver ledger written into the watcher-owned evidence folder, fix in progress; carries `0768f478`, which must come in with box ≥ `22b15f56`'s settings_guard `model=`, and does) | none |
 | `7225f22d` | box head `03180228` (`1eb02a9e` walk-token road, `8ad2978a` scanner binding moved, `03180228` operator-list folds) | none; see the walk_builders lines below |
 | `9783d584` | harness head `573b5a61` (`fcb0fb80`, `573b5a61`) | none |
+| `de6616a3` | harness head `1e8d0cd3` (the scanner-class fix) | one hunk, `walk_builders.py` `production_builders`: see that commit |
+| `9991f26a`, `40acb6de` | box heads `60093f55`, `5c73dab4` | none |
+| `1ff9ade2` | box head `72239cd4` (`2fd8215a..72239cd4`: the Codex lease postflight, `lease_secrets`, the lease gate, the no-login launcher, the Codex row with no API-key route) | none |
+| `4e30d774` | harness head `1f032586` (`cd824501..1f032586`) | one hunk, `tests/test_walk_builders.py`: see below |
+| `2d6983e9` | box head `39fc4f0a` (`41fccf4c` review folds, `39fc4f0a` athena redeploy and postflight case probe) | none |
 
 How "no conflict" was checked: `comm -12` of `git diff --name-only a12569a <box head>` and `git diff --name-only a12569a <harness head>` printed no path for the first merge, so no file was changed on both sides.
 For `0d2085ee` and `7b5a9dd4`, `comm -12` of the two heads' changed paths since `fa98717e` (`git diff --name-only HEAD...<head>`) printed no path, so again no file was changed on both sides.
@@ -68,6 +73,10 @@ Each later merge reported "Automatic merge went well" and left no unmerged path 
   `test_walk_builders` does not catch it, because it patches `scan_record.RealRulesScanner` with `create=True`.
   The fix is a production change in the harness lane's file plus its test, so this lane did not make it.
 - `9783d584`, `tests/test_box_integration.py`, `tests/test_walk_builders.py` and `tests/test_walk_wiring.py`: no conflict marker.
+- `4e30d774`, `evals/gap-study-4/tests/test_walk_builders.py`, after `EXPECTED_MISSING`: this branch's `TAKE_A_LOCK_READY` block (`6e965d12`) met the harness `8b3adf14` text.
+  The harness text carries that block byte for byte (the two 14-line spans compared with `cmp`: identical) and appends the `WALK_LOGIN_ON_TREE` block.
+  Resolved with the harness text in that hunk; every other hunk of both sides kept.
+- `1ff9ade2`, `walk_builders.py`: the box hunk (`lease_secrets`, after `login_secrets`) and the harness hunks touch separate lines; no conflict marker.
 
 There were no conflict hunks in any of the three merges, so there are no resolution lines.
 
@@ -373,3 +382,23 @@ Written at 16:13 EDT, when Javier was turning the Mac off.
   2. Derive its verdict on the Mac and group every red by owner, checking each against the lane heads alone (worktrees of this clone) where needed.
   3. Write a dated checkpoint and report to glitch-06.
   4. Re-merge only on glitch-06's go.
+
+## Re-merge after the Mac restart (14 Oct, 18:57-19:12 EDT)
+
+Written by a fresh integration window, under glitch-06.
+
+- **athena:** athena rebooted at about 18:55. `gap4-merge-40acb6d-20261014T194627Z` (head `40acb6de`) died with it and is recorded as lost to the reboot. Its verdict is none, and nothing from it is cited.
+- **Heads taken:** box `72239cd4` (the newest committed box head at 18:57), then `39fc4f0a` on glitch-06's word (it moved at about 19:05). Harness `1f032586`. Each lane clone had uncommitted edits, which were left alone. Only committed heads were fetched.
+- **Merged head `2d6983e9`:**
+  - `build_draft.py --check` ok, so the draft was not regenerated.
+  - `copy_manifest.py --check` ok, 414 files.
+  - `freeze.py --check` ok, 415 paths.
+  - `batch.py --check`: `batch: routing.json ready`.
+- **Mac, light-ok before each module:**
+  - On `4e30d774`: test_claude_code_adapter 27, test_vendor_record_binding 9, test_drive_ownership 43 and test_walk_wiring 20, all OK.
+  - On `2d6983e9`: test_run_take 54, test_env_allowlist 28, test_scan_record 80, test_preflight 58, test_ownership 38 and test_rules_scanner 9, all OK.
+  - test_walk_builders: Ran 52, FAILED (failures=5). The same five failures are on `35bfd98b` (Ran 49, checked in a scratch worktree), so this merge did not cause them. They came in with harness `1e8d0cd3` (`de6616a3`), and no battery has read that head.
+    - B7Production, 4 failures: `EXPECTED_MISSING` lists `rules_scanner`, but on the merged tree the box's scan_record no longer holds it pending, so `production_builders` builds `rules_scanner.real_rules_scanner()`. The harness test has no on-tree switch for it, as it does for `WALK_LOGIN_ON_TREE`.
+    - B10Resources, 1 failure: the fixture sets `image_id` to PENDING on the real schema-2 take-a lock without a `pending` reason. `image_lock` raises `LockError` ("schema 2 holds no PENDING value and no pending reason") before `require_ready` can raise `NotReady`, so review nit 7's assertion fails. Reproduced directly.
+    - Both are harness-owned test expectations. Neither is fixed here.
+- **athena name scan:** `athena_suite.name_hits` on `2d6983e9` finds five NEW token-name paths from the box lane's lease work (`b9f876b5` range): `mutants/lease_tokens_mutants.py`, plus `runs/100-…`, `101-…`, `105-…` and `106-…lease-tokens…` under `lane-reports/stub-take-20261014/`. The seven earlier ones are covered by aegis `6cb2063`. Under the T52 method, this lane does not read them and does not pass `--allow-path`. The version hashes were sent to glitch-06 for a reviewed exemption.
