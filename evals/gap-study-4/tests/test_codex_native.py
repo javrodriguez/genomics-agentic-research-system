@@ -225,25 +225,46 @@ class Join(unittest.TestCase):
         got = m.join(turn, exec_stream(output=native), exit_code=0, session_id=TID)
         self.assertTrue(got["complete"] and got["marker_text"])
 
-    def test_an_exec_output_over_the_writers_limit_refuses(self):
+    def test_an_output_over_the_limit_joins_only_as_the_writers_exact_truncation(self):
+        """Addendum A: the writer keeps 32743 bytes of head and 32743 of tail around the 50-byte marker (budget 65486,
+        the tail taking any odd byte), the head cut down and the tail start pushed up to a char boundary. Spelled
+        here from the source's rule, never read from the module."""
         m = cn()
-        big = "x" * (64 * 1024 + 1)
+        marker = "\n... command output truncated for persistence ...\n"
+        self.assertEqual(len(marker.encode()), 50)
+        cases = [("x" * 70000, "x" * 32743 + marker + "x" * 32743),
+                 ("a" + "x" * 69998 + "z", "a" + "x" * 32742 + marker + "x" * 32742 + "z"),
+                 ("\u00e9" * 40000, "\u00e9" * 16371 + marker + "\u00e9" * 16371),     # 2-byte chars: both cuts round in
+                 ("\u20ac" * 30000, "\u20ac" * 10914 + marker + "\u20ac" * 10914)]     # 3-byte chars
+        for exec_out, writer in cases:
+            with self.subTest(n=len(exec_out.encode())):
+                recs = rollout()
+                recs[4]["payload"]["item"]["aggregated_output"] = writer
+                turn = m.read_rollout(raw(recs))["turns"][0]
+                got = m.join(turn, exec_stream(output=exec_out), exit_code=0, session_id=TID)
+                self.assertTrue(got["complete"] and got["marker_text"])
+                for wrong in (writer[1:], writer[:-1], writer.replace(marker, marker.replace("output", "outputs")),
+                              exec_out[:32744] + marker + exec_out[-32742:]):
+                    recs[4]["payload"]["item"]["aggregated_output"] = wrong
+                    turn = m.read_rollout(raw(recs))["turns"][0]
+                    with self.assertRaises(m.JoinRefused):
+                        m.join(turn, exec_stream(output=exec_out), exit_code=0, session_id=TID)
+
+    def test_at_the_limit_the_output_is_kept_whole(self):
+        m = cn()
+        exact = "x" * (64 * 1024)
+        marker = "\n... command output truncated for persistence ...\n"
+        self.assertEqual(m.truncate_middle_with_marker(exact, 64 * 1024, marker), exact)      # truncate.rs:21-23
+        self.assertEqual(m.truncate_middle_with_marker("abcdef", 4, "0123456789"), "abcd")   # :25-27, prefix that fits
         recs = rollout()
-        recs[4]["payload"]["item"]["aggregated_output"] = big[:100] + m.TRUNCATION_MARKER + big[-100:]
-        turn = m.read_rollout(raw(recs))["turns"][0]
-        with self.assertRaises(m.JoinRefused) as cm:
-            m.join(turn, exec_stream(output=big), exit_code=0, session_id=TID)
-        self.assertIn("64 KiB", str(cm.exception))
-        recs[4]["payload"]["item"]["aggregated_output"] = big[:-1]
-        exact = "x" * (64 * 1024)                                # at the limit the writer keeps it whole: exact
         recs[4]["payload"]["item"]["aggregated_output"] = exact
         turn = m.read_rollout(raw(recs))["turns"][0]
         self.assertTrue(m.join(turn, exec_stream(output=exact), exit_code=0, session_id=TID)["complete"])
-        multibyte = "\u00e9" * (32 * 1024 + 1)                  # 65538 bytes in 32769 characters: over the limit
-        recs[4]["payload"]["item"]["aggregated_output"] = multibyte
+        over = "x" * (64 * 1024 + 1)
+        recs[4]["payload"]["item"]["aggregated_output"] = over
         turn = m.read_rollout(raw(recs))["turns"][0]
-        with self.assertRaises(m.JoinRefused):
-            m.join(turn, exec_stream(output=multibyte), exit_code=0, session_id=TID)
+        with self.assertRaises(m.JoinRefused):              # the writer would have truncated it: never stored whole
+            m.join(turn, exec_stream(output=over), exit_code=0, session_id=TID)
 
     def test_unregistered(self):
         import vendor_provenance

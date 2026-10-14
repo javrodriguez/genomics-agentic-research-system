@@ -35,10 +35,11 @@ retained_context, security_risk_score, compacted, inter_agent_communication, int
 realtime_item: if a plain exec session writes any of them, every rollout of it refuses.
 
 Command output in the join (review finding 3): the writer truncates aggregated_output only when it exceeds
-PERSISTED_COMMAND_OUTPUT_MAX_BYTES (64 KiB, policy.rs:16-17, 253-258), through codex_utils_string::
-truncate_middle_with_marker, whose source is not in the retained copy. So an exec output over 64 KiB refuses the join
-(its truncation cannot be reproduced exactly), and every other output must equal the rollout's exactly, the marker's
-text compared as ordinary text.
+PERSISTED_COMMAND_OUTPUT_MAX_BYTES (64 KiB, policy.rs:16-17, 250-258), through codex_utils_string::
+truncate_middle_with_marker (retained since the audit's Addendum A: codex-rs/utils/string/src/truncate.rs:20-33,
+156-159, 177-183), reimplemented here in UTF-8 bytes. An exec output over 64 KiB joins only when the rollout holds
+exactly that truncation of it; every other output must equal the rollout's exactly, the marker's text compared as
+ordinary text.
   - turn_context: the requested model and cwd; approval_policy and sandbox_policy values are placeholders the audit
     did not verify, so they are carried raw and never accepted (permission_mode stays None).
 Exec stream: EXEC_EVENTS and EXEC_ITEMS (exec/src/exec_events.rs:9-37, 120-133). The stream holds no user prompt and
@@ -313,15 +314,64 @@ def read_exec(text) -> dict:
 PERSISTED_COMMAND_OUTPUT_MAX_BYTES = 64 * 1024        # rollout/src/policy.rs:17
 
 
+def _continuation(byte: int) -> bool:
+    return byte & 0xC0 == 0x80
+
+
+def _floor_char_boundary(b: bytes, index: int) -> int:
+    """Rust str::floor_char_boundary: the largest char boundary at or below index (len when index >= len)."""
+    if index >= len(b):
+        return len(b)
+    while index > 0 and _continuation(b[index]):
+        index -= 1
+    return index
+
+
+def _ceil_char_boundary(b: bytes, index: int) -> int:
+    """Rust str::ceil_char_boundary: the smallest char boundary at or above index (len when index > len)."""
+    if index > len(b):
+        return len(b)
+    while index < len(b) and _continuation(b[index]):
+        index += 1
+    return index
+
+
+def truncate_middle_with_marker(s: str, max_bytes: int, marker: str) -> str:
+    """The writer's truncation, from the retained source (Addendum A of the rollout audit; blob 075d78fd,
+    codex-rs/utils/string/src/truncate.rs:20-33, split_budget :156-159, assemble_truncated_output :177-183), in UTF-8
+    bytes: unchanged at or under max_bytes; otherwise the head up to floor_char_boundary(budget // 2) and the tail from
+    ceil_char_boundary(len - (budget - budget // 2)), budget = max_bytes - len(marker), the tail taking the odd byte,
+    joined by the marker. A marker longer than max_bytes keeps the longest prefix that fits (:25-27; never reached here,
+    since the caller's marker is 50 bytes)."""
+    b = s.encode("utf-8")
+    if len(b) <= max_bytes:
+        return s
+    m = marker.encode("utf-8")
+    if len(m) > max_bytes:
+        return b[:_floor_char_boundary(b, max_bytes)].decode("utf-8")
+    budget = max_bytes - len(m)
+    left = budget // 2
+    right = budget - left
+    prefix_end = _floor_char_boundary(b, left)
+    suffix_start = _ceil_char_boundary(b, max(len(b) - right, 0))
+    return (b[:prefix_end] + m + b[suffix_start:]).decode("utf-8")
+
+
 def _output_agrees(native, shown) -> bool:
-    """Review finding 3: exact equality only. An exec output over the writer's 64 KiB limit was truncated in the
-    rollout by a function whose source is not retained, so it refuses rather than being compared by its ends."""
+    """Review finding 3, with the writer's truncation retained: an exec output over 64 KiB agrees only when the
+    rollout's output is exactly truncate_middle_with_marker(exec output) (policy.rs:250-258); every other output must
+    equal the rollout's exactly, the marker's text compared as ordinary text. MCP results use another, unaudited
+    function and are not projected in this subset (McpToolCall refuses)."""
     if native is None:
         return shown == ""
-    if isinstance(shown, str) and len(shown.encode("utf-8")) > PERSISTED_COMMAND_OUTPUT_MAX_BYTES:
-        raise JoinRefused("the exec output exceeds the writer's 64 KiB persistence limit, so the rollout holds its "
-                          "truncation, which cannot be reproduced exactly (truncate_middle_with_marker is not in the "
-                          "retained source)")
+    if not isinstance(shown, str):
+        return False
+    try:
+        size = len(shown.encode("utf-8"))
+    except UnicodeError:
+        raise JoinRefused("the exec output is not UTF-8 text") from None
+    if size > PERSISTED_COMMAND_OUTPUT_MAX_BYTES:
+        return native == truncate_middle_with_marker(shown, PERSISTED_COMMAND_OUTPUT_MAX_BYTES, TRUNCATION_MARKER)
     return native == shown
 
 
