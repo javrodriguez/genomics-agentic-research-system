@@ -10,8 +10,8 @@ everything else denied. The template `proxy.conf` beside this file holds the one
     check(text, harness)   every way `text` is not "exactly one allowed host per take, its arm's"
 
 The shared values (interface 11) live here: HOSTS, ALIAS, PORT, PROXY_URL, CONF_PATH, COMMAND and USER. USER is
-squid's package user, which only a built image can tell, so it is PENDING (interface 15): `pending()` names it and
-`launch_fields()` raises NotReady while it is.
+squid's package user, which only a built image can tell: measured as 13:13 (interface 15; `pending()` names it and
+`launch_fields()` raises NotReady while it is PENDING).
 
 This module constructs and reads text only; it starts no process. Standard library only (and the seam's own
 harness_bookkeeping, for the one harness name it imports rather than types).
@@ -41,7 +41,10 @@ PROXY_URL = f"http://{ALIAS}:{PORT}"
 CONF_PATH = "/etc/squid/squid.conf"
 COMMAND = ("squid", "-N", "-f", CONF_PATH)
 TLS_PORT = 443
-USER = PENDING
+# FILLED 14 Oct 2026 (glitch-06's ruling): squid's package user in the locked egress image (image_id 5055a840...),
+# read by `getent passwd proxy` in each stub take on athena: "proxy:x:13:13:proxy:/bin:/usr/sbin/nologin"
+# (lane-reports/stub-take-20261014/stub-take-run1..4.json `squid_user`; tests/test_egress.py binds it).
+USER = "13:13"
 
 PENDING_WHY = {
     "USER": "squid's package user (name or uid:gid), which only a built egress image can tell; read from that image "

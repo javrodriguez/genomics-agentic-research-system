@@ -13,6 +13,7 @@ from __future__ import annotations
 import ast
 import contextlib
 import json
+import hashlib
 import os
 import re
 import subprocess
@@ -1596,6 +1597,16 @@ class TestPendingAndNames(MutantCase):
         if not (isinstance(st, dict) and st.get("engine") == "29.8.1" and st.get("api_version") == "1.56"
                 and len(st.get("evidence", ())) == 2 and not rt._is_pending(st)):
             out.append(f"INSPECT_STATUS is not the confirmed record: {st!r}")
+        # CP5 review (f5c17498): each evidence file INSPECT_STATUS names hashes to the sha256 it records.
+        repo = os.path.dirname(os.path.dirname(HERE))
+        for rel, digest in (st.get("evidence", ()) if isinstance(st, dict) else ()):
+            try:
+                with open(os.path.join(repo, rel), "rb") as fh:
+                    got = hashlib.sha256(fh.read()).hexdigest()
+            except OSError:
+                got = None
+            if got != digest:
+                out.append(f"INSPECT_STATUS evidence {rel} does not hash to its recorded sha256")
         if "policy" not in rt.PENDING_WHY["TakeSpec.resources"].lower():
             out.append("the resources' reason does not say they are capacity policy")
         return out
@@ -1606,6 +1617,9 @@ class TestPendingAndNames(MutantCase):
             ("top-unfilled", patched(rt, "TOP_FORMAT", rt.PENDING)),
             ("top-host-namespace", patched(rt, "TOP_FORMAT", TOP)),
             ("inspect-unfilled", patched(rt, "INSPECT_STATUS", rt.PENDING)),
+            ("inspect-evidence-swapped", patched(rt, "INSPECT_STATUS", dict(rt.INSPECT_STATUS, evidence=(
+                (rt.INSPECT_STATUS["evidence"][0][0], rt.INSPECT_STATUS["evidence"][1][1]),
+                rt.INSPECT_STATUS["evidence"][1])))),
             ("resources-said-measured", patched(rt, "PENDING_WHY", dict(rt.PENDING_WHY, **{
                 "TakeSpec.resources": "measured at the cold-start stub take"}))),
             ("billing-filled", patched(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {"codex": (), "gemini": ()})),

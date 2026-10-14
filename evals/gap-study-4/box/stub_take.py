@@ -28,8 +28,8 @@ WHAT DOES NOT, AND WHY (each recorded in the output's `departures`):
     run_take.launch itself (`use_launch`).
   - sidecar.expect_from_argv leaves `cap_add` PENDING by design; the road fills it from
     sidecar_contract.BOOT_INSPECT_CAPABILITIES (the committed, measured spelling preflight's own check requires).
-  - proxy_conf.USER is PENDING; the road measures squid's package user from the locked egress image (getent) and
-    passes it as ProxyLaunch.user.
+  - squid's package user is read again from the locked egress image (getent) and must equal proxy_conf.USER (13:13,
+    filled 14 Oct 2026 from these readings); the road passes proxy_conf.USER as ProxyLaunch.user.
   - TakeSpec's resources are the documented caller parameter: the run's values are passed on the command line and
     recorded; the candidates are derived on the Mac by a written rule, never here.
 
@@ -407,7 +407,7 @@ def run_stub_take(a) -> dict:
                       "max_user_watches": _host_read("/proc/sys/fs/inotify/max_user_watches"),
                       # review finding 3: the user slice's pids.max, read raw (the resources policy divides it)
                       "user_slice_pids_max": _host_read(f"/sys/fs/cgroup/user.slice/user-{os.getuid()}.slice/pids.max")}
-    # squid's package user, from the locked egress image (proxy_conf.USER is PENDING)
+    # squid's package user, read again from the locked egress image: it must be proxy_conf.USER
     g = runtime.run(["docker", "run", "--rm", "--pull=never", "--network", "none", "--cap-drop", "ALL",
                      "--security-opt", "no-new-privileges", "--entrypoint", "getent", images["egress"], "passwd",
                      "proxy"], env=env, timeout=120)
@@ -415,9 +415,9 @@ def run_stub_take(a) -> dict:
     if g.returncode != 0 or len(fields) != 7 or not fields[2].isdigit() or not fields[3].isdigit():
         raise RuntimeError("squid's package user could not be read from the egress image")
     proxy_user = f"{fields[2]}:{fields[3]}"
+    if proxy_user != proxy_conf.USER:
+        raise StubTakeRefused(f"squid's user in the egress image is {proxy_user}, not proxy_conf.USER")
     rec["squid_user"] = {"getent": g.stdout, "user": proxy_user}
-    rec["departures"].append("ProxyLaunch.user is squid's package user read from the locked egress image "
-                             "(proxy_conf.USER is PENDING)")
     # --version forms of the three take images (no network, no login: a fresh one-shot container as the agent)
     rec["versions"] = {}
     for role, (harness, _rel) in TAKE_LOCKS.items():
