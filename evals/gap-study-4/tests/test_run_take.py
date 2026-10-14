@@ -1835,6 +1835,155 @@ class TestConfigDir(MutantCase):
 ORIG_REMOVE = rt.remove_config_dir
 
 
+# ------------------------------------------------------------------- the Codex lease's placement (glitch-06, 14 Oct)
+class TestLeasePlacement(MutantCase):
+    """place_lease copies the registered Codex lease file into the per-take config folder as auth.json, behind the
+    closed CODEX_SUBSCRIPTION_NOT_READY gate (opened only after Javier's Codex2 login and the first real walk). It uses
+    no os name beyond OS_ATTRS: an exclusive no-follow create at mode 600, then the existing lstat verifies mode and
+    owner; a mode other than 600 (a umask, say) refuses, failing closed. Every refusal names the file and the rule,
+    never the contents. The planted value is a fake."""
+
+    FAKE = b'{"tokens": {"access_token": "FAKE-lease-access-0123456789-PLANTED"}}\n'
+
+    def src(self, body=None, mode=0o600, folder_mode=0o700):
+        d = tempfile.mkdtemp(prefix="lease-src-")
+        os.chmod(d, folder_mode)
+        p = os.path.join(d, "codex2-auth.json")
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, self.FAKE if body is None else body)
+        os.close(fd)
+        os.chmod(p, mode)
+        return p
+
+    def cfg(self, mode=0o700):
+        parent = tempfile.mkdtemp(prefix="w-")
+        path = rt.make_config_dir(parent)
+        os.chmod(path, mode)
+        return path
+
+    def refused(self, out, label, src, cfg, *words):
+        try:
+            rt.place_lease(src, cfg)
+            out.append(f"{label}: placed")
+            return
+        except rt.LoginRefused as e:
+            msg = str(e)
+        except Exception as e:  # noqa: BLE001 - any other exception is a crash, not a refusal
+            out.append(f"{label}: raised {type(e).__name__}, not a refusal")
+            return
+        if any(w not in msg for w in words):
+            out.append(f"{label}: the refusal does not name {words}: {msg}")
+        if "PLANTED" in msg:
+            out.append(f"{label}: the refusal carries the lease's contents")
+
+    def check_gate(self):
+        out = []
+        src, cfg = self.src(), self.cfg()
+        try:
+            rt.place_lease(src, cfg)
+            out.append("the closed gate placed a lease")
+        except rt.NotReady as e:
+            if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
+                out.append(f"the closed gate refused with another message: {e}")
+        if os.path.lexists(os.path.join(cfg, "auth.json")):
+            out.append("the closed gate left a file in the config folder")
+        if rt.CODEX_SUBSCRIPTION_READY is not False:
+            out.append("the Codex gate is not closed in the committed module")
+        return out
+
+    def test_the_gate_stays_closed(self):
+        self.assertEqual(problems_of(self.check_gate), [])
+
+    def check(self):
+        out = []
+        src, cfg = self.src(), self.cfg()
+        dst = rt.place_lease(src, cfg)
+        if dst != os.path.join(cfg, "auth.json"):
+            out.append(f"the lease was placed at {dst!r}, not the config folder's auth.json")
+        else:
+            st = os.lstat(dst)
+            with open(dst, "rb") as fh:
+                same = fh.read() == self.FAKE
+            if not same or not stat_reg(st) or (st.st_mode & 0o7777) != 0o600 or st.st_uid != os.getuid() \
+                    or st.st_nlink != 1:
+                out.append("the placed lease is not the same bytes, a regular file, mode 600, ours, one link")
+        # the source
+        self.refused(out, "a relative source", "codex2-auth.json", self.cfg(), "absolute path")
+        self.refused(out, "a missing source", os.path.join(tempfile.mkdtemp(prefix="w-"), "none.json"), self.cfg(),
+                     "none.json", "does not exist")
+        real = self.src()
+        link = os.path.join(os.path.dirname(real), "link.json")
+        os.symlink(real, link)
+        self.refused(out, "a linked source", link, self.cfg(), "link.json", "regular file, never a link")
+        self.refused(out, "a source at mode 644", self.src(mode=0o644), self.cfg(), "mode must be 600")
+        two = self.src()
+        os.link(two, two + ".2")
+        self.refused(out, "a source with two links", two, self.cfg(), "exactly one link")
+        self.refused(out, "an oversize source", self.src(body=b"x" * (rt.LEASE_MAX_BYTES + 1)), self.cfg(),
+                     "at most")
+        self.refused(out, "an empty source", self.src(body=b""), self.cfg(), "empty")
+        repo = tempfile.mkdtemp(prefix="w-")
+        os.makedirs(os.path.join(repo, ".git"))
+        inrepo = os.path.join(repo, "auth.json")
+        fd = os.open(inrepo, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, self.FAKE)
+        os.close(fd)
+        self.refused(out, "a source inside a repository", inrepo, self.cfg(), "outside every repository")
+        # the config folder
+        self.refused(out, "a relative config folder", self.src(), "cfg-x", "absolute path")
+        c = self.cfg()
+        clink = c + "-link"
+        os.symlink(c, clink)
+        self.refused(out, "a linked config folder", self.src(), clink, "a folder, never a link")
+        self.refused(out, "a config folder at mode 755", self.src(), self.cfg(mode=0o755), "mode 700")
+        rcfg = os.path.join(repo, "cfg")
+        os.mkdir(rcfg, 0o700)
+        self.refused(out, "a config folder inside a repository", self.src(), rcfg, "outside every repository")
+        c = self.cfg()
+        open(os.path.join(c, "auth.json"), "w").close()
+        self.refused(out, "a config folder that already holds auth.json", self.src(), c, "auth.json",
+                     "already holds")
+        # a umask that narrows the create: refused, never widened by a chmod
+        c, narrowed_src = self.cfg(), self.src()          # made first: the umask narrows only the placement
+        old = os.umask(0o277)
+        try:
+            self.refused(out, "a placement narrowed by the umask to 400", narrowed_src, c, "auth.json",
+                         "mode must be 600")
+        finally:
+            os.umask(old)
+        with mock.patch.object(rt.os, "getuid", lambda me=os.getuid(): me + 1):
+            self.refused(out, "a source not owned by the reading user", self.src(), self.cfg(), "codex2-auth.json",
+                         "lease file must be owned")
+        self.refused(out, "a missing config folder", self.src(), os.path.join(tempfile.mkdtemp(prefix="w-"), "nope"),
+                     "nope", "does not exist")
+        real_lstat = os.lstat
+        # the placed file read back as another user's, with a second link, or short of the source's size
+        for label, field, words in (("a placed lease not owned by the reading user", 4, ("auth.json", "owned")),
+                                    ("a placed lease with a second link", 3, ("auth.json", "exactly one link")),
+                                    ("a placed lease short of the source", 6, ("auth.json", "whole lease file"))):
+            c = self.cfg()
+
+            def readback(p, *a, _placed=os.path.join(c, "auth.json"), _field=field, **k):
+                st = real_lstat(p, *a, **k)
+                if p == _placed:
+                    f = list(st)
+                    f[_field] = f[_field] + 1
+                    return os.stat_result(f)
+                return st
+            with mock.patch.object(rt.os, "lstat", readback):
+                self.refused(out, label, self.src(), c, *words)
+        return out
+
+    def test_placement(self):
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
+            self.assertEqual(problems_of(self.check), [])
+
+
+def stat_reg(st) -> bool:
+    import stat as _stat
+    return _stat.S_ISREG(st.st_mode)
+
+
 # ------------------------------------------------------------------------------- PENDING and neutral names
 class TestPendingAndNames(MutantCase):
     # TOP_FORMAT and INSPECT_STATUS FILLED 14 Oct 2026 (stub-take review PASS); FALLBACK_ENV FILLED the same day from

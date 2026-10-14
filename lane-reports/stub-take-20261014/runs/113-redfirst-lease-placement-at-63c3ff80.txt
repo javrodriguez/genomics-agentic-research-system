@@ -1,0 +1,7 @@
+== test_run_take -k TestLeasePlacement against 63c3ff80's run_take.py
+ERROR: test_placement (test_run_take.TestLeasePlacement.test_placement)
+AttributeError: <module 'box.run_take' from '/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/run_take.py'> does not have the attribute 'CODEX_SUBSCRIPTION_READY'
+FAIL: test_the_gate_stays_closed (test_run_take.TestLeasePlacement.test_the_gate_stays_closed)
+AssertionError: Lists differ: ["raised AttributeError: module 'box.run_take' has no attribute 'place_lease'"] != []
+Ran 2 tests in 0.006s
+FAILED (failures=1, errors=1)

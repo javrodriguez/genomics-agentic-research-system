@@ -126,6 +126,9 @@ LOGIN_VARIABLE = {h: next(k for k, v in row.items() if v == CREDENTIAL) for h, r
 # The historical API row above is not an admissible route. All execution and
 # builder login entry points refuse until the reviewed subscription lease exists.
 CODEX_SUBSCRIPTION_NOT_READY = "Codex subscription binding not ready; API-key login is not permitted"
+# The Codex lease road's gate (glitch-06, 14 Oct 2026): CLOSED. It opens only after Javier's Codex2 login and the first
+# real walk; every lease step (place_lease today) refuses with NotReady(CODEX_SUBSCRIPTION_NOT_READY) while it is.
+CODEX_SUBSCRIPTION_READY = False
 # Each harness's own non-secret values (its switches, proxy and config home): the row less the base, the run tree's
 # temporary folder and the credential. config_home_names() and preflight read this view.
 HARNESS_ENV = {h: {k: v for k, v in row.items() if k not in BASE_NAMES and v not in (RUN_TREE_TMP, CREDENTIAL)}
@@ -899,6 +902,92 @@ def make_config_dir(parent: str) -> str:
     path = os.path.join(parent, "cfg-" + secrets.token_hex(8))
     os.mkdir(path, 0o700)
     return path
+
+
+# The Codex lease (glitch-06, 14 Oct 2026): the subscription login lives at CODEX_HOME/auth.json, and CODEX_HOME is the
+# per-take config folder (the owner's 13 Oct amendment); postflight admits exactly that one file after the take.
+LEASE_FILE = "auth.json"
+LEASE_MAX_BYTES = 1024 * 1024
+
+
+def codex_lease_gate() -> None:
+    """Refuses (NotReady, CODEX_SUBSCRIPTION_NOT_READY) while the Codex lease road's gate is closed."""
+    if CODEX_SUBSCRIPTION_READY is not True:
+        raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)
+
+
+def place_lease(lease_src: str, config_dir: str) -> str:
+    """Copy the registered Codex lease file into the per-take config folder as LEASE_FILE; the placed path. Behind the
+    closed gate (codex_lease_gate). The source: an absolute regular file (never a link), one link, mode 600, owned by
+    the reading user, outside every repository, 1 to LEASE_MAX_BYTES bytes. The folder: an absolute folder (never a
+    link), mode 700, owned by the reading user, outside every repository, not already holding LEASE_FILE. The copy is
+    an exclusive no-follow create at mode 600, then lstat checks it: a regular file, one link, mode 600 (a umask that
+    narrows it refuses: no chmod, it fails closed), owned by the reading user, the source's size. Every refusal
+    (LoginRefused) names the file and the rule, never the contents; a refused copy stays in the folder, which is
+    removed with the take's other config files and never launched."""
+    codex_lease_gate()
+    if not isinstance(lease_src, str) or not os.path.isabs(lease_src):
+        raise LoginRefused("the lease file is named by an absolute path")
+    try:
+        st = os.lstat(lease_src)
+    except OSError:
+        raise LoginRefused(f"{lease_src}: the lease file does not exist or cannot be read") from None
+    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+        raise LoginRefused(f"{lease_src}: the lease file must be a regular file, never a link")
+    if st.st_nlink != 1:
+        raise LoginRefused(f"{lease_src}: the lease file must have exactly one link")
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        raise LoginRefused(f"{lease_src}: the lease file's mode must be 600")
+    if st.st_uid != os.getuid():
+        raise LoginRefused(f"{lease_src}: the lease file must be owned by the reading user")
+    if not outside_every_repository(lease_src):
+        raise LoginRefused(f"{lease_src}: the lease file must sit outside every repository")
+    try:
+        fd = os.open(lease_src, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(fd, "rb") as fh:
+            data = fh.read(LEASE_MAX_BYTES + 1)
+    except OSError:
+        raise LoginRefused(f"{lease_src}: the lease file cannot be read") from None
+    if len(data) > LEASE_MAX_BYTES:
+        raise LoginRefused(f"{lease_src}: the lease file must be at most {LEASE_MAX_BYTES} bytes")
+    if not data:
+        raise LoginRefused(f"{lease_src}: the lease file is empty")
+    if not isinstance(config_dir, str) or not os.path.isabs(config_dir):
+        raise LoginRefused("the config folder is named by an absolute path")
+    try:
+        cst = os.lstat(config_dir)
+    except OSError:
+        raise LoginRefused(f"{config_dir}: the config folder does not exist or cannot be read") from None
+    if stat.S_ISLNK(cst.st_mode) or not os.path.isdir(config_dir):
+        raise LoginRefused(f"{config_dir}: the config folder must be a folder, never a link")
+    if stat.S_IMODE(cst.st_mode) != 0o700 or cst.st_uid != os.getuid():
+        raise LoginRefused(f"{config_dir}: the config folder must be mode 700 and owned by the reading user")
+    if not outside_every_repository(config_dir):
+        raise LoginRefused(f"{config_dir}: the config folder must sit outside every repository")
+    dst = os.path.join(config_dir, LEASE_FILE)
+    if os.path.lexists(dst):
+        raise LoginRefused(f"{dst}: the config folder already holds {LEASE_FILE}")
+    try:
+        fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+    except OSError:
+        raise LoginRefused(f"{dst}: the lease could not be written") from None
+    try:
+        pst = os.lstat(dst)
+    except OSError:
+        raise LoginRefused(f"{dst}: the placed lease cannot be read back") from None
+    if stat.S_ISLNK(pst.st_mode) or not stat.S_ISREG(pst.st_mode) or pst.st_nlink != 1:
+        raise LoginRefused(f"{dst}: the placed lease must be a regular file with exactly one link")
+    if stat.S_IMODE(pst.st_mode) != 0o600:
+        raise LoginRefused(f"{dst}: the placed lease's mode must be 600 (a umask narrowed it; nothing widens it)")
+    if pst.st_uid != os.getuid():
+        raise LoginRefused(f"{dst}: the placed lease must be owned by the reading user")
+    if pst.st_size != len(data):
+        raise LoginRefused(f"{dst}: the placed lease is not the whole lease file")
+    return dst
 
 
 def remove_config_dir(launched: "Launched", *, published: bool) -> str:
