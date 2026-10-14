@@ -1,0 +1,81 @@
+{
+ "schema": 1,
+ "supersedes": {
+  "path": "lane-reports/watch-constants-derivation-20261014.json",
+  "sha256": "6c51d0ce65192bfee0459acf8bfb2039f273b4326e25fd38492719c7e06ad6c8",
+  "what": "term D (an allowance of 512) replaced by a measurement"
+ },
+ "label": "derivation v2 of sidecar INOTIFY_WATCH_COUNT and WATCH_ESTABLISH_S, 14 Oct 2026; production CANDIDATE values, not applied",
+ "watch_count": {
+  "rule": "(A + B + C + D) * margin_factor",
+  "A": 62,
+  "B": 10,
+  "C": 258,
+  "D": {
+   "value": 18,
+   "fixture_max_added": 17,
+   "run_tree_tmp": 1,
+   "source": {
+    "path": "lane-reports/live-box-evidence-2026-10-13/fixture-dirs-20261014/fixture-dirs-20261014.json",
+    "sha256": "c76ff69a9edddb848559b7ee2f32e6448a213b693a9730b5a811ca79d47c44a0",
+    "how": "drive.build_take_fixture for all 18 task halves into scratch copies of the admitted tree on the Mac; folders added counted (max: plan-gate, 17); plus run_take's <run tree>/.tmp"
+   }
+  },
+  "margin_factor": 2,
+  "bound": 696,
+  "max_user_watches": 65536,
+  "bound_fraction": 0.01062,
+  "residual": "agent-created folders are not bounded; past max_user_watches inotifywait errors and the sidecar faults (fails closed)"
+ },
+ "establish_s": {
+  "rule": "measured establish_s / A * watch_count bound * safety_factor, rounded up to 0.1 s; below ESTABLISH_TIMEOUT_S 30.0",
+  "measured_establish_s": 0.0016319931019097567,
+  "safety_factor": 100,
+  "bound_s": 1.9
+ },
+ "new_folder_latency": {
+  "source": {
+   "path": "lane-reports/live-box-evidence-2026-10-13/gap-20261014/gap-result-20261014.json",
+   "sha256": "54ffe2cd926910e56cbb0505c3c76d82881f857003b2ae1fb5aa06a49b5b0e0f"
+  },
+  "by_delay_caught_of_made": {
+   "0.0": {
+    "caught": 3,
+    "made": 5
+   },
+   "0.0005": {
+    "caught": 5,
+    "made": 5
+   },
+   "0.001": {
+    "caught": 5,
+    "made": 5
+   },
+   "0.002": {
+    "caught": 5,
+    "made": 5
+   },
+   "0.005": {
+    "caught": 5,
+    "made": 5
+   },
+   "0.01": {
+    "caught": 5,
+    "made": 5
+   },
+   "0.02": {
+    "caught": 5,
+    "made": 5
+   },
+   "0.05": {
+    "caught": 5,
+    "made": 5
+   },
+   "0.1": {
+    "caught": 5,
+    "made": 5
+   }
+  },
+  "reading": "a write 0 s after mkdir was missed 2 of 5 times; from 0.5 ms on 5 of 5 (n = 5 per delay); the window is below 0.5 ms on athena, closed by the rescan for files still present when it runs"
+ }
+}
