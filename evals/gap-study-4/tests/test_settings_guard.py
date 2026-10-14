@@ -53,7 +53,7 @@ class Baseline(Base):
                         sg.baseline(self.tree, model=MODEL)
                     p.unlink()
         self.assertEqual(set(sg.FORBIDDEN_KEYS), {"env", "model", "fallbackModel", "switchModelsOnFlag",
-                                                  "availableModels"})
+                                                  "availableModels", "apiKeyHelper"})
 
     def test_links_and_shapes_refuse(self):
         outside = os.path.join(self.d, "outside.json")

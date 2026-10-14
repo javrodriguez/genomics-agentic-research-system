@@ -776,6 +776,101 @@ LOGIN_REFUSALS = {
 LOGIN_ACCEPTED = {"20-characters": "FAKEVALUE-PLANTED-12", "planted": FAKE_VALUE}
 
 
+ORIG_EXEC_ARGV = rt.exec_argv
+
+
+class TestWalkLoginPlace(MutantCase):
+    """The walk-token road (box lane, 14 Oct 2026): the account's token file sits alone in a mode-700 folder owned by
+    the reading user, never a link, with one link, outside the run tree; exec_argv checks the place before read_login,
+    and read_login refuses an empty, multi-line, wrong-mode or linked file. No refusal carries the value."""
+
+    def place(self, folder_mode=0o700, text=None):
+        d = tempfile.mkdtemp(prefix="w-")
+        sub = os.path.join(d, "claude1")
+        os.mkdir(sub)
+        os.chmod(sub, folder_mode)
+        path = os.path.join(sub, "claude-walk-token")
+        with open(path, "w") as fh:
+            fh.write(f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}\n" if text is None else text)
+        os.chmod(path, 0o600)
+        return d, sub, path
+
+    def exec_with(self, path, inner=None, run_tree="/srv/w/t1/tree"):
+        return rt.exec_argv(ID["take"], inner or CLAUDE_INNER, user=rt.AGENT_USER, workdir="/",
+                            harness=rt.CLAUDE_CODE, run_tree=run_tree, login_file=path, caller_env=CALLER)
+
+    def refused(self, out, label, fn, *a, **k):
+        try:
+            fn(*a, **k)
+            out.append(f"{label}: admitted")
+        except rt.Refused as e:
+            if FAKE_VALUE in str(e):
+                out.append(f"{label}: the refusal carries the value")
+        except AssertionError:
+            out.append(f"{label}: the login was read before the refusal")
+
+    def check(self):
+        out = []
+        w = rt.WALK_LOGIN_FILES
+        if w != {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token"}:
+            out.append(f"WALK_LOGIN_FILES = {w}")
+        _d, _sub, good = self.place()
+        try:
+            rt.check_login_place(good, "/srv/w/t1/tree")
+            argv, env = self.exec_with(good)
+            if env.get("CLAUDE_CODE_OAUTH_TOKEN") != FAKE_VALUE or FAKE_VALUE in " ".join(argv):
+                out.append("the good place did not hand the token to the client environment alone")
+        except rt.Refused as e:
+            out.append(f"the good place was refused: {e}")
+        # the place, refused before any read
+        with mock.patch.object(rt, "read_login", side_effect=AssertionError("login read")):
+            _d, sub, p = self.place(folder_mode=0o755)
+            self.refused(out, "a 755 folder", self.exec_with, p)
+            _d, sub, p = self.place(folder_mode=0o750)
+            self.refused(out, "a 750 folder", self.exec_with, p)
+            d, sub, p = self.place()
+            os.link(p, os.path.join(d, "second-link"))
+            self.refused(out, "a second hard link", self.exec_with, p)
+            d, sub, p = self.place()
+            linked = os.path.join(d, "via-link")
+            os.symlink(sub, linked)
+            if hasattr(os, "lchmod"):           # macOS: a 700 link, so only the link rule can refuse it
+                os.lchmod(linked, 0o700)
+            self.refused(out, "a folder reached through a link", self.exec_with, os.path.join(linked, "claude-walk-token"))
+            d, sub, p = self.place()
+            self.refused(out, "inside the run tree", self.exec_with, p, run_tree=d)
+            self.refused(out, "a relative path", rt.check_login_place, "claude1/claude-walk-token", "/srv/w/t1/tree")
+            self.refused(out, "--bare", self.exec_with, good, inner=CLAUDE_INNER + ["--bare"])
+        # read_login's own rules, on the walk file's shape
+        for label, text in (("an empty file", ""), ("two lines", f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}\nX=1\n"),
+                            ("no newline", f"CLAUDE_CODE_OAUTH_TOKEN={FAKE_VALUE}"),
+                            ("the bare token", f"{FAKE_VALUE}\n"), ("the prefix alone", "CLAUDE_CODE_OAUTH_TOKEN=\n")):
+            _d, _sub, p = self.place(text=text)
+            self.refused(out, label, rt.read_login, p, "CLAUDE_CODE_OAUTH_TOKEN")
+        _d, _sub, p = self.place()
+        os.chmod(p, 0o640)
+        self.refused(out, "a 640 file", rt.read_login, p, "CLAUDE_CODE_OAUTH_TOKEN")
+        d, _sub, p = self.place()
+        link = os.path.join(_sub, "link-token")
+        os.symlink(p, link)
+        self.refused(out, "a linked file", rt.read_login, link, "CLAUDE_CODE_OAUTH_TOKEN")
+        return out
+
+    def test_the_walk_login_place(self):
+        def no_place_check(path, run_tree):
+            return None
+
+        def exec_without_place(*a, **k):
+            with mock.patch.object(rt, "check_login_place", no_place_check):
+                return ORIG_EXEC_ARGV(*a, **k)
+        self.assert_green_then_red(self.check, [
+            ("place-unchecked", patched(rt, "exec_argv", exec_without_place)),
+            ("folder-mode-unchecked", patched(rt, "check_login_place", lambda path, run_tree: None)),
+            ("bare-admitted", patched(rt, "CLAUDE_BARE_FLAG", "--never-a-flag")),
+            ("walk-file-moved", patched(rt, "WALK_LOGIN_FILES", {"claude1": "/tmp/claude-walk-token"})),
+        ])
+
+
 class TestReadLogin(MutantCase):
     def check(self):
         out = []

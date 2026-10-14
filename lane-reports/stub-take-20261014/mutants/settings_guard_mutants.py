@@ -8,6 +8,7 @@ sg = tt.sg
 SRC = open(sg.__file__).read()
 MUTANTS = [
  ("env allowed", 'FORBIDDEN_KEYS = ("env", "model",', 'FORBIDDEN_KEYS = ("model",'),
+ ("apiKeyHelper allowed", ', "availableModels", "apiKeyHelper")', ', "availableModels")'),
  ("local file ignored", 'SETTINGS_NAMES = ("settings.json", "settings.local.json")', 'SETTINGS_NAMES = ("settings.json",)'),
  ("forbidden keys not checked", "            if bad:\n", "            if False:\n"),
  ("link file followed", "            if not os.path.isfile(path) or os.path.islink(path) or st.st_size > MAX_BYTES:", "            if not os.path.isfile(path) or st.st_size > MAX_BYTES:"),

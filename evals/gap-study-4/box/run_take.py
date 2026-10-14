@@ -194,6 +194,17 @@ FALLBACK_MODEL_FLAG = "--fallback-model"
 #                              refuses a run tree whose settings files carry the key)
 #   env                        FALLBACK_ENV again, at a level above the run tree's files
 CLAUDE_SETTINGS_FLAG = "--settings"
+# The walk tokens' files on athena (box lane, 14 Oct 2026; the CP2 hands card's "separately prepared protected Athena
+# file for that account"). One file per account, in a folder of its own: /home/javier/gap4-secrets/<account>/, mode 700,
+# the file mode 600, owned by javier (the user that runs the driver and so reads it, read_login's owner rule), outside
+# every repository, every run tree and every per-take config folder (those sit under the walk's own folders;
+# exec_argv's check_login_place refuses a login file inside the run tree, with another link, or in a folder that is not
+# the reading user's own mode-700 folder). Its one line is `CLAUDE_CODE_OAUTH_TOKEN=<the token from claude
+# setup-token>`, the variable Claude Code reads in a -p run (code.claude.com/docs/en/authentication, "Generate a
+# long-lived token" and "Authentication precedence" item 5; env-vars.md). Prepared and verified by
+# lane-reports/walk-token/prepare_walk_token.sh and verify_walk_token.sh; the value is never read by any session.
+WALK_LOGIN_FILES = {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token"}
+
 # The bypass acceptance: RULED not required in -p (glitch-06, 14 Oct 2026, on the docs read in Addendum E of
 # gap4-codex-rollout-audit-20261014/codex-0.162.1-rollout-audit.md). The study sends NO bypass acceptance key.
 #   https://code.claude.com/docs/en/permission-modes.md (sha256 1930f91d012559bd045f5b63b9fdd9881e382043efc7012bfc0e1c9213f9a2d5,
@@ -225,6 +236,8 @@ CLAUDE_BACKGROUND_FLAGS = ("--bg", "--background")
 # The program a claude-code turn runs (review-bypass-skills B-2): `claude`, or an absolute path whose basename is
 # `claude`, as Gemini's client check does; so the -p rule binds the program as well as the position.
 CLAUDE_CLIENT = "claude"
+# --bare skips the OAuth token the walk logs in with ("Bare mode does not read CLAUDE_CODE_OAUTH_TOKEN"): refused.
+CLAUDE_BARE_FLAG = "--bare"
 # Arms O and G's own billing-route variables (a Vertex switch for Gemini CLI, for example): a tuple of names each,
 # named from the harness's documentation at the pinned version. Until then the refused set is the closed list above,
 # and an exec of either harness is refused (NotReady): this lane's stricter reading.
@@ -621,6 +634,9 @@ def check_claude_settings(inner) -> None:
     if len(inner) < 2 or inner[1] not in CLAUDE_PRINT_FLAGS:
         raise Refused("a claude-code turn is a non-interactive run: -p or --print comes first (the bypass ruling "
                       "depends on it)")
+    if [a for a in _flag_tokens(inner) if a == CLAUDE_BARE_FLAG or a.startswith(CLAUDE_BARE_FLAG + "=")]:
+        raise Refused(f"a claude-code turn never runs {CLAUDE_BARE_FLAG}: bare mode does not read the walk token's "
+                      f"CLAUDE_CODE_OAUTH_TOKEN (code.claude.com/docs/en/authentication)")
     if [a for a in _flag_tokens(inner) for f in CLAUDE_BACKGROUND_FLAGS if a == f or a.startswith(f + "=")]:
         raise Refused(f"a claude-code turn never runs {' or '.join(CLAUDE_BACKGROUND_FLAGS)}: a background session "
                       f"needs the bypass acceptance the study does not send")
@@ -753,6 +769,7 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     check_environment(harness, src, set(values))
     if login in values:
         raise Refused("the login variable never rides with a value in argv")
+    check_login_place(login_file, run_tree)
     value = read_login(login_file, login)
     argv = [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, "--workdir", workdir, "-e", login,
             container_id, *launcher_argv(login, values, inner)]
@@ -807,6 +824,28 @@ def outside_every_repository(path: str) -> bool:
 LOGIN_MAX_BYTES = 4096
 
 
+def check_login_place(path: str, run_tree: str) -> None:
+    """The walk-token road (box lane, 14 Oct 2026), checked by exec_argv before read_login: the login file has exactly
+    one link and sits outside the run tree, in a folder of its own that is never a link, mode 700 and owned by the
+    reading user, so no other account can list, replace or hard-link it. read_login's own rules (and its agreement with
+    scan_record.read_login, binding 5) are unchanged. Every refusal names the file and the rule, never the value."""
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise LoginRefused("the login file is named by an absolute path")
+    if _inside(os.path.normpath(path), _abs_path(run_tree, "run_tree")):
+        raise LoginRefused(f"{path}: the login file must sit outside the run tree")
+    parent = os.path.dirname(os.path.normpath(path))
+    try:
+        st, pst = os.lstat(path), os.lstat(parent)
+    except OSError:
+        raise LoginRefused(f"{path}: the login file or its folder does not exist or cannot be read") from None
+    if st.st_nlink != 1:
+        raise LoginRefused(f"{path}: the login file must have exactly one link")
+    if stat.S_ISLNK(pst.st_mode) or not os.path.isdir(parent):
+        raise LoginRefused(f"{path}: the login file's folder must be a folder, never a link")
+    if stat.S_IMODE(pst.st_mode) != 0o700 or pst.st_uid != os.getuid():
+        raise LoginRefused(f"{path}: the login file's folder must be mode 700 and owned by the reading user")
+
+
 def read_login(path: str, name: str) -> str:
     """The one value of a login file: exactly `name=<20+ chars, no whitespace, no double quote>\\n`, mode 600, owned by
     the reading uid, outside every repository. Every refusal names the file and the rule, never the value."""
@@ -824,6 +863,7 @@ def read_login(path: str, name: str) -> str:
         raise LoginRefused(f"{path}: the login file's mode must be 600")
     if st.st_uid != os.getuid():
         raise LoginRefused(f"{path}: the login file must be owned by the reading user")
+
     if not outside_every_repository(path):
         raise LoginRefused(f"{path}: the login file must sit outside every repository")
     if st.st_size > LOGIN_MAX_BYTES:
