@@ -1,0 +1,6 @@
+control 0 of 6
+RED   2/6 record key set unchecked
+RED   1/6 factory module unchecked
+RED   1/6 factory name unchecked
+RED   1/6 unbuilt-scanner wording back
+ALIVE: none

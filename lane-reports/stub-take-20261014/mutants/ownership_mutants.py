@@ -25,8 +25,7 @@ MUTANTS = [
  ("write nlink unchecked", 'if not stat.S_ISREG(st.st_mode) or st.st_nlink!=1:raise SystemExit("refused: not a regular file with one link")', 'if not stat.S_ISREG(st.st_mode):raise SystemExit("refused: not a regular file with one link")'),
  ("write follows a folder link", ' nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd); os.close(fd); fd=nfd', ' nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY,dir_fd=fd); os.close(fd); fd=nfd'),
  ("write reply unchecked", "    if got != want:\n", "    if False:\n"),
- ("read follows a link", 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)', 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NONBLOCK,dir_fd=fd)'),
- ("read size unchecked", 'if st.st_size>limit:raise SystemExit("refused: larger than the limit")', 'pass'),
+ ("read size unchecked", ' if len(data)>limit:raise SystemExit("refused: larger than the limit")', ' pass'),
  ("operator runs as root", '"--network", "none", "--user", run_take.AGENT_USER,', '"--network", "none", "--user", "0:0",'),
  # the reviewer's eleven (gap4-review-ownership-20261014/reviewer_mutants.py), anchors moved to the current source
  ("rv: O_NOFOLLOW dropped on child open", "child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)", "child=os.open(name,os.O_RDONLY|os.O_NONBLOCK,dir_fd=fd)"),
@@ -49,6 +48,18 @@ MUTANTS = [
  ("restore leaves 0000", ' if restore:os.fchmod(fd,stat.S_IMODE(os.fstat(fd).st_mode)|(0o700 if stat.S_ISDIR(st.st_mode) else 0o600))', ' pass'),
  ("restore widens to group and other", '|(0o700 if stat.S_ISDIR(st.st_mode) else 0o600))', '|(0o777 if stat.S_ISDIR(st.st_mode) else 0o666))'),
  ("restore runs as grant mode", '"strict" if strict is True else "restore"]', '"strict" if strict is True else "loose"]'),
+ # glitch-06, 14 Oct 2026: the config-folder read (native sessions mid-take)
+ ("read: a final link followed", 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)', 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NONBLOCK,dir_fd=fd)'),
+ ("read: a folder link followed", ' try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)', ' try:nfd=os.open(p,os.O_RDONLY|os.O_DIRECTORY,dir_fd=fd)'),
+ ("read: the wrong root mounted", '    argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=True)', '    argv = operator_argv(image, os.path.dirname(root), READ_PROGRAM, rel, str(limit), readonly=True)'),
+ ("read: a write mount", '    argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=True)', '    argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=False)'),
+ ("read: readonly spelled away", '(",readonly" if readonly is True else "")', '("" if readonly is True else "")'),
+ ("read: hard links admitted", 'if st.st_nlink!=1:raise SystemExit("refused: a file with another hard link")', 'pass'),
+ ("read: reply hash unchecked", '                    and got["sha256"] == hashlib.sha256(data).hexdigest():', '                    and True:'),
+ ("read: reply length unchecked", '            if len(data) <= limit and got["bytes"] == len(data) \\', '            if len(data) <= limit and True \\'),
+ ("read: config cap is the run tree's", 'READ_ROOTS = {"run_tree": OPERATOR_READ_MAX_BYTES, "config": CONFIG_READ_MAX_BYTES}', 'READ_ROOTS = {"run_tree": OPERATOR_READ_MAX_BYTES, "config": OPERATOR_READ_MAX_BYTES}'),
+ ("read: any root kind", '    if root_kind not in READ_ROOTS:', '    if False:'),
+ ("read: capability added", '    return [run_take.RUNTIME_CLIENT, "run", "--rm", "--pull=never", "--network", "none", "--user", run_take.AGENT_USER,\n            "--cap-drop", "ALL",', '    return [run_take.RUNTIME_CLIENT, "run", "--rm", "--pull=never", "--network", "none", "--user", run_take.AGENT_USER,\n            "--cap-add", "DAC_READ_SEARCH",'),
  ("operator path escapes", ' or ".." in rel_path.split("/") or rel_path == ".":', ' or rel_path == ".":'),
 ]
 def run(mod):

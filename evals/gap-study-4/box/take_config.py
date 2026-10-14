@@ -5,9 +5,10 @@ The folder is mounted at `run_take.CONFIG_MOUNT` in the take container and is th
 (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, set by run_take's environment per harness). Split from
 run_take.py (this lane's decision) so each file stays one owner and small.
 
-  - claude-code: `settings.json` holding ONLY the bypass acceptance ("setting sources that include the per-take user
-    settings, which carry only the bypass acceptance; the host's user settings never exist in the box"). Its key is
-    PENDING: the guards plan names `skipDangerousModePermissionPrompt` (its line 77), confirmed at the pinned version.
+  - claude-code: an EMPTY `settings.json` (`{}`). The plan said the per-take user settings "carry only the bypass
+    acceptance"; that is departed from: the acceptance is RULED not required in -p runs (glitch-06, 14 Oct 2026;
+    CLAUDE_BYPASS_RULING in run_take), so the study sends no bypass key anywhere. The host's user settings never exist
+    in the box, and every turn runs --setting-sources project,local, so this user scope never loads anyway.
   - codex: `config.toml` with D8's values and the owner's subscription amendment, `model` from the caller, `model_reasoning_effort` PENDING (the
     harness's default for that model at the pinned version).
   - gemini: `settings.json` with D8's values verbatim, `model.name` from the caller; the thinking level, the API-key
@@ -34,8 +35,11 @@ Refused = run_take.Refused
 
 CLAUDE_CODE, CODEX, GEMINI = run_take.CLAUDE_CODE, run_take.CODEX, run_take.GEMINI
 
-# claude-code: the user-settings key that pre-accepts the bypass-mode warning.
-CLAUDE_BYPASS_KEY = PENDING
+# claude-code: the bypass acceptance, RULED not required in -p (CLAUDE_BYPASS_RULING in run_take): no key is written. This
+# mirrors run_take.CLAUDE_BYPASS_KEY as its own literal (the process audit's attribute list is not widened; tests bind
+# take_config.CLAUDE_BYPASS_KEY to run_take.CLAUDE_BYPASS_KEY).
+CLAUDE_BYPASS_NOT_REQUIRED = "RULED: not required in -p"
+CLAUDE_BYPASS_KEY = CLAUDE_BYPASS_NOT_REQUIRED
 CLAUDE_SETTINGS = "settings.json"
 
 # Codex: D8 section 3 plus owner's 13 Oct subscription-only amendment.
@@ -62,8 +66,8 @@ GEMINI_AUTH_SETTING = PENDING
 GEMINI_SETTINGS_PATH = ".gemini/settings.json"
 
 PENDING_WHY = {
-    "CLAUDE_BYPASS_KEY": "the bypass acceptance's user-settings key: the guards plan names "
-                         "skipDangerousModePermissionPrompt (line 77); confirmed at the pinned version.",
+    "CLAUDE_BYPASS_KEY": "the bypass acceptance: RULED not required in -p runs (CLAUDE_BYPASS_RULING in run_take); "
+                         "listed here only if it is ever set back to PENDING.",
     "CODEX_REASONING_EFFORT": "Codex's model_reasoning_effort: the harness's default for that model at the pinned "
                               "version.",
     "GEMINI_THINKING": "Gemini CLI's thinking level (setting path and value) at the pinned version.",
@@ -133,10 +137,10 @@ def _model(model) -> str:
 
 def _claude(model) -> dict:
     if model is not None:
-        raise Refused("Claude Code's per-take settings carry only the bypass acceptance; the model rides as a flag")
-    if not isinstance(CLAUDE_BYPASS_KEY, str) or not _KEY.fullmatch(CLAUDE_BYPASS_KEY):
-        raise Refused("the bypass key is off its shape")
-    return {CLAUDE_SETTINGS: _json_bytes({CLAUDE_BYPASS_KEY: True})}
+        raise Refused("Claude Code's per-take settings are empty; the model rides as a flag")
+    if CLAUDE_BYPASS_KEY != CLAUDE_BYPASS_NOT_REQUIRED:
+        raise Refused("the study writes no bypass acceptance key: RULED not required in -p runs")
+    return {CLAUDE_SETTINGS: _json_bytes({})}
 
 
 def _codex(model) -> dict:

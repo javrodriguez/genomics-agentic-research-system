@@ -575,7 +575,7 @@ class MemoryCaps(unittest.TestCase):
                                   sidecar.expect_from_argv(base))
         argv = rt.sidecar_create_argv(launch)
         self.assertEqual(argv, base[:2] + ["--memory", str(self.CAP)] + base[2:])
-        for own in (["--memory", "1"], ["--memory=1"]):
+        for own in (["--memory", "1"], ["--memory=1"], ["-m", "1"], ["-m1"], ["--memory-swap", "1"]):   # R2-9: -m too
             bad = rt.SidecarLaunch(tuple(base[:2] + own + base[2:]), sidecar.start_argv, sidecar.ctl_argv,
                                  sidecar.rm_argv, launch.expect)
             with self.subTest(own=own), self.assertRaises(rt.Refused):

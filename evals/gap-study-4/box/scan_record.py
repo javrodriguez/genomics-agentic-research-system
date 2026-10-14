@@ -11,7 +11,8 @@ INPUTS.
   secrets          (kind, value) pairs, kind from SECRET_KINDS (closed; there is no holdout kind). Values are read
                    at run time by the caller (`read_login` for a login file; the account email handed in) and are
                    never written down, printed, logged or put in an exception message by this module.
-  rules_scanner    a callable (paths) -> [{"path", "line", "rule"}]: gitleaks' rules on athena later, over the
+  rules_scanner    a callable (paths) -> [{"path", "line", "rule"}]: the real one is real_rules_scanner().build(runtime,
+                   report_dir), the pinned gitleaks adapter in box/rules_scanner.py, over the
                    take's record folder only; a fake in tests. Required: a scan without one refuses (NotReady).
   holdout_matcher  a callable (text) -> [(start, end)], injected at run time from aegis on the Mac (ruling C4). No
                    wording, digest or count of one is ever handed to or held by this module. Without a matcher
@@ -102,7 +103,15 @@ LOGIN_MAX_BYTES = 4096
 
 # ------------------------------------------------------------------------------------------------- PENDING values
 PENDING = "PENDING"
-RULES_SCANNER = PENDING
+# FILLED 14 Oct 2026 (glitch-06, row 8 of the box lane's open table): the reviewed adapter box/rules_scanner.py
+# (stub-take review ACCEPT; production module since glitch-06's 09:02 ruling), named here as DATA only: this module
+# runs no process and imports no run_take at load, so the adapter (which runs gitleaks through run_take's runtime) is
+# imported lazily, only by real_rules_scanner, and checked against this record. The pin is gitleaks 8.30.1, the official linux x64 release, at its athena path; the
+# stub takes on athena measured the binary's sha256 and version line (lane-reports/stub-take-20261014,
+# stub-take-run1..4.json; test_rules_scanner binds the pin to them, test_scan_record binds this record to the module).
+RULES_SCANNER = {"adapter": "box.rules_scanner", "factory": "gitleaks_scanner", "version": "8.30.1",
+                 "sha256": "88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509",
+                 "binary": "/home/javier/gap4-tools/gitleaks-8.30.1/gitleaks"}
 FURNITURE = PENDING
 _PENDING_WHY = {
     "rules_scanner": "the real rules scanner: gitleaks' rules on athena, over the take's record folder only (never "
@@ -130,11 +139,40 @@ def pending() -> dict:
     return {f: why for f, why in _PENDING_WHY.items() if values[f] == PENDING}
 
 
-def real_rules_scanner():
-    """The real rules scanner's adapter: refused while it is PENDING."""
+class RealRulesScanner:
+    """The pinned rules scanner, ready to build. Deliberately NOT callable: scan's `rules_scanner` is the per-walk
+    scan(paths) that `build(runtime, report_dir)` returns, so passing this object itself fails at once (a caller's
+    callable check), never at a take's commit. `build` is box/rules_scanner.gitleaks_scanner, which refuses unless
+    the binary's sha256 and version line are the pin."""
+
+    __slots__ = ("build", "version", "sha256", "binary")
+
+    def __init__(self, build, version: str, sha256: str, binary: str):
+        self.build, self.version, self.sha256, self.binary = build, version, sha256, binary
+
+
+def real_rules_scanner() -> RealRulesScanner:
+    """The real rules scanner: refused while it is PENDING, and refused (NotReady) if the adapter module's pin is not
+    this module's record (a drifted sha256, version or path, or another factory). Build the scan once per walk with
+    `real_rules_scanner().build(runtime, report_dir)` (report_dir: an empty folder for the walk's reports)."""
     if RULES_SCANNER == PENDING:
         raise NotReady("the real rules scanner is PENDING (gitleaks on athena)")
-    return RULES_SCANNER
+    import importlib
+    rec = RULES_SCANNER
+    if not isinstance(rec, dict) or set(rec) != {"adapter", "factory", "version", "sha256", "binary"} \
+            or rec["adapter"] != "box.rules_scanner" or rec["factory"] != "gitleaks_scanner":
+        raise NotReady("the rules scanner record does not name the reviewed adapter, box/rules_scanner.py")
+    mod = importlib.import_module(rec["adapter"])
+    pin = {"version": getattr(mod, "GITLEAKS_VERSION", None), "sha256": getattr(mod, "GITLEAKS_SHA256", None),
+           "binary": getattr(mod, "GITLEAKS_PATH", None)}
+    drift = sorted(k for k, v in pin.items() if v != rec[k])
+    if drift:
+        raise NotReady(f"the rules scanner adapter's pin is not the recorded one: {', '.join(drift)}")
+    build = getattr(mod, rec["factory"], None)
+    if not callable(build) or getattr(build, "__module__", None) != rec["adapter"] \
+            or getattr(build, "__name__", None) != rec["factory"]:
+        raise NotReady("the rules scanner adapter's factory is not its own gitleaks_scanner")
+    return RealRulesScanner(build, rec["version"], rec["sha256"], rec["binary"])
 
 
 def furniture_positions(harness: str):
@@ -330,7 +368,8 @@ def _survived(after: bytes, needles) -> bool:
 
 def _require_scanner(scanner):
     if scanner is None or not callable(scanner):
-        raise NotReady("a real scan needs a callable rules scanner (gitleaks on athena: PENDING)")
+        raise NotReady("a real scan needs a callable rules scanner: build it per walk with "
+                       "real_rules_scanner().build(runtime, report_dir)")
 
 
 def _require_files(files):

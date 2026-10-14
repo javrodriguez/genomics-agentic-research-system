@@ -246,6 +246,14 @@ def restore(runtime, *, image: str, run_tree: str, config_dir: str, evidence_dir
 # with another hard link refuses. Data rides base64 in the argv (OPERATOR_MAX_BYTES), the reply on stdout.
 OPERATOR_MAX_BYTES = 64 * 1024
 OPERATOR_READ_MAX_BYTES = 1024 * 1024
+# Mid-take reads of the agent-owned 0700 config folder (glitch-06, 14 Oct 2026: the driver retains native sessions,
+# Gemini session files and Codex rollouts under CODEX_HOME, and a host read fails after the grant). The same one-shot
+# container as a run-tree read, mounting ONLY the config folder. Cap: 32 MiB per file, a POLICY value, not a
+# measurement: a session file or rollout JSONL carries every turn's messages and tool output, so it is sized well
+# above the run-tree read (1 MiB, operator files) while keeping the base64 reply (about 43 MiB on stdout) bounded. A
+# larger file refuses loudly (OwnershipError), never truncates; the first walk records the real sizes.
+CONFIG_READ_MAX_BYTES = 32 * 1024 * 1024
+READ_ROOTS = {"run_tree": OPERATOR_READ_MAX_BYTES, "config": CONFIG_READ_MAX_BYTES}
 WRITE_PROGRAM = '''import base64,hashlib,json,os,stat,sys
 parts=sys.argv[1].split("/"); data=base64.b64decode(sys.argv[2],validate=True)
 fd=os.open("/scratch",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
@@ -259,7 +267,9 @@ while v: v=v[os.write(f,v):]
 os.fsync(f); os.close(f); os.close(fd)
 print(json.dumps({"sha256":hashlib.sha256(data).hexdigest(),"bytes":len(data)}))
 '''
-READ_PROGRAM = '''import base64,json,os,stat,sys
+# The read's one size check counts the bytes actually read, not fstat's size, so a session file the still-running agent
+# grows during the read cannot pass the cap. A file with another hard link refuses, as for a write.
+READ_PROGRAM = '''import base64,hashlib,json,os,stat,sys
 parts=sys.argv[1].split("/"); limit=int(sys.argv[2])
 fd=os.open("/scratch",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
 for p in parts[:-1]:
@@ -270,13 +280,14 @@ try:f=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)
 except FileNotFoundError:print(json.dumps({"exists":False}));raise SystemExit(0)
 st=os.fstat(f)
 if not stat.S_ISREG(st.st_mode):raise SystemExit("refused: not a regular file")
-if st.st_size>limit:raise SystemExit("refused: larger than the limit")
+if st.st_nlink!=1:raise SystemExit("refused: a file with another hard link")
 data=b""
 while True:
  c=os.read(f,65536)
  if not c:break
  data+=c
-print(json.dumps({"exists":True,"b64":base64.b64encode(data).decode("ascii")}))
+ if len(data)>limit:raise SystemExit("refused: larger than the limit")
+print(json.dumps({"exists":True,"b64":base64.b64encode(data).decode("ascii"),"sha256":hashlib.sha256(data).hexdigest(),"bytes":len(data)}))
 '''
 
 
@@ -287,11 +298,14 @@ def _rel(rel_path) -> str:
     return rel_path
 
 
-def operator_argv(image: str, run_tree: str, program: str, *args: str) -> list:
+def operator_argv(image: str, run_tree: str, program: str, *args: str, readonly: bool = False) -> list:
+    """One operator container: the agent's uid, no capabilities, no network, no new privileges, ONE folder at
+    /scratch (read-only for every read)."""
     tree = run_take._abs_path(run_tree, "run_tree")
+    mount = f"type=bind,source={tree},target={MOUNT}" + (",readonly" if readonly is True else "")
     return [run_take.RUNTIME_CLIENT, "run", "--rm", "--pull=never", "--network", "none", "--user", run_take.AGENT_USER,
             "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
-            "--mount", f"type=bind,source={tree},target={MOUNT}", _image(image),
+            "--mount", mount, _image(image),
             "/usr/bin/python3", "-I", "-S", "-c", program, *args]
 
 
@@ -318,20 +332,35 @@ def operator_write(runtime, *, image: str, run_tree: str, rel_path: str, data: b
     return {"ok": True, "path": rel, **want}
 
 
-def operator_read(runtime, *, image: str, run_tree: str, rel_path: str, caller_env=None):
-    """The bytes at `rel_path` in the run tree, read as the agent's uid, or None when it does not exist."""
+def operator_read(runtime, *, image: str, root_kind: str, root: str, rel_path: str, caller_env=None):
+    """The bytes at `rel_path` under `root`, read as the agent's uid, or None when it does not exist.
+
+    root_kind "run_tree" (root: the take's run tree; cap OPERATOR_READ_MAX_BYTES) or "config" (root: the take's
+    per-take config folder, CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_CLI_HOME; cap CONFIG_READ_MAX_BYTES). Only `root`
+    is mounted, read-only. Every path step is opened O_NOFOLLOW through directory descriptors; a link anywhere, a
+    non-folder parent, a final entry that is not a regular file, a file with another hard link, or a file over the cap
+    refuses (OwnershipError). The reply carries the bytes' sha256 and length, checked here."""
     import base64
+    import hashlib
+    if root_kind not in READ_ROOTS:
+        raise run_take.Refused(f"an operator read's root is one of {sorted(READ_ROOTS)}")
+    limit = READ_ROOTS[root_kind]
     rel = _rel(rel_path)
-    argv = operator_argv(image, run_tree, READ_PROGRAM, rel, str(OPERATOR_READ_MAX_BYTES))
-    step = _run(runtime, "operator-read", argv, run_take.runtime_env(caller_env))
+    argv = operator_argv(image, root, READ_PROGRAM, rel, str(limit), readonly=True)
+    step = _run(runtime, f"operator-read-{root_kind}", argv, run_take.runtime_env(caller_env))
     if step["returncode"] != 0:
         raise OwnershipError(f"operator read of {rel} refused or failed", {"ok": False, "steps": [step]})
     try:
         got = json.loads(step.get("stdout", ""))
         if got.get("exists") is False and set(got) == {"exists"}:
             return None
-        if got.get("exists") is True and set(got) == {"exists", "b64"}:
-            return base64.b64decode(got["b64"], validate=True)
+        if got.get("exists") is True and set(got) == {"exists", "b64", "sha256", "bytes"}:
+            data = base64.b64decode(got["b64"], validate=True)
+            if len(data) <= limit and got["bytes"] == len(data) \
+                    and got["sha256"] == hashlib.sha256(data).hexdigest():
+                return data
+            raise OwnershipError(f"operator read of {rel}: the reply's bytes are not its sha256 and length",
+                                 {"ok": False, "steps": [step]})
     except (ValueError, AttributeError, TypeError):
         pass
     raise OwnershipError(f"operator read of {rel}: the container's reply is off its shape", {"ok": False,

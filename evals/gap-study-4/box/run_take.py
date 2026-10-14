@@ -194,6 +194,37 @@ FALLBACK_MODEL_FLAG = "--fallback-model"
 #                              refuses a run tree whose settings files carry the key)
 #   env                        FALLBACK_ENV again, at a level above the run tree's files
 CLAUDE_SETTINGS_FLAG = "--settings"
+# The bypass acceptance: RULED not required in -p (glitch-06, 14 Oct 2026, on the docs read in Addendum E of
+# gap4-codex-rollout-audit-20261014/codex-0.162.1-rollout-audit.md). The study sends NO bypass acceptance key.
+#   https://code.claude.com/docs/en/permission-modes.md (sha256 1930f91d012559bd045f5b63b9fdd9881e382043efc7012bfc0e1c9213f9a2d5,
+#   line 603): "In non-interactive mode no dialog is shown." The dialog is shown "the first time you start an
+#   interactive session with this mode enabled" (line 598); the recorded acceptance is required only for --bg sessions.
+#   https://code.claude.com/docs/en/settings-reference.md (sha256 2db996847f31ad322a4eff57aa8a1e5ca4618701fd1caf2191327a3922be095c,
+#   lines 1733-1748): the key is `skipDangerousModePermissionPrompt`, valid only in "User, local, or managed" settings.
+# The ruling depends on every Claude Code turn being a -p (--print) run and never --bg: check_claude_settings refuses
+# a turn that is not `claude` with -p or --print first, and a turn carrying --bg or --background. Unverified until the first walk: that
+# the pinned 2.1.296 binary behaves as the live docs say (the lane report's first-walk acceptance checks).
+# take_config.CLAUDE_BYPASS_KEY is the same value (a test binds them).
+CLAUDE_BYPASS_NOT_REQUIRED = "RULED: not required in -p"
+CLAUDE_BYPASS_KEY = CLAUDE_BYPASS_NOT_REQUIRED
+CLAUDE_BYPASS_RULING = {
+    "value": CLAUDE_BYPASS_NOT_REQUIRED, "ruled_by": "glitch-06", "ruled_on": "2026-10-14",
+    "sources": (("https://code.claude.com/docs/en/permission-modes.md",
+                 "1930f91d012559bd045f5b63b9fdd9881e382043efc7012bfc0e1c9213f9a2d5",
+                 "In non-interactive mode no dialog is shown."),
+                ("https://code.claude.com/docs/en/settings-reference.md",
+                 "2db996847f31ad322a4eff57aa8a1e5ca4618701fd1caf2191327a3922be095c",
+                 "skipDangerousModePermissionPrompt: User, local, or managed")),
+    "depends_on": "every Claude Code turn is a -p (--print) run, never --bg",
+}
+# The documented key the study must never send (a test and check_claude_settings refuse it in the inline settings).
+CLAUDE_BYPASS_DOC_KEY = "skipDangerousModePermissionPrompt"
+CLAUDE_PRINT_FLAGS = ("-p", "--print")
+# --bg and its long alias --background (review-bypass-skills B-1), each refused bare or as `flag=value`.
+CLAUDE_BACKGROUND_FLAGS = ("--bg", "--background")
+# The program a claude-code turn runs (review-bypass-skills B-2): `claude`, or an absolute path whose basename is
+# `claude`, as Gemini's client check does; so the -p rule binds the program as well as the position.
+CLAUDE_CLIENT = "claude"
 # Arms O and G's own billing-route variables (a Vertex switch for Gemini CLI, for example): a tuple of names each,
 # named from the harness's documentation at the pinned version. Until then the refused set is the closed list above,
 # and an exec of either harness is refused (NotReady): this lane's stricter reading.
@@ -241,19 +272,24 @@ PENDING_WHY = {
     "TOP_FORMAT": "the column form `docker top` prints under rootless Docker: measured on the box.",
     "INSPECT_STATUS": "the inspect spellings, taken from the Docker Engine API: confirmed when the stub take reads "
                       "one inspect.",
+    "CLAUDE_BYPASS_KEY": "the bypass acceptance: RULED not required in -p runs (glitch-06, 14 Oct 2026; "
+                         "CLAUDE_BYPASS_RULING); listed here only if it is ever set back to PENDING.",
     "TakeSpec.resources": "the take's memory reservation, CPU and pids values: capacity POLICY, not measurements "
                           "(the caller's spec_for passes them; the stub-take derivation's rule R-RES from athena's "
                           "capacity and three concurrent takes; the stub take only showed that they apply and the "
                           "box's floor, all recorded).",
 }
 # Pending values this module does not hold: the caller passes them once measured.
+# RETIRED 14 Oct 2026 (glitch-06, row 4 of the box lane's open table): "XDG_RUNTIME_DIR in the take" (the guards
+# plan's stub take, line 329), measured NOT needed. In stub takes 1-4 and 6 on athena (lane-reports/stub-take-20261014,
+# stub-take-run1..4.json and stub-take-run6.derived.json), every one of 18 execs per take into the take container as
+# AGENT_USER, `claude --version` at the pinned 2.1.296 among them, returned 0 with no XDG_RUNTIME_DIR in its argv,
+# and TAKE_ENV sets none. test_run_take re-derives this from run 1 and run 6 by their sha256.
 CALLER_PENDING = {
     "cgroup_dir": "the container's cgroup folder under athena's rootless Docker: measured on the box; the caller "
                   "passes it to counters().",
     "uid_map": "the runtime's user-namespace map (javier's 100000:65536 on athena, card Part 1 step 6): the caller "
                "passes it to agent_processes().",
-    "XDG_RUNTIME_DIR in the take": "whether the take's exec needs XDG_RUNTIME_DIR set inside the container (the "
-                                   "guards plan's stub take, line 329): measured at the stub take.",
     "tree ownership": "the run tree's and the config folder's ownership and modes under the user-namespace map, and "
                       "the removal road for uid-mapped files the agent leaves: measured at the stub take.",
 }
@@ -262,6 +298,7 @@ _HEX64 = re.compile(r"[0-9a-f]{64}")
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")
 _CPUS = re.compile(r"[1-9][0-9]*(\.[0-9]{1,3})?|0\.[0-9]{0,2}[1-9]")
 _NAME = re.compile(r"[A-Z_][A-Z0-9_]*")
+_NAME_KEY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
 
 class NotReady(RuntimeError):
@@ -308,7 +345,7 @@ def _is_pending(v) -> bool:
 
 def _pending_values() -> dict:
     return {"FALLBACK_ENV": FALLBACK_ENV, "VENDOR_BILLING_ROUTE_VARIABLES": VENDOR_BILLING_ROUTE_VARIABLES,
-            "TOP_FORMAT": TOP_FORMAT, "INSPECT_STATUS": INSPECT_STATUS}
+            "TOP_FORMAT": TOP_FORMAT, "INSPECT_STATUS": INSPECT_STATUS, "CLAUDE_BYPASS_KEY": CLAUDE_BYPASS_KEY}
 
 
 def pending() -> dict:
@@ -530,21 +567,27 @@ def launcher_argv(login: str, values: dict, inner) -> list:
 
 def claude_study_settings(model: str) -> str:
     """The inline --settings JSON for one Claude Code take (canonical: sorted keys, no spaces). NotReady while
-    FALLBACK_ENV is PENDING."""
+    FALLBACK_ENV or CLAUDE_BYPASS_KEY is PENDING. It carries no bypass acceptance key: RULED not required in -p
+    (CLAUDE_BYPASS_RULING); any other value of CLAUDE_BYPASS_KEY is refused."""
     if not isinstance(model, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", model):
         raise Refused("the take's model is a plain model id")
     if _is_pending(FALLBACK_ENV):
         raise NotReady(f"FALLBACK_ENV is PENDING: {PENDING_WHY['FALLBACK_ENV']}")
-    return json.dumps({"availableModels": [model], "env": dict(FALLBACK_ENV), "fallbackModel": [],
-                       "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
+    if _is_pending(CLAUDE_BYPASS_KEY):
+        raise NotReady(f"CLAUDE_BYPASS_KEY is PENDING: {PENDING_WHY['CLAUDE_BYPASS_KEY']}")
+    if CLAUDE_BYPASS_KEY != CLAUDE_BYPASS_NOT_REQUIRED:
+        raise Refused("the study sends no bypass acceptance key: RULED not required in -p runs (CLAUDE_BYPASS_RULING)")
+    return json.dumps({"availableModels": [model], "env": dict(FALLBACK_ENV),
+                       "fallbackModel": [], "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
 
 
 def _flag_values(inner, flag: str) -> list:
-    """Every value of `flag` in a Claude Code argv (`flag v` or `flag=v`), never reading the prompt after -p."""
+    """Every value of `flag` in a Claude Code argv (`flag v` or `flag=v`), never reading the prompt after -p or
+    --print."""
     out, i = [], 1
     while i < len(inner):
         tok = inner[i]
-        if tok == "-p":
+        if tok in CLAUDE_PRINT_FLAGS:
             i += 2
             continue
         if tok == flag:
@@ -557,8 +600,30 @@ def _flag_values(inner, flag: str) -> list:
     return out
 
 
+def _flag_tokens(inner) -> list:
+    """Every token of a Claude Code argv except the prompt that follows -p or --print."""
+    out, i = [], 1
+    while i < len(inner):
+        if inner[i] in CLAUDE_PRINT_FLAGS:
+            i += 2
+            continue
+        out.append(inner[i])
+        i += 1
+    return out
+
+
 def check_claude_settings(inner) -> None:
-    """A Claude Code turn names its model once and carries exactly the study's inline settings for that model."""
+    """A Claude Code turn is a -p (--print) run, never --bg, names its model once and carries exactly the study's
+    inline settings for that model. The bypass ruling (CLAUDE_BYPASS_RULING) depends on the -p and the no --bg."""
+    if not isinstance(inner, (list, tuple)) or not inner or not isinstance(inner[0], str) or not (
+            inner[0] == CLAUDE_CLIENT or (os.path.isabs(inner[0]) and os.path.basename(inner[0]) == CLAUDE_CLIENT)):
+        raise Refused(f"a claude-code turn runs {CLAUDE_CLIENT} (or its absolute path), nothing else")
+    if len(inner) < 2 or inner[1] not in CLAUDE_PRINT_FLAGS:
+        raise Refused("a claude-code turn is a non-interactive run: -p or --print comes first (the bypass ruling "
+                      "depends on it)")
+    if [a for a in _flag_tokens(inner) for f in CLAUDE_BACKGROUND_FLAGS if a == f or a.startswith(f + "=")]:
+        raise Refused(f"a claude-code turn never runs {' or '.join(CLAUDE_BACKGROUND_FLAGS)}: a background session "
+                      f"needs the bypass acceptance the study does not send")
     models = _flag_values(inner, "--model")
     if len(models) != 1 or not models[0]:
         raise Refused("a claude-code turn names its model exactly once by --model")
@@ -953,8 +1018,9 @@ SIDECAR_MEMORY_BYTES = 512 * 1024 * 1024
 def sidecar_create_argv(sidecar: SidecarLaunch) -> list:
     """The sidecar's `docker create` as launch runs it: the caller's argv with the memory cap after `create`."""
     argv = _check_argv(sidecar.create_argv)
-    if argv[:2] != [RUNTIME_CLIENT, "create"] or "--memory" in argv or any(a.startswith("--memory") for a in argv):
-        raise Refused("the sidecar's create argv starts with docker create and sets no memory value of its own")
+    if argv[:2] != [RUNTIME_CLIENT, "create"] or any(a.startswith("--memory") or a.startswith("-m") for a in argv):
+        raise Refused("the sidecar's create argv starts with docker create and sets no memory value of its own "
+                      "(--memory or -m, in any spelling)")
     return argv[:2] + ["--memory", str(SIDECAR_MEMORY_BYTES)] + argv[2:]
 
 

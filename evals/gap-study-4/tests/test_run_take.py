@@ -475,10 +475,15 @@ def plant_login(folder, name, value=FAKE_VALUE, mode=0o600, text=None):
     return path
 
 
+# The documented bypass acceptance key: RULED not sent (not required in -p; glitch-06, 14 Oct 2026). Tests use it
+# only to show the study refuses it.
+BYPASS = "skipDangerousModePermissionPrompt"
+
+
 @contextlib.contextmanager
 def filled():
     """Every PENDING value exec needs, filled in memory only (interface 15). FALLBACK_ENV is FILLED (14 Oct 2026) and
-    is the committed value here."""
+    the bypass acceptance RULED not required in -p (14 Oct 2026); both are the committed values here."""
     with mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: ()}):
         yield
 
@@ -1191,19 +1196,73 @@ CLAUDE_MODEL = "claude-opus-5-5"
 CLAUDE_INNER = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", rt.claude_study_settings(CLAUDE_MODEL)]
 
 
+ORIG_CHECK_CLAUDE_SETTINGS = rt.check_claude_settings
+
+
+def _print_check_dropped(inner):
+    """A mutant of check_claude_settings with its -p/--print clause removed (the rest of the gate kept)."""
+    if inner and (len(inner) < 2 or inner[1] not in ("-p", "--print")):
+        inner = [inner[0], "-p", "", *inner[1:]]
+    ORIG_CHECK_CLAUDE_SETTINGS(inner)
+
+
+def _program_check_dropped(inner):
+    """A mutant of check_claude_settings with its program clause removed (the rest of the gate kept)."""
+    if inner and inner[0] != "claude":
+        inner = ["claude", *inner[1:]]
+    ORIG_CHECK_CLAUDE_SETTINGS(inner)
+
+
 class TestClaudeSettings(MutantCase):
     """glitch-06's ruling on review finding 1 (14 Oct 2026): the study's Claude settings ride inline by --settings
     (command-line level, above the agent-owned project and local files); exec_argv refuses a turn without exactly them."""
 
     def check(self):
         out = []
+        # The bypass acceptance is RULED not required in -p (glitch-06, 14 Oct 2026): the settings build without it.
+        if rt.CLAUDE_BYPASS_KEY != rt.CLAUDE_BYPASS_NOT_REQUIRED or "CLAUDE_BYPASS_KEY" in rt.pending():
+            out.append(f"CLAUDE_BYPASS_KEY is not the ruled value: {rt.CLAUDE_BYPASS_KEY!r}")
+        ruling = rt.CLAUDE_BYPASS_RULING
+        urls = {src[0] for src in ruling["sources"]}
+        if ruling["value"] != rt.CLAUDE_BYPASS_NOT_REQUIRED or ruling["ruled_by"] != "glitch-06" \
+                or "https://code.claude.com/docs/en/permission-modes.md" not in urls \
+                or not any(src[2] == "In non-interactive mode no dialog is shown." for src in ruling["sources"]):
+            out.append(f"the bypass ruling is not recorded with its doc and quote: {ruling!r}")
+        import box.take_config as tc
+        if tc.CLAUDE_BYPASS_KEY != rt.CLAUDE_BYPASS_KEY:
+            out.append("take_config's and run_take's bypass keys differ")
+        with mock.patch.object(rt, "CLAUDE_BYPASS_KEY", rt.PENDING):
+            try:
+                rt.claude_study_settings(CLAUDE_MODEL)
+                out.append("the study's settings were built while the bypass ruling is PENDING")
+            except rt.NotReady:
+                pass
+        with filled():
+            out += self.check_filled()
+        return out
+
+    def check_filled(self):
+        out = []
         want = rt.claude_study_settings(CLAUDE_MODEL)
         doc = json.loads(want)
-        if doc != {"availableModels": [CLAUDE_MODEL], "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"},
-                   "fallbackModel": [], "switchModelsOnFlag": False}:
+        if doc != {"availableModels": [CLAUDE_MODEL],
+                   "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}, "fallbackModel": [],
+                   "switchModelsOnFlag": False}:
             out.append(f"the study's settings are {doc}")
+        if BYPASS in want:
+            out.append("the study's settings carry the bypass acceptance key")
+        for bad in (BYPASS, "switchModelsOnFlag", "env", "bad key"):
+            with mock.patch.object(rt, "CLAUDE_BYPASS_KEY", bad):
+                try:
+                    rt.claude_study_settings(CLAUDE_MODEL)
+                    out.append(f"bypass key {bad!r} accepted")
+                except rt.Refused:
+                    pass
         good = [CLAUDE_INNER, ["claude", "-p", "--settings is just prompt text", "--model", CLAUDE_MODEL,
-                               "--settings=" + want]]
+                               "--settings=" + want],
+                ["claude", "--print", "--bg is just prompt text", "--model", CLAUDE_MODEL, "--settings", want],
+                ["claude", "-p", "--background is just prompt text", "--model", CLAUDE_MODEL, "--settings", want],
+                ["/usr/local/bin/claude"] + CLAUDE_INNER[1:]]
         for inner in good:
             try:
                 rt.check_claude_settings(inner)
@@ -1217,7 +1276,22 @@ class TestClaudeSettings(MutantCase):
                                want.replace('"switchModelsOnFlag":false', '"switchModelsOnFlag":true')],
                "no-model": ["claude", "-p", "x", "--settings", want],
                "two-models": CLAUDE_INNER + ["--model", "claude-sonnet-5-5"],
-               "settings-file": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", "/opt/cfg/s.json"]}
+               "settings-file": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", "/opt/cfg/s.json"],
+               # the bypass ruling depends on a -p run: a turn without -p/--print first, or with --bg, is refused
+               "no-print": ["claude", "x", "--model", CLAUDE_MODEL, "--settings", want],
+               "print-not-first": ["claude", "--model", CLAUDE_MODEL, "-p", "x", "--settings", want],
+               "background": CLAUDE_INNER + ["--bg"],
+               "background-eq": CLAUDE_INNER + ["--bg=true"],
+               # review-bypass-skills B-1 and B-2: the long alias, and a program other than claude
+               "background-long": CLAUDE_INNER + ["--background"],
+               "background-long-eq": CLAUDE_INNER + ["--background=1"],
+               "bash-program": ["bash"] + CLAUDE_INNER[1:],
+               "abs-bash-program": ["/usr/bin/bash"] + CLAUDE_INNER[1:],
+               "claude-lookalike": ["/opt/claude/bin/claude-wrapper"] + CLAUDE_INNER[1:],
+               "empty": [],
+               "with-bypass-key": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings",
+                                   json.dumps(dict(json.loads(want), **{BYPASS: True}), sort_keys=True,
+                                              separators=(",", ":"))]}
         for name, inner in bad.items():
             try:
                 rt.check_claude_settings(inner)
@@ -1234,6 +1308,22 @@ class TestClaudeSettings(MutantCase):
             pass
         except AssertionError:
             out.append("the login was read before the settings refusal")
+        # Every Claude turn reaching the box is a -p run: exec_argv refuses one without it, and builds one with it.
+        with mock.patch.object(rt, "read_login", side_effect=AssertionError("login read")):
+            for name in ("no-print", "print-not-first", "background", "background-long", "bash-program"):
+                try:
+                    rt.exec_argv(ID["take"], bad[name], user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                                 run_tree="/srv/w/t1/tree", login_file=login, caller_env=CALLER)
+                    out.append(f"exec_argv built a claude-code turn: {name}")
+                except rt.Refused:
+                    pass
+                except AssertionError:
+                    out.append(f"the login was read before the {name} refusal")
+        argv, _env = rt.exec_argv(ID["take"], CLAUDE_INNER, user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                                  run_tree="/srv/w/t1/tree", login_file=login, caller_env=CALLER)
+        tail = argv[len(argv) - len(CLAUDE_INNER):]
+        if tail != CLAUDE_INNER or tail[1] not in ("-p", "--print"):
+            out.append("the built claude-code exec does not end in the -p turn")
         return out
 
     def test_the_inline_settings(self):
@@ -1243,8 +1333,19 @@ class TestClaudeSettings(MutantCase):
                 {"availableModels": [m], "env": dict(rt.FALLBACK_ENV), "fallbackModel": [],
                  "switchModelsOnFlag": True}, sort_keys=True, separators=(",", ":")))),
             ("no-allowlist", patched(rt, "claude_study_settings", lambda m: json.dumps(
-                {"env": dict(rt.FALLBACK_ENV), "fallbackModel": [], "switchModelsOnFlag": False}, sort_keys=True,
-                separators=(",", ":")))),
+                {"env": dict(rt.FALLBACK_ENV), "fallbackModel": [], "switchModelsOnFlag": False},
+                sort_keys=True, separators=(",", ":")))),
+            # the key re-added, three ways: in the built settings, as the ruled value, and the ruled check dropped
+            ("bypass-key-re-added", patched(rt, "claude_study_settings", lambda m: json.dumps(
+                {BYPASS: True, "availableModels": [m], "env": dict(rt.FALLBACK_ENV), "fallbackModel": [],
+                 "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":")))),
+            ("bypass-key-as-value", patched(rt, "CLAUDE_BYPASS_KEY", BYPASS)),
+            ("bypass-still-pending", patched(rt, "CLAUDE_BYPASS_KEY", rt.PENDING)),
+            # -p dropped from the gate, and --bg admitted
+            ("print-check-dropped", patched(rt, "check_claude_settings", _print_check_dropped)),
+            ("background-admitted", patched(rt, "CLAUDE_BACKGROUND_FLAGS", ())),
+            ("background-long-admitted", patched(rt, "CLAUDE_BACKGROUND_FLAGS", ("--bg",))),
+            ("bash-program-admitted", patched(rt, "check_claude_settings", _program_check_dropped)),
             ("prompt-read-as-flag", patched(rt, "_flag_values", lambda inner, flag: [
                 inner[i + 1] if i + 1 < len(inner) else None for i, t in enumerate(inner) if t == flag])),
         ])
@@ -1643,10 +1744,15 @@ ORIG_REMOVE = rt.remove_config_dir
 class TestPendingAndNames(MutantCase):
     # TOP_FORMAT and INSPECT_STATUS FILLED 14 Oct 2026 (stub-take review PASS); FALLBACK_ENV FILLED the same day from
     # the docs (glitch-06's ruling, Addendum D).
+    # CLAUDE_BYPASS_KEY RULED not required in -p (glitch-06, 14 Oct 2026; CLAUDE_BYPASS_RULING).
     EXPECT = {"VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources"}
     FILLED_TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
                   "uid_namespace": "container"}
-    CALLER_EXPECT = {"cgroup_dir", "uid_map", "XDG_RUNTIME_DIR in the take", "tree ownership"}
+    # "XDG_RUNTIME_DIR in the take" RETIRED 14 Oct 2026 (glitch-06): measured not needed (test_xdg_runtime_dir_*).
+    CALLER_EXPECT = {"cgroup_dir", "uid_map", "tree ownership"}
+    # The retirement's evidence: two stub takes on athena, by sha256 (run 1 raw, run 6 derived).
+    XDG_EVIDENCE = (("stub-take-run1.json", "67a0698a2e1037fdf5a1c02caea67a1281a5f31c4bc8629adfbb476f07dd83f4"),
+                    ("stub-take-run6.derived.json", "8a56240db70d38a74fbd5d50c836683134259c4617a22800dcd3e6669b63641e"))
 
     def check_pending(self):
         out = []
@@ -1675,6 +1781,39 @@ class TestPendingAndNames(MutantCase):
         if "policy" not in rt.PENDING_WHY["TakeSpec.resources"].lower():
             out.append("the resources' reason does not say they are capacity policy")
         return out
+
+    def check_xdg_retired(self):
+        """Row 4 retired on evidence: every agent exec in the two stub takes ran with no XDG_RUNTIME_DIR and returned
+        0, `claude --version` included; the take's environment row sets none; and CALLER_PENDING no longer lists it."""
+        out = []
+        if "XDG_RUNTIME_DIR in the take" in rt.CALLER_PENDING:
+            out.append("CALLER_PENDING still lists XDG_RUNTIME_DIR in the take")
+        if any("XDG_RUNTIME_DIR" in row for row in rt.TAKE_ENV.values()):
+            out.append("a take's environment row sets XDG_RUNTIME_DIR")
+        runs = os.path.join(os.path.dirname(os.path.dirname(HERE)), "lane-reports", "stub-take-20261014")
+        for name, digest in self.XDG_EVIDENCE:
+            with open(os.path.join(runs, name), "rb") as fh:
+                raw = fh.read()
+            if hashlib.sha256(raw).hexdigest() != digest:
+                out.append(f"{name} does not hash to its recorded sha256")
+                continue
+            execs = [c for c in json.loads(raw)["calls"] if c.get("argv", [])[:2] == ["docker", "exec"]
+                     and rt.AGENT_USER in c["argv"]]
+            if len(execs) < 10 or not any("claude" in c["argv"] for c in execs):
+                out.append(f"{name}: too few agent execs to stand as evidence ({len(execs)})")
+            if [c for c in execs if c.get("returncode") != 0 or any("XDG_RUNTIME_DIR" in a for a in c["argv"])]:
+                out.append(f"{name}: an agent exec failed or carried XDG_RUNTIME_DIR")
+        return out
+
+    def test_xdg_runtime_dir_retired_on_evidence(self):
+        self.assert_green_then_red(self.check_xdg_retired, [
+            ("row-kept", patched(rt, "CALLER_PENDING", dict(rt.CALLER_PENDING, **{
+                "XDG_RUNTIME_DIR in the take": "measured at the stub take."}))),
+            ("take-env-sets-it", patched(rt, "TAKE_ENV", dict(rt.TAKE_ENV, **{rt.CLAUDE_CODE: dict(
+                rt.TAKE_ENV[rt.CLAUDE_CODE], XDG_RUNTIME_DIR="/run/user/10001")}))),
+            ("evidence-swapped", patched(type(self), "XDG_EVIDENCE", (
+                (self.XDG_EVIDENCE[0][0], self.XDG_EVIDENCE[1][1]), self.XDG_EVIDENCE[1]))),
+        ])
 
     def test_pending(self):
         self.assert_green_then_red(self.check_pending, [

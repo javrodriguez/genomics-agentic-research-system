@@ -46,8 +46,11 @@ def _sha256_file(path: str) -> str:
 
 
 def scan_argv(binary: str, path: str, report: str) -> list:
-    return [binary, "dir", path, "--no-banner", "--redact", "--report-format", "json", "--report-path", report,
-            "--exit-code", "0", "--log-level", "warn"]
+    # --ignore-gitleaks-allow (round-2 review R2-8; listed by the pinned 8.30.1's `dir --help`, kept in
+    # lane-reports/stub-take-20261014/gitleaks-8.30.1-dir-help-20261014.txt): an agent-written `gitleaks:allow`
+    # comment never silences a finding in a take's records.
+    return [binary, "dir", path, "--no-banner", "--redact", "--ignore-gitleaks-allow", "--report-format", "json",
+            "--report-path", report, "--exit-code", "0", "--log-level", "warn"]
 
 
 def gitleaks_scanner(runtime, report_dir: str, *, binary: str = GITLEAKS_PATH, caller_env=None):

@@ -1,0 +1,6 @@
+new tests against HEAD d65d81b8's modules (a clean shared clone):
+test_settings_guard Ran 11 tests in 0.070s FAILED (failures=2, errors=24) 
+test_rules_scanner Ran 9 tests in 0.032s FAILED (failures=1) 
+test_ownership Ran 25 tests in 1.161s OK 
+test_live_box Ran 38 tests in 0.116s FAILED (failures=2) 
+test_run_take 

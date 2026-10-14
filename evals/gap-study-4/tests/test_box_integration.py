@@ -194,6 +194,7 @@ def setUpModule():
     _STACK.enter_context(mock.patch.object(rt, "TOP_FORMAT", TOP))
     # Lane w6j (S6c C8): Claude Code's fallback variables, PENDING until confirmed at the pinned version: none here.
     _STACK.enter_context(mock.patch.object(rt, "FALLBACK_ENV", {}))
+    # The bypass acceptance is RULED not required in -p (glitch-06, 14 Oct 2026): no stand-in key.
     import drive as imported
     drive = imported
 
