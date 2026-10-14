@@ -27,6 +27,8 @@ Nothing was pushed.
 | `bfed7c44` | harness head `e3f5010b` (ownership wiring `4c2d805f`, operator-step routing, the three CP5 checks.d lines) | one hunk: see below |
 | `10408dc4` | box head `d73c43ed` (`22b15f56..d73c43ed`, reviewed PASS, incl. the E2 fix `544c6ddb`) | test_env_allowlist.py: see below |
 | `daf5d94c` | harness head `9425bf62` (wiring `4c2d805f..9425bf62`, merged for signal: **review MAJOR open on `4c2d805f`**, the driver ledger written into the watcher-owned evidence folder, fix in progress; carries `0768f478`, which must come in with box ≥ `22b15f56`'s settings_guard `model=`, and does) | none |
+| `7225f22d` | box head `03180228` (`1eb02a9e` walk-token road, `8ad2978a` scanner binding moved, `03180228` operator-list folds) | none; see the walk_builders lines below |
+| `9783d584` | harness head `573b5a61` (`fcb0fb80`, `573b5a61`) | none |
 
 How "no conflict" was checked: `comm -12` of `git diff --name-only a12569a <box head>` and `git diff --name-only a12569a <harness head>` printed no path for the first merge, so no file was changed on both sides.
 For `0d2085ee` and `7b5a9dd4`, `comm -12` of the two heads' changed paths since `fa98717e` (`git diff --name-only HEAD...<head>`) printed no path, so again no file was changed on both sides.
@@ -60,6 +62,12 @@ Each later merge reported "Automatic merge went well" and left no unmerged path 
 - `10408dc4`, `tests/test_box_integration.py`, `tests/test_build_draft.py` and `walk_builders.py`: no conflict marker.
 - `daf5d94c`, `claude_code_adapter.py`: no conflict marker. The box's `--settings` argv stays in `argv()`; the harness hunks are in `read_stream` (`served_models`, `model_usage`).
 - `daf5d94c`, `tests/test_box_integration.py`, `tests/test_claude_code_adapter.py`, `tests/test_walk_builders.py`, `tests/test_walk_wiring.py` and `walk_builders.py`: no conflict marker.
+- `7225f22d`, `evals/gap-study-4/walk_builders.py` `production_builders`: box `8ad2978a`'s hunk, which binds the scanner through `rules_scanner.real_rules_scanner()`, merged without a marker beside harness `786be12c`'s per-walk build.
+  **Not reconciled (a finding):** `walk_rules_scanner` (`786be12c`) still requires `type(scanner) is scan_record.RealRulesScanner`, and `8ad2978a` moved that class to `rules_scanner.RealRulesScanner`.
+  Reproduced on `9783d584`: `walk_rules_scanner(rules_scanner.RealRulesScanner instance, ..., real=True)` raises `BuilderRefused: a real walk scans only with the pinned scanner (scan_record.RealRulesScanner), never RealRulesScanner`.
+  `test_walk_builders` does not catch it, because it patches `scan_record.RealRulesScanner` with `create=True`.
+  The fix is a production change in the harness lane's file plus its test, so this lane did not make it.
+- `9783d584`, `tests/test_box_integration.py`, `tests/test_walk_builders.py` and `tests/test_walk_wiring.py`: no conflict marker.
 
 There were no conflict hunks in any of the three merges, so there are no resolution lines.
 
