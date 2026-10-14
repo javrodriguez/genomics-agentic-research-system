@@ -98,9 +98,15 @@ def committed(image: str) -> dict:
     return il.load(LOCK_PATHS[image])
 
 
+MANIFEST_DIGEST, CONFIG_DIGEST, SOURCE_COMMIT = "sha256:" + "c" * 64, "sha256:" + "d" * 64, "e" * 40
+
+
 def filled(image: str = "take-a") -> dict:
-    """The committed lock with every PENDING value replaced by an obviously fake pinned value."""
+    """The committed lock with every PENDING value replaced by an obviously fake pinned value: a schema-2 lock, as
+    the lock writer fills it (glitch-06's rulings, 14 Oct 2026)."""
     lock = copy.deepcopy(committed(image))
+    lock.update(schema=il.SCHEMA_2, manifest_digest=MANIFEST_DIGEST, config_digest=CONFIG_DIGEST,
+                source_commit=SOURCE_COMMIT)
     lock["base"] = BASE
     lock["image_id"] = IMAGE_ID
     if lock["harness"] is not None:
@@ -110,6 +116,17 @@ def filled(image: str = "take-a") -> dict:
     if "squid" in lock:
         lock["squid"] = "6.99-1+fake1"
     lock["pending"] = {}
+    return lock
+
+
+def build_input(image: str = "take-a") -> dict:
+    """A build's input: the unfilled schema-1 lock with every build input pinned and image_id still PENDING."""
+    lock = filled(image)
+    for k in il.SCHEMA_2_KEYS:
+        del lock[k]
+    lock["schema"] = il.SCHEMA
+    lock["image_id"] = il.PENDING
+    lock["pending"] = {"image_id": "the build makes it"}
     return lock
 
 
@@ -141,7 +158,17 @@ MUTANT_LOCKS = {
     "a missing key (base)": _drop(("base",)),
     "a missing key (pending)": _drop(("pending",)),
     "a missing key (users)": _drop(("users",)),
-    "schema 2": _set(("schema",), 2),
+    "schema 3": _set(("schema",), 3),
+    "a filled schema-1 lock": _set(("schema",), 1),
+    "schema 2 without its manifest digest": _drop(("manifest_digest",)),
+    "schema 2 without its config digest": _drop(("config_digest",)),
+    "schema 2 without its source commit": _drop(("source_commit",)),
+    "a pending manifest digest": _set(("manifest_digest",), il.PENDING),
+    "a manifest digest without its algorithm": _set(("manifest_digest",), "c" * 64),
+    "a short config digest": _set(("config_digest",), "sha256:" + "d" * 63),
+    "a source commit by branch name": _set(("source_commit",), "main"),
+    "a short source commit": _set(("source_commit",), "e" * 7),
+    "a schema-2 lock with a pending field": _set(("python",), il.PENDING),
     "schema as a bool": _set(("schema",), True),
     "an unknown image": _set(("image",), "take-z"),
     "the wrong dockerfile": _set(("dockerfile",), "codex/Dockerfile"),
@@ -717,7 +744,7 @@ class LockSetTest(unittest.TestCase):
 
     def test_egress_python_may_be_null_or_pending(self):
         for v in (None, il.PENDING):
-            lock = filled("egress")
+            lock = filled("egress") if v is None else build_input("egress")
             lock["python"] = v
             if v == il.PENDING:
                 lock["pending"]["python"] = "measured at the build"
@@ -755,18 +782,21 @@ class BuildArgvTest(unittest.TestCase):
                 if field == "image_id":
                     continue
                 with self.subTest(image=image, field=field):
-                    lock = filled(image)
+                    lock = build_input(image)
                     if "." in field:
                         lock["harness"]["version"] = il.PENDING
                     else:
                         lock[field] = il.PENDING
-                    lock["pending"] = {field: "measured at the build"}
+                    lock["pending"][field] = "measured at the build"
                     with self.assertRaises(il.NotReady) as cm:
                         il.build_argv(lock, context=il.BOX_DIR)
                     self.assertIn(field, str(cm.exception))
 
     def test_a_pending_image_id_alone_does_not_block_the_build(self):
         lock = filled("take-a")
+        for k in il.SCHEMA_2_KEYS:            # a build input is the unfilled schema-1 lock
+            del lock[k]
+        lock["schema"] = il.SCHEMA
         lock["image_id"] = il.PENDING
         lock["pending"] = {"image_id": "the build makes it"}
         self.assertEqual(il.build_argv(lock, context="/srv/ctx")[:3], ["docker", "build", "--pull=false"])

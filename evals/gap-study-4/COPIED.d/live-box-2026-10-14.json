@@ -35,6 +35,11 @@
       "path": "COPIED.d/live-box-2026-10-14.json",
       "status": "new",
       "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "tests/test_write_image_lock.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's lock-writer rulings, 14 Oct 2026): ops/write_image_lock.py on a throwaway git repository only, never the real locks: one positive schema-1 to schema-2 write that image_lock validates and preflight.load_take_lock projects, and each refusal alone (an uncommitted record, a commit not an ancestor, each row condition, zero or two rows, an unresolved or changed input, a filled or other lock, another record schema, a lock changed after reading)."
     }
   ]
 }
