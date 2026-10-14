@@ -94,6 +94,15 @@ class StreamError(ValueError):
     """A stream or session file the reader cannot use as it stands (a typed refusal, never a guess)."""
 
 
+class ExecutedStreamRefused(StreamError, aa.ExecutedTurnRefused):
+    """Drive-wiring review MINOR 3: a turn's stream refused after its exec ran (a modelless or ill-shaped record): an
+    executed turn's refusal (the driver accounts for the turn and stops for a ruling), still a StreamError for this
+    module's own callers."""
+
+    def __init__(self, message, *, executed):
+        aa.ExecutedTurnRefused.__init__(self, message, executed=executed)
+
+
 def _records(text: str) -> tuple[list, int]:
     """(the JSON object records of a JSONL text in order, the count of lines that were not one)."""
     out, bad = [], 0
@@ -304,6 +313,7 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
         self.caller_env = caller_env
         self._version = None
         self.turn_records: list = []
+        self.executed_turns: list = []      # review MINOR 3: each exec's outcome, kept before its stream is read
 
     def version(self) -> str:
         """`claude --version` in the take container, as the agent (a plain exec: no login, no variable), parsed by
@@ -329,9 +339,23 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
                           login_file=self.login_file, stream_path=self.stream_path_for(n), budget_s=budget_s,
                           clock=self.clock, caller_env=self.caller_env)
         after = self.counters_for()
-        with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
-            read = read_stream(fh.read())
-        off = served_model_off(read, self.model)
+        counters = rt.counter_delta(before, after)
+        # Review MINOR 3 (live harness 3a's pattern, as Gemini and Codex): the exec ran, so its outcome is kept before
+        # the stream is read; a refusal from here on is an executed turn's, never a turn that did not happen.
+        executed = {"n": n, "exit_code": got["exit_code"], "timed_out": got["timed_out"],
+                    "started_at": got["started_at"], "ended_at": got["ended_at"], "stream_path": got["stream_path"],
+                    "counters": counters, "refused": None}
+        self.executed_turns.append(executed)
+        try:
+            with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
+                read = read_stream(fh.read())
+            off = served_model_off(read, self.model)
+        except (StreamError, OSError) as e:
+            executed["refused"] = f"{type(e).__name__}: {e}"
+            raise ExecutedStreamRefused(str(e), executed=executed) from e
+        except Exception as e:  # noqa: BLE001 - any other failure after the exec is still the exec's
+            executed["refused"] = f"{type(e).__name__}: {e}"
+            raise aa.ExecutedTurnRefused(executed["refused"], executed=executed) from e
         # The init as routed: the init event's fields, its model the first served model off the pin when there is
         # one, so routing's init-mismatch row (after turn 1) or pin refusal (before it) reads the switch.
         init = read["init"] if off is None or read["init"] is None else dict(read["init"], model=off)
@@ -344,7 +368,7 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
             "model_usage": read["model_usage"], "served_off": off})
         return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
                              end_reason=end_reason(got["exit_code"], got["timed_out"]), init=init,
-                             api_errors=read["api_errors"], counters=rt.counter_delta(before, after),
+                             api_errors=read["api_errors"], counters=counters,
                              started_at=got["started_at"], ended_at=got["ended_at"],
                              agent_output=read["agent_output"])
 

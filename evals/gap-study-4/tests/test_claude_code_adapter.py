@@ -394,6 +394,20 @@ def a7_served(mod, p):
     if t.init != {"model": MODEL, "permission_mode": BYPASS, "version": VERSION}:
         out.append(f"{p}: a clean turn's init was changed: {t.init}")
     modelless = synthetic_turn().replace(f'"model": "{MODEL}", "role"', '"role"')
+    # Review MINOR 3: mid-take, such a stream is an executed turn's refusal (the exec kept), never a bare StreamError.
+    box = FakeRuntime([modelless])
+    a = adapter(mod, box)
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    try:
+        a.turn("one", first=True, budget_s=60)
+        out.append(f"{p}: a modelless stream mid-take was read")
+    except aa.ExecutedTurnRefused as e:
+        if not isinstance(e, mod.StreamError) or not str(e.executed.get("refused") or "").startswith("StreamError"):
+            out.append(f"{p}: the executed refusal does not keep the exec and its StreamError: {e.executed}")
+        if getattr(a, "executed_turns", None) != [e.executed]:
+            out.append(f"{p}: the adapter does not keep the exec before the read")
+    except Exception as e:  # noqa: BLE001
+        out.append(f"{p}: a modelless stream mid-take raised {type(e).__name__}, not an executed turn's refusal")
     badusage = synthetic_turn().replace(json.dumps({MODEL: {"costUSD": 0.01}}), json.dumps([MODEL]))
     for why, stream in (("an agent record with no model", modelless), ("a modelUsage list", badusage)):
         if stream.count("\n") < 3 or stream == synthetic_turn():
@@ -593,6 +607,9 @@ WITNESSES.update({
                              "read[\"model_usage\"]:", "    if False:"),), a7_served, "A7-served"),
     "modelless-accepted": ((("            if not isinstance(served, str) or not served:",
                              "            if False:"),), a7_served, "A7-served"),
+    "read-unwrapped": ((("        except (StreamError, OSError) as e:\n            executed[\"refused\"] = f\"{type(e).__name__}: "
+                         "{e}\"\n            raise ExecutedStreamRefused(str(e), executed=executed) from e\n",
+                         "        except ZeroDivisionError as e:\n            raise\n"),), a7_served, "A7-served"),
     "routed-init-unchanged": ((("        init = read[\"init\"] if off is None or read[\"init\"] is None else "
                                 "dict(read[\"init\"], model=off)", "        init = read[\"init\"]"),),
                               a7_served, "A7-served"),
@@ -642,6 +659,9 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_routed_init_unchanged(self):
         self.kill("routed-init-unchanged")
 
+    def test_witness_read_unwrapped(self):
+        self.kill("read-unwrapped")
+
     def test_witness_count_records(self):
         self.kill("count-records")
 
@@ -659,7 +679,8 @@ class TestWitnesses(unittest.TestCase):
                                                     "mode-constant", "exit-ignored", "count-records",
                                                     "missing-class-as-zero", "zero-dollars-per-call",
                                                     "null-id-unreported", "served-unread", "model-usage-unread",
-                                                    "modelless-accepted", "routed-init-unchanged"]))
+                                                    "modelless-accepted", "routed-init-unchanged",
+                                                    "read-unwrapped"]))
 
 
 if __name__ == "__main__":
