@@ -1,0 +1,134 @@
+.......................................FFFFFFFFFFF..
+======================================================================
+FAIL: test_R2_1_a_mode_only_change_after_the_build (__main__.Review2.test_R2_1_a_mode_only_change_after_the_build)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 492, in test_R2_1_a_mode_only_change_after_the_build
+    self.refuse(r, "box/sidecar.py's mode or blob at HEAD is not the build commit's")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 483, in refuse
+    with self.assertRaisesRegex(w.Refused, pattern):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+======================================================================
+FAIL: test_R2_1_recorded_tree_entries_must_be_the_build_commits (__main__.Review2.test_R2_1_recorded_tree_entries_must_be_the_build_commits)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 498, in test_R2_1_recorded_tree_entries_must_be_the_build_commits
+    self.refuse(r, "recorded tree entries are not the build commit's")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 483, in refuse
+    with self.assertRaisesRegex(w.Refused, pattern):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+======================================================================
+FAIL: test_R2_2_a_log_whose_manifest_list_is_not_the_image_id (__main__.Review2.test_R2_2_a_log_whose_manifest_list_is_not_the_image_id) (lists=('sha256:9999999999999999999999999999999999999999999999999999999999999999',))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 509, in test_R2_2_a_log_whose_manifest_list_is_not_the_image_id
+    self.refuse(r, "build log exported manifest list")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 483, in refuse
+    with self.assertRaisesRegex(w.Refused, pattern):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+======================================================================
+FAIL: test_R2_2_a_log_whose_manifest_list_is_not_the_image_id (__main__.Review2.test_R2_2_a_log_whose_manifest_list_is_not_the_image_id) (lists=('sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 'sha256:9999999999999999999999999999999999999999999999999999999999999999'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 509, in test_R2_2_a_log_whose_manifest_list_is_not_the_image_id
+    self.refuse(r, "build log exported manifest list")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 483, in refuse
+    with self.assertRaisesRegex(w.Refused, pattern):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+======================================================================
+FAIL: test_R2_2_a_log_whose_manifest_list_is_not_the_image_id (__main__.Review2.test_R2_2_a_log_whose_manifest_list_is_not_the_image_id) (lists=())
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 509, in test_R2_2_a_log_whose_manifest_list_is_not_the_image_id
+    self.refuse(r, "build log exported manifest list")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 483, in refuse
+    with self.assertRaisesRegex(w.Refused, pattern):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+======================================================================
+FAIL: test_R2_2_a_provenance_of_another_revision_or_context (__main__.Review2.test_R2_2_a_provenance_of_another_revision_or_context) (label='revision')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 519, in test_R2_2_a_provenance_of_another_revision_or_context
+    self.refuse(r, "provenance is not the build of")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 483, in refuse
+    with self.assertRaisesRegex(w.Refused, pattern):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+======================================================================
+FAIL: test_R2_2_a_provenance_of_another_revision_or_context (__main__.Review2.test_R2_2_a_provenance_of_another_revision_or_context) (label='no revision')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 519, in test_R2_2_a_provenance_of_another_revision_or_context
+    self.refuse(r, "provenance is not the build of")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 483, in refuse
+    with self.assertRaisesRegex(w.Refused, pattern):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+======================================================================
+FAIL: test_R2_2_a_provenance_of_another_revision_or_context (__main__.Review2.test_R2_2_a_provenance_of_another_revision_or_context) (label='context')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 519, in test_R2_2_a_provenance_of_another_revision_or_context
+    self.refuse(r, "provenance is not the build of")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 483, in refuse
+    with self.assertRaisesRegex(w.Refused, pattern):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+======================================================================
+FAIL: test_R2_2_a_provenance_of_another_revision_or_context (__main__.Review2.test_R2_2_a_provenance_of_another_revision_or_context)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 523, in test_R2_2_a_provenance_of_another_revision_or_context
+    self.refuse(r, "provenance is not the build of")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 483, in refuse
+    with self.assertRaisesRegex(w.Refused, pattern):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+======================================================================
+FAIL: test_R2_3_a_record_with_problems (__main__.Review2.test_R2_3_a_record_with_problems)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 529, in test_R2_3_a_record_with_problems
+    self.refuse(r, "the record lists problems")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 483, in refuse
+    with self.assertRaisesRegex(w.Refused, pattern):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+======================================================================
+FAIL: test_R2_4_a_tree_is_never_a_blob (__main__.Review2.test_R2_4_a_tree_is_never_a_blob)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_write_image_lock.py", line 536, in test_R2_4_a_tree_is_never_a_blob
+    with self.assertRaisesRegex(w.Refused, "is not a file committed at HEAD"):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Refused not raised
+
+----------------------------------------------------------------------
+Ran 47 tests in 69.117s
+
+FAILED (failures=11)

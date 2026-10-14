@@ -29,7 +29,7 @@ mutants = [
  # LW-1
  ("LW-1 input shas not compared with HEAD", '_need(hashlib.sha256(head_blob(repo, rel)).hexdigest() == sha,', '_need(True,'),
  ("LW-1 recorded input set not compared", '_need(sorted(inputs) == sorted(want),', '_need(True,'),
- ("LW-1 inputs check not called", '    check_inputs(il, repo, record, row, lock, Path(lock_path))\n', ''),
+ ("LW-1 inputs check not called", '    check_inputs(il, repo, record, row, lock, Path(lock_path), commit)\n', ''),
  ("LW-1 COPY sources not read", 'out += words[:-1]', 'pass'),
  ("LW-1 unbound context reads allowed", '_need(ins.keyword == "COPY" and len(words) >= 2', '_need(True or len(words) >= 2'),
  ("LW-1 empty inputs allowed", '_need(isinstance(inputs, dict) and inputs,', '_need(isinstance(inputs, dict),'),
@@ -64,6 +64,18 @@ mutants = [
  ("LW-4 manifest == config allowed", '_need(row["manifest_digest"] != row["config_digest"],', '_need(True,'),
  # LW-6
  ("LW-6 no flock", 'fcntl.flock(dfd, fcntl.LOCK_EX | fcntl.LOCK_NB)', 'pass'),
+ # review 2
+ ("R2-1 HEAD mode/blob not compared with the build commit's", '_need(tree_entry(repo, "HEAD", rel) == built[rel],', '_need(True,'),
+ ("R2-1 tree entry compares the blob only", '    return [mode, oid]', '    return [oid]'),
+ ("R2-1 recorded tree entries not compared", '_need(row["tree_entries"] == built,', '_need(True,'),
+ ("R2-2 manifest list not compared", '_need(lists == [row["image_id"]],', '_need(True,'),
+ ("R2-2 provenance revision not compared", 'and args.get("vcs:revision") == record["source_commit"]', ''),
+ ("R2-2 provenance context not compared", '          and args.get("vcs:localdir:context") == rel_box,', '          ,'),
+ ("R2-3 problems not read", '_need(record.get("problems") == [],', '_need(True,'),
+ ("rederive schema-2 not required", '_need(lock["schema"] == il.SCHEMA_2 and lock["image"] == image,', '_need(True,'),
+ ("rederive plan written", '_need(read_bytes is not None, "a re-derived plan is never written")', 'pass'),
+ ("rederive keeps the committed digests", 'unfilled = {k: v for k, v in lock.items() if k not in il.SCHEMA_2_KEYS}', 'unfilled = dict(lock)'),
+ ("R2-4 head_blob by git show", '_git(repo, "cat-file", "blob", "HEAD:" + rel)', '_git(repo, "show", "HEAD:" + rel)'),
 ]
 
 

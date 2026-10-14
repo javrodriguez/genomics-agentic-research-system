@@ -17,6 +17,8 @@ The record is schema 3 (glitch-06's rulings on the lock-writer review, 14 Oct 20
     So the index id is bound to the metadata, and the manifest and config digests to the log's one `exporting
     manifest` and one `exporting config` line; the manifest is also read back by `docker image inspect --platform`.
   - LW-4: the image store (`docker info`: Driver and DriverStatus) is recorded.
+  - review 2 (R2-1, R2-2): each input's `git ls-tree` mode and blob id are recorded (`tree_entries`); the log's one
+    `exporting manifest list` line must be the iidfile's id, and the metadata's provenance must name HEAD.
   - the sidecar's baked /opt/w/sidecar.py is hashed and must equal the recorded sidecar.py input (script b's check).
 Nothing is written at any lock path; no push, login, credential or model. It exits 1 on any problem.
 """
@@ -86,6 +88,15 @@ def copy_sources(dockerfile_text: str) -> list:
     return out
 
 
+def tree_entry(rel: str) -> list:
+    """[mode, blob id] of `rel` in HEAD's tree."""
+    line = git("ls-tree", "--full-tree", "HEAD", "--", rel).splitlines()
+    if len(line) != 1 or line[0].split("\t")[0].split(" ")[1] != "blob":
+        raise SystemExit(f"{rel} is not one blob in HEAD's tree")
+    mode, _, oid = line[0].split("\t")[0].split(" ")
+    return [mode, oid]
+
+
 def canonical(doc) -> bytes:
     return json.dumps(doc, sort_keys=True, separators=(",", ":")).encode()
 
@@ -124,6 +135,7 @@ def main() -> int:
             with open(log, "x") as fh:
                 rc = subprocess.run(argv, env=ENV, stdout=fh, stderr=subprocess.STDOUT, timeout=3600).returncode
             row = {"image": name, "lock": rel, "argv": argv, "exit": rc, "inputs": inputs,
+                   "tree_entries": {r: tree_entry(r) for r in sorted(inputs)},
                    "lock_inputs": lock_inputs, "lock_inputs_sha256": hashlib.sha256(canonical(lock_inputs)).hexdigest(),
                    "metadata_file": meta.name, "build_log": log.name}
             if rc == 0:
@@ -142,6 +154,13 @@ def main() -> int:
                 row["manifest_digest"] = json.loads(got.stdout) if got.returncode == 0 else None
                 logged = re.findall(r"^#\d+ exporting manifest (sha256:[0-9a-f]{64})(?: |$)", text, re.MULTILINE)
                 row["logged_manifests"] = sorted(set(logged))
+                lists = sorted(set(re.findall(r"^#\d+ exporting manifest list (sha256:[0-9a-f]{64})(?: |$)", text,
+                                              re.MULTILINE)))
+                if lists != [row["image_id"]]:
+                    problems.append(f"{name}: the build log's manifest list {lists} is not the iidfile's")
+                prov = (((md.get("buildx.build.provenance") or {}).get("invocation") or {}).get("parameters") or {})
+                if ((prov.get("root") or {}).get("request") or {}).get("args", {}).get("vcs:revision") != head:
+                    problems.append(f"{name}: the provenance does not name {head}")
                 if row["logged_manifests"] != [row["manifest_digest"]]:
                     problems.append(f"{name}: the build log's manifest {row['logged_manifests']} is not the inspected "
                                     f"{row['manifest_digest']}")
