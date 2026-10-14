@@ -47,6 +47,8 @@ box/ownership.py is the box lane's and may be absent from this tree.
                "config", never host-side: each turn's snapshot is retained with the bytes' sha256
   S4-executed  (review MINOR 2) a turn that changes the settings and whose record the harness then refuses (the
                executed-refusal road) still gets its post-n settings check: recorded, and the stop names the settings
+  O9-early     (review MINOR 4) run_take.launch refusing before any container (not a LaunchError), after the grant: the
+               grant is undone by a restore with no ids, and the take's records are not held
 
 Mutants (MUTANTS, each killed by its own check's line): grant skipped; restore moved after postflight; restore skipped
 on a LaunchError; a scan running after a failed restore; a commit reading a held take's records; a host-side save and a
@@ -791,12 +793,35 @@ def s4_executed(mod, p):
     return out
 
 
+@tbi.guarded("O9-early")
+def o9_early(mod, p):
+    out = []
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+
+        def refuse(*a, **kw):
+            raise rt.NotReady("synthetic: launch refused before any container")
+        with mock.patch.object(mod._run_take, "launch", refuse):
+            try:
+                rig.driver.launch(tbi.row(1))
+                out.append(f"{p}: the refused launch did not raise")
+            except rt.NotReady:
+                pass
+        if rig.ownership.names() != ["grant", "restore"] or rig.ownership.events[1][1]["ids"] != []:
+            out.append(f"{p}: the early refusal was not followed by one restore with no ids: {rig.ownership.names()}")
+        try:
+            rig.driver.record_files(tbi.row(1), 1)
+        except mod.DriveRefused as e:
+            out.append(f"{p}: the restored take's records are held: {e}")
+    return out
+
+
 CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch, "O4-held": o4_held,
           "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator,
           "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road,
           "U1-uid-map": u1_uid_map, "P2-machine": p2_machine,
           "L1-ledger": l1_ledger, "N1-native": n1_native,
-          "S4-executed": s4_executed}
+          "S4-executed": s4_executed, "O9-early": o9_early}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -842,6 +867,10 @@ MUTANTS = {
                                   "# review MINOR 2: this road too",
                                   "                        after = []   # review MINOR 2: this road too"),),
                                 "S4-executed"),
+    "early-launch-unrestored": ((("        except Exception:                    # review MINOR 4: refused before any "
+                                  "container, after the grant\n            if take.launched is None:",
+                                  "        except Exception:                    # review MINOR 4: refused before any "
+                                  "container, after the grant\n            if False:"),), "O9-early"),
     "uid-map-unread": ((("        uid_map = self.uid_map(take) if callable(self.uid_map) else self.uid_map",
                          "        uid_map = self.uid_map"),), "U1-uid-map"),
     "one-turn-reached": ((("        take.driven = True\n",
@@ -911,6 +940,9 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_s4_executed(self):
         self.assertEqual(s4_executed(tbi.drive), [])
+
+    def test_o9_early(self):
+        self.assertEqual(o9_early(tbi.drive), [])
 
 
 class TestOwnershipMutants(unittest.TestCase):
@@ -989,6 +1021,9 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_executed_post_unchecked(self):
         self.kill("executed-post-unchecked")
+
+    def test_early_launch_unrestored(self):
+        self.kill("early-launch-unrestored")
 
 
 if __name__ == "__main__":

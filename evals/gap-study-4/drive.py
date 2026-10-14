@@ -2147,6 +2147,10 @@ class TakeDriver:
                     self._by_id[e.container_id] = take
             self._restore_ownership(take)    # after the launch's partial teardown; a failure holds the take
             raise
+        except Exception:                    # review MINOR 4: refused before any container, after the grant
+            if take.launched is None:
+                self._restore_ownership(take, ids=[])
+            raise
         with self._lock:
             self._by_id[take.launched.take_id] = take
         return take.launched.take_id
