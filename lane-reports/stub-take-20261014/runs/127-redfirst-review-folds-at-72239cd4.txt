@@ -1,0 +1,24 @@
+== test_run_take -k TestReviewFolds41428177 against 72239cd4's run_take.py
+FAIL: test_review_folds (test_run_take.TestReviewFolds41428177.test_review_folds)
+Ran 1 test in 0.100s
+FAILED (failures=1)
+== test_run_take -k TestLeasePlacement against 72239cd4's run_take.py
+Ran 2 tests in 0.037s
+OK
+== test_run_take -k TestCodexRow against 72239cd4's run_take.py
+FAIL: test_codex_row (test_run_take.TestCodexRow.test_codex_row)
+Ran 1 test in 0.022s
+FAILED (failures=1)
+(TestLeasePlacement's new cases pass on the old code: they close test gaps; the mutants in runs/129 prove them)
+AssertionError: Lists differ: ["launcher_argv's harness= has a default",[700 chars]row'] != []
+
+First list contains 12 additional elements.
+First extra element 0:
+"launcher_argv's harness= has a default"
+
+Diff is 794 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 1 test in 0.099s
+
+FAILED (failures=1)

@@ -1962,18 +1962,42 @@ class TestLeasePlacement(MutantCase):
                          "lease file must be owned")
         self.refused(out, "a missing config folder", self.src(), os.path.join(tempfile.mkdtemp(prefix="w-"), "nope"),
                      "nope", "does not exist")
+        # the review's NIT 5: with the lexists check blinded, the exclusive no-follow create itself refuses an existing
+        # auth.json and a link planted at its path; neither is written through
+        real_lexists = os.path.lexists
+        for label, plant in (("an existing auth.json the lexists check missed", "file"),
+                             ("a link at auth.json the lexists check missed", "link")):
+            c = self.cfg()
+            dst, elsewhere = os.path.join(c, "auth.json"), os.path.join(c, "elsewhere")
+            with open(elsewhere, "wb") as fh:
+                fh.write(b"untouched")
+            if plant == "file":
+                with open(dst, "wb") as fh:
+                    fh.write(b"untouched")
+            else:
+                os.symlink(elsewhere, dst)
+            with mock.patch.object(rt.os.path, "lexists",
+                                   lambda p, _d=dst: False if p == _d else real_lexists(p)):
+                self.refused(out, label, self.src(), c, "auth.json", "could not be written")
+            for p in (dst, elsewhere):
+                with open(p, "rb") as fh:
+                    if fh.read() != b"untouched":
+                        out.append(f"{label}: {os.path.basename(p)} was written through")
         real_lstat = os.lstat
-        # the placed file read back as another user's, with a second link, or short of the source's size
-        for label, field, words in (("a placed lease not owned by the reading user", 4, ("auth.json", "owned")),
-                                    ("a placed lease with a second link", 3, ("auth.json", "exactly one link")),
-                                    ("a placed lease short of the source", 6, ("auth.json", "whole lease file"))):
+        # the placed file read back as another user's, with a second link, or shorter or longer than the source (the
+        # review of 6c21320b, MINOR 4: both directions, so a `>` in place of `!=` is caught)
+        for label, field, delta, words in (
+                ("a placed lease not owned by the reading user", 4, 1, ("auth.json", "owned")),
+                ("a placed lease with a second link", 3, 1, ("auth.json", "exactly one link")),
+                ("a placed lease shorter than the source", 6, -1, ("auth.json", "whole lease file")),
+                ("a placed lease longer than the source", 6, 1, ("auth.json", "whole lease file"))):
             c = self.cfg()
 
-            def readback(p, *a, _placed=os.path.join(c, "auth.json"), _field=field, **k):
+            def readback(p, *a, _placed=os.path.join(c, "auth.json"), _field=field, _delta=delta, **k):
                 st = real_lstat(p, *a, **k)
                 if p == _placed:
                     f = list(st)
-                    f[_field] = f[_field] + 1
+                    f[_field] = f[_field] + _delta
                     return os.stat_result(f)
                 return st
             with mock.patch.object(rt.os, "lstat", readback):
@@ -2042,8 +2066,10 @@ class TestNoLoginLauncher(MutantCase):
             if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
                 out.append(f"the closed gate refused with another message: {e}")
         with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
-            argv = rt.launcher_argv(rt.NO_LOGIN, {"B": "2", "A": "1"}, ["codex", "exec"], harness=rt.CODEX)
-            if argv != [*rt.LAUNCHER, "-", "2", "A=1", "B=2", "codex", "exec"]:
+            vals = rt.exec_values(rt.CODEX, "/srv/w/t1/tree")   # the review's MINOR 2: exactly the Codex row's names
+            argv = rt.launcher_argv(rt.NO_LOGIN, vals, ["codex", "exec"], harness=rt.CODEX)
+            pairs = [f"{k}={vals[k]}" for k in sorted(vals)]
+            if argv != [*rt.LAUNCHER, "-", str(len(pairs)), *pairs, "codex", "exec"]:
                 out.append(f"the no-login launcher argv is {argv!r}"[:200])
             for harness in (rt.CLAUDE_CODE, rt.GEMINI, None):
                 try:
@@ -2072,7 +2098,9 @@ CODEX_ROUTE_NAMED = ("CODEX_AUTHAPI_BASE_URL", "CODEX_AGENT_IDENTITY_AUTHAPI_BAS
 # not already above are refused if present too. Refusing more fails closed.
 CODEX_ROUTE_DOCS_READ = ("OPENAI_PROJECT", "OPENAI_BASE_URL", "CODEX_ACCESS_TOKEN", "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
                          "CODEX_OSS_BASE_URL", "CODEX_OSS_PORT", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",
-                         "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE")
+                         "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE",
+                         # the review's NIT 7: matches[2]'s ambiguous end, both spellings refused (fails closed)
+                         "CODEX_APP_SERVER_LOGIN_ISSUER", "CODEX_APP_SERVER_LOGIN_ISSUERA")
 
 
 class TestCodexRow(MutantCase):
@@ -2134,6 +2162,72 @@ class TestCodexRow(MutantCase):
         return out
 
     def test_codex_row(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+class TestReviewFolds41428177(MutantCase):
+    """The review of 41428177 and 9d4bfd40 (glitch-06, 14 Oct 2026). MINOR 1: launcher_argv's harness= is required and
+    the login must be LOGIN_VARIABLE[harness], so a named key for Codex refuses even with the gate open. MINOR 2: the
+    no-login launcher reads the values, not only the harness= claim: exactly the Codex row's names, and no other
+    harness's config home. NIT 6: the module refuses to load when the Codex row names a key, API-key or subscription
+    token variable."""
+
+    def check(self):
+        out = []
+        import inspect
+        if inspect.signature(rt.launcher_argv).parameters["harness"].default is not inspect.Parameter.empty:
+            out.append("launcher_argv's harness= has a default")
+        codex_values = rt.exec_values(rt.CODEX, "/srv/w/t1/tree")
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
+            for login in ("CODEX_API_KEY", "OPENAI_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"):
+                try:
+                    rt.launcher_argv(login, codex_values, ["codex", "exec"], harness=rt.CODEX)
+                    out.append(f"a Codex launcher reading {login} was built with the gate open")
+                except rt.Refused as e:
+                    if "not the login of" not in str(e):
+                        out.append(f"{login}: refused for another reason: {e}")
+            try:
+                rt.launcher_argv("GEMINI_API_KEY", {"A": "1"}, ["claude"], harness=rt.CLAUDE_CODE)
+                out.append("a Claude Code launcher reading Gemini's login was built")
+            except rt.Refused as e:
+                if "not the login of" not in str(e):
+                    out.append(f"cross-arm login refused for another reason: {e}")
+            got = rt.launcher_argv(rt.NO_LOGIN, codex_values, ["codex", "exec"], harness=rt.CODEX)
+            if got[:len(rt.LAUNCHER) + 1] != [*rt.LAUNCHER, "-"]:
+                out.append("the no-login launcher over the Codex row's values was not built")
+            for label, values, word in (
+                    ("Gemini's config home", dict(codex_values, GEMINI_CLI_HOME=rt.CONFIG_MOUNT), "config home"),
+                    ("Claude Code's config home", dict(codex_values, CLAUDE_CONFIG_DIR=rt.CONFIG_MOUNT),
+                     "config home"),
+                    ("an extra name", dict(codex_values, EXTRA_NAME="1"), "exactly the Codex row's names"),
+                    ("a missing name", {k: v for k, v in codex_values.items() if k != "CODEX_HOME"},
+                     "exactly the Codex row's names")):
+                try:
+                    rt.launcher_argv(rt.NO_LOGIN, values, ["codex", "exec"], harness=rt.CODEX)
+                    out.append(f"the no-login launcher was built with {label}")
+                except rt.Refused as e:
+                    if word not in str(e):
+                        out.append(f"{label}: refused for another reason: {e}")
+        # NIT 6: the module itself refuses a Codex row that names a key, API-key or subscription-token variable
+        src = open(rt.__file__, encoding="utf-8").read()
+        anchor = '"CODEX_HOME": CONFIG_MOUNT},'
+        if src.count(anchor) != 1:
+            out.append("the Codex row's anchor is not in the module once")
+        for name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"):
+            import types
+            probe = types.ModuleType("rt_probe")
+            probe.__file__ = rt.__file__
+            try:
+                with mock.patch.dict(sys.modules, {"rt_probe": probe}):   # dataclasses read the module back
+                    exec(compile(src.replace(anchor, f'"CODEX_HOME": CONFIG_MOUNT, "{name}": "1"}},'), rt.__file__,
+                                 "exec"), probe.__dict__)
+                out.append(f"the module loaded with {name} in the Codex row")
+            except RuntimeError as e:
+                if name not in str(e):
+                    out.append(f"{name}: the load refusal does not name it: {e}")
+        return out
+
+    def test_review_folds(self):
         self.assertEqual(problems_of(self.check), [])
 
 
