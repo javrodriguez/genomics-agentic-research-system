@@ -1,0 +1,77 @@
+test_L1_a_stale_ancestor_with_other_inputs_is_accepted (__main__.LockWriter.test_L1_a_stale_ancestor_with_other_inputs_is_accepted) ... ERROR
+test_L2_a_record_edited_in_a_later_commit_is_accepted (__main__.LockWriter.test_L2_a_record_edited_in_a_later_commit_is_accepted) ... ERROR
+test_L3_the_rows_argv_is_not_read (__main__.LockWriter.test_L3_the_rows_argv_is_not_read) ... ERROR
+test_L4_refusals_do_not_fall_through (__main__.LockWriter.test_L4_refusals_do_not_fall_through) ... ok
+
+======================================================================
+ERROR: test_L1_a_stale_ancestor_with_other_inputs_is_accepted (__main__.LockWriter.test_L1_a_stale_ancestor_with_other_inputs_is_accepted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/test_review_witness_lockwriter.py", line 26, in test_L1_a_stale_ancestor_with_other_inputs_is_accepted
+    new, _ = r.plan()
+             ~~~~~~^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/evals/gap-study-4/tests/test_write_image_lock.py", line 173, in plan
+    return w.plan(il, self.root, self.record_path, self.lock_path, self.image)
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/ops/write_image_lock.py", line 217, in plan
+    check_inputs(il, repo, record, row, lock, Path(lock_path))
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/ops/write_image_lock.py", line 129, in check_inputs
+    _need(hashlib.sha256(head_blob(repo, rel)).hexdigest() == sha,
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          f"{rel} at HEAD is not the {rel} the image was built from")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/ops/write_image_lock.py", line 64, in _need
+    raise Refused(why)
+write_image_lock_test.Refused: box/Dockerfile at HEAD is not the box/Dockerfile the image was built from
+
+======================================================================
+ERROR: test_L2_a_record_edited_in_a_later_commit_is_accepted (__main__.LockWriter.test_L2_a_record_edited_in_a_later_commit_is_accepted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/test_review_witness_lockwriter.py", line 36, in test_L2_a_record_edited_in_a_later_commit_is_accepted
+    new, _ = r.plan()
+             ~~~~~~^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/evals/gap-study-4/tests/test_write_image_lock.py", line 173, in plan
+    return w.plan(il, self.root, self.record_path, self.lock_path, self.image)
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/ops/write_image_lock.py", line 237, in plan
+    check_build(il, repo, Path(record_path), record, row, new)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/ops/write_image_lock.py", line 167, in check_build
+    _need(logged == [row["manifest_digest"]], f"{image}'s build log exported manifest {logged}, not "
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                              f"{row['manifest_digest']}")
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/ops/write_image_lock.py", line 64, in _need
+    raise Refused(why)
+write_image_lock_test.Refused: take-a's build log exported manifest ['sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'], not sha256:9999999999999999999999999999999999999999999999999999999999999999
+
+======================================================================
+ERROR: test_L3_the_rows_argv_is_not_read (__main__.LockWriter.test_L3_the_rows_argv_is_not_read)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/test_review_witness_lockwriter.py", line 43, in test_L3_the_rows_argv_is_not_read
+    new, _ = r.plan()
+             ~~~~~~^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/evals/gap-study-4/tests/test_write_image_lock.py", line 173, in plan
+    return w.plan(il, self.root, self.record_path, self.lock_path, self.image)
+           ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/ops/write_image_lock.py", line 237, in plan
+    check_build(il, repo, Path(record_path), record, row, new)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/ops/write_image_lock.py", line 182, in check_build
+    _need(len(mapped) == len(want) + 4 and mapped[-1] == want[-1] and mapped[:len(want) - 1] == want[:-1]
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          and mapped[len(want) - 1] == "--iidfile" and mapped[len(want) + 1] == "--metadata-file",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          f"{image}'s argv is not image_lock.build_argv of the new lock plus --iidfile and --metadata-file")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/witness-lw/wt/ops/write_image_lock.py", line 64, in _need
+    raise Refused(why)
+write_image_lock_test.Refused: take-a's argv is not image_lock.build_argv of the new lock plus --iidfile and --metadata-file
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.969s
+
+FAILED (errors=3)
