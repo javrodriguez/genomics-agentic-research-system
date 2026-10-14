@@ -139,8 +139,8 @@ def _rederived() -> dict:
     for image in il.IMAGES:
         try:
             out[image] = WRITER.rederive(il, REPO, RECORD, LOCK_PATHS[image], image)
-        except (WRITER.Refused, il.LockError, ValueError) as e:
-            out[image] = f"refused: {e}"
+        except (WRITER.Refused, il.LockError, ValueError, OSError, subprocess.TimeoutExpired) as e:   # closure C-2
+            out[image] = f"refused: {type(e).__name__}: {e}"
     return out
 
 

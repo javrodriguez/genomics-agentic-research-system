@@ -143,8 +143,9 @@ for name, old, new in [("control: image_lock unmutated", "", "")] + il_mutants:
     if not found:
         alive.append(name)
 
-# LW-7: test_preflight's own witnesses (in-memory copies of box/preflight.py), each killed by c7_sidecar's lines.
-for name in getattr(tp, "LW7_WITNESSES", ()):
+# LW-7 and O-1: test_preflight's own witnesses (in-memory copies of box/preflight.py), killed by c7_sidecar's or
+# c8_egress's lines.
+for name in getattr(tp, "LW7_WITNESSES", ()) + getattr(tp, "O1_WITNESSES", ()):
     edits, check, prefix, extra = tp.WITNESSES[name]
     got = check(tp.witness_module(edits, extra))
     own = [g for g in got if g.startswith(prefix + " ")]

@@ -2090,6 +2090,107 @@ class TestReachAudit(MutantCase):
         ])
 
 
+# glitch-06, 14 Oct 2026: the Codex row still names CODEX_API_KEY as its credential marker (LOGIN_VARIABLE, which
+# drive.py and walk_builders.py read, is derived from it), so its unreachability is proven, not assumed. Gemini's
+# GEMINI_API_KEY is D8 B2's reviewed route (an API key with a hard cap) and stays the one vendor key its row names.
+_CODEX_REFUSAL = "    if harness == CODEX:\n        raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)\n"
+
+
+def _run_take_variant(src: str):
+    """box/run_take.py compiled in memory from `src` (never written)."""
+    import types
+    mod = types.ModuleType("box.run_take_variant")
+    mod.__file__ = rt.__file__
+    sys.modules[mod.__name__] = mod             # dataclasses read their module while the class is made
+    try:
+        exec(compile(src, rt.__file__ + " (variant)", "exec"), mod.__dict__)
+    finally:
+        sys.modules.pop(mod.__name__, None)
+    return mod
+
+
+def codex_key_problems(m) -> list:
+    """Every way a Codex take's environment could carry a vendor API key in module `m` ([] when none can)."""
+    out = []
+    # 1. exec_argv refuses Codex (NotReady, the subscription message) before any environment or login is touched.
+    trips = []
+
+    def trip(name):
+        def f(*a, **k):
+            trips.append(name)
+            raise AssertionError(f"exec_argv reached {name} for codex")
+        return f
+    names = ("check_environment", "check_model", "exec_values", "take_environment", "read_login", "runtime_env",
+             "launcher_argv")
+    with contextlib.ExitStack() as stack:
+        for n in names:
+            stack.enter_context(mock.patch.object(m, n, trip(n)))
+        try:
+            m.exec_argv(ID["take"], ["codex", "exec", "x"], user=m.AGENT_USER, workdir="/", harness=m.CODEX,
+                        run_tree="/srv/w0/t1/tree", login_file="/nonexistent/login", caller_env={"PATH": "/bin"})
+            out.append("exec_argv built a Codex turn")
+        except m.NotReady as e:
+            if str(e) != m.CODEX_SUBSCRIPTION_NOT_READY:
+                out.append(f"exec_argv refused Codex for another reason: {e}")
+        except AssertionError as e:
+            out.append(str(e))
+    if trips:
+        out.append(f"exec_argv touched {trips} for codex")
+    # 2. By the source: read_login is called in exec_argv only, after the Codex refusal.
+    src = getattr(m, "_SRC", None)
+    if src is None:
+        with open(m.__file__, encoding="utf-8") as fh:
+            src = fh.read()
+    tree = ast.parse(src)
+    callers = sorted({f.name for f in ast.walk(tree) if isinstance(f, ast.FunctionDef)
+                      for c in ast.walk(f) if isinstance(c, ast.Call) and getattr(c.func, "id", "") == "read_login"})
+    if callers != ["exec_argv"]:
+        out.append(f"read_login is called from {callers}, not exec_argv alone")
+    fn = [f for f in ast.walk(tree) if isinstance(f, ast.FunctionDef) and f.name == "exec_argv"]
+    body = fn[0].body if fn else []
+    first_if = next((i for i, st in enumerate(body) if isinstance(st, ast.If)), None)
+    login_at = next((i for i, st in enumerate(body) if any(isinstance(c, ast.Call) and getattr(c.func, "id", "")
+                                                            == "read_login" for c in ast.walk(st))), None)
+    refusal = first_if is not None and "CODEX" in ast.dump(body[first_if].test) \
+        and "CODEX_SUBSCRIPTION_NOT_READY" in ast.dump(body[first_if])
+    if not refusal or login_at is None or first_if > login_at:
+        out.append("exec_argv's first test is not the Codex refusal ahead of the login read")
+    # 3. The rows: every vendor key a Codex or Gemini row names is the credential marker (never a value), the strip
+    # list is unchanged, Codex names no key but its refused marker, and Gemini no key but its own reviewed one.
+    if tuple(m.VENDOR_KEY_VARIABLES) != ("CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"):
+        out.append(f"VENDOR_KEY_VARIABLES is {m.VENDOR_KEY_VARIABLES}")
+    for harness, allowed in ((m.CODEX, {"CODEX_API_KEY"}), (m.GEMINI, {"GEMINI_API_KEY"})):
+        keys = {k: v for k, v in m.TAKE_ENV[harness].items() if k in m.VENDOR_KEY_VARIABLES}
+        if set(keys) - allowed:
+            out.append(f"{harness}'s row names vendor keys {sorted(set(keys) - allowed)}")
+        if any(v != m.CREDENTIAL for v in keys.values()):
+            out.append(f"{harness}'s row gives a vendor key a value")
+    return out
+
+
+class TestCodexKeyUnreachable(MutantCase):
+    def test_no_codex_or_gemini_take_env_can_carry_a_vendor_key(self):
+        src = open(rt.__file__, encoding="utf-8").read()
+        self.assertEqual(src.count(_CODEX_REFUSAL), 1)
+
+        def variant(new_src):
+            mod = _run_take_variant(new_src)
+            mod._SRC = new_src
+            return mod
+        self.assert_green_then_red(lambda: codex_key_problems(rt), [
+            ("codex-refusal-dropped", lambda: mock.patch.object(
+                sys.modules[__name__], "rt", variant(src.replace(_CODEX_REFUSAL, "")))),
+            ("codex-refusal-after-login", lambda: mock.patch.object(sys.modules[__name__], "rt", variant(
+                src.replace(_CODEX_REFUSAL, "").replace("    value = read_login(login_file, login)\n",
+                                                         "    value = read_login(login_file, login)\n" + _CODEX_REFUSAL)))),
+            ("codex-row-gains-openai-key", patched(rt, "TAKE_ENV", dict(rt.TAKE_ENV, **{
+                rt.CODEX: dict(rt.TAKE_ENV[rt.CODEX], OPENAI_API_KEY=rt.CREDENTIAL)}))),
+            ("gemini-key-given-a-value", patched(rt, "TAKE_ENV", dict(rt.TAKE_ENV, **{
+                rt.GEMINI: dict(rt.TAKE_ENV[rt.GEMINI], GEMINI_API_KEY="fake-value")}))),
+            ("strip-list-shortened", patched(rt, "VENDOR_KEY_VARIABLES", rt.VENDOR_KEY_VARIABLES[1:])),
+        ])
+
+
 # Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).
 _PATCHED_AT_IMPORT = _patched_now()
 
