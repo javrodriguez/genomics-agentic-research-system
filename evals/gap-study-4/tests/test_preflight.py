@@ -697,6 +697,94 @@ def _lock_user_names() -> tuple:
     return seen.pop()
 
 
+class TestLeasePostflight(MutantCase):
+    """The Codex lease postflight (glitch-06, 14 Oct 2026): the lease home (the per-take config folder, CODEX_HOME)
+    admits exactly its one registered credential file, auth.json at its root, mode 600, owned by the host user, one
+    link; anything else credential-shaped refuses, each refusal naming the file and the rule, never the contents.
+    The planted value is a fake."""
+
+    FAKE_AUTH = b'{"tokens": {"access_token": "FAKE-lease-0123456789abcdef-PLANTED"}}\n'
+
+    def home(self, auth=True, mode=0o600):
+        d = tempfile.mkdtemp(prefix="w-")
+        os.makedirs(os.path.join(d, "sessions", "2026", "10", "14"))
+        with open(os.path.join(d, "config.toml"), "w") as fh:
+            fh.write('model = "m"\n')
+        with open(os.path.join(d, "sessions", "2026", "10", "14", "rollout-1.jsonl"), "w") as fh:
+            fh.write("{}\n")
+        if auth:
+            fd = os.open(os.path.join(d, "auth.json"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            os.write(fd, self.FAKE_AUTH)
+            os.close(fd)
+            os.chmod(os.path.join(d, "auth.json"), mode)
+        return d
+
+    def refused(self, out, label, d, path_word, rule_word, **patches):
+        ctx = mock.patch.object(pf.os, "getuid", patches["uid"]) if "uid" in patches else contextlib.nullcontext()
+        with ctx:
+            r = pf.postflight(d, rt.CODEX)
+        detail = r["checks"][0]["detail"]
+        if r["ok"]:
+            out.append(f"{label}: admitted")
+        elif path_word not in detail or rule_word not in detail:
+            out.append(f"{label}: refused without naming {path_word!r} and {rule_word!r}: {detail}")
+        if "PLANTED" in json.dumps(r):
+            out.append(f"{label}: the record carries the credential's contents")
+
+    def check(self):
+        out = []
+        d = self.home()
+        r = pf.postflight(d, rt.CODEX)
+        if r["ok"] is not True or r["recorded"]["admitted_credential"] != ["auth.json"]:
+            out.append(f"the clean lease home was refused: {r['checks'][0]['detail']}")
+        if "PLANTED" in json.dumps(r):
+            out.append("the clean record carries the credential's contents")
+        r = pf.postflight(self.home(auth=False), rt.CODEX)
+        if r["ok"] is not True or r["recorded"]["admitted_credential"] != []:
+            out.append("a lease home with no credential was refused")
+        # a second auth file
+        d = self.home()
+        with open(os.path.join(d, "sessions", "auth.json"), "wb") as fh:
+            fh.write(b"{}")
+        self.refused(out, "a second auth file", d, "sessions/auth.json", "credential-shaped")
+        # a renamed copy, by a credential-shaped name and by an innocuous one
+        d = self.home()
+        with open(os.path.join(d, "auth.json.bak"), "wb") as fh:
+            fh.write(self.FAKE_AUTH)
+        self.refused(out, "a renamed copy (credential-shaped name)", d, "auth.json.bak", "credential-shaped")
+        d = self.home()
+        with open(os.path.join(d, "sessions", "notes.txt"), "wb") as fh:
+            fh.write(self.FAKE_AUTH)
+        self.refused(out, "a renamed copy (innocuous name)", d, "sessions/notes.txt", "copy of the registered")
+        # a symlink to it, and the registered path as a link
+        d = self.home()
+        os.symlink(os.path.join(d, "auth.json"), os.path.join(d, "sessions", "plain-link"))
+        self.refused(out, "a link to the registered credential", d, "sessions/plain-link", "a link to the registered")
+        d = self.home(auth=False)
+        with open(os.path.join(d, "elsewhere.json"), "wb") as fh:
+            fh.write(b"{}")
+        os.symlink(os.path.join(d, "elsewhere.json"), os.path.join(d, "auth.json"))
+        self.refused(out, "the registered path as a link", d, "auth.json", "never a link")
+        # wrong mode, wrong owner, a second hard link
+        self.refused(out, "mode 644", self.home(mode=0o644), "auth.json", "mode must be 600")
+        self.refused(out, "another owner", self.home(), "auth.json", "owned by the host user",
+                     uid=lambda me=os.getuid(): me + 1)
+        d = self.home()
+        os.link(os.path.join(d, "auth.json"), os.path.join(d, "sessions", "hardlink"))
+        self.refused(out, "a second hard link", d, "auth.json", "exactly one link")
+        # other harnesses keep the old rule: no credential file at all
+        d = self.home()
+        if pf.postflight(d, rt.CLAUDE_CODE)["ok"] or pf.postflight(d, rt.GEMINI)["ok"]:
+            out.append("another harness admitted auth.json")
+        return out
+
+    def test_the_lease_admits_exactly_its_one_credential(self):
+        self.assert_green_then_red(self.check, [
+            ("no-lease", patched(pf, "LEASE_CREDENTIAL", {})),
+            ("lease-for-every-harness", patched(pf, "LEASE_CREDENTIAL", {h: "auth.json" for h in rt.LOGIN_VARIABLE})),
+        ])
+
+
 class TestCP5Values(MutantCase):
     """Javier's ruling, "CP5: all as recommended" (08:11 EDT, 14 Oct 2026), on cp5-values-draft-2026-10-14.md:
     STUDY_PATHS is round 3's seven excluded paths verbatim; LEAK_WORDS is prereg-draft.json's leak_words, the box

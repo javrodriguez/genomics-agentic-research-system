@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import stat
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Callable
@@ -1022,8 +1023,78 @@ def write(record: dict, path: str) -> str:
 
 
 # ------------------------------------------------------------------------------------------- after the take
+# The Codex lease's ONE registered credential file (glitch-06, 14 Oct 2026; the owner's 13 Oct subscription amendment:
+# cli_auth_credentials_store file, so the login lives at CODEX_HOME/auth.json, and CODEX_HOME is the per-take config
+# folder, the lease home). Postflight admits exactly this file at exactly this path, and nothing else credential-shaped.
+LEASE_CREDENTIAL = {run_take.CODEX: "auth.json"}
+LEASE_CREDENTIAL_MAX_BYTES = 1024 * 1024
+
+
+def _read_capped(path: str, cap: int):
+    """The bytes of a regular file opened without following a link, or None past `cap`. Never logged or returned in a
+    message: callers compare them only."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(fd, "rb") as fh:
+        data = fh.read(cap + 1)
+    return None if len(data) > cap else data
+
+
+def lease_credential_problems(config_dir: str, harness: str, listing: list) -> tuple:
+    """(problems, the credential-shaped paths the lease admits) for a Codex lease home after the take.
+
+    Admitted: at most one file, LEASE_CREDENTIAL[harness] at the folder's root, a regular file (never a link) with
+    exactly one link, mode 600, owned by the reading user (the host user, after ownership.restore). Refused, each by
+    the file's path and the rule, never its contents: a credential-shaped name anywhere else (a second auth file, a
+    renamed auth file); a file anywhere else whose bytes equal the registered file's (a renamed copy, whatever its
+    name); a symbolic link to the registered file; the registered path as a link, a non-regular file, with another
+    hard link, another mode or another owner. Absent is admitted: no credential is left."""
+    reg = LEASE_CREDENTIAL[harness]
+    reg_path = os.path.join(config_dir, reg)
+    problems, admitted, reg_bytes = [], [], None
+    if os.path.lexists(reg_path):
+        st = os.lstat(reg_path)
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+            problems.append(f"{reg}: the registered credential must be a regular file, never a link")
+        elif st.st_nlink != 1:
+            problems.append(f"{reg}: the registered credential must have exactly one link")
+        elif stat.S_IMODE(st.st_mode) != 0o600:
+            problems.append(f"{reg}: the registered credential's mode must be 600")
+        elif st.st_uid != os.getuid():
+            problems.append(f"{reg}: the registered credential must be owned by the host user")
+        else:
+            reg_bytes = _read_capped(reg_path, LEASE_CREDENTIAL_MAX_BYTES)
+            if reg_bytes is None:
+                problems.append(f"{reg}: the registered credential is larger than "
+                                f"{LEASE_CREDENTIAL_MAX_BYTES} bytes")
+            else:
+                admitted.append(reg)
+    reg_real = os.path.realpath(reg_path)
+    for rel in listing:
+        if rel == reg:
+            continue
+        path = os.path.join(config_dir, rel)
+        st = os.lstat(path)
+        name = os.path.basename(rel)
+        if stat.S_ISLNK(st.st_mode):
+            if os.path.realpath(path) == reg_real or name in _credential_names() or CREDENTIAL_LIKE.search(name):
+                problems.append(f"{rel}: a link to the registered credential or with a credential's name")
+            continue
+        if name in _credential_names() or CREDENTIAL_LIKE.search(name):
+            problems.append(f"{rel}: a credential-shaped file outside the registered path {reg}")
+            continue
+        if reg_bytes is not None and stat.S_ISREG(st.st_mode) and st.st_size == len(reg_bytes) \
+                and _read_capped(path, LEASE_CREDENTIAL_MAX_BYTES) == reg_bytes:
+            problems.append(f"{rel}: a copy of the registered credential under another name")
+    return problems, admitted
+
+
+def _credential_names() -> set:
+    return {n for files in CREDENTIAL_FILES.values() for n, _source in files}
+
+
 def postflight(config_dir: str, harness: str) -> dict:
-    """The per-take config folder holds no credential file after a take; the full listing is recorded."""
+    """The per-take config folder holds no credential file after a take; the full listing is recorded. A Codex lease
+    home (LEASE_CREDENTIAL) admits exactly its one registered credential file and nothing else credential-shaped."""
     run_take._known_harness(harness)
     config_dir = run_take._abs_path(config_dir, "config_dir")
     listing, problems = [], []
@@ -1035,11 +1106,19 @@ def postflight(config_dir: str, harness: str) -> dict:
         for root, dirs, files in os.walk(config_dir, onerror=onerror, followlinks=False):
             for name in sorted(dirs) + sorted(files):
                 listing.append(os.path.relpath(os.path.join(root, name), config_dir))
-    names = {n for n, _ in CREDENTIAL_FILES[harness]}
-    hits = sorted(p for p in listing if os.path.basename(p) in names or CREDENTIAL_LIKE.search(os.path.basename(p)))
-    if hits:
-        problems.append(f"credential-like files present: {hits}")
-    check = {"id": POSTFLIGHT_CHECKS[0], "ok": not problems, "detail": "; ".join(problems) or "no credential file"}
+    admitted = []
+    if harness in LEASE_CREDENTIAL and not problems:
+        lease_problems, admitted = lease_credential_problems(config_dir, harness, sorted(listing))
+        problems += lease_problems
+    elif harness not in LEASE_CREDENTIAL:
+        names = {n for n, _ in CREDENTIAL_FILES[harness]}
+        hits = sorted(p for p in listing if os.path.basename(p) in names
+                      or CREDENTIAL_LIKE.search(os.path.basename(p)))
+        if hits:
+            problems.append(f"credential-like files present: {hits}")
+    detail = "; ".join(problems) or ("only the registered credential " + admitted[0] if admitted
+                                     else "no credential file")
+    check = {"id": POSTFLIGHT_CHECKS[0], "ok": not problems, "detail": detail}
     return {"ok": not problems, "checks": [check],
-            "recorded": {"listing": sorted(listing),
+            "recorded": {"listing": sorted(listing), "admitted_credential": admitted,
                          "credential_files": [{"name": n, "source": s} for n, s in CREDENTIAL_FILES[harness]]}}

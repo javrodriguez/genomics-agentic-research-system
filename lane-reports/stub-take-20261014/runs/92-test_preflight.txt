@@ -1,0 +1,89 @@
+.........................../Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py:1891: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/preflight.py' mode='r' encoding='utf-8'>
+  src = open(pf.__file__, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.............................
+----------------------------------------------------------------------
+Ran 56 tests in 9.746s
+
+OK
+  mutant study-entry-dropped: red - STUDY_PATHS is not round 3's seven excluded paths: ('evals', 'docs/EVALS.md', '.github', 'docs/imple
+  mutant study-reordered: red - STUDY_PATHS is not round 3's seven excluded paths: ('docs/decisions/0041-glitch-produces-the-v1-0-1-
+  mutant leak-entry-dropped: red - LEAK_WORDS is not the ruled 28: ('eval', 'benchmark', 'test case', 'grading', 'graded', 'score', 'co
+  mutant gap4-removed: red - LEAK_WORDS is not the ruled 28: ('evaluation', 'eval', 'benchmark', 'test case', 'grading', 'graded'
+  mutant box-user-dropped: red - LEAK_WORDS is not the ruled 28: ('evaluation', 'eval', 'benchmark', 'test case', 'grading', 'graded'
+  mutant box-user-drifted: red - LEAK_WORDS is not the ruled 28: ('evaluation', 'eval', 'benchmark', 'test case', 'grading', 'graded'
+  mutant lock-user-renamed: red - LEAK_WORDS is not the ruled 28: ('evaluation', 'eval', 'benchmark', 'test case', 'grading', 'graded'
+  117 breaks over 18 checks, per arm
+  mutant agent-non-root-always-passes: red - agent-non-root/root-uid was not caught
+  mutant image-matches-lock-always-passes: red - image-matches-lock/other-image was not caught
+  mutant harness-version-matches-lock-always-passes: red - harness-version-matches-lock/other-version was not caught
+  mutant take-inspect-matches-spec-always-passes: red - take-inspect-matches-spec/third-mount was not caught
+  mutant limits-apply-always-passes: red - limits-apply/cpu-max was not caught
+  mutant evidence-out-of-reach-always-passes: red - evidence-out-of-reach/mount-listed was not caught
+  mutant watcher-invisible-always-passes: red - watcher-invisible/unreadable-row was not caught
+  mutant sidecar-isolated-always-passes: red - sidecar-isolated/network was not caught
+  mutant watcher-started-always-passes: red - watcher-started/no-health was not caught
+  mutant watcher-capability-always-passes: red - watcher-capability/unreadable-row was not caught
+  mutant consequential-paths-readable-always-passes: red - consequential-paths-readable/unreadable was not caught
+  mutant no-container-socket-always-passes: red - no-container-socket/socket was not caught
+  mutant egress-allowed-host-always-passes: red - egress-allowed-host/refused was not caught
+  mutant egress-other-host-refused-always-passes: red - egress-other-host-refused/allowed was not caught
+  mutant egress-direct-refused-always-passes: red - egress-direct-refused/direct was not caught
+  mutant names-do-not-resolve-always-passes: red - names-do-not-resolve/github was not caught
+  mutant study-folders-absent-always-passes: red - study-folders-absent/present was not caught
+  mutant missing-assumed-to-pass: red - probe identity missing passed
+  mutant crash-passes: red - probe identity missing passed
+  mutant no-leak-check: red - a run tree path carrying evaluation passed
+  mutant substring-hits: red - leak_hits is not word-bounded
+  mutant memory-off: red - memory: 536870912 != 1610612736
+  mutant cap-add-allowed: red - an absent fact is expected present
+  mutant user-agent: red - user: '10001:10001' != '10003:10003'
+  mutant one-mount: red - mounts differ
+  mutant tree-under-host-temp: red - study-word host, claude-code: a passing world fails ['run-tree-path-neutral']
+  mutant no-lease: red - the clean lease home was refused: credential-like files present: ['auth.json']
+  mutant lease-for-every-harness: red - another harness admitted auth.json
+  mutant override-parameter: red - box.preflight.evaluate_with(study_paths)
+  mutant never-pending: red - run_take.pending() = ['TakeSpec.resources']
+  mutant version-unfilled: red - preflight.pending() = ['VERSION_PATTERNS']
+  mutant version-loose: red - the filled values fail ['harness-version-matches-lock']
+  mutant study-empty: red - the filled values fail ['study-folders-absent']
+  mutant leaks-empty: red - the filled values fail ['run-tree-path-neutral']
+  mutant inspect-unfilled: red - run_take.pending() = ['INSPECT_STATUS', 'TakeSpec.resources', 'VENDOR_BILLING_ROUTE_VARIABLES']
+  mutant other-vendors-dropped: red - claude-code
+  mutant skips-unreadable: red - rows [{'pid': 1, 'uid': 10003, 'name': 'sleep', 'uids': [10003, 10003, 10003, 10003], 'gids': [10003
+  mutant py312-feature: red - identity: not 3.11 (Type statement is only supported in Python 3.12 and greater)
+  mutant study-word: red - identity: carries ['probe']
+  mutant reads-tree: red - cgroup: opens something other than /proc or the cgroup root
+  mutant version-without-config-home: red - the version probe carries [], not its config home alone
+  mutant port-typed: red - the egress probe's port is not derived from PROXY_URL
+  mutant tree-in-argv: red - probe identity names the run tree
+  mutant no-isolation: red - probe identity is not python3 -I -B -c
+  mutant agent-root: red - raised Refused: the agent user is 0:0, never another
+  mutant no-names: red - an unsourced credential name is used as a real value
+  mutant no-pattern: red - claude-code: .credentials.json passed
+  mutant check-dropped: red - PREFLIGHT_CHECKS is not the tested ordered tuple
+  mutant check-reordered: red - PREFLIGHT_CHECKS is not the tested ordered tuple
+  mutant watcher-uid: red - WATCHER_UID or the capability bit drifted
+  mutant cap-bit: red - WATCHER_UID or the capability bit drifted
+  mutant lock-keys: red - LOCK_KEYS drifted from w4a's schema paths
+  mutant c3-key: red - the C3 names drifted
+  mutant c3-row: red - the C3 names drifted
+  mutant ev-mount: red - the evidence mount or the blocked names drifted
+  mutant blocked: red - the evidence mount or the blocked names drifted
+  mutant agent-uid: red - the uids drifted
+  mutant claude-loose-tail: red - claude-code: the pattern admits a trailing line
+  mutant codex-no-prefix: red - codex: the pattern does not read 0.162.1 from athena's output
+
+WITNESS drop-mount-source-comparison: red by C4-mount (1 own, 0 collateral, 0 errors) 
+WITNESS lw7-sidecar-lock-not-loaded: red by C7-sidecar (8 own, 0 collateral, 0 errors) 
+WITNESS lw7-sidecar-manifest-not-compared: red by C7-sidecar (1 own, 0 collateral, 0 errors) 
+WITNESS lw7-sidecar-readiness-omitted: red by C7-sidecar (1 own, 0 collateral, 0 errors) 
+WITNESS o1-egress-launch-image-not-compared: red by C8-egress (1 own, 0 collateral, 0 errors) 
+WITNESS o1-egress-manifest-not-compared: red by C8-egress (1 own, 0 collateral, 0 errors) 
+WITNESS o1-egress-readiness-omitted: red by C8-egress (1 own, 0 collateral, 0 errors) 
+WITNESS omit-absolute-path-rule: red by C1-relative (1 own, 0 collateral, 0 errors) 
+WITNESS omit-harness-image-binding: red by C3-cross (1 own, 0 collateral, 0 errors) 
+WITNESS omit-load: red by C1-loader-spy (3 own, 3 collateral, 0 errors) 
+WITNESS omit-readiness: red by C2-pending (4 own, 0 collateral, 0 errors) 
+WITNESS pre-launch-spec: red by C6-launched-spec (2 own, 0 collateral, 0 errors) 
+WITNESS probes-at-another-evidence-path: red by C5-probes-path (3 own, 6 collateral, 0 errors) 
