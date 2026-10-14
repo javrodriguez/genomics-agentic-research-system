@@ -1,0 +1,53 @@
+control 0 of 27
+RED   3/27 grant to keepalive
+RED   1/27 evidence to agent
+RED   2/27 grant goes on after a failure
+RED   1/27 restore ignores present containers
+RED   1/27 restore not verified
+RED   1/27 restore to the agent
+RED   3/27 links followed
+RED   2/27 specials admitted
+RED   4/27 link check skipped
+RED   2/27 overlap admitted
+RED   2/27 cfg repo check off
+RED   1/27 extra capability
+RED   1/27 DAC_OVERRIDE back
+RED   1/27 network on
+RED   2/27 write follows the final link
+RED   2/27 write nlink unchecked
+RED   2/27 write follows a folder link
+RED   3/27 write reply unchecked
+RED   2/27 read size unchecked
+RED   3/27 operator runs as root
+RED   1/27 rv: O_NOFOLLOW dropped on child open
+RED   2/27 rv: O_NONBLOCK dropped on child open
+RED   1/27 rv: verify follows links
+RED   1/27 rv: verify ignores unreadable subtrees
+RED   1/27 rv: verify top-level owner skipped
+RED   2/27 rv: restore stops at first failed step
+RED   3/27 rv: timeout counted ok in restore
+RED   1/27 rv: no-new-privileges dropped
+RED   1/27 rv: leaked checked with no ids
+RED   2/27 rv: restore folders check skipped
+RED   4/27 restore Refused not wrapped
+RED   2/27 timed-out container not removed
+RED   2/27 left container ignored
+RED   2/27 unreadable id ignored
+RED   1/27 grant not strict
+RED   2/27 strict ignores hard links
+RED   2/27 restore leaves 0000
+RED   2/27 restore widens to group and other
+RED   1/27 restore runs as grant mode
+RED   2/27 read: a final link followed
+RED   2/27 read: a folder link followed
+RED   2/27 read: the wrong root mounted
+RED   2/27 read: a write mount
+RED   2/27 read: readonly spelled away
+RED   1/27 read: hard links admitted
+RED   2/27 read: reply hash unchecked
+RED   2/27 read: reply length unchecked
+RED   1/27 read: config cap is the run tree's
+RED   4/27 read: any root kind
+RED   3/27 read: capability added
+RED   2/27 operator path escapes
+ALIVE: none

@@ -315,6 +315,13 @@ class OwnProgram(unittest.TestCase):
             self.assertIn("nonregular refused", p.stderr)
 
 
+def read_reply(data: bytes) -> str:
+    import base64
+    import hashlib
+    return json.dumps({"exists": True, "b64": base64.b64encode(data).decode(), "sha256": hashlib.sha256(data).hexdigest(),
+                       "bytes": len(data)})
+
+
 class OperatorSteps(unittest.TestCase):
     """Review finding 2: the operator's mid-take reads and writes run in a one-shot container as the agent's uid,
     through directory descriptors with O_NOFOLLOW."""
@@ -337,7 +344,7 @@ class OperatorSteps(unittest.TestCase):
         import base64
         return self.run_program(ow.WRITE_PROGRAM, rel, base64.b64encode(data).decode())
 
-    def test_argv_runs_as_the_agent_without_capabilities(self):
+    def test_argv_runs_as_the_agent_without_capabilities(self):  # the write's argv (reads: _only_its_root_read_only)
         argv = ow.operator_argv(IMAGE, self.root, ow.WRITE_PROGRAM, "p/x.csv", "eA==")
         self.assertEqual(argv[:12], ["docker", "run", "--rm", "--pull=never", "--network", "none", "--user",
                                      rt.AGENT_USER, "--cap-drop", "ALL", "--security-opt", "no-new-privileges"])
@@ -410,13 +417,84 @@ class OperatorSteps(unittest.TestCase):
         for reply, rc in ((good, 1), ("{}", 0), ("", 0), (json.dumps({"sha256": "0" * 64, "bytes": 1}), 0)):
             with self.subTest(reply=reply, rc=rc), self.assertRaises(ow.OwnershipError):
                 ow.operator_write(Reply(reply, rc), image=IMAGE, run_tree=self.root, rel_path="p/x", data=b"x")
-        self.assertIsNone(ow.operator_read(Reply('{"exists": false}'), image=IMAGE, run_tree=self.root,
-                                           rel_path="p/x"))
-        self.assertEqual(ow.operator_read(Reply('{"exists": true, "b64": "eA=="}'), image=IMAGE,
-                                          run_tree=self.root, rel_path="p/x"), b"x")
-        for reply in ('{"exists": true}', '{"exists": false, "b64": ""}', "nope"):
-            with self.subTest(reply=reply), self.assertRaises(ow.OwnershipError):
-                ow.operator_read(Reply(reply), image=IMAGE, run_tree=self.root, rel_path="p/x")
+        for kind in ("run_tree", "config"):
+            self.assertIsNone(ow.operator_read(Reply('{"exists": false}'), image=IMAGE, root_kind=kind,
+                                               root=self.root, rel_path="p/x"))
+            self.assertEqual(ow.operator_read(Reply(read_reply(b"x")), image=IMAGE, root_kind=kind,
+                                              root=self.root, rel_path="p/x"), b"x")
+            bad_sha = json.dumps(dict(json.loads(read_reply(b"x")), sha256="0" * 64))
+            bad_len = json.dumps(dict(json.loads(read_reply(b"x")), bytes=2))
+            for reply in ('{"exists": true}', '{"exists": false, "b64": ""}', "nope",
+                          '{"exists": true, "b64": "eA=="}', bad_sha, bad_len):
+                with self.subTest(kind=kind, reply=reply), self.assertRaises(ow.OwnershipError):
+                    ow.operator_read(Reply(reply), image=IMAGE, root_kind=kind, root=self.root, rel_path="p/x")
+
+    def test_a_read_mounts_only_its_root_read_only(self):
+        """glitch-06 (14 Oct 2026): a mid-take read of the agent-owned config folder (native sessions) or of the run
+        tree is one container as the agent, no capabilities, no network, no new privileges, ONLY the named root
+        mounted, read-only, with the root's own cap."""
+        cfg = os.path.join(self.d, "cfg")
+        os.mkdir(cfg)
+        for kind, root, cap in (("config", cfg, ow.CONFIG_READ_MAX_BYTES),
+                                ("run_tree", self.root, ow.OPERATOR_READ_MAX_BYTES)):
+            f = Fake(reply='{"exists": false}')
+            with self.subTest(kind=kind):
+                self.assertIsNone(ow.operator_read(f, image=IMAGE, root_kind=kind, root=root,
+                                                   rel_path="sessions/s1.jsonl", caller_env=CALLER))
+                runs = [strip(c) for c in f.calls if c[1:2] == ["run"]]
+                self.assertEqual(len(runs), 1)
+                argv = runs[0]
+                self.assertEqual(argv[:12], ["docker", "run", "--rm", "--pull=never", "--network", "none", "--user",
+                                             rt.AGENT_USER, "--cap-drop", "ALL", "--security-opt",
+                                             "no-new-privileges"])
+                self.assertNotIn("--cap-add", argv)
+                self.assertNotIn("--privileged", argv)
+                mounts = [argv[i + 1] for i, a in enumerate(argv) if a in ("--mount", "-v", "--volume")]
+                self.assertEqual(mounts, [f"type=bind,source={root},target=/scratch,readonly"])
+                self.assertEqual(argv[argv.index(ow.READ_PROGRAM) + 1:], ["sessions/s1.jsonl", str(cap)])
+        self.assertEqual(ow.CONFIG_READ_MAX_BYTES, 32 * 1024 * 1024)
+        for kind in ("home", "", None, "evidence"):
+            f = Fake()
+            with self.subTest(kind=kind), self.assertRaises(rt.Refused):
+                ow.operator_read(f, image=IMAGE, root_kind=kind, root=cfg, rel_path="x")
+            self.assertEqual(f.calls, [])
+        with self.assertRaises(TypeError):
+            ow.operator_read(Fake(), image=IMAGE, run_tree=self.root, rel_path="x")   # no implicit root
+
+    def test_the_read_program_over_a_config_folder(self):
+        """A Codex rollout and a Gemini session file read back with their sha256; a hard-linked file, a link, a
+        link-folder and a fifo refuse; the cap holds."""
+        import base64
+        import hashlib
+        cfg = os.path.join(self.d, "cfg")
+        os.makedirs(os.path.join(cfg, "sessions", "2026", "10", "14"))
+        os.makedirs(os.path.join(cfg, ".gemini", "tmp", "h", "chats"))
+        roll = b'{"type":"session_meta"}\n{"type":"response_item"}\n'
+        Path(cfg, "sessions", "2026", "10", "14", "rollout-1.jsonl").write_bytes(roll)
+        Path(cfg, ".gemini", "tmp", "h", "chats", "session-1.json").write_bytes(b'{"messages":[]}')
+        prog = ow.READ_PROGRAM.replace('"/scratch"', repr(cfg))
+
+        def run(rel, limit=str(ow.CONFIG_READ_MAX_BYTES)):
+            return subprocess.run([sys.executable, "-I", "-S", "-c", prog, rel, limit], capture_output=True,
+                                  text=True, timeout=60)
+        p = run("sessions/2026/10/14/rollout-1.jsonl")
+        got = json.loads(p.stdout)
+        self.assertEqual(base64.b64decode(got["b64"]), roll)
+        self.assertEqual((got["sha256"], got["bytes"]), (hashlib.sha256(roll).hexdigest(), len(roll)))
+        self.assertEqual(run(".gemini/tmp/h/chats/session-1.json").returncode, 0)
+        outside = os.path.join(self.d, "host.json")
+        Path(outside).write_text("host")
+        os.symlink(outside, os.path.join(cfg, "sessions", "link.jsonl"))
+        os.symlink(self.d, os.path.join(cfg, "sessions", "dirlink"))
+        os.link(os.path.join(cfg, "sessions", "2026", "10", "14", "rollout-1.jsonl"),
+                os.path.join(cfg, "sessions", "hard.jsonl"))
+        os.mkfifo(os.path.join(cfg, "sessions", "fifo.jsonl"))
+        for rel, limit in (("sessions/link.jsonl", "100"), ("sessions/dirlink/host.json", "100"),
+                           ("sessions/hard.jsonl", "100"), ("sessions/fifo.jsonl", "100"),
+                           (".gemini/tmp/h/chats/session-1.json", "3")):
+            with self.subTest(rel=rel):
+                self.assertNotEqual(run(rel, limit).returncode, 0)
+        self.assertEqual(Path(outside).read_text(), "host")
 
 
 if __name__ == "__main__":

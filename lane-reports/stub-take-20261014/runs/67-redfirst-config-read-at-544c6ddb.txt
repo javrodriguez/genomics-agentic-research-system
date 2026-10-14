@@ -1,0 +1,6 @@
+== test_ownership (new tests, 544c6ddb modules)
+ERROR: test_a_read_mounts_only_its_root_read_only (test_ownership.OperatorSteps.test_a_read_mounts_only_its_root_read_only)
+ERROR: test_the_read_program_over_a_config_folder (test_ownership.OperatorSteps.test_the_read_program_over_a_config_folder)
+ERROR: test_the_reply_must_be_the_data (test_ownership.OperatorSteps.test_the_reply_must_be_the_data)
+Ran 27 tests in 1.060s
+FAILED (errors=3)
