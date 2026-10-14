@@ -1837,7 +1837,8 @@ TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.lo
                    "driver-ledger.json": "ledger", "environment.json": "launch", "scrub.json": "launch",   # S6c C6-C8
                    "public-config.json": "launch",   # live harness 13 Oct: box take_config.public_record's bytes
                    "ownership-grant.json": "launch", "ownership-restore.json": "launch",   # the ownership road
-                   "settings-guard.json": "launch"}   # the run tree's Claude settings: baseline and per-turn checks
+                   "settings-guard.json": "launch",   # the run tree's Claude settings: baseline and per-turn checks
+                   "evidence-ledger.jsonl": "evidence", "evidence-ledger-copy.json": "launch"}   # review MAJOR 1
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
 # Live harness 13 Oct: the box's per-turn actual-submission journal (run_take: stream path + ".launch.json"), an exact
 # top-level sibling of a turn stream, scanned as an unmaskable launch record. Nearby or nested spellings still refuse.
@@ -1875,6 +1876,8 @@ _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")                    # the lock's i
 # is box/settings_guard.py (`_settings_guard`) unless a TakeDriver is handed another with this interface:
 # baseline(run_tree, *, model) -> {path: sha256}, raising SettingsRefused; snapshot_problems(snapshot, base) -> [problem].
 SETTINGS_RECORD = "settings-guard.json"
+# Drive-wiring review MAJOR 1: the driver's evidence-ledger lines during the take, and the record of their copy.
+EVIDENCE_LEDGER_HOST, EVIDENCE_LEDGER_COPY = "evidence-ledger.jsonl", "evidence-ledger-copy.json"
 SETTINGS_GUARD_PARAMS = {"baseline": ("run_tree", "model"), "snapshot_problems": ("snapshot", "base")}
 
 
@@ -2270,9 +2273,38 @@ class TakeDriver:
 
     # ------------------------------------------------------------------------------------------- S6b C9-C11
     def _evidence_line(self, take, rec: dict) -> None:
-        """C10: one record of the driver's evidence ledger (endstate's ledger.jsonl), appended in order."""
-        with open(os.path.join(take.evidence_dir, _endstate.LEDGER), "a", encoding="utf-8") as fh:
+        """C10: one record of the driver's evidence ledger (endstate's ledger.jsonl), appended in order. Drive-wiring
+        review MAJOR 1 (glitch-06's ruling, 14 Oct 2026): during the take the evidence folder is the watcher's, so the
+        lines go to a host-owned file in the take folder (outside every granted folder, never mounted into a
+        container), copied byte-exact into the evidence folder after the restore (_copy_evidence_ledger)."""
+        with open(os.path.join(take.folder, EVIDENCE_LEDGER_HOST), "a", encoding="utf-8") as fh:
             fh.write(json.dumps(rec, sort_keys=True) + "\n")
+
+    def _copy_evidence_ledger(self, take) -> None:
+        """After a restore that succeeded: the host ledger copied byte-exact into <evidence>/ledger.jsonl (a new file,
+        links never followed), both sha256 recorded in evidence-ledger-copy.json, then the host copy removed. Any
+        failure holds the take (no postflight, scan or commit) and keeps the host copy with the folders."""
+        host = os.path.join(take.folder, EVIDENCE_LEDGER_HOST)
+        if not os.path.lexists(host):
+            return                                            # nothing of the drive was logged (a launch road)
+        try:
+            with open(host, "rb") as fh:
+                data = fh.read()
+            fd = os.open(os.path.join(take.evidence_dir, _endstate.LEDGER),
+                         os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+            with open(os.path.join(take.evidence_dir, _endstate.LEDGER), "rb") as fh:
+                back = fh.read()
+            record = {"host_sha256": hashlib.sha256(data).hexdigest(),
+                      "evidence_sha256": hashlib.sha256(back).hexdigest(), "bytes": len(data)}
+            self._write(take, EVIDENCE_LEDGER_COPY, record)
+            if record["host_sha256"] != record["evidence_sha256"]:
+                raise OSError("the evidence copy's bytes are not the host ledger's")
+            os.remove(host)
+        except Exception as e:  # noqa: BLE001 - the take is held, its host ledger kept with the folders
+            why = f"the evidence ledger could not be copied ({type(e).__name__}: {e})"
+            take.ownership_hold = take.ownership_hold or why
 
     def _operator_step(self, take, row, step) -> bool:
         """C9 (ruling D8): the closed table's operator step after turn n, logged as one operator event (its writes
@@ -2582,6 +2614,8 @@ class TakeDriver:
             except Exception as e:  # noqa: BLE001
                 take.cleanup.append(f"{SETTINGS_RECORD}: {type(e).__name__}: {e}")
         self._restore_ownership(take)    # the ownership road: after teardown (returned or raised), pre-postflight
+        if not take.ownership_hold:      # review MAJOR 1: the driver's ledger joins the evidence once it is the host's
+            self._copy_evidence_ledger(take)
 
     def drive(self, row: dict, container_id: str) -> dict:
         """One take, from preflight to its routable records (R4-9, R4-10), cleaning up on every road (R4-11)."""

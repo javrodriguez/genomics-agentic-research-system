@@ -38,6 +38,10 @@ box/ownership.py is the box lane's and may be absent from this tree.
                graded as with the lines themselves
   P2-machine   (P-2) a machine gate naming a problem, or no gate at all, refuses the launch before any folder or
                runtime call, through batch too (a launch failure, nothing run); a quiet gate lets the take run
+  L1-ledger    (drive-wiring review MAJOR 1; the fake road is permission-faithful) the driver's ledger lines go to the
+               host-owned take folder during the take and are copied byte-exact into the evidence folder after the
+               restore, both sha256 recorded and the host copy removed; a held take keeps the host copy and gets no
+               evidence copy
 
 Mutants (MUTANTS, each killed by its own check's line): grant skipped; restore moved after postflight; restore skipped
 on a LaunchError; a scan running after a failed restore; a commit reading a held take's records; a host-side save and a
@@ -172,7 +176,10 @@ def o2_restore(mod, p):
         r = tbi.row(1)
         with watched(mod, order), tbi.spying(rig.spy):
             cid = rig.driver.launch(r)
-            rig.driver.drive(r, cid)
+            try:
+                rig.driver.drive(r, cid)
+            except mod.DriveRefused as e:            # read below by the order it left, never an ERROR line
+                out.append(f"{p}: the clean take stopped: {e}")
             rig.driver.remove(cid)
         take = rig.take()
         rest = [e for n, e in road.events if n == "restore"]
@@ -677,10 +684,41 @@ def p2_machine(mod, p):
     return out
 
 
+@tbi.guarded("L1-ledger")
+def l1_ledger(mod, p):
+    out = []
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        take = rig.take()
+        if got[0]["state"] != tbi.labels4.GRADED:
+            return [f"{p}: a clean take on the faithful road is {got[0]['state']} ({got[0]['reason']})"]
+        ev = os.path.join(take.evidence_dir, "ledger.jsonl")
+        host = os.path.join(take.folder, mod.EVIDENCE_LEDGER_HOST)
+        rec = read(os.path.join(take.folder, mod.EVIDENCE_LEDGER_COPY))
+        data = Path(ev).read_bytes() if os.path.isfile(ev) else None
+        if data is None or not data.startswith(b'{"agent"') or os.path.lexists(host):
+            out.append(f"{p}: the evidence ledger is {data[:40] if data else None!r}, the host copy "
+                       f"{'left' if os.path.lexists(host) else 'removed'}")
+        if (rec is None or rec["host_sha256"] != rec["evidence_sha256"]
+                or rec["evidence_sha256"] != hashlib.sha256(data or b"").hexdigest()):
+            out.append(f"{p}: the copy record does not bind both bytes: {rec}")
+    with tbi.scratch_repo() as root:                 # a held take: the host copy stays, no evidence copy
+        rig = tbi.Rig(mod, root)
+        rig.driver.ownership = rig.ownership = tbi.FakeOwnership(rig.box, fail_restore=True)
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        take = rig.take()
+        if not os.path.isfile(os.path.join(take.folder, mod.EVIDENCE_LEDGER_HOST)) or os.path.lexists(
+                os.path.join(take.evidence_dir, "ledger.jsonl")):
+            out.append(f"{p}: a held take's ledger is not kept host-side alone")
+    return out
+
+
 CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch, "O4-held": o4_held,
           "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator,
           "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road,
-          "U1-uid-map": u1_uid_map, "P2-machine": p2_machine}
+          "U1-uid-map": u1_uid_map, "P2-machine": p2_machine,
+          "L1-ledger": l1_ledger}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -714,6 +752,10 @@ MUTANTS = {
     "machine-gate-unchecked": ((("        if busy:                                              # P-2: before any folder",
                                  "        if False:                                              # P-2: before any folder"),),
                                "P2-machine"),
+    "ledger-into-evidence": ((("        with open(os.path.join(take.folder, EVIDENCE_LEDGER_HOST), \"a\", encoding=\"utf-8\") as fh:",
+                               "        with open(os.path.join(take.evidence_dir, \"ledger.jsonl\"), \"a\", "
+                               "encoding=\"utf-8\") as fh:"),), "L1-ledger"),
+    "ledger-copy-skipped": ((("            self._copy_evidence_ledger(take)\n", "            pass\n"),), "L1-ledger"),
     "uid-map-unread": ((("        uid_map = self.uid_map(take) if callable(self.uid_map) else self.uid_map",
                          "        uid_map = self.uid_map"),), "U1-uid-map"),
     "one-turn-reached": ((("        take.driven = True\n",
@@ -774,6 +816,9 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_p2_machine(self):
         self.assertEqual(p2_machine(tbi.drive), [])
+
+    def test_l1_ledger(self):
+        self.assertEqual(l1_ledger(tbi.drive), [])
 
 
 class TestOwnershipMutants(unittest.TestCase):
@@ -840,6 +885,12 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_machine_gate_unchecked(self):
         self.kill("machine-gate-unchecked")
+
+    def test_ledger_into_evidence(self):
+        self.kill("ledger-into-evidence")
+
+    def test_ledger_copy_skipped(self):
+        self.kill("ledger-copy-skipped")
 
 
 if __name__ == "__main__":
