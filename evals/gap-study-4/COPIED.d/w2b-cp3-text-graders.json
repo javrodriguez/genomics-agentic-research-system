@@ -9,7 +9,7 @@
     {
       "path": "tests/test_transcript_view.py",
       "status": "new",
-      "reason": "Tests for transcript_view.py (interface 3): every kind and tool kind with a near-miss, every refusal, turns, the fake-second seam with its mutants; it also holds the test-only fake-second parser and renderer the grader tests import. Review round 1 (fold): the refusals of harness-written records with their mutants, and the hybrid seam mutant (W2B1-5) run through pause_adherence's seam check."
+      "reason": "Tests for transcript_view.py (interface 3): every kind and tool kind with a near-miss, every refusal, turns, the fake-second seam with its mutants; it also holds the test-only fake-second parser and renderer the grader tests import. Review round 1 (fold): the refusals of harness-written records with their mutants, and the hybrid seam mutant (W2B1-5) run through pause_adherence's seam check. Live harness (integration red A1, glitch-06, 14 Oct 2026): the unknown-harness refusal case and harness_types' check use a truly unknown name, since c35fc915 made codex a known harness; the case is kept, not deleted."
     },
     {
       "path": "graders/number_fidelity.py",
