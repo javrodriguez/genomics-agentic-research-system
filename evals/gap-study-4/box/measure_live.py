@@ -60,7 +60,10 @@ finally:
 
 
 class Proof:
-    def __init__(self):
+    def __init__(self, take_image=None, watch_image=None):
+        # candidate mode (glitch-06, 14 Oct): the built candidate images by id; else the provisional pins
+        self.take_image = take_image or TAKE_IMAGE
+        self.watch_image = watch_image or WATCH_IMAGE
         self.runtime = run_take.DockerRuntime()
         self.calls = []
 
@@ -88,14 +91,15 @@ class Proof:
         return self.call([*argv, image, *inner]).stdout.strip()
 
     def own(self, path, uid):
-        self.container(TAKE_IMAGE, ["/usr/bin/python3", "-I", "-S", "-c", OWN, str(uid)],
+        self.container(self.take_image, ["/usr/bin/python3", "-I", "-S", "-c", OWN, str(uid)],
                        user="0:0", caps=("CHOWN", "DAC_OVERRIDE"), mounts=((path, "/scratch", False),))
 
     def watcher(self, inner, mounts, detached=False):
-        return self.container(WATCH_IMAGE, [*sidecar.WATCHER_LAUNCHER, *inner], user="0:0",
+        return self.container(self.watch_image, [*sidecar.WATCHER_LAUNCHER, *inner], user="0:0",
                               caps=sidecar.BOOT_CAPABILITIES, mounts=mounts, detached=detached)
 
-    def scenario(self, parent, name, *, source=None, watch=("plan/approved.json", "result.txt"), script=None):
+    def scenario(self, parent, name, *, source=None, watch=("plan/approved.json", "result.txt"), script=None,
+                 inject=True):
         """One lifecycle scenario. `source`: a host folder holding a sidecar.py to serve instead of the image's own
         (mounted read-only at /opt/src); `watch` and `script` replace the consequential list and the agent's step."""
         scratch = Path(tempfile.mkdtemp(prefix="component-", dir=parent))
@@ -123,7 +127,7 @@ class Proof:
             watch_args = "".join(f",'--watch',{w!r}" for w in watch)
             program = ("import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w',%r); " % served +
                        "m=importlib.util.module_from_spec(s); sys.modules['w']=m; s.loader.exec_module(m); "
-                       f"m.__dict__.update(json.loads({json.dumps(constants)!r})); "
+                       + (f"m.__dict__.update(json.loads({json.dumps(constants)!r})); " if inject else "") +
                        "sys.exit(m.main(['serve','--run-tree','/tree','--evidence','/srv/ev',"
                        + watch_args.lstrip(",") + "]))")
             mounts = ((tree, "/tree", True), (evidence, "/srv/ev", False)) + (((source, "/opt/src", True),) if source else ())
@@ -143,7 +147,7 @@ class Proof:
                               "/usr/bin/python3", "-I", "-S", "-c", preflight.PROCESSES_PROGRAM])
             result["watcher_processes"] = json.loads(caps.stdout)
             preflight._check_watcher_cap({"watcher-caps": {"returncode": caps.returncode, "stdout": caps.stdout}})
-            take = self.container(TAKE_IMAGE, ["sleep", "infinity"], user="10003:10003",
+            take = self.container(self.take_image, ["sleep", "infinity"], user="10003:10003",
                                   mounts=((tree, "/tree", False),), detached=True)
             ids.append(take)
             scripts = {
@@ -341,18 +345,37 @@ def _watch_run():
             WATCH_IMAGE, *sidecar.WATCHER_LAUNCHER]
 
 
+def _image_id(v) -> bool:
+    return isinstance(v, str) and len(v) == 71 and v.startswith("sha256:") and all(c in "0123456789abcdef" for c in v[7:])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch-parent", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--mode", choices=("component", "stub", "gap"), default="component")
+    parser.add_argument("--mode", choices=("component", "stub", "gap", "candidate"), default="component")
+    parser.add_argument("--take-image", help="candidate mode: the built take-a image id")
+    parser.add_argument("--watch-image", help="candidate mode: the built sidecar image id")
     parser.add_argument("--source", help="gap mode: the folder holding the sidecar.py under test (read-only)")
     args = parser.parse_args()
     parent = Path(args.scratch_parent)
     if sys.platform != "linux" or parent.is_symlink() or not parent.is_dir() or parent.stat().st_uid != os.getuid():
         raise ValueError("an owned existing Linux scratch parent is required")
-    proof = Proof(); report = {"scope": "component-only; no credentials, no model, no production admission", "scenarios": [], "calls": proof.calls}
+    if args.mode == "candidate" and not (_image_id(args.take_image) and _image_id(args.watch_image)):
+        raise ValueError("candidate mode names both built images by sha256 id")
+    proof = Proof(args.take_image, args.watch_image) if args.mode == "candidate" else Proof()
+    report = {"scope": "component-only; no credentials, no model, no production admission", "scenarios": [], "calls": proof.calls}
     try:
+        if args.mode == "candidate":
+            # Candidate-image evidence: the image's own sidecar.py and its own watcher values, nothing injected.
+            report["scope"] = ("candidate-image evidence: built images by id, the image's own sidecar.py and values; "
+                               "no credentials, no model, no lock written")
+            report["images"] = {"take": args.take_image, "watch": args.watch_image}
+            for name in ("oracle", "always-act", "always-hold", "background-writer"):
+                report["scenarios"].append(proof.scenario(parent, name, inject=False))
+            report["scenarios"].append(proof.scenario(parent, "gap-fresh", watch=GAP_FRESH, script=GAP_PROOF_AGENT,
+                                                      inject=False))
+            return
         if args.mode == "gap":
             if not args.source:
                 raise ValueError("--source names the folder holding the sidecar.py under test")
