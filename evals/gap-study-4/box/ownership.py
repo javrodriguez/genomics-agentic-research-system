@@ -271,7 +271,8 @@ print(json.dumps({"sha256":hashlib.sha256(data).hexdigest(),"bytes":len(data)}))
 # grows during the read cannot pass the cap. A file with another hard link refuses, as for a write. A TORN read refuses
 # (review-operator-read O-1, corrected by L-1): after the read, the NAME is stat'ed through its folder's descriptor
 # (never followed) and must still be the inode the descriptor opened, on the same device, with the size and mtime_ns
-# fstat gave at the open. One comparison covers an append, a truncation or a
+# fstat gave at the open, and the bytes read must equal that size (review-walk-token W-4: a truncate-and-regrow to the
+# same size with the mtime put back ends in a short read). One comparison covers an append, a truncation or a
 # rewrite of the open file (same inode, so its size or mtime moved) and a rename, replacement or removal of the name
 # (another inode, or none): the descriptor alone cannot see the last three. The read is refused,
 # never retried silently; the contract reads the config folder only after the turn's quiescence, so a change means a
@@ -299,7 +300,7 @@ while True:
  if len(data)>limit:raise SystemExit("refused: larger than the limit")
 try:post=os.stat(parts[-1],dir_fd=fd,follow_symlinks=False)
 except FileNotFoundError:raise SystemExit("refused: the file changed during the read")
-if (post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns):raise SystemExit("refused: the file changed during the read")
+if (post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns) or len(data)!=st.st_size:raise SystemExit("refused: the file changed during the read")
 data=bytes(data)
 print(json.dumps({"exists":True,"b64":base64.b64encode(data).decode("ascii"),"sha256":hashlib.sha256(data).hexdigest(),"bytes":len(data)}))
 '''

@@ -38,12 +38,14 @@ class WalkToken(unittest.TestCase):
         self.assertEqual(Path(self.path).read_bytes(), b"CLAUDE_CODE_OAUTH_TOKEN=")
         v = run("verify_walk_login.py", self.home, "claude1")
         self.assertEqual(v.returncode, 1)                 # nothing pasted yet
-        self.assertIn("length class: empty", v.stdout)
+        self.assertIn("length: empty", v.stdout)
         self.paste(FAKE + "\n")
         v = run("verify_walk_login.py", self.home, "claude1")
         self.assertEqual(v.returncode, 0, v.stdout)
         self.assertIn("RESULT: OK", v.stdout)
-        self.assertIn("length class: 20-79", v.stdout)
+        self.assertIn("length: 20 or more", v.stdout)
+        for line in ("value contains '=': no", "value pasted twice: no", "value starts with the variable name: no"):
+            self.assertIn(line, v.stdout)
         self.assertNotIn(FAKE, v.stdout + v.stderr)
         self.assertNotIn(FAKE[:8], v.stdout + v.stderr)
         # the box's own reader agrees with the verify script on the prepared, pasted file
@@ -72,6 +74,18 @@ class WalkToken(unittest.TestCase):
                 self.assertNotIn(FAKE, v.stdout + v.stderr)
             if undo:
                 undo()
+        # review-walk-token W-2: a doubled paste, a whole-line paste and a value holding '=' each fail, by name
+        for text, line in (("CLAUDE_CODE_OAUTH_TOKEN=" + FAKE + FAKE + "\n", "value pasted twice: YES"),
+                           ("CLAUDE_CODE_OAUTH_TOKEN=CLAUDE_CODE_OAUTH_TOKEN=" + FAKE + "\n", "value contains '=': YES"),
+                           ("CLAUDE_CODE_OAUTH_TOKEN=CLAUDE_CODE_OAUTH_TOKEN" + FAKE + "\n",
+                            "value starts with the variable name: YES"),
+                           ("CLAUDE_CODE_OAUTH_TOKEN=" + FAKE + "=x\n", "value contains '=': YES")):
+            Path(self.path).write_text(text)
+            v = run("verify_walk_login.py", self.home, "claude1")
+            with self.subTest(line):
+                self.assertEqual(v.returncode, 1, v.stdout)
+                self.assertIn(line, v.stdout)
+                self.assertNotIn(FAKE, v.stdout + v.stderr)
         for text in ("CLAUDE_CODE_OAUTH_TOKEN=short\n", "CLAUDE_CODE_OAUTH_TOKEN=has space " + FAKE + "\n",
                      FAKE + "\n", ""):
             Path(self.path).write_text(text)

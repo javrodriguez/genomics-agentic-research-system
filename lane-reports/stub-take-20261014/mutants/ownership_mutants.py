@@ -72,7 +72,8 @@ MUTANTS = [
  ("list: any kind", ' and e[1] in LIST_KINDS)', ')'),
  ("list: duplicates admitted", ' or raw in seen:', ':'),
  # review-operator-read O-1, O-2, O-3 (14 Oct 2026)
- ("O-1: a torn read admitted", '(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns):raise SystemExit("refused: the file changed during the read")', '(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns) and False:raise SystemExit("refused: the file changed during the read")'),
+ ("O-1: a torn read admitted", '(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns) or len(data)!=st.st_size:raise', 'False and (st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns) and False:raise'),
+ ("W-4: bytes read not compared", ' or len(data)!=st.st_size:raise SystemExit("refused: the file changed during the read")', ':raise SystemExit("refused: the file changed during the read")'),
  ("O-1: only the size compared", '(post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns)', 'post.st_size!=st.st_size'),
  ("O-1: mtime not compared", '(post.st_ino,post.st_dev,post.st_size,post.st_mtime_ns)!=(st.st_ino,st.st_dev,st.st_size,st.st_mtime_ns)', '(post.st_ino,post.st_dev,post.st_size)!=(st.st_ino,st.st_dev,st.st_size)'),
  ("L-1: a removed name admitted", 'except FileNotFoundError:raise SystemExit("refused: the file changed during the read")', 'except FileNotFoundError:post=st'),

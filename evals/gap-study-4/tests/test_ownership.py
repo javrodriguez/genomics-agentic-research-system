@@ -544,6 +544,18 @@ class OperatorSteps(unittest.TestCase):
             with self.subTest(label):
                 self.assertNotEqual(p.returncode, 0)
                 self.assertIn("changed during the read", p.stderr)
+        # review-walk-token W-4: truncated to the read offset and regrown to the same size with the mtime put back,
+        # so the name's inode, size and mtime all match: only the short read shows it
+        Path(path).write_bytes(b"z" * 200000)
+        post = "try:post="
+        self.assertEqual(prog.count(post), 1)
+        regrow = prog.replace(hook, hook + f" if c and not data:M=os.stat({path!r}).st_mtime_ns;"
+                                           f"os.truncate({path!r},len(c))\n").replace(
+            post, f"os.truncate({path!r},200000);os.utime({path!r},ns=(M,M))\n" + post)
+        p = subprocess.run([sys.executable, "-I", "-S", "-c", regrow, "s.jsonl", str(10 ** 7)], capture_output=True,
+                           text=True, timeout=60)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("changed during the read", p.stderr)
         Path(path).write_bytes(b"z" * 200000)
         p = subprocess.run([sys.executable, "-I", "-S", "-c", prog, "s.jsonl", str(10 ** 7)], capture_output=True,
                            text=True, timeout=60)
