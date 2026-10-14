@@ -294,11 +294,15 @@ def production_builders() -> dict:
         # Box row 8 (14 Oct 2026): the pinned scanner is filled and checked against its adapter here (a drifted pin
         # refuses now); its per-walk scan is built from the DockerRuntime and the walk's report folder, so it waits on
         # the runtime (the harness lane's wiring: real.build(runtime, report_dir)).
-        real = scan_record.real_rules_scanner()
-        out["rules_scanner"] = (Missing(f"the per-walk build of the pinned gitleaks {real.version} "
-                                        f"(scan_record.real_rules_scanner().build(runtime, report_dir)), once the "
-                                        f"DockerRuntime exists: {box}")
-                                if isinstance(real, scan_record.RealRulesScanner) else real)
+        rec = scan_record.real_rules_scanner()
+        if isinstance(rec, dict):
+            from box import rules_scanner
+            real = rules_scanner.real_rules_scanner()
+            out["rules_scanner"] = Missing(f"the per-walk build of the pinned gitleaks {real.version} "
+                                           f"(rules_scanner.real_rules_scanner().build(runtime, report_dir)), once "
+                                           f"the DockerRuntime exists: {box}")
+        else:
+            out["rules_scanner"] = rec
     table = routing.load_table()
     out["table"] = table
     out["pin_for"] = (Missing("the routing pin: routing.json's pin_profiles are empty until the walks measure them")

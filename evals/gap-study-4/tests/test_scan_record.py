@@ -728,7 +728,7 @@ class TestRulesScannerFilled(unittest.TestCase):
         if (rs.GITLEAKS_VERSION, rs.GITLEAKS_SHA256, rs.GITLEAKS_PATH) != self.PIN:
             out.append("the adapter module's pin is not the reviewed one")
         try:
-            real = sr.real_rules_scanner()
+            real = _rs.real_rules_scanner()
         except sr.NotReady as e:
             return out + [f"refused: {e}"]
         if real.build is not ORIG_GITLEAKS_SCANNER:
@@ -739,6 +739,8 @@ class TestRulesScannerFilled(unittest.TestCase):
             out.append("the real rules scanner itself is callable: it could be passed as scan's rules_scanner")
         if "rules_scanner" in sr.pending():
             out.append("rules_scanner is still pending")
+        if sr.real_rules_scanner() != rec or sr.real_rules_scanner() is rec:
+            out.append("scan_record.real_rules_scanner does not return a copy of the record")
         return out
 
     def test_the_constant_is_bound_to_the_module(self):
@@ -753,7 +755,7 @@ class TestRulesScannerFilled(unittest.TestCase):
                                                                   lambda runtime, report_dir, **kw: (lambda p: [])),
             "factory renamed in the record": lambda: mock.patch.dict(sr.RULES_SCANNER, factory="other"),
             "adapter renamed in the record": lambda: mock.patch.dict(sr.RULES_SCANNER, adapter="box.stub_take"),
-            "drift check dropped": lambda: mock.patch.object(sr, "real_rules_scanner", lambda: sr.RealRulesScanner(
+            "drift check dropped": lambda: mock.patch.object(_rs, "real_rules_scanner", lambda: _rs.RealRulesScanner(
                 lambda runtime, report_dir: (lambda p: []), "8.30.1", "0" * 64, "/tmp/gitleaks")),
         }
         for name, ctx in mutants.items():
@@ -768,7 +770,7 @@ class TestRulesScannerFilled(unittest.TestCase):
                               k: v for k, v in sr.RULES_SCANNER.items() if k != "binary"})}.items():
             with self.subTest(name), ctx():
                 with self.assertRaises(sr.NotReady):
-                    sr.real_rules_scanner()
+                    _rs.real_rules_scanner()
 
     def factory_named(self, module, name):
         def fake(runtime, report_dir, **kw):
@@ -776,23 +778,30 @@ class TestRulesScannerFilled(unittest.TestCase):
         fake.__module__, fake.__name__ = module, name
         return fake
 
+    def test_a_drifted_pin_refuses_the_binding(self):
+        """The binding itself refuses each drift (the check above also reads the constants directly)."""
+        for attr, value in (("GITLEAKS_SHA256", "0" * 64), ("GITLEAKS_VERSION", "8.30.2"),
+                            ("GITLEAKS_PATH", "/tmp/gitleaks")):
+            with self.subTest(attr), mock.patch.object(_rs, attr, value), self.assertRaises(sr.NotReady):
+                _rs.real_rules_scanner()
+
     def test_the_factory_module_is_the_adapter(self):
         from box import rules_scanner as rs
         with mock.patch.object(rs, "gitleaks_scanner", self.factory_named("box.stub_take", "gitleaks_scanner")):
             with self.assertRaises(sr.NotReady):
-                sr.real_rules_scanner()
+                _rs.real_rules_scanner()
 
     def test_the_factory_name_is_its_own(self):
         from box import rules_scanner as rs
         with mock.patch.object(rs, "gitleaks_scanner", self.factory_named("box.rules_scanner", "fake_scanner")):
             with self.assertRaises(sr.NotReady):
-                sr.real_rules_scanner()
+                _rs.real_rules_scanner()
 
     def test_passing_the_unbuilt_scanner_names_the_build(self):
         c = Commit()
         self.addCleanup(c.close)
         with self.assertRaises(sr.NotReady) as cm:
-            sr.scan(c.files(), SECRETS, rules_scanner=sr.real_rules_scanner())
+            sr.scan(c.files(), SECRETS, rules_scanner=_rs.real_rules_scanner())
         self.assertIn("real_rules_scanner().build(runtime, report_dir)", str(cm.exception))
         self.assertNotIn("PENDING", str(cm.exception))
 
@@ -806,7 +815,7 @@ class TestRulesScannerFilled(unittest.TestCase):
         os.mkdir(os.path.join(d, "reports"))
         from box import rules_scanner as rs
         with self.assertRaises(rs.ScannerRefused):
-            sr.real_rules_scanner().build(object(), os.path.join(d, "reports"), binary=binary)
+            _rs.real_rules_scanner().build(object(), os.path.join(d, "reports"), binary=binary)
 
 
 # ------------------------------------------------------------------------------------------------- fold 2 (lane review 1)

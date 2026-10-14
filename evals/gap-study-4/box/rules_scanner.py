@@ -23,6 +23,7 @@ import json
 import os
 
 from box import run_take
+from box import scan_record
 
 # The pin (box lane, 14 Oct 2026; athena's acquisition record ~/gap4-tools/gitleaks-8.30.1/acquisition.json: the
 # official v8.30.1 linux x64 release, archive sha256 551f6fc8..., binary sha256 below; measured again in every stub take).
@@ -98,3 +99,30 @@ def gitleaks_scanner(runtime, report_dir: str, *, binary: str = GITLEAKS_PATH, c
                 out.append({"path": p, "line": line, "rule": rule})
         return out
     return scan
+
+
+class RealRulesScanner:
+    """The pinned rules scanner, ready to build (box row 8; moved here from scan_record on 14 Oct 2026). Deliberately NOT
+    callable: scan's `rules_scanner` is the per-walk scan(paths) that `build(runtime, report_dir)` returns, so passing
+    this object itself fails at once (a caller's callable check), never at a take's commit."""
+
+    __slots__ = ("build", "version", "sha256", "binary")
+
+    def __init__(self, build, version: str, sha256: str, binary: str):
+        self.build, self.version, self.sha256, self.binary = build, version, sha256, binary
+
+
+def real_rules_scanner() -> RealRulesScanner:
+    """scan_record.RULES_SCANNER bound to this module: refused (scan_record.NotReady) while the record is PENDING or off
+    its shape, if this module's pin (version, sha256, binary path) is not the record's, or if the record's factory is
+    not this module's own gitleaks_scanner."""
+    rec = scan_record.real_rules_scanner()
+    pin = {"version": GITLEAKS_VERSION, "sha256": GITLEAKS_SHA256, "binary": GITLEAKS_PATH}
+    drift = sorted(k for k, v in pin.items() if v != rec[k])
+    if drift:
+        raise scan_record.NotReady(f"the rules scanner adapter's pin is not the recorded one: {', '.join(drift)}")
+    build = globals().get(rec["factory"])
+    if not callable(build) or getattr(build, "__module__", None) != __name__ \
+            or getattr(build, "__name__", None) != rec["factory"]:
+        raise scan_record.NotReady("the rules scanner adapter's factory is not its own gitleaks_scanner")
+    return RealRulesScanner(build, rec["version"], rec["sha256"], rec["binary"])
