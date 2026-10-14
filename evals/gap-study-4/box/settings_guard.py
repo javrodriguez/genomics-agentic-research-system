@@ -13,9 +13,14 @@ fallbacks (an `env` block, `model`, `fallbackModel`, `switchModelsOnFlag`, `avai
         links never followed; refuses (SettingsRefused) a settings file that is not a regular file, a `.claude` that
         is not a folder, JSON that is not an object, or any FORBIDDEN_KEYS key. GARS's shipped
         gars/.claude/settings.json (keys: hooks, permissions, at the pinned 844a4ce0) passes.
-        Also every file under a `.claude/agents/` folder (round-2 review R2-6): an agent definition whose frontmatter
-        `model:` is anything but absent, "inherit" or the take's pinned `model` refuses. GARS ships none. (The Agent
-        tool's own model parameter is outside any file: the harness's per-message served-model check backs it.)
+        Also every file under a `.claude/agents/`, `.claude/skills/` or `.claude/commands/` folder (round-2 review
+        R2-6 for agents; closure-r2 note C-1 for skills and slash commands, which "accept the same frontmatter fields
+        as skills", `model` among them: code.claude.com/docs/en/skills.md, read 14 Oct 2026): a file whose
+        frontmatter `model:` is anything but absent, "inherit" or the take's pinned `model` refuses, and so does a
+        link, a non-regular file, or a `agents`/`skills`/`commands` entry under `.claude` that is not a folder. GARS
+        ships none of the three at the pinned 844a4ce0 (its only `.claude` file is gars/.claude/settings.json).
+        (The Agent tool's own model parameter is outside any file: the harness's per-message served-model check backs
+        it.)
 
     snapshot_problems(snapshot, baseline) -> [problem]
         On EVERY snapshot of the take (round-2 review R2-1): before every turn (pre-k, turn 1 included, so also at
@@ -44,9 +49,12 @@ import re
 FORBIDDEN_KEYS = ("env", "model", "fallbackModel", "switchModelsOnFlag", "availableModels")
 SETTINGS_NAMES = ("settings.json", "settings.local.json")
 SETTINGS_PATH = re.compile(r"(?:^|.*/)\.claude/settings(?:\.local)?\.json")
-AGENTS_PATH = re.compile(r"(?:^|.*/)\.claude/agents/.+")
+# The `.claude` folders whose files can name a model in their frontmatter: agent definitions (R2-6), skills and
+# slash commands (closure-r2 note C-1). Each is guarded the same way.
+MODEL_DIRS = ("agents", "skills", "commands")
+AGENTS_PATH = re.compile(r"(?:^|.*/)\.claude/(?:agents|skills|commands)/.+")
 CLAUDE_DIR = re.compile(r"(?:^|.*/)\.claude")
-AGENTS_DIR = re.compile(r"(?:^|.*/)\.claude/agents")
+AGENTS_DIR = re.compile(r"(?:^|.*/)\.claude/(?:agents|skills|commands)")
 AGENT_MODELS_ALLOWED = ("inherit",)          # plus the take's pinned model; an absent `model:` inherits too
 MAX_BYTES = 2 * 1024 * 1024
 
@@ -70,8 +78,8 @@ def agent_model(text: str):
 
 
 def baseline(run_tree: str, *, model: str) -> dict:
-    """{relative path: sha256} of every Claude Code settings file and agent definition in the run tree; refuses a
-    forbidden one."""
+    """{relative path: sha256} of every Claude Code settings file and every agent, skill and command file in the run
+    tree; refuses a forbidden one."""
     if not isinstance(model, str) or not model:
         raise SettingsRefused("the take's pinned model is named")
     if not isinstance(run_tree, str) or not os.path.isabs(run_tree) or os.path.islink(run_tree) \
@@ -84,13 +92,14 @@ def baseline(run_tree: str, *, model: str) -> dict:
     for root, dirs, files in os.walk(run_tree, onerror=onerror, followlinks=False):
         rel_root = os.path.relpath(root, run_tree)
         parts = [] if rel_root == "." else rel_root.split(os.sep)
-        in_agents = any(parts[i] == ".claude" and parts[i + 1] == "agents" for i in range(len(parts) - 1))
+        in_agents = any(parts[i] == ".claude" and parts[i + 1] in MODEL_DIRS for i in range(len(parts) - 1))
         for d in list(dirs):
-            if (d == ".claude" or (d == "agents" and os.path.basename(root) == ".claude")) \
+            if (d == ".claude" or (d in MODEL_DIRS and os.path.basename(root) == ".claude")) \
                     and os.path.islink(os.path.join(root, d)):
                 raise SettingsRefused(f"{os.path.relpath(os.path.join(root, d), run_tree)}: a link")
             if in_agents and os.path.islink(os.path.join(root, d)):
-                raise SettingsRefused(f"{os.path.relpath(os.path.join(root, d), run_tree)}: a link under .claude/agents")
+                raise SettingsRefused(f"{os.path.relpath(os.path.join(root, d), run_tree)}: a link under "
+                                      f".claude/{{{','.join(MODEL_DIRS)}}}")
         for name in files:
             rel = os.path.relpath(os.path.join(root, name), run_tree)
             if name == ".claude":
@@ -98,16 +107,18 @@ def baseline(run_tree: str, *, model: str) -> dict:
             if in_agents:
                 path = os.path.join(root, name)
                 if os.path.islink(path) or not os.path.isfile(path) or os.lstat(path).st_size > MAX_BYTES:
-                    raise SettingsRefused(f"{rel}: an agent definition must be a regular file of at most 2 MiB")
+                    raise SettingsRefused(f"{rel}: an agent, skill or command file must be a regular file of at "
+                                          f"most 2 MiB")
                 with open(path, "rb") as fh:
                     data = fh.read()
                 got = agent_model(data.decode("utf-8", "replace"))
                 if got is not None and got not in AGENT_MODELS_ALLOWED + (model,):
-                    raise SettingsRefused(f"{rel}: an agent definition names model {got!r}, not the take's {model!r}")
+                    raise SettingsRefused(f"{rel}: an agent, skill or command names model {got!r}, not the take's "
+                                          f"{model!r}")
                 out[rel] = hashlib.sha256(data).hexdigest()
                 continue
-            if name == "agents" and os.path.basename(root) == ".claude":
-                raise SettingsRefused(f"{rel}: .claude/agents is not a folder")
+            if name in MODEL_DIRS and os.path.basename(root) == ".claude":
+                raise SettingsRefused(f"{rel}: .claude/{name} is not a folder")
             if os.path.basename(root) != ".claude" or name not in SETTINGS_NAMES:
                 continue
             path = os.path.join(root, name)
@@ -130,8 +141,8 @@ def baseline(run_tree: str, *, model: str) -> dict:
 
 
 def snapshot_problems(snapshot, base: dict) -> list:
-    """Every way a snapshot's settings files and agent definitions differ from the baseline (empty: none). Called on
-    every pre-k and every post-k snapshot."""
+    """Every way a snapshot's settings files and agent, skill and command files differ from the baseline (empty:
+    none). Called on every pre-k and every post-k snapshot."""
     if not isinstance(snapshot, dict) or not isinstance(snapshot.get("entries"), dict):
         return ["the snapshot holds no entries"]
     entries = snapshot["entries"]
@@ -144,7 +155,7 @@ def snapshot_problems(snapshot, base: dict) -> list:
             continue
         if SETTINGS_PATH.fullmatch(path) or AGENTS_PATH.fullmatch(path):
             if path not in base:
-                out.append(f"{path}: a settings file or agent definition the run tree did not ship")
+                out.append(f"{path}: a settings, agent, skill or command file the run tree did not ship")
             elif kind != "file" or e.get("sha256") != base[path]:
                 out.append(f"{path}: changed since the run tree was built")
     for path in sorted(base):
