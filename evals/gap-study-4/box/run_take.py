@@ -27,7 +27,7 @@ environment or requested for the exec.
 PENDING (interface 15). A value only the real box or a walk can tell is the constant `PENDING`, listed with its
 reason in `PENDING_WHY`; `pending()` names every one still pending, and a real use that needs one raises `NotReady`.
 No public function takes a PENDING value as a parameter; the one documented exception is `TakeSpec`'s per-take
-resources, which are refused while they hold the PENDING defaults.
+resources (capacity policy, passed by the caller), which are refused while they hold the PENDING defaults.
 
 No model, no network, standard library only (plus the seam's `agent_adapter` and `harness_bookkeeping`).
 """
@@ -183,7 +183,12 @@ RUNTIME_ENV_NAMES = ("PATH", "HOME", "DOCKER_HOST", "XDG_RUNTIME_DIR")
 # "uid_namespace": "host" | "container"}. Docker 29.8.1 on Athena reports container UIDs even though its PIDs
 # are host PIDs (live probe 13 Oct 2026). The namespace must be measured, never inferred from rootless mode.
 # once measured on the box.
-TOP_FORMAT = PENDING
+# FILLED 14 Oct 2026 (box lane; stub-take review PASS, glitch-06): measured on athena, docker 29.8.1, rootless, by
+# lane-reports/stub-take-20261014/stub-take-run1.json and -run2.json (derivation rule R-TOP): `docker top -eo
+# pid,uid,comm` prints host pids beside the rootless daemon's (here the container's) uids, e.g. 10001 for host 110000.
+# Re-measure if the box ever adds a per-container user-namespace remap.
+TOP_FORMAT = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
+              "uid_namespace": "container"}
 
 # The Docker Engine API's spelling of each inspected fact (taken from the Engine API's ContainerInspect, never
 # driven). INSPECT_STATUS stays PENDING until the stub take reads one inspect; while it is, every comparison and
@@ -197,7 +202,13 @@ INSPECT_PATHS = {
     "memory_reservation": "HostConfig.MemoryReservation", "nano_cpus": "HostConfig.NanoCpus",
     "mounts": "Mounts", "running": "State.Running", "exit_code": "State.ExitCode", "oom_killed": "State.OOMKilled",
 }
-INSPECT_STATUS = PENDING
+# FILLED 14 Oct 2026 (box lane; stub-take review PASS): every INSPECT_PATHS spelling resolved in the take's, the
+# sidecar's and the proxy's inspects of both stub takes (rule R-INSPECT).
+INSPECT_STATUS = {"confirmed_on": "2026-10-14", "engine": "29.8.1", "api_version": "1.56",
+                  "evidence": (("lane-reports/stub-take-20261014/stub-take-run1.json",
+                                "67a0698a2e1037fdf5a1c02caea67a1281a5f31c4bc8629adfbb476f07dd83f4"),
+                               ("lane-reports/stub-take-20261014/stub-take-run2.json",
+                                "8a72763f4d172ce22ecdd5779d1ffd89e60ff07abba2cf22b43a829bd6fd08bb"))}
 
 PENDING_WHY = {
     "FALLBACK_ENV": "Claude Code's refusal-fallback and model-fallback variables, names and values: confirmed at "
@@ -207,8 +218,10 @@ PENDING_WHY = {
     "TOP_FORMAT": "the column form `docker top` prints under rootless Docker: measured on the box.",
     "INSPECT_STATUS": "the inspect spellings, taken from the Docker Engine API: confirmed when the stub take reads "
                       "one inspect.",
-    "TakeSpec.resources": "the take's memory reservation, CPU and pids values: measured at the cold-start stub take "
-                          "('all recorded').",
+    "TakeSpec.resources": "the take's memory reservation, CPU and pids values: capacity POLICY, not measurements "
+                          "(the caller's spec_for passes them; the stub-take derivation's rule R-RES from athena's "
+                          "capacity and three concurrent takes; the stub take only showed that they apply and the "
+                          "box's floor, all recorded).",
 }
 # Pending values this module does not hold: the caller passes them once measured.
 CALLER_PENDING = {

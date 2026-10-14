@@ -734,11 +734,40 @@ class TestCP5Values(MutantCase):
         ])
 
 
+# `<harness> --version` as printed on athena (lane-reports/stub-take-20261014/stub-take-run2.json `versions`).
+ATHENA_VERSION_OUT = {rt.CLAUDE_CODE: "2.1.296 (Claude Code)\n", rt.CODEX: "codex-cli 0.162.1\n",
+                      rt.GEMINI: "0.64.0\n"}
+
+
+class TestVersionPatterns(MutantCase):
+    """The filled VERSION_PATTERNS read athena's measured outputs as each committed lock's version, exactly."""
+
+    def check(self):
+        out = []
+        for h, rel in ((rt.CLAUDE_CODE, "image.lock"), (rt.CODEX, "codex/image.lock"), (rt.GEMINI, "gemini/image.lock")):
+            with open(os.path.join(HERE, "box", rel), encoding="utf-8") as fh:
+                want = json.load(fh)["harness"]["version"]
+            m = re.fullmatch(pf.VERSION_PATTERNS[h], ATHENA_VERSION_OUT[h].strip())
+            if m is None or m.group(1) != want:
+                out.append(f"{h}: the pattern does not read {want} from athena's output")
+            if re.fullmatch(pf.VERSION_PATTERNS[h], ATHENA_VERSION_OUT[h].strip() + " extra"):
+                out.append(f"{h}: the pattern admits a trailing line")
+        return out
+
+    def test_patterns(self):
+        self.assert_green_then_red(self.check, [
+            ("claude-loose-tail", patched(pf, "VERSION_PATTERNS", dict(pf.VERSION_PATTERNS, **{
+                rt.CLAUDE_CODE: r"([0-9.]+).*"}))),
+            ("codex-no-prefix", patched(pf, "VERSION_PATTERNS", dict(pf.VERSION_PATTERNS, codex=r"([0-9.]+)"))),
+        ])
+
+
 class TestPending(MutantCase):
     # STUDY_PATHS and LEAK_WORDS are RULED (Javier, "CP5: all as recommended", 08:11 EDT 14 Oct 2026): TestCP5Values.
-    EXPECT = {"VERSION_PATTERNS"}
-    EXPECT_RT = {"FALLBACK_ENV", "VENDOR_BILLING_ROUTE_VARIABLES", "TOP_FORMAT", "INSPECT_STATUS",
-                 "TakeSpec.resources"}
+    # VERSION_PATTERNS, and run_take's TOP_FORMAT and INSPECT_STATUS, FILLED 14 Oct 2026 (stub-take review PASS).
+    EXPECT = set()
+    EXPECT_RT = {"FALLBACK_ENV", "VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources"}
+    # With the two filled values put back to PENDING, exactly these checks fail (the gate stays non-vacuous).
     GATED = {"image-matches-lock", "harness-version-matches-lock", "take-inspect-matches-spec",
              "sidecar-isolated", "no-container-socket"}
 
@@ -749,7 +778,12 @@ class TestPending(MutantCase):
         if set(rt.pending()) != self.EXPECT_RT:
             out.append(f"run_take.pending() = {sorted(rt.pending())}")
         w = World()
-        rec = w.evaluate()   # nothing filled: every gated check fails, every other passes
+        rec = w.evaluate()   # the committed values, nothing patched: a passing take passes every check
+        if failing(rec) or not rec["ok"]:
+            out.append(f"the filled values fail {sorted(failing(rec))}")
+        with mock.patch.object(rt, "INSPECT_STATUS", rt.PENDING), \
+                mock.patch.object(pf, "VERSION_PATTERNS", {h: pf.PENDING for h in ARMS}):
+            rec = w.evaluate()   # the spellings and the version forms PENDING: every gated check fails
         if set(failing(rec)) != self.GATED:
             out.append(f"unfilled failing set {sorted(failing(rec))}")
         if rec["ok"]:
@@ -765,10 +799,11 @@ class TestPending(MutantCase):
     def test_pending(self):
         self.assert_green_then_red(self.check, [
             ("never-pending", patched(rt, "_is_pending", lambda v: False)),
-            ("version-filled", patched(pf, "VERSION_PATTERNS", {h: r"(.*)" for h in ARMS})),
+            ("version-unfilled", patched(pf, "VERSION_PATTERNS", dict(pf.VERSION_PATTERNS, codex=pf.PENDING))),
+            ("version-loose", patched(pf, "VERSION_PATTERNS", dict(pf.VERSION_PATTERNS, **{rt.CLAUDE_CODE: r"(x)"}))),
             ("study-empty", patched(pf, "STUDY_PATHS", ())),
             ("leaks-empty", patched(pf, "LEAK_WORDS", ())),
-            ("inspect-confirmed", patched(rt, "INSPECT_STATUS", "confirmed")),
+            ("inspect-unfilled", patched(rt, "INSPECT_STATUS", rt.PENDING)),
         ])
 
     def test_no_parameter_overrides_a_pending_constant(self):
@@ -836,7 +871,11 @@ class TestExpectedInspect(MutantCase):
         w = World()
         obj = json.loads(w.raw()["take-inspect"]["stdout"])[0]
         exp = pf.expected_take_inspect(w.spec)
-        self.assertTrue(pf.inspect_mismatches(obj, exp, kind="take"))         # spellings PENDING
+        with mock.patch.object(rt, "INSPECT_STATUS", rt.PENDING):
+            self.assertTrue(pf.inspect_mismatches(obj, exp, kind="take"))     # spellings PENDING
+        # the filled spellings (14 Oct 2026), unpatched: the passing inspect matches, a wrong fact or key does not
+        self.assertEqual(pf.inspect_mismatches(obj, exp, kind="take"), [])
+        self.assertTrue(pf.inspect_mismatches(obj, dict(exp, pids_limit=exp["pids_limit"] + 1), kind="take"))
         with filled():
             self.assertEqual(pf.inspect_mismatches(obj, exp, kind="take"), [])
             self.assertTrue(pf.inspect_mismatches(obj, dict(exp, memory=pf.PENDING), kind="take"))

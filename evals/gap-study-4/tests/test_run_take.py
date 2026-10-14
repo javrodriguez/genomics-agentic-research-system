@@ -1077,10 +1077,14 @@ class TestLaunch(MutantCase):
         """W4B1-2: a PENDING inspect spelling, or a PENDING value in the sidecar's expectation, is NotReady before
         any runtime call."""
         out = []
+        # INSPECT_STATUS is filled (14 Oct 2026); its clause stays red-tested with the value put back to PENDING.
+        if rt._is_pending(rt.INSPECT_STATUS):
+            out.append("INSPECT_STATUS is PENDING: the filled value was not committed")
         L = Launch()
         fake = FakeRuntime()
         try:
-            L.launch(fake)
+            with mock.patch.object(rt, "INSPECT_STATUS", rt.PENDING):
+                L.launch(fake)
             out.append("launched with the inspect spellings PENDING")
         except rt.NotReady:
             pass
@@ -1093,8 +1097,7 @@ class TestLaunch(MutantCase):
                                      L.sidecar.rm_argv_for, dict(L.sidecar.expect, cap_add=rt.PENDING))
         fake = FakeRuntime()
         try:
-            with inspect_ok():
-                L.launch(fake)
+            L.launch(fake)   # the real, filled INSPECT_STATUS: only the sidecar clause can refuse
             out.append("launched with a PENDING sidecar expectation")
         except rt.NotReady:
             pass
@@ -1107,6 +1110,7 @@ class TestLaunch(MutantCase):
     def test_pending_refused_before_any_call(self):
         self.assert_green_then_red(self.check_pending_refused_first, [
             ("no-ready-gate", patched(rt, "_check_launch_ready", lambda sidecar: None)),
+            ("no-sidecar-clause", patched(rt, "_check_launch_ready", _inspect_clause_only)),
         ])
 
     def check_network_is_launchs(self):
@@ -1158,6 +1162,12 @@ class TestLaunch(MutantCase):
         self.assert_green_then_red(self.check_proxy_uid, [
             ("uid-string-compare", patched(rt, "_proxy_uid", lambda u: 1)),
         ])
+
+
+def _inspect_clause_only(sidecar):
+    """A mutant of run_take._check_launch_ready with its sidecar-expectation clause removed."""
+    if rt._is_pending(rt.INSPECT_STATUS):
+        raise rt.NotReady("INSPECT_STATUS is PENDING")
 
 
 ORIG_PROXY_CREATE = rt.proxy_create_argv
@@ -1283,6 +1293,10 @@ class TestLeaked(MutantCase):
 UID_MAP = ((0, 1000, 1), (1, 100000, 65536))
 TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
        "uid_namespace": "host"}
+# docker top's output on athena (docker 29.8.1, rootless), verbatim from the stub take (run 1's columns; its pids).
+ATHENA_TOP_LIVE = ("PID                 UID                 COMMAND\n1527963             10003               sleep\n"
+                   "1529070             10001               python3\n")
+ATHENA_TOP_AFTER_KILL = "PID                 UID                 COMMAND\n1527963             10003               sleep\n"
 
 
 class TestProcesses(MutantCase):
@@ -1309,10 +1323,18 @@ class TestProcesses(MutantCase):
             except rt.Refused:
                 pass
         try:
-            rt.agent_processes(FakeRuntime(), ID["take"], agent_uid=10001, uid_map=UID_MAP)
+            with mock.patch.object(rt, "TOP_FORMAT", rt.PENDING):
+                rt.agent_processes(FakeRuntime(), ID["take"], agent_uid=10001, uid_map=UID_MAP)
             out.append("top read while its form is PENDING")
         except rt.NotReady:
             pass
+        # The filled TOP_FORMAT (container namespace) on the tables athena printed in the stub take
+        # (lane-reports/stub-take-20261014/stub-take-run2.json top_live and top_after_kill): host pids, container uids.
+        for printed, want in ((ATHENA_TOP_LIVE, [1529070]), (ATHENA_TOP_AFTER_KILL, [])):
+            fake = FakeRuntime([(["docker", "top", ID["take"], "-eo", "pid,uid,comm"], ok(printed))])
+            got = rt.agent_processes(fake, ID["take"], agent_uid=10001, uid_map=UID_MAP, caller_env=CALLER)
+            if got != want:
+                out.append(f"the filled form read {got} from athena's table, not {want}")
         fake = FakeRuntime([(["docker", "exec"], ok())])
         rt.kill_agent(fake, ID["take"], agent_user=rt.AGENT_USER, caller_env=CALLER)
         if fake.calls[0][0] != ["docker", "exec", "--user", "10001:10001", ID["take"],
@@ -1390,7 +1412,14 @@ class TestCountersAndState(MutantCase):
         except rt.Refused:
             pass
         state = [{"State": {"Running": False, "ExitCode": 137, "OOMKilled": True}}]
-        with mock.patch.object(rt, "INSPECT_STATUS", "confirmed-in-test"):
+        # athena's running take after the stub turns (stub-take-run2.json take_state_after_turns, its typed fields)
+        athena = [{"State": {"Status": "running", "Running": True, "Paused": False, "Restarting": False,
+                             "OOMKilled": False, "Dead": False, "Pid": 1527963, "ExitCode": 0, "Error": ""}}]
+        fake = FakeRuntime([(["docker", "container", "inspect", ID["take"]], ok(json.dumps(athena)))])
+        if rt.container_state(fake, ID["take"], caller_env=CALLER) != {"running": True, "exit_code": 0,
+                                                                       "oom_killed": False}:
+            out.append("the filled spellings misread athena's State")
+        if not rt._is_pending(rt.INSPECT_STATUS):   # the filled spellings read a synthetic exit record too
             fake = FakeRuntime([(["docker", "container", "inspect", ID["take"]], ok(json.dumps(state)))])
             if rt.container_state(fake, ID["take"], caller_env=CALLER) != {"running": False, "exit_code": 137,
                                                                            "oom_killed": True}:
@@ -1402,7 +1431,8 @@ class TestCountersAndState(MutantCase):
             except rt.Refused:
                 pass
         try:
-            rt.container_state(FakeRuntime(), ID["take"])
+            with mock.patch.object(rt, "INSPECT_STATUS", rt.PENDING):
+                rt.container_state(FakeRuntime(), ID["take"])
             out.append("the state was read while the spellings are PENDING")
         except rt.NotReady:
             pass
@@ -1525,7 +1555,10 @@ ORIG_REMOVE = rt.remove_config_dir
 
 # ------------------------------------------------------------------------------- PENDING and neutral names
 class TestPendingAndNames(MutantCase):
-    EXPECT = {"FALLBACK_ENV", "VENDOR_BILLING_ROUTE_VARIABLES", "TOP_FORMAT", "INSPECT_STATUS", "TakeSpec.resources"}
+    # TOP_FORMAT and INSPECT_STATUS FILLED 14 Oct 2026 (stub-take review PASS); FALLBACK_ENV stays PENDING (MAJOR 1).
+    EXPECT = {"FALLBACK_ENV", "VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources"}
+    FILLED_TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
+                  "uid_namespace": "container"}
     CALLER_EXPECT = {"cgroup_dir", "uid_map", "XDG_RUNTIME_DIR in the take", "tree ownership"}
 
     def check_pending(self):
@@ -1536,13 +1569,24 @@ class TestPendingAndNames(MutantCase):
             out.append(f"CALLER_PENDING = {sorted(rt.CALLER_PENDING)}")
         if not all(rt.PENDING_WHY.get(k) for k in self.EXPECT):
             out.append("a pending value has no reason")
+        if rt.TOP_FORMAT != self.FILLED_TOP:
+            out.append(f"TOP_FORMAT is not the measured form: {rt.TOP_FORMAT!r}")
+        st = rt.INSPECT_STATUS
+        if not (isinstance(st, dict) and st.get("engine") == "29.8.1" and st.get("api_version") == "1.56"
+                and len(st.get("evidence", ())) == 2 and not rt._is_pending(st)):
+            out.append(f"INSPECT_STATUS is not the confirmed record: {st!r}")
+        if "policy" not in rt.PENDING_WHY["TakeSpec.resources"].lower():
+            out.append("the resources' reason does not say they are capacity policy")
         return out
 
     def test_pending(self):
         self.assert_green_then_red(self.check_pending, [
             ("fallback-filled", patched(rt, "FALLBACK_ENV", {})),
-            ("top-filled", patched(rt, "TOP_FORMAT", TOP)),
-            ("inspect-filled", patched(rt, "INSPECT_STATUS", "ok")),
+            ("top-unfilled", patched(rt, "TOP_FORMAT", rt.PENDING)),
+            ("top-host-namespace", patched(rt, "TOP_FORMAT", TOP)),
+            ("inspect-unfilled", patched(rt, "INSPECT_STATUS", rt.PENDING)),
+            ("resources-said-measured", patched(rt, "PENDING_WHY", dict(rt.PENDING_WHY, **{
+                "TakeSpec.resources": "measured at the cold-start stub take"}))),
             ("billing-filled", patched(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {"codex": (), "gemini": ()})),
         ])
 

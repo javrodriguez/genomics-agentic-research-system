@@ -114,7 +114,12 @@ POSTFLIGHT_CHECKS = ("no-credential-file",)
 # `<harness> --version`'s output form, per harness: a regex with one group (the version) once a walk measures it.
 VERSION_COMMANDS = {run_take.CLAUDE_CODE: ("claude", "--version"), run_take.CODEX: ("codex", "--version"),
                     run_take.GEMINI: ("gemini", "--version")}
-VERSION_PATTERNS = {run_take.CLAUDE_CODE: PENDING, run_take.CODEX: PENDING, run_take.GEMINI: PENDING}
+# FILLED 14 Oct 2026 (box lane; stub-take review PASS, rule R-VERSION): the lock's version replaced by one group in the
+# output measured on athena: claude-code through this module's own harness-version probe in a stub take; codex and
+# gemini from a one-shot container of their locked images (confirm at their first preflight; a mismatch fails closed).
+VERSION_PATTERNS = {run_take.CLAUDE_CODE: '([0-9]+(?:\\.[0-9]+){2})\\ \\(Claude\\ Code\\)',
+                    run_take.CODEX: 'codex\\-cli\\ ([0-9]+(?:\\.[0-9]+){2})',
+                    run_take.GEMINI: '([0-9]+(?:\\.[0-9]+){2})'}
 # The pre-registered study folders that must be absent from the run tree (run-tree-relative; CP5's list).
 # RULED by Javier, "CP5: all as recommended" (08:11 EDT, 14 Oct 2026), on the draft's value 1
 # (plans/gap-study-round-4/cp5-values-draft-2026-10-14.md): round 3's run_location.excluded_from_the_run_tree,

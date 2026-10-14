@@ -269,8 +269,9 @@ class MirrorIsLaunch(unittest.TestCase):
                 mock.patch.object(rt, "INSPECT_STATUS", "confirmed-in-test"), \
                 mock.patch.object(preflight, "inspect_mismatches", lambda *a, **k: []):
             a = rt.launch(FakeRuntime(), spec, sidecar=sl, proxy=proxy, record_dir=self.records(1))
-            self.assertTrue(st.use_launch())
-        with mock.patch.object(rt, "network_name", lambda: "nfixed"):
+        self.assertTrue(st.use_launch())        # INSPECT_STATUS is filled (14 Oct 2026): the road uses launch itself
+        with mock.patch.object(rt, "network_name", lambda: "nfixed"), \
+                mock.patch.object(rt, "INSPECT_STATUS", rt.PENDING):
             b = st.launch_mirror(FakeRuntime(), spec, sidecar=sl, proxy=proxy, record_dir=self.records(2))
             self.assertFalse(st.use_launch())
         steps = lambda x: [(s["step"], s["argv"]) for s in x.steps]  # noqa: E731
@@ -283,8 +284,8 @@ class MirrorIsLaunch(unittest.TestCase):
 
     def test_launch_itself_refuses_while_inspect_status_is_pending(self):
         sl, proxy, spec = self.parts()
-        self.assertTrue(rt._is_pending(rt.INSPECT_STATUS))
-        with self.assertRaises(rt.NotReady):
+        self.assertFalse(rt._is_pending(rt.INSPECT_STATUS))
+        with mock.patch.object(rt, "INSPECT_STATUS", rt.PENDING), self.assertRaises(rt.NotReady):
             rt.launch(FakeRuntime(), spec, sidecar=sl, proxy=proxy, record_dir=self.records(3))
         with mock.patch.object(preflight, "inspect_mismatches", side_effect=AssertionError("compared")):
             st.launch_mirror(FakeRuntime(), spec, sidecar=sl, proxy=proxy, record_dir=self.records(4))

@@ -1,0 +1,107 @@
+test_a_bad_source_is_refused (__main__.B1Identity.test_a_bad_source_is_refused) ... ok
+test_a_missing_fixture_or_tree_is_refused (__main__.B1Identity.test_a_missing_fixture_or_tree_is_refused) ... ok
+test_identity_for_hands_a_copy_of_its_own_walk_only (__main__.B1Identity.test_identity_for_hands_a_copy_of_its_own_walk_only) ... ok
+test_the_identity_is_the_walks_own (__main__.B1Identity.test_the_identity_is_the_walks_own) ... ok
+test_a_file_swapped_after_the_check_is_refused (__main__.B2Login.test_a_file_swapped_after_the_check_is_refused)
+W12B-R1-1: the path is checked by lstat, then something else stands there when it is opened (lstat patched ... ok
+test_another_name_is_refused_without_its_value (__main__.B2Login.test_another_name_is_refused_without_its_value) ... FAIL
+test_each_placement_rule_refuses (__main__.B2Login.test_each_placement_rule_refuses) ... ok
+test_only_the_name_is_read (__main__.B2Login.test_only_the_name_is_read) ... ok
+test_the_secrets_read_the_value_only_when_asked (__main__.B2Login.test_the_secrets_read_the_value_only_when_asked) ... ok
+test_a_bad_folder_is_refused (__main__.B3Counters.test_a_bad_folder_is_refused) ... ok
+test_a_missing_counter_is_never_zero (__main__.B3Counters.test_a_missing_counter_is_never_zero) ... ok
+test_the_take_s_own_counters (__main__.B3Counters.test_the_take_s_own_counters) ... ok
+test_an_unknown_commit_leaves_nothing (__main__.B4RunTree.test_an_unknown_commit_leaves_nothing) ... ok
+test_malformed_inputs_build_nothing (__main__.B4RunTree.test_malformed_inputs_build_nothing) ... ok
+test_remove_run_tree_says_why (__main__.B4RunTree.test_remove_run_tree_says_why) ... ok
+test_the_walk_s_own_checkout (__main__.B4RunTree.test_the_walk_s_own_checkout) ... ok
+test_a_generated_fixture_and_its_source (__main__.B5Fixture.test_a_generated_fixture_and_its_source) ... ok
+test_a_generated_fixture_off_its_pin_or_failing_is_refused (__main__.B5Fixture.test_a_generated_fixture_off_its_pin_or_failing_is_refused) ... ok
+test_a_project_fixture_off_its_branch_is_refused (__main__.B5Fixture.test_a_project_fixture_off_its_branch_is_refused) ... ok
+test_a_project_fixture_reaching_its_branch (__main__.B5Fixture.test_a_project_fixture_reaching_its_branch) ... ok
+test_a_source_the_build_did_not_make_is_refused (__main__.B5Fixture.test_a_source_the_build_did_not_make_is_refused) ... ok
+test_an_exit_that_is_not_a_whole_number_is_refused (__main__.B5Fixture.test_an_exit_that_is_not_a_whole_number_is_refused)
+Each exit must be an int on its own: 1.0 equals 1, and is still not an exit code stage 01 printed. ... ok
+test_another_variant_is_refused (__main__.B5Fixture.test_another_variant_is_refused) ... ok
+test_a_cell_the_design_lacks_or_no_version_is_refused (__main__.B6Row.test_a_cell_the_design_lacks_or_no_version_is_refused) ... ok
+test_the_design_s_row_as_a_walk_row (__main__.B6Row.test_the_design_s_row_as_a_walk_row) ... ok
+test_the_whole_cell_picks_the_row (__main__.B6Row.test_the_whole_cell_picks_the_row) ... ok
+test_an_unreadable_table_is_refused_by_name (__main__.B7Production.test_an_unreadable_table_is_refused_by_name)
+W12B-R1-3: routing.json that load_table refuses is a refusal by name (exit 2), never a traceback. ... ok
+test_main_refuses_by_name_before_anything (__main__.B7Production.test_main_refuses_by_name_before_anything) ... ok
+test_missing_names_absent_and_unknown (__main__.B7Production.test_missing_names_absent_and_unknown) ... ok
+test_production_leaves_exactly_these_missing (__main__.B7Production.test_production_leaves_exactly_these_missing) ... ok
+test_a_measured_pin_is_present (__main__.B8Present.test_a_measured_pin_is_present) ... ok
+test_a_real_rules_scanner_is_present (__main__.B8Present.test_a_real_rules_scanner_is_present) ... ok
+test_measured_constants_give_the_design_view (__main__.B8Present.test_measured_constants_give_the_design_view) ... ok
+test_a_driver_that_cannot_be_built_removes_its_run_tree (__main__.B9Cli.test_a_driver_that_cannot_be_built_removes_its_run_tree)
+Anything else the driver's construction raises goes on as itself, its run tree removed first. ... ok
+test_a_held_walk_keeps_its_run_tree (__main__.B9Cli.test_a_held_walk_keeps_its_run_tree) ... ok
+test_a_missing_builder_is_named_and_nothing_built (__main__.B9Cli.test_a_missing_builder_is_named_and_nothing_built) ... ok
+test_a_refused_fixture_removes_its_run_tree (__main__.B9Cli.test_a_refused_fixture_removes_its_run_tree) ... ok
+test_a_refused_row_or_login_builds_nothing (__main__.B9Cli.test_a_refused_row_or_login_builds_nothing) ... ok
+test_a_registered_walk_id_is_refused_at_launch (__main__.B9Cli.test_a_registered_walk_id_is_refused_at_launch) ... FAIL
+test_a_runner_that_raises_names_its_kept_run_tree (__main__.B9Cli.test_a_runner_that_raises_names_its_kept_run_tree)
+W12B-R1-3: an exception out of run_walks goes on as itself; the run tree is kept for a human and its path ... ok
+test_one_walk_end_to_end (__main__.B9Cli.test_one_walk_end_to_end) ... FAIL
+test_the_equivalent_list_matches_the_generated_mutants (__main__.G1Generated.test_the_equivalent_list_matches_the_generated_mutants) ... ok
+test_the_module_puts_sys_path_back (__main__.TestSysPath.test_the_module_puts_sys_path_back)
+Binding W6M1 (tests/test_wave6_bindings.py) for this module: it imports check_take.py through drive.py and ... ok
+
+======================================================================
+FAIL: test_another_name_is_refused_without_its_value (__main__.B2Login.test_another_name_is_refused_without_its_value)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_builders.py", line 294, in must
+    return fn(*args, **kwargs)
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/walk_builders.py", line 127, in login_file_by_name
+    name = login_name(harness)
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/walk_builders.py", line 115, in login_name
+    raise BuilderRefused(rt.CODEX_SUBSCRIPTION_NOT_READY)
+walk_builders.BuilderRefused: Codex subscription binding not ready; API-key login is not permitted
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_builders.py", line 477, in test_another_name_is_refused_without_its_value
+    self.assertEqual(self.must("B2.login", wb().login_file_by_name, str(codex), "codex"), str(codex),
+                     ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_builders.py", line 298, in must
+    self.fail(f"{clause}: {type(e).__name__}: {str(e)[:400]}")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: B2.login: BuilderRefused: Codex subscription binding not ready; API-key login is not permitted
+
+======================================================================
+FAIL: test_a_registered_walk_id_is_refused_at_launch (__main__.B9Cli.test_a_registered_walk_id_is_refused_at_launch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_builders.py", line 1091, in test_a_registered_walk_id_is_refused_at_launch
+    self.assertEqual(self.must("B9.cli", w.main, w.argv())[0], 0, "B9.cli")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : B9.cli
+
+======================================================================
+FAIL: test_one_walk_end_to_end (__main__.B9Cli.test_one_walk_end_to_end)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_builders.py", line 980, in test_one_walk_end_to_end
+    self.assertEqual(code, 0, f"B9.cli: exit {code}: {err[-800:]} {out[-800:]}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : B9.cli: exit 1:  {"results": [{"config": "the config folder is kept for a human: no clean postflight and teardown record proves the drive clean", "state": "held", "walk": "w-0001", "why": "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']"}], "run_tree": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-xd01a63o/tmp-anmnchsh/run-08aee3ee", "run_tree_kept": null, "walk": "w-0001"}
+
+
+----------------------------------------------------------------------
+Ran 43 tests in 17.448s
+
+FAILED (failures=3)
+    x: stage 01 --check exits 0 (expected 1)
+    x: the line drive.py cannot parse
+    x: exits 1 (expected 1)
+the fixture did not reach its branch, so no take is driven:
+x: exits 1 (expected 1)
+
+    x: exits 1 (expected 1)
+the project fixture was not built in the run tree (gars/projects/run-0000abcd is missing), so no take is driven
+    samplesheet-absent: stage 01 --check exits 1 (expected 1)
+test_walk_builders: 43 run, 3 failures, 0 errors, 0 skipped
+test_walk_builders outcomes: {"failures": ["B2Login.test_another_name_is_refused_without_its_value", "B9Cli.test_a_registered_walk_id_is_refused_at_launch", "B9Cli.test_one_walk_end_to_end"], "errors": [], "skipped": []}

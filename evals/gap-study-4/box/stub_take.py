@@ -427,7 +427,9 @@ def run_stub_take(a) -> dict:
                                                     env=env, timeout=60).stdout.strip(),
                       "meminfo": _host_read("/proc/meminfo"), "nproc": os.cpu_count(),
                       "pid_max": _host_read("/proc/sys/kernel/pid_max"),
-                      "max_user_watches": _host_read("/proc/sys/fs/inotify/max_user_watches")}
+                      "max_user_watches": _host_read("/proc/sys/fs/inotify/max_user_watches"),
+                      # review finding 3: the user slice's pids.max, read raw (the resources policy divides it)
+                      "user_slice_pids_max": _host_read(f"/sys/fs/cgroup/user.slice/user-{os.getuid()}.slice/pids.max")}
     # squid's package user, from the locked egress image (proxy_conf.USER is PENDING)
     g = runtime.run(["docker", "run", "--rm", "--pull=never", "--network", "none", "--cap-drop", "ALL",
                      "--security-opt", "no-new-privileges", "--entrypoint", "getent", images["egress"], "passwd",

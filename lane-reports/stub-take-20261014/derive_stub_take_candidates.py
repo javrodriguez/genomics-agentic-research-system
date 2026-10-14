@@ -121,7 +121,9 @@ def resources_candidate():
     d = docs[-1]
     mem_kb = int(re.search(r"MemTotal:\s+([0-9]+) kB", d["runtime"]["meminfo"]).group(1))
     nproc = int(d["runtime"]["nproc"])
-    slice_pids = 78037   # athena: /sys/fs/cgroup/user.slice/user-1000.slice/pids.max, read 14 Oct 07:55 EDT (lane report)
+    # review finding 3: athena's user slice pids.max, read raw (user-slice-pids-max-20261014.txt, 08:27 EDT 14 Oct)
+    raw = (OUT / "user-slice-pids-max-20261014.txt").read_text().splitlines()
+    slice_pids = int(raw[raw.index("== /sys/fs/cgroup/user.slice/user-1000.slice/pids.max") + 1])
     C, gib = 3, 1 << 30
     R = math.floor((mem_kb * 1024 - 8 * gib) / (3 * C) / gib) * gib
     cpus = (nproc - 8) // C
