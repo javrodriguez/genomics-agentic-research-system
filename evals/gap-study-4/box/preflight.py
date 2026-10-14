@@ -1032,7 +1032,7 @@ LEASE_CREDENTIAL_MAX_BYTES = 1024 * 1024
 
 def _read_capped(path: str, cap: int):
     """The bytes of a regular file opened without following a link, or None past `cap`. Never logged or returned in a
-    message: callers compare them only."""
+    message: callers compare them only. Callers open only what lstat showed a regular file (a FIFO would block)."""
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     with os.fdopen(fd, "rb") as fh:
         data = fh.read(cap + 1)
@@ -1046,7 +1046,8 @@ def lease_credential_problems(config_dir: str, harness: str, listing: list) -> t
     exactly one link, mode 600, owned by the reading user (the host user, after ownership.restore). Refused, each by
     the file's path and the rule, never its contents: a credential-shaped name anywhere else (a second auth file, a
     renamed auth file); a file anywhere else whose bytes equal the registered file's (a renamed copy, whatever its
-    name); a symbolic link to the registered file; the registered path as a link, a non-regular file, with another
+    name); a symbolic link to the registered file or to a folder above it; a file the host cannot read (refused by
+    path, never raised); the registered path as a link, a non-regular file, with another
     hard link, another mode or another owner. Absent is refused too (glitch-06, 14 Oct 2026): "exactly one registered
     credential file" means exactly one."""
     reg = LEASE_CREDENTIAL[harness]
@@ -1054,8 +1055,10 @@ def lease_credential_problems(config_dir: str, harness: str, listing: list) -> t
     problems, admitted, reg_bytes = [], [], None
     if os.path.lexists(reg_path):
         st = os.lstat(reg_path)
-        if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+        if stat.S_ISLNK(st.st_mode):
             problems.append(f"{reg}: the registered credential must be a regular file, never a link")
+        elif not stat.S_ISREG(st.st_mode):
+            problems.append(f"{reg}: the registered credential must be a regular file")
         elif st.st_nlink != 1:
             problems.append(f"{reg}: the registered credential must have exactly one link")
         elif stat.S_IMODE(st.st_mode) != 0o600:
@@ -1063,12 +1066,16 @@ def lease_credential_problems(config_dir: str, harness: str, listing: list) -> t
         elif st.st_uid != os.getuid():
             problems.append(f"{reg}: the registered credential must be owned by the host user")
         else:
-            reg_bytes = _read_capped(reg_path, LEASE_CREDENTIAL_MAX_BYTES)
-            if reg_bytes is None:
-                problems.append(f"{reg}: the registered credential is larger than "
-                                f"{LEASE_CREDENTIAL_MAX_BYTES} bytes")
+            try:
+                reg_bytes = _read_capped(reg_path, LEASE_CREDENTIAL_MAX_BYTES)
+            except OSError:
+                problems.append(f"{reg}: the registered credential is unreadable")
             else:
-                admitted.append(reg)
+                if reg_bytes is None:
+                    problems.append(f"{reg}: the registered credential is larger than "
+                                    f"{LEASE_CREDENTIAL_MAX_BYTES} bytes")
+                else:
+                    admitted.append(reg)
     else:
         problems.append(f"{reg}: absent; the lease home must hold exactly one registered credential file")
     reg_real = os.path.realpath(reg_path)
@@ -1076,18 +1083,30 @@ def lease_credential_problems(config_dir: str, harness: str, listing: list) -> t
         if rel == reg:
             continue
         path = os.path.join(config_dir, rel)
-        st = os.lstat(path)
         name = os.path.basename(rel)
+        try:
+            st = os.lstat(path)
+        except OSError:
+            problems.append(f"{rel}: unreadable after the take; the lease home must be readable whole")
+            continue
         if stat.S_ISLNK(st.st_mode):
-            if os.path.realpath(path) == reg_real or name in _credential_names() or CREDENTIAL_LIKE.search(name):
-                problems.append(f"{rel}: a link to the registered credential or with a credential's name")
+            real = os.path.realpath(path)
+            if os.path.commonpath([real, reg_real]) == real \
+                    or name in _credential_names() or CREDENTIAL_LIKE.search(name):
+                problems.append(f"{rel}: a link to the registered credential, to a folder above it, "
+                                f"or with a credential's name")
             continue
         if name in _credential_names() or CREDENTIAL_LIKE.search(name):
             problems.append(f"{rel}: a credential-shaped file outside the registered path {reg}")
             continue
-        if reg_bytes is not None and stat.S_ISREG(st.st_mode) and st.st_size == len(reg_bytes) \
-                and _read_capped(path, LEASE_CREDENTIAL_MAX_BYTES) == reg_bytes:
-            problems.append(f"{rel}: a copy of the registered credential under another name")
+        if reg_bytes is not None and stat.S_ISREG(st.st_mode) and st.st_size == len(reg_bytes):
+            try:
+                same = _read_capped(path, LEASE_CREDENTIAL_MAX_BYTES) == reg_bytes
+            except OSError:
+                problems.append(f"{rel}: unreadable after the take; the lease home must be readable whole")
+                continue
+            if same:
+                problems.append(f"{rel}: a copy of the registered credential under another name")
     return problems, admitted
 
 

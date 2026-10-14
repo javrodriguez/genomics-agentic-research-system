@@ -776,6 +776,37 @@ class TestLeasePostflight(MutantCase):
         d = self.home()
         os.link(os.path.join(d, "auth.json"), os.path.join(d, "sessions", "hardlink"))
         self.refused(out, "a second hard link", d, "auth.json", "exactly one link")
+        # review of 2fd8215a (14 Oct): the size and non-regular branches, a credential-named link to an innocuous
+        # target, a link to a folder above auth.json, and an unreadable copy candidate (refused, never raised)
+        d = self.home(auth=False)
+        fd = os.open(os.path.join(d, "auth.json"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, b"x" * (pf.LEASE_CREDENTIAL_MAX_BYTES + 1))
+        os.close(fd)
+        self.refused(out, "an oversize registered file", d, "auth.json", "larger than")
+        d = self.home(auth=False)
+        os.mkfifo(os.path.join(d, "auth.json"), 0o600)
+        self.refused(out, "a FIFO at the registered path", d, "auth.json", "must be a regular file")
+        d = self.home(auth=False)
+        os.mkdir(os.path.join(d, "auth.json"), 0o700)
+        self.refused(out, "a folder at the registered path", d, "auth.json", "must be a regular file")
+        d = self.home()
+        os.symlink(os.path.join(d, "config.toml"), os.path.join(d, "sessions", "token-link"))
+        self.refused(out, "a credential-named link to an innocuous file", d, "sessions/token-link", "a link")
+        d = self.home()
+        os.symlink(d, os.path.join(d, "sessions", "up"))
+        self.refused(out, "a link to the folder holding the credential", d, "sessions/up", "a link")
+        d = self.home()
+        cand = os.path.join(d, "sessions", "notes.txt")
+        with open(cand, "wb") as fh:
+            fh.write(b"y" * len(self.FAKE_AUTH))
+        os.chmod(cand, 0)
+        try:
+            try:
+                self.refused(out, "an unreadable same-size file", d, "sessions/notes.txt", "unreadable")
+            except OSError as e:
+                out.append(f"an unreadable same-size file raised {type(e).__name__} instead of refusing")
+        finally:
+            os.chmod(cand, 0o600)
         # other harnesses keep the old rule: no credential file at all
         d = self.home()
         if pf.postflight(d, rt.CLAUDE_CODE)["ok"] or pf.postflight(d, rt.GEMINI)["ok"]:
