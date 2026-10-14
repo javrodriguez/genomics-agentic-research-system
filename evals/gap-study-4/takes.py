@@ -135,6 +135,32 @@ def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, root=HE
     return record
 
 
+def commit_night_ruling(*, slot, attempt: int, by: str, root=HERE, repo=REPO) -> dict:
+    """The human door for THE NIGHTLY STOP (batch.py): append the caller's closed night ruling to rulings.json, one
+    commit, with commit_ruling's discipline. It names the harness-error that brought the night's count to the
+    registered number (batch.Batch refuses a restart and names it); by is required and never read from git, an
+    environment variable or a default. The record is checked against the same committed history CP2 reads, through
+    batch.Batch.history_problems, before anything is written; a failed commit leaves the file for a human."""
+    root, repo = Path(root).resolve(), Path(repo).resolve()
+    record = {"kind": batch.NIGHT_RULING, "slot": slot, "attempt": attempt, "by": by}
+    history = read_history(root=root, repo=repo)
+    bad = batch.Batch.history_problems(history + [record])
+    if bad:
+        raise ValueError("; ".join(bad))
+    if _git_at(repo, "status", "--porcelain"):
+        raise ValueError("commit the existing changes before a ruling; one ruling per commit")
+    require_commit_identity(repo)
+    path = root / HISTORY_FILES[1]
+    existing = json.loads(path.read_text()) if path.exists() else []
+    path.write_text(json.dumps(existing + [record], indent=2) + "\n", encoding="utf-8")
+    _git_at(repo, "add", "--", path.relative_to(repo).as_posix())
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as msg:
+        msg.write("Record a human night ruling\n")
+        msg.flush()
+        _git_at(repo, "commit", "-F", msg.name)
+    return record
+
+
 def agent_problems(row: dict) -> list[str]:
     return batch.agent_problems(row)
 
@@ -164,6 +190,8 @@ def registration_outcomes(history: list) -> list:
     events = collections.defaultdict(set)
     spent_cell, spent_slot = collections.Counter(), collections.Counter()
     for entry in history:
+        if batch.is_night_ruling(entry):      # a run-level ruling: no take's fate (THE NIGHTLY STOP)
+            continue
         key = (entry["slot"], entry["attempt"])
         if batch.is_ruling(entry):
             taken = effective[key]
@@ -226,7 +254,7 @@ def guard_registration(row: dict, attempt: int, rows: list, history: list, *, li
     registered = [(r["slot"], r["attempt"]) for r in rows]
     if len(registered) != len(set(registered)):
         raise ValueError("a registration occurs twice")
-    done = {(o["slot"], o["attempt"]): o for o in history if not batch.is_ruling(o)}
+    done = {(o["slot"], o["attempt"]): o for o in history if batch.is_outcome(o)}
     waiting = [k for k in registered if k not in done]
     if outside_live_block(waiting, live):
         raise ValueError("an earlier row is registered with no committed outcome; human reconciliation required")
@@ -262,7 +290,7 @@ class RegistrationGuard:
         self.live = set()
 
     def check(self, row: dict, attempt: int, rows: list, history: list) -> None:
-        done = {(o["slot"], o["attempt"]) for o in history if not batch.is_ruling(o)}
+        done = {(o["slot"], o["attempt"]) for o in history if batch.is_outcome(o)}
         if self.live <= done:
             self.live.clear()
         elif self.live & done:

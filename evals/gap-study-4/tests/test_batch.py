@@ -1380,9 +1380,18 @@ class TestCaps(unittest.TestCase):
     def test_harness_error_two_reruns_per_half_cell(self):
         plan = {(s, 1): "watcher-overflow" for s in (1, 2, 3)}
         b, out, *_ = run(3, plan=plan)
-        reruns = [o for o in out if o["attempt"] == 2]
+        # Live harness step 4: three harness-errors in one night now stop the run for a ruling (the registered
+        # nightly stop), so the two granted re-runs are read from the committed fates, not from their drives.
+        reruns = [o for o in out if o["attempt"] == 1 and o["rerun"]]
         self.assertEqual(sorted(o["slot"] for o in reruns), [1, 2])
         self.assertTrue(next(o for o in out if o["slot"] == 3)["beyond_cap"])
+        # Step-4 review nit 4: after a committed night ruling the granted re-runs drive, and the cap still holds.
+        ruling = {"kind": batch.NIGHT_RULING, "slot": b.night_reaching[0], "attempt": b.night_reaching[1],
+                  "by": "test-ruler"}
+        first_repo = _[2]
+        b2, out2, *_ = restart(first_repo, rows(2), rulings=[ruling])
+        self.assertEqual(sorted((o["slot"], o["attempt"]) for o in out2), [(1, 2), (2, 2)])
+        self.assertEqual(history_problems(first_repo.history() + out2), [])
 
     def test_rehearsal_cap_three_per_half_cell_then_the_half_cell_closes(self):
         """glitch-f3's cap ruling: three rehearsals in a half-cell, then nothing more is registered for it; another

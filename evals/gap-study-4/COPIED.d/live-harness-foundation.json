@@ -1,0 +1,110 @@
+{
+  "lane": "live-harness-foundation",
+  "files": [
+    {
+      "path": "vendor_record_binding.py",
+      "status": "new",
+      "reason": "Closed host-authored interaction envelope with native bytes, identity, ledger and operator binding; no production admission."
+    },
+    {
+      "path": "tests/test_vendor_record_binding.py",
+      "status": "new",
+      "reason": "Synthetic foundation checks for all three adapter classes and factory selection, native-stream binding and refusal mutations; no live evidence."
+    },
+    {
+      "path": "checks.d/live-harness-foundation.txt",
+      "status": "new",
+      "reason": "Targeted synthetic foundation battery entry."
+    },
+    {
+      "path": "COPIED.d/live-harness-foundation.json",
+      "status": "new",
+      "reason": "This foundation slice copy record; existing owned-file departures recorded in their owning fragments."
+    },
+    {
+      "path": "vendor_provenance.py",
+      "status": "new",
+      "reason": "Typed actual-submission, native-session, observed-version and pinned-file source validation; production session reader registry remains empty pending reviewed native schemas."
+    },
+    {
+      "path": "tests/test_vendor_provenance.py",
+      "status": "new",
+      "reason": "Synthetic source-join checks; independently decoded session source mandatory, wrong invocation/hash/pin/identity rejected; no live readiness claim."
+    },
+    {
+      "path": "gemini_session_replay.py",
+      "status": "new",
+      "reason": "Unregistered source-derived Gemini native JSONL replay; preserves upsert order and patches, refuses unsupported operations; no semantic projection or production admission."
+    },
+    {
+      "path": "tests/test_gemini_session_replay.py",
+      "status": "new",
+      "reason": "Synthetic native replay witnesses for replacement, patches, immutable earlier snapshots and fail-closed unsupported or malformed records."
+    },
+    {
+      "path": "gemini_projection.py",
+      "status": "new",
+      "reason": "Unregistered source-derived Gemini native-session projection: per-interaction facts with per-message recorded-text segments in the recorder's normal form (recorder_normalize, cited source) and ordered tool facts; model-facing response parts never output; an interaction ending on tool calls, unsupported or contradictory shapes refuse, each with its own reason; no production admission. Review fold of 14 Oct 2026 (glitch-06 rulings 1, 3-7). Source-read fold (14 Oct 2026, the pinned bundle read on athena): tool-response turns continue their interaction; history-patched parallel results admitted by sibling id and name; displayContent admitted only when equal to the sent text."
+    },
+    {
+      "path": "tests/test_gemini_projection.py",
+      "status": "new",
+      "reason": "Synthetic projection witnesses: recorder normalization (comment, zero-width, whitespace, JavaScript trim set), per-message segments, display versus model-facing results, absent optional model, every refusal asserted by its reason (content functionCall id, name, args separately), incomplete interaction, kept false-refusal risks. Source-read fold: tool round trips, parallel results and displayContent, each refusal asserted by its reason."
+    },
+    {
+      "path": "tests/test_vendor_record_kinds.py",
+      "status": "new",
+      "reason": "Exact public-config.json and turn-N.jsonl.launch.json classification as unmaskable launch records; nearby and nested names still refuse."
+    },
+    {
+      "path": "tests/test_executed_turn_refusal.py",
+      "status": "new",
+      "reason": "Live harness 3a: an executed turn whose record the adapter refuses keeps its exec, is accounted for by the driver (ledger mandatory, unknown output stays unknown) and is refused for a human, never a rehearsal or re-run; a walk launch journal requires the driver ledger."
+    },
+    {
+      "path": "tests/test_identity_evidence.py",
+      "status": "new",
+      "reason": "Live harness 3b: typed identity evidence beside init is closed and typed, carried only when stated, and routed so a matching typed identity is no mismatch while every unobserved, unaccepted or differing field still is; Gemini states its sources."
+    },
+    {
+      "path": "native_snapshot.py",
+      "status": "new",
+      "reason": "Live harness 3c: locates Gemini CLI 0.64.0's native session file by directory names only, where the pinned source writes it, and retains each turn's snapshot under session/ with a {file, sha256} reference, never overwriting or following a link."
+    },
+    {
+      "path": "tests/test_native_snapshot.py",
+      "status": "new",
+      "reason": "Live harness 3c: the locator's confinement, the copy's reference and no-overwrite, the driver's retention before each next resume and its stop on failure, an unchanged plain adapter, and the join through session_history_facts."
+    },
+    {
+      "path": "tests/test_identity_mode_evidence.py",
+      "status": "new",
+      "reason": "3b review fold: Gemini's mode comes only from the actual-submission journal's argv (absent, changed, doubled, launch-disagreeing or missing journal never read as the pin); identity accepted per harness, refused on claude-code and codex records."
+    },
+    {
+      "path": "tests/test_nightly_stop.py",
+      "status": "new",
+      "reason": "Live harness step 4: the registered nightly stop on test_batch's fakes: the count, the block's last carries the stop, pauses outside, failed-after-drive counted apart, a restart that keeps counting and needs its ruling."
+    },
+    {
+      "path": "gemini_stream_join.py",
+      "status": "new",
+      "reason": "Live harness slice 5: unregistered join of one Gemini stream-json call to its projected native interaction: per-response recorder normalization against recorded-text segments, tool facts by id, name, order and status, completeness only from the terminal result, errors kept, every disagreement refused. Review nit 2: tool arguments compared as exact JSON."
+    },
+    {
+      "path": "tests/test_gemini_stream_join.py",
+      "status": "new",
+      "reason": "Live harness slice 5: synthetic stream and native pairs: a matching join, no terminal result, failed results and error events kept, each disagreement refused for its reason, absent sent or init unknown, unregistered."
+    },
+    {
+      "path": "tests/test_codex_executed_refusal.py",
+      "status": "new",
+      "reason": "Live harness slice 6: a Codex turn refused after its exec keeps the exec and is typed ExecutedTurnRefused; a pre-exec refusal keeps nothing; no codex identity table."
+    },
+    {
+      "path": "tests/test_night_ruling_history.py",
+      "status": "new",
+      "reason": "Night-ruling fold: a night ruling through the real git history reader and its door, and every outcome reader skipping it."
+    }
+  ]
+}

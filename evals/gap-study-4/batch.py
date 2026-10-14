@@ -210,6 +210,23 @@ then does it register and launch. The contract CP2's window keeps, and this loop
     - it raises on failure, and the loop then stops as `failed` (W1B2-5): nothing of the next
       block is registered, launched or committed, and `stopped` says why.
 
+THE NIGHTLY STOP (live harness step 4, 14 Oct 2026; plans/gap-study-round-4.md line 904: "Routing follows the
+pre-registered table, and three `harness-error`s in one night stop the run for a ruling."; line 560: "Three in one
+night stop the run for a ruling."; line 196: a pause is "outside the nightly stop rule"). The loop counts the
+`harness-error` outcomes it commits; when the count reaches NIGHTLY_HARNESS_ERRORS, the block's last committed
+outcome carries `stop` = NIGHTLY_STOP + why, `stopped` says so, and nothing further is registered. Pauses are never
+counted. A take `failed` after its drive started (the executed-refusal road, named departure D-3a-1) is no
+registered harness-error: it is counted apart in `night_counts` and never consumed by the rule (it stops the loop on
+its own). Named departure D-4-1 (lane-reports/nightly-stop-rule-2026-10-14.md): no registered text defines "night"
+and no committed outcome carries a time, so the window is every harness-error committed since the last committed
+NIGHT RULING (or since the history began), rebuilt on a restart, which stops no later than any reading of one night.
+A restart refuses whenever that count is already at the registered number, wherever (or whether) the stop text was
+committed: the text is a reader's marker, never what the replay trusts (step-4 review, finding 1). The stop is
+resolved only by a committed, closed night ruling (NIGHT_RULING_KEYS: kind NIGHT_RULING, the slot and attempt of the
+harness-error that brought the window to the count, and `by`, checked as THE RULINGS' `by` is); it must name exactly
+that take, while the count stands at the number, and it starts the next window. The loop reads it and never writes
+one. (D-4-2, a ruling named by a restart argument, is superseded: lane-reports/nightly-stop-rule-2026-10-14.md.)
+
 No model is called anywhere in this module. Standard library only.
 """
 
@@ -247,6 +264,18 @@ RULING_KEYS = ("kind", "slot", "attempt", "ruling", "route", "by")
 # AgentAdapter.version()}, required beside its model and never defaulted.
 AGENT_KEYS = ("harness", "version")
 
+# THE NIGHTLY STOP: the registered count, and the prefix its committed stop carries (a restart finds it by it).
+NIGHTLY_HARNESS_ERRORS = 3
+NIGHTLY_STOP = "nightly stop rule"
+# The committed run-level ruling that resolves a nightly stop (step-4 review fold; supersedes D-4-2).
+NIGHT_RULING = "nightly-stop-ruling"
+NIGHT_RULING_KEYS = ("kind", "slot", "attempt", "by")
+
+
+def is_night_ruling(entry) -> bool:
+    """A history entry that is a night ruling (THE NIGHTLY STOP), never an outcome or a take's ruling."""
+    return isinstance(entry, dict) and entry.get("kind") == NIGHT_RULING
+
 # Routes that re-run a slot, whose spent re-runs a restart must count again.
 RERUN_ROUTES = (labels4.REHEARSAL, labels4.HARNESS_ERROR, labels4.PAUSE)
 # Routes counted per half-cell, round 3's unit, whose cap closes the half-cell (glitch-f3's ruling, THE CELL CAPS).
@@ -256,6 +285,12 @@ CELL_CAPPED_ROUTES = (labels4.REHEARSAL, labels4.PAUSE)
 def is_ruling(entry) -> bool:
     """A history entry that is a ruling (THE RULINGS), never an outcome: told by its kind alone."""
     return isinstance(entry, dict) and entry.get("kind") == labels4.RULING
+
+
+def is_outcome(entry) -> bool:
+    """The one shared predicate for "a committed outcome": neither a take's ruling nor a night ruling (THE NIGHTLY
+    STOP). Every reader that tells outcomes from rulings uses it, so a run-level record is never read as an outcome."""
+    return isinstance(entry, dict) and not is_ruling(entry) and not is_night_ruling(entry)
 
 
 def needs_ruling(outcome: dict) -> bool:
@@ -275,6 +310,8 @@ def cell_event(outcome: dict) -> tuple:
 
 def effective_route(entry: dict):
     """What a history entry counts as for the usage window: an outcome's state, or a route ruling's route."""
+    if is_night_ruling(entry):
+        return None                                   # a run-level ruling routes nothing
     if is_ruling(entry):
         return entry["route"] if entry["ruling"] == labels4.RULE_ROUTE else None
     return entry["state"]
@@ -284,7 +321,7 @@ def restart_waits(history: list) -> bool:
     """Lane w1b decision 11, bound by W1B3-3: a restart waits for the usage window when a pause, committed or ruled, is
     among the last BLOCK committed outcomes (a block's worth: a pause first in it or in its middle counts) or the
     rulings committed among or after them."""
-    at = [i for i, e in enumerate(history) if not is_ruling(e)][-BLOCK:]
+    at = [i for i, e in enumerate(history) if is_outcome(e)][-BLOCK:]
     tail = history[at[0]:] if at else history
     return any(effective_route(e) == labels4.PAUSE for e in tail)
 
@@ -568,6 +605,12 @@ class Batch:
         self.ruled: dict = {}                # (slot, attempt) -> (the ruling, its fate), from the history (W1B3-1)
         self.unruled: dict = {}              # slot -> (attempt, why): its last take awaits a ruling (W1B3-1)
         self.owed: dict = {}                 # slot -> (attempt, why): the history owes it this drive (W1B3-6)
+        # THE NIGHTLY STOP: harness-errors counted since the last nightly stop (D-4-1), and the separate, reported
+        # count of takes failed after their drive started (D-3a-1), which the rule never consumes.
+        self.night_counts = {"harness_error": 0, "failed_after_drive_started": 0}
+        self.nightly_stop_pending = False
+        self.night_reaching = None           # (slot, attempt) of the harness-error that brought the window to the count
+        self._block_last = None
         read = getattr(repo, "history", None)
         if history is None:
             if not callable(read):
@@ -580,7 +623,12 @@ class Batch:
             diff = history_difference(history, read())
             if diff is not None:
                 raise BatchConfigError(f"the history argument differs from repo.history(): {diff}")
-        self._replay(history)
+        self._replay_night(history)
+        self._replay([e for e in history if not is_night_ruling(e)])
+        if self.nightly_stop_pending:
+            raise BatchConfigError(f"{NIGHTLY_STOP}: {self.night_counts['harness_error']} harness-errors are committed "
+                                   f"since the last night ruling; the run waits for a committed night ruling naming "
+                                   f"(slot, attempt) {self.night_reaching!r}")
 
     # ---------------------------------------------------------------------------- the history
     @classmethod
@@ -594,6 +642,8 @@ class Batch:
         for i, o in enumerate(history):
             if is_ruling(o):
                 p += cls._ruling_problems(i, o, seen, ruled, pending)
+                continue
+            if is_night_ruling(o):              # THE NIGHTLY STOP: checked whole by _night_walk below
                 continue
             if not isinstance(o, dict) or set(o) != set(OUTCOME_KEYS):
                 p.append(f"history[{i}] must hold exactly the committed outcome keys")
@@ -638,12 +688,14 @@ class Batch:
             if o["state"] in labels4.TERMINAL_STATES and isinstance(o["drive_started"], bool) and needs_ruling(o):
                 pending[o["slot"]] = (o["attempt"], o["state"])
         for i, o in enumerate(history):   # an attempt after the slot's final one
-            if isinstance(o, dict) and not is_ruling(o) and o.get("final") is True and isinstance(o.get("attempt"), int):
+            if is_outcome(o) and o.get("final") is True and isinstance(o.get("attempt"), int):
                 final_at[o.get("slot")] = min(final_at.get(o.get("slot"), o["attempt"]), o["attempt"])
         for i, o in enumerate(history):
-            if (isinstance(o, dict) and not is_ruling(o) and o.get("slot") in final_at
+            if (is_outcome(o) and o.get("slot") in final_at
                     and isinstance(o.get("attempt"), int) and o["attempt"] > final_at[o["slot"]]):
                 p.append(f"history[{i}]: slot {o['slot']} attempt {o['attempt']} comes after its final attempt")
+        if not p:
+            p += cls._night_walk(history)[1]
         return p
 
     @staticmethod
@@ -845,6 +897,7 @@ class Batch:
                     return self.outcomes
                 self.paused = False
             block = [queue.popleft() for _ in range(min(self.block, len(queue)))]
+            self._block_last = (block[-1][0]["slot"], block[-1][1])     # THE NIGHTLY STOP: carried by the last
             if self._money_gate(block):                     # W7C: before the block is registered
                 return self.outcomes
             if not self._register(block):                    # serial: one commit each
@@ -944,20 +997,85 @@ class Batch:
             if self.stopped is None:
                 self.stopped = {"slot": row["slot"], "attempt": attempt, "state": outcome["state"],
                                 "reason": outcome["stop"]}
+        self._nightly(row, attempt, outcome)
         self._seal(outcome)
         try:
             self.repo.commit_records(row, attempt, outcome)
         except Exception as e:  # noqa: BLE001
             closed = self.closed_cells.get(row["half_cell"])   # a cell closes only by a committed record
+            night = outcome["stop"] if (outcome["stop"] or "").startswith(NIGHTLY_STOP) else None
             outcome = dict(outcome, state=labels4.FAILED, reason=f"commit failed: {e}",
-                           final=False, rerun=False, stop=f"commit failed: {e}", window_event=None,
+                           final=False, rerun=False,
+                           stop=(f"{night}; commit failed: {e}" if night else f"commit failed: {e}"), window_event=None,
                            cell_state=labels4.INCOMPLETE_MECHANICAL if closed else None, cell_reason=closed)
             self._seal(outcome)
             self._stop(row, attempt, outcome)
         else:
             self._note_committed(outcome)
+            self._count_night(outcome)
         self.outcomes.append(outcome)
         return outcome
+
+    def _count_night(self, o) -> None:
+        """THE NIGHTLY STOP: one committed outcome counted (a harness-error; or, apart, a take failed after its drive
+        started, which the rule never consumes). The harness-error that brings the window to the count is recorded."""
+        if o["state"] == labels4.HARNESS_ERROR:
+            self.night_counts["harness_error"] += 1
+            if self.night_counts["harness_error"] == NIGHTLY_HARNESS_ERRORS:
+                self.night_reaching = (o["slot"], o["attempt"])
+        elif o["state"] == labels4.FAILED and o["drive_started"] is True:
+            self.night_counts["failed_after_drive_started"] += 1
+
+    @classmethod
+    def _night_walk(cls, history):
+        """THE NIGHTLY STOP over a history in commit order: (the counting state, problems). Each committed night ruling
+        must be closed (exactly NIGHT_RULING_KEYS, `by` as THE RULINGS' `by`), come while the window's count is at the
+        registered number, and name the harness-error that brought it there; it closes that window. The counting is
+        _count_night's, on a bare state object, so one counter serves the loop and every reader."""
+        w = object.__new__(cls)
+        w.night_counts = {"harness_error": 0, "failed_after_drive_started": 0}
+        w.night_reaching = None
+        p = []
+        for i, e in enumerate(history if isinstance(history, list) else []):
+            if is_night_ruling(e):
+                if set(e) != set(NIGHT_RULING_KEYS):
+                    p.append(f"history[{i}]: a night ruling must hold exactly {list(NIGHT_RULING_KEYS)}")
+                elif not (isinstance(e["by"], str) and e["by"].strip()):
+                    p.append(f"history[{i}]: a night ruling names who made it (`by`), got {e['by']!r}")
+                elif w.night_counts["harness_error"] < NIGHTLY_HARNESS_ERRORS:
+                    p.append(f"history[{i}]: a night ruling with no {NIGHTLY_STOP} pending "
+                             f"({w.night_counts['harness_error']} harness-errors in its window)")
+                elif (e["slot"], e["attempt"]) != w.night_reaching:
+                    p.append(f"history[{i}]: a night ruling names slot {e['slot']!r} attempt {e['attempt']!r}, not the "
+                             f"harness-error that reached the count, {w.night_reaching!r}")
+                else:
+                    w.night_counts["harness_error"] = 0
+                    w.night_reaching = None
+            elif is_outcome(e) and "state" in e:
+                w._count_night(e)
+        return w, p
+
+    def _replay_night(self, history) -> None:
+        """THE NIGHTLY STOP on a restart: the walk's state, or the history refused. The stop is pending when the count
+        is at the number at the end, wherever the stop text was committed, or whether it was."""
+        w, p = self._night_walk(history)
+        if p:
+            raise BatchConfigError("the repo's history cannot be trusted: " + "; ".join(p))
+        self.night_counts, self.night_reaching = w.night_counts, w.night_reaching
+        self.nightly_stop_pending = self.night_counts["harness_error"] >= NIGHTLY_HARNESS_ERRORS
+
+    def _nightly(self, row, attempt, outcome) -> None:
+        """THE NIGHTLY STOP: when the harness-errors of this night (D-4-1), this take's included, reach the registered
+        count, the block's last outcome carries the stop and the loop stops after the block, for a ruling."""
+        reached = self.night_counts["harness_error"] + (outcome["state"] == labels4.HARNESS_ERROR)
+        if reached >= NIGHTLY_HARNESS_ERRORS:
+            self._night_reached = True
+        if getattr(self, "_night_reached", False) and self._block_last == (row["slot"], attempt):
+            why = (f"{NIGHTLY_STOP}: {reached} harness-errors committed this night (D-4-1), the registered count is "
+                   f"{NIGHTLY_HARNESS_ERRORS}; the run stops for a ruling")
+            outcome["stop"] = why + (f"; {outcome['stop']}" if outcome["stop"] else "")
+            if self.stopped is None:
+                self.stopped = {"slot": row["slot"], "attempt": attempt, "state": outcome["state"], "reason": why}
 
     @staticmethod
     def _seal(outcome) -> None:

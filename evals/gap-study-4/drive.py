@@ -1588,7 +1588,7 @@ class TakeRepo:
         and every id of leaked_containers (ruling S6-gap4-2: a take's surviving sidecar or proxy too)."""
         ids = []
         for entry in self.history():
-            if takes_mod.batch.is_ruling(entry):
+            if not takes_mod.batch.is_outcome(entry):     # a take's or a night ruling
                 continue
             missing = [k for k in ("leaked_container", "leaked_containers") if k not in entry]
             if missing:          # W6H-R2-1 (S6b): a typed refusal, never a bare KeyError
@@ -1805,6 +1805,8 @@ class TakeRepo:
 # =====================================================================================================================
 
 import threading  # noqa: E402
+import types  # noqa: E402  (live harness 3a: the executed-refused turn's end for _quiesce)
+import native_snapshot as _native_snapshot  # noqa: E402  (live harness 3c)
 
 import agent_adapter as _adapter  # noqa: E402
 import harness_bookkeeping as _hb  # noqa: E402
@@ -1819,8 +1821,12 @@ TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.lo
                    "preflight.json": "preflight", "refusal.json": "preflight", "transcript.jsonl": "transcript",
                    "postflight.json": "preflight",    # S6b (e)
                    "operator-check.json": "launch",   # S6b C11
-                   "driver-ledger.json": "ledger", "environment.json": "launch", "scrub.json": "launch"}   # S6c C6-C8
+                   "driver-ledger.json": "ledger", "environment.json": "launch", "scrub.json": "launch",   # S6c C6-C8
+                   "public-config.json": "launch"}   # live harness 13 Oct: box take_config.public_record's bytes
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
+# Live harness 13 Oct: the box's per-turn actual-submission journal (run_take: stream path + ".launch.json"), an exact
+# top-level sibling of a turn stream, scanned as an unmaskable launch record. Nearby or nested spellings still refuse.
+LAUNCH_JOURNAL_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl\.launch\.json")
 EVIDENCE_DIR, SESSION_DIR = "evidence", "session"
 EVIDENCE_KINDS = {_sidecar.SNAPSHOTS: "snapshot", _sidecar.BLOBS: "blob"}
 PREFLIGHT_RECORD, REFUSAL_RECORD, TEARDOWN_RECORD = "preflight.json", "refusal.json", "teardown.json"
@@ -1839,7 +1845,11 @@ def pre_turn_refusal(e: BaseException) -> bool:
     launch record's Refused, the sidecar's ReplyError, malformed JSON), a NotReady of a box module (run_take's,
     sidecar's, the lock reader's: each box module defines its own NotReady(RuntimeError); drive.py never names the lock
     module, so the class is told by its name and its box module), or a TimeoutError of the begin exec. Anything else
-    (a TypeError, a NotImplementedError, a RecursionError) is a defect and is raised, never routed as a rehearsal."""
+    (a TypeError, a NotImplementedError, a RecursionError) is a defect and is raised, never routed as a rehearsal.
+    Live harness 3a: an executed turn's refusal (agent_adapter.ExecutedTurnRefused, even one that is also a ValueError)
+    is never a pre-turn refusal: the turn ran."""
+    if isinstance(e, _adapter.ExecutedTurnRefused):
+        return False
     if isinstance(e, (ValueError, TimeoutError)):
         return True
     return (isinstance(e, RuntimeError) and type(e).__name__ == "NotReady"
@@ -1894,6 +1904,11 @@ class _Take:
         self.identity = None           # S6c C7: identity_for(row), checked closed
         self.environment = None        # S6c C8: environment.json as written before the first turn
         self.cross_check = None        # S6c C6: the streams against the session file (problems; [] when they agree)
+        self.executed_refusal = None   # live harness 3a: the executed turn whose own record the harness refused
+        self.adapter_ref = None        # live harness 3c: the adapter the executed-refusal road retains through
+        self.native_hook = False       # live harness 3c: the adapter names a native session to retain per turn
+        self.native_snapshots: list = []        # 3c: {file, sha256} per retained turn, under session/
+        self.native_snapshot_refusal = None     # 3c: why a turn's snapshot was not retained (the take stops)
 
 
 class TakeDriver:
@@ -2147,6 +2162,50 @@ class TakeDriver:
         write_record_atomically(Path(take.folder) / ENVIRONMENT_RECORD_FILE, take.environment)   # rewritten at the end
         return money_line_names(take.environment)   # round 3's money line: the caller stops the take on any
 
+    def _executed_refused(self, take, n: int, line: str, e) -> list:
+        """Live harness 3a: turn n's exec ran and the adapter then refused its own record of it. The turn is accounted
+        for as launched: its evidence line from the kept times, quiescence (killed at once when it timed out), its
+        post-n snapshot and its ledger row (end unknown: None; the refusal named). Nothing further is sent. Returns
+        the snapshot's unreadable-consequential list. The drive then cleans up, writes its ledger, scans, and refuses
+        the take for a human (DriveRefused after the scan): never a pre-turn refusal, a rehearsal or a re-run."""
+        x = e.executed
+        stream = os.path.basename(x["stream_path"]) if isinstance(x.get("stream_path"), str) else None
+        take.executed_refusal = {"n": n, "exit_code": x["exit_code"], "timed_out": x["timed_out"],
+                                 "started_at": x["started_at"], "ended_at": x["ended_at"], "stream": stream,
+                                 "refused": str(x["refused"] or e)}
+        take.ledger_rows.append({"n": n, "sent": line, "expects": None,
+                                 "exit": TIMED_OUT_EXIT if x["timed_out"] else x["exit_code"], "end": None,
+                                 "then": None, "refused": take.executed_refusal["refused"]})
+        self._evidence_line(take, {"kind": "turn", "n": n, "started_at": x["started_at"], "ended_at": x["ended_at"]})
+        ended = types.SimpleNamespace(end_reason=_adapter.END_TIMED_OUT if x["timed_out"] else _adapter.END_ERROR)
+        left, killed = self._quiesce(take, ended)
+        take.executed_refusal["quiescence_kill"] = bool(killed)     # review r2 nit 4: carried, never dropped
+        if left:
+            take.survivors.append({"turn": n, "pids": list(left)})
+            stopped = self.clock()
+            for pid in left:
+                self._evidence_line(take, {"kind": "background", "pid": pid, "stopped_at": stopped})
+        unreadable = self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
+        self._retain_native(take, take.adapter_ref, n)    # 3c: kept as evidence when the source allows; never raised
+        return unreadable
+
+    def _retain_native(self, take, adapter, n: int) -> bool:
+        """Live harness 3c: for an adapter that names a native session (native_session_path(home), home the take's
+        config folder), copy it into session/native-turn-<n>.jsonl after turn n's post-n snapshot and before any next
+        resume (native_snapshot.retain). False, with the reason kept, when it cannot be located or retained: nothing
+        further is sent and the take stops for a human after cleanup and scan. An adapter without one: True."""
+        locate = getattr(adapter, "native_session_path", None)
+        if not callable(locate):
+            return True
+        take.native_hook = True
+        try:
+            take.native_snapshots.append(_native_snapshot.retain(take.folder, n, locate(take.config_dir)))
+            return True
+        except (_native_snapshot.SnapshotRefused, OSError) as e:
+            if take.native_snapshot_refusal is None:
+                take.native_snapshot_refusal = f"turn {n}: native session snapshot not retained: {e}"
+            return False
+
     def _take_records(self, take, row, adapter, turns) -> None:
         """S6c C6, C7, C8, C14, once the agent's processes are gone and before the scan: the session file copied out
         of the config folder through scrub.py as transcript.jsonl (round 3's publish_transcript, Ruling 10) and
@@ -2193,12 +2252,21 @@ class TakeDriver:
                   "permission_mode_recorded": recorded, "budget_s": self.budget_s,
                   "gars_tree_sha": ident["gars_tree_sha"], "fixture": ident["fixture"], "claude_version": version,
                   "turns": [dict(r) for r in rows], "outcome": outcome,
-                  "first_agent_turn": any(t.agent_output for t in turns),
+                  # live harness 3a: an executed turn whose record was refused leaves agent output unknown
+                  "first_agent_turn": (None if take.executed_refusal is not None
+                                       else any(t.agent_output for t in turns)),
                   "environment": {"file": ENVIRONMENT_RECORD_FILE, "sha256": env_sha},
                   "transcript": "transcript.jsonl" if src is not None else None, "published": published,
                   "cross_check": list(take.cross_check),
                   "cost": cost,
                   "streams": [os.path.basename(t.stream_path) for t in turns if t.stream_path]}
+        if take.native_hook:                      # live harness 3c: only for an adapter that names a native session
+            ledger["native_snapshots"] = [dict(r) for r in take.native_snapshots]
+            ledger["native_snapshot_refusal"] = take.native_snapshot_refusal
+        if take.executed_refusal is not None:     # live harness 3a: only when a turn's record was refused
+            ledger["executed_refusal"] = dict(take.executed_refusal)
+            if take.executed_refusal["stream"] is not None:
+                ledger["streams"].append(take.executed_refusal["stream"])
         self._write(take, LEDGER_FILE, ledger)
 
     @staticmethod
@@ -2289,7 +2357,12 @@ class TakeDriver:
                 for n, line in enumerate(script, 1):
                     if n > 1:
                         unreadable += self._ctl(take, "snapshot", f"pre-{n}")["unreadable_consequential"]
-                    turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
+                    take.adapter_ref = adapter
+                    try:
+                        turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
+                    except _adapter.ExecutedTurnRefused as e:     # live harness 3a: the turn ran; account for it
+                        unreadable += self._executed_refused(take, n, line, e)
+                        break
                     turns.append(turn)
                     self._evidence_line(take, {"kind": "turn", "n": n, "started_at": turn.started_at,
                                                "ended_at": turn.ended_at})              # S6b C10
@@ -2302,7 +2375,8 @@ class TakeDriver:
                             self._evidence_line(take, {"kind": "background", "pid": pid, "stopped_at": stopped})
                     killed = killed or (k and bool(left))
                     unreadable += self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
-                    if not script.read(turn):                         # S6c C13: an unheld marker, or a cut turn
+                    retained = self._retain_native(take, adapter, n)  # live harness 3c: before any next resume
+                    if not script.read(turn) or not retained:         # S6c C13: an unheld marker, or a cut turn
                         break
                     step = OPERATOR_STEPS.get((row["task"], script.done)) if script.done is not None else None
                     if step is not None and script.pending is not None:   # S6b C9: between post-n and pre-(n+1)
@@ -2313,6 +2387,10 @@ class TakeDriver:
                         script.then(step[0], failed=False)
                 take.outcome = script.outcome(turns, finalize_abort=finalize_abort, wait_s=self.finalize_wait_s,
                                               rate_limited=self._rate_limited(row, turns))
+                if take.executed_refusal is not None:
+                    r = take.executed_refusal
+                    take.outcome = (f"incomplete \u2014 turn {r['n']} executed and its record was refused: "
+                                    f"{r['refused']}")
             state = _run_take.container_state(self.runtime, take.launched.take_id, caller_env=self.caller_env)
         finally:
             self._cleanup(take, adapter)
@@ -2320,7 +2398,7 @@ class TakeDriver:
         if post is None or post.get("ok") is not True:        # a credential file left behind is a stop for a human
             why = "the postflight check did not run" if post is None else post["checks"][0]["detail"]
             raise DriveRefused(f"postflight: {why}; the config folder is kept for a human")
-        if ok and turns:                                       # S6c C6, C7, C8, C14: before the scan reads them
+        if ok and (turns or take.executed_refusal is not None):   # S6c C6-C8, C14; 3a: a launched turn needs it
             self._take_records(take, row, adapter, turns)
         # R4-10: scan -> mask, then the checker; routing and the commit follow in batch.py.
         scan = _scan_record.scan(self.take_files(take), list(self.secrets()), rules_scanner=self.rules_scanner,
@@ -2328,6 +2406,13 @@ class TakeDriver:
         if not _scan_record.passed(scan):
             why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
             raise DriveRefused(f"the drive scan refused the take: {why}")
+        if take.executed_refusal is not None:     # live harness 3a: cleaned, recorded and scanned; a human rules
+            r = take.executed_refusal
+            raise DriveRefused(f"turn {r['n']} executed and its record was refused ({r['refused']}): the take is "
+                               f"kept for a human ruling, never a rehearsal or a re-run")
+        if take.native_snapshot_refusal is not None:     # live harness 3c: cleaned, recorded and scanned
+            raise DriveRefused(f"{take.native_snapshot_refusal}: the take is kept for a human ruling, never a "
+                               f"rehearsal or a re-run")
         ids = tuple(_routing.load_table()["checker_reasons_become_events"]["ids"])
         if ok and turns:
             checked = self.checker(row, take, list(turns))
@@ -2660,6 +2745,37 @@ def claude_code_adapter_for(*, runtime, login_file: str, counters_for, pin_for, 
     return make
 
 
+def harness_adapter_for(*, runtime, login_file: str, counters_for, pin_for, clock,
+                        rollout_for=None, caller_env=None):
+    """The three production adapters, with no default harness or invented evidence.
+
+    Codex rollout_for(take, interaction_n) must retain and return the native
+    rollout bytes through the box's measured retrieval road. Its absence refuses
+    before a turn. This factory alone grants neither checker nor walk admission.
+    """
+    claude = claude_code_adapter_for(runtime=runtime, login_file=login_file,
+                                     counters_for=counters_for, pin_for=pin_for,
+                                     clock=clock, caller_env=caller_env)
+
+    def make(row, take):
+        harness = (row.get("agent") or {}).get("harness")
+        if harness == "claude-code":
+            return claude(row, take)
+        if harness not in ("codex", "gemini"):
+            raise AdapterIdentityRefused(f"no production adapter for harness {harness!r}")
+        common = dict(runtime=runtime, take_id=take.launched.take_id,
+                      run_tree=take.launched.spec.run_tree, login_file=login_file,
+                      model=row["model"], pin=pin_for(row),
+                      stream_path_for=lambda n: stream_path(take, n),
+                      counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env)
+        if harness == "codex":
+            if not callable(rollout_for):
+                raise DriveRefused("Codex requires a retained native rollout reader")
+            return _codex.CodexAdapter(**common, rollout_for=lambda n: rollout_for(take, n))
+        return _gemini.GeminiAdapter(**common)
+    return make
+
+
 READERS_DISAGREE = "readers-disagree"
 
 
@@ -2747,17 +2863,23 @@ def take_folder_in(root):
 # or reloaded while ClaudeCodeAdapter was patched.
 PRODUCTION_ADAPTER = _cc.ClaudeCodeAdapter
 PRODUCTION_ADAPTER_MODULE = "claude_code_adapter"
+import codex_adapter as _codex  # noqa: E402
+import gemini_adapter as _gemini  # noqa: E402
+
+PRODUCTION_ADAPTERS = {
+    "claude-code": (PRODUCTION_ADAPTER, PRODUCTION_ADAPTER_MODULE),
+    "codex": (_codex.CodexAdapter, "codex_adapter"),
+    "gemini": (_gemini.GeminiAdapter, "gemini_adapter"),
+}
 
 
 def adapter_class_problems(adapter) -> None:
-    """W7B-R1-4 (lane w8d, ruling W8D-gap4-1): the walk driver's adapter is exactly the production class,
-    claude_code_adapter.ClaudeCodeAdapter, never another object that declares its name (a stub, a fake, a subclass)."""
-    if type(adapter) is not PRODUCTION_ADAPTER or \
-            type(adapter).__module__ != PRODUCTION_ADAPTER_MODULE:
+    """The adapter is its harness's captured production class, never a stub or subclass."""
+    expected = PRODUCTION_ADAPTERS.get(getattr(adapter, "name", None))
+    if expected is None or type(adapter) is not expected[0] or type(adapter).__module__ != expected[1]:
         raise AdapterIdentityRefused(f"the walk driver built an adapter of class {type(adapter).__module__}."
-                                     f"{type(adapter).__qualname__}, not {PRODUCTION_ADAPTER_MODULE}."
-                                     f"ClaudeCodeAdapter; a walk or take of claude-code runs on the production adapter "
-                                     f"only, whatever name an object declares")
+                                     f"{type(adapter).__qualname__}; the declared harness requires its exact "
+                                     f"production adapter class, whatever name an object declares")
 
 
 def take_k_problems(records_root, row: dict, attempt, take) -> None:
@@ -2896,13 +3018,15 @@ FROZEN_NAME = prereg.FROZEN.name               # prereg.json: once it exists, no
 
 def record_kind(rel: list, extra: dict | None = None) -> str:
     """The scan kind of a record file at `rel` (its path parts inside the record folder), by the closed map: a take
-    folder's files (TAKE_FILE_KINDS, turn-N.jsonl), evidence/** and session/**, plus `extra` top-level names (a walk
+    folder's files (TAKE_FILE_KINDS, turn-N.jsonl, turn-N.jsonl.launch.json), evidence/** and session/**, plus `extra` top-level names (a walk
     folder's grade.json). Anything else refuses: nothing rides a commit unscanned under a guessed kind."""
     name = rel[-1]
     if len(rel) == 1 and extra and name in extra:
         return extra[name]
     if len(rel) == 1 and (name in TAKE_FILE_KINDS or STREAM_NAME.fullmatch(name)):
         return TAKE_FILE_KINDS.get(name, "stream")
+    if len(rel) == 1 and LAUNCH_JOURNAL_NAME.fullmatch(name):
+        return "launch"
     if rel[0] == EVIDENCE_DIR and len(rel) >= 2:
         return EVIDENCE_KINDS.get(rel[1], "evidence") if len(rel) > 2 else "evidence"
     if rel[0] == SESSION_DIR and len(rel) >= 2:
@@ -2929,7 +3053,8 @@ def walk_files(folder) -> list:
     missing = [n for n in WALK_REQUIRED if n not in tops]
     if LEDGER_FILE not in tops and not (tops & set(WALK_PRE_TURN)):
         missing.insert(0, f"{LEDGER_FILE} (nor, for a walk that died before turn 1, {' or '.join(WALK_PRE_TURN)})")
-    ran = sorted(n for n in tops if n == WALK_TRANSCRIPT or STREAM_NAME.fullmatch(n))
+    ran = sorted(n for n in tops if n == WALK_TRANSCRIPT or STREAM_NAME.fullmatch(n)
+                 or LAUNCH_JOURNAL_NAME.fullmatch(n))     # live harness 3a (glitch-06): a launch journal is a turn launched
     if LEDGER_FILE not in tops and ran:                  # W10-R2-3: a turn ran, so the driver wrote its ledger
         raise DriveRefused(f"the walk folder holds {', '.join(ran)} and no {LEDGER_FILE}: a walk whose agent turn ran "
                            f"is committed with its driver ledger; only a walk with no transcript and no turn record "
@@ -3197,7 +3322,7 @@ def open_registration(root: Path, repo: Path, slot) -> dict:
     except (ValueError, KeyError, OSError) as e:
         raise LaunchRefused(f"the committed registrations cannot be read ({type(e).__name__}: {e}); nothing was "
                             f"launched") from None
-    done = {(o.get("slot"), o.get("attempt")) for o in history if not takes_mod.batch.is_ruling(o)}
+    done = {(o.get("slot"), o.get("attempt")) for o in history if takes_mod.batch.is_outcome(o)}
     mine = [r for r in rows if r.get("slot") == slot]
     open_ = [r for r in mine if (slot, r.get("attempt")) not in done]
     if len(open_) != 1:

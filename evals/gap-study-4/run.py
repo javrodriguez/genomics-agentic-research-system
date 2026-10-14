@@ -157,7 +157,7 @@ def produce(rows: list, history: list, grade, *, table=None) -> dict:
     table = routing.load_table() if table is None else table
     registered = check_results.validate_ledger(rows)
     for o in history:
-        if not batch.is_ruling(o):
+        if batch.is_outcome(o):
             require_registered_outcome(o, registered)
             verify_route(o, table)
     published = check_results.publication(history, table)

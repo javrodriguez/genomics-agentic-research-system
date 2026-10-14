@@ -4,7 +4,7 @@
     {
       "path": "transcript_view.py",
       "status": "new",
-      "reason": "Interface 8's harness-neutral transcript view: the closed AgentEvent record, event kinds and tool kinds, the parser table keyed by AgentAdapter.name (only claude-code, Claude Code's session-file transcript, its tables built from round 3's 54 transcripts), turns by operator line, ROUND3_HARNESS; new in round 4. Review round 1 (fold): records the harness wrote itself (an isMeta or isApiErrorMessage key, a <synthetic> model) are refused, and MANIFEST_KEYS names interface 8's model and agent keys once."
+      "reason": "Interface 8's harness-neutral transcript view: the closed AgentEvent record, event kinds and tool kinds, the parser table keyed by AgentAdapter.name (only claude-code, Claude Code's session-file transcript, its tables built from round 3's 54 transcripts), turns by operator line, ROUND3_HARNESS; new in round 4. Review round 1 (fold): records the harness wrote itself (an isMeta or isApiErrorMessage key, a <synthetic> model) are refused, and MANIFEST_KEYS names interface 8's model and agent keys once. Live-harness foundation: vendor published readers require explicit host turn envelopes bound to native byte hashes and the driver ledger; direct native parser contracts remain unchanged. Production checker admission is not widened."
     },
     {
       "path": "tests/test_transcript_view.py",
