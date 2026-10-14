@@ -986,5 +986,115 @@ class TestFold2(Case):
         red("a non-callable rules scanner reaching the scan")
 
 
+
+# ------------------------------------------------------------------------- the Codex lease's tokens (glitch-06, 14 Oct)
+# glitch-06's ruling on the lease postflight review's MINOR 3: every login value is in the exact-value scan, so a
+# Codex take's secrets() carries the lease's access and refresh tokens, read from the registered auth.json at take
+# start (and again at each scan, so a refresh in the take adds the new values and drops none); and postflight.json,
+# whose listing can carry a value used as a file name, goes through the same scan as every other record before commit.
+# Near-copies (base64, gzip, a split value, a trailing byte) are a named residual, not detected here.
+LEASE_ACCESS = "FAKEACCESS-0123456789abcdef-PLANTED"
+LEASE_REFRESH = "FAKEREFRESH-fedcba9876543210-PLANTED"
+LEASE_VALUES = (LEASE_ACCESS, LEASE_REFRESH)
+
+
+def _lease_body(access=LEASE_ACCESS, refresh=LEASE_REFRESH) -> dict:
+    return {"OPENAI_API_KEY": None, "tokens": {"id_token": "fake-id", "access_token": access,
+                                               "refresh_token": refresh, "account_id": "acct-fake"}}
+
+
+def lease_auth(folder: str, body=None, mode=0o600, raw: bytes | None = None) -> str:
+    p = os.path.join(folder, "auth.json")
+    if os.path.lexists(p):
+        os.unlink(p)
+    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.write(fd, raw if raw is not None else json.dumps(_lease_body() if body is None else body).encode())
+    os.close(fd)
+    os.chmod(p, mode)
+    return p
+
+
+def _walk_builders():
+    import walk_builders
+    return walk_builders
+
+
+class TestLeaseTokens(unittest.TestCase):
+    def folder(self) -> str:
+        t = tempfile.TemporaryDirectory(prefix="lease-")
+        self.addCleanup(t.cleanup)
+        return t.name
+
+    def refused(self, path, rule_word):
+        with self.assertRaises(sr.LoginError) as cm:
+            sr.read_lease_tokens(path)
+        msg = str(cm.exception)
+        self.assertIn(rule_word, msg)
+        for v in LEASE_VALUES:
+            self.assertNotIn(v, msg)
+
+    def test_reads_the_access_and_refresh_tokens(self):
+        self.assertEqual(sorted(sr.read_lease_tokens(lease_auth(self.folder()))), sorted(LEASE_VALUES))
+
+    def test_refuses_a_lease_file_off_the_rule(self):
+        d = self.folder()
+        self.refused(lease_auth(d, body={"tokens": {"access_token": LEASE_ACCESS}}), "refresh_token")
+        self.refused(lease_auth(d, body={"tokens": {"refresh_token": LEASE_REFRESH}}), "access_token")
+        self.refused(lease_auth(d, body=_lease_body(access="short")), "at least 20")
+        self.refused(lease_auth(d, body=_lease_body(refresh=LEASE_REFRESH + "\n")), "single-line")
+        self.refused(lease_auth(d, raw=b"not json " + LEASE_ACCESS.encode()), "not JSON")
+        self.refused(lease_auth(d, raw=b" " * (sr.LEASE_MAX_BYTES + 1)), "at most")
+        self.refused(lease_auth(d, mode=0o644), "mode")
+        self.refused(os.path.join(d, "missing.json"), "cannot be found")
+        self.refused("auth.json", "absolute")
+        real = lease_auth(d)
+        link = os.path.join(d, "link.json")
+        os.symlink(real, link)
+        self.refused(link, "not a plain file")
+        fifo = os.path.join(d, "fifo")
+        os.mkfifo(fifo, 0o600)
+        self.refused(fifo, "not a plain file")
+        with mock.patch.object(sr, "_owned", lambda st: False):
+            self.refused(real, "owned")
+
+    def test_lease_secrets_reads_at_take_start_and_keeps_every_value(self):
+        d = self.folder()
+        path = lease_auth(d)
+        secrets = _walk_builders().lease_secrets(path)            # take start: read now
+        os.unlink(path)                                           # gone before the scan: the take-start values stay
+        with self.assertRaises(sr.LoginError):
+            secrets()
+        lease_auth(d, body=_lease_body(access="FAKEACCESS-NEW-0123456789-PLANTED",
+                                       refresh="FAKEREFRESH-NEW-0123456789-PLANTED"))
+        got = secrets()                                           # a refresh in the take: both pairs are searched
+        self.assertTrue(all(k == "token" for k, _ in got))
+        self.assertEqual(sorted(v for _, v in got), sorted(LEASE_VALUES + ("FAKEACCESS-NEW-0123456789-PLANTED",
+                                                                           "FAKEREFRESH-NEW-0123456789-PLANTED")))
+        with self.assertRaises(sr.LoginError):                    # no lease file at take start: the take never starts
+            _walk_builders().lease_secrets(os.path.join(d, "nope.json"))
+
+    def test_a_token_used_as_a_file_name_is_refused_by_the_commit_scan(self):
+        import drive
+        from box import preflight as pf
+        from box import run_take as rt
+        home, takef = self.folder(), self.folder()
+        lease_auth(home)
+        os.makedirs(os.path.join(home, "sessions", LEASE_ACCESS))   # the synthetic value as a name
+        post = pf.postflight(home, rt.CODEX)
+        self.assertTrue(post["ok"], post["checks"][0]["detail"])  # the name rule cannot see it: the scan must
+        self.assertIn(f"sessions/{LEASE_ACCESS}", post["recorded"]["listing"])
+        rec = os.path.join(takef, drive.POSTFLIGHT_RECORD)
+        with open(rec, "w", encoding="utf-8") as fh:
+            json.dump(post, fh, indent=2, sort_keys=True)
+        before = open(rec, "rb").read()
+        kind = drive.record_kind([drive.POSTFLIGHT_RECORD])
+        self.assertNotIn(kind, sr.MASKABLE)
+        secrets = _walk_builders().lease_secrets(os.path.join(home, "auth.json"))
+        result = sr.scan([(rec, kind)], secrets(), rules_scanner=no_findings)
+        self.assertFalse(sr.passed(result))                       # the commit is refused
+        self.assertEqual([(r["path"], r["kind"]) for r in result["refused"]], [(rec, "token")])
+        self.assertNotIn(LEASE_ACCESS, json.dumps(result))
+        self.assertEqual(open(rec, "rb").read(), before)          # refused, never masked in a non-agent record
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
