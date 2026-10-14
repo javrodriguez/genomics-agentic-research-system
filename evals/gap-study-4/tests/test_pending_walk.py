@@ -186,7 +186,8 @@ class Road:
             pin_for=self.pin_for, checker=self.never_checked, secrets=lambda: [("token", tbi.TOKEN)],
             rules_scanner=lambda paths: [], uid_map=tbi.UID_MAP, budget_s=600, finalize_wait_s=tbi.CAP_S,
             poll_s=tbi.POLL_S, clock=r.clock, sleep=r.clock.sleep, project_for=lambda row: tbi.PROJECT,
-            identity_for=self.identity_for, ownership=r.ownership)
+            identity_for=self.identity_for, ownership=r.ownership,
+            settings_guard=r.settings_guard)
         self.repo = drive.WalkRepo(runtime=r.box, secrets=lambda: [("token", tbi.TOKEN)],
                                    rules_scanner=lambda paths: [], root=self.study, repo=self.root, design=design)
 

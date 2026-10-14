@@ -461,7 +461,7 @@ class WalkWired(tww.Wired):
             secrets=lambda: [("token", tbi.TOKEN)], rules_scanner=lambda paths: [], uid_map=tbi.UID_MAP,
             budget_s=600, finalize_wait_s=tbi.CAP_S, poll_s=tbi.POLL_S, clock=self.clock, sleep=self.clock.sleep,
             records="walks",
-            ownership=tbi.FakeOwnership(self.box))
+            ownership=tbi.FakeOwnership(self.box), settings_guard=tbi.FakeSettingsGuard())
 
     def project_for(self, row):
         return self.mod.neutral_name(walk_sid(row["walk"]))

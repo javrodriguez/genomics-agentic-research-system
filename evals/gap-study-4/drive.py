@@ -1526,6 +1526,10 @@ import importlib.util as _importlib_util  # noqa: E402
 _ownership = None
 if _importlib_util.find_spec("box.ownership") is not None:
     from box import ownership as _ownership  # noqa: E402
+# The box lane's run-tree settings guard (box/settings_guard.py, d3fd5305; ownership review finding 1), the same way.
+_settings_guard = None
+if _importlib_util.find_spec("box.settings_guard") is not None:
+    from box import settings_guard as _settings_guard  # noqa: E402
 
 OUTCOMES_FILE = takes_mod.HISTORY_FILES[0]
 OUTCOME_KIND = "ledger"
@@ -1832,7 +1836,8 @@ TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.lo
                    "operator-check.json": "launch",   # S6b C11
                    "driver-ledger.json": "ledger", "environment.json": "launch", "scrub.json": "launch",   # S6c C6-C8
                    "public-config.json": "launch",   # live harness 13 Oct: box take_config.public_record's bytes
-                   "ownership-grant.json": "launch", "ownership-restore.json": "launch"}   # the ownership road
+                   "ownership-grant.json": "launch", "ownership-restore.json": "launch",   # the ownership road
+                   "settings-guard.json": "launch"}   # the run tree's Claude settings: baseline and per-turn checks
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
 # Live harness 13 Oct: the box's per-turn actual-submission journal (run_take: stream path + ".launch.json"), an exact
 # top-level sibling of a turn stream, scanned as an unmaskable launch record. Nearby or nested spellings still refuse.
@@ -1861,6 +1866,33 @@ OWNERSHIP_OPERATOR_READ_PARAMS = ("runtime", "image", "run_tree", "rel_path", "c
 OWNERSHIP_GRANT_RECORD, OWNERSHIP_RESTORE_RECORD = "ownership-grant.json", "ownership-restore.json"
 OWNERSHIP_STEPS = ("ownership-grant", "ownership-restore")      # the driver ledger's operator steps, in order
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")                    # the lock's image id; a tag never runs a step
+
+
+# THE SETTINGS GUARD (ownership review finding 1; the box contract at d3fd5305): the run tree's Claude settings files are
+# baselined host-side before the grant, and every turn k is sent only when the sidecar's own pre-k snapshot shows them
+# unchanged, and every turn's post-k snapshot (the last turn's too) must show them unchanged as well (box 22b15f56,
+# review round 2: Claude Code reloads a changed settings file, so a change is caught at that turn's post-k). The guard
+# is box/settings_guard.py (`_settings_guard`) unless a TakeDriver is handed another with this interface:
+# baseline(run_tree, *, model) -> {path: sha256}, raising SettingsRefused; snapshot_problems(snapshot, base) -> [problem].
+SETTINGS_RECORD = "settings-guard.json"
+SETTINGS_GUARD_PARAMS = {"baseline": ("run_tree", "model"), "snapshot_problems": ("snapshot", "base")}
+
+
+def settings_guard_problems(guard) -> list:
+    """Why `guard` is not a settings guard this driver can call (empty when it is); None is a problem, never a skip."""
+    import inspect
+    if guard is None:
+        return ["no settings guard: box/settings_guard.py is not on this tree (the box lane's d3fd5305), so no take "
+                "launches"]
+    p = []
+    err = getattr(guard, "SettingsRefused", None)
+    if not (isinstance(err, type) and issubclass(err, Exception)):
+        p.append("the settings guard's SettingsRefused is not an exception class")
+    for name, params in SETTINGS_GUARD_PARAMS.items():
+        fn = getattr(guard, name, None)
+        if not callable(fn) or [q.name for q in inspect.signature(fn).parameters.values()] != list(params):
+            p.append(f"the settings guard has no {name}({', '.join(params)})")
+    return p
 
 
 def ownership_problems(road, *, operator_write: bool = False) -> list:
@@ -1983,6 +2015,8 @@ class _Take:
         self.grant = None              # {ok, why, record}: the grant's record (ownership-grant.json)
         self.restore = None            # {ok, why, ids, record}: the restore's record (ownership-restore.json)
         self.ownership_hold = None     # why the take's folders are kept for a human: no postflight, scan or commit
+        self.settings = None           # {baseline, refused, checks}: the settings guard's record (settings-guard.json)
+        self.settings_stop = None      # the problems that stopped the take before turn k > 1 (a ruling)
 
 
 class TakeDriver:
@@ -2018,12 +2052,14 @@ class TakeDriver:
     clock, sleep     the injected host clock and sleep (no real wait in a test)
     ownership        the ownership road (OWNERSHIP_GRANT_PARAMS, OWNERSHIP_RESTORE_PARAMS): box/ownership.py when
                      None; launch refuses while ownership_problems names anything
+    settings_guard   the run tree's settings guard (SETTINGS_GUARD_PARAMS): box/settings_guard.py when None; launch
+                     refuses while settings_guard_problems names anything
     """
 
     def __init__(self, *, runtime, take_folder, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts,
                  adapter_for, script_for, pin_for, checker, secrets, rules_scanner, uid_map, budget_s,
                  finalize_wait_s, poll_s, clock, sleep, project_for, identity_for, holdout_matcher=None,
-                 caller_env=None, strict_script=False, ownership=None):
+                 caller_env=None, strict_script=False, ownership=None, settings_guard=None):
         if not callable(getattr(runtime, "run", None)):
             raise TypeError("runtime must offer run(argv, env=, timeout=)")
         for name, fn in (("take_folder", take_folder), ("spec_for", spec_for), ("sidecar_for", sidecar_for),
@@ -2044,6 +2080,7 @@ class TakeDriver:
         self.identity_for = identity_for                  # S6c C7
         self.strict_script = strict_script is True        # W6J-R1-3: True in the CP6 production wiring
         self.ownership = _ownership if ownership is None else ownership   # the box module unless one is handed in
+        self.settings_guard = _settings_guard if settings_guard is None else settings_guard   # the same
         self._lock = threading.Lock()
         self._by_id: dict = {}        # take container id -> _Take
         self._by_slot: dict = {}      # slot -> the slot's latest _Take not yet published
@@ -2060,6 +2097,7 @@ class TakeDriver:
             raise DriveRefused(f"a published take's cleanup failed: {self.publish_problems[0]}")
         road = ownership_problems(self.ownership,               # before any folder or container
                                   operator_write=any(task == row.get("task") for task, _ in OPERATOR_STEPS))
+        road += settings_guard_problems(self.settings_guard)
         if road:
             raise DriveRefused("; ".join(road))
         folder = self.take_folder(row) if _folder is None else _folder
@@ -2074,6 +2112,7 @@ class TakeDriver:
         take.sidecar = self.sidecar_for(row, take.evidence_dir)
         spec = self.spec_for(row, cfg)       # every host-side write into the run tree and config folder is done here
         take.spec = spec
+        self._settings_baseline(take)        # the settings guard: host-side, before the grant (no watcher yet)
         self._grant_ownership(take)          # the ownership road: after them and the evidence folder, pre-launch
         try:
             take.launched = _run_take.launch(self.runtime, spec, sidecar=take.sidecar, proxy=self.proxy,
@@ -2090,6 +2129,32 @@ class TakeDriver:
         with self._lock:
             self._by_id[take.launched.take_id] = take
         return take.launched.take_id
+
+    # ------------------------------------------------------------------------------------------- the settings guard
+    def _settings_baseline(self, take) -> None:
+        """The run tree's Claude settings files, baselined before the grant. A refusal (a forbidden key, an odd
+        shape) means no launch: recorded in settings-guard.json and raised as DriveRefused (nothing ran)."""
+        try:
+            base = self.settings_guard.baseline(take.spec.run_tree, model=take.row["model"])   # the pinned model
+        except Exception as e:  # noqa: BLE001 - SettingsRefused or any other failure: no launch
+            take.settings = {"baseline": None, "refused": f"{type(e).__name__}: {str(e)[:500]}", "checks": []}
+            self._write(take, SETTINGS_RECORD, take.settings)
+            raise DriveRefused(f"the run tree's Claude settings refused before launch: {e}") from e
+        take.settings = {"baseline": base, "refused": None, "checks": []}   # written once, by the cleanup
+
+    def _settings_problems(self, take, label: str) -> list:
+        """The guard over the sidecar's own snapshot `label` (pre-n before turn n, post-n after it), read from the
+        evidence folder, never the run tree. A snapshot that is missing or does not read is a problem, never a pass.
+        Recorded either way."""
+        path = os.path.join(take.evidence_dir, _sidecar.SNAPSHOTS, f"{label}.json")
+        try:
+            with open(path, encoding="utf-8") as fh:
+                doc = json.load(fh)
+            problems = list(self.settings_guard.snapshot_problems(doc, take.settings["baseline"]))
+        except Exception as e:  # noqa: BLE001 - an unreadable snapshot or a failing guard is a problem
+            problems = [f"{label}: the settings check could not run ({type(e).__name__}: {str(e)[:200]})"]
+        take.settings["checks"].append({"snapshot": label, "problems": problems})
+        return problems
 
     # ------------------------------------------------------------------------------------------- the ownership road
     def _grant_ownership(self, take) -> None:
@@ -2502,6 +2567,11 @@ class TakeDriver:
                                                 "quiescence_survivors": list(take.survivors)})
         except Exception as e:  # noqa: BLE001
             take.cleanup.append(f"{TEARDOWN_RECORD}: {type(e).__name__}: {e}")
+        if take.settings is not None:     # the settings guard's record: its baseline and every per-turn check
+            try:
+                self._write(take, SETTINGS_RECORD, take.settings)
+            except Exception as e:  # noqa: BLE001
+                take.cleanup.append(f"{SETTINGS_RECORD}: {type(e).__name__}: {e}")
         self._restore_ownership(take)    # the ownership road: after teardown (returned or raised), pre-postflight
 
     def drive(self, row: dict, container_id: str) -> dict:
@@ -2522,6 +2592,11 @@ class TakeDriver:
                                                  "version": self.pin_for(row)["version"]},
                                        "run_tree": "", "home": None})
             ok = self._preflight(take, row["agent"]["harness"])      # W6H-R1-8a: read inside the try
+            if ok:                # the settings guard at turn 1, at preflight's moment: a problem is a pre-turn refusal
+                first = self._settings_problems(take, "pre-1")
+                if first:
+                    self._refused(take, DriveRefused(f"pre-1: the run tree's Claude settings: {'; '.join(first)}"))
+                    ok = False
             if ok:
                 try:              # W6H-R1-7: the adapter's making or start before turn 1 is a pre-turn refusal
                     adapter = self.adapter_for(row, take)
@@ -2542,6 +2617,10 @@ class TakeDriver:
                 for n, line in enumerate(script, 1):
                     if n > 1:
                         unreadable += self._ctl(take, "snapshot", f"pre-{n}")["unreadable_consequential"]
+                        later = self._settings_problems(take, f"pre-{n}")   # the settings guard: turn n not sent
+                        if later:
+                            take.settings_stop = f"pre-{n}: the run tree's Claude settings: {'; '.join(later)}"
+                            break
                     take.adapter_ref = adapter
                     try:
                         turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
@@ -2561,6 +2640,10 @@ class TakeDriver:
                     killed = killed or (k and bool(left))
                     unreadable += self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
                     retained = self._retain_native(take, adapter, n)  # live harness 3c: before any next resume
+                    after = self._settings_problems(take, f"post-{n}")   # the settings guard, the last turn's too
+                    if after:
+                        take.settings_stop = f"post-{n}: the run tree's Claude settings: {'; '.join(after)}"
+                        break
                     if not script.read(turn) or not retained:         # S6c C13: an unheld marker, or a cut turn
                         break
                     step = OPERATOR_STEPS.get((row["task"], script.done)) if script.done is not None else None
@@ -2595,6 +2678,9 @@ class TakeDriver:
         if not _scan_record.passed(scan):
             why = "; ".join(f"{r['path']}:{r['line']} ({r['kind']}): {r['why']}" for r in scan["refused"])
             raise DriveRefused(f"the drive scan refused the take: {why}")
+        if take.settings_stop is not None:        # the settings guard after turn 1: cleaned, recorded and scanned
+            raise DriveRefused(f"{take.settings_stop}: no further turn is sent; the take is kept for a human ruling "
+                               f"(no registered harness-error row reads it), never a re-run")
         if take.executed_refusal is not None:     # live harness 3a: cleaned, recorded and scanned; a human rules
             r = take.executed_refusal
             raise DriveRefused(f"turn {r['n']} executed and its record was refused ({r['refused']}): the take is "
@@ -3244,7 +3330,7 @@ class WalkDriver(TakeDriver):
 def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts, login_file,
                 counters_for, pin_for, design_for, project_for, identity_for, secrets, rules_scanner, uid_map,
                 budget_s, finalize_wait_s, poll_s, clock, sleep, holdout_matcher=None, caller_env=None,
-                records="takes", rollout_for=None, ownership=None) -> WalkDriver:
+                records="takes", rollout_for=None, ownership=None, settings_guard=None) -> WalkDriver:
     """The CP6 production wiring (cp6-readiness row 3): batch's driver for a walk or a take of any of the three
     harnesses (registration review finding 2, glitch-06, 14 Oct 2026: harness_adapter_for, so a Gemini walk, and a
     Codex walk once its rollout_for road exists, runs on the same road; WalkDriver still admits only each harness's
@@ -3279,7 +3365,8 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
                              records=records),
         secrets=secrets, rules_scanner=rules_scanner, holdout_matcher=holdout_matcher, uid_map=uid_map,
         budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s, clock=clock, sleep=sleep,
-        project_for=project_for, identity_for=identity_for, caller_env=caller_env, ownership=ownership)
+        project_for=project_for, identity_for=identity_for, caller_env=caller_env, ownership=ownership,
+        settings_guard=settings_guard)
 
 
 # =====================================================================================================================

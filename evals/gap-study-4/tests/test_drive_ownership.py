@@ -23,6 +23,15 @@ box/ownership.py is the box lane's and may be absent from this tree.
                the take after its drive started (OperatorStepRefused, a ruling); a road without operator_read or
                operator_write refuses such a task at launch
 
+  S1-baseline  (the box contract at d3fd5305) the run tree's Claude settings are baselined once, after the spec and
+               before the grant, recorded in settings-guard.json; a refused baseline launches nothing and grants nothing
+  S2-turn-one  a settings file changed after the baseline shows in the pre-1 snapshot: no turn is sent and the take
+               routes as a rehearsal (preflight's refusal road), the problem recorded
+  S3-later     (box 22b15f56) a settings file the agent changes during turn 1 shows in the post-1 snapshot: no
+               further turn is sent and the take stops after its drive started for a ruling, the problem recorded;
+               the final turn of a single-turn take is checked too; a missing pre-k snapshot is a problem, never a
+               pass
+
 Mutants (MUTANTS, each killed by its own check's line): grant skipped; restore moved after postflight; restore skipped
 on a LaunchError; a scan running after a failed restore; a commit reading a held take's records; a host-side save and a
 host-side copy or poll still reachable from the operator step; a write reply off the data's sha256 accepted.
@@ -458,8 +467,140 @@ def o8_operator(mod, p):
     return out
 
 
+class PlantingOwnership(tbi.FakeOwnership):
+    """The fake road, which also changes the run tree's settings at the grant (after the baseline, before begin)."""
+
+    def grant(self, runtime, *, image, run_tree, config_dir, evidence_dir, caller_env=None):
+        plant(run_tree)
+        return super().grant(runtime, image=image, run_tree=run_tree, config_dir=config_dir,
+                             evidence_dir=evidence_dir, caller_env=caller_env)
+
+
+def plant(run_tree):
+    folder = Path(run_tree) / ".claude"
+    folder.mkdir(exist_ok=True)
+    (folder / "settings.local.json").write_text(json.dumps({"fallbackModel": "synthetic"}))
+
+
+@contextmanager
+def planting_in_turn(k: int):
+    """The fake agent writes a local settings file during its turn k (in the run tree, before post-k)."""
+    real = tbi.FakeAdapter._turn
+
+    def turn(self, line, *, first, budget_s):
+        got = real(self, line, first=first, budget_s=budget_s)
+        if self._turns + 1 == k:
+            plant(self.take.launched.spec.run_tree)
+        return got
+    with mock.patch.object(tbi.FakeAdapter, "_turn", turn):
+        yield
+
+
+@tbi.guarded("S1-baseline")
+def s1_baseline(mod, p):
+    out = []
+    with tbi.scratch_repo() as root:
+        order = []
+        rig = tbi.Rig(mod, root)
+        rig.driver.ownership = OrderedOwnership(order, rig.box)
+        real = rig.settings_guard.baseline
+
+        def baseline(run_tree, *, model):
+            order.append("baseline")
+            return real(run_tree, model=model)
+        rig.settings_guard.baseline = baseline
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        if order[:2] != ["baseline", "grant"] or order.count("baseline") != 1:
+            out.append(f"{p}: the baseline is not once, before the grant: {order}")
+        rec = read(os.path.join(rig.take().folder, mod.SETTINGS_RECORD))
+        if rec is None or rec.get("baseline") != {} or rec.get("refused") is not None:
+            out.append(f"{p}: settings-guard.json does not record the clean baseline: {rec}")
+        if ([c["snapshot"] for c in (rec or {}).get("checks", [])] != ["pre-1", "post-1", "pre-2", "post-2"]
+                or any(c["problems"] for c in rec["checks"])):
+            out.append(f"{p}: the checks are not pre and post of turns 1 and 2, clean: {(rec or {}).get('checks')}")
+        if [c[2] for c in rig.settings_guard.calls if c[0] == "baseline"] != [tbi.MODEL]:
+            out.append(f"{p}: the baseline was not handed the take's pinned model: {rig.settings_guard.calls}")
+    with tbi.scratch_repo() as root:                 # a refused baseline: nothing granted, nothing launched
+        rig = tbi.Rig(mod, root, settings_guard=tbi.FakeSettingsGuard(refuse=True))
+        try:
+            with tbi.spying(rig.spy):
+                rig.driver.launch(tbi.row(1))
+            out.append(f"{p}: a refused baseline launched the take")
+        except mod.DriveRefused as e:
+            if "settings" not in str(e):
+                out.append(f"{p}: the refusal does not name the settings: {e}")
+        if rig.ownership.events or launch_index(rig.box.calls) != len(rig.box.calls):
+            out.append(f"{p}: a refused baseline was followed by {rig.ownership.names()} or a runtime launch")
+        rec = read(os.path.join(rig.take().folder, mod.SETTINGS_RECORD))
+        if rec is None or not rec.get("refused"):
+            out.append(f"{p}: the refused baseline is not recorded: {rec}")
+    return out
+
+
+@tbi.guarded("S2-turn-one")
+def s2_turn_one(mod, p):
+    out = []
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+        rig.driver.ownership = rig.ownership = PlantingOwnership(rig.box)
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        o = got[0]
+        if o["state"] != tbi.labels4.REHEARSAL:
+            out.append(f"{p}: a settings change before turn 1 is {o['state']} ({o['reason']})")
+        if rig.adapters and rig.adapters[0].lines:
+            out.append(f"{p}: turn 1 was sent: {rig.adapters[0].lines}")
+        take = [t for t in rig.driver.published_takes][0] if rig.driver.published_takes else None
+        rec = read(os.path.join(take.folder, mod.SETTINGS_RECORD)) if take else None
+        checks = (rec or {}).get("checks", [])
+        if not checks or checks[0]["snapshot"] != "pre-1" or not checks[0]["problems"]:
+            out.append(f"{p}: the pre-1 problem is not recorded: {rec}")
+    return out
+
+
+@tbi.guarded("S3-later")
+def s3_later(mod, p):
+    out = []
+    three = [{"text": "a"}, {"text": "b"}, {"text": "c"}]
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root, turns=three)
+        with planting_in_turn(1):
+            b, got = tbi.run_batch(rig, [tbi.row(1)])
+        o = got[0]
+        if o["state"] != tbi.labels4.FAILED or o["drive_started"] is not True or "post-1" not in (o["reason"] or ""):
+            out.append(f"{p}: a settings change in turn 1 is {o['state']} (drive_started {o['drive_started']}): "
+                       f"{o['reason']}")
+        if len(rig.adapters[0].lines) != 1:
+            out.append(f"{p}: {len(rig.adapters[0].lines)} lines were sent, not 1")
+        rec = read(os.path.join(rig.take().folder, mod.SETTINGS_RECORD)) or {}
+        if [(c["snapshot"], bool(c["problems"])) for c in rec.get("checks", [])] != [("pre-1", False),
+                                                                                    ("post-1", True)]:
+            out.append(f"{p}: the checks recorded are {rec.get('checks')}")
+    with tbi.scratch_repo() as root:                 # the final turn's change, a single-turn take: caught at post-1
+        rig = tbi.Rig(mod, root, turns=[{"text": "only"}])
+        with planting_in_turn(1):
+            b, got = tbi.run_batch(rig, [tbi.row(1)])
+        o = got[0]
+        if o["state"] == tbi.labels4.GRADED or "post-1" not in (o["reason"] or ""):
+            out.append(f"{p}: a settings change in the final turn is {o['state']} ({o['reason']})")
+    with tbi.scratch_repo() as root:                 # a missing pre-2 snapshot is a problem, never a pass
+        rig = tbi.Rig(mod, root, turns=three)
+        real = rig.box.evidence
+
+        def evidence(sid, label):
+            at = real(sid, label)
+            if label == "pre-2":
+                os.remove(os.path.join(rig.box.containers[sid]["ev"], "snapshots", "pre-2.json"))
+            return at
+        rig.box.evidence = evidence
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        if "pre-2" not in (got[0]["reason"] or "") or len(rig.adapters[0].lines) != 1:
+            out.append(f"{p}: a missing pre-2 snapshot did not stop turn 2: {got[0]['state']} ({got[0]['reason']})")
+    return out
+
+
 CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch, "O4-held": o4_held,
-          "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator}
+          "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator,
+          "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -490,6 +631,16 @@ MUTANTS = {
                        "O8-operator"),
     "reply-sha-unchecked": ((("        if not ok or sha != hashlib.sha256(data).hexdigest():",
                               "        if False:"),), "O8-operator"),
+    "baseline-skipped": ((("        self._settings_baseline(take)        #", "        pass  #"),), "S1-baseline"),
+    "turn-one-unchecked": ((("                first = self._settings_problems(take, \"pre-1\")",
+                             "                first = []"),), "S2-turn-one"),
+    "later-unchecked": ((("                        later = self._settings_problems(take, f\"pre-{n}\")",
+                          "                        later = []"),), "S3-later"),
+    "post-unchecked": ((("                    after = self._settings_problems(take, f\"post-{n}\")",
+                         "                    after = []"),), "S3-later"),
+    "missing-snapshot-passes": ((("            problems = [f\"{label}: the settings check could not run "
+                                  "({type(e).__name__}: {str(e)[:200]})\"]",
+                                  "            problems = []"),), "S3-later"),
 }
 
 
@@ -517,6 +668,15 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_o8_operator(self):
         self.assertEqual(o8_operator(tbi.drive), [])
+
+    def test_s1_baseline(self):
+        self.assertEqual(s1_baseline(tbi.drive), [])
+
+    def test_s2_turn_one(self):
+        self.assertEqual(s2_turn_one(tbi.drive), [])
+
+    def test_s3_later(self):
+        self.assertEqual(s3_later(tbi.drive), [])
 
 
 class TestOwnershipMutants(unittest.TestCase):
@@ -559,6 +719,21 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_reply_sha_unchecked(self):
         self.kill("reply-sha-unchecked")
+
+    def test_baseline_skipped(self):
+        self.kill("baseline-skipped")
+
+    def test_turn_one_unchecked(self):
+        self.kill("turn-one-unchecked")
+
+    def test_later_unchecked(self):
+        self.kill("later-unchecked")
+
+    def test_missing_snapshot_passes(self):
+        self.kill("missing-snapshot-passes")
+
+    def test_post_unchecked(self):
+        self.kill("post-unchecked")
 
 
 if __name__ == "__main__":

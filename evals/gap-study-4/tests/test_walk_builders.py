@@ -97,6 +97,8 @@ EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "pro
 # present on the merged head (B7.production checks it is then drive's own `_ownership`).
 OWNERSHIP_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "ownership.py").is_file()
 EXPECTED_MISSING += [] if OWNERSHIP_ON_TREE else ["ownership"]
+SETTINGS_GUARD_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "settings_guard.py").is_file()
+EXPECTED_MISSING += [] if SETTINGS_GUARD_ON_TREE else ["settings_guard"]
 
 
 def road() -> dict:
@@ -775,6 +777,10 @@ class B7Production(Case):
             self.assertIs(got["ownership"], drive._ownership, "B7.production: the ownership road is not the box's")
         else:
             self.assertIn("box/ownership.py", why["ownership"], "B7.production: ownership does not say why")
+        if SETTINGS_GUARD_ON_TREE:
+            self.assertIs(got["settings_guard"], drive._settings_guard, "B7.production: the guard is not the box's")
+        else:
+            self.assertIn("box/settings_guard.py", why["settings_guard"], "B7.production: the guard does not say why")
         self.assertEqual(sorted(got), sorted(wb().NAMES), "B7.production: the set is not NAMES")
 
     def test_main_refuses_by_name_before_anything(self):
@@ -907,7 +913,7 @@ class FakeWorld:
             "table": self.table, "pin_for": self.pin_for, "design_for": self.design_for,
             "budgets": (600, tbi.CAP_S, tbi.POLL_S), "run_tree_origin": (origin_repo, sha),
             "run_tree_exclude": ["evals"], "clock": self.clock, "sleep": self.clock.sleep,
-            "ownership": tbi.FakeOwnership(self.box),
+            "ownership": tbi.FakeOwnership(self.box), "settings_guard": tbi.FakeSettingsGuard(),
         }
 
     def pin_for(self, row):
