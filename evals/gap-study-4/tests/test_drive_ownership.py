@@ -38,6 +38,13 @@ box/ownership.py is the box lane's and may be absent from this tree.
                graded as with the lines themselves
   P2-machine   (P-2) a machine gate naming a problem, or no gate at all, refuses the launch before any folder or
                runtime call, through batch too (a launch failure, nothing run); a quiet gate lets the take run
+  L1-ledger    (drive-wiring review MAJOR 1; the fake road is permission-faithful) the driver's ledger lines go to the
+               host-owned take folder during the take and are copied byte-exact into the evidence folder after the
+               restore, both sha256 recorded and the host copy removed; a held take keeps the host copy and gets no
+               evidence copy
+  N1-native    (review MAJOR 1) a native session in the agent's config folder (0000 to the host during the take, on the
+               faithful road) is located through the box's operator_list and read through operator_read with root
+               "config", never host-side: each turn's snapshot is retained with the bytes' sha256
 
 Mutants (MUTANTS, each killed by its own check's line): grant skipped; restore moved after postflight; restore skipped
 on a LaunchError; a scan running after a failed restore; a commit reading a held take's records; a host-side save and a
@@ -172,7 +179,10 @@ def o2_restore(mod, p):
         r = tbi.row(1)
         with watched(mod, order), tbi.spying(rig.spy):
             cid = rig.driver.launch(r)
-            rig.driver.drive(r, cid)
+            try:
+                rig.driver.drive(r, cid)
+            except mod.DriveRefused as e:            # read below by the order it left, never an ERROR line
+                out.append(f"{p}: the clean take stopped: {e}")
             rig.driver.remove(cid)
         take = rig.take()
         rest = [e for n, e in road.events if n == "restore"]
@@ -677,10 +687,87 @@ def p2_machine(mod, p):
     return out
 
 
+@tbi.guarded("L1-ledger")
+def l1_ledger(mod, p):
+    out = []
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        take = rig.take()
+        if got[0]["state"] != tbi.labels4.GRADED:
+            return [f"{p}: a clean take on the faithful road is {got[0]['state']} ({got[0]['reason']})"]
+        ev = os.path.join(take.evidence_dir, "ledger.jsonl")
+        host = os.path.join(take.folder, mod.EVIDENCE_LEDGER_HOST)
+        rec = read(os.path.join(take.folder, mod.EVIDENCE_LEDGER_COPY))
+        data = Path(ev).read_bytes() if os.path.isfile(ev) else None
+        if data is None or not data.startswith(b'{"agent"') or os.path.lexists(host):
+            out.append(f"{p}: the evidence ledger is {data[:40] if data else None!r}, the host copy "
+                       f"{'left' if os.path.lexists(host) else 'removed'}")
+        if (rec is None or rec["host_sha256"] != rec["evidence_sha256"]
+                or rec["evidence_sha256"] != hashlib.sha256(data or b"").hexdigest()):
+            out.append(f"{p}: the copy record does not bind both bytes: {rec}")
+    with tbi.scratch_repo() as root:                 # a held take: the host copy stays, no evidence copy
+        rig = tbi.Rig(mod, root)
+        rig.driver.ownership = rig.ownership = tbi.FakeOwnership(rig.box, fail_restore=True)
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        take = rig.take()
+        if not os.path.isfile(os.path.join(take.folder, mod.EVIDENCE_LEDGER_HOST)) or os.path.lexists(
+                os.path.join(take.evidence_dir, "ledger.jsonl")):
+            out.append(f"{p}: a held take's ledger is not kept host-side alone")
+    return out
+
+
+class NativeAdapter(tbi.FakeAdapter):
+    """The fake adapter, which also writes a native session into the config folder each turn (as the agent would) and
+    names it through the box's listing."""
+
+    def _turn(self, line, *, first, budget_s):
+        got = super()._turn(line, first=first, budget_s=budget_s)
+        cfg = self.take.config_dir
+        with tbi.FakeBox.as_container(cfg):
+            folder = Path(cfg) / "native"
+            folder.mkdir(exist_ok=True)
+            with open(folder / "session.jsonl", "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({"turn": self._turns + 1, "line": line}) + "\n")
+        return got
+
+    def native_session_rel(self, lister):
+        if dict(lister("")).get("native") != "dir" or dict(lister("native")).get("session.jsonl") != "file":
+            raise AssertionError("the box's listing does not show the native session")
+        return "native/session.jsonl"
+
+    def native_session_path(self, home):
+        return str(Path(home) / "native" / "session.jsonl")
+
+
+@tbi.guarded("N1-native")
+def n1_native(mod, p):
+    out = []
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+        rig.driver.adapter_for = lambda r, take: NativeAdapter(rig.box, take, rig.turns)
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        take = [t for t in rig.driver.published_takes] or [rig.take()]
+        take = take[-1]
+        if take.native_snapshot_refusal is not None or len(take.native_snapshots) != 2:
+            out.append(f"{p}: the native sessions were not retained through the box: "
+                       f"{take.native_snapshot_refusal}, {take.native_snapshots}")
+        reads = [e for n, e in rig.ownership.events if n == "operator_read" and e["root_kind"] == "config"]
+        lists = [e for n, e in rig.ownership.events if n == "operator_list" and e["root_kind"] == "config"]
+        if len(reads) != 2 or not lists or any(e["root"] != take.config_dir for e in reads + lists):
+            out.append(f"{p}: the config folder was not read through the box: {len(reads)} reads, {len(lists)} lists")
+        for snap in take.native_snapshots:
+            data = (Path(take.folder) / "session" / snap["file"]).read_bytes()
+            if hashlib.sha256(data).hexdigest() != snap["sha256"]:
+                out.append(f"{p}: {snap['file']} is not the bytes its sha256 names")
+    return out
+
+
 CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch, "O4-held": o4_held,
           "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator,
           "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road,
-          "U1-uid-map": u1_uid_map, "P2-machine": p2_machine}
+          "U1-uid-map": u1_uid_map, "P2-machine": p2_machine,
+          "L1-ledger": l1_ledger, "N1-native": n1_native}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -714,6 +801,14 @@ MUTANTS = {
     "machine-gate-unchecked": ((("        if busy:                                              # P-2: before any folder",
                                  "        if False:                                              # P-2: before any folder"),),
                                "P2-machine"),
+    "ledger-into-evidence": ((("        with open(os.path.join(take.folder, EVIDENCE_LEDGER_HOST), \"a\", encoding=\"utf-8\") as fh:",
+                               "        with open(os.path.join(take.evidence_dir, \"ledger.jsonl\"), \"a\", "
+                               "encoding=\"utf-8\") as fh:"),), "L1-ledger"),
+    "ledger-copy-skipped": ((("            self._copy_evidence_ledger(take)\n", "            pass\n"),), "L1-ledger"),
+    "native-read-host-side": ((("            take.native_snapshots.append(_native_snapshot.retain_bytes(take.folder, n, "
+                                "reader(rel)))",
+                                "            take.native_snapshots.append(_native_snapshot.retain(take.folder, n, "
+                                "os.path.join(take.config_dir, rel)))"),), "N1-native"),
     "uid-map-unread": ((("        uid_map = self.uid_map(take) if callable(self.uid_map) else self.uid_map",
                          "        uid_map = self.uid_map"),), "U1-uid-map"),
     "one-turn-reached": ((("        take.driven = True\n",
@@ -774,6 +869,12 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_p2_machine(self):
         self.assertEqual(p2_machine(tbi.drive), [])
+
+    def test_l1_ledger(self):
+        self.assertEqual(l1_ledger(tbi.drive), [])
+
+    def test_n1_native(self):
+        self.assertEqual(n1_native(tbi.drive), [])
 
 
 class TestOwnershipMutants(unittest.TestCase):
@@ -840,6 +941,15 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_machine_gate_unchecked(self):
         self.kill("machine-gate-unchecked")
+
+    def test_ledger_into_evidence(self):
+        self.kill("ledger-into-evidence")
+
+    def test_ledger_copy_skipped(self):
+        self.kill("ledger-copy-skipped")
+
+    def test_native_read_host_side(self):
+        self.kill("native-read-host-side")
 
 
 if __name__ == "__main__":

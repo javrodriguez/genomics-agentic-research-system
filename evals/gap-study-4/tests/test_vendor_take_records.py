@@ -55,7 +55,7 @@ def drive_vendor(test, harness, *, native=True, fail_at=None):
 
     def make(r, take):
         cls = type("Vendor", (VendorAdapter if native else tbi.FakeAdapter,), {"name": harness})
-        kw = {"home": home.name, "fail_at": fail_at} if native else {}
+        kw = {"home": take.config_dir, "fail_at": fail_at} if native else {}   # review MAJOR 1: the config folder
         rig.adapters.append(cls(rig.box, take, rig.turns, **kw))
         return rig.adapters[-1]
     rig.adapter_for = rig.driver.adapter_for = make

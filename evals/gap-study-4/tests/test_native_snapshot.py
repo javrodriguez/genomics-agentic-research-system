@@ -144,23 +144,31 @@ class Retain(unittest.TestCase):
 
 
 class NativeAdapter(tbi.FakeAdapter):
-    """FakeAdapter that keeps a growing native session file in its own home, as a resumed Gemini session does."""
+    """FakeAdapter that keeps a growing native session file in the take's config folder (its home, the agent's during
+    the take, written as the container would), as a resumed Gemini session does; the driver finds it through the box's
+    listing (drive-wiring review MAJOR 1)."""
 
     def __init__(self, *a, home, fail_at=None, **kw):
         super().__init__(*a, **kw)
         self.home, self.fail_at, self.seen_before = Path(home), fail_at, []
-        self.file = chats(self.home) / f"session-2026-10-14T04-20-{SID[:8]}.jsonl"
+        with tbi.FakeBox.as_container(str(self.home)):
+            self.file = chats(self.home) / f"session-2026-10-14T04-20-{SID[:8]}.jsonl"
 
     def native_session_path(self, home):
         if self.fail_at == self._turns:
             raise ns().SnapshotRefused("synthetic: no session file")
         return ns().gemini_session_file(str(self.home), SID)
 
+    def native_session_rel(self, lister):
+        if self.fail_at == self._turns:
+            raise ns().SnapshotRefused("synthetic: no session file")
+        return ns().gemini_session_rel(lister, SID)
+
     def _turn(self, line, *, first, budget_s):
         n = self._turns + 1
         self.seen_before.append(sorted(p.name for p in (Path(self.take.folder) / "session").glob("native-turn-*"))
                                 if (Path(self.take.folder) / "session").is_dir() else [])
-        with open(self.file, "a", encoding="utf-8") as fh:
+        with tbi.FakeBox.as_container(str(self.home)), open(self.file, "a", encoding="utf-8") as fh:
             fh.write(json.dumps({"turn": n, "line": line}) + "\n")
         return super()._turn(line, first=first, budget_s=budget_s)
 
@@ -176,7 +184,7 @@ class DriverRetains(unittest.TestCase):
         rig = tbi.Rig(tbi.drive, root, turns=[{"text": "a"}, {"text": "b"}, {"text": "c"}])
         if not plain:
             def make(r, take):
-                rig.adapters.append(NativeAdapter(rig.box, take, rig.turns, home=home.name, fail_at=fail_at))
+                rig.adapters.append(NativeAdapter(rig.box, take, rig.turns, home=take.config_dir, fail_at=fail_at))
                 return rig.adapters[-1]
             rig.adapter_for = rig.driver.adapter_for = make
         b, got = tbi.run_batch(rig, [tbi.row(1)])

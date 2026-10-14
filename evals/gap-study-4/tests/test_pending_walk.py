@@ -104,8 +104,9 @@ class GeminiBox(tbi.FakeBox):
             cfg = cfg[len("type=bind,source="):-len(",target=" + rt.CONFIG_MOUNT)]
             self.turn_n += 1
             chats = Path(cfg) / ".gemini" / "tmp" / "project-1" / "chats"
-            chats.mkdir(parents=True, exist_ok=True)
-            (chats / f"session-2026-10-14T05-00-{SID[:8]}.jsonl").write_bytes(native(self.turn_n, self.summary))
+            with tbi.FakeBox.as_container(cfg):          # the agent writes its own config folder (the P4 road)
+                chats.mkdir(parents=True, exist_ok=True)
+                (chats / f"session-2026-10-14T05-00-{SID[:8]}.jsonl").write_bytes(native(self.turn_n, self.summary))
             return rt.Completed(0, stream(self.turn_n), "")
         return super().run(argv, env=env, timeout=timeout)
 
@@ -181,7 +182,8 @@ class Road:
             lock_path=str(tbi.SCRATCH / "synthetic.lock"), hosts={"api": "synthetic.invalid"},
             adapter_for=drive.harness_adapter_for(runtime=r.box, login_file=str(login),
                                                   counters_for=lambda take: {"oom_kill": 0, "pids_max": 0},
-                                                  pin_for=self.pin_for, clock=r.clock),
+                                                  pin_for=self.pin_for, clock=r.clock,
+                                                  config_view=lambda take: self.driver.config_view(take)),
             script_for=lambda row: [{"n": k, "line": f"sent {k}"} for k in range(1, turns + 1)],
             pin_for=self.pin_for, checker=self.never_checked, secrets=lambda: [("token", tbi.TOKEN)],
             rules_scanner=lambda paths: [], uid_map=tbi.UID_MAP, budget_s=600, finalize_wait_s=tbi.CAP_S,

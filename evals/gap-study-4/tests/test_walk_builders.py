@@ -970,7 +970,8 @@ class FakeWorld:
                                            project=project)["planted"]
             path = Path(self.box.containers[sid]["ev"]) / "watched.json"
             if not path.exists():
-                path.write_text(json.dumps({"paths": sorted(set(planted))}))
+                with tbi.FakeBox.as_watcher(str(path.parent)):     # the sidecar writes as the watcher (P4 road)
+                    path.write_text(json.dumps({"paths": sorted(set(planted))}))
             return evidence(sid, label)
         return ev
 
