@@ -22,7 +22,8 @@ and the end-to-end take S6c covered only in halves (D7 the records, D8 the check
   W5-one-road W7B-R1-1: by AST, no non-test module under evals/gap-study-4 calls TakeDriver( or derives from it
              except WalkDriver. Witnesses: added-construction, added-subclass (one module's source extended).
   W6-pending W7B-R1-6: every walk-measured checker constant is PENDING (the two known values aside) and routing.json's
-             pin_profiles are empty. Witnesses: constant-filled, pin-filled.
+             pin_profiles are exactly CP5's registration (arm A's three, Javier 14 Oct 2026). Witnesses:
+             constant-filled, pin-filled.
   E1-take    the end-to-end take: batch.Batch drives the walk driver (TakeDriver through walk_driver, the REAL Claude
              Code adapter on a fake box that answers in the recorded stream shape and writes a session file, the
              REAL check4 on round 4's REAL design through take_checker), routing labels it, TakeRepo commits it into
@@ -572,10 +573,17 @@ PENDING_PATHS = ["budgets.turn_timeout_s", "driver_constants.run_tree_tmpdir", "
 KNOWN_VALUES = ("driver_outcome_shapes", "system_under_test")       # check_take names these two as known values
 
 
+# CP5's registration, typed once from plans/gap-study-round-4/cp5-values-draft-2026-10-14.md (Javier: "CP5: all as
+# recommended", 14 Oct 2026); test_routing's TestCP5ArmAProfiles binds the same values to the take-a lock.
+CP5_PROFILES = {"claude-code": {m: {"permission_mode": "bypassPermissions", "version": "2.1.296"}
+                                for m in ("claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5-20251001")}}
+
+
 @guarded("W6-pending")
 def w6_pending(world_, p):
     """W7B-R1-6: every checker constant a walk measures is PENDING in production (the two known values aside), and
-    routing.json's pin_profiles are empty: the end-to-end take's values are test data only."""
+    routing.json's pin_profiles are exactly CP5's registration (Javier, 14 Oct 2026: arm A's three profiles, nothing
+    else): the end-to-end take's values are test data only."""
     ct, table = world_
     out = []
     got = sorted(x for k, v in ct.CHECKER_CONSTANTS.items() for x in ct._pending_paths(v, k))
@@ -584,8 +592,8 @@ def w6_pending(world_, p):
     others = sorted(set(ct.CHECKER_CONSTANTS) - set(KNOWN_VALUES) - {x.split('.')[0] for x in got})
     if others:
         out.append(f"{p}: checker constants {others} hold values a walk has not measured")
-    if table.get("pin_profiles") != {}:
-        out.append(f"{p}: routing.json's pin_profiles are {table.get('pin_profiles')!r}, not empty")
+    if table.get("pin_profiles") != CP5_PROFILES:
+        out.append(f"{p}: routing.json's pin_profiles are {table.get('pin_profiles')!r}, not CP5's registration")
     return out
 
 

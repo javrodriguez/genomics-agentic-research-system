@@ -89,8 +89,10 @@ TARGETS = ("walk_builders", "walk_runner")
 # The production values still missing, in walk_builders.NAMES' order: the real box's (item 4), the owner's login
 # (item 7) and the walks' (pins, constants, budgets, exclusions). A value filled later turns this list red on purpose.
 EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts", "uid_map",
-                    "cgroup_dir_for", "rules_scanner", "login_path", "agent_version", "pin_for", "design_for",
+                    "cgroup_dir_for", "rules_scanner", "login_path", "agent_version", "design_for",
                     "budgets", "run_tree_exclude"]
+# CP5 (Javier, "CP5: all as recommended", 14 Oct 2026) registered arm A's pin profiles, so pin_for is no longer missing
+# in production (B8's rule, on the real table); it is checked present in B7.production.
 
 
 def road() -> dict:
@@ -759,7 +761,7 @@ class B7Production(Case):
         why = dict(gaps)
         for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"), ("uid_map", rt.CALLER_PENDING["uid_map"]),
                             ("cgroup_dir_for", rt.CALLER_PENDING["cgroup_dir"]), ("login_path", "walk token"),
-                            ("pin_for", "pin_profiles"), ("design_for", "PENDING"), ("run_tree_exclude", "run_location"),
+                            ("design_for", "PENDING"), ("run_tree_exclude", "run_location"),
                             ("agent_version", "version_pins"), ("rules_scanner", "gitleaks")):
             self.assertIn(words, why[name], f"B7.production: {name} does not say why")
         import time
@@ -768,6 +770,7 @@ class B7Production(Case):
         self.assertEqual((got["clock"], got["sleep"]), (time.time, time.sleep), "B7.production")
         self.assertEqual(got["run_tree_origin"], (drive.REPO, variants.PINNED_TREE), "B7.production")
         self.assertEqual(got["table"], routing.load_table(), "B7.production")
+        self.assertTrue(callable(got["pin_for"]), "B7.production: CP5's registered pins are not handed to the walks")
         self.assertEqual(sorted(got), sorted(wb().NAMES), "B7.production: the set is not NAMES")
 
     def test_main_refuses_by_name_before_anything(self):

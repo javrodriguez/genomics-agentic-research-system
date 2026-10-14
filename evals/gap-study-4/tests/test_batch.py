@@ -776,13 +776,18 @@ def gate_problems() -> list[str]:
 
 
 class TestStartGate(unittest.TestCase):
-    def test_real_table_refuses_to_start(self):
+    def test_real_table_starts_and_refuses_without_its_pins(self):
+        # CP5 (Javier, "CP5: all as recommended", 14 Oct 2026): arm A's pins are registered and their status ruled, so
+        # the real routing.json starts; the same table with its pins taken back refuses on the pins alone. Round 3's
+        # reasons and pause cap are filled (Javier's "gap4 routing: A") and the markers ruled (glitch-f3, W1B2-6).
+        self.assertEqual(batch.start_problems(routing.load_table()), [])
+        batch.Batch(None, None, None, history=[])   # the real routing.json
+        unpinned = routing.load_table()
+        unpinned.update(pin_profiles={}, pin_profiles_status="PENDING (CP5)")
         with self.assertRaises(batch.BatchConfigError) as cm:
-            batch.Batch(None, None, None)   # the real routing.json: the CP5 pins are still PENDING
+            batch.Batch(None, None, None, table=unpinned, history=[])
         self.assertIn("pin_profiles", str(cm.exception))
-        # round 3's reasons and pause cap are filled (Javier's "gap4 routing: A") and the markers ruled
-        # (glitch-f3, W1B2-6), so only the pins remain
-        for filled in ("pause", "operator_reasons", "rate_limit"):
+        for filled in ("pause", "operator_reasons", "rate_limit", "spend_cap"):
             self.assertNotIn(filled, str(cm.exception))
 
     def test_gate_refuses_pending_data(self):
@@ -802,8 +807,13 @@ class TestStartGate(unittest.TestCase):
                                                        "rate_limit_markers_status missing: the loop would start"])
 
     def test_check_cli_exits_1_while_pending(self):
+        with redirect_stdout(io.StringIO()) as real:   # CP5: the real routing.json is ready
+            self.assertEqual(batch.main(["--check"]), 0)
+        self.assertEqual(real.getvalue().splitlines(), ["batch: routing.json ready"])
+        unpinned = routing.load_table()
+        unpinned.update(pin_profiles={}, pin_profiles_status="PENDING (CP5)")
         buf = io.StringIO()
-        with redirect_stdout(buf):
+        with mock.patch.object(routing, "load_table", lambda *a: copy.deepcopy(unpinned)), redirect_stdout(buf):
             self.assertEqual(batch.main(["--check"]), 1)
         for what in ("pin_profiles", "pin_profiles_status"):
             self.assertIn(what, buf.getvalue())
@@ -2721,7 +2731,7 @@ class TestCli(unittest.TestCase):
         got = json.loads(buf.getvalue())
         self.assertEqual(tuple(got["routes"]) + tuple(got["batch"]), labels4.TERMINAL_STATES)
         with redirect_stdout(io.StringIO()):
-            self.assertEqual(batch.main(["--check"]), 1)   # pending data
+            self.assertEqual(batch.main(["--check"]), 0)   # CP5 ruled: routing.json is ready
         with mock.patch.object(batch, "under_nohup", lambda: False), redirect_stderr(io.StringIO()) as err:
             self.assertEqual(batch.main([]), 2)
         self.assertIn("nohup", err.getvalue())

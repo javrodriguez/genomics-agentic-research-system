@@ -20228,161 +20228,169 @@
   "image_locks": [
     {
       "path": "box/codex/image.lock",
-      "sha256": "b668a1263536730385cc0894b696473c51d1c2aa3e0452aadb45d78cb8748467",
+      "sha256": "0970bf678e251cd9b67c73f6b659fe170261e2c169c8d10ada2b55691c4871f8",
       "lock": {
-        "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
-        "config_digest": "sha256:4647fdaace69f1e9083d0c1424192f81ac3ad43c4382ce5f7d1ec8cfda52c175",
+        "schema": 1,
+        "image": "take-o",
         "dockerfile": "codex/Dockerfile",
+        "base": "PENDING",
         "harness": {
           "package": "@openai/codex",
-          "version": "0.162.1"
+          "version": "PENDING"
         },
-        "image": "take-o",
-        "image_id": "sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381",
-        "manifest_digest": "sha256:46deefc20439372cbdfabbaa023fe71aed4d4dbee518c729d3b23b52c8d03aa3",
-        "pending": {},
-        "python": "3.11.2",
-        "schema": 2,
-        "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+        "python": "PENDING",
+        "image_id": "PENDING",
         "users": {
           "agent": {
-            "gid": 10001,
             "name": "dana",
-            "uid": 10001
-          },
-          "keepalive": {
-            "gid": 10003,
-            "uid": 10003
+            "uid": 10001,
+            "gid": 10001
           },
           "watcher": {
-            "gid": 10002,
             "name": "eli",
-            "uid": 10002
+            "uid": 10002,
+            "gid": 10002
+          },
+          "keepalive": {
+            "uid": 10003,
+            "gid": 10003
           }
+        },
+        "pending": {
+          "base": "the shared base digest is read and pinned when CP2 builds on the real box; that base must also supply node and npm, confirmed at the same pin",
+          "harness.version": "the latest stable on the day CP2 builds the image (D8 B2 item 2), never bumped after the first counted walk; D8's 6 Oct reading is history, never the pin",
+          "python": "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16)",
+          "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box"
         }
       }
     },
     {
       "path": "box/egress/image.lock",
-      "sha256": "3480fe6c72730e4a8159e3e867b08e43ffeb23050a6d6ef43bfb28d8221d9a20",
+      "sha256": "0d840c02f881f96121a9cb68f5f176183447c44437d9a7d970f084cc6b448f50",
       "lock": {
-        "base": "docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
-        "config_digest": "sha256:388fbbc4d0cc6ea5ad8a942a779643d7842e2da4eeb96f5fd2930a888ec8161f",
-        "dockerfile": "egress/Dockerfile",
-        "harness": null,
+        "schema": 1,
         "image": "egress",
-        "image_id": "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
-        "manifest_digest": "sha256:24c9fbdf938114d2ff412a70f5b2f2d08f2c4f7735ab7c229c8ad254dc02a89d",
-        "pending": {},
+        "dockerfile": "egress/Dockerfile",
+        "base": "PENDING",
+        "harness": null,
         "python": null,
-        "schema": 2,
-        "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
-        "squid": "5.7-2+deb12u6",
-        "users": null
+        "squid": "PENDING",
+        "image_id": "PENDING",
+        "users": null,
+        "pending": {
+          "base": "the egress image's own base digest, read and pinned when CP2 builds on the real box",
+          "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box",
+          "squid": "the squid package version the pinned base's archive offers, read and pinned when CP2 builds the egress image; squid -k parse on that build is a real-box check"
+        }
       }
     },
     {
       "path": "box/gemini/image.lock",
-      "sha256": "e9e5dab642c93530a7995c1237962459ee9dc468ea53549e41f81025dcd6e4f5",
+      "sha256": "f2157dca8e8bd9db98d4ae96343951ee56b061a72eeba4f34bb2757bafdfeead",
       "lock": {
-        "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
-        "config_digest": "sha256:6bba97e7c55af01c1831ab214fb8eb343772859ee152c7702e00f108ecd7c1f6",
+        "schema": 1,
+        "image": "take-g",
         "dockerfile": "gemini/Dockerfile",
+        "base": "PENDING",
         "harness": {
           "package": "@google/gemini-cli",
-          "version": "0.64.0"
+          "version": "PENDING"
         },
-        "image": "take-g",
-        "image_id": "sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013",
-        "manifest_digest": "sha256:7eb4c799f29fe5330d9cf76deae8988ea04f8183ee451a5dad4f12bcb00eee9f",
-        "pending": {},
-        "python": "3.11.2",
-        "schema": 2,
-        "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+        "python": "PENDING",
+        "image_id": "PENDING",
         "users": {
           "agent": {
-            "gid": 10001,
             "name": "dana",
-            "uid": 10001
-          },
-          "keepalive": {
-            "gid": 10003,
-            "uid": 10003
+            "uid": 10001,
+            "gid": 10001
           },
           "watcher": {
-            "gid": 10002,
             "name": "eli",
-            "uid": 10002
+            "uid": 10002,
+            "gid": 10002
+          },
+          "keepalive": {
+            "uid": 10003,
+            "gid": 10003
           }
+        },
+        "pending": {
+          "base": "the shared base digest is read and pinned when CP2 builds on the real box; that base must also supply node and npm, confirmed at the same pin",
+          "harness.version": "the latest stable on the day CP2 builds the image (D8 B2 item 2), never bumped after the first counted walk; D8's 6 Oct reading is history, never the pin",
+          "python": "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16)",
+          "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box"
         }
       }
     },
     {
       "path": "box/image.lock",
-      "sha256": "f181a29f204fb37b2621d81654b908049ad97e83860ba8e3dba36920da3ab513",
+      "sha256": "82db89a8825781db0a9c1f0cee78fc2f4c739295d32a2ff0bdb05f8fbd6e0d57",
       "lock": {
-        "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
-        "config_digest": "sha256:da2067d3ee9f1eeea61afc39cdeddadfed2bd9d339382f8b1ccd8cbd1b9d33a6",
+        "schema": 1,
+        "image": "take-a",
         "dockerfile": "Dockerfile",
+        "base": "PENDING",
         "harness": {
           "package": "@anthropic-ai/claude-code",
-          "version": "2.1.296"
+          "version": "PENDING"
         },
-        "image": "take-a",
-        "image_id": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
-        "manifest_digest": "sha256:c8d50caa6de74e8c1761aaf572e2ef8f6d2d573a69bb851af02395f6106366e8",
-        "pending": {},
-        "python": "3.11.2",
-        "schema": 2,
-        "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+        "python": "PENDING",
+        "image_id": "PENDING",
         "users": {
           "agent": {
-            "gid": 10001,
             "name": "dana",
-            "uid": 10001
-          },
-          "keepalive": {
-            "gid": 10003,
-            "uid": 10003
+            "uid": 10001,
+            "gid": 10001
           },
           "watcher": {
-            "gid": 10002,
             "name": "eli",
-            "uid": 10002
+            "uid": 10002,
+            "gid": 10002
+          },
+          "keepalive": {
+            "uid": 10003,
+            "gid": 10003
           }
+        },
+        "pending": {
+          "base": "the shared base digest is read and pinned when CP2 builds on the real box; that base must also supply node and npm, confirmed at the same pin",
+          "harness.version": "walked before it is pinned (the checker reads record shapes specific to each version); the latest stable on the day CP2 builds the image, never bumped after the first counted walk",
+          "python": "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16)",
+          "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box"
         }
       }
     },
     {
       "path": "box/sidecar/image.lock",
-      "sha256": "90aacb863532a9e7472127f70d7257c44ca87d02440cbdfa8b5f7bb5933fb7a4",
+      "sha256": "4c139b3c4fe40e6e375eb123384d5ddff6b48ac2dd251ec32cb22d84382881c1",
       "lock": {
-        "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
-        "config_digest": "sha256:80951705c2ce29d10782ca4b664c4ee14b680c6ed6fdc8197f45caabad828dfe",
-        "dockerfile": "sidecar/Dockerfile",
-        "harness": null,
+        "schema": 1,
         "image": "sidecar",
-        "image_id": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
-        "manifest_digest": "sha256:c1409b3323bc991d9c86ed99411455ffba3aabbe6159384d0786216aba092a82",
-        "pending": {},
-        "python": "3.11.2",
-        "schema": 2,
-        "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+        "dockerfile": "sidecar/Dockerfile",
+        "base": "PENDING",
+        "harness": null,
+        "python": "PENDING",
+        "image_id": "PENDING",
         "users": {
           "agent": {
-            "gid": 10001,
             "name": "dana",
-            "uid": 10001
-          },
-          "keepalive": {
-            "gid": 10003,
-            "uid": 10003
+            "uid": 10001,
+            "gid": 10001
           },
           "watcher": {
-            "gid": 10002,
             "name": "eli",
-            "uid": 10002
+            "uid": 10002,
+            "gid": 10002
+          },
+          "keepalive": {
+            "uid": 10003,
+            "gid": 10003
           }
+        },
+        "pending": {
+          "base": "the shared base digest (the take images' base), read and pinned when CP2 builds on the real box",
+          "python": "the image's own python3 version, read from the pinned base when CP2 builds the image (F-16); the sidecar program's floor is 3.11",
+          "image_id": "only a built image has an id; recorded when CP2 builds the image on the real box"
         }
       }
     }
@@ -20390,21 +20398,21 @@
   "version_pins": {
     "claude-code": {
       "claude-opus-5-5": {
-        "permission_mode": "PENDING",
-        "version": "PENDING",
-        "image_version": "2.1.296",
+        "permission_mode": "bypassPermissions",
+        "version": "2.1.296",
+        "image_version": "PENDING",
         "agent_version": null
       },
       "claude-sonnet-5-5": {
-        "permission_mode": "PENDING",
-        "version": "PENDING",
-        "image_version": "2.1.296",
+        "permission_mode": "bypassPermissions",
+        "version": "2.1.296",
+        "image_version": "PENDING",
         "agent_version": null
       },
       "claude-haiku-4-5-20251001": {
-        "permission_mode": "PENDING",
-        "version": "PENDING",
-        "image_version": "2.1.296",
+        "permission_mode": "bypassPermissions",
+        "version": "2.1.296",
+        "image_version": "PENDING",
         "agent_version": null
       }
     },
@@ -20412,13 +20420,13 @@
       "gpt-6.1-sol": {
         "permission_mode": "PENDING",
         "version": "PENDING",
-        "image_version": "0.162.1",
+        "image_version": "PENDING",
         "agent_version": null
       },
       "gpt-6-luna": {
         "permission_mode": "PENDING",
         "version": "PENDING",
-        "image_version": "0.162.1",
+        "image_version": "PENDING",
         "agent_version": null
       }
     },
@@ -20426,13 +20434,13 @@
       "gemini-3.8-flash": {
         "permission_mode": "PENDING",
         "version": "PENDING",
-        "image_version": "0.64.0",
+        "image_version": "PENDING",
         "agent_version": null
       },
       "gemini-3.5-flash-lite": {
         "permission_mode": "PENDING",
         "version": "PENDING",
-        "image_version": "0.64.0",
+        "image_version": "PENDING",
         "agent_version": null
       }
     }
@@ -20640,7 +20648,7 @@
     "aborted"
   ],
   "routing": {
-    "sha256": "56e8c935debe99aa38af3d13a3e571cd243af96bb76cf4fc935ade23976ebbd8",
+    "sha256": "658d72e8aed13b853a340d41e0f4d91961924d149ce746cd8565982049bd320a",
     "about": "Round 4's routing table, pre-registered data. Decided by routing.py only, from harness-side records only, never from the agent's text. Route, phase, turn-end and batch-state strings are graders/labels4.py's and are checked against it on load. A row matches when the take is in its phase, every all_of condition holds, at least one any_of condition holds (when any_of is given), and no none_of condition holds. The winning rows are the matched rows at the highest precedence level; matched rows at that level that name different routes are a tie and are refused, as is an input that matches no row. Rows never read a text-derived count (the events record): those are annotations, below."
   },
   "predictions_rule": {
@@ -22541,11 +22549,6 @@
       "text": "mode bits are not graded: the end state records no file mode, so a change of mode alone is invisible",
       "ruling": "S7-D2 (C)",
       "closed_check": "no task's right or wrong move is a change of mode alone: tests/test_endstate.py ModeBits.test_no_task_move_is_chmod_only reads every task definition and fixture"
-    },
-    {
-      "text": "the new-folder watch gap: inotifywait -r watches a new folder only after reading its CREATE (probed on athena: a write in the same instant can be missed); the sidecar's rescan recovers that a watched path EXISTED (found.jsonl), never an access, so three cases stay unseen: (1) after post-N, a write inside a new folder made before -r watches that folder (the bound is that time, not the rescan) is not counted by writes_after_the_end, whose definition is what the watcher logged; (2) a file made and removed again before the rescan leaves no record; (3) reads or writes inside a new folder before its watch exists are never accesses",
-      "ruling": "glitch-06, Wed 14 Oct 2026 (review of the box candidate, finding 4)",
-      "closed_check": "tests/test_new_folder_closed_check.py (every path an access-reading grader consults sits in a folder present before the take, over all built task halves); tests/test_live_box.py NewFolderGap and RescanReach; tests/test_endstate.py Discoveries"
     }
   ],
   "final_stop": {
@@ -23640,6 +23643,24 @@
     "/furniture/claude-code": "R15 CP5-req 56: CP6 walks supply each harness's list.",
     "/furniture/codex": "R15 CP5-req 56: CP6 walks supply each harness's list.",
     "/furniture/gemini": "R15 CP5-req 56: CP6 walks supply each harness's list.",
+    "/image_locks/0/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/0/lock/harness/version": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/0/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/0/lock/python": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/1/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/1/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/1/lock/squid": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/2/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/2/lock/harness/version": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/2/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/2/lock/python": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/3/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/3/lock/harness/version": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/3/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/3/lock/python": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/4/lock/base": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/4/lock/image_id": "R6 plan 828: CP2 supplies built image and version pins.",
+    "/image_locks/4/lock/python": "R6 plan 828: CP2 supplies built image and version pins.",
     "/limitations/10/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
     "/limitations/2/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
     "/limitations/5/round_4_reading": "V8, R8 plan 830: CP2 evidence is required for the accepted conditional reading.",
@@ -23652,18 +23673,19 @@
     "/served_model_rule/claude-code": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/served_model_rule/gemini": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/stats_design_inputs/floors": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
-    "/version_pins/claude-code/claude-haiku-4-5-20251001/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
-    "/version_pins/claude-code/claude-haiku-4-5-20251001/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
-    "/version_pins/claude-code/claude-opus-5-5/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
-    "/version_pins/claude-code/claude-opus-5-5/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
-    "/version_pins/claude-code/claude-sonnet-5-5/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
-    "/version_pins/claude-code/claude-sonnet-5-5/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+    "/version_pins/claude-code/claude-haiku-4-5-20251001/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+    "/version_pins/claude-code/claude-opus-5-5/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+    "/version_pins/claude-code/claude-sonnet-5-5/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+    "/version_pins/codex/gpt-6-luna/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/version_pins/codex/gpt-6-luna/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/version_pins/codex/gpt-6-luna/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+    "/version_pins/codex/gpt-6.1-sol/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/version_pins/codex/gpt-6.1-sol/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/version_pins/codex/gpt-6.1-sol/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+    "/version_pins/gemini/gemini-3.5-flash-lite/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/version_pins/gemini/gemini-3.5-flash-lite/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/version_pins/gemini/gemini-3.5-flash-lite/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
+    "/version_pins/gemini/gemini-3.8-flash/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/version_pins/gemini/gemini-3.8-flash/permission_mode": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/version_pins/gemini/gemini-3.8-flash/version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
     "/walk_counts/inherited_shapes/0": "R28/R30 CP5-req 162-169 and 175-182: Javier's CP6 walks supply counts.",
@@ -23694,6 +23716,24 @@
       "/furniture/claude-code",
       "/furniture/codex",
       "/furniture/gemini",
+      "/image_locks/0/lock/base",
+      "/image_locks/0/lock/harness/version",
+      "/image_locks/0/lock/image_id",
+      "/image_locks/0/lock/python",
+      "/image_locks/1/lock/base",
+      "/image_locks/1/lock/image_id",
+      "/image_locks/1/lock/squid",
+      "/image_locks/2/lock/base",
+      "/image_locks/2/lock/harness/version",
+      "/image_locks/2/lock/image_id",
+      "/image_locks/2/lock/python",
+      "/image_locks/3/lock/base",
+      "/image_locks/3/lock/harness/version",
+      "/image_locks/3/lock/image_id",
+      "/image_locks/3/lock/python",
+      "/image_locks/4/lock/base",
+      "/image_locks/4/lock/image_id",
+      "/image_locks/4/lock/python",
       "/limitations/10/round_4_reading",
       "/limitations/2/round_4_reading",
       "/limitations/5/round_4_reading",
@@ -23706,18 +23746,19 @@
       "/served_model_rule/claude-code",
       "/served_model_rule/gemini",
       "/stats_design_inputs/floors",
-      "/version_pins/claude-code/claude-haiku-4-5-20251001/permission_mode",
-      "/version_pins/claude-code/claude-haiku-4-5-20251001/version",
-      "/version_pins/claude-code/claude-opus-5-5/permission_mode",
-      "/version_pins/claude-code/claude-opus-5-5/version",
-      "/version_pins/claude-code/claude-sonnet-5-5/permission_mode",
-      "/version_pins/claude-code/claude-sonnet-5-5/version",
+      "/version_pins/claude-code/claude-haiku-4-5-20251001/image_version",
+      "/version_pins/claude-code/claude-opus-5-5/image_version",
+      "/version_pins/claude-code/claude-sonnet-5-5/image_version",
+      "/version_pins/codex/gpt-6-luna/image_version",
       "/version_pins/codex/gpt-6-luna/permission_mode",
       "/version_pins/codex/gpt-6-luna/version",
+      "/version_pins/codex/gpt-6.1-sol/image_version",
       "/version_pins/codex/gpt-6.1-sol/permission_mode",
       "/version_pins/codex/gpt-6.1-sol/version",
+      "/version_pins/gemini/gemini-3.5-flash-lite/image_version",
       "/version_pins/gemini/gemini-3.5-flash-lite/permission_mode",
       "/version_pins/gemini/gemini-3.5-flash-lite/version",
+      "/version_pins/gemini/gemini-3.8-flash/image_version",
       "/version_pins/gemini/gemini-3.8-flash/permission_mode",
       "/version_pins/gemini/gemini-3.8-flash/version",
       "/walk_counts/inherited_shapes/0",
