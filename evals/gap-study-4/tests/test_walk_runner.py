@@ -709,9 +709,11 @@ class R3DeadWalk(Case):
             self.assertEqual([g.get("state") for g in got], ["committed"], f"R3.dead-walk: {got}")
             copy = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-0001"
             shutil.copytree(folder_of(w, "w-0001"), copy)
+            # Every turn sign goes: the ledger, the transcript, each stream and each launch journal (on the merged
+            # head the box's run_turn writes turn-N.jsonl.launch.json itself, 0b6f60f9; the integration lane).
             for p in list(copy.iterdir()):
                 if p.name == "driver-ledger.json" or p.name == "transcript.jsonl" or (
-                        p.name.startswith("turn-") and p.name.endswith(".jsonl")):
+                        p.name.startswith("turn-") and p.name.endswith((".jsonl", ".jsonl.launch.json"))):
                     p.unlink()
             if not (copy / "preflight.json").exists() and not (copy / "refusal.json").exists():
                 (copy / "preflight.json").write_text('{"ok": true, "checks": []}\n')
