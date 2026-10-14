@@ -66,7 +66,8 @@ class Record(unittest.TestCase):
             one = '{"turn": 1, "line": "a"}\n'
             refs = self.retained(tmp, [one, one + '{"turn": 2, "line": "b"}\n'])
             got = drive.native_history_record("gemini", Path(tmp) / "session", refs, readers={"gemini": reader})
-            self.assertEqual(got, {"status": "joined", "why": None, "interactions": 2})
+            self.assertEqual(got, {"status": "joined", "why": None, "interactions": 2,
+                                   "basis": "unmasked retained originals, before the drive scan"})
             (Path(tmp) / "session" / "native-turn-2.jsonl").write_text('{"turn": 1, "line": "x"}\n')
             got = drive.native_history_record("gemini", Path(tmp) / "session", refs, readers={"gemini": reader})
             self.assertEqual(got["status"], "refused")

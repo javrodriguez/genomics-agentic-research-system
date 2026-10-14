@@ -98,12 +98,15 @@ def mutants():
                                     '"log", "--no-merges", "--format=%H%x1f%s"'),
         "register-disk-unchecked": ("H1.walk-history", "walk_register",
                                     "    if reg_dirty:", "    if False:"),
+        # Re-anchored after c35fc915 (one table, PRODUCTION_ADAPTERS, for the three harnesses): the equivalent sites
+        # are the class and module comparisons of adapter_class_problems against the class captured at import.
         "adapter-class-at-call-time": ("A1.adapter-class", "drive",
-                                       "    if type(adapter) is not PRODUCTION_ADAPTER or",
-                                       "    if type(adapter) is not _cc.ClaudeCodeAdapter or"),
+                                       "type(adapter) is not expected[0] or",
+                                       "type(adapter) is not getattr(sys.modules[expected[1]], "
+                                       "expected[0].__name__) or"),
         "adapter-module-unchecked": ("A1.adapter-class", "drive",
-                                     "            type(adapter).__module__ != PRODUCTION_ADAPTER_MODULE:",
-                                     "            False:"),
+                                     " or type(adapter).__module__ != expected[1]:",
+                                     ":"),
         "adapter-class-unchecked": ("A1.adapter-class", "drive",
                                     "            adapter_class_problems(adapter)          # W7B-R1-4\n", ""),
         "take-k-unbound": ("K1.take-k", "drive",

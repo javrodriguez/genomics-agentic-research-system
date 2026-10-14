@@ -221,6 +221,8 @@ def own_mutants():
                                  "    write_check(folder, check_record(walk, records, table, route_fn, checked=checked))\n",
                                  ""),
         "checked-always": ("R3.dead-walk", "walk_runner", "\"checked\": checked is True", "\"checked\": True"),
+        "walk-launch-journal-not-a-turn": ("R3.dead-walk", "drive",       # integration red A3 (glitch-06, 14 Oct)
+                                           "\n                 or LAUNCH_JOURNAL_NAME.fullmatch(n))", ")"),
         "walk-checked-as-take": ("R2.walk-check", "drive",
                                  "        if records == \"walks\":                    # D1: the round-4 walk road\n",
                                  "        if False:                    # D1: the round-4 walk road\n"),
@@ -697,6 +699,29 @@ class R3DeadWalk(Case):
                 self.fail(f"R3.dead-walk: a ledgerless walk whose turns ran was graded as {doc}")
             except ValueError as e:
                 self.assertIn("transcript.jsonl", str(e), f"R3.dead-walk: {e}")
+
+    def test_a_ledgerless_walk_with_only_a_launch_journal_is_refused(self):
+        """Live harness 3a (glitch-06's ruling, 0d417a1d; integration red A3): a launch journal alone is a turn
+        launched, so a walk folder holding one and no driver ledger is refused even with a pre-turn record beside it;
+        it is never read as a walk that died before turn 1. Binds walk_files' launch-journal clause."""
+        with study() as w:
+            got = self.must("R3.dead-walk", w.run_walks, [w.walk("w-0001")])
+            self.assertEqual([g.get("state") for g in got], ["committed"], f"R3.dead-walk: {got}")
+            copy = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-0001"
+            shutil.copytree(folder_of(w, "w-0001"), copy)
+            for p in list(copy.iterdir()):
+                if p.name == "driver-ledger.json" or p.name == "transcript.jsonl" or (
+                        p.name.startswith("turn-") and p.name.endswith(".jsonl")):
+                    p.unlink()
+            if not (copy / "preflight.json").exists() and not (copy / "refusal.json").exists():
+                (copy / "preflight.json").write_text('{"ok": true, "checks": []}\n')
+            w.mod.walk_files(copy)        # the control: with no turn sign the folder is a walk that died before turn 1
+            (copy / "turn-1.jsonl.launch.json").write_text("{}\n")
+            try:
+                w.mod.walk_files(copy)
+                self.fail("R3.dead-walk: a ledgerless walk with a launch journal passes the closed map")
+            except w.mod.DriveRefused as e:
+                self.assertIn("turn-1.jsonl.launch.json", str(e), f"R3.dead-walk: {e}")
 
 
 # ------------------------------------------------------------------------------------------------- R4

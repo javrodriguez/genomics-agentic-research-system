@@ -35,7 +35,13 @@ class ProjectionTests(unittest.TestCase):
                  "toolCalls": [dict(call, status="success", resultDisplay="display text",
                      result=[{"functionResponse": {"id": "call-1", "name": "read_file",
                                                    "response": {"output": "model-facing different text"}}}])]},
+                self.round_trip("user-tool-1", ("call-1", "read_file")),
                 {"id": "assistant-2", "type": "gemini", "model": "synthetic-model", "content": "Done."}]
+
+    def round_trip(self, mid, *calls):
+        """GeminiChat's record of one tool round trip: a "user" message of the calls' functionResponse parts."""
+        return {"id": mid, "type": "user", "content": [
+            {"functionResponse": {"id": cid, "name": name, "response": {"output": "x"}}} for cid, name in calls]}
 
     def reason(self, m, records):
         with self.assertRaises(m.ProjectionRefused) as cm:
@@ -81,6 +87,7 @@ class ProjectionTests(unittest.TestCase):
             {"id": "a1", "type": "gemini", "model": "m", "content": m.recorder_normalize("I'll read it.\n"),
              "toolCalls": [dict(call, status="success", result=[{"functionResponse": {
                  "id": "call-1", "name": "read_file", "response": {"output": "x"}}}])]},
+            self.round_trip("rt", ("call-1", "read_file")),
             {"id": "a2", "type": "gemini", "model": "m", "content": m.recorder_normalize("\nDone.\n")}]
         self.assertEqual([o["text"] for o in m.project(self.raw(two))[0]["output"] if o["kind"] == "recorded-text"],
                          ["I'll read it.", "Done."])
@@ -106,11 +113,12 @@ class ProjectionTests(unittest.TestCase):
         case("content function call name disagrees", content_call("name", "other"))
         case("content function call id disagrees", content_call("id", "call-other"))
         case("content function call args disagrees", content_call("args", {"file_path": "other"}))
-        case("native tool response part names another call", tool("name", "other"))
+        case("native tool response part names another call", lambda r: [tool("name", "other")(r),
+             r.__setitem__(3, self.round_trip("user-tool-1", ("call-1", "other")))])
         case("unknown native tool response part", tool("result", [{"unknownPart": "unknown"}]))
         case("native tool call lacks model-facing response parts", tool("result", None))
         case("ANSI escape", lambda r: r[2]["content"][0].__setitem__("text", "\x1b[31mtext"))
-        case("differ in number", lambda r: r[2].__setitem__("toolCalls", []))
+        case("differ in number", lambda r: [r[2].__setitem__("toolCalls", []), r.pop(3)])
         case("native replay refused: native tools need unique", lambda r: r[2].__setitem__("toolCalls", r[2]["toolCalls"] * 2))
         case("native user content must be one text part", lambda r: r[1].__setitem__("content", [{"functionCall": {}}]))
         case("unknown or mixed native content part", lambda r: r[2].__setitem__("content", [{"inlineData": {}}]))
@@ -121,9 +129,10 @@ class ProjectionTests(unittest.TestCase):
         case("native gemini message precedes any user message", lambda r: r.pop(1))
         case("native error messages are unsupported", lambda r: r.append({"id": "error-1", "type": "error",
                                                                             "content": "failed"}))
-        case("incomplete: its last model message ends on tool calls", lambda r: r.pop(3))
+        case("incomplete: its last model message ends on tool calls", lambda r: r.pop(4))
+        case("no tool-response turn before the next", lambda r: r.pop(3))     # a missing round-trip record
         case("native user displayContent differs", lambda r: r[1].__setitem__("displayContent", "other text"))
-        case("contradictory native models", lambda r: r[3].__setitem__("model", "different"))
+        case("contradictory native models", lambda r: r[4].__setitem__("model", "different"))
         for why, records in cases:
             with self.subTest(why=why):
                 self.assertIn(why, self.reason(m, records))
@@ -135,6 +144,7 @@ class ProjectionTests(unittest.TestCase):
         both = [tool("c1")["result"][0], tool("c2")["result"][0]]
         return self.native()[:2] + [
             {"id": "a1", "type": "gemini", "model": "m", "content": "t", "toolCalls": [tool("c1"), tool("c2")]},
+            self.round_trip("rt", ("c1", "read_file"), ("c2", "read_file")),
             {"$patch": {"updates": [{"id": "a1", "toolCalls": [{"id": "c1", "result": both_c1 or both},
                                                                {"id": "c2", "result": both_c2 or both}]}]}},
             {"id": "a2", "type": "gemini", "model": "m", "content": "done"}]
@@ -154,35 +164,42 @@ class ProjectionTests(unittest.TestCase):
             with self.subTest(why=why, c1=c1):
                 self.assertIn(why, self.reason(m, self._parallel(both_c1=c1)))
 
-    def test_a_tool_response_turn_continues_its_interaction(self):
-        """Source retained: every tool round trip records a "user" message of functionResponse parts."""
+    def test_a_tool_response_turn_answers_exactly_the_message_before_it(self):
+        """Source retained: every tool round trip records one "user" message holding the responses to the calls of the
+        gemini message just before it; batch-5 review finding 1 binds each turn to exactly that message."""
         m = self.module()
-        records = self.native()
-        records.insert(3, {"id": "user-tool-1", "type": "user", "content": [
-            {"functionResponse": {"id": "call-1", "name": "read_file", "response": {"output": "x"}}}]})
         try:
-            facts = m.project(self.raw(records))
+            facts = m.project(self.raw(self.native()))
         except m.ProjectionRefused as exc:
             self.fail(f"a tool round trip was refused: {exc}")
         self.assertEqual(len(facts), 1)
         self.assertEqual(facts[0]["sent"], "exact sent")
         self.assertEqual([o["kind"] for o in facts[0]["output"]], ["recorded-text", "recorded-text", "tool"])
-        for why, content in (("tool-response turn names no earlier call", [
-                                 {"functionResponse": {"id": "call-9", "name": "read_file", "response": {}}}]),
-                             ("tool-response turn names no earlier call", [
-                                 {"functionResponse": {"id": "call-1", "name": "glob", "response": {}}}])):
+        why = "answer exactly the calls of the gemini message just before it"
+        for name, edit in (("an unknown call", lambda r: r.__setitem__(3, self.round_trip("x", ("call-9", "read_file")))),
+                           ("a wrong name", lambda r: r.__setitem__(3, self.round_trip("x", ("call-1", "glob")))),
+                           ("the call answered twice in one turn",
+                            lambda r: r.__setitem__(3, self.round_trip("x", ("call-1", "read_file"),
+                                                                       ("call-1", "read_file")))),
+                           ("the call answered twice across turns",
+                            lambda r: r.insert(4, self.round_trip("y", ("call-1", "read_file")))),
+                           ("a round trip before any call", lambda r: r.insert(2, self.round_trip(
+                               "z", ("call-1", "read_file"))))):
             bad = self.native()
-            bad.insert(3, {"id": "user-tool-1", "type": "user", "content": content})
-            with self.subTest(why=why):
-                self.assertIn(why, self.reason(m, bad))
+            edit(bad)
+            with self.subTest(name):
+                self.assertIn("tool-response turn", self.reason(m, bad))
+        older = self.native()[:4] + [
+            {"id": "a2", "type": "gemini", "model": "synthetic-model", "content": "next",
+             "toolCalls": [{"id": "call-2", "name": "glob", "args": {"pattern": "*"}, "status": "success",
+                            "result": [{"functionResponse": {"id": "call-2", "name": "glob", "response": {}}}]}]},
+            self.round_trip("rt-old", ("call-1", "read_file")),                 # answers an older round
+            {"id": "a3", "type": "gemini", "model": "synthetic-model", "content": "done"}]
+        self.assertIn(why, self.reason(m, older))
         mixed = self.native()
         mixed[1]["content"] = [{"functionResponse": {"id": "call-1", "name": "read_file", "response": {}}},
                                {"text": "mixed"}]
         self.assertIn("native user content must be one text part", self.reason(m, mixed))
-        early = self.native()
-        early.insert(2, {"id": "user-tool-0", "type": "user", "content": [
-            {"functionResponse": {"id": "call-1", "name": "read_file", "response": {}}}]})
-        self.assertIn("tool-response turn names no earlier call", self.reason(m, early))
 
     def test_display_content_is_admitted_only_when_equal_to_the_sent_text(self):
         """Ruling 5: the recorder writes displayContent only when it differs, so on real sessions it always refuses."""
@@ -209,13 +226,14 @@ class ProjectionTests(unittest.TestCase):
         m = self.module()
         records = self.native()
         extra = copy.deepcopy(records[2]); extra["id"] = "assistant-extra"
-        self.assertIn("native tool call id reused", self.reason(m, records[:3] + [extra] + records[3:]))
+        self.assertIn("native tool call id reused", self.reason(m, records[:4] + [extra, self.round_trip("user-tool-2", ("call-1", "read_file"))] + records[4:]))
         self.assertIn("no recorded answer text", self.reason(
             m, records[:2] + [{"id": "a0", "type": "gemini", "content": ""}]))
         self.assertIn("lacks an assistant message", self.reason(m, records[:2]))
         later = copy.deepcopy(records[2]); later["id"] = "assistant-later"
         self.assertIn("native tool call id reused", self.reason(
             m, records + [{"id": "user-later", "type": "user", "content": "later sent"}, later,
+                          self.round_trip("rt-later", ("call-1", "read_file")),
                           {"id": "assistant-later-2", "type": "gemini", "content": "ok"}]))
 
 

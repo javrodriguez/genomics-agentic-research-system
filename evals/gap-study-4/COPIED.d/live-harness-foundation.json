@@ -44,7 +44,7 @@
     {
       "path": "gemini_projection.py",
       "status": "new",
-      "reason": "Unregistered source-derived Gemini native-session projection: per-interaction facts with per-message recorded-text segments in the recorder's normal form (recorder_normalize, cited source) and ordered tool facts; model-facing response parts never output; an interaction ending on tool calls, unsupported or contradictory shapes refuse, each with its own reason; no production admission. Review fold of 14 Oct 2026 (glitch-06 rulings 1, 3-7). Source-read fold (14 Oct 2026, the pinned bundle read on athena): tool-response turns continue their interaction; history-patched parallel results admitted by sibling id and name; displayContent admitted only when equal to the sent text."
+      "reason": "Unregistered source-derived Gemini native-session projection: per-interaction facts with per-message recorded-text segments in the recorder's normal form (recorder_normalize, cited source) and ordered tool facts; model-facing response parts never output; an interaction ending on tool calls, unsupported or contradictory shapes refuse, each with its own reason; no production admission. Review fold of 14 Oct 2026 (glitch-06 rulings 1, 3-7). Source-read fold (14 Oct 2026, the pinned bundle read on athena): tool-response turns continue their interaction; history-patched parallel results admitted by sibling id and name; displayContent admitted only when equal to the sent text. Batch-5 finding 1: each tool-response turn answers exactly the calls of the gemini message just before it, each once, and a tool-calling message needs one before the next."
     },
     {
       "path": "tests/test_gemini_projection.py",
@@ -104,12 +104,42 @@
     {
       "path": "tests/test_night_ruling_history.py",
       "status": "new",
-      "reason": "Night-ruling fold: a night ruling through the real git history reader and its door, and every outcome reader skipping it."
+      "reason": "Night-ruling fold: a night ruling through the real git history reader and its door, and every outcome reader skipping it. Batch-5 finding 3: publication over a history holding a night ruling."
     },
     {
       "path": "tests/test_native_history_record.py",
       "status": "new",
       "reason": "Live harness integration: the driver ledger's native history record is pending through the empty production registry, joined or refused with a reviewed reader, and absent for Claude takes."
+    },
+    {
+      "path": "tests/test_vendor_take_records.py",
+      "status": "new",
+      "reason": "Live harness integration: vendor takes read their own native evidence (pending, refused), never Claude's session file; Claude takes unchanged. Checker road: a pending take now stops typed."
+    },
+    {
+      "path": "tests/test_vendor_checker_road.py",
+      "status": "new",
+      "reason": "Live harness integration: a pending vendor take stops typed (never graded, never readers-disagree), waits for a ruling through batch, and the checker never reads None as agreement; refused stays readers-disagree. Batch-6 N8: the Gemini through-batch twin."
+    },
+    {
+      "path": "native_reader_registration.py",
+      "status": "new",
+      "reason": "The Gemini native-reader registration road: the reader candidate, the acceptance check tool, and production_readers, empty unless a committed acceptance record re-derives in full (reader sources, pinned CLI, a registered arm-G walk's recorded evidence, the join, an independent review). Registration review fold (finding 1 MAJOR, findings 2 and 3, N9): every bound input read from the committed tree (git show HEAD) and a working-tree difference refuses; the walk passes drive.walk_files on its committed bytes and is exactly one WalkRepo commit; native and stream refs equal the walk's driver-ledger refs; the evidence label derived, never asserted; a synthetic marker in the session metadata, register entry, review or record refuses, last; the acceptor is javier and never the reviewer; join_session is the one join the acceptance check and drive's cross-check share (incomplete refused in both); acceptance needs 2 interactions, 1 tool round trip and the snapshot-history join; drive.py and vendor_provenance.py bound into the source hash; the check tool prints the exercised and unverified shapes and HEAD; local unsigned records, so the final guarantee is procedural."
+    },
+    {
+      "path": "tests/test_native_reader_registration.py",
+      "status": "new",
+      "reason": "Registration road on synthetic, labelled fixtures: the check prints PASS or the exact disagreement; no record means an empty registry; every forged, mismatched or synthetic record refuses; the driver reads the production registry."
+    },
+    {
+      "path": "codex_native.py",
+      "status": "new",
+      "reason": "Unregistered Codex 0.162.1 rollout reader candidate (paginated subset, fail closed, never skipping a line) and exec-stream join, every name cited to the audit's retained pinned source."
+    },
+    {
+      "path": "tests/test_codex_native.py",
+      "status": "new",
+      "reason": "Synthetic, labelled Codex rollout and exec fixtures: projection, every refusal, truncation kept and flagged, interrupted and open turns incomplete, the join and served-model evidence."
     }
   ]
 }

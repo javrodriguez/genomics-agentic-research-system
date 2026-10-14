@@ -271,7 +271,7 @@ REFUSE = {
                                                                        "run_in_background": "yes"}}]}})),
     "a line that is not JSON": (CC, ["{not json"]),
     "a blank line": (CC, ["   "]),
-    "unknown harness": ("codex", render([("operator", "x")], CC)),
+    "unknown harness": ("no-such-harness", render([("operator", "x")], CC)),   # codex is known since c35fc915
     "an empty harness name": ("", render([("operator", "x")], CC)),
     "a harness name in another case": (CC.upper(), render([("operator", "x")], CC)),
 }
@@ -286,7 +286,7 @@ def refusal_problems(view=tv) -> list[str]:
             continue
         out.append(f"not refused: {why}")
     try:
-        view.harness_types("codex", render([("operator", "x")], CC))
+        view.harness_types("no-such-harness", render([("operator", "x")], CC))
         out.append("harness_types did not refuse an unknown harness")
     except tv.ViewError:
         pass

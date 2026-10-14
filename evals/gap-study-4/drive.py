@@ -1808,6 +1808,7 @@ import threading  # noqa: E402
 import types  # noqa: E402  (live harness 3a: the executed-refused turn's end for _quiesce)
 import native_snapshot as _native_snapshot  # noqa: E402  (live harness 3c)
 import vendor_provenance as _vendor_provenance  # noqa: E402  (live harness integration: the native history record)
+import native_reader_registration as _registration  # noqa: E402  (the production native-reader registry)
 
 import agent_adapter as _adapter  # noqa: E402
 import harness_bookkeeping as _hb  # noqa: E402
@@ -1861,6 +1862,12 @@ class DriveRefused(RuntimeError):
     """The drive step cannot hand the take to routing: the loop records it `failed` and stops for a human."""
 
 
+class NativeCrossCheckPending(DriveRefused):
+    """Live harness integration: a vendor take whose native cross-check cannot run yet (no reviewed native reader).
+    D8 grades a vendor's host-captured stream "cross-checked with" its native record, so the take is not gradable:
+    stopped after cleanup, ledger and scan for a human ruling, never graded, never readers-disagree, never a re-run."""
+
+
 def stream_path(take, n: int) -> str:
     """Where turn n's host-captured stream is written: in the take folder, outside the run tree."""
     return os.path.join(take.folder, f"turn-{n}.jsonl")
@@ -1907,6 +1914,7 @@ class _Take:
         self.cross_check = None        # S6c C6: the streams against the session file (problems; [] when they agree)
         self.executed_refusal = None   # live harness 3a: the executed turn whose own record the harness refused
         self.adapter_ref = None        # live harness 3c: the adapter the executed-refusal road retains through
+        self.cross_check_status = None  # live harness integration: a vendor take's native cross-check status
         self.native_hook = False       # live harness 3c: the adapter names a native session to retain per turn
         self.native_snapshots: list = []        # 3c: {file, sha256} per retained turn, under session/
         self.native_snapshot_refusal = None     # 3c: why a turn's snapshot was not retained (the take stops)
@@ -2215,9 +2223,19 @@ class TakeDriver:
         ident, rows = take.identity, take.ledger_rows
         cc = isinstance(adapter, _cc.ClaudeCodeAdapter)
         recs = list(adapter.turn_records) if cc else []
-        src = take_session_file(take.config_dir, ident["session_id"])
+        harness = row["agent"]["harness"]
+        vendor = harness in VENDOR_HARNESSES          # live harness integration: its own native evidence, never Claude's
+        src = None if vendor else take_session_file(take.config_dir, ident["session_id"])
         published, text, recorded = None, None, "unrecorded"
-        if src is not None:
+        history = (native_history_record(harness, Path(take.folder) / _native_snapshot.SESSION_DIR,
+                                         take.native_snapshots) if take.native_hook else None)
+        cross = (gemini_cross_check(take.folder, take.native_snapshots, len(turns))
+                 if harness == "gemini" and history is not None and history["status"] == "joined" else None)
+        status = vendor_cross_check_status(harness, history, cross) if vendor else None
+        if vendor:
+            take.cross_check = ([status["why"]] if status["status"] == "refused"
+                                else [] if status["status"] == "agreed" else None)
+        elif src is not None:
             try:
                 published = publish_transcript(Path(src), Path(take.folder))
             except SystemExit as e:              # scrub.py refuses by SystemExit: a stop here, never an exit
@@ -2240,7 +2258,7 @@ class TakeDriver:
                 cost = _cc.cost_record(recs, text, model=row["model"], version=version)
             except _cc.StreamError as e:
                 take.cross_check = list(take.cross_check) + [f"the cost reader refused the session file: {e}"]
-        outcome = take.outcome if src is not None else (
+        outcome = take.outcome if (src is not None or vendor) else (
             f"{take.outcome} \u2014 no session file for {ident['session_id']}")
         pin = self.pin_for(row)
         ledger = {"kind": "take", "task": row["task"], "half": row["half"], "wording": row.get("wording"),
@@ -2258,15 +2276,16 @@ class TakeDriver:
                                        else any(t.agent_output for t in turns)),
                   "environment": {"file": ENVIRONMENT_RECORD_FILE, "sha256": env_sha},
                   "transcript": "transcript.jsonl" if src is not None else None, "published": published,
-                  "cross_check": list(take.cross_check),
+                  "cross_check": None if take.cross_check is None else list(take.cross_check),
                   "cost": cost,
                   "streams": [os.path.basename(t.stream_path) for t in turns if t.stream_path]}
         if take.native_hook:                      # live harness 3c: only for an adapter that names a native session
             ledger["native_snapshots"] = [dict(r) for r in take.native_snapshots]
             ledger["native_snapshot_refusal"] = take.native_snapshot_refusal
-            ledger["native_history"] = native_history_record(row["agent"]["harness"],
-                                                             Path(take.folder) / _native_snapshot.SESSION_DIR,
-                                                             take.native_snapshots)
+            ledger["native_history"] = history
+        if vendor:                                # live harness integration: pending is recorded as pending
+            ledger["cross_check_status"] = status
+            take.cross_check_status = dict(status)
         if take.executed_refusal is not None:     # live harness 3a: only when a turn's record was refused
             ledger["executed_refusal"] = dict(take.executed_refusal)
             if take.executed_refusal["stream"] is not None:
@@ -2417,6 +2436,10 @@ class TakeDriver:
         if take.native_snapshot_refusal is not None:     # live harness 3c: cleaned, recorded and scanned
             raise DriveRefused(f"{take.native_snapshot_refusal}: the take is kept for a human ruling, never a "
                                f"rehearsal or a re-run")
+        pending = take.cross_check_status
+        if ok and turns and pending is not None and pending["status"] == "pending":   # D8: graded only cross-checked
+            raise NativeCrossCheckPending(f"native cross-check pending ({pending['why']}): the take is kept for a "
+                                          f"human ruling, never graded, never readers-disagree, never a re-run")
         ids = tuple(_routing.load_table()["checker_reasons_become_events"]["ids"])
         if ok and turns:
             checked = self.checker(row, take, list(turns))
@@ -2605,19 +2628,70 @@ LEDGER_FILE = "driver-ledger.json"
 IDENTITY_KEYS = ("session_id", "row", "row_commit", "source", "fixture", "gars_tree_sha")
 
 
+VENDOR_HARNESSES = ("codex", "gemini")
+NATIVE_HISTORY_BASIS = "unmasked retained originals, before the drive scan"   # batch-5 review nit 4
+CODEX_NATIVE_PENDING = ("no reviewed Codex native rollout reader: the rollout source audit has not landed, so the "
+                        "streams are not cross-checked against native evidence yet")
+
+
+def gemini_cross_check(take_folder, refs, n_turns: int, *, readers=None) -> dict:
+    """The Gemini cross-check D8 names, through the ONE join the acceptance check also runs
+    (native_reader_registration.join_session; registration review finding 2): each turn's host-captured stream joined
+    to that interaction of the take's last retained native snapshot, read by the registered reader. `pending` without a
+    registered reader (production_readers: no committed acceptance record); `refused` on any disagreement, an extra or
+    a missing interaction, or an incomplete interaction; `agreed` only when every turn joins complete."""
+    readers = _registration.production_readers() if readers is None else readers
+    reader = readers.get("gemini")
+    if reader is None:
+        return {"status": "pending", "why": "no registered Gemini native reader (no committed acceptance record)"}
+    folder = Path(take_folder)
+    try:
+        raw = _vendor_provenance.referenced_bytes(folder / _native_snapshot.SESSION_DIR, refs[-1])
+        streams = [(folder / f"turn-{n}.jsonl").read_text(encoding="utf-8") for n in range(1, n_turns + 1)]
+    except (IndexError, OSError, UnicodeError, _vendor_provenance.ProvenanceRefused) as e:
+        return {"status": "refused", "why": f"{type(e).__name__}: {e}"}
+    got = _registration.join_session(raw, streams, reader)
+    if got["status"] != "PASS":
+        return {"status": "refused", "why": got["why"]}
+    return {"status": "agreed", "why": None}
+
+
+def vendor_cross_check_status(harness: str, history, cross=None) -> dict:
+    """Live harness integration: a non-Claude take's cross-check, from its own native evidence only. Gemini: its
+    retained snapshots' history record (pending while no reviewed reader is registered; refused when the snapshots are
+    missing, unreadable or inconsistent; a joined history still leaves the stream join pending, since the projection
+    and the stream join are unregistered). Codex: pending until the rollout source audit lands. Never a pass."""
+    if harness == "gemini":
+        if history is None:
+            return {"status": "refused", "why": "the Gemini adapter retained no native snapshot record"}
+        if history["status"] == "refused":
+            return {"status": "refused", "why": f"native snapshots: {history['why']}"}
+        if history["status"] == "pending":
+            return {"status": "pending", "why": history["why"]}
+        if cross is None:
+            return {"status": "pending", "why": "native snapshots join; the stream join to them is not registered yet"}
+        return dict(cross)
+    if harness == "codex":
+        return {"status": "pending", "why": CODEX_NATIVE_PENDING}
+    raise DriveRefused(f"no vendor cross-check road for harness {harness!r}")
+
+
 def native_history_record(harness: str, session_dir, refs, *, readers=None) -> dict:
     """Live harness integration: what the take's retained native snapshots prove, for the driver ledger. Step 1's
     vendor_provenance.session_history_facts over them, through the PRODUCTION reader registry unless `readers` is
     given (tests): `pending` while no reviewed reader is registered (its reason kept), `refused` when the snapshots
     cannot be read or a later one rewrites an earlier interaction, `joined` (with the interaction count) when every
-    later snapshot reproduces every earlier interaction. `joined` is a stability join, never admission of the take."""
+    later snapshot reproduces every earlier interaction. `joined` is a stability join, never admission of the take.
+    Each record names its basis: it is computed on the unmasked retained originals, before the drive scan, which may
+    mask session/ bytes afterwards (the open masking-provenance design; a re-join over published bytes refuses)."""
+    readers = _registration.production_readers() if readers is None else readers
     try:
         facts = _vendor_provenance.session_history_facts(harness, Path(session_dir), list(refs), readers=readers)
     except _vendor_provenance.ProvenancePending as e:
-        return {"status": "pending", "why": str(e), "interactions": None}
+        return {"status": "pending", "why": str(e), "interactions": None, "basis": NATIVE_HISTORY_BASIS}
     except _vendor_provenance.ProvenanceRefused as e:
-        return {"status": "refused", "why": str(e), "interactions": None}
-    return {"status": "joined", "why": None, "interactions": len(facts)}
+        return {"status": "refused", "why": str(e), "interactions": None, "basis": NATIVE_HISTORY_BASIS}
+    return {"status": "joined", "why": None, "interactions": len(facts), "basis": NATIVE_HISTORY_BASIS}
 
 
 def take_session_file(config_dir: str, session_id: str) -> str | None:
@@ -2806,6 +2880,8 @@ def take_checker(*, design_for, records="takes"):
     first agent turn and harness-error after it."""
     def checker(row, take, turns):
         import check_take as _ct
+        if take.cross_check is None:              # review nit: None is a pending native cross-check, never agreement
+            raise NativeCrossCheckPending("the checker was handed a take whose native cross-check is pending")
         ids = tuple(_routing.load_table()["checker_reasons_become_events"]["ids"])
         path = Path(take.folder) / "transcript.jsonl"
         if not path.is_file():

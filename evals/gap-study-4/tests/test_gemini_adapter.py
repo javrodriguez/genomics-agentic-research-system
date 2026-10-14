@@ -972,6 +972,86 @@ def a9_source(mod, p):
     return out
 
 
+@guarded("A10-mode", GA_API + ("submitted_mode",))
+def a10_mode(mod, p):
+    """Live harness 3b review fold (integration red A4): submitted_mode, branch by branch, bound here so this module's
+    own generated mutants see it. The mode is read from the box's launch journal, never the pin: no journal, a link,
+    or bytes that are not one JSON object with an argv list are unobserved; the pinned flags once and no other approval
+    flag give the mode; none gives "no-mode-flags-submitted"; a doubled or extra approval flag gives
+    "contradictory-mode-flags"; a journal off the registered invocation gives "launch-differs-from-registered-
+    invocation". The words are spelled here, never read from the module under test."""
+    out = []
+    folder = Path(tempfile.mkdtemp(dir=SCRATCH))
+    stream, tree = str(folder / "turn-1.jsonl"), str(SCRATCH / "tree")
+    want = {"harness": "gemini", "container_id": TAKE, "model": MODEL, "mode": MODE, "run_tree": tree,
+            "stream": stream, "sent": "hello", "vendor_session_id": "first-turn", "ordinal": 1}
+    registered = list(mod.argv("hello", model=MODEL, mode=MODE, session_id=None, first=True))
+
+    def journal(argv=None, raw=None, **over):
+        path = folder / f"j-{len(list(folder.iterdir()))}.launch.json"
+        doc = dict({"schema": 1, "harness": "gemini", "container_id": TAKE,
+                    "argv": registered if argv is None else argv, "cwd": tree, "stream": stream,
+                    "started_at": 1.0}, **over)
+        path.write_bytes(raw if raw is not None else json.dumps(doc).encode())
+        return str(path)
+
+    unobserved = {"value": None, "source": "unobserved"}
+
+    def mode(value):
+        return {"value": value, "source": "submitted-argv"}
+
+    link = folder / "link.launch.json"
+    os.symlink(journal(), link)
+    flags_at = [i for i in range(len(registered) - 1) if registered[i:i + 2] == ["--approval-mode", "yolo"]]
+    if len(flags_at) != 1:
+        out.append(f"{p}: the registered argv does not carry the pinned flags once: {registered}")
+        return out
+    k = flags_at[0]
+    if k + 2 != len(registered):          # the window's last position is a case of its own (the boundary mutant)
+        out.append(f"{p}: the registered argv no longer ends with the mode flags: {registered}")
+    cases = [
+        ("no journal", str(folder / "absent.launch.json"), unobserved),
+        ("a link", str(link), unobserved),
+        ("bytes that are not JSON", journal(raw=b"{not json"), unobserved),
+        ("bytes that are not UTF-8", journal(raw=b"\xff\xfe"), unobserved),
+        ("a JSON list", journal(raw=b"[]"), unobserved),
+        ("an argv that is not a list", journal(argv="gemini -p hello"), unobserved),
+        ("the registered launch", journal(), mode("yolo")),
+        ("no mode flags", journal(argv=registered[:k] + registered[k + 2:]), mode("no-mode-flags-submitted")),
+        ("the flags twice", journal(argv=registered + ["--approval-mode", "yolo"]), mode("contradictory-mode-flags")),
+        ("an extra --yolo", journal(argv=registered + ["--yolo"]), mode("contradictory-mode-flags")),
+        ("an extra -y", journal(argv=registered + ["-y"]), mode("contradictory-mode-flags")),
+        ("another approval mode", journal(argv=registered[:k] + ["--approval-mode", "default"] + registered[k + 2:]),
+         mode("contradictory-mode-flags")),
+        ("the flags last, another prompt (off the registered argv)",
+         journal(argv=[("goodbye" if a == "hello" else a) for a in registered]),
+         mode("launch-differs-from-registered-invocation")),
+        ("another working folder", journal(cwd=str(SCRATCH / "elsewhere")),
+         mode("launch-differs-from-registered-invocation")),
+    ]
+    for why, path, expect in cases:
+        got = mod.submitted_mode(path, dict(want))
+        if got != expect:
+            out.append(f"{p}: {why}: {got}, not {expect}")
+    got = mod.submitted_mode(journal(), dict(want, mode="PENDING"))
+    if got["source"] != "submitted-argv" or got["value"] == "PENDING":
+        out.append(f"{p}: an unpinned mode read back as {got}")
+    got = mod.submitted_mode(journal(argv=registered[:k] + registered[k + 2:]), dict(want, mode="PENDING"))
+    if got != mode("no-mode-flags-submitted"):          # an unpinned mode has no window: nothing is "found" anywhere
+        out.append(f"{p}: an unpinned mode with no flags submitted read as {got}")
+    # A mode whose flags are no approval flag (none is pinned today): its window alone, with no approval flag beside
+    # it, is still not one clean submission; so the two conditions are read apart, whatever the table holds later.
+    saved = mod.MODE_FLAGS
+    try:
+        mod.MODE_FLAGS = dict(saved, other=("--other-mode",))
+        got = mod.submitted_mode(journal(argv=registered[:k] + ["--other-mode"]), dict(want, mode="other"))
+    finally:
+        mod.MODE_FLAGS = saved
+    if got != mode("contradictory-mode-flags"):
+        out.append(f"{p}: a pinned window with no approval flag read as {got}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheShapes(unittest.TestCase):
     def test_s1_an_unknown_event_is_refused(self):
@@ -1023,6 +1103,9 @@ class TestTheAdapter(unittest.TestCase):
 
     def test_a9_the_shapes_source_is_documented(self):
         self.assertEqual(a9_source(ga), [])
+
+    def test_a10_the_mode_is_read_from_the_launch_journal(self):
+        self.assertEqual(a10_mode(ga), [])
 
     def test_a_recorded_label_needs_its_walk_and_version(self):
         for rest in ("", " at walk w-1.", " at walk w-1, gemini-cli 0.63.", " at walk w-1, codex-cli 0.63.0.",
@@ -1410,15 +1493,22 @@ EQUIVALENT_CATEGORIES = {
                         "`return None` deleted (it falls off and returns None)",
     "message-label": "a label string passed only into a refusal's message text, never read by a condition (the "
                      "MESSAGE_TEXT_RULE's words, one step removed from the raise)",
+    "platform-default": "getattr's default for os.O_NOFOLLOW, read only on a platform without that flag; the box and "
+                        "the study's hosts are POSIX, where the flag itself is used",
+    "slice-past-end": "one more window start past the end yields a slice shorter than the flags, which never equals "
+                      "them, so no window is found that the line's own range would miss",
 }
 # What each category's line must hold (checked against the named line of the file, so a reason cannot drift from it).
 EQUIVALENT_TOKENS = {"import-plumbing": ("_HERE", "__future__"), "falsy-alike": ("joining = False",),
                      "identical-mutant": ("None",), "message-label": None, "typed-bool": ("is True",),
-                     "message-order": ("sorted(",), "sequence-alike": ("list(VERSION_ARGV)",)}
+                     "message-order": ("sorted(",), "sequence-alike": ("list(VERSION_ARGV)",),
+                     "platform-default": ("O_NOFOLLOW",), "slice-past-end": ("len(argv) - len(flags) + 1",)}
 CMP_NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: ast.In, ast.Lt: ast.GtE,
               ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt, ast.Is: ast.IsNot, ast.IsNot: ast.Is}
 # {mutant key: (category, why, a token its source line holds)}; the key is printed by the sweep for each survivor.
 EQUIVALENT = {
+    'gemini_adapter: int-change L266 5feceb66 0': ('platform-default', "submitted_mode's journal open: O_NOFOLLOW exists on the box's POSIX hosts", 'O_NOFOLLOW'),
+    'gemini_adapter: int-change L278 6b86b273 1': ('slice-past-end', "submitted_mode's window range: an extra start past the end finds nothing", 'len(argv) - len(flags) + 1'),
     'gemini_adapter: stmt-delete L65 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),
     'gemini_adapter: assign-empty L72 e8a221d3 _HERE = os.path.dirname(os.path.abspath(__file__))': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
     'gemini_adapter: cmp-negate#0 L73 7c3b80fa _HERE not in sys.path': ('import-plumbing', "the module's sys.path plumbing", '_HERE'),
@@ -1639,7 +1729,7 @@ def _build(tree, name: str, path: Path, inject=None) -> types.ModuleType:
 
 
 TG_CHECKS = (s1_event, s2_key, s3_words, s4_stats, s5_tools, s6_error_text, p1_view)
-GA_CHECKS = (a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source)
+GA_CHECKS = (a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source, a10_mode)
 
 
 def all_checks(tgm, gam) -> list:

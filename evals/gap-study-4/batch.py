@@ -815,6 +815,8 @@ class Batch:
                     if len(events[(taken["half_cell"], o["route"])]) >= half_cell_cap(self.table, o["route"]):
                         closed.add(taken["half_cell"])
                 continue
+            if not is_outcome(o):                # batch-5 review finding 3: a night ruling holds no take's cell state
+                continue
             outcome_at[(o["slot"], o["attempt"])] = o
             cell, state = o["half_cell"], o["state"]
             reaches = False

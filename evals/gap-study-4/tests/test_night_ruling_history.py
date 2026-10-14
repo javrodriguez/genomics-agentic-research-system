@@ -108,6 +108,19 @@ class RealHistory(unittest.TestCase):
         self.assertEqual(len(outcomes), len(history) - 1)
         self.assertEqual(takes.registration_outcomes(history[:-1]), outcomes)
 
+    def test_publication_reads_a_history_holding_a_night_ruling(self):
+        """Batch-5 review finding 3: cell_history_problems read a night ruling as an outcome (KeyError)."""
+        takes.commit_night_ruling(slot=self.reaching[0], attempt=self.reaching[1], by="Javier",
+                                  root=self.repo, repo=self.repo)
+        history = self.read()
+        table = tb.test_table()
+        try:
+            got = check_results.publication(history, table)
+        except KeyError as exc:
+            self.fail(f"publication read a night ruling as an outcome: KeyError {exc}")
+        self.assertEqual(got, check_results.publication(history[:-1], table),
+                         "a night ruling changes no take's publication")
+
 
 if __name__ == "__main__":
     unittest.main()
