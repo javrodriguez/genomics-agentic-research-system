@@ -1,0 +1,81 @@
+{
+ "docker": "29.8.1",
+ "driver_status": "[[\"driver-type\",\"io.containerd.snapshotter.v1\"]]",
+ "rows": [
+  {
+   "config_image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+   "container_image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+   "create": {
+    "argv": [
+     "docker",
+     "create",
+     "--pull=never",
+     "--network",
+     "none",
+     "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+     "sleep",
+     "1"
+    ],
+    "err": "",
+    "rc": 0
+   },
+   "created_from": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+   "image_equals_created_from": true,
+   "image_inspect_id": "\"sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49\"",
+   "left_after_rm": "",
+   "platform_manifest": "\"sha256:c8d50caa6de74e8c1761aaf572e2ef8f6d2d573a69bb851af02395f6106366e8\"",
+   "rm_rc": 0,
+   "role": "take-a"
+  },
+  {
+   "config_image": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+   "container_image": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+   "create": {
+    "argv": [
+     "docker",
+     "create",
+     "--pull=never",
+     "--network",
+     "none",
+     "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+     "sleep",
+     "1"
+    ],
+    "err": "",
+    "rc": 0
+   },
+   "created_from": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+   "image_equals_created_from": true,
+   "image_inspect_id": "\"sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d\"",
+   "left_after_rm": "",
+   "platform_manifest": "\"sha256:c1409b3323bc991d9c86ed99411455ffba3aabbe6159384d0786216aba092a82\"",
+   "rm_rc": 0,
+   "role": "sidecar"
+  },
+  {
+   "config_image": "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
+   "container_image": "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
+   "create": {
+    "argv": [
+     "docker",
+     "create",
+     "--pull=never",
+     "--network",
+     "none",
+     "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
+     "sleep",
+     "1"
+    ],
+    "err": "",
+    "rc": 0
+   },
+   "created_from": "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
+   "image_equals_created_from": true,
+   "image_inspect_id": "\"sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674\"",
+   "left_after_rm": "",
+   "platform_manifest": "\"sha256:24c9fbdf938114d2ff412a70f5b2f2d08f2c4f7735ab7c229c8ad254dc02a89d\"",
+   "rm_rc": 0,
+   "role": "egress"
+  }
+ ]
+}
