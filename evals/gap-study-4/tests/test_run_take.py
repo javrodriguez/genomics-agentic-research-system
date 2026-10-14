@@ -1730,7 +1730,11 @@ class TestPendingAndNames(MutantCase):
     EXPECT = {"VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources"}
     FILLED_TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
                   "uid_namespace": "container"}
-    CALLER_EXPECT = {"cgroup_dir", "uid_map", "XDG_RUNTIME_DIR in the take", "tree ownership"}
+    # "XDG_RUNTIME_DIR in the take" RETIRED 14 Oct 2026 (glitch-06): measured not needed (test_xdg_runtime_dir_*).
+    CALLER_EXPECT = {"cgroup_dir", "uid_map", "tree ownership"}
+    # The retirement's evidence: two stub takes on athena, by sha256 (run 1 raw, run 6 derived).
+    XDG_EVIDENCE = (("stub-take-run1.json", "67a0698a2e1037fdf5a1c02caea67a1281a5f31c4bc8629adfbb476f07dd83f4"),
+                    ("stub-take-run6.derived.json", "8a56240db70d38a74fbd5d50c836683134259c4617a22800dcd3e6669b63641e"))
 
     def check_pending(self):
         out = []
@@ -1759,6 +1763,39 @@ class TestPendingAndNames(MutantCase):
         if "policy" not in rt.PENDING_WHY["TakeSpec.resources"].lower():
             out.append("the resources' reason does not say they are capacity policy")
         return out
+
+    def check_xdg_retired(self):
+        """Row 4 retired on evidence: every agent exec in the two stub takes ran with no XDG_RUNTIME_DIR and returned
+        0, `claude --version` included; the take's environment row sets none; and CALLER_PENDING no longer lists it."""
+        out = []
+        if "XDG_RUNTIME_DIR in the take" in rt.CALLER_PENDING:
+            out.append("CALLER_PENDING still lists XDG_RUNTIME_DIR in the take")
+        if any("XDG_RUNTIME_DIR" in row for row in rt.TAKE_ENV.values()):
+            out.append("a take's environment row sets XDG_RUNTIME_DIR")
+        runs = os.path.join(os.path.dirname(os.path.dirname(HERE)), "lane-reports", "stub-take-20261014")
+        for name, digest in self.XDG_EVIDENCE:
+            with open(os.path.join(runs, name), "rb") as fh:
+                raw = fh.read()
+            if hashlib.sha256(raw).hexdigest() != digest:
+                out.append(f"{name} does not hash to its recorded sha256")
+                continue
+            execs = [c for c in json.loads(raw)["calls"] if c.get("argv", [])[:2] == ["docker", "exec"]
+                     and rt.AGENT_USER in c["argv"]]
+            if len(execs) < 10 or not any("claude" in c["argv"] for c in execs):
+                out.append(f"{name}: too few agent execs to stand as evidence ({len(execs)})")
+            if [c for c in execs if c.get("returncode") != 0 or any("XDG_RUNTIME_DIR" in a for a in c["argv"])]:
+                out.append(f"{name}: an agent exec failed or carried XDG_RUNTIME_DIR")
+        return out
+
+    def test_xdg_runtime_dir_retired_on_evidence(self):
+        self.assert_green_then_red(self.check_xdg_retired, [
+            ("row-kept", patched(rt, "CALLER_PENDING", dict(rt.CALLER_PENDING, **{
+                "XDG_RUNTIME_DIR in the take": "measured at the stub take."}))),
+            ("take-env-sets-it", patched(rt, "TAKE_ENV", dict(rt.TAKE_ENV, **{rt.CLAUDE_CODE: dict(
+                rt.TAKE_ENV[rt.CLAUDE_CODE], XDG_RUNTIME_DIR="/run/user/10001")}))),
+            ("evidence-swapped", patched(type(self), "XDG_EVIDENCE", (
+                (self.XDG_EVIDENCE[0][0], self.XDG_EVIDENCE[1][1]), self.XDG_EVIDENCE[1]))),
+        ])
 
     def test_pending(self):
         self.assert_green_then_red(self.check_pending, [

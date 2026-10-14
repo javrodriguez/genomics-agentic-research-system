@@ -288,8 +288,17 @@ def production_builders() -> dict:
         "run_tree_origin": (drive.REPO, variants.PINNED_TREE),
     }
     pending = scan_record.pending()
-    out["rules_scanner"] = (Missing(f"the rules scanner: {pending['rules_scanner']}") if "rules_scanner" in pending
-                            else scan_record.real_rules_scanner())
+    if "rules_scanner" in pending:
+        out["rules_scanner"] = Missing(f"the rules scanner: {pending['rules_scanner']}")
+    else:
+        # Box row 8 (14 Oct 2026): the pinned scanner is filled and checked against its adapter here (a drifted pin
+        # refuses now); its per-walk scan is built from the DockerRuntime and the walk's report folder, so it waits on
+        # the runtime (the harness lane's wiring: real.build(runtime, report_dir)).
+        real = scan_record.real_rules_scanner()
+        out["rules_scanner"] = (Missing(f"the per-walk build of the pinned gitleaks {real.version} "
+                                        f"(scan_record.real_rules_scanner().build(runtime, report_dir)), once the "
+                                        f"DockerRuntime exists: {box}")
+                                if isinstance(real, scan_record.RealRulesScanner) else real)
     table = routing.load_table()
     out["table"] = table
     out["pin_for"] = (Missing("the routing pin: routing.json's pin_profiles are empty until the walks measure them")

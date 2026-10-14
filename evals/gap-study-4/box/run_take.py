@@ -276,13 +276,16 @@ PENDING_WHY = {
                           "box's floor, all recorded).",
 }
 # Pending values this module does not hold: the caller passes them once measured.
+# RETIRED 14 Oct 2026 (glitch-06, row 4 of the box lane's open table): "XDG_RUNTIME_DIR in the take" (the guards
+# plan's stub take, line 329), measured NOT needed. In stub takes 1-4 and 6 on athena (lane-reports/stub-take-20261014,
+# stub-take-run1..4.json and stub-take-run6.derived.json), every one of 18 execs per take into the take container as
+# AGENT_USER, `claude --version` at the pinned 2.1.296 among them, returned 0 with no XDG_RUNTIME_DIR in its argv,
+# and TAKE_ENV sets none. test_run_take re-derives this from run 1 and run 6 by their sha256.
 CALLER_PENDING = {
     "cgroup_dir": "the container's cgroup folder under athena's rootless Docker: measured on the box; the caller "
                   "passes it to counters().",
     "uid_map": "the runtime's user-namespace map (javier's 100000:65536 on athena, card Part 1 step 6): the caller "
                "passes it to agent_processes().",
-    "XDG_RUNTIME_DIR in the take": "whether the take's exec needs XDG_RUNTIME_DIR set inside the container (the "
-                                   "guards plan's stub take, line 329): measured at the stub take.",
     "tree ownership": "the run tree's and the config folder's ownership and modes under the user-namespace map, and "
                       "the removal road for uid-mapped files the agent leaves: measured at the stub take.",
 }
