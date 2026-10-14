@@ -68,6 +68,7 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 import agent_adapter as aa  # noqa: E402
+import codex_native as cn  # noqa: E402
 import transcript_codex as tc  # noqa: E402
 from box import run_take as rt  # noqa: E402
 
@@ -93,7 +94,6 @@ _THREAD_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
 # 310-312) whose message is format!("model rerouted: {} -> {} ({:?})", from, to, reason)
 # (exec/src/event_processor_with_jsonl_output.rs:494-507). Only that exact shape is read; any other error item stays
 # off the tables and refuses the turn.
-REROUTE = re.compile(r"model rerouted: (\S+) -> (\S+) \(([A-Za-z0-9_]+)\)")
 LAUNCH_DISAGREES = "launch-differs-from-registered-invocation"
 
 
@@ -109,7 +109,7 @@ def _count(v) -> bool:
     return isinstance(v, int) and not isinstance(v, bool) and v >= 0
 
 
-def read_stream(text: str) -> dict:
+def read_stream(text: str, model=None) -> dict:
     """One turn's `codex exec --json` stdout, read for its harness-side records and the agent's words, kept apart.
 
     thread_ids    the distinct thread.started thread ids, in order
@@ -133,7 +133,7 @@ def read_stream(text: str) -> dict:
                 raise StreamError(f"line {n} of {len(lines)} is not JSON: only a cut stream's last line may be") from None
             bad = 1
             continue
-        to_model = reroute_of(rec)
+        to_model = reroute_of(rec, model)
         if to_model is not None:              # Codex slice 2: served-model evidence, never agent output or an error
             served.append(to_model)
             continue
@@ -179,16 +179,7 @@ def read_stream(text: str) -> dict:
             "served_model": served[0] if served else None}
 
 
-def reroute_of(rec):
-    """The served model a reroute item names (`to`), or None for any record that is not exactly one."""
-    if not (isinstance(rec, dict) and set(rec) == {"type", "item"} and rec["type"] == tc.ITEM_COMPLETED):
-        return None
-    item = rec["item"]
-    if not (isinstance(item, dict) and set(item) == {"id", "type", "message"} and item["type"] == "error"
-            and isinstance(item["id"], str) and isinstance(item["message"], str)):
-        return None
-    m = REROUTE.fullmatch(item["message"])
-    return m.group(2) if m else None
+reroute_of = cn.reroute_of    # (rec, model): `to` for exactly one reroute away from the turn's -m model, else None
 
 
 def turn_identity(read: dict, *, version: str, mode: dict) -> dict:
@@ -417,7 +408,7 @@ class CodexAdapter(aa.AgentAdapter):
         """The turn's stream read, its resumed thread checked and its rollout read; raised from here, a refusal is an
         executed turn's (live harness slice 6: _turn keeps the exec first)."""
         with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
-            read = read_stream(fh.read())
+            read = read_stream(fh.read(), model=self.model)
         if first:
             if len(read["thread_ids"]) == 1:
                 self.thread_id = read["thread_ids"][0]

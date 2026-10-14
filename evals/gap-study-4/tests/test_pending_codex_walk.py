@@ -196,6 +196,67 @@ class CodexRegistration(unittest.TestCase):
         self.assertEqual(drive.codex_cross_check("/nonexistent", [], [0], readers={})["status"], "pending")
 
 
+def codex_fabricate(test, change):
+    """A second walk folder made by hand from a Codex road walk's own bytes, one thing changed, committed by hand under
+    WalkRepo's subject, and an acceptance record naming it (the reviewer's attack shape, on arm O)."""
+    import shutil
+    road = codex_road(test)
+    dst = road.study / "rehearsals" / "walk-g2"
+    shutil.copytree(road.folder, dst)
+    check = json.loads((dst / "check.json").read_text())
+    (dst / "check.json").write_text(json.dumps(dict(check, walk="walk-g2"), indent=2, sort_keys=True) + "\n")
+    change(dst)
+    reg = road.study / "rehearsals" / "register.json"
+    doc = json.loads(reg.read_text())
+    doc["walks"].append(dict(doc["walks"][0], walk="walk-g2"))
+    reg.write_text(json.dumps(doc, indent=2) + "\n")
+    tpw.git(road.root, "add", "-A")
+    tpw.git(road.root, "commit", "-q", "-m", road.drive.WALK_SUBJECT)
+    road.accept(edit=lambda rec: rec.__setitem__("walk", "walk-g2"))
+    return road
+
+
+def ledger_edit(fn):
+    def change(dst):
+        led = json.loads((dst / "driver-ledger.json").read_text())
+        fn(led)
+        (dst / "driver-ledger.json").write_text(json.dumps(led, indent=2))
+    return change
+
+
+class CodexProfileBindings(unittest.TestCase):
+    """Codex road review F3 and F4: the profile-specific bindings, each by a single mutation."""
+
+    def test_an_honest_copy_registers_so_each_refusal_below_is_its_own(self):
+        road = codex_fabricate(self, lambda d: None)
+        self.assertEqual(set(road.nrr.production_readers(road.study)), {"codex"})
+
+    def test_each_profile_binding_refuses(self):
+        def journal_thread(dst):
+            j = json.loads((dst / "turn-2.jsonl.launch.json").read_text())
+            j["argv"] = [("00000000-0000-7000-8000-0000000000c9" if a == TID else a) for a in j["argv"]]
+            (dst / "turn-2.jsonl.launch.json").write_text(json.dumps(j))
+        for why, change in (
+                ("not the take schema", ledger_edit(lambda L: L.pop("served_model"))),
+                ("served_model is not each turn's own stream evidence", ledger_edit(lambda L: L.__setitem__(
+                    "served_model", [{"value": MODEL, "source": "stream-reroute"}] * 2))),
+                ("fails launch_facts", journal_thread)):
+            with self.subTest(why=why):
+                self.assertIn(why, codex_fabricate(self, change).refused())
+
+    def test_a_codex_source_edit_and_a_dirty_path_refuse(self):
+        road = codex_road(self)
+        road.accept()
+        with open(road.study / "codex_native.py", "a") as fh:
+            fh.write("# edited\n")
+        tpw.git(road.root, "commit", "-q", "-am", "edit a Codex reader source")
+        self.assertIn("reader's sources changed", road.refused())
+        road = codex_road(self)
+        road.accept()
+        (road.folder / "turn-1.jsonl").write_text(exec_stream(1) + "\n")
+        self.assertIn("differs from the committed tree", road.refused())
+
+
 class CodexCrossCheckInTheDriver(unittest.TestCase):
     """With a Codex reader registered, the driver joins each turn's exec stream to the retained rollout through the
     one shared join: the history joins and the cross-check agrees, so the checker reads the take (never pending)."""

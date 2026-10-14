@@ -81,7 +81,26 @@ EXEC_ITEMS = ("agent_message", "reasoning", "command_execution", "file_change", 
               "web_search", "todo_list", "error")
 PROJECTED_EXEC_ITEMS = ("agent_message", "reasoning", "command_execution", "error")
 TRUNCATION_MARKER = "\n... command output truncated for persistence ...\n"
-_REROUTE = re.compile(r"model rerouted: (.+?) -> (.+?) \(")
+# The one reroute parser, shared with codex_adapter (Codex road review F1, F2): an item.completed error item whose
+# message is exactly format!("model rerouted: {} -> {} ({:?})", from, to, reason) (exec/src/event_processor_with_jsonl_
+# output.rs:494-507), the reason pinned to ModelRerouteReason's one variant, HighRiskCyberActivity (protocol/src/
+# protocol.rs:2132-2134), and `from` the turn's requested model. Residual ambiguity: three other exec roads write the
+# same item shape (collect_warning, ConfigWarning as "{summary} ({details})", DeprecationNotice; :409-472), so a warning
+# whose text is exactly this sentence about the requested model would read as a reroute; nothing in the item tells
+# them apart.
+REROUTE = re.compile(r"model rerouted: (\S+) -> (\S+) \(HighRiskCyberActivity\)")
+
+
+def reroute_of(rec, model):
+    """`to` when `rec` is exactly one reroute item away from `model`; None for any other record."""
+    if not (isinstance(rec, dict) and set(rec) == {"type", "item"} and rec["type"] == "item.completed"):
+        return None
+    item = rec["item"]
+    if not (isinstance(item, dict) and set(item) == {"id", "type", "message"} and item["type"] == "error"
+            and isinstance(item["id"], str) and isinstance(item["message"], str)):
+        return None
+    m = REROUTE.fullmatch(item["message"])
+    return m.group(2) if m and isinstance(model, str) and m.group(1) == model else None
 LINE_KEYS = {"timestamp", "ordinal", "type", "payload", "metadata"}
 
 
@@ -267,8 +286,9 @@ def project(raw) -> list:
             for t in got["turns"]]
 
 
-def read_exec(text) -> dict:
-    """One `codex exec --json` call: thread id, items in order, errors, served-model evidence, terminal."""
+def read_exec(text, model=None) -> dict:
+    """One `codex exec --json` call: thread id, items in order, errors, served-model evidence (reroute_of away from
+    `model`; two different reroutes refuse), terminal."""
     records = _json_lines(text, JoinRefused)
     if not records or records[0].get("type") != "thread.started":
         raise JoinRefused("the exec stream must begin with thread.started")
@@ -299,11 +319,13 @@ def read_exec(text) -> dict:
             if t != "item.completed":
                 continue
             if kind == "error":
-                m = _REROUTE.match(item.get("message") or "")
-                if m:
-                    served = m.group(2)
-                else:
+                to = reroute_of(rec, model)
+                if to is None:
                     errors.append(item.get("message"))
+                elif served is not None and served != to:
+                    raise JoinRefused("one exec's stream reroutes to two different models")
+                else:
+                    served = to
             else:
                 items.append(item)
     if started != 1:
@@ -377,7 +399,7 @@ def _output_agrees(native, shown) -> bool:
 
 def join(turn: dict, exec_text: str, *, exit_code, session_id: str) -> dict:
     """One rollout turn (read_rollout) joined to its exec call's stream, by order and type, never by exec ids."""
-    call = read_exec(exec_text)
+    call = read_exec(exec_text, model=turn["requested_model"])
     if call["thread_id"] != session_id:
         raise JoinRefused("the exec thread is not the rollout's thread")
     native = [o for o in turn["output"]]
