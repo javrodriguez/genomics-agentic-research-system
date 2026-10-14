@@ -31,6 +31,9 @@ box/ownership.py is the box lane's and may be absent from this tree.
                further turn is sent and the take stops after its drive started for a ruling, the problem recorded;
                the final turn of a single-turn take is checked too; a missing pre-k snapshot is a problem, never a
                pass
+  B3-one-road  (box review NOTE B-3) round 3's host road drive.one_turn skips exec_argv, --settings and every guard,
+               so no TakeDriver or WalkDriver method names it (read from the compiled methods), and a take driven with
+               one_turn made to raise is graded clean
 
 Mutants (MUTANTS, each killed by its own check's line): grant skipped; restore moved after postflight; restore skipped
 on a LaunchError; a scan running after a failed restore; a commit reading a held take's records; a host-side save and a
@@ -598,9 +601,38 @@ def s3_later(mod, p):
     return out
 
 
+@tbi.guarded("B3-one-road")
+def b3_one_road(mod, p):
+    import types as _types
+    out = []
+
+    def names(code) -> set:
+        got = set(code.co_names)
+        for c in code.co_consts:
+            if isinstance(c, _types.CodeType):
+                got |= names(c)
+        return got
+    for cls in (mod.TakeDriver, mod.WalkDriver):          # the compiled methods, so a witness's edit is seen
+        for attr, value in vars(cls).items():
+            fns = [value.fget, value.fset] if isinstance(value, property) else [getattr(value, "__func__", value)]
+            for fn in fns:
+                if callable(fn) and hasattr(fn, "__code__") and "one_turn" in names(fn.__code__):
+                    out.append(f"{p}: {cls.__name__}.{attr} names one_turn, round 3's host road around the guards")
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+
+        def refuse(*a, **kw):
+            raise AssertionError("one_turn called")
+        with mock.patch.object(mod, "one_turn", refuse):
+            b, got = tbi.run_batch(rig, [tbi.row(1)])
+        if got[0]["state"] != tbi.labels4.GRADED:
+            out.append(f"{p}: a take with one_turn refused is {got[0]['state']} ({got[0]['reason']})")
+    return out
+
+
 CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch, "O4-held": o4_held,
           "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator,
-          "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later}
+          "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -631,6 +663,9 @@ MUTANTS = {
                        "O8-operator"),
     "reply-sha-unchecked": ((("        if not ok or sha != hashlib.sha256(data).hexdigest():",
                               "        if False:"),), "O8-operator"),
+    "one-turn-reached": ((("        take.driven = True\n",
+                           "        take.driven = True\n        if row.get(\"slot\") is None:\n"
+                           "            one_turn(\"x\", \"s\", row[\"model\"], True)\n"),), "B3-one-road"),
     "baseline-skipped": ((("        self._settings_baseline(take)        #", "        pass  #"),), "S1-baseline"),
     "turn-one-unchecked": ((("                first = self._settings_problems(take, \"pre-1\")",
                              "                first = []"),), "S2-turn-one"),
@@ -677,6 +712,9 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_s3_later(self):
         self.assertEqual(s3_later(tbi.drive), [])
+
+    def test_b3_one_road(self):
+        self.assertEqual(b3_one_road(tbi.drive), [])
 
 
 class TestOwnershipMutants(unittest.TestCase):
@@ -734,6 +772,9 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_post_unchecked(self):
         self.kill("post-unchecked")
+
+    def test_one_turn_reached(self):
+        self.kill("one-turn-reached")
 
 
 if __name__ == "__main__":
