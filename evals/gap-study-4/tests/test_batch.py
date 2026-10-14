@@ -1380,7 +1380,9 @@ class TestCaps(unittest.TestCase):
     def test_harness_error_two_reruns_per_half_cell(self):
         plan = {(s, 1): "watcher-overflow" for s in (1, 2, 3)}
         b, out, *_ = run(3, plan=plan)
-        reruns = [o for o in out if o["attempt"] == 2]
+        # Live harness step 4: three harness-errors in one night now stop the run for a ruling (the registered
+        # nightly stop), so the two granted re-runs are read from the committed fates, not from their drives.
+        reruns = [o for o in out if o["attempt"] == 1 and o["rerun"]]
         self.assertEqual(sorted(o["slot"] for o in reruns), [1, 2])
         self.assertTrue(next(o for o in out if o["slot"] == 3)["beyond_cap"])
 

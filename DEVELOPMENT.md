@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Nightly stop rule, 2026-10-14:** the registered "three `harness-error`s in one night stop the run for a ruling" now runs in `batch.py`: the block's last committed take carries the stop, pauses are outside, failed-after-drive takes are counted apart. Named departures D-4-1 (window since the last nightly stop; no outcome carries a time) and D-4-2 (the ruling named at restart). 10/10 tests red first; seven mutants killed. See [the slice report](lane-reports/nightly-stop-rule-2026-10-14.md).
+
 **Identity mode fold, 2026-10-14:** the 3b review found Gemini's mode evidence was the pin echoed back. The mode now comes only from the turn's actual-submission journal argv (the box's `<stream>.launch.json`), and is unobserved, so harness-error, until that journal lands on this head; identity sources are accepted per harness and refused on Claude and Codex records. See the addendum in [the 3b report](lane-reports/typed-identity-evidence-2026-10-14.md).
 
 **Native snapshot retention, 2026-10-14:** for an adapter that names a native session (Gemini), each turn's session file is copied into `session/native-turn-<n>.jsonl` after its post-n snapshot and before any next resume, located by directory names only where the pinned source writes it; a failure stops the take for a human. Retained snapshots join through `session_history_facts`. 9/9 new tests red first; mutants killed. See [the slice report](lane-reports/native-snapshot-retention-2026-10-14.md).

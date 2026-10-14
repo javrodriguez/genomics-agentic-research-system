@@ -24,7 +24,7 @@
     {
       "path": "tests/test_batch.py",
       "status": "new",
-      "reason": "Tests for batch.py (interface 3). Edited without transfer by lane w8c-spend-ruled (ruling W8C-gap4-1 (Javier's own decision \"spend markers: 1A 2A 3A\", Mon 12 Oct 2026 08:52 EDT)): spend_gate_problems reads the real table as ruled (no spend line) and, with its spend status set back to PENDING, refused naming it; the ignore-the-spend-cap mutant also fails that real-table line."
+      "reason": "Tests for batch.py (interface 3). Edited without transfer by lane w8c-spend-ruled (ruling W8C-gap4-1 (Javier's own decision \"spend markers: 1A 2A 3A\", Mon 12 Oct 2026 08:52 EDT)): spend_gate_problems reads the real table as ruled (no spend line) and, with its spend status set back to PENDING, refused naming it; the ignore-the-spend-cap mutant also fails that real-table line. Live harness step 4: test_harness_error_two_reruns_per_half_cell reads the two granted re-runs from the committed fates, since the third harness-error of one night now stops the run."
     },
     {
       "path": "COPIED.d/w1b-cp1-routing-batch.json",
