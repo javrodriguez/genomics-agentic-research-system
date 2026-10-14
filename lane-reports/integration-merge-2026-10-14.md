@@ -25,6 +25,8 @@ Nothing was pushed.
 | `47632770` | harness head `3740f8f6` (CP5 arm A pin_profiles and status) | prereg-draft.json: see below |
 | `e3309476` | box head `d65d81b8` (the ownership, settings, caps and scanner set, `6a29d6e2..32246b0c`; the STUDY_RECORD_DIRS fix `20237a3d`) | none |
 | `bfed7c44` | harness head `e3f5010b` (ownership wiring `4c2d805f`, operator-step routing, the three CP5 checks.d lines) | one hunk: see below |
+| `10408dc4` | box head `d73c43ed` (`22b15f56..d73c43ed`, reviewed PASS, incl. the E2 fix `544c6ddb`) | test_env_allowlist.py: see below |
+| `daf5d94c` | harness head `9425bf62` (wiring `4c2d805f..9425bf62`, merged for signal: **review MAJOR open on `4c2d805f`**, the driver ledger written into the watcher-owned evidence folder, fix in progress; carries `0768f478`, which must come in with box ≥ `22b15f56`'s settings_guard `model=`, and does) | none |
 
 How "no conflict" was checked: `comm -12` of `git diff --name-only a12569a <box head>` and `git diff --name-only a12569a <harness head>` printed no path for the first merge, so no file was changed on both sides.
 For `0d2085ee` and `7b5a9dd4`, `comm -12` of the two heads' changed paths since `fa98717e` (`git diff --name-only HEAD...<head>`) printed no path, so again no file was changed on both sides.
@@ -50,6 +52,14 @@ Each later merge reported "Automatic merge went well" and left no unmerged path 
 - `bfed7c44`, `prereg-draft.json`, `tests/test_box_integration.py`, `tests/test_walk_builders.py`, `tests/test_walk_wiring.py` and `walk_builders.py`: no conflict marker.
   `build_draft.py --check` printed ok on `bfed7c44`, so the draft was not regenerated.
 - `claude_code_adapter.py`: glitch-06 expected the box's `--settings` argv edit to meet the harness lane's version. The harness branch did not change this file after the last merge, so the box's argv change came in without a conflict.
+- `10408dc4`, `evals/gap-study-4/tests/test_env_allowlist.py`, four hunks (E2's three arm loops and the launcher-credential check): a conflict between this lane's `daf4311b` `EXEC_ARMS` form and the box lane's reviewed `544c6ddb` rewrite.
+  The box rewrite runs every arm, Codex through `launch_for`, and binds the Codex refusal itself with the login read forbidden.
+  I took the box lane's file whole, because it supersedes `daf4311b`.
+  The unused `EXEC_ARMS` and this lane's duplicate Codex refusal test go with it.
+  Mac: 28 tests OK; witnesses 17/17 red.
+- `10408dc4`, `tests/test_box_integration.py`, `tests/test_build_draft.py` and `walk_builders.py`: no conflict marker.
+- `daf5d94c`, `claude_code_adapter.py`: no conflict marker. The box's `--settings` argv stays in `argv()`; the harness hunks are in `read_stream` (`served_models`, `model_usage`).
+- `daf5d94c`, `tests/test_box_integration.py`, `tests/test_claude_code_adapter.py`, `tests/test_walk_builders.py`, `tests/test_walk_wiring.py` and `walk_builders.py`: no conflict marker.
 
 There were no conflict hunks in any of the three merges, so there are no resolution lines.
 
@@ -313,3 +323,24 @@ The lock fields and the new-folder residual (`box_residuals` going from 3 to 4) 
 ```
 
 Each `image_locks` entry still equals its lock file's bytes.
+
+## The draft regenerated for arm A's config templates (`3e7b1046`)
+
+`build_draft.py --check` failed after `daf5d94c`.
+Box `d3fd5305` restored `take_config`, so `take_config.files_for` now renders arm A's settings, and neither lane's committed draft carries the rendered templates.
+On the Mac, the box head `d73c43ed`'s own `--check` fails the same way.
+I regenerated the draft with the writer's own path.
+The JSON-path diff against `daf5d94c`'s draft has 9 entries, all arm A config templates; Codex and Gemini stay PENDING.
+
+```
+type /config_templates/claude-code/claude-haiku-4-5-20251001 | "PENDING" -> {"files": [{"path": "settings.json", "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"}], "sha256": "a2993c9b40b365cd48edd9986e4dc260
+type /config_templates/claude-code/claude-opus-5-5 | "PENDING" -> {"files": [{"path": "settings.json", "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"}], "sha256": "a2993c9b40b365cd48edd9986e4dc260
+type /config_templates/claude-code/claude-sonnet-5-5 | "PENDING" -> {"files": [{"path": "settings.json", "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"}], "sha256": "a2993c9b40b365cd48edd9986e4dc260
+removed /pending//config_templates/claude-code/claude-haiku-4-5-20251001 | "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render." -> null
+removed /pending//config_templates/claude-code/claude-opus-5-5 | "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render." -> null
+removed /pending//config_templates/claude-code/claude-sonnet-5-5 | "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render." -> null
+list-removed /stats_design/PENDING | "/config_templates/claude-code/claude-haiku-4-5-20251001" -> null
+list-removed /stats_design/PENDING | "/config_templates/claude-code/claude-opus-5-5" -> null
+list-removed /stats_design/PENDING | "/config_templates/claude-code/claude-sonnet-5-5" -> null
+TOTAL 9
+```

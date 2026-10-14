@@ -92,6 +92,20 @@ TARGETS = ("walk_builders", "walk_runner")
 EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts",
                     "rules_scanner", "login_path", "agent_version", "design_for",
                     "budgets", "run_tree_exclude"]
+# take_spec (harness ce2bdef4) is built once take-a's image lock holds no PENDING value: missing, by name, on a tree
+# whose take-a lock is PENDING, and present where the box lane's reviewed locks are in (6221c297; on the merged head,
+# the integration lane). B7.production checks it is then callable. Read from the lock file itself.
+def _take_a_lock_ready() -> bool:
+    import json
+    lock = json.loads((Path(__file__).resolve().parents[1] / "box" / "image.lock").read_text())
+    def held(v):
+        return v == "PENDING" or (isinstance(v, dict) and any(held(x) for x in v.values()))
+    return not lock.get("pending") and not any(held(v) for k, v in lock.items() if k != "pending")
+
+
+TAKE_A_LOCK_READY = _take_a_lock_ready()
+if TAKE_A_LOCK_READY:
+    EXPECTED_MISSING.remove("take_spec")
 # CP5 (Javier, "CP5: all as recommended", 14 Oct 2026) registered arm A's pin profiles, so pin_for is no longer missing
 # in production (B8's rule, on the real table); it is checked present in B7.production.
 # The ownership road is the box lane's box/ownership.py (81ede46d): missing, by name, on a tree without that module, and
@@ -791,6 +805,8 @@ class B7Production(Case):
         self.assertEqual(got["run_tree_origin"], (drive.REPO, variants.PINNED_TREE), "B7.production")
         self.assertEqual(got["table"], routing.load_table(), "B7.production")
         self.assertTrue(callable(got["pin_for"]), "B7.production: CP5's registered pins are not handed to the walks")
+        if TAKE_A_LOCK_READY:
+            self.assertTrue(callable(got["take_spec"]), "B7.production: take-a's ready lock gives no take spec")
         if OWNERSHIP_ON_TREE:
             self.assertIs(got["ownership"], drive._ownership, "B7.production: the ownership road is not the box's")
         else:
