@@ -130,6 +130,16 @@
       "path": "tests/test_native_reader_registration.py",
       "status": "new",
       "reason": "Registration road on synthetic, labelled fixtures: the check prints PASS or the exact disagreement; no record means an empty registry; every forged, mismatched or synthetic record refuses; the driver reads the production registry."
+    },
+    {
+      "path": "codex_native.py",
+      "status": "new",
+      "reason": "Unregistered Codex 0.162.1 rollout reader candidate (paginated subset, fail closed, never skipping a line) and exec-stream join, every name cited to the audit's retained pinned source."
+    },
+    {
+      "path": "tests/test_codex_native.py",
+      "status": "new",
+      "reason": "Synthetic, labelled Codex rollout and exec fixtures: projection, every refusal, truncation kept and flagged, interrupted and open turns incomplete, the join and served-model evidence."
     }
   ]
 }
