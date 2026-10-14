@@ -599,11 +599,11 @@ def _identity_problems(entry) -> list[str]:
 
 
 def _identity_differs(entry, pin, fields, *, present_only: bool) -> bool:
+    """3b: a typed identity entry against the pin. present_only (the pin refusal): only an observed value that differs.
+    Otherwise (the init-mismatch row): any field unobserved, from a source not accepted for it, or off the pin."""
     accepted = ACCEPTED_IDENTITY_SOURCES.get(pin.get("harness"))
     if accepted is None:                       # never routed: shape_problems refuses it first
         raise RoutingRefused(f"identity on a {pin.get('harness')!r} record")
-    """3b: a typed identity entry against the pin. present_only (the pin refusal): only an observed value that differs.
-    Otherwise (the init-mismatch row): any field unobserved, from a source not accepted for it, or off the pin."""
     for f in fields:
         e = entry[f]
         if present_only:

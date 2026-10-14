@@ -132,6 +132,12 @@ class Retain(unittest.TestCase):
             for bad_src, n in ((str(link), 3), (tmp, 4)):
                 with self.subTest(src=bad_src), self.assertRaises(m.SnapshotRefused):
                     m.retain(str(take), n, bad_src)
+            empty = Path(tmp) / "empty.jsonl"
+            empty.write_bytes(b"")
+            with self.assertRaises(m.SnapshotRefused) as cm:
+                m.retain(str(take), 5, str(empty))                                # an empty session: never a snapshot
+            self.assertIn("turn 5", str(cm.exception))
+            self.assertFalse((take / "session" / "native-turn-5.jsonl").exists())
             for n in (0, -1, True, "1"):
                 with self.subTest(n=n), self.assertRaises(m.SnapshotRefused):
                     m.retain(str(take), n, str(src))

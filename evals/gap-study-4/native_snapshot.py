@@ -20,7 +20,8 @@ Assumed, not source-shown (stated so the box lane can confirm): the global temp 
 gemini_session_file reads directory names only, under exactly <home>/.gemini/tmp/*/chats, never a file's content and
 never anything else in the home (no projects.json, no settings, no credentials). Every directory on the way must be a
 real directory, the file a regular file; anything else, none, or more than one match refuses (SnapshotRefused).
-retain copies the bytes (read without following a link) into <take>/session/native-turn-<n>.jsonl, never overwriting,
+retain copies the bytes (read without following a link; an empty file refuses, naming the turn) into
+<take>/session/native-turn-<n>.jsonl, never overwriting,
 and returns the {file, sha256} reference vendor_provenance.session_history_facts reads.
 """
 from __future__ import annotations
@@ -97,6 +98,8 @@ def retain(take_folder, n, source) -> dict:
     finally:
         os.close(fd)
     raw = b"".join(chunks)
+    if not raw:                                  # review nit N2: an empty session is never a snapshot of turn n
+        raise SnapshotRefused(f"turn {n}: the native session file is empty")
     folder = Path(take_folder) / SESSION_DIR
     if os.path.lexists(folder):
         _real_dir(folder)
