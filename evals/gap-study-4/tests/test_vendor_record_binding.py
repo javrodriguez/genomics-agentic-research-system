@@ -34,13 +34,34 @@ class BindingTests(unittest.TestCase):
         # folder (CODEX_HOME), by the adapter's own thread id; none there refuses, never a guess.
         import tempfile
         import native_snapshot
+        # Drive-wiring review MAJOR 1 (573b5a61): the read goes only through the box's view of the config folder
+        # (TakeDriver.config_view: operator_list one level as (name, kind), operator_read bytes or None); the view here
+        # is a faithful host-side stand-in over a scratch folder. With no view the read refuses, never host-side.
+        def view_of(home):
+            def lister(rel):
+                d = Path(home) / rel
+                if not d.is_dir():
+                    return None
+                return [(e.name, "link" if e.is_symlink() else "dir" if e.is_dir() else "file") for e in d.iterdir()]
+
+            def reader(rel):
+                f = Path(home) / rel
+                return f.read_bytes() if f.is_file() else None
+            return lambda take: (lister, reader)
         with tempfile.TemporaryDirectory() as home:
             take.config_dir = home
-            adapter = drive.harness_adapter_for(**args)({"agent": {"harness": "codex"}, "model": "synthetic-model"},
-                                                         take)
-            adapter.thread_id = "0000-thread-1"
             folder = Path(home) / "sessions" / "2026" / "10" / "14"
             folder.mkdir(parents=True)
+            (folder / "rollout-2026-10-14T05-00-00-0000-thread-1.jsonl").write_text("the live rollout\n")
+            blind = drive.harness_adapter_for(**args)({"agent": {"harness": "codex"}, "model": "synthetic-model"},
+                                                       take)
+            blind.thread_id = "0000-thread-1"
+            with self.assertRaises(native_snapshot.SnapshotRefused):
+                blind.rollout_for(1)                  # no box road: refused although the file is on the host
+            (folder / "rollout-2026-10-14T05-00-00-0000-thread-1.jsonl").unlink()
+            adapter = drive.harness_adapter_for(**args, config_view=view_of(home))(
+                {"agent": {"harness": "codex"}, "model": "synthetic-model"}, take)
+            adapter.thread_id = "0000-thread-1"
             with self.assertRaises(native_snapshot.SnapshotRefused):
                 adapter.rollout_for(1)
             (folder / "rollout-2026-10-14T05-00-00-0000-thread-1.jsonl").write_text("the live rollout\n")
