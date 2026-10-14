@@ -361,9 +361,9 @@ def problems_by_assertion(prefix):
     """A check that raises reports it as its own line, so a mutant that makes the code raise fails the test by
     assertion (a kill), never by an error the generated sweep does not count."""
     def wrap(fn):
-        def check(mod):
+        def check(mod, *args):
             try:
-                return fn(mod)
+                return fn(mod, *args)
             except Exception as e:  # noqa: BLE001
                 return [f"{prefix}: raised {type(e).__name__}: {str(e)[:300]}"]
         check.__name__ = fn.__name__
@@ -532,9 +532,9 @@ class B2Login(Case):
                 said = self.refuses("B2.login", f"does not start with {LOGIN}=", wb().login_file_by_name, str(path),
                                     "claude-code")
                 self.assertNotIn(tbi.TOKEN, said, "B2.login: a refusal carries the value")
-        codex = login_file(f"CODEX_API_KEY={tbi.TOKEN}\n")
-        self.assertEqual(self.must("B2.login", wb().login_file_by_name, str(codex), "codex"), str(codex),
-                         "B2.login: the harness's own variable")
+        codex = login_file(f"CODEX_API_KEY={tbi.TOKEN}\n")       # the lease road: a Codex row has no login file
+        said = self.refuses("B2.login", "its login is the lease", wb().login_file_by_name, str(codex), "codex")
+        self.assertNotIn(tbi.TOKEN, said, "B2.login: a refusal carries the value")
 
     def test_the_secrets_read_the_value_only_when_asked(self):
         from box import scan_record
@@ -837,7 +837,9 @@ class B7Production(Case):
             self.assertIs(got["settings_guard"], drive._settings_guard, "B7.production: the guard is not the box's")
         else:
             self.assertIn("box/settings_guard.py", why["settings_guard"], "B7.production: the guard does not say why")
-        self.assertEqual(sorted(got), sorted(wb().NAMES), "B7.production: the set is not NAMES")
+        self.assertEqual(sorted(got), sorted(wb().NAMES + wb().ROW_NAMES), "B7.production: the set is not NAMES")
+        self.assertIsInstance(got["lease_path"], wb().Missing, "B7.production: a Codex lease source is filled")
+        self.assertIn("CODEX_SUBSCRIPTION_READY", got["lease_path"].why, "B7.production: lease_path does not say why")
 
     def test_main_refuses_by_name_before_anything(self):
         for argv in ([], ARGV, ["--no-such-flag"]):
@@ -1174,7 +1176,7 @@ class B9Cli(Case):
             for argv, words in ((w.argv(walk="a/b"), "not one path segment"),
                                 (w.argv(walk="../w-0001"), "not one path segment"),
                                 (w.argv(wording="w99"), "not a row of the design"),
-                                (w.argv(arm="O", model="gpt-6.1-sol"), "admits only Claude Code")):
+                                (w.argv(arm="O", model="gpt-6.1-sol"), "Codex lease gate")):    # closed or absent
                 code, out, err = self.must("B9.cli", w.main, argv)
                 self.assertEqual(code, 2, f"B9.cli: {err[-300:]}")
                 self.assertIn(words, err, "B9.cli")
@@ -1286,7 +1288,8 @@ class TestSysPath(unittest.TestCase):
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
 GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived", "B10Resources", "B7Production",
-                   "B8Present", "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli", "TestSysPath")
+                   "B8Present", "B13Lease", "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli",
+                   "TestSysPath")
 
 
 def run_witnesses(names) -> int:
@@ -1740,6 +1743,286 @@ class B12Scanner(Case):
             self.assertEqual(code, 2, f"B12.scanner: a real walk ran with a fake scan: {err[-600:]}")
             self.assertIn("a real walk scans only with the pinned scanner", err,
                           "B12.scanner: the refusal is not the real walk's pinned-scanner rule")
+
+
+# ------------------------------------------------------------------------------------------------- B13
+# The Codex lease road (glitch-06, 14 Oct 2026; the box contract of live-box-2026-10-13.md, "For the harness lane: the
+# run_take contract to call"). This tree may lack the box's run_take.NO_LOGIN, CODEX_SUBSCRIPTION_READY, place_lease and
+# walk_builders.lease_secrets (scan_record.read_lease_tokens): each is faked here at that boundary, by its contract, and
+# the integration merge must prove the real ones meet it (the lane report names what).
+# Synthetic lease values, at least 20 characters, low entropy on purpose (never real, never key-shaped), and with no
+# word preflight's CREDENTIAL_LIKE reads, so a folder named with one passes the name rule (NIT 5's point).
+ACCESS = "synthetic-lease-one-" + "a" * 12
+REFRESH = "synthetic-lease-two-" + "b" * 12
+REFRESHED = "synthetic-lease-three-" + "c" * 12
+
+
+def lease_file(tmp: Path, access=ACCESS, refresh=REFRESH) -> Path:
+    f = tmp / "lease-src" / "auth.json"
+    f.parent.mkdir(mode=0o700, exist_ok=True)
+    f.write_text(json.dumps({"tokens": {"access_token": access, "refresh_token": refresh}}))
+    os.chmod(f, 0o600)
+    return f
+
+
+def fake_place_lease(placed: list):
+    """run_take.place_lease's contract: the source copied into the config folder as auth.json (mode 600, never over an
+    existing one), its path returned; refused (NotReady) while the gate is closed."""
+    def place(src, config_dir):
+        if rt.__dict__.get("CODEX_SUBSCRIPTION_READY") is not True:
+            raise rt.NotReady("synthetic: CODEX_SUBSCRIPTION_NOT_READY")
+        dst = os.path.join(config_dir, "auth.json")
+        fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(Path(src).read_bytes())
+        placed.append((src, config_dir, dst))
+        return dst
+    return place
+
+
+def fake_lease_secrets(reads: list):
+    """walk_builders.lease_secrets' contract (box b9f876b5): every access_token and refresh_token in auth.json read at
+    take start (a missing file raises: no take), read again at each call, every value read kept."""
+    def lease_secrets(auth_path):
+        def tokens():
+            doc = json.loads(Path(auth_path).read_text())
+            reads.append(auth_path)
+            return [doc["tokens"]["access_token"], doc["tokens"]["refresh_token"]]
+        seen = list(tokens())
+
+        def secrets():
+            for v in tokens():
+                if v not in seen:
+                    seen.append(v)
+            return [("token", v) for v in seen]
+        return secrets
+    return lease_secrets
+
+
+@contextlib.contextmanager
+def lease_boundary(mod, *, ready=True):
+    """The box's symbols at the boundary: the gate (open by default), place_lease, NO_LOGIN, and lease_secrets."""
+    placed, reads = [], []
+    with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", ready, create=True), \
+            mock.patch.object(rt, "NO_LOGIN", "-", create=True), \
+            mock.patch.object(rt, "place_lease", fake_place_lease(placed), create=True), \
+            mock.patch.object(mod, "lease_secrets", fake_lease_secrets(reads), create=True):
+        yield placed, reads
+
+
+def codex_cell() -> dict:
+    cell = {k: tww.the_row()[k] for k in ("task", "half", "wording")}
+    import prereg
+    row = next(r for r in prereg.load()["rows"] if r["arm"] == "O" and all(r[k] == cell[k] for k in cell))
+    return dict(cell, arm="O", model=row["model"])
+
+
+@problems_by_assertion("B13.login")
+def b13_login_problems(mod) -> list:
+    out = []
+    if mod.login_name(rt.CODEX) != "-" or getattr(mod, "NO_LOGIN", None) != "-":
+        out.append(f"B13.login: a Codex row's login name is {mod.login_name(rt.CODEX)!r}, not NO_LOGIN")
+    if hasattr(rt, "NO_LOGIN") and rt.NO_LOGIN != mod.NO_LOGIN:
+        out.append(f"B13.login: walk_builders.NO_LOGIN {mod.NO_LOGIN!r} is not run_take.NO_LOGIN {rt.NO_LOGIN!r}")
+    if mod.login_name(rt.CLAUDE_CODE) != rt.LOGIN_VARIABLE[rt.CLAUDE_CODE]:
+        out.append("B13.login: Claude Code's login name changed")
+    good = str(login_file(f"{LOGIN}={tbi.TOKEN}\n"))
+    with mock.patch.dict(rt.LOGIN_VARIABLE, {rt.GEMINI: "-"}):
+        try:
+            mod.login_name(rt.GEMINI)
+            out.append("B13.login: a non-Codex row took NO_LOGIN")
+        except mod.BuilderRefused:
+            pass
+    for label, fn in (("login_file_by_name of '-'", lambda: mod.login_file_by_name("-", rt.CLAUDE_CODE)),
+                      ("login_file_by_name for Codex", lambda: mod.login_file_by_name(good, rt.CODEX)),
+                      ("login_secrets for Codex", lambda: mod.login_secrets(good, rt.CODEX)),
+                      ("login_secrets of '-'", lambda: mod.login_secrets("-", rt.CLAUDE_CODE))):
+        with mock.patch.object(os, "open", side_effect=AssertionError("a login file was opened")):
+            try:
+                fn()
+                out.append(f"B13.login: {label} was admitted")
+            except mod.BuilderRefused as e:
+                if "the lease" not in str(e):
+                    out.append(f"B13.login: {label} refused for another reason: {e}")
+            except AssertionError:
+                out.append(f"B13.login: {label} opened a file before refusing")
+    with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True, create=True):
+        if mod.codex_gate_problem() is not None:
+            out.append("B13.login: an open gate is a problem")
+    with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False, create=True):
+        if "closed" not in (mod.codex_gate_problem() or ""):
+            out.append(f"B13.login: a closed gate reads {mod.codex_gate_problem()!r}")
+    for value in (1, "True", None):
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", value, create=True):
+            if mod.codex_gate_problem() is None:
+                out.append(f"B13.login: a gate of {value!r} reads open")
+    if not hasattr(rt, "CODEX_SUBSCRIPTION_READY") and "not on this tree" not in (mod.codex_gate_problem() or ""):
+        out.append(f"B13.login: an absent gate reads {mod.codex_gate_problem()!r}")
+    return out
+
+
+@problems_by_assertion("B13.prepare")
+def b13_prepare_problems(mod, tmp: Path) -> list:
+    """prepare routes a Codex row past every login-file reader: refused while the gate is closed or the lease source
+    is missing, before the run tree; else its login is NO_LOGIN and the run tree is built."""
+    out = []
+    built = []
+    args = types.SimpleNamespace(walk="w-0001", **codex_cell())
+    src = str(lease_file(tmp))
+    base = {"agent_version": "0.162.1",
+            "login_path": "/synthetic/never-read", "run_tree_origin": ("/synthetic/repo", "0" * 40),
+            "run_tree_exclude": ["evals"]}
+    with mock.patch.object(mod, "build_run_tree", lambda *a, **k: built.append(a) or tmp / "tree"), \
+            mock.patch.object(mod, "login_file_by_name", side_effect=AssertionError("login_file_by_name")):
+        for label, ready, lease, words in (("a closed gate", False, src, "gate is closed"),
+                                           ("no gate", None, src, "not on this tree"),
+                                           ("a missing lease", True, mod.Missing("synthetic: not registered"),
+                                            "synthetic: not registered"),
+                                           ("a relative lease", True, "lease/auth.json", "not an absolute path"),
+                                           ("no lease", True, None, "not an absolute path")):
+            with lease_boundary(mod, ready=ready):
+                try:
+                    mod.prepare(dict(base, lease_path=lease), args)
+                    out.append(f"B13.prepare: {label} was admitted")
+                except mod.BuilderRefused as e:
+                    if words not in str(e):
+                        out.append(f"B13.prepare: {label} refused for another reason: {e}")
+                except AssertionError as e:
+                    out.append(f"B13.prepare: {label} reached {e}")
+        if built:
+            out.append(f"B13.prepare: a refused Codex row built its run tree: {built}")
+        with lease_boundary(mod):
+            try:
+                row, login, tree = mod.prepare(dict(base, lease_path=src), args)
+                if (login, row["agent"]["harness"], row["arm"], len(built)) != ("-", rt.CODEX, "O", 1):
+                    out.append(f"B13.prepare: an admitted Codex row gave {login!r}, {row['agent']}, {len(built)}")
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B13.prepare: an admitted Codex row raised {type(e).__name__}: {e}")
+    gem = types.SimpleNamespace(walk="w-0001", **dict(codex_cell(), arm="G"))
+    import prereg
+    if any(r["arm"] == "G" for r in prereg.load()["rows"]):
+        g = next(r for r in prereg.load()["rows"] if r["arm"] == "G" and r["task"] == gem.task)
+        gem.model, gem.half, gem.wording = g["model"], g["half"], g["wording"]
+        try:
+            mod.prepare(dict(base, lease_path=src), gem)
+            out.append("B13.prepare: a Gemini row was admitted")
+        except mod.BuilderRefused as e:
+            if "arm G" not in str(e):
+                out.append(f"B13.prepare: a Gemini row refused for another reason: {e}")
+    return out
+
+
+@problems_by_assertion("B13.secrets")
+def b13_secrets_problems(mod, tmp: Path) -> list:
+    """NIT 4 (box review): a Codex walk's driver and its WalkRepo get one and the same secrets(), the lease road's;
+    the lease is placed in the driver's spec_for (after make_config_dir), read at once, and before that nothing scans."""
+    out = []
+    drive = MODS["drive"]
+    got = {}
+    src = str(lease_file(tmp))
+    cfg = tmp / "cfg"
+    cfg.mkdir(mode=0o700)
+    specs = []
+    builders = {"lease_path": src, "rules_scanner": lambda paths: [], "runtime": "rt", "config_parent": str(tmp),
+                "budgets": (600, 5, 1), "take_spec": lambda r, c, t: specs.append((r["arm"], c, t)) or "spec",
+                "sidecar_for": None, "proxy": None, "lock_path": None, "hosts": None, "cgroup_dir_for": lambda t: "",
+                "pin_for": None, "design_for": None, "uid_map": None, "clock": None, "sleep": None,
+                "ownership": None, "settings_guard": None, "machine_gate": None}
+    row = {"walk": "w-0001", "arm": "O", "agent": {"harness": rt.CODEX, "version": "0.162.1"}}
+    with lease_boundary(mod) as (placed, reads), \
+            mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
+            mock.patch.object(drive, "WalkRepo", lambda **kw: got.setdefault("repo", kw) and "repo"), \
+            mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+            mock.patch.object(mod, "build_walk_fixture", lambda r, t, p: ({"sha256": "0" * 64}, "/synthetic/src")), \
+            mock.patch.object(mod, "walk_identity", lambda *a, **k: {"walk": "w-0001"}), \
+            mock.patch.object(mod, "login_secrets", side_effect=AssertionError("login_secrets")):
+        try:
+            mod.walk_driver_for(builders, row, "-", tmp / "tree")
+        except Exception as e:  # noqa: BLE001
+            return [f"B13.secrets: walk_driver_for raised {type(e).__name__}: {e}"]
+        s_driver, s_repo = got["driver"]["secrets"], got["repo"]["secrets"]
+        road = getattr(s_driver, "__self__", None)
+        if s_driver is not s_repo or not isinstance(road, mod.CodexLeaseRoad):
+            out.append(f"B13.secrets: the driver got {s_driver!r} and WalkRepo {s_repo!r}, not one lease road's")
+        if got["driver"]["login_file"] != "-":
+            out.append(f"B13.secrets: the driver's login_file is {got['driver']['login_file']!r}")
+        try:
+            s_driver()
+            out.append("B13.secrets: the secrets read before any lease was placed")
+        except mod.BuilderRefused:
+            pass
+        spec = got["driver"]["spec_for"](row, str(cfg))
+        if spec != "spec" or specs != [("O", str(cfg), str(tmp / "tree"))]:
+            out.append(f"B13.secrets: spec_for gave {spec!r} over {specs}")
+        if placed != [(src, str(cfg), str(cfg / "auth.json"))] or reads != [str(cfg / "auth.json")]:
+            out.append(f"B13.secrets: the lease was not placed then read at take start: {placed} {reads}")
+        if s_repo() != [("token", ACCESS), ("token", REFRESH)]:
+            out.append(f"B13.secrets: WalkRepo's secrets are {s_repo()}")
+        try:
+            got["driver"]["spec_for"](row, str(cfg))
+            out.append("B13.secrets: a second lease was placed for one walk")
+        except mod.BuilderRefused:
+            pass
+        os.chmod(cfg / "auth.json", 0o600)          # the refresh rule: the host rewrites auth.json between turns
+        (cfg / "auth.json").write_text(json.dumps({"tokens": {"access_token": REFRESHED, "refresh_token": REFRESH}}))
+        if road.refreshed() != [("token", ACCESS), ("token", REFRESH), ("token", REFRESHED)]:
+            out.append(f"B13.secrets: after a refresh the secrets are {road.secrets()}")
+    claude = {"walk": "w-0001", "arm": "A", "agent": {"harness": rt.CLAUDE_CODE, "version": "2.1.296"}}
+    got.clear()
+    marker = lambda: [("token", "x")]  # noqa: E731
+    with lease_boundary(mod) as (placed, reads), \
+            mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
+            mock.patch.object(drive, "WalkRepo", lambda **kw: got.setdefault("repo", kw) and "repo"), \
+            mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+            mock.patch.object(mod, "build_walk_fixture", lambda r, t, p: ({"sha256": "0" * 64}, "/synthetic/src")), \
+            mock.patch.object(mod, "walk_identity", lambda *a, **k: {"walk": "w-0001"}), \
+            mock.patch.object(mod, "login_secrets", lambda login, harness: marker):
+        mod.walk_driver_for(builders, claude, "/synthetic/login", tmp / "tree")
+        got["driver"]["spec_for"](claude, str(tmp / "cfg2"))
+        if got["driver"]["secrets"] is not marker or got["repo"]["secrets"] is not marker or placed:
+            out.append("B13.secrets: a Claude walk's secrets are not its login file's, or it placed a lease")
+    return out
+
+
+@problems_by_assertion("B13.environment")
+def b13_environment_problems(mod) -> list:
+    """drive's environment record: a Codex row sets no login variable (its login is the lease); Claude's is set."""
+    out = []
+    drive = MODS["drive"]
+    for harness, want in ((rt.CODEX, None), (rt.CLAUDE_CODE, rt.LOGIN_VARIABLE[rt.CLAUDE_CODE])):
+        seen = {}
+        take = types.SimpleNamespace(launched=types.SimpleNamespace(spec=types.SimpleNamespace(run_tree="/s/tree")),
+                                     identity={"session_id": "s", "row": None, "row_commit": None}, folder="/s/f")
+        row = {"agent": {"harness": harness}, "task": "t", "half": "h", "model": "m"}
+        with mock.patch.object(drive, "environment_record", lambda child, parent, **k: seen.setdefault("c", child)), \
+                mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES",       # box 9d4bfd40 names Codex's; PENDING here
+                                  dict(rt.VENDOR_BILLING_ROUTE_VARIABLES, **{rt.CODEX: ()})), \
+                mock.patch.object(drive, "write_record_atomically", lambda *a: None), \
+                mock.patch.object(drive, "money_line_names", lambda rec: []):
+            drive.TakeDriver._environment(types.SimpleNamespace(), take, row, types.SimpleNamespace(version=lambda: "v"))
+        child = seen.get("c", {})
+        set_names = sorted(k for k, v in child.items() if v == "set")
+        if harness == rt.CODEX and (set_names or "-" in child or "CODEX_API_KEY" in child):
+            out.append(f"B13.environment: a Codex row's child sets {set_names}")
+        if harness != rt.CODEX and set_names != [want]:
+            out.append(f"B13.environment: Claude Code's child sets {set_names}, not [{want}]")
+    return out
+
+
+class B13Lease(Drafted):
+    def test_a_codex_row_has_no_login_file(self):
+        self.assertEqual(b13_login_problems(wb()), [])
+
+    def test_prepare_routes_a_codex_row_to_the_lease(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b13_prepare_problems(wb(), Path(t)), [])
+
+    def test_the_driver_and_walkrepo_get_the_lease_secrets(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b13_secrets_problems(wb(), Path(t)), [])
+
+    def test_the_environment_record_sets_no_codex_login(self):
+        self.assertEqual(b13_environment_problems(wb()), [])
 
 
 if __name__ == "__main__":
