@@ -62,7 +62,7 @@ HERE = Path(__file__).resolve().parent.parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
-from box import preflight, run_take, scan_record, sidecar, sidecar_contract  # noqa: E402
+from box import ownership, preflight, run_take, scan_record, sidecar, sidecar_contract  # noqa: E402
 from box.egress import proxy_conf  # noqa: E402
 
 RECORD_KIND = "stub-take-measurement"
@@ -419,7 +419,8 @@ def run_stub_take(a) -> dict:
                           "sidecar.create_argv", "sidecar.expect_from_argv", "sidecar.ctl_argv",
                           "sidecar.parse_completed", "preflight.collect_and_evaluate", "preflight.probes",
                           "preflight.run", "preflight.evaluate", "preflight.postflight", "scan_record.scan",
-                          "proxy_conf.render", "proxy_conf.check"]}
+                          "proxy_conf.render", "proxy_conf.check", "ownership.grant", "ownership.restore",
+                          "run_take.launch (when use_launch())"]}
     rec["runtime"] = {"version": runtime.run(["docker", "version", "--format", "{{json .}}"], env=env, timeout=60).stdout,
                       "driver_status": runtime.run(["docker", "info", "--format", "{{json .DriverStatus}}"], env=env,
                                                    timeout=60).stdout,
@@ -492,9 +493,9 @@ def run_stub_take(a) -> dict:
                                                                      "caller parameter); not a candidate"}
     launched = None
     try:
-        _own(runtime, env, images["take"], run_tree, run_take._uid_of(run_take.AGENT_USER))
-        _own(runtime, env, images["take"], cfg, run_take._uid_of(run_take.AGENT_USER))
-        _own(runtime, env, images["take"], evidence, preflight.WATCHER_UID)
+        # the ownership road, as production will run it (review finding 9; box/ownership.py)
+        rec["grant"] = ownership.grant(runtime, image=images["take"], run_tree=run_tree, config_dir=cfg,
+                                       evidence_dir=evidence, caller_env=env)
         if use_launch():
             launched = run_take.launch(runtime, spec, sidecar=sl, proxy=proxy, record_dir=records, caller_env=env)
             rec["launch_road"] = "run_take.launch"
@@ -577,12 +578,17 @@ def run_stub_take(a) -> dict:
             nets = runtime.run(["docker", "network", "ls", "--no-trunc", "-q", "--filter", f"id={launched.network_id}"],
                                env=env, timeout=60)
             rec["network_left"] = nets.stdout.strip()
-        rec["postflight_before_restore"] = preflight.postflight(cfg, HARNESS)
         rec["ownership_before_restore"] = {n: {"uid": os.stat(p).st_uid, "mode": oct(os.stat(p).st_mode & 0o7777)}
                                            for n, p in (("run_tree", run_tree), ("evidence", evidence),
                                                         ("config", cfg))}
-        for p in (run_tree, cfg, evidence):
-            _own(runtime, env, images["take"], p, 0)
+        try:   # after teardown, before postflight, the scan and the removal: production's order
+            rec["restore"] = ownership.restore(runtime, image=images["take"], run_tree=run_tree, config_dir=cfg,
+                                               evidence_dir=evidence, ids=launched.ids() if launched else [],
+                                               caller_env=env)
+        except ownership.OwnershipError as e:
+            rec["restore"] = {"error": str(e), **e.record}
+            for p in (run_tree, cfg, evidence):   # the scratch is still removed; the failure stays recorded
+                _own(runtime, env, images["take"], p, 0)
         rec["postflight"] = preflight.postflight(cfg, HARNESS)
         rec["evidence"] = _evidence_files(evidence)
         rec["run_tree_after"] = {os.path.relpath(os.path.join(b, f), run_tree): _host_read(os.path.join(b, f))

@@ -153,6 +153,12 @@ class NeverSelected(unittest.TestCase):
         names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
         self.assertFalse(names & {"exec_argv", "run_turn", "read_login"})
 
+    def test_the_road_uses_the_ownership_road(self):
+        tree = ast.parse(Path(st.__file__).read_text(encoding="utf-8"))
+        used = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)
+                and isinstance(n.value, ast.Name) and n.value.id == "ownership"}
+        self.assertEqual(used, {"grant", "restore", "OwnershipError"})
+
     def test_turns_go_through_the_plain_agent_exec(self):
         calls = []
 
