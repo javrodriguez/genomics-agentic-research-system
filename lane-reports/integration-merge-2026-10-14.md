@@ -12,8 +12,14 @@ Nothing was pushed.
 | `96b31d32` | harness head `d56cebf0` into box head `db252b9e` | none |
 | `5ae385a8` | harness head `beecc274` (glitch-06 moved the harness head after the first merge) | none |
 | `01e12172` | box head `c6a6637e` (the box lane's fix of the preflight audit defect, `3a3716a0`, and its sidecar-contract follow-ups) | none |
+| `0d2085ee` | box head `0f7cdbfd` (audit and importlib fixes, the r2 rulings incl. `b2a470f8`'s strict `ignored_newline_paths`) | none |
+| `7b5a9dd4` | harness head `86ca78e6` (the Codex stub exec on glitch-06's option a, and the harness-owned fixes queued after run `gap4-merge-01e1217`) | none |
 
 How "no conflict" was checked: `comm -12` of `git diff --name-only a12569a <box head>` and `git diff --name-only a12569a <harness head>` printed no path for the first merge, so no file was changed on both sides.
+For `0d2085ee` and `7b5a9dd4`, `comm -12` of the two heads' changed paths since `fa98717e` (`git diff --name-only HEAD...<head>`) printed no path, so again no file was changed on both sides.
+`b2a470f8`'s three edits outside the box lane (`probes4.py`, `tests/test_new_tasks.py`, `tests/test_plan_gate.py`) were changed by neither the harness branch nor this branch.
+On the merged tree (`7b5a9dd4`), a search for literal watcher-stop records without `ignored_newline_paths` finds only `tests/test_box_integration.py:1643`.
+That record feeds the lenient `drive.sidecar_health`, not endstate, and the box lane owns the file; `box/sidecar.py:789` passes the field on its next line.
 Each later merge reported "Automatic merge went well" and left no unmerged path in `git status`.
 
 ## Conflict resolutions, one line per hunk
