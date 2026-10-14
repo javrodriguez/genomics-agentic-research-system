@@ -1,0 +1,61 @@
+{
+ "commit": "325cb2f4",
+ "mitigation_patch_sha256": "0417a7831540fe2396512cad26963bf805b715240cdb6ec3f3e64fa488ab0f0d",
+ "files": [
+  {
+   "path": "mitigated/sidecar.py",
+   "bytes": 58979,
+   "sha256": "43158c2af23c5f13d5aebbc25593ae98170c130e6a4beabea6a019c3ee5c73f6"
+  },
+  {
+   "path": "src/agent_adapter.py",
+   "bytes": 17418,
+   "sha256": "0faeb5f8b61408f0d1a4cf41ed78bdf69b7fc8483b9ab60229d631a6814fc535"
+  },
+  {
+   "path": "src/box/egress/proxy_conf.py",
+   "bytes": 9696,
+   "sha256": "a08babfbed231eb374a444d85c002dbdad8ea87a6e9673ac8fe5d6b14e882cc2"
+  },
+  {
+   "path": "src/box/image_lock.py",
+   "bytes": 32357,
+   "sha256": "397b8b0246b0445488a3383883bb656174fffb9b5cc69bd9733bf5359ce51544"
+  },
+  {
+   "path": "src/box/measure_live.py",
+   "bytes": 20365,
+   "sha256": "0617ca94d42f011b0a04412b78392b9be89706e157e02ead7aa3f696d3628776"
+  },
+  {
+   "path": "src/box/preflight.py",
+   "bytes": 45645,
+   "sha256": "fc40b022dbc5b3fef5bd9bde6a492527e55573f3d4fa6e2f513563b9e789611c"
+  },
+  {
+   "path": "src/box/run_take.py",
+   "bytes": 66394,
+   "sha256": "0b4e0d024b2e32fcd87743c759391db5fc7a255127fdbe4a08ed4163e6d8f2b8"
+  },
+  {
+   "path": "src/box/sidecar.py",
+   "bytes": 57530,
+   "sha256": "18292ab81be767f68437a2a1e1f65a9bddc87a36c01051487da03b0e14553b5f"
+  },
+  {
+   "path": "src/box/sidecar_contract.py",
+   "bytes": 1519,
+   "sha256": "738da7d36b290fd3c4da8ed2e1d316fe152c637d2ce9712fc069becf92a95e92"
+  },
+  {
+   "path": "src/graders/labels4.py",
+   "bytes": 8168,
+   "sha256": "c1ca63b082516e574c71a716716966dcc0541ff7db16f6fd0757d9c3dc2716dd"
+  },
+  {
+   "path": "src/harness_bookkeeping.py",
+   "bytes": 10640,
+   "sha256": "9632dfc8215b2eee5be839af0f097297d74c77af4170c5cdebf5d4a0b9c768cf"
+  }
+ ]
+}
