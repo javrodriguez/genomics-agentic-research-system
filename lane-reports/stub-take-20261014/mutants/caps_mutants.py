@@ -7,7 +7,8 @@ import test_live_box as tl
 MUTANTS = [
  ("rt", "sidecar uncapped", 'return argv[:2] + ["--memory", str(SIDECAR_MEMORY_BYTES)] + argv[2:]', 'return argv'),
  ("rt", "sidecar cap 1 GiB", "SIDECAR_MEMORY_BYTES = 512 * 1024 * 1024", "SIDECAR_MEMORY_BYTES = 1024 * 1024 * 1024"),
- ("rt", "caller's own memory admitted", ' or "--memory" in argv or any(a.startswith("--memory") for a in argv):', ':'),
+ ("rt", "caller's own memory admitted", ' or any(a.startswith("--memory") or a.startswith("-m") for a in argv):', ':'),
+ ("rt", "caller's -m admitted", ' or any(a.startswith("--memory") or a.startswith("-m") for a in argv):', ' or any(a.startswith("--memory") for a in argv):'),
  ("rt", "launch skips the cap", '"sidecar-create", sidecar_create_argv(sidecar), env)', '"sidecar-create", list(sidecar.create_argv), env)'),
  ("rt", "proxy uncapped", '"--security-opt", "no-new-privileges", "--memory", str(PROXY_MEMORY_BYTES),', '"--security-opt", "no-new-privileges",'),
  ("rt", "proxy cap 1 GiB", "PROXY_MEMORY_BYTES = 512 * 1024 * 1024", "PROXY_MEMORY_BYTES = 1024 * 1024 * 1024"),

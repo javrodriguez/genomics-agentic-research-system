@@ -34,7 +34,10 @@ Refused = run_take.Refused
 
 CLAUDE_CODE, CODEX, GEMINI = run_take.CLAUDE_CODE, run_take.CODEX, run_take.GEMINI
 
-# claude-code: the user-settings key that pre-accepts the bypass-mode warning.
+# claude-code: the user-settings key that pre-accepts the bypass-mode warning. It never acts from here: every turn runs
+# --setting-sources project,local, so the user scope this folder holds never loads; the key rides inline by --settings
+# (run_take.CLAUDE_BYPASS_KEY, run_take.claude_study_settings). This file keeps the plan's per-take user settings and
+# the same value (tests bind take_config.CLAUDE_BYPASS_KEY to run_take.CLAUDE_BYPASS_KEY).
 CLAUDE_BYPASS_KEY = PENDING
 CLAUDE_SETTINGS = "settings.json"
 

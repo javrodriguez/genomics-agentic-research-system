@@ -114,6 +114,7 @@ def setUpModule():
             _STACK.enter_context(mock.patch.object(os, name, _trip(f"os.{name}")))
     # Claude Code's fallback variables are PENDING until confirmed at the pinned version: none, for the fake only.
     _STACK.enter_context(mock.patch.object(rt, "FALLBACK_ENV", {}))
+    _STACK.enter_context(mock.patch.object(rt, "CLAUDE_BYPASS_KEY", "skipDangerousModePermissionPrompt"))  # stand-in
 
 
 def tearDownModule():

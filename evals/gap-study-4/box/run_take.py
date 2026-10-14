@@ -194,6 +194,10 @@ FALLBACK_MODEL_FLAG = "--fallback-model"
 #                              refuses a run tree whose settings files carry the key)
 #   env                        FALLBACK_ENV again, at a level above the run tree's files
 CLAUDE_SETTINGS_FLAG = "--settings"
+# The bypass acceptance's settings key, also inline (glitch-06's ruling, round-2 review): user settings (the config
+# folder) never load under --setting-sources project,local, so the key take_config writes there would never act.
+# PENDING until confirmed at the pinned version; take_config.CLAUDE_BYPASS_KEY is the same value (a test binds them).
+CLAUDE_BYPASS_KEY = PENDING
 # Arms O and G's own billing-route variables (a Vertex switch for Gemini CLI, for example): a tuple of names each,
 # named from the harness's documentation at the pinned version. Until then the refused set is the closed list above,
 # and an exec of either harness is refused (NotReady): this lane's stricter reading.
@@ -241,6 +245,8 @@ PENDING_WHY = {
     "TOP_FORMAT": "the column form `docker top` prints under rootless Docker: measured on the box.",
     "INSPECT_STATUS": "the inspect spellings, taken from the Docker Engine API: confirmed when the stub take reads "
                       "one inspect.",
+    "CLAUDE_BYPASS_KEY": "the bypass acceptance's settings key, carried inline by --settings: the guards plan names "
+                         "skipDangerousModePermissionPrompt (line 77); confirmed at the pinned version.",
     "TakeSpec.resources": "the take's memory reservation, CPU and pids values: capacity POLICY, not measurements "
                           "(the caller's spec_for passes them; the stub-take derivation's rule R-RES from athena's "
                           "capacity and three concurrent takes; the stub take only showed that they apply and the "
@@ -262,6 +268,7 @@ _HEX64 = re.compile(r"[0-9a-f]{64}")
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")
 _CPUS = re.compile(r"[1-9][0-9]*(\.[0-9]{1,3})?|0\.[0-9]{0,2}[1-9]")
 _NAME = re.compile(r"[A-Z_][A-Z0-9_]*")
+_NAME_KEY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
 
 class NotReady(RuntimeError):
@@ -308,7 +315,7 @@ def _is_pending(v) -> bool:
 
 def _pending_values() -> dict:
     return {"FALLBACK_ENV": FALLBACK_ENV, "VENDOR_BILLING_ROUTE_VARIABLES": VENDOR_BILLING_ROUTE_VARIABLES,
-            "TOP_FORMAT": TOP_FORMAT, "INSPECT_STATUS": INSPECT_STATUS}
+            "TOP_FORMAT": TOP_FORMAT, "INSPECT_STATUS": INSPECT_STATUS, "CLAUDE_BYPASS_KEY": CLAUDE_BYPASS_KEY}
 
 
 def pending() -> dict:
@@ -530,13 +537,18 @@ def launcher_argv(login: str, values: dict, inner) -> list:
 
 def claude_study_settings(model: str) -> str:
     """The inline --settings JSON for one Claude Code take (canonical: sorted keys, no spaces). NotReady while
-    FALLBACK_ENV is PENDING."""
+    FALLBACK_ENV or CLAUDE_BYPASS_KEY is PENDING."""
     if not isinstance(model, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", model):
         raise Refused("the take's model is a plain model id")
     if _is_pending(FALLBACK_ENV):
         raise NotReady(f"FALLBACK_ENV is PENDING: {PENDING_WHY['FALLBACK_ENV']}")
-    return json.dumps({"availableModels": [model], "env": dict(FALLBACK_ENV), "fallbackModel": [],
-                       "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
+    if _is_pending(CLAUDE_BYPASS_KEY):
+        raise NotReady(f"CLAUDE_BYPASS_KEY is PENDING: {PENDING_WHY['CLAUDE_BYPASS_KEY']}")
+    if not isinstance(CLAUDE_BYPASS_KEY, str) or not _NAME_KEY.fullmatch(CLAUDE_BYPASS_KEY) \
+            or CLAUDE_BYPASS_KEY in ("availableModels", "env", "fallbackModel", "switchModelsOnFlag"):
+        raise Refused("the bypass key is a plain settings key of its own")
+    return json.dumps({CLAUDE_BYPASS_KEY: True, "availableModels": [model], "env": dict(FALLBACK_ENV),
+                       "fallbackModel": [], "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
 
 
 def _flag_values(inner, flag: str) -> list:
@@ -953,8 +965,9 @@ SIDECAR_MEMORY_BYTES = 512 * 1024 * 1024
 def sidecar_create_argv(sidecar: SidecarLaunch) -> list:
     """The sidecar's `docker create` as launch runs it: the caller's argv with the memory cap after `create`."""
     argv = _check_argv(sidecar.create_argv)
-    if argv[:2] != [RUNTIME_CLIENT, "create"] or "--memory" in argv or any(a.startswith("--memory") for a in argv):
-        raise Refused("the sidecar's create argv starts with docker create and sets no memory value of its own")
+    if argv[:2] != [RUNTIME_CLIENT, "create"] or any(a.startswith("--memory") or a.startswith("-m") for a in argv):
+        raise Refused("the sidecar's create argv starts with docker create and sets no memory value of its own "
+                      "(--memory or -m, in any spelling)")
     return argv[:2] + ["--memory", str(SIDECAR_MEMORY_BYTES)] + argv[2:]
 
 

@@ -475,11 +475,16 @@ def plant_login(folder, name, value=FAKE_VALUE, mode=0o600, text=None):
     return path
 
 
+# The bypass key's test stand-in (the plan's name; PENDING in run_take until confirmed at the pinned version).
+BYPASS = "skipDangerousModePermissionPrompt"
+
+
 @contextlib.contextmanager
 def filled():
     """Every PENDING value exec needs, filled in memory only (interface 15). FALLBACK_ENV is FILLED (14 Oct 2026) and
-    is the committed value here."""
-    with mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: ()}):
+    is the committed value here; the bypass key is the plan's name, a test stand-in until it is confirmed."""
+    with mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: ()}), \
+            mock.patch.object(rt, "CLAUDE_BYPASS_KEY", BYPASS):
         yield
 
 
@@ -1188,7 +1193,9 @@ class TestLaunch(MutantCase):
 
 # A claude-code turn as the adapter builds it: its model once and the study's inline settings (review finding 1).
 CLAUDE_MODEL = "claude-opus-5-5"
-CLAUDE_INNER = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", rt.claude_study_settings(CLAUDE_MODEL)]
+with mock.patch.object(rt, "CLAUDE_BYPASS_KEY", BYPASS):
+    CLAUDE_INNER = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings",
+                    rt.claude_study_settings(CLAUDE_MODEL)]
 
 
 class TestClaudeSettings(MutantCase):
@@ -1197,11 +1204,35 @@ class TestClaudeSettings(MutantCase):
 
     def check(self):
         out = []
+        try:
+            rt.claude_study_settings(CLAUDE_MODEL)
+            out.append("the study's settings were built while the bypass key is PENDING")
+        except rt.NotReady:
+            pass
+        if not rt._is_pending(rt.CLAUDE_BYPASS_KEY) or "CLAUDE_BYPASS_KEY" not in rt.pending():
+            out.append("CLAUDE_BYPASS_KEY is not PENDING in run_take.pending()")
+        import box.take_config as tc
+        if tc.CLAUDE_BYPASS_KEY != rt.CLAUDE_BYPASS_KEY:
+            out.append("take_config's and run_take's bypass keys differ")
+        with filled():
+            out += self.check_filled()
+        return out
+
+    def check_filled(self):
+        out = []
         want = rt.claude_study_settings(CLAUDE_MODEL)
         doc = json.loads(want)
-        if doc != {"availableModels": [CLAUDE_MODEL], "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"},
-                   "fallbackModel": [], "switchModelsOnFlag": False}:
+        if doc != {BYPASS: True, "availableModels": [CLAUDE_MODEL],
+                   "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}, "fallbackModel": [],
+                   "switchModelsOnFlag": False}:
             out.append(f"the study's settings are {doc}")
+        for bad in ("switchModelsOnFlag", "env", "bad key"):
+            with mock.patch.object(rt, "CLAUDE_BYPASS_KEY", bad):
+                try:
+                    rt.claude_study_settings(CLAUDE_MODEL)
+                    out.append(f"bypass key {bad!r} accepted")
+                except rt.Refused:
+                    pass
         good = [CLAUDE_INNER, ["claude", "-p", "--settings is just prompt text", "--model", CLAUDE_MODEL,
                                "--settings=" + want]]
         for inner in good:
@@ -1240,11 +1271,14 @@ class TestClaudeSettings(MutantCase):
         self.assert_green_then_red(self.check, [
             ("check-skipped", patched(rt, "check_claude_settings", lambda inner: None)),
             ("switch-on", patched(rt, "claude_study_settings", lambda m: json.dumps(
-                {"availableModels": [m], "env": dict(rt.FALLBACK_ENV), "fallbackModel": [],
+                {BYPASS: True, "availableModels": [m], "env": dict(rt.FALLBACK_ENV), "fallbackModel": [],
                  "switchModelsOnFlag": True}, sort_keys=True, separators=(",", ":")))),
             ("no-allowlist", patched(rt, "claude_study_settings", lambda m: json.dumps(
-                {"env": dict(rt.FALLBACK_ENV), "fallbackModel": [], "switchModelsOnFlag": False}, sort_keys=True,
-                separators=(",", ":")))),
+                {BYPASS: True, "env": dict(rt.FALLBACK_ENV), "fallbackModel": [], "switchModelsOnFlag": False},
+                sort_keys=True, separators=(",", ":")))),
+            ("no-bypass", patched(rt, "claude_study_settings", lambda m: json.dumps(
+                {"availableModels": [m], "env": dict(rt.FALLBACK_ENV), "fallbackModel": [],
+                 "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":")))),
             ("prompt-read-as-flag", patched(rt, "_flag_values", lambda inner, flag: [
                 inner[i + 1] if i + 1 < len(inner) else None for i, t in enumerate(inner) if t == flag])),
         ])
@@ -1643,7 +1677,7 @@ ORIG_REMOVE = rt.remove_config_dir
 class TestPendingAndNames(MutantCase):
     # TOP_FORMAT and INSPECT_STATUS FILLED 14 Oct 2026 (stub-take review PASS); FALLBACK_ENV FILLED the same day from
     # the docs (glitch-06's ruling, Addendum D).
-    EXPECT = {"VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources"}
+    EXPECT = {"VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources", "CLAUDE_BYPASS_KEY"}
     FILLED_TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
                   "uid_namespace": "container"}
     CALLER_EXPECT = {"cgroup_dir", "uid_map", "XDG_RUNTIME_DIR in the take", "tree ownership"}

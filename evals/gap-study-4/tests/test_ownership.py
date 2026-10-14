@@ -361,6 +361,8 @@ class OperatorSteps(unittest.TestCase):
             with self.subTest(rel=rel):
                 self.assertNotEqual(self.write(rel).returncode, 0)
         self.assertEqual(Path(outside).read_text(), "host")
+        # R2-2: the one-link check comes before any truncation: the hard-linked file keeps its bytes
+        self.assertEqual(Path(self.root, "p", "00_data", "samples.csv").read_bytes(), b"x")
 
     def test_the_read_program(self):
         Path(self.root, "p", "00_data", "samples.csv").write_bytes(b"sample_id\n")
@@ -372,8 +374,10 @@ class OperatorSteps(unittest.TestCase):
         outside = os.path.join(self.d, "secret.txt")
         Path(outside).write_text("host")
         os.symlink(outside, os.path.join(self.root, "p", "link.csv"))
+        os.symlink(self.d, os.path.join(self.root, "p", "dirlink"))
         os.mkfifo(os.path.join(self.root, "p", "fifo.csv"))
-        for rel, limit in (("p/link.csv", "100"), ("p/fifo.csv", "100"), ("p/00_data/samples.csv", "3")):
+        for rel, limit in (("p/link.csv", "100"), ("p/fifo.csv", "100"), ("p/00_data/samples.csv", "3"),
+                           ("p/dirlink/secret.txt", "100")):    # R2-2: never read through a parent-folder link
             with self.subTest(rel=rel):
                 self.assertNotEqual(self.run_program(ow.READ_PROGRAM, rel, limit).returncode, 0)
 

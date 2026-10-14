@@ -21,6 +21,7 @@ PINNED = "844a4ce0d89437ca043363981a86096f6383a141"
 SHIPPED = subprocess.run(["git", "-C", str(REPO), "show", f"{PINNED}:gars/.claude/settings.json"],
                          capture_output=True, check=True).stdout
 RUN5 = REPO / "lane-reports" / "stub-take-20261014" / "stub-take-run5.derived.json"
+MODEL = "claude-opus-5-5"
 
 
 class Base(unittest.TestCase):
@@ -39,7 +40,7 @@ class Base(unittest.TestCase):
 class Baseline(Base):
     def test_the_shipped_file_passes_and_is_hashed(self):
         self.assertEqual(sorted(json.loads(SHIPPED)), ["hooks", "permissions"])
-        self.assertEqual(sg.baseline(self.tree), {"gars/.claude/settings.json": hashlib.sha256(SHIPPED).hexdigest()})
+        self.assertEqual(sg.baseline(self.tree, model=MODEL), {"gars/.claude/settings.json": hashlib.sha256(SHIPPED).hexdigest()})
 
     def test_each_forbidden_key_refuses(self):
         for key in sg.FORBIDDEN_KEYS:
@@ -49,7 +50,7 @@ class Baseline(Base):
                     p.parent.mkdir(exist_ok=True)
                     p.write_text(json.dumps({key: "x"}))
                     with self.assertRaises(sg.SettingsRefused):
-                        sg.baseline(self.tree)
+                        sg.baseline(self.tree, model=MODEL)
                     p.unlink()
         self.assertEqual(set(sg.FORBIDDEN_KEYS), {"env", "model", "fallbackModel", "switchModelsOnFlag",
                                                   "availableModels"})
@@ -63,22 +64,90 @@ class Baseline(Base):
         cases.append(os.path.join(self.tree, "a", ".claude", "settings.local.json"))
         for p in cases:
             with self.assertRaises(sg.SettingsRefused):
-                sg.baseline(self.tree)
+                sg.baseline(self.tree, model=MODEL)
             os.unlink(p)
         os.symlink(os.path.join(self.d), os.path.join(self.tree, "b-claude-target"))
         os.makedirs(os.path.join(self.tree, "b"))
         os.symlink(self.d, os.path.join(self.tree, "b", ".claude"))
         with self.assertRaises(sg.SettingsRefused):
-            sg.baseline(self.tree)
+            sg.baseline(self.tree, model=MODEL)
         os.unlink(os.path.join(self.tree, "b", ".claude"))
         Path(self.tree, "b", ".claude").write_text("x")
         with self.assertRaises(sg.SettingsRefused):
-            sg.baseline(self.tree)
+            sg.baseline(self.tree, model=MODEL)
         os.unlink(os.path.join(self.tree, "b", ".claude"))
         for text in ("not json", "[1]"):
             Path(self.tree, "gars", ".claude", "settings.json").write_text(text)
             with self.subTest(text=text), self.assertRaises(sg.SettingsRefused):
-                sg.baseline(self.tree)
+                sg.baseline(self.tree, model=MODEL)
+
+
+class Agents(Base):
+    """Round-2 review R2-6: agent definitions under .claude/agents/ may name only the take's model or inherit."""
+
+    def agent(self, text, rel=("gars", ".claude", "agents", "helper.md")):
+        p = Path(self.tree, *rel)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text)
+        return p
+
+    def test_allowed_models(self):
+        for text in ("---\nname: helper\n---\nbody\n", "---\nname: h\nmodel: inherit\n---\n",
+                     f"---\nmodel: {MODEL}\n---\n", f"---\nmodel: '{MODEL}'\n---\n", "no frontmatter\n"):
+            with self.subTest(text=text):
+                self.agent(text)
+                base = sg.baseline(self.tree, model=MODEL)
+                self.assertIn("gars/.claude/agents/helper.md", base)
+
+    def test_other_models_refuse(self):
+        for text in ("---\nmodel: haiku\n---\n", "---\nmodel: claude-sonnet-5-5\n---\n",
+                     "---\nname: h\nmodel: opus\n---\n"):
+            with self.subTest(text=text):
+                self.agent(text)
+                with self.assertRaises(sg.SettingsRefused):
+                    sg.baseline(self.tree, model=MODEL)
+        p = self.agent("---\nmodel: haiku\n---\n", rel=(".claude", "agents", "deep", "x.md"))
+        self.agent("---\nmodel: inherit\n---\n")
+        with self.assertRaises(sg.SettingsRefused):
+            sg.baseline(self.tree, model=MODEL)
+        p.unlink()
+
+    def test_links_and_shapes_refuse(self):
+        outside = os.path.join(self.d, "outside.md")
+        Path(outside).write_text("---\nmodel: inherit\n---\n")          # allowed content: only the link refuses
+        os.makedirs(os.path.join(self.tree, "gars", ".claude", "agents"))
+        os.symlink(outside, os.path.join(self.tree, "gars", ".claude", "agents", "a.md"))
+        with self.assertRaises(sg.SettingsRefused):
+            sg.baseline(self.tree, model=MODEL)
+        os.unlink(os.path.join(self.tree, "gars", ".claude", "agents", "a.md"))
+        os.rmdir(os.path.join(self.tree, "gars", ".claude", "agents"))
+        os.symlink(self.d, os.path.join(self.tree, "gars", ".claude", "agents"))
+        with self.assertRaises(sg.SettingsRefused):
+            sg.baseline(self.tree, model=MODEL)
+        os.unlink(os.path.join(self.tree, "gars", ".claude", "agents"))
+        Path(self.tree, "gars", ".claude", "agents").write_text("x")
+        with self.assertRaises(sg.SettingsRefused):
+            sg.baseline(self.tree, model=MODEL)
+
+
+class Bounds(Base):
+    """Round-2 review R2-2: the 2 MiB cap and an unreadable folder are bound."""
+
+    def test_the_size_cap(self):
+        doc = json.dumps({"hooks": {}, "pad": "x" * (2 * 1024 * 1024)})
+        Path(self.tree, "gars", ".claude", "settings.json").write_text(doc)
+        with self.assertRaises(sg.SettingsRefused):
+            sg.baseline(self.tree, model=MODEL)
+
+    def test_an_unreadable_folder_refuses(self):
+        locked = os.path.join(self.tree, "locked")
+        os.mkdir(locked)
+        os.chmod(locked, 0)
+        try:
+            with self.assertRaises(sg.SettingsRefused):
+                sg.baseline(self.tree, model=MODEL)
+        finally:
+            os.chmod(locked, 0o700)
 
 
 class Snapshot(unittest.TestCase):
@@ -89,6 +158,17 @@ class Snapshot(unittest.TestCase):
 
     def test_athena_pre1_snapshot_matches_the_shipped_file(self):
         self.assertEqual(sg.snapshot_problems(self.snap, self.base), [])
+
+    def test_every_snapshot_after_a_turn_is_checked_too(self):
+        """R2-1: the post-k snapshots, the final one included, are compared as the pre-k ones are."""
+        doc = json.loads(RUN5.read_text())
+        posts = sorted(k for k in doc["evidence"] if k.startswith("snapshots/post-"))
+        self.assertEqual(posts, ["snapshots/post-1.json", "snapshots/post-2.json", "snapshots/post-3.json"])
+        for k in posts:
+            snap = json.loads(doc["evidence"][k]["text"])
+            self.assertEqual(sg.snapshot_problems(snap, self.base), [], k)
+            snap["entries"]["gars/.claude/settings.local.json"] = {"type": "file", "sha256": "1" * 64}
+            self.assertTrue(sg.snapshot_problems(snap, self.base), k)
 
     def edited(self, path, entry):
         s = json.loads(json.dumps(self.snap))
@@ -106,6 +186,8 @@ class Snapshot(unittest.TestCase):
             "new local file": ("gars/.claude/settings.local.json", {"type": "file", "sha256": "1" * 64}),
             "new root file": (".claude/settings.json", {"type": "file", "sha256": "1" * 64}),
             "dir made a link": ("gars/.claude", {"type": "link", "target": "/tmp"}),
+            "new agent": ("gars/.claude/agents/x.md", {"type": "file", "sha256": "3" * 64}),
+            "agents made a link": ("gars/.claude/agents", {"type": "link", "target": "/tmp"}),
             "unreadable": ("gars/.claude/settings.json", {"type": "unreadable"}),
         }
         for name, (path, entry) in cases.items():

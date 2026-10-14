@@ -69,7 +69,8 @@ class Adapter(Base):
         got = self.scanner(fake)([self.f])
         self.assertEqual(got, [{"path": self.f, "line": 1, "rule": "github-pat"}])
         self.assertEqual(fake.calls[0], [self.bin, "version"])
-        self.assertEqual(fake.calls[1], [self.bin, "dir", self.f, "--no-banner", "--redact", "--report-format", "json",
+        self.assertEqual(fake.calls[1], [self.bin, "dir", self.f, "--no-banner", "--redact", "--ignore-gitleaks-allow",
+                                         "--report-format", "json",
                                          "--report-path", os.path.join(self.reports, "gitleaks-1.json"),
                                          "--exit-code", "0", "--log-level", "warn"])
 
@@ -106,6 +107,16 @@ class Refusals(Base):
             scan = self.scanner(fake)                             # built cleanly: only the scan may refuse
             with self.subTest(fake=vars(fake)), self.assertRaises(rs.ScannerRefused):
                 scan([self.f])
+
+    def test_a_timeout_is_never_clean(self):
+        class Slow(Fake):
+            def run(self, argv, *, env=None, timeout=None):
+                if argv[1] == "dir":
+                    raise TimeoutError("gitleaks timed out")
+                return super().run(argv, env=env, timeout=timeout)
+        scan = self.scanner(Slow())
+        with self.assertRaises(rs.ScannerRefused):
+            scan([self.f])
 
     def test_a_used_report_folder_refuses(self):
         Path(self.reports, "old.json").write_text("[]")
