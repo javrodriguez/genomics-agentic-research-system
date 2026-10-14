@@ -207,6 +207,48 @@ def reply(command, label=None, *, ok_=True, unreadable_consequential=()):
     return json.dumps({k: r[k] for k in sc.REPLY_FIELDS}) + "\n"
 
 
+class FakeOwnership:
+    """The box lane's ownership road (box/ownership.py, 81ede46d) as drive's interface names it
+    (drive.OWNERSHIP_GRANT_PARAMS, OWNERSHIP_RESTORE_PARAMS), on fakes only: each call is appended to `events` with
+    the box's call count at that moment (so a test reads its order against the containers), and fails when told.
+
+    fail_grant, fail_restore   raise OwnershipError (carrying its record) from that step"""
+
+    class OwnershipError(RuntimeError):
+        def __init__(self, message: str, record: dict):
+            super().__init__(message)
+            self.record = record
+
+    def __init__(self, box=None, *, fail_grant=False, fail_restore=False):
+        self.box, self.fail_grant, self.fail_restore = box, fail_grant, fail_restore
+        self.events: list = []
+
+    def _at(self):
+        return None if self.box is None else len(self.box.calls)
+
+    def grant(self, runtime, *, image, run_tree, config_dir, evidence_dir, caller_env=None):
+        self.events.append(("grant", {"image": image, "run_tree": run_tree, "config_dir": config_dir,
+                                      "evidence_dir": evidence_dir, "at": self._at(),
+                                      "exist": [os.path.isdir(d) for d in (run_tree, config_dir, evidence_dir)]}))
+        if self.fail_grant:
+            raise self.OwnershipError("grant-run_tree failed: synthetic", {"ok": False, "steps": [
+                {"step": "grant-run_tree", "returncode": 1, "stderr": "synthetic"}]})
+        return {"ok": True, "steps": [{"step": f"grant-{n}", "returncode": 0, "stderr": ""}
+                                      for n in ("run_tree", "config_dir", "evidence_dir")]}
+
+    def restore(self, runtime, *, image, run_tree, config_dir, evidence_dir, ids, caller_env=None):
+        self.events.append(("restore", {"image": image, "run_tree": run_tree, "config_dir": config_dir,
+                                        "evidence_dir": evidence_dir, "ids": list(ids), "at": self._at()}))
+        if self.fail_restore:
+            raise self.OwnershipError("restore failed (1 problem(s)): synthetic", {"ok": False, "steps": [],
+                                                                                  "problems": ["synthetic"]})
+        return {"ok": True, "steps": [{"step": f"restore-{n}", "returncode": 0, "stderr": ""}
+                                      for n in ("run_tree", "config_dir", "evidence_dir")], "problems": []}
+
+    def names(self) -> list:
+        return [name for name, _ in self.events]
+
+
 class FakeBox:
     """A container runtime that answers run_take's argv lists from its own state: networks, containers, the agent's
     processes in each take container, and the sidecar's health records written into the evidence folder.
@@ -532,9 +574,10 @@ class Rig:
     """One scratch repository, one fake box, a TakeDriver and a TakeRepo wired the way the drive step runs them."""
 
     def __init__(self, mod, root: Path, *, box=None, turns=None, raise_at=None, checker=None, spy=None,
-                 scanner=None, secrets=None):
+                 scanner=None, secrets=None, ownership=None):
         self.mod, self.root = mod, root
         self.box = box or FakeBox()
+        self.ownership = ownership or FakeOwnership(self.box)   # the box lane's road, faked (81ede46d)
         self.clock = Clock()
         self.box.clock = self.clock                    # S6b: one host clock for the box, the turns and the driver
         self.turns = turns if turns is not None else [{"text": "plain"}, {"text": "plain again"}]
@@ -555,7 +598,8 @@ class Rig:
             pin_for=lambda r: batch.expected_pin(r, table()), checker=self.checker,
             secrets=secrets or (lambda: [("token", TOKEN)]), rules_scanner=scanner or (lambda paths: []),
             uid_map=UID_MAP, budget_s=600, finalize_wait_s=CAP_S, poll_s=POLL_S, clock=self.clock,
-            sleep=self.clock.sleep, project_for=lambda r: PROJECT, identity_for=self.identity_for)
+            sleep=self.clock.sleep, project_for=lambda r: PROJECT, identity_for=self.identity_for,
+            ownership=self.ownership)
         self.repo = mod.TakeRepo(runtime=self.box, record_files=self.driver.record_files,
                                  secrets=lambda: [("token", TOKEN)], rules_scanner=lambda paths: [], root=root,
                                  repo=root, on_published=self.driver.published)

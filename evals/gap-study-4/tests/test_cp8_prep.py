@@ -391,7 +391,8 @@ def build_walk_driver(drive, factory, root):
             lock_path="/synthetic.lock", hosts={}, login_file="/synthetic-login", counters_for=lambda t: {},
             pin_for=lambda r: {}, design_for=lambda r, t: None, project_for=lambda r: "run-0000abcd",
             identity_for=lambda r: {}, secrets=lambda: [], rules_scanner=lambda p: [], uid_map=[], budget_s=1,
-            finalize_wait_s=1, poll_s=1, clock=lambda: 0.0, sleep=lambda s: None)
+            finalize_wait_s=1, poll_s=1, clock=lambda: 0.0, sleep=lambda s: None,
+            ownership=tbi.FakeOwnership())
 
 
 class A1AdapterClass(Case):

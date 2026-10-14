@@ -93,6 +93,10 @@ EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "pro
                     "budgets", "run_tree_exclude"]
 # CP5 (Javier, "CP5: all as recommended", 14 Oct 2026) registered arm A's pin profiles, so pin_for is no longer missing
 # in production (B8's rule, on the real table); it is checked present in B7.production.
+# The ownership road is the box lane's box/ownership.py (81ede46d): missing, by name, on a tree without that module, and
+# present on the merged head (B7.production checks it is then drive's own `_ownership`).
+OWNERSHIP_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "ownership.py").is_file()
+EXPECTED_MISSING += [] if OWNERSHIP_ON_TREE else ["ownership"]
 
 
 def road() -> dict:
@@ -767,6 +771,10 @@ class B7Production(Case):
         self.assertEqual(got["run_tree_origin"], (drive.REPO, variants.PINNED_TREE), "B7.production")
         self.assertEqual(got["table"], routing.load_table(), "B7.production")
         self.assertTrue(callable(got["pin_for"]), "B7.production: CP5's registered pins are not handed to the walks")
+        if OWNERSHIP_ON_TREE:
+            self.assertIs(got["ownership"], drive._ownership, "B7.production: the ownership road is not the box's")
+        else:
+            self.assertIn("box/ownership.py", why["ownership"], "B7.production: ownership does not say why")
         self.assertEqual(sorted(got), sorted(wb().NAMES), "B7.production: the set is not NAMES")
 
     def test_main_refuses_by_name_before_anything(self):
@@ -899,6 +907,7 @@ class FakeWorld:
             "table": self.table, "pin_for": self.pin_for, "design_for": self.design_for,
             "budgets": (600, tbi.CAP_S, tbi.POLL_S), "run_tree_origin": (origin_repo, sha),
             "run_tree_exclude": ["evals"], "clock": self.clock, "sleep": self.clock.sleep,
+            "ownership": tbi.FakeOwnership(self.box),
         }
 
     def pin_for(self, row):

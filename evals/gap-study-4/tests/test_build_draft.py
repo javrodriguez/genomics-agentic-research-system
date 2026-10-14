@@ -96,7 +96,16 @@ def core_problems(d):
     need({item["path"] for item in locks} == {str(p.relative_to(HERE)) for p in (HERE / "box").rglob("image.lock")}
          and all(item["sha256"] == digest(HERE / item["path"]) and
                  item["lock"] == image_lock.load(str(HERE / item["path"])) for item in locks), "R6.locks")
-    need(all(r["agent"]["version"] is None for r in rows), "R6.unpinned")
+    # R6.unpinned, converted for CP5 (Javier, 14 Oct 2026, the integration lane's rule mirrored here): an arm A row
+    # carries its pin's version, which is take-a's harness.version; O and G rows stay null. While take-a's lock is
+    # PENDING (this branch), the pins' agent_version and the arm A rows stay null too (TakeALock names that skip).
+    take_a = next(item["lock"] for item in locks if item["lock"]["image"] == "take-a")["harness"]["version"]
+    a_version = None if take_a == image_lock.PENDING else take_a
+    a_pins = d["version_pins"].get(CLAUDE) or {}
+    need(all(r["agent"]["version"] == (a_version if r["arm"] == "A" else None) for r in rows)
+         and set(a_pins) == set(MODELS["A"])
+         and all(p.get("agent_version") == a_version and (a_version is None or p.get("version") == a_version)
+                 for p in a_pins.values()), "R6.unpinned")
     need(set(d["version_pins"]) == set(HARNESSES.values()) and all(set(d["version_pins"][h]) == set(MODELS[a])
          for a, h in HARNESSES.items()), "R14.pins")
     return bad
@@ -538,6 +547,19 @@ def setUpModule():
         patch.start(); PATCHES.append(patch)
     else:
         CORE_SETUP()
+
+
+class TakeALock(unittest.TestCase):
+    """R6.unpinned on the live draft: arm A's rows carry take-a's harness.version once its lock is filled."""
+
+    def test_arm_a_rows_carry_take_a_version(self):
+        d = b.build()
+        take_a = next(i["lock"] for i in d["image_locks"] if i["lock"]["image"] == "take-a")["harness"]["version"]
+        if take_a == image_lock.PENDING:
+            self.skipTest("the take-a lock is PENDING on this branch; the box lane's committed lock (6221c297, "
+                          "2.1.296) binds arm A's row versions where it is merged")
+        self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == "A"}, {take_a})
+        self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] != "A"}, {None})
 
 
 class Description(unittest.TestCase):

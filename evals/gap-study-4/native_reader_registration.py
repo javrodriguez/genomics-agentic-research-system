@@ -313,7 +313,8 @@ LEDGER_KEYS = ("kind", "task", "half", "wording", "pressure", "repeat", "arm", "
                "project", "source", "row", "row_commit", "permission_mode", "permission_mode_passed",
                "permission_mode_recorded", "budget_s", "gars_tree_sha", "fixture", "claude_version", "turns",
                "outcome", "first_agent_turn", "environment", "transcript", "published", "cross_check", "cost",
-               "streams", "native_snapshots", "native_snapshot_refusal", "native_history", "cross_check_status")
+               "streams", "native_snapshots", "native_snapshot_refusal", "native_history", "cross_check_status",
+               "operator_steps")   # the ownership road's grant and restore (drive.OWNERSHIP_STEPS), 14 Oct 2026
 ENVIRONMENT_FILE = "environment.json"
 LAUNCH_FILE = "launch.json"
 

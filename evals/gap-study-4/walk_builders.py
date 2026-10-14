@@ -59,7 +59,7 @@ if str(HERE) not in sys.path:
 # Every value the command line needs, in the order it reports them. A builder set holds exactly these names.
 NAMES = ("runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts", "uid_map",
          "cgroup_dir_for", "rules_scanner", "login_path", "agent_version", "table", "pin_for", "design_for",
-         "budgets", "run_tree_origin", "run_tree_exclude", "clock", "sleep")
+         "budgets", "run_tree_origin", "run_tree_exclude", "clock", "sleep", "ownership")
 CELL = ("task", "half", "wording", "arm", "model")
 COMMITTED = "committed"
 HEX40 = re.compile(r"[0-9a-f]{40}")
@@ -290,6 +290,8 @@ def production_builders() -> dict:
                             else scan_record.real_rules_scanner())
     table = routing.load_table()
     out["table"] = table
+    out["ownership"] = (Missing("the ownership road: box/ownership.py (the box lane's 81ede46d) is not on this tree")
+                        if drive._ownership is None else drive._ownership)
     out["pin_for"] = (Missing("the routing pin: routing.json's pin_profiles are empty until the walks measure them")
                       if not table.get("pin_profiles") else (lambda row: batch.expected_pin(row, table)))
     held = [p for k, v in check_take.CHECKER_CONSTANTS.items() for p in check_take._pending_paths(v, k)]
@@ -360,7 +362,7 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path):
         design_for=builders["design_for"], project_for=lambda r: project,
         identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=builders["rules_scanner"],
         uid_map=builders["uid_map"], budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s,
-        clock=builders["clock"], sleep=builders["sleep"], records="walks")
+        clock=builders["clock"], sleep=builders["sleep"], records="walks", ownership=builders["ownership"])
     repo = drive.WalkRepo(runtime=builders["runtime"], secrets=secrets, rules_scanner=builders["rules_scanner"],
                           root=root, repo=drive.records_repo(root))
     return ident, driver, repo

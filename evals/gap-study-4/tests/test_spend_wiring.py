@@ -88,8 +88,8 @@ BASE_START_PROBLEMS = [
 # Lane w8c: after Javier's "spend markers: 1A 2A 3A", the two pin-profile lines were left; CP5 (Javier, 14 Oct 2026)
 # cleared them, so a PENDING spend status alone gives the last line.
 SPEND_ONLY_PROBLEMS = BASE_START_PROBLEMS[2:]
-CP5_STATUS = ("RULED by Javier 14 Oct: arm A profiles registered; O and G follow when their rate-limit and spend-cap "
-              "rules are set")
+CP5_STATUS = ("RULED 14 Oct by Javier (\"CP5: all as recommended\"): arm A profiles registered; O and G follow when "
+              "their rate-limit and spend-cap rules are set")
 BASE_SPEND_STATUS = ("PENDING (glitch-f3): claude-code's spend-cap types. Its list is empty (see "
                      "spend_cap_markers.claude-code.source) until glitch-f3 rules it.")
 

@@ -1519,6 +1519,13 @@ def main() -> int:
 from box import preflight as _preflight  # noqa: E402
 from box import run_take as _run_take  # noqa: E402
 from box import scan_record as _scan_record  # noqa: E402
+import importlib.util as _importlib_util  # noqa: E402
+# The box lane's ownership road (box/ownership.py, 81ede46d): imported like the box modules above wherever the file is
+# (the merged head); absent from this tree, it stays None and TakeDriver.launch refuses (ownership_problems). A module
+# that is present but fails to import raises here, never read as absent.
+_ownership = None
+if _importlib_util.find_spec("box.ownership") is not None:
+    from box import ownership as _ownership  # noqa: E402
 
 OUTCOMES_FILE = takes_mod.HISTORY_FILES[0]
 OUTCOME_KIND = "ledger"
@@ -1824,7 +1831,8 @@ TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.lo
                    "postflight.json": "preflight",    # S6b (e)
                    "operator-check.json": "launch",   # S6b C11
                    "driver-ledger.json": "ledger", "environment.json": "launch", "scrub.json": "launch",   # S6c C6-C8
-                   "public-config.json": "launch"}   # live harness 13 Oct: box take_config.public_record's bytes
+                   "public-config.json": "launch",   # live harness 13 Oct: box take_config.public_record's bytes
+                   "ownership-grant.json": "launch", "ownership-restore.json": "launch"}   # the ownership road
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
 # Live harness 13 Oct: the box's per-turn actual-submission journal (run_take: stream path + ".launch.json"), an exact
 # top-level sibling of a turn stream, scanned as an unmaskable launch record. Nearby or nested spellings still refuse.
@@ -1833,6 +1841,43 @@ EVIDENCE_DIR, SESSION_DIR = "evidence", "session"
 EVIDENCE_KINDS = {_sidecar.SNAPSHOTS: "snapshot", _sidecar.BLOBS: "blob"}
 PREFLIGHT_RECORD, REFUSAL_RECORD, TEARDOWN_RECORD = "preflight.json", "refusal.json", "teardown.json"
 POSTFLIGHT_RECORD, OPERATOR_CHECK_RECORD = "postflight.json", "operator-check.json"
+# THE OWNERSHIP ROAD (stub-take review finding 9; the box lane's call contract, live-box-2026-10-13.md at 81ede46d,
+# routed by glitch-06 on 14 Oct 2026). Under rootless Docker the run tree and config folder are granted to the agent,
+# and the evidence folder to the watcher, before run_take.launch; all three are restored to the host user after
+# teardown, before postflight, the scan and the config folder's removal. The road is box/ownership.py (`_ownership`
+# above) unless a TakeDriver is handed another that has this exact interface (a fake, in the tests on a branch that
+# lacks the box module):
+#   grant(runtime, *, image, run_tree, config_dir, evidence_dir, caller_env)  -> record; raises OwnershipError
+#   restore(runtime, *, image, run_tree, config_dir, evidence_dir, ids, caller_env) -> record; raises OwnershipError
+#   OwnershipError   an exception class whose instances carry `record`
+OWNERSHIP_GRANT_PARAMS = ("runtime", "image", "run_tree", "config_dir", "evidence_dir", "caller_env")
+OWNERSHIP_RESTORE_PARAMS = ("runtime", "image", "run_tree", "config_dir", "evidence_dir", "ids", "caller_env")
+OWNERSHIP_GRANT_RECORD, OWNERSHIP_RESTORE_RECORD = "ownership-grant.json", "ownership-restore.json"
+OWNERSHIP_STEPS = ("ownership-grant", "ownership-restore")      # the driver ledger's operator steps, in order
+_IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")                    # the lock's image id; a tag never runs a step
+
+
+def ownership_problems(road) -> list:
+    """Why `road` is not an ownership road this driver can call (empty when it is): the interface above, by name,
+    kind and order of each parameter. None (box/ownership.py absent from this tree) is a problem, never a skip."""
+    import inspect
+    if road is None:
+        return ["no ownership road: box/ownership.py is not on this tree (the box lane's 81ede46d), so no take "
+                "launches"]
+    p = []
+    err = getattr(road, "OwnershipError", None)
+    if not (isinstance(err, type) and issubclass(err, Exception)):
+        p.append("the ownership road's OwnershipError is not an exception class")
+    for name, params in (("grant", OWNERSHIP_GRANT_PARAMS), ("restore", OWNERSHIP_RESTORE_PARAMS)):
+        fn = getattr(road, name, None)
+        if not callable(fn):
+            p.append(f"the ownership road has no callable {name}")
+            continue
+        got = list(inspect.signature(fn).parameters.values())
+        kinds = [inspect.Parameter.POSITIONAL_OR_KEYWORD] + [inspect.Parameter.KEYWORD_ONLY] * (len(params) - 1)
+        if [q.name for q in got] != list(params) or [q.kind for q in got] != kinds:
+            p.append(f"the ownership road's {name} is not {name}({params[0]}, *, {', '.join(params[1:])})")
+    return p
 # What the checker callable returns: a closed record (the drive step's operator-side reading of the take).
 # S6b (C11, C12): the operator-diff count and the finalize abort are the driver's own readings now, so the checker
 # hands only its reasons and its per-id events.
@@ -1918,6 +1963,10 @@ class _Take:
         self.native_hook = False       # live harness 3c: the adapter names a native session to retain per turn
         self.native_snapshots: list = []        # 3c: {file, sha256} per retained turn, under session/
         self.native_snapshot_refusal = None     # 3c: why a turn's snapshot was not retained (the take stops)
+        self.spec = None               # the ownership road: the TakeSpec the grant and the restore name
+        self.grant = None              # {ok, why, record}: the grant's record (ownership-grant.json)
+        self.restore = None            # {ok, why, ids, record}: the restore's record (ownership-restore.json)
+        self.ownership_hold = None     # why the take's folders are kept for a human: no postflight, scan or commit
 
 
 class TakeDriver:
@@ -1951,12 +2000,14 @@ class TakeDriver:
     uid_map          the runtime's uid map lines (container start, host start, length)
     budget_s, finalize_wait_s, poll_s   the turn budget, the quiescence cap and the poll interval (pre-registered)
     clock, sleep     the injected host clock and sleep (no real wait in a test)
+    ownership        the ownership road (OWNERSHIP_GRANT_PARAMS, OWNERSHIP_RESTORE_PARAMS): box/ownership.py when
+                     None; launch refuses while ownership_problems names anything
     """
 
     def __init__(self, *, runtime, take_folder, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts,
                  adapter_for, script_for, pin_for, checker, secrets, rules_scanner, uid_map, budget_s,
                  finalize_wait_s, poll_s, clock, sleep, project_for, identity_for, holdout_matcher=None,
-                 caller_env=None, strict_script=False):
+                 caller_env=None, strict_script=False, ownership=None):
         if not callable(getattr(runtime, "run", None)):
             raise TypeError("runtime must offer run(argv, env=, timeout=)")
         for name, fn in (("take_folder", take_folder), ("spec_for", spec_for), ("sidecar_for", sidecar_for),
@@ -1976,6 +2027,7 @@ class TakeDriver:
         self.project_for = project_for
         self.identity_for = identity_for                  # S6c C7
         self.strict_script = strict_script is True        # W6J-R1-3: True in the CP6 production wiring
+        self.ownership = _ownership if ownership is None else ownership   # the box module unless one is handed in
         self._lock = threading.Lock()
         self._by_id: dict = {}        # take container id -> _Take
         self._by_slot: dict = {}      # slot -> the slot's latest _Take not yet published
@@ -1990,6 +2042,9 @@ class TakeDriver:
         partial teardown did not remove it (batch records it and removes it again), else None."""
         if self.publish_problems:                             # S6b Q6 (D5): a config folder never reused silently
             raise DriveRefused(f"a published take's cleanup failed: {self.publish_problems[0]}")
+        road = ownership_problems(self.ownership)              # before any folder or container
+        if road:
+            raise DriveRefused("; ".join(road))
         folder = self.take_folder(row) if _folder is None else _folder
         if not isinstance(folder, str) or not os.path.isabs(folder) or os.path.normpath(folder) != folder:
             raise DriveRefused(f"the take folder is not a normalised absolute path: {folder!r}")
@@ -2000,7 +2055,9 @@ class TakeDriver:
             self._by_slot[row["slot"]] = take
         os.mkdir(take.evidence_dir)
         take.sidecar = self.sidecar_for(row, take.evidence_dir)
-        spec = self.spec_for(row, cfg)
+        spec = self.spec_for(row, cfg)       # every host-side write into the run tree and config folder is done here
+        take.spec = spec
+        self._grant_ownership(take)          # the ownership road: after them and the evidence folder, pre-launch
         try:
             take.launched = _run_take.launch(self.runtime, spec, sidecar=take.sidecar, proxy=self.proxy,
                                              record_dir=folder, caller_env=self.caller_env)
@@ -2011,10 +2068,61 @@ class TakeDriver:
             if e.container_id:
                 with self._lock:
                     self._by_id[e.container_id] = take
+            self._restore_ownership(take)    # after the launch's partial teardown; a failure holds the take
             raise
         with self._lock:
             self._by_id[take.launched.take_id] = take
         return take.launched.take_id
+
+    # ------------------------------------------------------------------------------------------- the ownership road
+    def _grant_ownership(self, take) -> None:
+        """Grant the run tree and config folder to the agent and the evidence folder to the watcher, by the take
+        image's id. On OwnershipError the take never launches: a restore with no ids undoes any partial grant, the
+        grant record is written, and DriveRefused is raised (nothing ran)."""
+        spec, road = take.spec, self.ownership
+        image = getattr(spec, "image", None)
+        if not isinstance(image, str) or not _IMAGE_ID.fullmatch(image):
+            raise DriveRefused(f"the ownership road runs the take image by its lock's id, never {image!r}")
+        try:
+            record = road.grant(self.runtime, image=spec.image, run_tree=spec.run_tree, config_dir=take.config_dir,
+                                evidence_dir=take.evidence_dir, caller_env=self.caller_env)
+        except Exception as e:  # noqa: BLE001 - OwnershipError, or a refusal before any step: undone and refused
+            take.grant = {"ok": False, "why": f"{type(e).__name__}: {str(e)[:500]}",
+                          "record": getattr(e, "record", None)}
+            self._restore_ownership(take, ids=[])
+            self._write(take, OWNERSHIP_GRANT_RECORD, take.grant)
+            raise DriveRefused(f"ownership grant failed, the take is not launched: {e}") from e
+        take.grant = {"ok": True, "why": None, "record": record}
+        self._write(take, OWNERSHIP_GRANT_RECORD, take.grant)
+
+    def _restore_ownership(self, take, ids=None) -> None:
+        """Restore the three folders to the host user (ids: every container the take recorded). Never raises: any
+        failure sets take.ownership_hold, so no postflight, scan, commit or removal follows, and the take's folders
+        are kept for a human ruling. The restore record is written either way."""
+        spec, road = take.spec, self.ownership
+        try:
+            ids = list(take.launched.ids()) if ids is None else list(ids)
+            record = road.restore(self.runtime, image=spec.image, run_tree=spec.run_tree, config_dir=take.config_dir,
+                                  evidence_dir=take.evidence_dir, ids=ids, caller_env=self.caller_env)
+            take.restore = {"ok": True, "why": None, "ids": ids, "record": record}
+        except Exception as e:  # noqa: BLE001 - OwnershipError or anything else: the folders are held, fail closed
+            take.restore = {"ok": False, "why": f"{type(e).__name__}: {str(e)[:500]}",
+                            "ids": ids if isinstance(ids, list) else None, "record": getattr(e, "record", None)}
+            take.ownership_hold = f"ownership restore failed ({type(e).__name__}: {str(e)[:300]})"
+        try:
+            self._write(take, OWNERSHIP_RESTORE_RECORD, take.restore)
+        except Exception as e:  # noqa: BLE001
+            take.ownership_hold = take.ownership_hold or f"the restore record could not be written ({e})"
+
+    @staticmethod
+    def _unrestored(take) -> str | None:
+        """Why the take's records must not be read, scanned or committed: a held restore, or a grant never
+        restored."""
+        if take.ownership_hold:
+            return take.ownership_hold
+        if take.grant is not None and take.restore is None:
+            return "the take's folders were granted and never restored"
+        return None
 
     # ------------------------------------------------------------------------------------------- drive (R4-9..11)
     def _env(self) -> dict:
@@ -2281,6 +2389,9 @@ class TakeDriver:
                   "cross_check": None if take.cross_check is None else list(take.cross_check),
                   "cost": cost,
                   "streams": [os.path.basename(t.stream_path) for t in turns if t.stream_path]}
+        ledger["operator_steps"] = [            # the ownership road: operator steps, never agent events
+            {"step": OWNERSHIP_STEPS[0], "ok": (take.grant or {}).get("ok"), "record": OWNERSHIP_GRANT_RECORD},
+            {"step": OWNERSHIP_STEPS[1], "ok": (take.restore or {}).get("ok"), "record": OWNERSHIP_RESTORE_RECORD}]
         if take.native_hook:                      # live harness 3c: only for an adapter that names a native session
             ledger["native_snapshots"] = [dict(r) for r in take.native_snapshots]
             ledger["native_snapshot_refusal"] = take.native_snapshot_refusal
@@ -2345,6 +2456,7 @@ class TakeDriver:
                                                 "quiescence_survivors": list(take.survivors)})
         except Exception as e:  # noqa: BLE001
             take.cleanup.append(f"{TEARDOWN_RECORD}: {type(e).__name__}: {e}")
+        self._restore_ownership(take)    # the ownership road: after teardown (returned or raised), pre-postflight
 
     def drive(self, row: dict, container_id: str) -> dict:
         """One take, from preflight to its routable records (R4-9, R4-10), cleaning up on every road (R4-11)."""
@@ -2420,8 +2532,12 @@ class TakeDriver:
                                     f"{r['refused']}")
             state = _run_take.container_state(self.runtime, take.launched.take_id, caller_env=self.caller_env)
         finally:
+            # _cleanup ends with the ownership restore; a held restore runs no postflight (nor scan, nor commit)
             self._cleanup(take, adapter)
-            post = self._postflight(take, row)                # S6b (e): every road, after cleanup, before the scan
+            post = self._postflight(take, row) if not take.ownership_hold else None   # S6b (e): pre-scan
+        if take.ownership_hold:                               # the ownership road: no postflight, scan or commit
+            raise DriveRefused(f"{take.ownership_hold}: the take's folders are kept for a human ruling, never a "
+                               f"re-run")
         if post is None or post.get("ok") is not True:        # a credential file left behind is a stop for a human
             why = "the postflight check did not run" if post is None else post["checks"][0]["detail"]
             raise DriveRefused(f"postflight: {why}; the config folder is kept for a human")
@@ -2496,6 +2612,8 @@ class TakeDriver:
             leak = _run_take.LeakedContainer(f"still listed after their removal: {', '.join(still)}")
             leak.leaked_ids = list(still)          # S6-gap4-2: batch commits them as leaked_containers
             raise leak
+        if take is not None and take.grant is not None and take.grant["ok"] and take.restore is None:
+            self._restore_ownership(take)   # the ownership road: a drive refused before its cleanup; containers gone
         steps = (take.teardown or {}).get("steps", []) if take is not None else []
         bad = [s for s in steps if s.get("step") == "network-rm" and s.get("returncode") != 0]
         if bad and launched is not None and launched.network_id:
@@ -2520,6 +2638,8 @@ class TakeDriver:
         """TakeRepo's record_files: the slot's latest unpublished take's files ([] when none was launched)."""
         with self._lock:
             take = self._by_slot.get(row["slot"])
+        if take is not None and self._unrestored(take):     # the ownership road: never read, scanned or committed
+            raise DriveRefused(f"{self._unrestored(take)}: the take's folders are kept for a human ruling")
         return [] if take is None else self.take_files(take)
 
     def published(self, row: dict, attempt: int) -> None:
@@ -2529,6 +2649,9 @@ class TakeDriver:
             take = self._by_slot.pop(row["slot"], None)
         if take is None:
             return
+        if self._unrestored(take):                          # the ownership road: the folders are never removed
+            self.publish_problems.append(f"slot {row.get('slot')!r} attempt {attempt}: {self._unrestored(take)}")
+            raise DriveRefused(f"{self._unrestored(take)}: the config folder is kept for a human")
         self.published_takes.append(take)
         launched = take.launched if take.launched is not None else _run_take.Launched(config_dir=take.config_dir)
         try:
@@ -3075,7 +3198,7 @@ class WalkDriver(TakeDriver):
 def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts, login_file,
                 counters_for, pin_for, design_for, project_for, identity_for, secrets, rules_scanner, uid_map,
                 budget_s, finalize_wait_s, poll_s, clock, sleep, holdout_matcher=None, caller_env=None,
-                records="takes", rollout_for=None) -> WalkDriver:
+                records="takes", rollout_for=None, ownership=None) -> WalkDriver:
     """The CP6 production wiring (cp6-readiness row 3): batch's driver for a walk or a take of any of the three
     harnesses (registration review finding 2, glitch-06, 14 Oct 2026: harness_adapter_for, so a Gemini walk, and a
     Codex walk once its rollout_for road exists, runs on the same road; WalkDriver still admits only each harness's
@@ -3110,7 +3233,7 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
                              records=records),
         secrets=secrets, rules_scanner=rules_scanner, holdout_matcher=holdout_matcher, uid_map=uid_map,
         budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s, clock=clock, sleep=sleep,
-        project_for=project_for, identity_for=identity_for, caller_env=caller_env)
+        project_for=project_for, identity_for=identity_for, caller_env=caller_env, ownership=ownership)
 
 
 # =====================================================================================================================
