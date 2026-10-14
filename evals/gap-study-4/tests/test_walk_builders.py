@@ -544,7 +544,8 @@ class B2Login(Case):
                                     "claude-code")
                 self.assertNotIn(tbi.TOKEN, said, "B2.login: a refusal carries the value")
         codex = login_file(f"CODEX_API_KEY={tbi.TOKEN}\n")       # the lease road: a Codex row has no login file
-        said = self.refuses("B2.login", "its login is the lease", wb().login_file_by_name, str(codex), "codex")
+        with mock.patch.object(os, "open", side_effect=AssertionError("B2.login: the Codex login file was opened")):
+            said = self.refuses("B2.login", "its login is the lease", wb().login_file_by_name, str(codex), "codex")
         self.assertNotIn(tbi.TOKEN, said, "B2.login: a refusal carries the value")
 
     def test_the_secrets_read_the_value_only_when_asked(self):

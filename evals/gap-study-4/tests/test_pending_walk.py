@@ -133,7 +133,7 @@ class Road:
     the real road: WalkDriver(records="walks") with harness_adapter_for, walk_runner.run_walks, WalkRepo."""
 
     def __init__(self, test, *, summary=UNMARKED, reason=UNMARKED, turns=2, fail_rm=(), harness="gemini", box=None,
-                 run_turn=None, row=None):
+                 run_turn=None, row=None, lease=None):
         import drive
         import native_reader_registration as nrr
         import walk_register
@@ -192,6 +192,35 @@ class Road:
             settings_guard=r.settings_guard, machine_gate=r.machine_gate)
         self.repo = drive.WalkRepo(runtime=r.box, secrets=lambda: [("token", tbi.TOKEN)],
                                    rules_scanner=lambda paths: [], root=self.study, repo=self.root, design=design)
+        self.lease = None
+        from box import preflight
+        if harness == "codex" and (lease or (lease is None and hasattr(preflight, "LEASE_CREDENTIAL"))):
+            self._lease_road()
+
+    def _lease_road(self):
+        """A Codex walk on the lease road (walk_builders.CodexLeaseRoad): the lease placed in the driver's spec_for and
+        its values in the driver's and WalkRepo's secrets. Where the box's lease postflight is on the tree it holds a
+        Codex walk whose lease home lacks auth.json, so every Codex road walk there places one. The gate is opened for
+        the test; the box's place_lease and lease_secrets are used where this tree has them, faked by their contract
+        (test_walk_builders.lease_boundary's fakes) only where it does not."""
+        import test_walk_builders as twb
+        import walk_builders
+        placed, reads = [], []
+        patches = [mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True, create=True)]
+        if not callable(getattr(rt, "place_lease", None)):
+            patches.append(mock.patch.object(rt, "place_lease", twb.fake_place_lease(placed), create=True))
+        if not callable(getattr(walk_builders, "lease_secrets", None)):
+            patches.append(mock.patch.object(walk_builders, "lease_secrets", twb.fake_lease_secrets(reads),
+                                             create=True))
+        for patch in patches:
+            patch.start()
+            self.test.addCleanup(patch.stop)
+        home = tbi.SCRATCH / f"lease-{self.root.name}"
+        home.mkdir(mode=0o700)
+        self.lease = walk_builders.CodexLeaseRoad(str(twb.lease_file(home)))
+        spec_for, login = self.driver.spec_for, self.driver.secrets
+        self.driver.spec_for = lambda row, cfg: (self.lease.place(cfg), spec_for(row, cfg))[1]
+        self.driver.secrets = self.repo.secrets = lambda: list(login()) + list(self.lease.secrets())
 
     @staticmethod
     def pin_for(row):
