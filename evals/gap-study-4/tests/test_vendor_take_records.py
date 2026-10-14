@@ -75,7 +75,7 @@ def drive_vendor(test, harness, *, native=True, fail_at=None):
 class VendorRecords(unittest.TestCase):
     def test_a_gemini_take_reads_its_own_evidence_and_records_pending(self):
         rig, ledger, refused = drive_vendor(self, "gemini")
-        self.assertIsNone(refused)
+        self.assertIsInstance(refused, tbi.drive.NativeCrossCheckPending)   # the checker road slice: never graded
         self.assertNotIn("no session file", json.dumps(ledger))
         self.assertIsNone(ledger["cross_check"], "pending is never an empty problem list")
         self.assertEqual(ledger["cross_check_status"]["status"], "pending")
@@ -86,7 +86,7 @@ class VendorRecords(unittest.TestCase):
 
     def test_a_codex_take_stays_pending_until_the_rollout_audit(self):
         rig, ledger, refused = drive_vendor(self, "codex", native=False)
-        self.assertIsNone(refused)
+        self.assertIsInstance(refused, tbi.drive.NativeCrossCheckPending)   # the checker road slice: never graded
         self.assertNotIn("no session file", json.dumps(ledger))
         self.assertIsNone(ledger["cross_check"])
         self.assertEqual(ledger["cross_check_status"]["status"], "pending")

@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Vendor checker road, 2026-10-14:** D8 grades a vendor's captured stream cross-checked with its native record, so a vendor take whose native cross-check is pending now stops typed (`NativeCrossCheckPending`) after cleanup, ledger and scan: a ruling, never graded, never readers-disagree. See [the slice report](lane-reports/vendor-checker-road-2026-10-14.md).
+
 **Vendor take records, 2026-10-14:** a Gemini or Codex take no longer looks for Claude's session file; its cross-check comes from its own native evidence and is recorded as `cross_check_status` (pending while no reviewed reader exists, refused on missing or inconsistent snapshots, Codex pending until the rollout audit), never as an empty pass or a missing file. See [the slice report](lane-reports/vendor-take-records-2026-10-14.md).
 
 **Native history in the driver ledger, 2026-10-14:** for a take with retained native snapshots the driver ledger now records `native_history`: pending through the empty production reader registry, refused on a rewrite, joined (a stability join, never admission) with a reviewed reader. See [the slice report](lane-reports/native-history-record-2026-10-14.md).

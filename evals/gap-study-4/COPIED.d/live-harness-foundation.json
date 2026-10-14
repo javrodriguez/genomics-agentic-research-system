@@ -114,7 +114,12 @@
     {
       "path": "tests/test_vendor_take_records.py",
       "status": "new",
-      "reason": "Live harness integration: vendor takes read their own native evidence (pending, refused), never Claude's session file; Claude takes unchanged."
+      "reason": "Live harness integration: vendor takes read their own native evidence (pending, refused), never Claude's session file; Claude takes unchanged. Checker road: a pending take now stops typed."
+    },
+    {
+      "path": "tests/test_vendor_checker_road.py",
+      "status": "new",
+      "reason": "Live harness integration: a pending vendor take stops typed (never graded, never readers-disagree), waits for a ruling through batch, and the checker never reads None as agreement; refused stays readers-disagree."
     }
   ]
 }
