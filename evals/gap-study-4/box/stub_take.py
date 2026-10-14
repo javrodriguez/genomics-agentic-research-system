@@ -62,7 +62,7 @@ HERE = Path(__file__).resolve().parent.parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
-from box import ownership, preflight, run_take, scan_record, sidecar, sidecar_contract  # noqa: E402
+from box import ownership, preflight, rules_scanner, run_take, scan_record, sidecar, sidecar_contract  # noqa: E402
 from box.egress import proxy_conf  # noqa: E402
 
 RECORD_KIND = "stub-take-measurement"
@@ -303,30 +303,6 @@ def _sha256_file(path: str) -> str:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
-
-
-def gitleaks_rules_scanner(binary: str, pinned_sha256: str, runtime, env: dict, report_dir: str):
-    """CANDIDATE for scan_record.RULES_SCANNER: gitleaks' default rules over each named file, one `gitleaks dir <file>`
-    per path, its report redacted; refused unless the binary's sha256 is the pinned one. -> (paths) ->
-    [{"path", "line", "rule"}]. A scanner exit other than 0 refuses (the scan never passes on a failed scanner)."""
-    if _sha256_file(binary) != pinned_sha256:
-        raise StubTakeRefused("the gitleaks binary is not the pinned one")
-    counter = [0]
-
-    def scan(paths):
-        out = []
-        for p in paths:
-            counter[0] += 1
-            report = os.path.join(report_dir, f"gitleaks-{counter[0]}.json")
-            c = runtime.run([binary, "dir", p, "--no-banner", "--redact", "--report-format", "json",
-                             "--report-path", report, "--exit-code", "0", "--log-level", "warn"], env=env, timeout=120)
-            if c.returncode != 0:
-                raise RuntimeError(f"gitleaks exited {c.returncode} on {p}")
-            with open(report, encoding="utf-8") as fh:
-                for f in json.load(fh) or []:
-                    out.append({"path": p, "line": int(f["StartLine"]), "rule": str(f["RuleID"])})
-        return out
-    return scan
 
 
 def _turn(runtime, env, take_id: str, run_tree: str, name: str, script: str, args) -> dict:
@@ -605,7 +581,9 @@ def run_stub_take(a) -> dict:
     files.append((stream, "stream"))
     reports = os.path.join(base, "gl")
     os.mkdir(reports, 0o700)
-    scanner = gitleaks_rules_scanner(a.gitleaks, a.gitleaks_sha256, runtime, env, reports)
+    if a.gitleaks_sha256 != rules_scanner.GITLEAKS_SHA256:
+        raise StubTakeRefused("the gitleaks sha256 given is not the production pin")
+    scanner = rules_scanner.gitleaks_scanner(runtime, reports, binary=a.gitleaks, caller_env=env)
     clean = scan_record.scan(files, [("token", fake)], rules_scanner=scanner)
     with open(stream, encoding="utf-8") as fh:
         rec["scan_clean"] = {"result": clean, "value_gone": fake not in fh.read(),

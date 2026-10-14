@@ -107,13 +107,13 @@ class Refusals(unittest.TestCase):
     def test_study_record_dirs_are_mode_bindings(self):
         self.assertEqual(set(st.STUDY_RECORD_DIRS), {mode_binding.WALKS_DIR, mode_binding.TAKES_DIR})
 
-    def test_the_gitleaks_adapter_refuses_an_unpinned_binary(self):
-        with tempfile.TemporaryDirectory() as d:
-            b = os.path.join(d, "gitleaks")
-            Path(b).write_bytes(b"not the pinned binary")
-            with self.assertRaises(st.StubTakeRefused):
-                st.gitleaks_rules_scanner(b, "0" * 64, None, {}, d)
-            st.gitleaks_rules_scanner(b, hashlib.sha256(b"not the pinned binary").hexdigest(), None, {}, d)
+    def test_the_scan_uses_the_production_scanner(self):
+        src = Path(st.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("def gitleaks_rules_scanner", src)
+        tree = ast.parse(src)
+        used = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)
+                and isinstance(n.value, ast.Name) and n.value.id == "rules_scanner"}
+        self.assertEqual(used, {"gitleaks_scanner", "GITLEAKS_SHA256"})
 
 
 def _imports(tree) -> set:

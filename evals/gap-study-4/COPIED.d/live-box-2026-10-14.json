@@ -65,6 +65,16 @@
       "path": "tests/test_ownership.py",
       "status": "new",
       "reason": "Lane live-box: the ownership road with a fake runtime (argv, order, uids bound to the locks, refusals before any call, grant stopping at the first failure, restore running every step, refusing while a container is present and verifying host-side ownership), and OWN_PROGRAM run on a local folder (links never followed, special files refused)."
+    },
+    {
+      "path": "box/rules_scanner.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's ruling, 14 Oct 2026): the production rules scanner for scan_record.scan, the reviewed gitleaks adapter (one `gitleaks dir <file> --redact` per path) pinned to 8.30.1 by version line and binary sha256 at its athena path; it refuses on a mismatch and never reads a failed scan as clean."
+    },
+    {
+      "path": "tests/test_rules_scanner.py",
+      "status": "new",
+      "reason": "Lane live-box: the scanner with a fake runtime (argv, findings by path/line/rule, feeding scan_record), every refusal (sha, version, exit, missing or malformed report, used report folder), and the pin bound to the four stub takes' athena readings."
     }
   ]
 }
