@@ -1628,7 +1628,10 @@ MODULE_ATTRS = {
     "json": frozenset({"dump", "dumps", "loads"}),
     "preflight": frozenset({"expected_take_inspect", "inspect_mismatches"}),
     "re": frozenset({"IGNORECASE", "compile", "escape", "fullmatch", "search"}),
-    "run_take": frozenset({"AGENT_USER", "CLAUDE_CODE", "CODEX", "CONFIG_MOUNT", "GEMINI", "HARNESS_ENV",
+    # GEMINI_MODE_ROUTE_VARIABLES: preflight's image check of the Gemini mode-route names (0b6f60f9; glitch-06's
+    # ruling, 14 Oct 2026: exactly this one name).
+    "run_take": frozenset({"AGENT_USER", "CLAUDE_CODE", "CODEX", "CONFIG_MOUNT", "GEMINI", "GEMINI_MODE_ROUTE_VARIABLES",
+                           "HARNESS_ENV",
                            "INSPECT_PATHS", "INSPECT_STATUS", "KEEPALIVE_COMMAND", "KEEPALIVE_USER", "LOGIN_VARIABLE",
                            "NotReady", "PENDING", "PENDING_WHY", "PROXY_ALIAS", "PROXY_URL", "RUNTIME_CLIENT",
                            "Refused", "_abs_path", "_check_id", "_is_pending", "_known_harness", "_path_get",
@@ -1952,6 +1955,16 @@ class TestAuditAllowlists(MutantCase):
         if process_audit():
             out.append("the real modules are not clean")
         return out
+
+    def test_an_unlisted_run_take_name_is_still_refused(self):
+        """glitch-06 ruling, 14 Oct: listing GEMINI_MODE_ROUTE_VARIABLES admits that one name only."""
+        for name in ("GEMINI_MODE_ROUTE_VARIABLES", "TAKE_ENV", "kill_agent"):
+            src = f"from box import run_take\nx = run_take.{name}\n"
+            got = [p for p in audit_source("box/preflight.py", src) if f"run_take.{name}" in p]
+            if name == "GEMINI_MODE_ROUTE_VARIABLES":
+                self.assertEqual(got, [], name)
+            else:
+                self.assertEqual(got, [f"box/preflight.py: run_take.{name} is not in MODULE_ATTRS"], name)
 
     def test_module_keys_bound_to_imports(self):
         """W4B4-1: the keys are exactly the import-bound names, and an import-bound name with no entry is refused."""
