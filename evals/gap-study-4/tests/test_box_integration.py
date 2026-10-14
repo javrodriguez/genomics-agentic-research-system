@@ -241,6 +241,7 @@ class FakeOwnership:
     def grant(self, runtime, *, image, run_tree, config_dir, evidence_dir, caller_env=None):
         got = self._grant(runtime, image=image, run_tree=run_tree, config_dir=config_dir, evidence_dir=evidence_dir)
         os.chmod(evidence_dir, 0o555)        # drive-wiring review P4: the watcher's 0755 folder, as the host sees it
+        os.chmod(config_dir, 0o000)          # P4: the agent's 0700 folder, as the host sees it
         return got
 
     def _grant(self, runtime, *, image, run_tree, config_dir, evidence_dir):
@@ -256,6 +257,8 @@ class FakeOwnership:
     def restore(self, runtime, *, image, run_tree, config_dir, evidence_dir, ids, caller_env=None):
         if os.path.isdir(evidence_dir) and not os.path.islink(evidence_dir):
             os.chmod(evidence_dir, 0o755)    # P4: the host's own folder again, as a real restore leaves it
+        if os.path.isdir(config_dir) and not os.path.islink(config_dir):
+            os.chmod(config_dir, 0o700)
         self.events.append(("restore", {"image": image, "run_tree": run_tree, "config_dir": config_dir,
                                         "evidence_dir": evidence_dir, "ids": list(ids), "at": self._at()}))
         if self.fail_restore:
@@ -300,30 +303,71 @@ class FakeOwnership:
             os.close(fd)
         return {"ok": True, "path": rel_path, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
 
-    def operator_read(self, runtime, *, image, run_tree, rel_path, caller_env=None):
-        self.events.append(("operator_read", {"image": image, "run_tree": run_tree, "rel_path": rel_path,
-                                              "at": self._at()}))
+    def operator_read(self, runtime, *, image, root_kind, root, rel_path, caller_env=None):
+        self.events.append(("operator_read", {"image": image, "root_kind": root_kind, "root": root,
+                                              "run_tree": root if root_kind == "run_tree" else None,
+                                              "rel_path": rel_path, "at": self._at()}))
         if self.fail_read:
             raise self.OwnershipError("operator-read failed: synthetic", {"ok": False, "steps": []})
-        fd, name = self._parent(run_tree, rel_path)
-        if fd is None:
-            return None
-        try:
-            try:
-                f = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
-            except FileNotFoundError:
+        if root_kind not in ("run_tree", "config"):
+            raise self.OwnershipError(f"operator-read refused: root kind {root_kind!r}", {})
+        with FakeBox.as_container(root):
+            fd, name = self._parent(root, rel_path)
+            if fd is None:
                 return None
             try:
-                chunks = []
-                while True:
-                    b = os.read(f, 65536)
-                    if not b:
-                        return b"".join(chunks)
-                    chunks.append(b)
+                try:
+                    f = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+                except FileNotFoundError:
+                    return None
+                except OSError as e:
+                    raise self.OwnershipError(f"operator-read refused: {type(e).__name__}", {}) from None
+                try:
+                    if not stat.S_ISREG(os.fstat(f).st_mode):
+                        raise self.OwnershipError("operator-read refused: not a regular file", {})
+                    chunks = []
+                    while True:
+                        b = os.read(f, 65536)
+                        if not b:
+                            return b"".join(chunks)
+                        chunks.append(b)
+                finally:
+                    os.close(f)
             finally:
-                os.close(f)
-        finally:
-            os.close(fd)
+                os.close(fd)
+
+    def operator_list(self, runtime, *, image, root_kind, root, rel_dir, caller_env=None):
+        """One level of a folder, [(name, kind)] with kind file, dir, link or other; never follows a link."""
+        self.events.append(("operator_list", {"root_kind": root_kind, "root": root, "rel_dir": rel_dir,
+                                              "at": self._at()}))
+        if self.fail_read:
+            raise self.OwnershipError("operator-list failed: synthetic", {"ok": False, "steps": []})
+        if root_kind not in ("run_tree", "config"):
+            raise self.OwnershipError(f"operator-list refused: root kind {root_kind!r}", {})
+        with FakeBox.as_container(root):
+            if rel_dir == "":
+                fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            else:
+                parent, name = self._parent(root, rel_dir)
+                if parent is None:
+                    return None
+                try:
+                    fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
+                except FileNotFoundError:
+                    return None
+                except OSError as e:
+                    raise self.OwnershipError(f"operator-list refused: {type(e).__name__}", {}) from None
+                finally:
+                    os.close(parent)
+            try:
+                out = []
+                for entry in sorted(os.listdir(fd)):
+                    m = os.stat(entry, dir_fd=fd, follow_symlinks=False).st_mode
+                    out.append((entry, "link" if stat.S_ISLNK(m) else "dir" if stat.S_ISDIR(m)
+                                else "file" if stat.S_ISREG(m) else "other"))
+                return out
+            finally:
+                os.close(fd)
 
     def names(self) -> list:
         return [name for name, _ in self.events]
@@ -393,6 +437,20 @@ class FakeBox:
             return 1.0
         self.clock.now += 0.001
         return self.clock.now
+
+    @staticmethod
+    @contextlib.contextmanager
+    def as_container(folder):
+        """The fake box acts inside a granted folder as its owner would (the host user cannot during the take)."""
+        mode = stat.S_IMODE(os.stat(folder).st_mode)
+        need = stat.S_IRWXU
+        if mode & need != need:
+            os.chmod(folder, mode | need)
+        try:
+            yield
+        finally:
+            if mode & need != need:
+                os.chmod(folder, mode)
 
     @staticmethod
     @contextlib.contextmanager
@@ -1308,8 +1366,9 @@ def b11_postflight(mod, p):
         plain = rig.adapter_for
 
         def planting(r, take, plain=plain):
-            with open(os.path.join(take.config_dir, "oauth_token.json"), "w", encoding="utf-8") as fh:
-                fh.write("{}")
+            with FakeBox.as_container(take.config_dir), \
+                    open(os.path.join(take.config_dir, "oauth_token.json"), "w", encoding="utf-8") as fh:
+                fh.write("{}")                       # the agent's write in its own config folder (the P4 road)
             return plain(r, take)
         rig.driver.adapter_for = planting
         r = row(1)

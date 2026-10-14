@@ -181,9 +181,10 @@ class SessionBox(tdl.ClaudeBox):
             "id": msg, "model": model, "role": "assistant", "content": content, "usage": dict(tdl.USAGE),
             "stop_reason": "end_turn"}})
         folder = Path(self.cfg_of(cid)) / "projects" / "-work-run"
-        folder.mkdir(parents=True, exist_ok=True)
-        with open(folder / f"{sid}.jsonl", "a", encoding="utf-8") as fh:
-            fh.write("".join(json.dumps(r) + "\n" for r in recs))
+        with tbi.FakeBox.as_container(self.cfg_of(cid)):     # Claude Code writes its own config folder (the P4 road)
+            folder.mkdir(parents=True, exist_ok=True)
+            with open(folder / f"{sid}.jsonl", "a", encoding="utf-8") as fh:
+                fh.write("".join(json.dumps(r) + "\n" for r in recs))
         return tbi.ok("".join(json.dumps(r) + "\n" for r in stream))
 
 

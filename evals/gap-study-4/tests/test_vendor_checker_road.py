@@ -63,7 +63,7 @@ class PendingStops(unittest.TestCase):
         home = tempfile.TemporaryDirectory()
         self.addCleanup(home.cleanup)
         rig.adapter_for = rig.driver.adapter_for = lambda r, take: rig.adapters.append(       # Codex slice 3: native
-            type("Vendor", (tvr.VendorAdapter,), {"name": "codex"})(rig.box, take, rig.turns, home=home.name)) \
+            type("Vendor", (tvr.VendorAdapter,), {"name": "codex"})(rig.box, take, rig.turns, home=take.config_dir)) \
             or rig.adapters[-1]
         table = tbi.table()
         table["pin_profiles"]["codex"] = {tbi.MODEL: dict(tbi.PROFILE)}
@@ -105,7 +105,7 @@ class GeminiThroughBatch(unittest.TestCase):
         rig.driver.pin_for = lambda r: dict(tbi.PROFILE, model=r["model"], harness=r["agent"]["harness"])
         cls = type("Vendor", (tvr.VendorAdapter,), {"name": "gemini"})
         rig.adapter_for = rig.driver.adapter_for = lambda r, take: rig.adapters.append(
-            cls(rig.box, take, rig.turns, home=home.name)) or rig.adapters[-1]
+            cls(rig.box, take, rig.turns, home=take.config_dir)) or rig.adapters[-1]
         table = tbi.table()
         table["pin_profiles"]["gemini"] = {tbi.MODEL: dict(tbi.PROFILE)}
         row = tbi.row(1, agent={"harness": "gemini", "version": tbi.PROFILE["version"]})

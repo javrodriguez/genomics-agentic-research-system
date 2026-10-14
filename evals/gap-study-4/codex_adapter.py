@@ -404,6 +404,12 @@ class CodexAdapter(aa.AgentAdapter):
         import native_snapshot
         return native_snapshot.codex_rollout_file(home, self.thread_id)
 
+    def native_session_rel(self, lister) -> str:
+        """The same rollout, relative to the config folder, found through the box's one-level listing (drive-wiring
+        review MAJOR 1: the driver never opens the agent's config folder during the take)."""
+        import native_snapshot
+        return native_snapshot.codex_rollout_rel(lister, self.thread_id)
+
     def _read_turn(self, got: dict, n: int, first: bool) -> tuple:
         """The turn's stream read, its resumed thread checked and its rollout read; raised from here, a refusal is an
         executed turn's (live harness slice 6: _turn keeps the exec first)."""

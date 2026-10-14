@@ -1857,13 +1857,18 @@ POSTFLIGHT_RECORD, OPERATOR_CHECK_RECORD = "postflight.json", "operator-check.js
 #   restore(runtime, *, image, run_tree, config_dir, evidence_dir, ids, caller_env) -> record; raises OwnershipError
 #   OwnershipError   an exception class whose instances carry `record`
 #   operator_write(runtime, *, image, run_tree, rel_path, data, caller_env) -> {ok, path, sha256, bytes}
-#   operator_read(runtime, *, image, run_tree, rel_path, caller_env) -> bytes | None
+#   operator_read(runtime, *, image, root_kind, root, rel_path, caller_env) -> bytes | None
+#   operator_list(runtime, *, image, root_kind, root, rel_dir, caller_env) -> [(name, kind)], kind in file, dir, link,
+#                    other (root_kind "run_tree" or "config"; drive-wiring review MAJOR 1: the vendor arms' native
+#                    sessions are read in the agent-owned config folder through these, never host-side)
 #                    (ownership review MAJOR 2, the box contract at 4c3d8e53: a mid-take operator step reads and writes
 #                    the agent-owned run tree inside the box, never host-side; required at launch for a task with one)
 OWNERSHIP_GRANT_PARAMS = ("runtime", "image", "run_tree", "config_dir", "evidence_dir", "caller_env")
 OWNERSHIP_RESTORE_PARAMS = ("runtime", "image", "run_tree", "config_dir", "evidence_dir", "ids", "caller_env")
 OWNERSHIP_OPERATOR_WRITE_PARAMS = ("runtime", "image", "run_tree", "rel_path", "data", "caller_env")
-OWNERSHIP_OPERATOR_READ_PARAMS = ("runtime", "image", "run_tree", "rel_path", "caller_env")
+OWNERSHIP_OPERATOR_READ_PARAMS = ("runtime", "image", "root_kind", "root", "rel_path", "caller_env")
+OWNERSHIP_OPERATOR_LIST_PARAMS = ("runtime", "image", "root_kind", "root", "rel_dir", "caller_env")
+OPERATOR_ROOTS = ("run_tree", "config")      # the box's operator_read and operator_list roots (box d73c43ed)
 OWNERSHIP_GRANT_RECORD, OWNERSHIP_RESTORE_RECORD = "ownership-grant.json", "ownership-restore.json"
 OWNERSHIP_STEPS = ("ownership-grant", "ownership-restore")      # the driver ledger's operator steps, in order
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")                    # the lock's image id; a tag never runs a step
@@ -1898,10 +1903,11 @@ def settings_guard_problems(guard) -> list:
     return p
 
 
-def ownership_problems(road, *, operator_write: bool = False) -> list:
+def ownership_problems(road, *, operator_write: bool = False, native: bool = False) -> list:
     """Why `road` is not an ownership road this driver can call (empty when it is): the interface above, by name,
     kind and order of each parameter. None (box/ownership.py absent from this tree) is a problem, never a skip.
-    operator_write: the take has a mid-take operator step, so the road must also offer operator_write."""
+    operator_write: the take has a mid-take operator step, so the road must also offer operator_write and
+    operator_read. native: a vendor take, whose native session is read through operator_list and operator_read."""
     import inspect
     if road is None:
         return ["no ownership road: box/ownership.py is not on this tree (the box lane's 81ede46d), so no take "
@@ -1912,8 +1918,11 @@ def ownership_problems(road, *, operator_write: bool = False) -> list:
         p.append("the ownership road's OwnershipError is not an exception class")
     steps = [("grant", OWNERSHIP_GRANT_PARAMS), ("restore", OWNERSHIP_RESTORE_PARAMS)]
     if operator_write:
-        steps += [("operator_write", OWNERSHIP_OPERATOR_WRITE_PARAMS),
-                  ("operator_read", OWNERSHIP_OPERATOR_READ_PARAMS)]
+        steps += [("operator_write", OWNERSHIP_OPERATOR_WRITE_PARAMS)]
+    if operator_write or native:
+        steps += [("operator_read", OWNERSHIP_OPERATOR_READ_PARAMS)]
+    if native:
+        steps += [("operator_list", OWNERSHIP_OPERATOR_LIST_PARAMS)]
     for name, params in steps:
         fn = getattr(road, name, None)
         if not callable(fn):
@@ -2103,7 +2112,8 @@ class TakeDriver:
         if self.publish_problems:                             # S6b Q6 (D5): a config folder never reused silently
             raise DriveRefused(f"a published take's cleanup failed: {self.publish_problems[0]}")
         road = ownership_problems(self.ownership,               # before any folder or container
-                                  operator_write=any(task == row.get("task") for task, _ in OPERATOR_STEPS))
+                                  operator_write=any(task == row.get("task") for task, _ in OPERATOR_STEPS),
+                                  native=(row.get("agent") or {}).get("harness") in VENDOR_HARNESSES)
         road += settings_guard_problems(self.settings_guard)
         if road:
             raise DriveRefused("; ".join(road))
@@ -2368,8 +2378,8 @@ class TakeDriver:
     def _operator_read(self, take, op_id, rel: str):
         """The box's read of one run-tree file (bytes, or None when it does not exist); any failure stops the take."""
         try:
-            got = self.ownership.operator_read(self.runtime, image=take.spec.image,
-                                               run_tree=take.launched.spec.run_tree, rel_path=rel,
+            got = self.ownership.operator_read(self.runtime, image=take.spec.image, root_kind="run_tree",
+                                               root=take.launched.spec.run_tree, rel_path=rel,
                                                caller_env=self.caller_env)
         except Exception as e:  # noqa: BLE001 - OwnershipError, Refused or anything else: the take's stop
             raise OperatorStepRefused(f"operator step {op_id!r}: the box's read of {rel} failed "
@@ -2463,17 +2473,41 @@ class TakeDriver:
         config folder), copy it into session/native-turn-<n>.jsonl after turn n's post-n snapshot and before any next
         resume (native_snapshot.retain). False, with the reason kept, when it cannot be located or retained: nothing
         further is sent and the take stops for a human after cleanup and scan. An adapter without one: True."""
-        locate = getattr(adapter, "native_session_path", None)
+        locate = getattr(adapter, "native_session_rel", None)
         if not callable(locate):
+            if callable(getattr(adapter, "native_session_path", None)):   # a host path only: never opened mid-take
+                take.native_hook = True
+                take.native_snapshot_refusal = (f"turn {n}: the adapter names no box road to its native session "
+                                                f"(native_session_rel)")
+                return False
             return True
         take.native_hook = True
         try:
-            take.native_snapshots.append(_native_snapshot.retain(take.folder, n, locate(take.config_dir)))
+            lister, reader = self.config_view(take)
+            rel = locate(lister)
+            take.native_snapshots.append(_native_snapshot.retain_bytes(take.folder, n, reader(rel)))
             return True
         except (_native_snapshot.SnapshotRefused, OSError) as e:
             if take.native_snapshot_refusal is None:
                 take.native_snapshot_refusal = f"turn {n}: native session snapshot not retained: {e}"
             return False
+
+    def config_view(self, take) -> tuple:
+        """(lister(rel_dir), reader(rel_path)) over the take's config folder through the box's operator_list and
+        operator_read (drive-wiring review MAJOR 1: the folder is the agent's during the take). A failure of either is
+        a SnapshotRefused naming the box step: an operator step's failure, never an agent event. A reader's None (the
+        file is absent) is passed on."""
+        road = self.ownership
+
+        def call(what, **kw):
+            try:
+                return getattr(road, what)(self.runtime, image=take.spec.image, root_kind="config",
+                                           root=take.config_dir, caller_env=self.caller_env, **kw)
+            except Exception as e:  # noqa: BLE001 - OwnershipError, Refused or anything else
+                raise _native_snapshot.SnapshotRefused(f"the box's {what} of the config folder failed "
+                                                       f"({type(e).__name__}: {str(e)[:200]})") from None
+        return (lambda rel_dir: call("operator_list", rel_dir=rel_dir),
+                lambda rel_path: call("operator_read", rel_path=rel_path))
 
     def _take_records(self, take, row, adapter, turns) -> None:
         """S6c C6, C7, C8, C14, once the agent's processes are gone and before the scan: the session file copied out
@@ -3157,7 +3191,7 @@ def claude_code_adapter_for(*, runtime, login_file: str, counters_for, pin_for, 
 
 
 def harness_adapter_for(*, runtime, login_file: str, counters_for, pin_for, clock,
-                        rollout_for=None, caller_env=None):
+                        rollout_for=None, caller_env=None, config_view=None):
     """The three production adapters, with no default harness or invented evidence.
 
     Codex rollout_for(take, interaction_n) must retain and return the native
@@ -3188,8 +3222,15 @@ def harness_adapter_for(*, runtime, login_file: str, counters_for, pin_for, cloc
             made = {}
 
             def live_rollout(n):
-                with open(made["adapter"].native_session_path(take.config_dir), encoding="utf-8") as fh:
-                    return fh.read()
+                # Drive-wiring review MAJOR 1: read through the box (operator_list, operator_read) over the config
+                # folder, never host-side; config_view is the driver's (walk_driver binds it).
+                if not callable(config_view):
+                    raise _native_snapshot.SnapshotRefused("no box road to read the rollout (config_view)")
+                lister, reader = config_view(take)
+                raw = reader(made["adapter"].native_session_rel(lister))
+                if raw is None:
+                    raise _native_snapshot.SnapshotRefused("the located rollout is absent")
+                return raw.decode("utf-8")
             made["adapter"] = _codex.CodexAdapter(**common, rollout_for=live_rollout)
             return made["adapter"]
         return _gemini.GeminiAdapter(**common)
@@ -3399,11 +3440,13 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
         ident = identity_for(row)
         return script_from_design(design_for(row, None), project_for(row), ident["source"])
 
-    return WalkDriver(
+    bound: dict = {}                    # review MAJOR 1: the Codex rollout is read through the driver's config view
+    driver = WalkDriver(
         records_root=root, records=records, runtime=runtime, take_folder=record_folder_in(root, records), config_parent=config_parent, spec_for=spec_for,
         sidecar_for=sidecar_for, proxy=proxy, lock_path=lock_path, hosts=hosts,
         adapter_for=harness_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
-                                        pin_for=pin_for, clock=clock, rollout_for=rollout_for, caller_env=caller_env),
+                                        pin_for=pin_for, clock=clock, rollout_for=rollout_for, caller_env=caller_env,
+                                        config_view=lambda take: bound["driver"].config_view(take)),
         script_for=script_for, pin_for=pin_for,
         checker=take_checker(design_for=lambda row, take: design_for(row, take.launched.spec.run_tree),
                              records=records),
@@ -3411,6 +3454,8 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
         budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s, clock=clock, sleep=sleep,
         project_for=project_for, identity_for=identity_for, caller_env=caller_env, ownership=ownership,
         settings_guard=settings_guard, machine_gate=machine_gate)
+    bound["driver"] = driver
+    return driver
 
 
 # =====================================================================================================================

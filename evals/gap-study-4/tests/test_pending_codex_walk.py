@@ -116,8 +116,9 @@ class CodexBox(tbi.FakeBox):
             cfg = cfg[len("type=bind,source="):-len(",target=" + rt.CONFIG_MOUNT)]
             self.turn_n += 1
             folder = Path(cfg) / "sessions" / "2026" / "10" / "14"
-            folder.mkdir(parents=True, exist_ok=True)
-            (folder / f"rollout-2026-10-14T05-00-00-{TID}.jsonl").write_bytes(rollout(self.turn_n, self.label))
+            with tbi.FakeBox.as_container(cfg):          # the agent writes its own config folder (the P4 road)
+                folder.mkdir(parents=True, exist_ok=True)
+                (folder / f"rollout-2026-10-14T05-00-00-{TID}.jsonl").write_bytes(rollout(self.turn_n, self.label))
             return rt.Completed(0, exec_stream(self.turn_n), "")
         return super().run(argv, env=env, timeout=timeout)
 

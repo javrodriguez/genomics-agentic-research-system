@@ -411,3 +411,9 @@ class GeminiAdapter(aa.AgentAdapter):
         session id turn 1's init named (native_snapshot.gemini_session_file; directory names only)."""
         import native_snapshot
         return native_snapshot.gemini_session_file(home, self.session_id)
+
+    def native_session_rel(self, lister) -> str:
+        """The same session file, relative to the config folder, found through the box's one-level listing
+        (drive-wiring review MAJOR 1: the driver never opens the agent's config folder during the take)."""
+        import native_snapshot
+        return native_snapshot.gemini_session_rel(lister, self.session_id)

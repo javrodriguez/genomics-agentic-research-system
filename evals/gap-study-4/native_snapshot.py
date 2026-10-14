@@ -130,6 +130,121 @@ def codex_rollout_file(home, thread_id) -> str:
     return str(hits[0])
 
 
+# Drive-wiring review MAJOR 1 (glitch-06's ruling, 14 Oct 2026): during the take the config folder is the agent's (0700),
+# so the driver never opens it. The two locators below walk it one level at a time through the box's operator_list
+# (lister(rel_dir) -> [(name, kind)], kind in file, dir, link, other; a link anywhere refuses) and name the session's
+# path relative to the config folder; the box's operator_read gives its bytes and retain_bytes keeps them.
+def _entries(lister, rel_dir) -> dict:
+    got = lister(rel_dir)
+    if got is None:
+        return {}
+    out = {}
+    for item in got:
+        if not (isinstance(item, (tuple, list)) and len(item) == 2 and all(isinstance(x, str) for x in item)):
+            raise SnapshotRefused(f"the box's listing of {rel_dir or '.'} is not (name, kind) pairs")
+        name, kind = item
+        if kind == "link":
+            raise SnapshotRefused(f"{rel_dir}/{name} is a link: refused, never followed")
+        out[name] = kind
+    return out
+
+
+def _dir(entries, name, where) -> None:
+    if entries.get(name) != "dir":
+        raise SnapshotRefused(f"{where}/{name} is not a real directory" if name in entries else
+                              f"{where}/{name} does not exist")
+
+
+def gemini_session_rel(lister, session_id) -> str:
+    """gemini_session_file's rule over the box's listing: the one session file for session_id, relative to the config
+    folder (GEMINI_CLI_HOME)."""
+    if not isinstance(session_id, str) or not _SESSION_ID.fullmatch(session_id):
+        raise SnapshotRefused("a native session is located only by the session id turn 1's init named")
+    _dir(_entries(lister, ""), ".gemini", ".")
+    _dir(_entries(lister, ".gemini"), "tmp", ".gemini")
+    name = re.compile(rf"session-{_MINUTE}(?:-[1-9][0-9]*)?-{re.escape(session_id[:8])}\.jsonl")
+    hits = []
+    projects = _entries(lister, ".gemini/tmp")
+    for project in sorted(projects):
+        if projects[project] != "dir":
+            continue
+        inner = _entries(lister, f".gemini/tmp/{project}")
+        if "chats" not in inner:
+            continue
+        _dir(inner, "chats", f".gemini/tmp/{project}")
+        chats = _entries(lister, f".gemini/tmp/{project}/chats")
+        for entry in sorted(chats):
+            if name.fullmatch(entry):
+                if chats[entry] != "file":
+                    raise SnapshotRefused(f"{entry} is not a regular file")
+                hits.append(f".gemini/tmp/{project}/chats/{entry}")
+    if len(hits) != 1:
+        raise SnapshotRefused(f"{len(hits)} native session files carry the id's prefix {session_id[:8]}")
+    return hits[0]
+
+
+def codex_rollout_rel(lister, thread_id) -> str:
+    """codex_rollout_file's rule over the box's listing: the one rollout for thread_id, relative to the config folder
+    (CODEX_HOME)."""
+    if not isinstance(thread_id, str) or not _CODEX_THREAD.fullmatch(thread_id):
+        raise SnapshotRefused("a rollout is located only by the thread id turn 1's stream named")
+    _dir(_entries(lister, ""), "sessions", ".")
+    name = re.compile(rf"rollout-\d{{4,}}-\d{{2}}-\d{{2}}T\d{{2}}-\d{{2}}-\d{{2}}-{re.escape(thread_id)}\.jsonl")
+    other = re.compile(rf"rollout-.*{re.escape(thread_id)}(?:_[^/]*)?\.jsonl(?:\.zst)?")
+    hits = []
+    years = _entries(lister, "sessions")
+    for year in sorted(years):
+        if not _YEAR.fullmatch(year):
+            continue
+        _dir(years, year, "sessions")
+        months = _entries(lister, f"sessions/{year}")
+        for month in sorted(months):
+            if not _TWO.fullmatch(month):
+                continue
+            _dir(months, month, f"sessions/{year}")
+            days = _entries(lister, f"sessions/{year}/{month}")
+            for day in sorted(days):
+                if not _TWO.fullmatch(day):
+                    continue
+                _dir(days, day, f"sessions/{year}/{month}")
+                entries = _entries(lister, f"sessions/{year}/{month}/{day}")
+                for entry in sorted(entries):
+                    if name.fullmatch(entry):
+                        if not entry.startswith(f"rollout-{year.zfill(4)}-{month}-{day}T"):
+                            raise SnapshotRefused(f"{entry} is not dated as its folder {year}/{month}/{day}")
+                        if entries[entry] != "file":
+                            raise SnapshotRefused(f"{entry} is not a regular file")
+                        hits.append(f"sessions/{year}/{month}/{day}/{entry}")
+                    elif other.fullmatch(entry):
+                        raise SnapshotRefused(f"{entry} is a reverted or compressed rollout of the thread: refused")
+    if len(hits) != 1:
+        raise SnapshotRefused(f"{len(hits)} rollout files carry the thread id {thread_id}")
+    return hits[0]
+
+
+def retain_bytes(take_folder, n, raw) -> dict:
+    """retain's write, from the bytes the box read: <take_folder>/session/native-turn-<n>.jsonl; its {file, sha256}."""
+    if type(n) is not int or n < 1:
+        raise SnapshotRefused("a snapshot is numbered by its turn, a positive int")
+    if not isinstance(raw, bytes):
+        raise SnapshotRefused(f"turn {n}: the native session was not read (no bytes)")
+    if not raw:
+        raise SnapshotRefused(f"turn {n}: the native session file is empty")
+    folder = Path(take_folder) / SESSION_DIR
+    if os.path.lexists(folder):
+        _real_dir(folder)
+    else:
+        folder.mkdir()
+    name = f"native-turn-{n}.jsonl"
+    try:
+        out = os.open(folder / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    except FileExistsError:
+        raise SnapshotRefused(f"{name} is already retained: a snapshot is never overwritten") from None
+    with os.fdopen(out, "wb") as fh:
+        fh.write(raw)
+    return {"file": name, "sha256": hashlib.sha256(raw).hexdigest()}
+
+
 def retain(take_folder, n, source) -> dict:
     """Copy turn n's native snapshot into <take_folder>/session/native-turn-<n>.jsonl; its {file, sha256}."""
     if type(n) is not int or n < 1:
