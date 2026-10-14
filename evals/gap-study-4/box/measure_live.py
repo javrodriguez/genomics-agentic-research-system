@@ -338,6 +338,75 @@ def _survivors(proof, cids) -> list:
     return left
 
 
+FACTORY_PROBE = '''import importlib.util,json,sys,time
+s=importlib.util.spec_from_file_location("w","/opt/w/sidecar.py"); m=importlib.util.module_from_spec(s); sys.modules["w"]=m; s.loader.exec_module(m)
+w=m.inotifywait_factory("/tree",(("",True),))
+t0=time.monotonic()
+while not w.established():
+    if time.monotonic()-t0>10: raise SystemExit("never established")
+    time.sleep(0.05)
+print("READY",flush=True)
+evs=[]; t0=time.monotonic()
+while time.monotonic()-t0<6:
+    evs+=[[e.path,list(e.names)] for e in w.read_ready()]; time.sleep(0.05)
+w.request_stop()
+print(json.dumps({"argv":list(w.proc.args),"events":evs}),flush=True)
+'''
+HOSTILE_NAMES = ("a|b.txt", "x\nqc|OPEN", "planted.tsv|OPEN", ".git|CREATE,ISDIR")
+HOSTILE_AGENT = '''import pathlib
+for n in %r:
+    (pathlib.Path("/tree")/n).write_text("x")
+''' % (HOSTILE_NAMES,)
+
+
+def factory_probe(proof, parent):
+    """The image's own sidecar.py factory (its exact argv, NUL framing) and parser over names an agent might write
+    to forge events (review of the candidate, finding 1 and nit 10). Candidate-image evidence; no model."""
+    scratch = Path(tempfile.mkdtemp(prefix="factory-probe-", dir=parent))
+    tree = scratch / "tree"
+    tree.mkdir(mode=0o700)
+    ids = {}
+    out = {"scope": "candidate-image evidence: the image's own factory and parser over hostile names",
+           "names": HOSTILE_NAMES}
+    try:
+        proof.own(tree, 10001)
+        ids["watch"] = proof.watcher(["/usr/bin/python3", "-I", "-S", "-c", FACTORY_PROBE], ((tree, "/tree", True),),
+                                     detached=True)
+        for _ in range(200):
+            if "READY" in proof.run(["docker", "logs", ids["watch"]]).stdout:
+                break
+            time.sleep(0.05)
+        else:
+            raise RuntimeError("factory probe never ready")
+        ids["take"] = proof.container(proof.take_image, ["sleep", "infinity"], user="10003:10003",
+                                      mounts=((tree, "/tree", False),), detached=True)
+        proof.call(["docker", "exec", "--user", "10001:10001", ids["take"], "/usr/bin/python3", "-I", "-S", "-c",
+                    HOSTILE_AGENT])
+        for _ in range(200):
+            logs = proof.run(["docker", "logs", ids["watch"]])
+            if logs.stdout.count("\n") >= 2:
+                break
+            time.sleep(0.05)
+        out["stdout"], out["stderr"] = logs.stdout, logs.stderr
+        out["result"] = json.loads(logs.stdout.splitlines()[-1])
+    finally:
+        for cid in reversed(list(ids.values())):
+            proof.call(["docker", "rm", "-f", cid], allow_failure=True)
+        proof.own(tree, 0)
+    shutil.rmtree(scratch)
+    out["scratch_removed"] = not scratch.exists()
+    out["containers_left"] = _survivors(proof, ids.values())
+    return out
+
+
+def baked_program_sha256(proof) -> str:
+    """The sha256 of /opt/w/sidecar.py inside the watcher image (review item 14: the evidence binds to the file)."""
+    got = proof.call(["docker", "run", "--pull=never", "--rm", "--network", "none", "--user", "10002:10002",
+                      proof.watch_image, "python3", "-I", "-c",
+                      "import hashlib;print(hashlib.sha256(open('/opt/w/sidecar.py','rb').read()).hexdigest())"])
+    return got.stdout.strip()
+
+
 def _watch_run():
     """A one-shot run of the watcher image through the fixed launcher (for its version line)."""
     return ["docker", "run", "--pull=never", "--rm", "--network", "none", "--user", "0:0", "--cap-drop", "ALL",
@@ -353,7 +422,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch-parent", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--mode", choices=("component", "stub", "gap", "candidate"), default="component")
+    parser.add_argument("--mode", choices=("component", "stub", "gap", "candidate", "latency"), default="component")
     parser.add_argument("--take-image", help="candidate mode: the built take-a image id")
     parser.add_argument("--watch-image", help="candidate mode: the built sidecar image id")
     parser.add_argument("--source", help="gap mode: the folder holding the sidecar.py under test (read-only)")
@@ -371,10 +440,17 @@ def main():
             report["scope"] = ("candidate-image evidence: built images by id, the image's own sidecar.py and values; "
                                "no credentials, no model, no lock written")
             report["images"] = {"take": args.take_image, "watch": args.watch_image}
+            report["baked_sidecar_sha256"] = baked_program_sha256(proof)
+            report["factory_probe"] = factory_probe(proof, parent)
             for name in ("oracle", "always-act", "always-hold", "background-writer"):
                 report["scenarios"].append(proof.scenario(parent, name, inject=False))
             report["scenarios"].append(proof.scenario(parent, "gap-fresh", watch=GAP_FRESH, script=GAP_PROOF_AGENT,
                                                       inject=False))
+            return
+        if args.mode == "latency":
+            report["scope"] = "new-folder watch latency on an idle athena; provisional images; no credentials, no model"
+            report.pop("scenarios")
+            report["latency"] = gap_latency(proof, parent)
             return
         if args.mode == "gap":
             if not args.source:

@@ -463,6 +463,47 @@ class RescanReach(unittest.TestCase):
             sc._event(sidecar.WatchEvent(None, "new", names))
         self.assertEqual(found(), [])
 
+class CandidateMode(unittest.TestCase):
+    """Review item 14 (14 Oct): candidate mode names both built images by id, binds the baked program's sha256,
+    runs the factory probe, and serves every scenario with nothing injected. No Docker: Proof is a fake."""
+
+    def run_main(self, argv):
+        from box import measure_live as ml
+        d = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        calls = []
+
+        class FakeProof:
+            def __init__(self, take=None, watch=None):
+                self.take_image, self.watch_image, self.calls = take, watch, []
+                calls.append(("proof", take, watch))
+
+            def scenario(self, parent, name, **kw):
+                calls.append(("scenario", name, kw.get("inject", True), kw.get("source")))
+                return {"scenario": name}
+        out = d / "out.json"
+        with mock.patch.object(ml, "Proof", FakeProof), mock.patch.object(ml.sys, "platform", "linux"), \
+                mock.patch.object(ml, "factory_probe", lambda proof, parent: {"probe": True}), \
+                mock.patch.object(ml, "baked_program_sha256", lambda proof: "f" * 64), \
+                mock.patch.object(ml.sys, "argv", ["measure_live", "--scratch-parent", str(d), "--output", str(out)]
+                                  + argv):
+            ml.main()
+        return json.loads(out.read_text()), calls
+
+    def test_candidate_mode_binds_images_and_injects_nothing(self):
+        a, b = "sha256:" + "a" * 64, "sha256:" + "b" * 64
+        rep, calls = self.run_main(["--mode", "candidate", "--take-image", a, "--watch-image", b])
+        self.assertEqual(calls[0], ("proof", a, b))
+        self.assertEqual([c[1:] for c in calls[1:]], [(n, False, None) for n in
+                                                    ("oracle", "always-act", "always-hold", "background-writer",
+                                                     "gap-fresh")])
+        self.assertEqual((rep["baked_sidecar_sha256"], rep["factory_probe"]), ("f" * 64, {"probe": True}))
+        self.assertIn("candidate-image evidence", rep["scope"])
+
+    def test_candidate_mode_refuses_an_image_not_named_by_id(self):
+        for take, watch in (("take-a", "sha256:" + "b" * 64), ("sha256:" + "a" * 64, "sha256:" + "B" * 64)):
+            with self.subTest(take=take), self.assertRaisesRegex(ValueError, "by sha256 id"):
+                self.run_main(["--mode", "candidate", "--take-image", take, "--watch-image", watch])
+
 
 if __name__ == "__main__":
     unittest.main()
