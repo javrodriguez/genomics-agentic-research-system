@@ -3,7 +3,8 @@
       restrictive (folders 0700 and 0000, files 0600 and 0000)?
   (8) does a grant and a restore over a tree holding an agent-planted link to a host-owned file outside it change only
       the link's owner, never the target's?
-Usage: python3 -B probe_ownership_caps.py <box parent> <scratch parent> <take image id>. Prints one JSON object.
+Usage: python3 -B probe_ownership_caps.py <box parent> <scratch parent> <take image id> [both|committed].
+"committed" (run after the restore-permission change) probes the module's own CAPS only. Prints one JSON object.
 CAPS is set in this probe's own interpreter only (a measurement); nothing is written into the module."""
 import json, os, sys, tempfile
 sys.path.insert(0, sys.argv[1])
@@ -22,7 +23,10 @@ os.chmod(t+"/locked/inner",0); os.chmod(t+"/locked",0o700); os.chmod(t+"/deep/er
 os.symlink(sys.argv[2], t+"/to-outside")
 '''
 out = {"image": image, "variants": {}}
-for name, caps in (("CHOWN+DAC_READ_SEARCH", ("CHOWN", "DAC_READ_SEARCH")), ("CHOWN+DAC_OVERRIDE", ("CHOWN", "DAC_OVERRIDE"))):
+VARIANTS = {"both": (("CHOWN+DAC_READ_SEARCH", ("CHOWN", "DAC_READ_SEARCH")), ("CHOWN+DAC_OVERRIDE", ("CHOWN", "DAC_OVERRIDE"))),
+            "committed": (("committed", tuple(ow.CAPS)),)}[sys.argv[4] if len(sys.argv) > 4 else "both"]
+COMMITTED_CAPS = tuple(ow.CAPS)
+for name, caps in VARIANTS:
     ow.CAPS = caps
     base = tempfile.mkdtemp(prefix="ownp-", dir=parent)
     tree, cfg, ev = (os.path.join(base, n) for n in ("t", "c", "e"))
@@ -48,7 +52,7 @@ for name, caps in (("CHOWN+DAC_READ_SEARCH", ("CHOWN", "DAC_READ_SEARCH")), ("CH
         rec["outside_uid_after"] = os.lstat(outside).st_uid
         rec["outside_text_after"] = open(outside).read()
     finally:
-        ow.CAPS = ("CHOWN", "DAC_OVERRIDE")
+        ow.CAPS = COMMITTED_CAPS
         try:
             ow.restore(runtime, image=image, run_tree=tree, config_dir=cfg, evidence_dir=ev, ids=[], caller_env=env)
         except Exception as e:

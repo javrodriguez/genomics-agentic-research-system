@@ -5,6 +5,7 @@ current user chowning to the current user, to bind its walk: links never followe
 """
 import json
 import os
+import stat
 import subprocess
 import sys
 import tempfile
@@ -92,6 +93,7 @@ class Grant(Base):
         self.assertEqual(calls[0][16:18], ["--mount", f"type=bind,source={self.tree},target=/scratch"])
         self.assertEqual(calls[0][18:], [IMAGE, "/usr/bin/python3", "-I", "-S", "-c", ow.OWN_PROGRAM, "10001",
                                          "strict"])
+        self.assertEqual(ow.own_argv(IMAGE, self.tree, 0, strict=False)[-1], "restore")
 
     def test_the_first_failure_refuses_before_launch(self):
         f = Fake(fail={self.tree})
@@ -244,7 +246,10 @@ class OwnProgram(unittest.TestCase):
         strict = ('strict=sys.argv[2]=="strict"\n',
                   ' if strict and (st.st_dev!=root_dev or (stat.S_ISREG(st.st_mode) and st.st_nlink!=1)):'
                   'raise RuntimeError("hard link or foreign device refused")\n',
-                  'root_dev=os.fstat(fd).st_dev\n')
+                  'root_dev=os.fstat(fd).st_dev\n',
+                  'restore=sys.argv[2]=="restore"\n',
+                  ' if restore:os.fchmod(fd,stat.S_IMODE(os.fstat(fd).st_mode)|(0o700 if stat.S_ISDIR(st.st_mode) else '
+                  '0o600))\n')
         prog = ow.OWN_PROGRAM
         for added in (branch,) + strict:
             self.assertEqual(prog.count(added), 1, added)
@@ -258,6 +263,28 @@ class OwnProgram(unittest.TestCase):
         self.assertEqual(prog.count("uid,-1"), 2)
         return subprocess.run([sys.executable, "-I", "-S", "-c", prog, str(os.getuid()), mode], capture_output=True,
                               text=True, timeout=60)
+
+    def test_restore_adds_only_the_owners_bits(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = os.path.join(d, "r")
+            os.makedirs(os.path.join(root, "sub"))
+            for name, mode in (("ro.txt", 0o400), ("grp.txt", 0o444), ("odd.txt", 0o640)):
+                Path(root, "sub", name).write_text("x")
+                os.chmod(os.path.join(root, "sub", name), mode)
+            os.chmod(os.path.join(root, "sub"), 0o500)
+            os.symlink("/etc/hosts", os.path.join(root, "link"))
+            hosts = os.stat("/etc/hosts").st_mode
+            p = self.run_on(root, "restore")
+            self.assertEqual(p.returncode, 0, p.stderr)
+            got = {n: stat.S_IMODE(os.lstat(os.path.join(root, "sub", n)).st_mode)
+                   for n in ("ro.txt", "grp.txt", "odd.txt")}
+            self.assertEqual(got, {"ro.txt": 0o600, "grp.txt": 0o644, "odd.txt": 0o640})
+            self.assertEqual(stat.S_IMODE(os.stat(os.path.join(root, "sub")).st_mode), 0o700)
+            self.assertEqual(os.stat("/etc/hosts").st_mode, hosts)
+            Path(root, "sub", "strict.txt").write_text("x")
+            os.chmod(os.path.join(root, "sub", "strict.txt"), 0o400)
+            self.assertEqual(self.run_on(root, "strict").returncode, 0)          # a grant changes no mode
+            self.assertEqual(stat.S_IMODE(os.lstat(os.path.join(root, "sub", "strict.txt")).st_mode), 0o400)
 
     def test_strict_refuses_hard_links_and_loose_does_not(self):
         with tempfile.TemporaryDirectory() as d:

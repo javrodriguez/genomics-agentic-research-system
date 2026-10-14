@@ -46,6 +46,9 @@ MUTANTS = [
  ("unreadable id ignored", "            if step[\"returncode\"] is None or step[\"returncode\"] == 0:\n                step[\"returncode\"] = None", "            if False:\n                step[\"returncode\"] = None"),
  ("grant not strict", 'own_argv(image, path, uid, strict=True), env)', 'own_argv(image, path, uid, strict=False), env)'),
  ("strict ignores hard links", 'and st.st_nlink!=1)', 'and st.st_nlink<1)'),
+ ("restore leaves 0000", ' if restore:os.fchmod(fd,stat.S_IMODE(os.fstat(fd).st_mode)|(0o700 if stat.S_ISDIR(st.st_mode) else 0o600))', ' pass'),
+ ("restore widens to group and other", '|(0o700 if stat.S_ISDIR(st.st_mode) else 0o600))', '|(0o777 if stat.S_ISDIR(st.st_mode) else 0o666))'),
+ ("restore runs as grant mode", '"strict" if strict is True else "restore"]', '"strict" if strict is True else "loose"]'),
  ("operator path escapes", ' or ".." in rel_path.split("/") or rel_path == ".":', ' or rel_path == ".":'),
 ]
 def run(mod):

@@ -50,9 +50,13 @@ _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")
 # never opened. Every other non-folder, non-file entry still refuses. The STRICT block (review note 10, grant only):
 # a regular file with another hard link, or any entry on another device, refuses, so a grant never chowns an inode
 # that may also live outside the folder. A restore is not strict: links the agent made inside the tree are its own.
+# The RESTORE block (glitch-06's ruling, 14 Oct 2026, on the athena probe's 0000 folder): after chowning, a restore
+# adds the owner's rwx to every folder and the owner's rw to every file, never a group or other bit, never through a
+# link, so the host user can verify, scan and remove what the agent left at any mode.
 OWN_PROGRAM = '''import os,stat,sys
 uid=int(sys.argv[1])
 strict=sys.argv[2]=="strict"
+restore=sys.argv[2]=="restore"
 def visit(fd):
  st=os.fstat(fd)
  if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError("nonregular refused")
@@ -67,6 +71,7 @@ def visit(fd):
    try:visit(child)
    finally:os.close(child)
  os.fchown(fd,uid,uid)
+ if restore:os.fchmod(fd,stat.S_IMODE(os.fstat(fd).st_mode)|(0o700 if stat.S_ISDIR(st.st_mode) else 0o600))
 fd=os.open("/scratch",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
 root_dev=os.fstat(fd).st_dev
 try:visit(fd)
@@ -117,7 +122,7 @@ def own_argv(image: str, path: str, uid: int, *, strict: bool) -> list:
     argv += ["--security-opt", "no-new-privileges",
              "--mount", f"type=bind,source={run_take._abs_path(path, 'path')},target={MOUNT}",
              _image(image), "/usr/bin/python3", "-I", "-S", "-c", OWN_PROGRAM, str(uid),
-             "strict" if strict is True else "loose"]
+             "strict" if strict is True else "restore"]
     return argv
 
 
