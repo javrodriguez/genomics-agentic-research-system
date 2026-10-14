@@ -44,12 +44,12 @@
     {
       "path": "gemini_projection.py",
       "status": "new",
-      "reason": "Unregistered source-derived Gemini native-session projection: per-interaction facts with exact visible text and ordered tool facts; model-facing response parts never displayed output; unsupported or contradictory shapes refuse; no production admission."
+      "reason": "Unregistered source-derived Gemini native-session projection: per-interaction facts with per-message recorded-text segments in the recorder's normal form (recorder_normalize, cited source) and ordered tool facts; model-facing response parts never output; an interaction ending on tool calls, unsupported or contradictory shapes refuse, each with its own reason; no production admission. Review fold of 14 Oct 2026 (glitch-06 rulings 1, 3-7)."
     },
     {
       "path": "tests/test_gemini_projection.py",
       "status": "new",
-      "reason": "Synthetic projection witnesses for exact text/tool comparison, display versus model-facing results, absent optional model, contradictions, unsupported shapes and reused call ids."
+      "reason": "Synthetic projection witnesses: recorder normalization (comment, zero-width, whitespace, JavaScript trim set), per-message segments, display versus model-facing results, absent optional model, every refusal asserted by its reason (content functionCall id, name, args separately), incomplete interaction, kept false-refusal risks."
     },
     {
       "path": "tests/test_vendor_record_kinds.py",

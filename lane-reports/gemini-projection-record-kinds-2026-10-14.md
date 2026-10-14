@@ -39,3 +39,15 @@ Nearby and nested spellings still refuse.
 - Independent review of this slice.
 - Projection against a recorded Gemini 0.64.0 session; the stream-side counterpart comparison; registration.
 - `walk_files` counts a stream or transcript as "a turn ran"; a launch journal alone does not yet make the driver ledger mandatory. Whether a submitted-but-streamless turn should is a boundary question for the next integration slice.
+
+## Addendum, 14 Oct 2026 00:20 EDT: review CHANGES and the fix
+
+The independent review of `f0546df8` (`/Users/javrodher/aegis-builds/gap4-review-harness-step2-20261014/review-harness-step2.md`) returned CHANGES. This addendum corrects the report above; the text above stays as written.
+
+Corrections to claims above:
+- "exact visible text" was wrong. Native gemini `content` is the recorder's normalized text (zero-width removal, repeated HTML-comment removal, trim), not what the stream showed, and the `""` join dropped separators between model messages. The fact is now `recorded-text`, one segment per gemini message, with the normalization defined in `gemini_projection.recorder_normalize` and cited in `lane-reports/gemini-0.64.0-source-retained-2026-10-14.md`; the stream side must apply it per model message before comparing.
+- "Every refusal mutant ... refuses for its intended reason" was wrong for the tool-name mutant: it refused at the response-part name check, so the name and id parts of the content-versus-recorded comparison were unwitnessed. Every refusal case now asserts its own reason, and name-only and id-only content functionCall mutants exist.
+- An interaction ending on tool calls with no later model message was projected as complete; it now refuses as incomplete (the fact schema has no incomplete marker).
+- The launch-journal walk boundary named under "Not run, and owed" was opened by this slice's admission; it is closed in `0d417a1d` (3a) with its test.
+
+Kept refusing, named as known false-refusal risks because their pinned source lines are not retained: user `displayContent`, multi-part user content, history-patched parallel tool results. Admitted: `thoughtSignature` on a functionCall part (retained `stripThoughts2`), never output.
