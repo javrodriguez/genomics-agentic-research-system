@@ -111,6 +111,7 @@ ORIG_PROBES = pf.probes
 ID = {k: (c * 64) for k, c in (("net", "a"), ("side", "c"), ("take", "d"))}
 IMAGE = "sha256:" + "f" * 64
 MANIFEST = "sha256:" + "c" * 64           # the take image's platform manifest (lock-writer ruling (a), 14 Oct)
+SIDE_MANIFEST = "sha256:" + "5" * 64      # the sidecar image's platform manifest (LW-7): never the take's
 ARMS = (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI)
 HOSTS = {rt.CLAUDE_CODE: "api.anthropic.com", rt.CODEX: "api.openai.com", rt.GEMINI: "generativelanguage.googleapis.com"}
 VERSION_OUT = {rt.CLAUDE_CODE: ("2.9.1 (Claude Code)\n", r"([0-9.]+) \(Claude Code\)", "2.9.1"),
@@ -184,6 +185,7 @@ class World:
                                 memory_reservation=512 * 2 ** 20, memory=3 * 512 * 2 ** 20, cpus="2", pids_limit=256)
         self.lock = {"image_id": IMAGE, "harness.version": VERSION_OUT[harness][2], "users.agent.uid": 10001,
                      "users.watcher.uid": 10002, "users.keepalive.uid": 10003, "manifest_digest": MANIFEST}
+        self.sidecar_lock = {"image_id": IMAGE, "manifest_digest": SIDE_MANIFEST}
         self.sidecar_expect = {
             "user": "0:0", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": list(CAP_ADD),
             "security_opt": ["no-new-privileges"], "privileged": False, "pid_mode": "",
@@ -223,6 +225,7 @@ class World:
                                "SecurityOpt": ["no-new-privileges"], "Privileged": False, "PidMode": ""},
                 "Mounts": [{"Type": "bind", "Source": self.tree, "Destination": self.tree, "RW": False},
                            {"Type": "bind", "Source": self.ev, "Destination": "/srv/ev", "RW": True}]}],
+            "sidecar-image-manifest": json.dumps(SIDE_MANIFEST) + "\n",
             "watcher-caps": [{"pid": 1, "uid": 10002, "name": "python3", "cap_eff": 0},
                              {"pid": 9, "uid": 10002, "name": "inotifywait", "cap_eff": 4}],
             "sockets": {"present": [], "docker_host": False},
@@ -236,7 +239,7 @@ class World:
 
     def probes(self):
         return pf.probes(self.spec, take_id=ID["take"], sidecar_id=ID["side"], harness=self.harness, hosts=HOSTS,
-                         evidence_dir=self.ev)
+                         evidence_dir=self.ev, sidecar_image=self.sidecar_expect["image"])
 
     def script(self):
         out = []
@@ -256,7 +259,7 @@ class World:
 
     def evaluate(self, raw=None, **kw):
         args = dict(spec=self.spec, lock=self.lock, sidecar_expect=self.sidecar_expect, harness=self.harness,
-                    hosts=HOSTS, evidence_dir=self.ev)
+                    hosts=HOSTS, evidence_dir=self.ev, sidecar_lock=self.sidecar_lock)
         args.update(kw)
         return pf.evaluate(self.raw() if raw is None else raw, **args)
 
@@ -312,6 +315,15 @@ BREAKS = {
         ("manifest-lock-pending", edit_world(lambda w: w.lock.update(manifest_digest=pf.PENDING))),
         ("manifest-not-json", lambda raw, w: raw["take-image-manifest"].update(stdout="sha256:" + "c" * 64)),
         ("manifest-failed", lambda raw, w: raw["take-image-manifest"].update(returncode=1)),
+        # LW-7: the sidecar's image, by its own lock's id and platform manifest
+        ("sidecar-manifest-other", lambda raw, w: raw["sidecar-image-manifest"].update(stdout=json.dumps(MANIFEST))),
+        ("sidecar-manifest-not-json", lambda raw, w: raw["sidecar-image-manifest"].update(stdout=SIDE_MANIFEST)),
+        ("sidecar-manifest-failed", lambda raw, w: raw["sidecar-image-manifest"].update(returncode=1)),
+        ("sidecar-lock-manifest-other", edit_world(lambda w: w.sidecar_lock.update(manifest_digest=MANIFEST))),
+        ("sidecar-lock-manifest-pending", edit_world(lambda w: w.sidecar_lock.update(manifest_digest=pf.PENDING))),
+        ("sidecar-lock-image-other", edit_world(lambda w: w.sidecar_lock.update(image_id="sha256:" + "1" * 64))),
+        ("sidecar-lock-image-pending", edit_world(lambda w: w.sidecar_lock.update(image_id=pf.PENDING))),
+        ("sidecar-running-image-other", edit_json("sidecar-inspect", lambda d: d[0].update(Image="sha256:" + "2" * 64))),
     ],
     "harness-version-matches-lock": [
         ("other-version", lambda raw, w: raw["harness-version"].update(stdout="9.9.9 (Claude Code)\ncodex-cli 9.9.9\n")),
@@ -630,7 +642,7 @@ class TestEvaluate(MutantCase):
                 w.spec = rt.TakeSpec(**dict(w.spec.__dict__, run_tree=tree))
                 with filled():
                     rec = pf.evaluate(w.raw(), spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                      harness=w.harness, hosts=HOSTS, evidence_dir=w.ev)
+                                      harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock)
                 if "run-tree-path-neutral" not in failing(rec):
                     out.append(f"a run tree path carrying {word} passed")
             w = World()
@@ -782,8 +794,8 @@ class TestPrograms(MutantCase):
             if any(w.spec.run_tree in a for a in p.argv):
                 out.append(f"probe {p.id} names the run tree")
             if p.id != "watcher-caps":
-                image_read = p.id == "take-image-manifest" and list(p.argv[1:5]) == ["image", "inspect", "--platform",
-                                                                                     pf.IMAGE_PLATFORM]
+                image_read = p.id in ("take-image-manifest", "sidecar-image-manifest") and list(p.argv[1:5]) == [
+                    "image", "inspect", "--platform", pf.IMAGE_PLATFORM]
                 if list(p.argv[:4]) != ["docker", "exec", "--user", rt.AGENT_USER] and p.argv[1] != "container" \
                         and not image_read:
                     out.append(f"probe {p.id} does not run as the agent")
@@ -1012,6 +1024,13 @@ def ready_lock(image: str, version: str = "9.8.7") -> dict:
     return lock
 
 
+def ready_sidecar_lock() -> dict:
+    """The committed sidecar lock, filled (schema 2) with the World's sidecar image and its own platform manifest."""
+    lock = ready_lock("sidecar")
+    lock["manifest_digest"] = SIDE_MANIFEST
+    return lock
+
+
 def flat(lock: dict) -> dict:
     """The five values a ready nested lock projects to, by the schema paths typed here."""
     return {"image_id": lock["image_id"], "harness.version": lock["harness"]["version"],
@@ -1022,8 +1041,10 @@ def flat(lock: dict) -> dict:
 class LockBox:
     """A temporary stand-in for box/: each lock at its own relative path; image_lock.BOX_DIR is patched while active."""
 
-    def __init__(self):
+    def __init__(self, sidecar=True):
         self.root = tempfile.mkdtemp(prefix="w-")
+        if sidecar:
+            self.put("sidecar", ready_sidecar_lock())
 
     def path(self, image: str) -> str:
         return os.path.join(self.root, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
@@ -1134,11 +1155,12 @@ class LockSeam:
                 path = box.put(HARNESS_IMAGE[h], lock)
                 with box.active():
                     (kind, got), spies, fake = compose(m, w, path)
-                if [p for p, _ in spies["load"]] != [path]:
+                if [p for p, _ in spies["load"]] != [path, box.path("sidecar")]:
                     calls = [p for p, _ in spies["load"]]
-                    out.append(f"C1-loader-spy {h}: image_lock.load calls {calls}, not [{path}]")
-                if len(spies["ready"]) != 1 or not spies["load"] or spies["ready"][0] is not spies["load"][0][1]:
-                    out.append(f"C1-ready-spy {h}: require_ready was not called once on load's own result")
+                    out.append(f"C1-loader-spy {h}: image_lock.load calls {calls}, not [{path}, the sidecar lock]")
+                if len(spies["ready"]) != 2 or len(spies["load"]) != 2 \
+                        or [r is l for r, (_, l) in zip(spies["ready"], spies["load"])] != [True, True]:
+                    out.append(f"C1-ready-spy {h}: require_ready was not called once on each load's own result")
                 if kind != "record":
                     out.append(f"C1-values {h}: refused ({type(got).__name__}: {str(got)[:80]})")
                     return
@@ -1248,7 +1270,75 @@ class LockSeam:
                 if kind != "refused" or not isinstance(got, il.NotReady) or fake.calls or spies["evaluate"]:
                     out.append(f"C2-pending {field}: {kind} ({type(got).__name__}), not NotReady before the runtime "
                                f"({len(fake.calls)} runtime calls, {len(spies['evaluate'])} evaluations)")
+                    return
+                # LW-5: image_id is PENDING in every schema-1 case, so the refusal must name this case's own field.
+                named = str(got).partition("pending: ")[2].split(", ")
+                if field not in named:
+                    out.append(f"C2-pending {field}: the refusal names {named}, not {field}")
             run_case(out, "C2-pending", field, case)
+        return out
+
+    @staticmethod
+    def c7_sidecar(m) -> list:
+        """LW-7: the sidecar's lock is read through the loader (ready, its own image) before any runtime call, and its
+        platform manifest is the content the probe must read: a lock whose manifest differs fails the record."""
+        out = []
+        h = rt.CLAUDE_CODE
+        take = ready_lock("take-a", VERSION_OUT[h][2])
+
+        def refused(label, edit, err):
+            def case():
+                w = World(h)
+                box = LockBox(sidecar=False)
+                side = ready_sidecar_lock()
+                if edit == "absent":
+                    pass
+                elif isinstance(edit, str):
+                    box.put("sidecar", text=edit)
+                else:
+                    edit(side)
+                    box.put("sidecar", side)
+                path = box.put("take-a", take)
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path, script=False)
+                if kind != "refused" or not isinstance(got, err) or fake.calls or spies["probes"] or spies["evaluate"]:
+                    out.append(f"C7-sidecar {label}: {kind} ({type(got).__name__}), {len(fake.calls)} runtime calls")
+            run_case(out, "C7-sidecar", label, case)
+
+        def pend(lk):
+            for k in il.SCHEMA_2_KEYS:
+                del lk[k]
+            lk.update(schema=il.SCHEMA, image_id=il.PENDING, pending={"image_id": "a synthetic reason"})
+        refused("pending sidecar lock", pend, il.NotReady)
+        refused("absent sidecar lock", "absent", OSError)
+        refused("malformed sidecar lock", '{"schema": 2,', ValueError)
+        refused("sidecar lock of another image", lambda lk: lk.update(image="take-a"), il.LockError)
+
+        def accepted_or_failed(label, edit, want_ok):
+            def case():
+                w = World(h)
+                box = LockBox(sidecar=False)
+                side = ready_sidecar_lock()
+                edit(side)
+                box.put("sidecar", side)
+                path = box.put("take-a", take)
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path)
+                if kind != "record":
+                    out.append(f"C7-sidecar {label}: refused ({type(got).__name__}: {str(got)[:80]})")
+                    return
+                if [e.get("sidecar_lock") for e in spies["evaluate"]] != [
+                        {"image_id": side["image_id"], "manifest_digest": side["manifest_digest"]}]:
+                    out.append(f"C7-sidecar {label}: evaluate received {[e.get('sidecar_lock') for e in spies['evaluate']]}")
+                sides = [p.get("sidecar_image") for p in spies["probes"]]
+                if sides != [w.sidecar_expect["image"]]:
+                    out.append(f"C7-sidecar {label}: the manifest probe read {sides}, not the launch's sidecar image")
+                if got["ok"] != want_ok or (not want_ok and "image-matches-lock" not in failing(got)):
+                    out.append(f"C7-sidecar {label}: ok={got['ok']}, failing {failing(got)}")
+            run_case(out, "C7-sidecar", label, case)
+        accepted_or_failed("matching sidecar lock", lambda lk: None, True)
+        accepted_or_failed("sidecar lock of other content", lambda lk: lk.update(manifest_digest=MANIFEST), False)
+        accepted_or_failed("sidecar lock of another build", lambda lk: lk.update(image_id="sha256:" + "1" * 64), False)
         return out
 
     @staticmethod
@@ -1308,7 +1398,7 @@ class LockSeam:
             w = World()
             with filled(mod=m):
                 rec = m.evaluate(w.raw(), spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                 harness=w.harness, hosts=HOSTS, evidence_dir=w.ev)
+                                 harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock)
             if failing(rec) or not rec["ok"]:
                 out.append(f"C4-mount baseline: a world at A fails {failing(rec)}")
         run_case(out, "C4-mount", "baseline", case_baseline)
@@ -1319,7 +1409,7 @@ class LockSeam:
                 at_b(w, raw, where)
                 with filled(mod=m):
                     rec = m.evaluate(raw, spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                     harness=w.harness, hosts=HOSTS, evidence_dir=w.ev)
+                                     harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock)
                 if "sidecar-isolated" not in failing(rec) or rec["ok"]:
                     out.append(f"C4-mount {where} at B, probes at A: sidecar-isolated passed ({failing(rec)})")
             run_case(out, "C4-mount", where, case)
@@ -1330,7 +1420,7 @@ class LockSeam:
             b = at_b(w, raw, "both")
             with filled(mod=m):
                 rec = m.evaluate(raw, spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                 harness=w.harness, hosts=HOSTS, evidence_dir=b)
+                                 harness=w.harness, hosts=HOSTS, evidence_dir=b, sidecar_lock=w.sidecar_lock)
             if "evidence-out-of-reach" not in failing(rec) or rec["ok"]:
                 out.append(f"C4-probes mount at B, probes at A, judged as B: passed ({failing(rec)})")
         run_case(out, "C4-probes", "judged-b", case_judged_b)
@@ -1342,7 +1432,8 @@ class LockSeam:
         out = []
         w = World()
         raw = w.raw()
-        base = dict(spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect, harness=w.harness, hosts=HOSTS)
+        base = dict(spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect, harness=w.harness, hosts=HOSTS,
+                    sidecar_lock=w.sidecar_lock)
         for label, value in (("None", None), ("empty", ""), ("relative", "rec/ev"), ("dotted", w.ev + "/../ev"),
                              ("root", "/")):
             def case(label=label, value=value):
@@ -1468,6 +1559,16 @@ class TestLockSeam(unittest.TestCase):
 
     def test_c2_pending_refused_before_the_runtime(self):
         self.assertEqual(LockSeam.c2_pending(pf), [])
+
+    def test_c7_sidecar_lock_and_manifest(self):
+        self.assertEqual(LockSeam.c7_sidecar(pf), [])
+
+    def test_lw7_spelled_names_are_image_locks(self):
+        """LW-7: the names preflight spells (it reads image_lock only through load and require_ready) are w4a's."""
+        self.assertEqual(pf.SIDECAR_LOCK_IMAGE, il.SIDECAR_IMAGE)
+        self.assertEqual(pf.SIDECAR_LOCK_PATH, os.path.dirname(il.DOCKERFILES[il.SIDECAR_IMAGE]) + "/image.lock")
+        self.assertEqual(pf.TAKE_LOCK_DIRS, {i: os.path.dirname(il.DOCKERFILES[i]) for i in il.TAKE_IMAGES})
+        self.assertEqual(pf.IMAGE_ID_SHAPE.pattern, il.IMAGE_ID_RE.pattern)
 
     def test_c3_harness_image_binding(self):
         self.assertEqual(LockSeam.c3_cross(pf), [])
@@ -1599,7 +1700,17 @@ WITNESSES = {
     "pre-launch-spec": ((("    spec, take_id, sidecar_id = _launched_parts(launched)\n",
                           "    _, take_id, sidecar_id = _launched_parts(launched)\n    spec = PRE_LAUNCH_SPEC\n"),),
                         LockSeam.c6_launched, "C6-launched-spec", {"PRE_LAUNCH_SPEC": PRE_LAUNCH_SPEC}),
+    # LW-7 (lock-writer review, 14 Oct 2026): the sidecar's lock and platform manifest.
+    "lw7-sidecar-manifest-not-compared": ((("    _need(side == side_want, ", "    _need(True or side == side_want, "),),
+                                          LockSeam.c7_sidecar, "C7-sidecar", None),
+    "lw7-sidecar-readiness-omitted": ((("    image_lock.require_ready(side)\n", ""),),
+                                      LockSeam.c7_sidecar, "C7-sidecar", None),
+    "lw7-sidecar-lock-not-loaded": ((("    sidecar_lock = load_sidecar_lock(lock_path, harness=harness)\n",
+                                      "    sidecar_lock = {\"image_id\": sidecar.expect[\"image\"], "
+                                      "\"manifest_digest\": SIDE}\n"),),
+                                    LockSeam.c7_sidecar, "C7-sidecar", {"SIDE": SIDE_MANIFEST}),
 }
+LW7_WITNESSES = ("lw7-sidecar-manifest-not-compared", "lw7-sidecar-readiness-omitted", "lw7-sidecar-lock-not-loaded")
 WITNESS_LOG: list = []
 
 
@@ -1644,14 +1755,25 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_pre_launch_spec(self):
         self.kill("pre-launch-spec")
 
+    def test_witness_lw7_sidecar_manifest_not_compared(self):
+        self.kill("lw7-sidecar-manifest-not-compared")
+
+    def test_witness_lw7_sidecar_readiness_omitted(self):
+        self.kill("lw7-sidecar-readiness-omitted")
+
+    def test_witness_lw7_sidecar_lock_not_loaded(self):
+        self.kill("lw7-sidecar-lock-not-loaded")
+
     def test_the_witnesses_are_named(self):
-        """The readiness note's six, plus W6A-R1-1's absolute-path witness; each bound to its own check."""
+        """The readiness note's six, plus W6A-R1-1's absolute-path witness, each bound to its own check; plus the
+        three LW-7 witnesses, all bound to the sidecar-lock check c7_sidecar."""
         self.assertEqual(sorted(WITNESSES), sorted(["omit-load", "omit-readiness", "omit-harness-image-binding",
                                                     "drop-mount-source-comparison",
                                                     "probes-at-another-evidence-path", "pre-launch-spec",
-                                                    "omit-absolute-path-rule"]))
-        bound = {n: w[1].__name__ for n, w in WITNESSES.items()}
+                                                    "omit-absolute-path-rule", *LW7_WITNESSES]))
+        bound = {n: w[1].__name__ for n, w in WITNESSES.items() if n not in LW7_WITNESSES}
         self.assertEqual(len(set(bound.values())), 7, bound)
+        self.assertEqual({WITNESSES[n][1].__name__ for n in LW7_WITNESSES}, {"c7_sidecar"})
 
 
 # Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).

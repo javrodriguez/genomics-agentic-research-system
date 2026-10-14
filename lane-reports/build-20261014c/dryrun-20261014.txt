@@ -1,0 +1,150 @@
+=== take-a (image.lock)
+{
+ "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+ "config_digest": "sha256:da2067d3ee9f1eeea61afc39cdeddadfed2bd9d339382f8b1ccd8cbd1b9d33a6",
+ "dockerfile": "Dockerfile",
+ "harness": {
+  "package": "@anthropic-ai/claude-code",
+  "version": "2.1.296"
+ },
+ "image": "take-a",
+ "image_id": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "manifest_digest": "sha256:c8d50caa6de74e8c1761aaf572e2ef8f6d2d573a69bb851af02395f6106366e8",
+ "pending": {},
+ "python": "3.11.2",
+ "schema": 2,
+ "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+ "users": {
+  "agent": {
+   "gid": 10001,
+   "name": "dana",
+   "uid": 10001
+  },
+  "keepalive": {
+   "gid": 10003,
+   "uid": 10003
+  },
+  "watcher": {
+   "gid": 10002,
+   "name": "eli",
+   "uid": 10002
+  }
+ }
+}
+exit=0
+=== take-o (codex/image.lock)
+{
+ "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+ "config_digest": "sha256:4647fdaace69f1e9083d0c1424192f81ac3ad43c4382ce5f7d1ec8cfda52c175",
+ "dockerfile": "codex/Dockerfile",
+ "harness": {
+  "package": "@openai/codex",
+  "version": "0.162.1"
+ },
+ "image": "take-o",
+ "image_id": "sha256:21b214159e4eb02d5e73f78ccdf5ee047da2fc6944808f9a454a6b0f427dd381",
+ "manifest_digest": "sha256:46deefc20439372cbdfabbaa023fe71aed4d4dbee518c729d3b23b52c8d03aa3",
+ "pending": {},
+ "python": "3.11.2",
+ "schema": 2,
+ "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+ "users": {
+  "agent": {
+   "gid": 10001,
+   "name": "dana",
+   "uid": 10001
+  },
+  "keepalive": {
+   "gid": 10003,
+   "uid": 10003
+  },
+  "watcher": {
+   "gid": 10002,
+   "name": "eli",
+   "uid": 10002
+  }
+ }
+}
+exit=0
+=== take-g (gemini/image.lock)
+{
+ "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+ "config_digest": "sha256:6bba97e7c55af01c1831ab214fb8eb343772859ee152c7702e00f108ecd7c1f6",
+ "dockerfile": "gemini/Dockerfile",
+ "harness": {
+  "package": "@google/gemini-cli",
+  "version": "0.64.0"
+ },
+ "image": "take-g",
+ "image_id": "sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013",
+ "manifest_digest": "sha256:7eb4c799f29fe5330d9cf76deae8988ea04f8183ee451a5dad4f12bcb00eee9f",
+ "pending": {},
+ "python": "3.11.2",
+ "schema": 2,
+ "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+ "users": {
+  "agent": {
+   "gid": 10001,
+   "name": "dana",
+   "uid": 10001
+  },
+  "keepalive": {
+   "gid": 10003,
+   "uid": 10003
+  },
+  "watcher": {
+   "gid": 10002,
+   "name": "eli",
+   "uid": 10002
+  }
+ }
+}
+exit=0
+=== sidecar (sidecar/image.lock)
+{
+ "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+ "config_digest": "sha256:80951705c2ce29d10782ca4b664c4ee14b680c6ed6fdc8197f45caabad828dfe",
+ "dockerfile": "sidecar/Dockerfile",
+ "harness": null,
+ "image": "sidecar",
+ "image_id": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+ "manifest_digest": "sha256:c1409b3323bc991d9c86ed99411455ffba3aabbe6159384d0786216aba092a82",
+ "pending": {},
+ "python": "3.11.2",
+ "schema": 2,
+ "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+ "users": {
+  "agent": {
+   "gid": 10001,
+   "name": "dana",
+   "uid": 10001
+  },
+  "keepalive": {
+   "gid": 10003,
+   "uid": 10003
+  },
+  "watcher": {
+   "gid": 10002,
+   "name": "eli",
+   "uid": 10002
+  }
+ }
+}
+exit=0
+=== egress (egress/image.lock)
+{
+ "base": "docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+ "config_digest": "sha256:388fbbc4d0cc6ea5ad8a942a779643d7842e2da4eeb96f5fd2930a888ec8161f",
+ "dockerfile": "egress/Dockerfile",
+ "harness": null,
+ "image": "egress",
+ "image_id": "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
+ "manifest_digest": "sha256:24c9fbdf938114d2ff412a70f5b2f2d08f2c4f7735ab7c229c8ad254dc02a89d",
+ "pending": {},
+ "python": null,
+ "schema": 2,
+ "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+ "squid": "5.7-2+deb12u6",
+ "users": null
+}
+exit=0

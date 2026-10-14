@@ -16,7 +16,7 @@ Three parts, so the judgment is pure:
 
 The drive step calls one entry point, `collect_and_evaluate(...)` (CP2-preflight-2): it reads the take's lock through
 `load_take_lock` (image_lock.load, the harness's own take image, image_lock.require_ready, then the five LOCK_KEYS
-projected from the validated lock), takes the spec, the take id and the sidecar id from the launch record
+projected from the validated lock) and the sidecar's lock through `load_sidecar_lock` (LW-7), takes the spec, the take id and the sidecar id from the launch record
 (`Launched.spec`, never the pre-launch placeholder), runs the probes and evaluates them with the very same
 evidence folder and sidecar expectation. It never launches, runs a turn or tears down: the drive step's own launch
 and cleanup lifecycle stays around it, and a lock or launch-record refusal raises before any runtime call.
@@ -57,7 +57,19 @@ LOCK_KEYS = ("image_id", "harness.version", "users.agent.uid", "users.watcher.ui
 # The platform whose image manifest is the content identity (glitch-06's lock-writer ruling (a), 14 Oct 2026):
 # `docker image inspect --platform linux/amd64` returns that manifest's digest as its Id on athena's containerd
 # store, the same across rebuilds of identical content (measured: candidate2-20261014/index-reading-all).
+# On the classic (graphdriver) store the inspect either errors or returns the image's CONFIG digest; neither equals
+# a lock's manifest digest (the lock writer refuses a record whose manifest digest equals its config digest, LW-4),
+# so a lock written from a containerd build fails closed on a classic store: the check refuses, it never passes.
 IMAGE_PLATFORM = "linux/amd64"
+# The sidecar's own lock (LW-7): its image id and platform manifest are checked like the take image's. The names
+# below are image_lock's values, spelled here (preflight reads image_lock only through load and require_ready; the
+# test binds each to image_lock's own): the sidecar lock's place in box/, each take lock's folder in box/, the
+# sidecar image's name and the shape of an image id.
+SIDECAR_LOCK_KEYS = ("image_id", "manifest_digest")
+SIDECAR_LOCK_IMAGE = "sidecar"
+SIDECAR_LOCK_PATH = "sidecar/image.lock"
+TAKE_LOCK_DIRS = {"take-a": "", "take-o": "codex", "take-g": "gemini"}
+IMAGE_ID_SHAPE = re.compile(r"sha256:[0-9a-f]{64}")
 # Each harness's own take image (image_lock.TAKE_IMAGES; arms A and C share take-a). Merge binding 8 binds it.
 TAKE_IMAGE = {run_take.CLAUDE_CODE: "take-a", run_take.CODEX: "take-o", run_take.GEMINI: "take-g"}
 SIDECAR_EXPECT_KEYS = ("user", "network_mode", "cap_drop", "cap_add", "security_opt", "privileged", "pid_mode",
@@ -367,7 +379,7 @@ class Probe:
 
 
 PROBE_IDS = ("identity", "take-inspect", "take-image-manifest", "harness-version", "cgroup", "listing", "processes", "sidecar-inspect",
-             "health", "watcher-caps", "sockets", "egress", "study-folders")
+             "sidecar-image-manifest", "health", "watcher-caps", "sockets", "egress", "study-folders")
 PROBE_TIMEOUT_S = 60
 
 
@@ -400,13 +412,16 @@ def _study_folders(run_tree: str):
     return {p: os.path.lexists(os.path.join(run_tree, p)) for p in STUDY_PATHS}
 
 
-def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, evidence_dir: str) -> tuple:
-    """Every probe, in PROBE_IDS order."""
+def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, evidence_dir: str,
+           sidecar_image: str) -> tuple:
+    """Every probe, in PROBE_IDS order. `sidecar_image` is the image the sidecar launch expects (its manifest is read)."""
     run_take.check_spec(spec)
     run_take._known_harness(harness)
     _check_hosts(hosts)
     run_take._check_id(take_id, "take id")
     run_take._check_id(sidecar_id, "sidecar id")
+    if not isinstance(sidecar_image, str) or not IMAGE_ID_SHAPE.fullmatch(sidecar_image):
+        raise run_take.Refused("the sidecar image must be a sha256 image id")
     evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
     agent = lambda inner, home=None: tuple(run_take.agent_exec_argv(take_id, inner, workdir="/",  # noqa: E731
                                                                      config_home=home))
@@ -422,6 +437,8 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
         Probe("listing", agent(_py(LISTING_PROGRAM, SIDECAR_EVIDENCE_MOUNT, evidence_dir))),
         Probe("processes", agent(_py(PROCESSES_PROGRAM))),
         Probe("sidecar-inspect", inspect(sidecar_id)),
+        Probe("sidecar-image-manifest", (run_take.RUNTIME_CLIENT, "image", "inspect", "--platform", IMAGE_PLATFORM,
+                                         "--format", "{{json .Id}}", sidecar_image)),
         Probe("health", read=lambda: _read_health(os.path.join(evidence_dir, HEALTH))),
         Probe("watcher-caps", (run_take.RUNTIME_CLIENT, "exec", "--user", sidecar_contract.WATCHER_USER,
                                sidecar_id, *_py(PROCESSES_PROGRAM))),
@@ -516,7 +533,16 @@ def _check_agent(raw, spec, lock, harness, hosts, sidecar_expect, *_):
     return f"uid {AGENT_UID}, no capability, no new privileges"
 
 
-def _check_image(raw, spec, lock, *_):
+def _manifest(raw, pid: str) -> str:
+    try:
+        manifest = json.loads(_plain(raw, pid))
+    except ValueError:
+        raise _Fail(f"probe {pid} is not one JSON string") from None
+    _need(isinstance(manifest, str), f"probe {pid} is not one JSON string")
+    return manifest
+
+
+def _check_image(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, sidecar_lock, *_):
     obj = _inspect_obj(raw, "take-inspect")
     if _is_pending(run_take.INSPECT_STATUS):
         raise _Fail("the inspect spellings are PENDING")
@@ -525,13 +551,17 @@ def _check_image(raw, spec, lock, *_):
     _need(got == image and spec.image == image, f"the take's image {got} is not the lock's {image}")
     # The content identity (ruling (a)): the platform image manifest, which names the config and every layer.
     want = _lock(lock, "manifest_digest")
-    try:
-        manifest = json.loads(_plain(raw, "take-image-manifest"))
-    except ValueError:
-        raise _Fail("probe take-image-manifest is not one JSON string") from None
-    _need(isinstance(manifest, str) and manifest == want,
-          f"the take image's {IMAGE_PLATFORM} manifest {manifest} is not the lock's {want}")
-    return "the take's image is the lock's, by its id and by its platform manifest"
+    manifest = _manifest(raw, "take-image-manifest")
+    _need(manifest == want, f"the take image's {IMAGE_PLATFORM} manifest {manifest} is not the lock's {want}")
+    # LW-7: the sidecar's image, by its own lock's id and platform manifest.
+    side_id, side_want = _lock(sidecar_lock, "image_id"), _lock(sidecar_lock, "manifest_digest")
+    _need(isinstance(sidecar_expect, dict) and sidecar_expect.get("image") == side_id,
+          f"the sidecar launch's image is not the sidecar lock's {side_id}")
+    _need(_inspect_obj(raw, "sidecar-inspect").get("Image") == side_id,
+          f"the running sidecar's image is not the sidecar lock's {side_id}")
+    side = _manifest(raw, "sidecar-image-manifest")
+    _need(side == side_want, f"the sidecar image's {IMAGE_PLATFORM} manifest {side} is not its lock's {side_want}")
+    return "the take's and the sidecar's images are their locks', by id and by platform manifest"
 
 
 def _check_version(raw, spec, lock, harness, *_):
@@ -766,13 +796,15 @@ UNREADABLE_CONSEQUENTIAL_ROW = "unreadable-consequential-path"
 
 
 def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str, hosts: dict,
-             evidence_dir: str) -> dict:
+             evidence_dir: str, sidecar_lock: dict) -> dict:
     """The preflight record, pure: every check of PREFLIGHT_CHECKS in order, `ok` only when every one passed.
 
     `evidence_dir` is required and has no default (CP2-preflight-3): the folder the probes read, which the sidecar's
     evidence mount source must equal. A missing, relative or unnormalised one refuses (run_take.Refused)."""
     if not isinstance(lock, dict) or set(lock) != set(LOCK_KEYS):
         raise ValueError(f"lock must hold exactly {list(LOCK_KEYS)}")
+    if not isinstance(sidecar_lock, dict) or set(sidecar_lock) != set(SIDECAR_LOCK_KEYS):
+        raise ValueError(f"sidecar_lock must hold exactly {list(SIDECAR_LOCK_KEYS)}")
     run_take._known_harness(harness)
     evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
     checks = []
@@ -781,7 +813,7 @@ def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str,
         try:
             if fn is None:
                 raise _Fail("no check is defined")
-            detail, passed = fn(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir), True
+            detail, passed = fn(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, sidecar_lock), True
         except _Fail as e:
             detail, passed = str(e), False
         except Exception as e:  # a check that cannot read its records fails, never passes
@@ -825,6 +857,27 @@ def load_take_lock(lock_path: str, *, harness: str) -> dict:
     return {k: (run_take._path_get(lock, k) if k != "manifest_digest" or k in lock else PENDING) for k in LOCK_KEYS}
 
 
+def load_sidecar_lock(take_lock_path: str, *, harness: str) -> dict:
+    """The sidecar lock's SIDECAR_LOCK_KEYS (LW-7), read only through w4a's loader: the box folder is the one the take
+    lock was loaded from (image_lock.load has bound that lock to the Dockerfile beside it), the sidecar lock sits at
+    SIDECAR_LOCK_PATH in it (image_lock.load binds it to the sidecar's Dockerfile), it must be the sidecar image's own
+    lock, image_lock.require_ready, then the projection. Called after load_take_lock has accepted the take lock."""
+    run_take._known_harness(harness)
+    take_dir = os.path.dirname(run_take._abs_path(take_lock_path, "lock_path"))
+    box = take_dir
+    for part in reversed([p for p in TAKE_LOCK_DIRS[TAKE_IMAGE[harness]].split("/") if p]):
+        if os.path.basename(box) != part:
+            raise run_take.Refused(f"the take lock is not in its {part}/ folder")
+        box = os.path.dirname(box)
+    side = image_lock.load(os.path.join(box, SIDECAR_LOCK_PATH))
+    if side["image"] != SIDECAR_LOCK_IMAGE:
+        raise run_take.Refused(f"the sidecar lock is the {side['image']} image's")
+    image_lock.require_ready(side)
+    # As for the take lock: a schema-1 lock is never ready; were it to pass, its absent schema-2 field projects as
+    # PENDING, which the check refuses, never as a value.
+    return {k: side[k] if k in side else PENDING for k in SIDECAR_LOCK_KEYS}
+
+
 def _launched_parts(launched) -> tuple:
     """(spec, take id, sidecar id) from a successful launch record, or a refusal before any runtime call."""
     try:
@@ -851,17 +904,19 @@ def collect_and_evaluate(runtime, *, launched, sidecar, lock_path: str, harness:
     and the sidecar's own expectation. Lock and launch-record refusals raise before any runtime call; it creates no
     container, runs no turn, reads no login, writes no record and tears nothing down (the drive step's lifecycle)."""
     lock = load_take_lock(lock_path, harness=harness)
+    sidecar_lock = load_sidecar_lock(lock_path, harness=harness)
     evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
     spec, take_id, sidecar_id = _launched_parts(launched)
     try:
         expect = sidecar.expect
     except AttributeError:
         raise run_take.Refused("sidecar must be the SidecarLaunch the launch used") from None
-    probe_list = probes(spec, take_id=take_id, sidecar_id=sidecar_id, harness=harness, hosts=hosts,
-                        evidence_dir=evidence_dir)
+    sidecar_image = expect.get("image") if isinstance(expect, dict) else None
+    probe_list = probes(spec, take_id=take_id, sidecar_id=sidecar_id, sidecar_image=sidecar_image, harness=harness,
+                        hosts=hosts, evidence_dir=evidence_dir)
     raw = run(runtime, probe_list, begin_reply=begin_reply, caller_env=caller_env)
     return evaluate(raw, spec=spec, lock=lock, sidecar_expect=expect, harness=harness, hosts=hosts,
-                    evidence_dir=evidence_dir)
+                    evidence_dir=evidence_dir, sidecar_lock=sidecar_lock)
 
 
 # ------------------------------------------------------------------------------------------------ the record
