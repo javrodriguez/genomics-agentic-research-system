@@ -212,15 +212,20 @@ class FakeOwnership:
     (drive.OWNERSHIP_GRANT_PARAMS, OWNERSHIP_RESTORE_PARAMS), on fakes only: each call is appended to `events` with
     the box's call count at that moment (so a test reads its order against the containers), and fails when told.
 
-    fail_grant, fail_restore   raise OwnershipError (carrying its record) from that step"""
+    fail_grant, fail_restore, fail_write, fail_read   raise OwnershipError (carrying its record) from that step
+
+    operator_write and operator_read stand in for the box's in-box steps (ownership review MAJOR 2; box contract at
+    4c3d8e53): they write or read the bytes at the exact relative path with low-level calls that never follow a link
+    (never `open`, so a test can tell a host-side access by drive.py from these)."""
 
     class OwnershipError(RuntimeError):
         def __init__(self, message: str, record: dict):
             super().__init__(message)
             self.record = record
 
-    def __init__(self, box=None, *, fail_grant=False, fail_restore=False):
-        self.box, self.fail_grant, self.fail_restore = box, fail_grant, fail_restore
+    def __init__(self, box=None, *, fail_grant=False, fail_restore=False, fail_write=False, fail_read=False):
+        self.box, self.fail_grant, self.fail_restore, self.fail_write = box, fail_grant, fail_restore, fail_write
+        self.fail_read = fail_read
         self.events: list = []
 
     def _at(self):
@@ -244,6 +249,67 @@ class FakeOwnership:
                                                                                   "problems": ["synthetic"]})
         return {"ok": True, "steps": [{"step": f"restore-{n}", "returncode": 0, "stderr": ""}
                                       for n in ("run_tree", "config_dir", "evidence_dir")], "problems": []}
+
+    def _parent(self, run_tree, rel_path):
+        """(the parent folder's descriptor, the last name), every step opened with O_NOFOLLOW."""
+        parts = rel_path.split("/")
+        if rel_path.startswith("/") or any(x in ("", ".", "..") for x in parts):
+            raise self.OwnershipError(f"operator step refused: {rel_path!r} is not an exact relative path", {})
+        fd = os.open(run_tree, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            for name in parts[:-1]:
+                nxt = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+                os.close(fd)
+                fd = nxt
+        except OSError as e:
+            os.close(fd)
+            if isinstance(e, FileNotFoundError):
+                return None, parts[-1]
+            raise self.OwnershipError(f"operator step refused: {type(e).__name__}", {}) from None
+        return fd, parts[-1]
+
+    def operator_write(self, runtime, *, image, run_tree, rel_path, data, caller_env=None):
+        self.events.append(("operator_write", {"image": image, "run_tree": run_tree, "rel_path": rel_path,
+                                               "sha256": hashlib.sha256(data).hexdigest(), "at": self._at()}))
+        if self.fail_write:
+            raise self.OwnershipError("operator-write failed: synthetic", {"ok": False, "steps": []})
+        fd, name = self._parent(run_tree, rel_path)
+        if fd is None:
+            raise self.OwnershipError("operator-write refused: a missing parent", {})
+        try:
+            out = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644, dir_fd=fd)
+            try:
+                os.write(out, data)
+            finally:
+                os.close(out)
+        finally:
+            os.close(fd)
+        return {"ok": True, "path": rel_path, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+
+    def operator_read(self, runtime, *, image, run_tree, rel_path, caller_env=None):
+        self.events.append(("operator_read", {"image": image, "run_tree": run_tree, "rel_path": rel_path,
+                                              "at": self._at()}))
+        if self.fail_read:
+            raise self.OwnershipError("operator-read failed: synthetic", {"ok": False, "steps": []})
+        fd, name = self._parent(run_tree, rel_path)
+        if fd is None:
+            return None
+        try:
+            try:
+                f = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+            except FileNotFoundError:
+                return None
+            try:
+                chunks = []
+                while True:
+                    b = os.read(f, 65536)
+                    if not b:
+                        return b"".join(chunks)
+                    chunks.append(b)
+            finally:
+                os.close(f)
+        finally:
+            os.close(fd)
 
     def names(self) -> list:
         return [name for name, _ in self.events]
@@ -1338,14 +1404,13 @@ def b16_excluded(mod, p):
         return out
     from fixtures import gen_explain_not_act as gen
 
-    def index_write(project):
+    def index_write(project):                      # the save's path seam (gen.samples_csv): .git/index
         tree = Path(project).parents[2]
         (tree / ".git").mkdir(exist_ok=True)
-        (tree / ".git" / "index").write_text("synthetic index")
         return tree / ".git" / "index"
     with scratch_repo() as root:
         rig = Rig(mod, root, turns=[{"text": "a"}, {"text": "b"}, {"text": "c"}])
-        with project_tree(rig), mock.patch.object(gen, "operator_save", index_write):
+        with project_tree(rig), mock.patch.object(gen, "samples_csv", index_write):
             with planned(row(1, task="explain-not-act")):
                 _, got = run_batch(rig, [row(1, task="explain-not-act")])
         if got[0]["state"] != labels4.FAILED or "excluded path" not in (got[0]["reason"] or ""):
@@ -1837,7 +1902,8 @@ WITNESSES = {
     "restart-lists-containers-only": ((("        nets = leaked_networks(self.runtime, ids, caller_env=self.caller_env)",
                                         "        nets = []"),), b14_net, "B14-net"),
     "unlogged-save": ((("        self._evidence_line(take, {\"kind\": \"operator\", \"id\": op_id, \"at\": self.clock(),\n"
-                        "                                   \"writes\": [{\"path\": rel, \"after\": after}]})\n",
+                        "                                   \"writes\": [{\"path\": rel, \"after\": {\"type\": \"file\", "
+                        "\"sha256\": sha}}]})\n",
                         "        pass\n"),), b15_operator, "B15-operator"),
     "log-excluded-write": ((("        if self._excluded(rel, row[\"agent\"][\"harness\"]):", "        if False:"),),
                            b16_excluded, "B16-excluded"),

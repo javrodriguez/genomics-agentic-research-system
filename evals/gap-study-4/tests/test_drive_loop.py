@@ -671,9 +671,12 @@ class TestReviewFold(unittest.TestCase):
 
 # name: (edits to drive.py, the bound check, the line prefix that is its own assertion)
 WITNESSES = {
-    "table-reread": ((("            with open(target, \"wb\") as fh:                  # the hashed bytes, never a "
-                       "second read of the file\n                fh.write(table)\n",
-                       "            shutil.copyfile(design, target)\n"),), d1_table, "D1-table"),
+    # The ownership road (box operator_read/operator_write): the witness re-reads the design table through the box
+    # instead of writing the bytes it hashed.
+    "table-reread": ((("            written, data = target, table                   # the hashed bytes, never a "
+                       "second read of the file\n",
+                       "            written, data = target, self._operator_read(take, op_id, "
+                       "DESIGN_TABLE.format(project=project))\n"),), d1_table, "D1-table"),
     "continued-past-unheld-marker": ((("        if not held:\n            self.stopped = True",
                                        "        if False:\n            self.stopped = True"),), d2_stop, "D2-stop"),
     "recovery-never-sent": ((("        if not held and rec and self.recoveries < int(rec.get(\"at_most\", 1))",

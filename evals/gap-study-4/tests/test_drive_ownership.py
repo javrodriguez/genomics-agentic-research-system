@@ -16,13 +16,23 @@ box/ownership.py is the box lane's and may be absent from this tree.
   O6-image     a tag (anything but the lock's sha256 id) is refused before the grant
   O7-road      the interface: the fake passes ownership_problems, a wrong signature or a missing road does not, and a
                driver with no road refuses at launch before any folder
+  O8-operator  (ownership review MAJOR 2; the box contract at 4c3d8e53) a mid-take operator step reads and writes the
+               run tree only through the road's operator_read and operator_write: the explain-not-act save and the
+               confounded-design poll, read and copy touch the run tree with no host-side open by the driver; the
+               event logs the write reply's sha256; a failed read or write, or a reply off the data's sha256, stops
+               the take after its drive started (OperatorStepRefused, a ruling); a road without operator_read or
+               operator_write refuses such a task at launch
 
 Mutants (MUTANTS, each killed by its own check's line): grant skipped; restore moved after postflight; restore skipped
-on a LaunchError; a scan running after a failed restore; a commit reading a held take's records.
+on a LaunchError; a scan running after a failed restore; a commit reading a held take's records; a host-side save and a
+host-side copy or poll still reachable from the operator step; a write reply off the data's sha256 accepted.
 """
 
 from __future__ import annotations
 
+import builtins
+import hashlib
+import io
 import json
 import os
 import sys
@@ -329,8 +339,127 @@ def o7_road(mod, p):
     return out
 
 
+STDLIB = os.path.dirname(os.__file__)
+
+
+@contextmanager
+def host_writes(mod, found: list):
+    """Every `open` in any mode (builtins.open, and io.open, which pathlib calls) made while an operator step runs
+    whose first caller outside the standard library is not a test file (a test's own simulation of the agent): the
+    driver's, or a fixture's it called. The fake road uses os.open, so it is never one. under() keeps the run tree's."""
+    real_open, step = builtins.open, mod.TakeDriver._operator_step
+    active = []
+
+    def watching(file, mode="r", *a, **kw):
+        if active:
+            f = sys._getframe(1)
+            while f is not None and f.f_code.co_filename.startswith(STDLIB):
+                f = f.f_back
+            name = f.f_code.co_filename if f is not None else ""
+            if os.sep + "tests" + os.sep not in name:
+                found.append((str(file), name))
+        return real_open(file, mode, *a, **kw)
+
+    def operator_step(self, *a, **kw):
+        active.append(1)
+        try:
+            return step(self, *a, **kw)
+        finally:
+            active.pop()
+    with mock.patch.object(builtins, "open", watching), mock.patch.object(io, "open", watching), \
+            mock.patch.object(mod.TakeDriver, "_operator_step", operator_step):
+        yield found
+
+
+def under(found, tree) -> list:
+    """The host-side writes inside the run tree (the agent's after the grant). The driver's evidence ledger and
+    records sit outside it."""
+    tree = os.path.realpath(tree)
+    return [(f, who) for f, who in found if os.path.realpath(f).startswith(tree + os.sep)]
+
+
+@tbi.guarded("O8-operator")
+def o8_operator(mod, p):
+    out = []
+    from fixtures import gen_explain_not_act as gen
+    from fixtures import gen_fastq as gf
+    three = [{"text": "a"}, {"text": "b"}, {"text": "c"}]
+    rel = f"gars/projects/{tbi.PROJECT}/00_data/rnaseq_bulk/samples.csv"
+    with tbi.scratch_repo() as root:                 # the save: through the road only
+        found = []
+        rig = tbi.Rig(mod, root, turns=three)
+        with tbi.project_tree(rig, samples=gen.MISSPELT), tbi.planned(tbi.row(1, task="explain-not-act")), \
+                host_writes(mod, found):
+            _, got = tbi.run_batch(rig, [tbi.row(1, task="explain-not-act")])
+        take = rig.take()
+        writes = [e for n, e in rig.ownership.events if n == "operator_write"]
+        want = hashlib.sha256(gen.CORRECTED.encode()).hexdigest()
+        if [(w["rel_path"], w["sha256"], w["image"]) for w in writes] != [(rel, want, tbi.IMAGE)]:
+            out.append(f"{p}: the save was not one operator_write of the corrected bytes: {writes}")
+        found = under(found, take.spec.run_tree)
+        if found:
+            out.append(f"{p}: the save opened the run tree host-side: {found}")
+        if got[0]["state"] != tbi.labels4.GRADED:
+            out.append(f"{p}: the saved take is {got[0]['state']} ({got[0]['reason']})")
+        ops = [r for r in tbi.evidence_ledger(take) if r["kind"] == "operator"]
+        if [w["after"]["sha256"] for r in ops for w in r["writes"]] != [want]:
+            out.append(f"{p}: the operator event does not log the written bytes' digest: {ops}")
+    with tbi.scratch_repo() as root:                 # the copy: through the road only
+        found = []
+        rig = tbi.Rig(mod, root, turns=three + [{"text": "d"}])
+        plain_sleep, wrote = rig.driver.sleep, []
+
+        def sleep(s, rig=rig):
+            if rig.adapters and len(rig.adapters[0].lines) == 3 and not wrote:
+                target = Path(rig.take().launched.spec.run_tree) / rel
+                target.write_text("sample_id,written by stage 00\n")      # the agent's own write (a test frame)
+                wrote.append(s)
+            plain_sleep(s)
+        rig.driver.sleep = sleep
+        with tbi.project_tree(rig, design=gf.SAMPLES_CSV_BYTES), tbi.planned(tbi.row(1, task="confounded-design")), \
+                host_writes(mod, found):
+            _, got = tbi.run_batch(rig, [tbi.row(1, task="confounded-design")])
+        writes = [e for n, e in rig.ownership.events if n == "operator_write"]
+        if [(w["rel_path"], w["sha256"]) for w in writes] != [(rel, hashlib.sha256(gf.SAMPLES_CSV_BYTES).hexdigest())]:
+            out.append(f"{p}: the copy was not one operator_write of the design table: {writes}")
+        reads = [e["rel_path"] for n, e in rig.ownership.events if n == "operator_read"]
+        if rel not in reads or f"data/staging/{tbi.PROJECT}/samples.csv" not in reads:
+            out.append(f"{p}: the poll and the design table were not read through the road: {reads}")
+        found = under(found, rig.take().spec.run_tree)
+        if found:
+            out.append(f"{p}: the copy opened the run tree host-side: {found}")
+    class OffSha(tbi.FakeOwnership):                 # a write reply that is not the data's sha256
+        def operator_write(self, runtime, *, image, run_tree, rel_path, data, caller_env=None):
+            reply = super().operator_write(runtime, image=image, run_tree=run_tree, rel_path=rel_path, data=data,
+                                           caller_env=caller_env)
+            return dict(reply, sha256="0" * 64)
+    for why, task, road, words in (
+            ("a failed write", "explain-not-act", lambda box: tbi.FakeOwnership(box, fail_write=True), "write"),
+            ("a reply off the data's sha256", "explain-not-act", lambda box: OffSha(box), "sha256"),
+            ("a failed read", "confounded-design", lambda box: tbi.FakeOwnership(box, fail_read=True), "read")):
+        with tbi.scratch_repo() as root:             # a stop after the drive started, never a crash or a False
+            rig = tbi.Rig(mod, root, turns=three + [{"text": "d"}])
+            rig.driver.ownership = rig.ownership = road(rig.box)
+            with tbi.project_tree(rig, samples=gen.MISSPELT, design=gf.SAMPLES_CSV_BYTES), \
+                    tbi.planned(tbi.row(1, task=task)):
+                b, got = tbi.run_batch(rig, [tbi.row(1, task=task)])
+            o = got[0]
+            if o["state"] != tbi.labels4.FAILED or o["drive_started"] is not True or words not in (o["reason"] or ""):
+                out.append(f"{p}: {why} is {o['state']} (drive_started {o['drive_started']}): {o['reason']}")
+    if not getattr(mod, "OperatorStepRefused", None) or not issubclass(mod.OperatorStepRefused, mod.DriveRefused):
+        out.append(f"{p}: no typed OperatorStepRefused under DriveRefused")
+
+    class NoSteps:                                   # a road without operator_read and operator_write
+        OwnershipError = tbi.FakeOwnership.OwnershipError
+        grant, restore = tbi.FakeOwnership.grant, tbi.FakeOwnership.restore
+    road = NoSteps()
+    if not mod.ownership_problems(road, operator_write=True) or mod.ownership_problems(road):
+        out.append(f"{p}: the operator steps are not required exactly for a task with an operator step")
+    return out
+
+
 CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch, "O4-held": o4_held,
-          "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road}
+          "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -350,6 +479,17 @@ MUTANTS = {
           "        if False:                               # the ownership road: no postflight")), "O4-held"),
     "commit-reads-a-held-take": ((("        if take is not None and self._unrestored(take):",
                                    "        if False:"),), "O4-held"),
+    "host-side-save": ((("            written, data = str(_gen.samples_csv(Path(proj))), _gen.CORRECTED.encode()",
+                         "            written, data = str(_gen.operator_save(Path(proj))), _gen.CORRECTED.encode()"),),
+                       "O8-operator"),
+    "host-side-copy": ((("            written, data = target, table ",
+                         "            open(target, \"wb\").write(table); written, data = target, table "),),
+                       "O8-operator"),
+    "host-side-poll": ((("                got = self._operator_read(take, op_id, self._rel(target, tree))",
+                         "                got = open(target, \"rb\").read() if os.path.isfile(target) else None"),),
+                       "O8-operator"),
+    "reply-sha-unchecked": ((("        if not ok or sha != hashlib.sha256(data).hexdigest():",
+                              "        if False:"),), "O8-operator"),
 }
 
 
@@ -374,6 +514,9 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_o7_road(self):
         self.assertEqual(o7_road(tbi.drive), [])
+
+    def test_o8_operator(self):
+        self.assertEqual(o8_operator(tbi.drive), [])
 
 
 class TestOwnershipMutants(unittest.TestCase):
@@ -404,6 +547,18 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_commit_reads_a_held_take(self):
         self.kill("commit-reads-a-held-take")
+
+    def test_host_side_save(self):
+        self.kill("host-side-save")
+
+    def test_host_side_copy(self):
+        self.kill("host-side-copy")
+
+    def test_host_side_poll(self):
+        self.kill("host-side-poll")
+
+    def test_reply_sha_unchecked(self):
+        self.kill("reply-sha-unchecked")
 
 
 if __name__ == "__main__":

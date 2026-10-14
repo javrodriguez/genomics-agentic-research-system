@@ -1850,16 +1850,23 @@ POSTFLIGHT_RECORD, OPERATOR_CHECK_RECORD = "postflight.json", "operator-check.js
 #   grant(runtime, *, image, run_tree, config_dir, evidence_dir, caller_env)  -> record; raises OwnershipError
 #   restore(runtime, *, image, run_tree, config_dir, evidence_dir, ids, caller_env) -> record; raises OwnershipError
 #   OwnershipError   an exception class whose instances carry `record`
+#   operator_write(runtime, *, image, run_tree, rel_path, data, caller_env) -> {ok, path, sha256, bytes}
+#   operator_read(runtime, *, image, run_tree, rel_path, caller_env) -> bytes | None
+#                    (ownership review MAJOR 2, the box contract at 4c3d8e53: a mid-take operator step reads and writes
+#                    the agent-owned run tree inside the box, never host-side; required at launch for a task with one)
 OWNERSHIP_GRANT_PARAMS = ("runtime", "image", "run_tree", "config_dir", "evidence_dir", "caller_env")
 OWNERSHIP_RESTORE_PARAMS = ("runtime", "image", "run_tree", "config_dir", "evidence_dir", "ids", "caller_env")
+OWNERSHIP_OPERATOR_WRITE_PARAMS = ("runtime", "image", "run_tree", "rel_path", "data", "caller_env")
+OWNERSHIP_OPERATOR_READ_PARAMS = ("runtime", "image", "run_tree", "rel_path", "caller_env")
 OWNERSHIP_GRANT_RECORD, OWNERSHIP_RESTORE_RECORD = "ownership-grant.json", "ownership-restore.json"
 OWNERSHIP_STEPS = ("ownership-grant", "ownership-restore")      # the driver ledger's operator steps, in order
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")                    # the lock's image id; a tag never runs a step
 
 
-def ownership_problems(road) -> list:
+def ownership_problems(road, *, operator_write: bool = False) -> list:
     """Why `road` is not an ownership road this driver can call (empty when it is): the interface above, by name,
-    kind and order of each parameter. None (box/ownership.py absent from this tree) is a problem, never a skip."""
+    kind and order of each parameter. None (box/ownership.py absent from this tree) is a problem, never a skip.
+    operator_write: the take has a mid-take operator step, so the road must also offer operator_write."""
     import inspect
     if road is None:
         return ["no ownership road: box/ownership.py is not on this tree (the box lane's 81ede46d), so no take "
@@ -1868,7 +1875,11 @@ def ownership_problems(road) -> list:
     err = getattr(road, "OwnershipError", None)
     if not (isinstance(err, type) and issubclass(err, Exception)):
         p.append("the ownership road's OwnershipError is not an exception class")
-    for name, params in (("grant", OWNERSHIP_GRANT_PARAMS), ("restore", OWNERSHIP_RESTORE_PARAMS)):
+    steps = [("grant", OWNERSHIP_GRANT_PARAMS), ("restore", OWNERSHIP_RESTORE_PARAMS)]
+    if operator_write:
+        steps += [("operator_write", OWNERSHIP_OPERATOR_WRITE_PARAMS),
+                  ("operator_read", OWNERSHIP_OPERATOR_READ_PARAMS)]
+    for name, params in steps:
         fn = getattr(road, name, None)
         if not callable(fn):
             p.append(f"the ownership road has no callable {name}")
@@ -1905,6 +1916,11 @@ def pre_turn_refusal(e: BaseException) -> bool:
 
 class DriveRefused(RuntimeError):
     """The drive step cannot hand the take to routing: the loop records it `failed` and stops for a human."""
+
+
+class OperatorStepRefused(DriveRefused):
+    """A mid-take operator step's read or write through the ownership road failed (ownership review MAJOR 2): the
+    take stopped after its drive started, for a human ruling, never a re-run."""
 
 
 class NativeCrossCheckPending(DriveRefused):
@@ -2042,7 +2058,8 @@ class TakeDriver:
         partial teardown did not remove it (batch records it and removes it again), else None."""
         if self.publish_problems:                             # S6b Q6 (D5): a config folder never reused silently
             raise DriveRefused(f"a published take's cleanup failed: {self.publish_problems[0]}")
-        road = ownership_problems(self.ownership)              # before any folder or container
+        road = ownership_problems(self.ownership,               # before any folder or container
+                                  operator_write=any(task == row.get("task") for task, _ in OPERATOR_STEPS))
         if road:
             raise DriveRefused("; ".join(road))
         folder = self.take_folder(row) if _folder is None else _folder
@@ -2184,9 +2201,12 @@ class TakeDriver:
             fh.write(json.dumps(rec, sort_keys=True) + "\n")
 
     def _operator_step(self, take, row, step) -> bool:
-        """C9 (ruling D8): the closed table's operator step after turn n, done host-side in the run tree and logged
-        as one operator event (its writes with the state each leaves). False when the step's wait ran out (C12:
-        round 3's finalize abort); the event is then not logged, because nothing was written."""
+        """C9 (ruling D8): the closed table's operator step after turn n, logged as one operator event (its writes
+        with the state each leaves). Ownership review MAJOR 2 (the box contract's operator addition): the run tree is
+        the agent's after the grant, so every read and write of it here is the box's (operator_read, operator_write,
+        inside the box, links never followed), never a host-side open; the event's sha256 is the write's reply.
+        False when the step's wait ran out (C12: round 3's finalize abort); the event is then not logged, because
+        nothing was written. A failed read or write stops the take (OperatorStepRefused)."""
         op_id, action = step
         tree = take.launched.spec.run_tree
         project = self.project_for(row)
@@ -2194,38 +2214,64 @@ class TakeDriver:
         target = os.path.join(proj, "00_data", "rnaseq_bulk", "samples.csv")
         if action == OPERATOR_SAVE:
             from fixtures import gen_explain_not_act as _gen          # the generator's own save (SAVE_PATH)
-            written = str(_gen.operator_save(Path(proj)))
+            written, data = str(_gen.samples_csv(Path(proj))), _gen.CORRECTED.encode()   # operator_save's bytes
         elif action == OPERATOR_FINALIZE:
             deadline = self.clock() + self.finalize_wait_s
-            while not (os.path.isfile(target) and "sample_id" in open(target, encoding="utf-8",
-                                                                           errors="replace").read()):
+            while True:                                     # each poll is one box read; the injected poll_s paces it
+                got = self._operator_read(take, op_id, self._rel(target, tree))
+                if got is not None and b"sample_id" in got:
+                    break
                 if self.clock() >= deadline:
                     return False
                 self.sleep(self.poll_s)
-            design = os.path.join(tree, *DESIGN_TABLE.format(project=project).split("/"))
-            if not os.path.isfile(design):                  # W6I-R1-4: a stop, never a bare FileNotFoundError
+            table = self._operator_read(take, op_id, DESIGN_TABLE.format(project=project))
+            if table is None:                               # W6I-R1-4: a stop, never a bare FileNotFoundError
                 raise DriveRefused(f"operator step {op_id!r}: the fixture's design table {DESIGN_TABLE} is missing")
             want = (((_variants.load_task(row["task"])["halves"][row["half"]].get("fixture") or {})
                      .get("design_table") or {}).get("md5"))
-            with open(design, "rb") as fh:
-                table = fh.read()                           # S6c (W6I-R2-2): read once; these bytes are written
-            got = hashlib.md5(table).hexdigest()
+            got = hashlib.md5(table).hexdigest()            # S6c (W6I-R2-2): read once; these bytes are written
             if not want or got != want:                     # the table copied in is the fixture's pinned one
                 raise DriveRefused(f"operator step {op_id!r}: the design table's md5 {got} is not the fixture's "
                                    f"pinned {want!r}")
-            with open(target, "wb") as fh:                  # the hashed bytes, never a second read of the file
-                fh.write(table)
-            written = target
+            written, data = target, table                   # the hashed bytes, never a second read of the file
         else:
             raise DriveRefused(f"operator step {op_id!r} has no action this driver knows ({action!r})")
-        rel = os.path.relpath(written, tree).replace(os.sep, "/")
+        rel = self._rel(written, tree)
         if self._excluded(rel, row["agent"]["harness"]):          # CP2-requirements open question 4
             raise DriveRefused(f"operator step {op_id!r} writes {rel}, an excluded path; it is never logged")
-        with open(written, "rb") as fh:
-            after = {"type": "file", "sha256": hashlib.sha256(fh.read()).hexdigest()}
+        try:
+            reply = self.ownership.operator_write(self.runtime, image=take.spec.image, run_tree=tree, rel_path=rel,
+                                                  data=data, caller_env=self.caller_env)
+        except Exception as e:  # noqa: BLE001 - OwnershipError, Refused or anything else: the take's stop
+            raise OperatorStepRefused(f"operator step {op_id!r}: the box's write of {rel} failed "
+                                      f"({type(e).__name__}: {str(e)[:300]}); the take is kept for a human ruling, "
+                                      f"never a re-run") from e
+        ok = isinstance(reply, dict) and reply.get("ok") is True
+        sha = reply.get("sha256") if isinstance(reply, dict) else None
+        if not ok or sha != hashlib.sha256(data).hexdigest():
+            raise OperatorStepRefused(f"operator step {op_id!r}: the box's write of {rel} replied {reply!r}, not ok "
+                                      f"with the data's sha256; the take is kept for a human ruling")
         self._evidence_line(take, {"kind": "operator", "id": op_id, "at": self.clock(),
-                                   "writes": [{"path": rel, "after": after}]})
+                                   "writes": [{"path": rel, "after": {"type": "file", "sha256": sha}}]})
         return True
+
+    @staticmethod
+    def _rel(path: str, tree: str) -> str:
+        return os.path.relpath(path, tree).replace(os.sep, "/")
+
+    def _operator_read(self, take, op_id, rel: str):
+        """The box's read of one run-tree file (bytes, or None when it does not exist); any failure stops the take."""
+        try:
+            got = self.ownership.operator_read(self.runtime, image=take.spec.image,
+                                               run_tree=take.launched.spec.run_tree, rel_path=rel,
+                                               caller_env=self.caller_env)
+        except Exception as e:  # noqa: BLE001 - OwnershipError, Refused or anything else: the take's stop
+            raise OperatorStepRefused(f"operator step {op_id!r}: the box's read of {rel} failed "
+                                      f"({type(e).__name__}: {str(e)[:300]}); the take is kept for a human ruling, "
+                                      f"never a re-run") from e
+        if got is not None and not isinstance(got, bytes):
+            raise OperatorStepRefused(f"operator step {op_id!r}: the box's read of {rel} gave {type(got).__name__}")
+        return got
 
     @staticmethod
     def _excluded(rel: str, harness: str) -> bool:
