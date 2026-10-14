@@ -3046,8 +3046,11 @@ class WalkDriver(TakeDriver):
 def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts, login_file,
                 counters_for, pin_for, design_for, project_for, identity_for, secrets, rules_scanner, uid_map,
                 budget_s, finalize_wait_s, poll_s, clock, sleep, holdout_matcher=None, caller_env=None,
-                records="takes") -> WalkDriver:
-    """The CP6 production wiring (cp6-readiness row 3): batch's driver for a walk or a take of claude-code.
+                records="takes", rollout_for=None) -> WalkDriver:
+    """The CP6 production wiring (cp6-readiness row 3): batch's driver for a walk or a take of any of the three
+    harnesses (registration review finding 2, glitch-06, 14 Oct 2026: harness_adapter_for, so a Gemini walk, and a
+    Codex walk once its rollout_for road exists, runs on the same road; WalkDriver still admits only each harness's
+    exact production class).
 
     design_for  (row, run_tree) -> check_take.design_view(row, pin=pin_for(row), run_tree=run_tree, constants=...):
                 the script is read with run_tree None (its lines carry {project} and {source}, rendered here from the
@@ -3055,7 +3058,8 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
     root        the study folder the take records are committed under (take_folder_in)
     records     W8A: "takes" (the default: takes/<slot>/<k>, take_folder_in) or "walks" (rehearsals/<walk>/,
                 walk_folder_in, the row's `walk` id); any other value refuses (record_folder_in)
-    Everything else is TakeDriver's (its docstring) or claude_code_adapter_for's. The constants only a walk can
+    rollout_for Codex's native rollout retrieval (harness_adapter_for): None refuses a Codex walk before a turn
+    Everything else is TakeDriver's (its docstring) or harness_adapter_for's. The constants only a walk can
     measure stay the caller's: design_for hands them to design_view, and check4 refuses while any is PENDING."""
     if not callable(design_for):
         raise TypeError("design_for must be callable")
@@ -3070,8 +3074,8 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
     return WalkDriver(
         records_root=root, records=records, runtime=runtime, take_folder=record_folder_in(root, records), config_parent=config_parent, spec_for=spec_for,
         sidecar_for=sidecar_for, proxy=proxy, lock_path=lock_path, hosts=hosts,
-        adapter_for=claude_code_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
-                                            pin_for=pin_for, clock=clock, caller_env=caller_env),
+        adapter_for=harness_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
+                                        pin_for=pin_for, clock=clock, rollout_for=rollout_for, caller_env=caller_env),
         script_for=script_for, pin_for=pin_for,
         checker=take_checker(design_for=lambda row, take: design_for(row, take.launched.spec.run_tree),
                              records=records),
@@ -3102,7 +3106,8 @@ WALK_GRADE = _mode_binding.WALK_GRADE
 # grade.json's scan kind: a machine record the driver side writes, scanned as the ledgers are (w4c's KINDS; whether
 # it deserves a kind of its own is w4c's call, named in lane-reports/w8a-walk-layout.md).
 WALK_CHECK = "check.json"     # W10 (D1): the walk's checker reading and its route, beside grade.json
-WALK_FILE_KINDS = {WALK_GRADE: "ledger", WALK_CHECK: "ledger"}
+WALK_REGRADE = "regrade.json"  # live harness (finding 2): a pending walk's superseding regrade, a later commit's only file
+WALK_FILE_KINDS = {WALK_GRADE: "ledger", WALK_CHECK: "ledger", WALK_REGRADE: "ledger"}
 WALK_REQUIRED = (WALK_GRADE, WALK_CHECK)
 WALK_PRE_TURN = (PREFLIGHT_RECORD, REFUSAL_RECORD)
 WALK_TRANSCRIPT = "transcript.jsonl"          # W10-R2-3: with a turn record, the sign that a turn ran    # W10 (D3): what says why a walk died before its driver ledger

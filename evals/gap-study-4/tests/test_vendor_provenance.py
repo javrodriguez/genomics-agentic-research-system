@@ -89,7 +89,7 @@ class ProvenanceTests(unittest.TestCase):
                           "cwd": "/synthetic/tree", "stream": "/synthetic/record/turn-1.jsonl", "started_at": 1.0}
                 want = {"harness": harness, "container_id": "a" * 64, "model": "synthetic-model",
                         "mode": mode, "run_tree": "/synthetic/tree", "stream": launch["stream"],
-                        "sent": "sent", "vendor_session_id": "session-1", "ordinal": 1}
+                        "sent": "sent", "vendor_session_id": "first-turn", "ordinal": 1}
                 facts = vp.launch_facts(launch, want)
                 self.assertEqual(facts["permission_mode"], {"value": mode, "source": "actual-launch"})
                 self.assertEqual(facts["requested_model"], {"value": "synthetic-model", "source": "actual-launch"})
@@ -97,6 +97,9 @@ class ProvenanceTests(unittest.TestCase):
                                  ("stream", "/elsewhere/turn-1.jsonl")):
                     with self.subTest(key=key), self.assertRaises(vp.ProvenanceRefused):
                         vp.launch_facts(dict(launch, **{key: bad}), want)
+                for session, ordinal in (("session-1", 1), ("first-turn", 2), ("", 1)):    # batch-8 finding 5
+                    with self.subTest(session=session, ordinal=ordinal), self.assertRaises(vp.ProvenanceRefused):
+                        vp.launch_facts(launch, dict(want, vendor_session_id=session, ordinal=ordinal))
                 for argv in (launch["argv"] + ["extra"], ["gemini", "-p", "sent"],
                              [s.replace("synthetic-model", "wrong-model") for s in launch["argv"]]):
                     with self.assertRaises(vp.ProvenanceRefused):

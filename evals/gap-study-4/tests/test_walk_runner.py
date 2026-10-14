@@ -163,7 +163,8 @@ REVIEWER = {
 REVIEWER_BOUND = {'r1-row-needed-assert-gone': 'R8WalkRoad.test_the_row_needed_line_is_asserted', 'r1-ledger-taskhalf-gone': 'R8WalkRoad.test_the_ledger_cell', 'r1-ledger-row-gone': 'R8WalkRoad.test_the_ledger_row', 'r1-env-gone': 'R8WalkRoad.test_the_environment_record', 'r1-envrec-row-gone': 'R8WalkRoad.test_the_environment_row', 'r1-model-gone': 'R8WalkRoad.test_the_model', 'r1-constants-gone': 'R8WalkRoad.test_the_constants', 'r1-mode-gone': 'R8WalkRoad.test_the_permission_mode', 'r1-identity-row-gone': 'R2WalkCheck.test_a_walk_identity_with_a_row_is_refused', 'x-row-needed-last-clause': 'R8WalkRoad.test_the_row_needed_line_is_last', 'x-row-needed-count-clause': 'R8WalkRoad.test_the_row_needed_line_is_alone', 'x-snapshot-gone': 'R8WalkRoad.test_no_snapshot', 'x-memory-offered-gone': 'R8WalkRoad.test_memory_offered', 'x-no-ledger-silent': 'R8WalkRoad.test_no_ledger', 'x-ledger-session-gone': 'R2WalkCheck.test_a_walk_is_read_as_a_walk'}
 
 
-CLAUSE_OF = {"R8WalkRoad": "R8.walk-road", "R2WalkCheck": "R2.walk-check", "R3DeadWalk": "R3.dead-walk",
+CLAUSE_OF = {"R12Pending": "R12.pending", "R8WalkRoad": "R8.walk-road", "R2WalkCheck": "R2.walk-check",
+             "R3DeadWalk": "R3.dead-walk",
              "R4Held": "R4.held"}
 
 # W10-R3 (ruling w10-R3-fold): the round-3 reviewer's eleven mutants (scratchpad/w10r3/mut_extra.py), anchors verbatim.
@@ -223,6 +224,18 @@ def own_mutants():
         "checked-always": ("R3.dead-walk", "walk_runner", "\"checked\": checked is True", "\"checked\": True"),
         "walk-launch-journal-not-a-turn": ("R3.dead-walk", "drive",       # integration red A3 (glitch-06, 14 Oct)
                                            "\n                 or LAUNCH_JOURNAL_NAME.fullmatch(n))", ")"),
+        # registration review finding 2 (glitch-06, 14 Oct 2026): the pending-walk road
+        "pending-walk-held": ("R12.pending", "walk_runner",
+                              '    if removal_error is None and isinstance(drive_error, ns["NativeCrossCheckPending"]):',
+                              "    if False:"),
+        "pending-removal-unchecked": ("R12.pending", "walk_runner",
+                                      '    if removal_error is None and isinstance(drive_error, ns["NativeCrossCheckPending"]):',
+                                      '    if isinstance(drive_error, ns["NativeCrossCheckPending"]):'),
+        "pending-other-errors-admitted": ("R12.pending", "walk_runner",
+                                          '    if removal_error is None and isinstance(drive_error, ns["NativeCrossCheckPending"]):',
+                                          "    if removal_error is None and drive_error is not None:"),
+        "pending-grade-dropped": ("R12.pending", "run",
+                                  "    if pending is not None:\n        return pending\n", ""),
         "walk-checked-as-take": ("R2.walk-check", "drive",
                                  "        if records == \"walks\":                    # D1: the round-4 walk road\n",
                                  "        if False:                    # D1: the round-4 walk road\n"),
@@ -1361,13 +1374,13 @@ EQUIVALENT: dict = {
     "walk_runner._run_one:drop-0:L2:C7:2b55246e":
         "run_one, _run_one's only caller, passes walk = row.get('walk') if row is a dict, else None; so whenever "
         "row is not a dict, walk is None and `not isinstance(walk, str)` alone already holds",
-    "walk_runner.run_walks:cond-false:L12:C11:aa50c7d9":
+    "walk_runner.run_walks:cond-false:L13:C11:aa50c7d9":   # re-anchored: the docstring grew a line (batch 8)
         "the `continue` is the loop body's tail but for the HELD test; a launch-refused state is not HELD, so "
         "without it the loop goes on the same way",
-    "walk_runner.run_walks:delete:L12:C8:35f36fd2":
+    "walk_runner.run_walks:delete:L13:C8:35f36fd2":
         "the `if launch-refused: continue` is the loop body's tail but for the HELD test; a launch-refused state is "
         "not HELD, so without it the loop goes on the same way",
-    "walk_runner.run_walks:delete:L13:C12:93cfda8b":
+    "walk_runner.run_walks:delete:L14:C12:93cfda8b":
         "`continue` replaced by `pass` falls to the HELD test, which a launch-refused state never meets, so the loop "
         "goes on the same way",
 }
@@ -1386,8 +1399,71 @@ class G1Generated(Case):
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can. R8WalkRoad drives one
 # walk for all its tests, so it runs before R4Held and R3DeadWalk, which drive one or more walks per test.
-GENERATED_ORDER = ("R11Units", "R10Guards", "R6Cli", "R7Slot", "G1Generated", "R8WalkRoad", "R4Held", "R3DeadWalk",
-                   "R2WalkCheck", "R1Chain", "R5Round3", "R9RealGrade", "TestSysPath")
+class R12Pending(Case):
+    """Registration review finding 2 (glitch-06, 14 Oct 2026): a walk whose drive stops on a pending native
+    cross-check (its ledger recording it, its containers removed) is committed ungraded as pending-native-reader, with
+    the pending check and grade documents, and the runner moves on; the same stop with a container left is held; any
+    other drive error is held as before. The stand-in: the Claude walk's own drive, its ledger then marked pending and
+    the driver module's NativeCrossCheckPending raised, as the driver raises it for a vendor take after its scan
+    (the vendor road itself, end to end, is tests/test_pending_walk.py)."""
+
+    WHY = "no reviewed native-session reader (a stand-in)"
+
+    def pend(self, w, *, other=False):
+        real = w.driver.drive
+
+        def drive(row, cid):
+            real(row, cid)
+            path = folder_of(w, row["walk"]) / "driver-ledger.json"
+            ledger = json.loads(path.read_text())
+            ledger["cross_check_status"] = {"status": "pending", "why": self.WHY}
+            path.write_text(json.dumps(ledger, indent=2) + "\n")
+            if other:
+                raise w.mod.DriveRefused("a stand-in refusal that is not a pending cross-check")
+            raise w.mod.NativeCrossCheckPending(f"native cross-check pending ({self.WHY})")
+        w.driver.drive = drive
+
+    def test_a_pending_walk_is_committed_ungraded_and_the_runner_moves_on(self):
+        with study() as w:
+            self.pend(w)
+            got = self.must("R12.pending", w.run_walks, [w.walk("w-0001"), w.walk("w-0002")])
+            self.assertEqual([g.get("state") for g in got], ["pending-native-reader"] * 2, f"R12.pending: {got}")
+            self.assertEqual([g.get("graded") for g in got], [False, False], "R12.pending")
+            folder = folder_of(w, "w-0001")
+            self.assertEqual(json.loads((folder / "grade.json").read_text()),
+                             {"graded": False, "status": "pending-native-reader",
+                              "why": f"not graded, because its native cross-check is pending: {self.WHY}"},
+                             "R12.pending")
+            self.assertEqual(json.loads((folder / "check.json").read_text()),
+                             {"walk": "w-0001", "status": "pending-native-reader", "why": self.WHY}, "R12.pending")
+            self.assertEqual(register_check(w)[0], [], "R12.pending")
+            self.assertEqual(tbi.git(w.root, "log", "-1", "--format=%s"), "Commit one walk; never counted",
+                             "R12.pending")
+
+    def test_a_pending_walk_whose_container_stays_is_held(self):
+        with study() as w:
+            self.pend(w)
+
+            def remove(cid):
+                raise RuntimeError("a stand-in removal failure")
+            w.driver.remove = remove
+            got = self.must("R12.pending", w.run_walks, [w.walk("w-0001")])
+            self.assertEqual([g.get("state") for g in got], ["held"], f"R12.pending: {got}")
+            self.assertIn("NativeCrossCheckPending", got[0]["why"], "R12.pending")
+            self.assertTrue(got[0]["why"].endswith("the walk folder is left for a human, never committed"),
+                            f"R12.pending: {got[0]['why']}")
+
+    def test_any_other_drive_error_is_held_as_before(self):
+        with study() as w:
+            self.pend(w, other=True)
+            got = self.must("R12.pending", w.run_walks, [w.walk("w-0001")])
+            self.assertEqual([g.get("state") for g in got], ["held"], f"R12.pending: {got}")
+            self.assertTrue(got[0]["why"].endswith("the walk folder is left for a human, never committed"),
+                            f"R12.pending: {got[0]['why']}")
+
+
+GENERATED_ORDER = ("R11Units", "R10Guards", "R6Cli", "R7Slot", "G1Generated", "R8WalkRoad", "R4Held", "R12Pending",
+                   "R3DeadWalk", "R2WalkCheck", "R1Chain", "R5Round3", "R9RealGrade", "TestSysPath")
 
 
 def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
@@ -1511,8 +1587,10 @@ class R10Guards(Case):
 # the exact refusal, so each kill is by assertion.
 def stub_driver(root: Path, *, walk_check=None, launch=None, drive=None, remove=None, published=None):
     """A walk driver stand-in whose class's launch carries the namespace walk_runner.driver_namespace reads (the drive
-    module's LaunchRefused and WALK_CHECK, or another WALK_CHECK)."""
+    module's LaunchRefused, NativeCrossCheckPending (the pending-walk road, batch-8 review finding 2) and WALK_CHECK,
+    or another WALK_CHECK)."""
     g = {"__name__": "synthetic_drive", "LaunchRefused": MODS["drive"].LaunchRefused,
+         "NativeCrossCheckPending": MODS["drive"].NativeCrossCheckPending,
          "WALK_CHECK": MODS["drive"].WALK_CHECK if walk_check is None else walk_check}
     exec("class StubDriver:\n    def launch(self, row):\n        return self.on_launch(row)\n", g)
     d = g["StubDriver"]()
@@ -1806,7 +1884,8 @@ BOUND = {"R1.chain": "R1Chain.test_one_walk_end_to_end",
          "R9.real-grade": "R9RealGrade.test_the_real_grader_reads_a_fake_walk",
          "G1.generated": "G1Generated.test_the_equivalent_list_matches_the_generated_mutants",
          "R10.guards": "R10Guards",
-         "R11.units": "R11Units"}
+         "R11.units": "R11Units",
+         "R12.pending": "R12Pending"}
 # R2's and R4's witnesses each name the one method they turn red
 METHOD = {"walk-checked-as-take": "R2WalkCheck.test_a_walk_is_read_as_a_walk",
           "walk-session-unbound": "R2WalkCheck.test_a_walk_is_read_as_a_walk",
@@ -1838,7 +1917,12 @@ METHOD = {"walk-checked-as-take": "R2WalkCheck.test_a_walk_is_read_as_a_walk",
           "walk-mode-unread": "R8WalkRoad.test_the_permission_mode",
           "walk-tree-unchecked": "R8WalkRoad.test_the_design_tree",
           "walk-tree-unchecked-through-drive": "R8WalkRoad.test_the_design_tree_through_the_drive",
-          "walk-arm-unbound": "R8WalkRoad.test_the_arm"}
+          "walk-arm-unbound": "R8WalkRoad.test_the_arm",
+          "walk-launch-journal-not-a-turn": "R3DeadWalk.test_a_ledgerless_walk_with_only_a_launch_journal_is_refused",
+          "pending-walk-held": "R12Pending.test_a_pending_walk_is_committed_ungraded_and_the_runner_moves_on",
+          "pending-grade-dropped": "R12Pending.test_a_pending_walk_is_committed_ungraded_and_the_runner_moves_on",
+          "pending-removal-unchecked": "R12Pending.test_a_pending_walk_whose_container_stays_is_held",
+          "pending-other-errors-admitted": "R12Pending.test_any_other_drive_error_is_held_as_before"}
 METHOD.update(REVIEWER_BOUND)
 METHOD.update(REVIEWER3_BOUND)
 WITNESSES = {name: (METHOD.get(name, BOUND[m[0]]), m[0]) for name, m in mutants().items()}

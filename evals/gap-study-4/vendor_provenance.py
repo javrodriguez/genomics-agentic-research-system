@@ -36,6 +36,7 @@ class ProvenancePending(ProvenanceRefused):
 NATIVE_SESSION_READERS = MappingProxyType({})
 LAUNCH_KEYS = {"schema", "harness", "container_id", "argv", "cwd", "stream", "started_at"}
 WANT_KEYS = {"harness", "container_id", "model", "mode", "run_tree", "stream", "sent", "vendor_session_id", "ordinal"}
+FIRST_TURN = "first-turn"     # the expectation's session on turn 1, which resumes nothing (batch-8 review finding 5)
 SESSION_KEYS = {"session_id", "requested_model", "version", "cwd", "permission_mode", "sent", "output"}
 OPTIONAL_NATIVE = {"requested_model", "version", "cwd", "permission_mode"}
 
@@ -55,6 +56,8 @@ def launch_facts(launch: dict, want: dict) -> dict:
             raise ProvenanceRefused(f"launch expectation {key} is absent or PENDING")
     if type(want["ordinal"]) is not int or want["ordinal"] < 1:
         raise ProvenanceRefused("interaction ordinal must be a positive integer")
+    if (want["ordinal"] == 1) != (want["vendor_session_id"] == FIRST_TURN):   # batch-8 review finding 5
+        raise ProvenanceRefused(f"turn 1 resumes nothing and names {FIRST_TURN!r}; a later turn names its session")
     for actual, expected in (("harness", "harness"), ("container_id", "container_id"), ("cwd", "run_tree"), ("stream", "stream")):
         if launch[actual] != want[expected]:
             raise ProvenanceRefused(f"actual launch {actual} disagrees with bound take")

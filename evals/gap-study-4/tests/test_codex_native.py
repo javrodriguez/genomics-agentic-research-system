@@ -92,7 +92,7 @@ class Reader(unittest.TestCase):
         self.assertIsNone(f["permission_mode"], "approval/sandbox spellings are placeholders, never accepted")
         self.assertEqual(f["sent"], "sent 1")
         self.assertEqual(f["output"], [
-            {"kind": "command", "status": "completed", "exit_code": 0, "output": "out", "truncated": False},
+            {"kind": "command", "status": "completed", "exit_code": 0, "output": "out", "marker_text": False},
             {"kind": "agent-text", "text": "Done."}])
         self.assertEqual(m.read_rollout(raw(rollout()))["turns"][0]["terminal"], "complete")
 
@@ -136,13 +136,41 @@ class Reader(unittest.TestCase):
         with self.assertRaises(m.ReaderRefused):
             m.project("\n".join(bad).encode())
 
-    def test_truncation_markers_are_kept_and_flagged(self):
+    def test_the_marker_text_is_kept_and_named_never_read_as_truncation(self):
         m = cn()
         recs = rollout()
         marked = "head" + m.TRUNCATION_MARKER + "tail"
         recs[4]["payload"]["item"]["aggregated_output"] = marked
         out = m.project(raw(recs))[0]["output"][0]
-        self.assertEqual((out["output"], out["truncated"]), (marked, True))
+        self.assertEqual((out["output"], out["marker_text"]), (marked, True))
+        self.assertNotIn("truncated", out)
+
+    def test_a_blank_interior_line_refuses(self):
+        m = cn()
+        for blank in ("", "   ", "\t"):
+            with self.subTest(blank=blank):
+                lines = raw(rollout()).decode().split("\n")
+                lines.insert(3, blank)
+                with self.assertRaises(m.ReaderRefused) as cm:
+                    m.project("\n".join(lines).encode())
+                self.assertIn("blank", str(cm.exception))
+        self.assertEqual(len(m.project(raw(rollout()))), 1)          # the newline after the last record is no line
+        with self.assertRaises(m.JoinRefused):
+            m.read_exec(exec_stream().replace("\n", "\n  \n", 1))
+
+    def test_a_whitespace_only_reasoning_summary_refuses_by_name(self):
+        m = cn()
+        recs = rollout()
+        recs.insert(4, line(4, "event_msg", {"type": "item_completed", "thread_id": TID, "turn_id": "t1",
+                                              "item": {"type": "Reasoning", "id": "r1", "summary_text": [" ", "\t"]},
+                                              "completed_at_ms": 0}))
+        for n, rec in enumerate(recs):
+            rec["ordinal"] = n
+        with self.assertRaises(m.ReaderRefused) as cm:
+            m.project(raw(recs))
+        self.assertIn("whitespace only", str(cm.exception))
+        recs[4]["payload"]["item"]["summary_text"] = []                   # an empty summary: no output, as exec skips it
+        self.assertEqual([o["kind"] for o in m.project(raw(recs))[0]["output"]], ["command", "agent-text"])
 
     def test_an_interrupted_or_open_turn_is_incomplete(self):
         m = cn()
@@ -158,7 +186,7 @@ class Join(unittest.TestCase):
         m = cn()
         got = m.join(m.read_rollout(raw(rollout()))["turns"][0], exec_stream(), exit_code=0, session_id=TID)
         self.assertEqual(got, {"complete": True, "terminal": "complete", "served_model": None,
-                               "agent_texts": ["Done."], "commands": 1, "truncated": False,
+                               "agent_texts": ["Done."], "commands": 1, "marker_text": False,
                                "command_text": "presentation-derived, not compared"})
 
     def test_each_disagreement_refuses(self):
@@ -184,18 +212,59 @@ class Join(unittest.TestCase):
                      exec_stream(reroute="SYNTHETIC-MODEL -> OTHER-MODEL"), exit_code=0, session_id=TID)
         self.assertEqual(got["served_model"], "OTHER-MODEL")
 
-    def test_a_truncated_native_output_compares_by_prefix_and_suffix(self):
+    def test_an_agent_printed_marker_is_ordinary_text(self):
+        """Review finding 3, the reviewer's witness: a short native output that merely contains the marker text is
+        compared exactly; a disagreeing middle refuses, the same bytes join."""
         m = cn()
         recs = rollout()
-        recs[4]["payload"]["item"]["aggregated_output"] = "head" + m.TRUNCATION_MARKER + "tail"
+        native = "A" + m.TRUNCATION_MARKER + "B"
+        recs[4]["payload"]["item"]["aggregated_output"] = native
         turn = m.read_rollout(raw(recs))["turns"][0]
-        try:
-            got = m.join(turn, exec_stream(output="head and the whole middle tail"), exit_code=0, session_id=TID)
-        except m.JoinRefused as exc:
-            self.fail(f"a truncated native output must compare by prefix and suffix: {exc}")
-        self.assertTrue(got["truncated"])
         with self.assertRaises(m.JoinRefused):
-            m.join(turn, exec_stream(output="other and tail"), exit_code=0, session_id=TID)
+            m.join(turn, exec_stream(output="A<a different middle>B"), exit_code=0, session_id=TID)
+        got = m.join(turn, exec_stream(output=native), exit_code=0, session_id=TID)
+        self.assertTrue(got["complete"] and got["marker_text"])
+
+    def test_an_output_over_the_limit_joins_only_as_the_writers_exact_truncation(self):
+        """Addendum A: the writer keeps 32743 bytes of head and 32743 of tail around the 50-byte marker (budget 65486,
+        the tail taking any odd byte), the head cut down and the tail start pushed up to a char boundary. Spelled
+        here from the source's rule, never read from the module."""
+        m = cn()
+        marker = "\n... command output truncated for persistence ...\n"
+        self.assertEqual(len(marker.encode()), 50)
+        cases = [("x" * 70000, "x" * 32743 + marker + "x" * 32743),
+                 ("a" + "x" * 69998 + "z", "a" + "x" * 32742 + marker + "x" * 32742 + "z"),
+                 ("\u00e9" * 40000, "\u00e9" * 16371 + marker + "\u00e9" * 16371),     # 2-byte chars: both cuts round in
+                 ("\u20ac" * 30000, "\u20ac" * 10914 + marker + "\u20ac" * 10914)]     # 3-byte chars
+        for exec_out, writer in cases:
+            with self.subTest(n=len(exec_out.encode())):
+                recs = rollout()
+                recs[4]["payload"]["item"]["aggregated_output"] = writer
+                turn = m.read_rollout(raw(recs))["turns"][0]
+                got = m.join(turn, exec_stream(output=exec_out), exit_code=0, session_id=TID)
+                self.assertTrue(got["complete"] and got["marker_text"])
+                for wrong in (writer[1:], writer[:-1], writer.replace(marker, marker.replace("output", "outputs")),
+                              exec_out[:32744] + marker + exec_out[-32742:]):
+                    recs[4]["payload"]["item"]["aggregated_output"] = wrong
+                    turn = m.read_rollout(raw(recs))["turns"][0]
+                    with self.assertRaises(m.JoinRefused):
+                        m.join(turn, exec_stream(output=exec_out), exit_code=0, session_id=TID)
+
+    def test_at_the_limit_the_output_is_kept_whole(self):
+        m = cn()
+        exact = "x" * (64 * 1024)
+        marker = "\n... command output truncated for persistence ...\n"
+        self.assertEqual(m.truncate_middle_with_marker(exact, 64 * 1024, marker), exact)      # truncate.rs:21-23
+        self.assertEqual(m.truncate_middle_with_marker("abcdef", 4, "0123456789"), "abcd")   # :25-27, prefix that fits
+        recs = rollout()
+        recs[4]["payload"]["item"]["aggregated_output"] = exact
+        turn = m.read_rollout(raw(recs))["turns"][0]
+        self.assertTrue(m.join(turn, exec_stream(output=exact), exit_code=0, session_id=TID)["complete"])
+        over = "x" * (64 * 1024 + 1)
+        recs[4]["payload"]["item"]["aggregated_output"] = over
+        turn = m.read_rollout(raw(recs))["turns"][0]
+        with self.assertRaises(m.JoinRefused):              # the writer would have truncated it: never stored whole
+            m.join(turn, exec_stream(output=over), exit_code=0, session_id=TID)
 
     def test_unregistered(self):
         import vendor_provenance

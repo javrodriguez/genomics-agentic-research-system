@@ -8,8 +8,8 @@ Registration review (finding 1, MAJOR: the first road was self-certifying, since
 could assert every field). Now:
   * every bound input (the record, the rehearsals register, the walk folder, the review, READER_SOURCES) is read from
     the committed tree (git show HEAD), and any difference between the working tree and HEAD for a bound path refuses;
-  * the walk must pass drive.walk_files (on its committed bytes) and be exactly one WalkRepo commit (subject
-    drive.WALK_SUBJECT) touching its folder; the native snapshot and the streams the record names must be the ones
+  * the walk must pass drive.walk_files (on its committed bytes) and its folder's first commit must carry
+    drive.WALK_SUBJECT (a subject anyone can write) and change exactly the folder and its register entry; the native snapshot and the streams the record names must be the ones
     that walk's own driver ledger names (the last native_snapshots ref, and its streams), byte for byte;
   * the evidence label is derived from those bindings (RECORDED), never asserted: a record carrying one refuses;
   * a synthetic marker (case-insensitive "synthetic") in the native session metadata, the register entry, the review
@@ -17,6 +17,14 @@ could assert every field). Now:
   * the acceptor is "javier" and the reviewer is a different principal.
 These are local, unsigned git records: anyone able to commit can write them. The final guarantee is procedural (the
 acceptance commit is made in Javier's own window); a hook-gated acceptance door is a named follow-up, not built here.
+
+What the gates are, stated plainly (batch-8 review finding 3): every gate below, the walk-commit, ledger, record and
+journal checks included, is a CONSISTENCY check over bytes the producer writes or can derive. It refuses an
+inconsistent walk, a placeholder record, or a walk committed by hand under another subject; it cannot tell a
+consistent fabrication (the road's bytes copied, or rewritten coherently, and committed by hand under WALK_SUBJECT)
+from a real walk. The guarantee against fabrication is procedural: the acceptance commit, made in Javier's window after
+the independent review of the real walk. Binding the walk to a record outside the producer's write reach (for example
+the box's per-take witness hashes recorded by another principal) is a named follow-up, not built.
 
 join_session() is the one function both the acceptance check (check_session) and the production cross-check
 (drive.gemini_cross_check) call: each turn's host-captured stream joined to that interaction of a native snapshot by
@@ -40,6 +48,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -54,6 +63,7 @@ import gemini_projection as gp  # noqa: E402
 import gemini_session_replay as replay_mod  # noqa: E402
 import gemini_stream_join as gsj  # noqa: E402
 import mode_binding  # noqa: E402
+import pending_walk  # noqa: E402
 import vendor_provenance as vp  # noqa: E402
 import walk_register  # noqa: E402
 
@@ -83,7 +93,7 @@ NEVER_COUNTED = ("parallel calls from one model message (the fact schema does no
 SYNTHETIC = re.compile(r"synthetic", re.IGNORECASE)
 _NATIVE_FILE = re.compile(r"session/native-turn-[1-9][0-9]*\.jsonl")
 _STREAM_FILE = re.compile(r"turn-[1-9][0-9]*\.jsonl")
-_REVIEW_FILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.md")
+_REVIEW_FILE = re.compile(re.escape(HARNESS) + r"-review\.md")   # the one review name copy_manifest claims
 _HEX = re.compile(r"[0-9a-f]{64}")
 
 
@@ -231,6 +241,150 @@ def _materialize(root: Path, rel: str, into: Path) -> None:
         local.write_bytes(_git(root, "cat-file", "blob", sha, binary=True))
 
 
+# ---- finding 1: the walk's records are consistent with a runner-made walk (consistency, not provenance) -------------------------------------------------------------------------
+
+LEDGER_KEYS = ("kind", "task", "half", "wording", "pressure", "repeat", "arm", "model_requested", "agent", "session_id",
+               "project", "source", "row", "row_commit", "permission_mode", "permission_mode_passed",
+               "permission_mode_recorded", "budget_s", "gars_tree_sha", "fixture", "claude_version", "turns",
+               "outcome", "first_agent_turn", "environment", "transcript", "published", "cross_check", "cost",
+               "streams", "native_snapshots", "native_snapshot_refusal", "native_history", "cross_check_status")
+ENVIRONMENT_FILE = "environment.json"
+LAUNCH_FILE = "launch.json"
+
+
+def _walk_commit(root: Path, walk_rel: str, register_rel: str, entry: dict) -> str:
+    """The walk's WalkRepo commit: the oldest commit touching its folder, whose subject is drive.WALK_SUBJECT, which
+    adds exactly the folder's files plus that walk's register entry (the committed register is its parent's with
+    exactly this entry appended). Any later commit touching the folder is a regrade commit (walk_regrade's subject)
+    changing only its regrade.json."""
+    import drive
+    import walk_regrade
+    log = [ln.split("\0") for ln in _git(root, "log", "--format=%H%x00%s", "HEAD", "--", walk_rel + "/").splitlines()]
+    if not log or log[-1][1] != drive.WALK_SUBJECT:
+        raise RegistrationRefused(f"the walk folder's first commit is not a WalkRepo commit ({drive.WALK_SUBJECT!r})")
+    commit = log[-1][0]
+    for later, subject in log[:-1]:
+        changed = _git(root, "diff-tree", "-r", "--no-commit-id", "--name-only", "--no-renames", later).splitlines()
+        if subject != walk_regrade.REGRADE_SUBJECT or changed != [f"{walk_rel}/{walk_regrade.REGRADE_FILE}"]:
+            raise RegistrationRefused(f"commit {later} touches the walk folder and is not a regrade commit of its "
+                                      f"{walk_regrade.REGRADE_FILE} alone")
+    status = _git(root, "diff-tree", "-r", "--no-commit-id", "--name-status", "--no-renames", "--root",
+                  commit).splitlines()
+    walk_files = sorted(p for st, p in (ln.split("\t", 1) for ln in status) if p.startswith(walk_rel + "/"))
+    others = sorted(p for st, p in (ln.split("\t", 1) for ln in status) if not p.startswith(walk_rel + "/"))
+    added = all(st == "A" for st, p in (ln.split("\t", 1) for ln in status) if p.startswith(walk_rel + "/"))
+    at_commit = sorted(_git(root, "ls-tree", "-r", "--name-only", commit, "--", walk_rel + "/").splitlines())
+    if others != [register_rel] or not added or walk_files != at_commit or not walk_files:
+        raise RegistrationRefused(f"the walk commit {commit} does not add exactly {walk_rel}/** and its register "
+                                  f"entry: others {others}")
+    if walk_regrade.REGRADE_FILE in {p.rsplit("/", 1)[-1] for p in walk_files}:
+        raise RegistrationRefused("the walk commit already holds a regrade record")
+
+    def walks_at(rev):
+        try:
+            return json.loads(_git(root, "show", f"{rev}:{register_rel}", binary=True))["walks"]
+        except (ValueError, KeyError, TypeError) as e:
+            raise RegistrationRefused(f"the register at {rev} cannot be read: {e}") from None
+    if walks_at(commit) != walks_at(f"{commit}^") + [entry]:
+        raise RegistrationRefused("the walk commit's register is not its parent's with exactly this entry appended")
+    return commit
+
+
+def _ledger_problems(ledger, entry: dict, base: Path) -> None:
+    """The driver ledger's full take schema (drive's _take_records), for a Gemini walk whose cross-check is pending,
+    with environment.json re-hashed."""
+    if not isinstance(ledger, dict) or set(ledger) != set(LEDGER_KEYS):
+        raise RegistrationRefused(f"the driver ledger is not the take schema of a native-session vendor walk: "
+                                  f"{sorted(set(ledger) ^ set(LEDGER_KEYS)) if isinstance(ledger, dict) else ledger}")
+    for key, want in (("kind", "take"), ("task", entry["task"]), ("half", entry["half"]),
+                      ("wording", entry["wording"]), ("arm", entry["arm"]), ("model_requested", entry["model"]),
+                      ("agent", {"harness": HARNESS, "version": PINNED_CLI}), ("row", None), ("row_commit", None),
+                      ("first_agent_turn", True), ("transcript", None), ("published", None), ("cross_check", None),
+                      ("cost", None), ("native_snapshot_refusal", None)):
+        if ledger[key] != want:
+            raise RegistrationRefused(f"the driver ledger's {key} is {ledger[key]!r}, not {want!r}")
+    n = len(ledger["streams"]) if isinstance(ledger["streams"], list) else 0
+    if ledger["streams"] != [f"turn-{k}.jsonl" for k in range(1, n + 1)] or not n:
+        raise RegistrationRefused("the driver ledger's streams are not turns 1..n")
+    turns = ledger["turns"]
+    if not isinstance(turns, list) or len(turns) != n or not all(
+            isinstance(t, dict) and isinstance(t.get("sent"), str) and t["sent"] for t in turns):
+        raise RegistrationRefused("the driver ledger's turns are not one row with its sent line per stream")
+    if not isinstance(ledger["session_id"], str) or not isinstance(ledger["permission_mode_passed"], str):
+        raise RegistrationRefused("the driver ledger names no session id or passed permission mode")
+    env = base / ENVIRONMENT_FILE
+    if ledger["environment"] != {"file": ENVIRONMENT_FILE, "sha256": hashlib.sha256(
+            env.read_bytes() if env.is_file() else b"").hexdigest()} or not env.is_file():
+        raise RegistrationRefused("environment.json does not re-hash to the driver ledger's record of it")
+    if pending_walk.status(ledger) is None:
+        raise RegistrationRefused("the driver ledger records no pending native cross-check: not an acceptance walk")
+
+
+def _records_problems(base: Path, entry: dict, ledger: dict) -> None:
+    """check.json and grade.json are exactly their writers' bytes for a pending walk."""
+    import run as run_mod
+    import walk_runner
+    try:
+        doc = pending_walk.check_doc(entry["walk"], ledger)
+    except ValueError as e:
+        raise RegistrationRefused(str(e)) from None
+    want_check = (json.dumps(doc, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
+    if (base / walk_runner.CHECK_FILE).read_bytes() != want_check:
+        raise RegistrationRefused("check.json is not the walk runner's pending check record")
+    if (base / mode_binding.WALK_GRADE).read_bytes() != run_mod.walk_grade_bytes(run_mod.grade_walk(entry, base)):
+        raise RegistrationRefused("grade.json is not run.grade_walk's pending document")
+
+
+def _journal_problems(base: Path, entry: dict, ledger: dict) -> None:
+    """Each turn's launch journal, validated by vendor_provenance.launch_facts against the registered invocation:
+    the take container from launch.json, model, mode and sent line from the ledger, the resumed session from turn 1's
+    init. The working folder and the stream's host folder are the journals' own (one value across every turn); the
+    stream's name must be its turn's."""
+    try:
+        take_id = json.loads((base / LAUNCH_FILE).read_bytes())["take_id"]
+        first = json.loads((base / "turn-1.jsonl").read_text(encoding="utf-8").splitlines()[0])
+        session = first["session_id"] if first.get("type") == "init" else None
+    except (OSError, ValueError, KeyError, TypeError, IndexError) as e:
+        raise RegistrationRefused(f"launch.json or turn 1's init cannot be read: {e}") from None
+    cwds, dirs = set(), set()
+    for k in range(1, len(ledger["streams"]) + 1):
+        path = base / f"turn-{k}.jsonl.launch.json"
+        try:
+            journal = json.loads(path.read_bytes())
+            stream = journal["stream"]
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            raise RegistrationRefused(f"turn {k}'s launch journal cannot be read: {e}") from None
+        if not isinstance(stream, str) or os.path.basename(stream) != f"turn-{k}.jsonl":
+            raise RegistrationRefused(f"turn {k}'s launch journal names another stream")
+        cwds.add(journal.get("cwd"))
+        dirs.add(os.path.dirname(stream))
+        want = {"harness": HARNESS, "container_id": take_id, "model": entry["model"],
+                "mode": ledger["permission_mode_passed"], "run_tree": journal.get("cwd"), "stream": stream,
+                "sent": ledger["turns"][k - 1]["sent"],
+                "vendor_session_id": "first-turn" if k == 1 else session, "ordinal": k}
+        try:
+            vp.launch_facts(journal, want)
+        except vp.ProvenanceRefused as e:
+            raise RegistrationRefused(f"turn {k}'s launch journal fails launch_facts: {e}") from None
+    if len(cwds) != 1 or len(dirs) != 1:
+        raise RegistrationRefused("the launch journals do not share one working folder and one stream folder")
+
+
+def _regrade_problems(base: Path, walk: str, study: Path) -> None:
+    """Batch-8 review finding 4: a regrade.json the walk carries must re-derive (walk_regrade.regrade_doc from the
+    committed bytes, through the candidate reader) to its exact bytes; anything else refuses."""
+    import walk_regrade
+    path = base / walk_regrade.REGRADE_FILE
+    if not path.is_file():
+        return
+    try:
+        again = walk_regrade.regrade_bytes(walk_regrade.regrade_doc(walk, study, readers={HARNESS: gemini_reader}))
+    except walk_regrade.RegradeRefused as e:
+        raise RegistrationRefused(f"the walk's regrade.json cannot be re-derived: {e}") from None
+    if again != path.read_bytes():
+        raise RegistrationRefused("the walk's regrade.json does not re-derive to its bytes")
+
+
 def acceptance_problems(record, study: Path = HERE) -> None:
     """Raise RegistrationRefused unless `record` (read from HEAD) binds a committed recorded walk, as above."""
     import drive                                    # lazily: drive imports this module
@@ -278,17 +432,16 @@ def acceptance_problems(record, study: Path = HERE) -> None:
             drive.walk_files(base)
         except drive.DriveRefused as e:
             raise RegistrationRefused(f"the committed walk fails drive.walk_files: {e}") from None
-        subjects = _git(root, "log", "--format=%s", "HEAD", "--", walk_rel + "/").splitlines()
-        if subjects != [drive.WALK_SUBJECT]:
-            raise RegistrationRefused(f"the walk folder is not exactly one WalkRepo commit ({drive.WALK_SUBJECT!r}): "
-                                      f"{subjects}")
+        walk_commit = _walk_commit(root, walk_rel, register_rel, entries[0])
         try:
             ledger = json.loads((base / drive.LEDGER_FILE).read_bytes())
-            snaps, ledger_streams = list(ledger["native_snapshots"]), list(ledger["streams"])
-        except (OSError, ValueError, KeyError, TypeError) as e:
-            raise RegistrationRefused(f"the walk's driver ledger names no native snapshots and streams: {e}") from None
-        if not isinstance(ledger.get("native_history"), dict):
-            raise RegistrationRefused("the walk's driver ledger holds no native_history record")
+        except (OSError, ValueError) as e:
+            raise RegistrationRefused(f"the walk's driver ledger cannot be read: {e}") from None
+        _ledger_problems(ledger, entries[0], base)
+        _records_problems(base, entries[0], ledger)
+        _journal_problems(base, entries[0], ledger)
+        _regrade_problems(base, walk, study)
+        snaps, ledger_streams = list(ledger["native_snapshots"]), list(ledger["streams"])
         native_ref = _ref(record["native"], _NATIVE_FILE, "native")
         native = _hashed((base / native_ref["file"]).read_bytes() if (base / native_ref["file"]).is_file() else b"",
                          native_ref, "native")
@@ -369,8 +522,19 @@ def acceptance_provenance(study: Path = HERE) -> dict:
 
     commit, author = last(_rel(prefix, ACCEPTANCE_FILE))
     reviews = _git(root, "log", "--format=%H", "HEAD", "--", _rel(prefix, READER_DIR + "/*.md")).splitlines()
+    walk = walk_author = walk_committer = None
+    try:
+        walk = json.loads(_show(root, _rel(prefix, ACCEPTANCE_FILE))).get("walk")
+    except (RegistrationRefused, ValueError, AttributeError):
+        walk = None
+    if isinstance(walk, str) and walk_register.WALK_ID.fullmatch(walk):
+        log = _git(root, "log", "--format=%H%x00%an <%ae>%x00%cn <%ce>", "HEAD", "--",
+                   _rel(prefix, f"{mode_binding.WALKS_DIR}/{walk}/driver-ledger.json")).splitlines()
+        if log:
+            walk, walk_author, walk_committer = log[-1].split("\0")
     return {"acceptance_commit": commit, "acceptance_author": author,
-            "review_commit": reviews[0] if reviews else None, "head": _git(root, "rev-parse", "HEAD")}
+            "review_commit": reviews[0] if reviews else None, "walk_commit": walk if walk_author else None,
+            "walk_author": walk_author, "walk_committer": walk_committer, "head": _git(root, "rev-parse", "HEAD")}
 
 
 def _head() -> str:
@@ -397,8 +561,11 @@ def main(argv=None) -> int:
             return 1
         prov = acceptance_provenance()
         print(f"registered: {sorted(readers) or 'none'}; acceptance commit {prov['acceptance_commit']} by "
-              f"{prov['acceptance_author']}; review commit {prov['review_commit']}; HEAD {prov['head']}; local "
-              f"unsigned records: the guarantee is that the acceptance commit was made in Javier's own window")
+              f"{prov['acceptance_author']}; review commit {prov['review_commit']}; walk commit {prov['walk_commit']} "
+              f"authored by {prov['walk_author']}, committed by {prov['walk_committer']}; HEAD {prov['head']}. The "
+              f"gates are consistency checks over producer-written bytes and cannot tell a consistent fabrication "
+              f"from a real walk; the guarantee against fabrication is procedural: the acceptance commit, made in "
+              f"Javier's own window after the independent review of the real walk")
         return 0
     got = check_session(Path(a.native).read_bytes(), [Path(s).read_text(encoding="utf-8") for s in a.stream])
     if got["status"] == "PASS":

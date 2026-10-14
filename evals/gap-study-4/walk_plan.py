@@ -43,6 +43,12 @@ does not require (an arm C walk, a bring-up walk off the list), or whose cell is
 by its walk id and never counted toward coverage. A missing or linked register exits 2: a missing register is not an
 empty one. The temporary folder is the only thing this file writes, and it is removed before the report prints.
 
+PENDING WALKS ARE NEVER COVERAGE (batch-8 review finding 1, glitch-06's ruling, 14 Oct 2026). A vendor walk committed
+while its native cross-check was pending (pending_walk.py) was never checked or graded, so it covers nothing until a
+verified regrade supersedes it. --coverage asks pending_walk.pending_walks for the register's walks whose grade.json
+is the pending document with no verified regrade, the one read of walk folders this report makes; coverage() reports
+each such walk as pending and never counts it.
+
 WHAT THIS DOES NOT DO. It is not wired into freeze_rehearsal.py or walk_register.py (lanes w8b and w8d own them; a
 later slice adopts --require-complete), it never runs a walk, and it says nothing about what a walk showed. Every
 figure it prints is bound to one arm and one model; it states no figure across arms or models.
@@ -162,8 +168,9 @@ def cover_key(entry: dict, design: dict) -> tuple:
     return (entry["arm"], entry["model"], entry["task"], entry["half"], entry["wording"] if exact else ANY_WORDING)
 
 
-def coverage(entries: list, specs: list[dict], design: dict) -> dict:
-    """covered: {spec key: [walk ids, in register order]}; missing: [spec]; outside: [(walk label, why)]."""
+def coverage(entries: list, specs: list[dict], design: dict, pending=frozenset()) -> dict:
+    """covered: {spec key: [walk ids, in register order]}; missing: [spec]; outside: [(walk label, why)]; pending:
+    [walk ids of `pending`, never counted]."""
     by_key = {}
     for spec in specs:
         key = cover_key(spec, design)
@@ -171,7 +178,7 @@ def coverage(entries: list, specs: list[dict], design: dict) -> dict:
             raise PlanRefused(f"two specs share the key {key!r}")
         by_key[key] = spec
     covered: dict = {}
-    outside = []
+    outside, held = [], []
     for i, entry in enumerate(entries):
         label = entry.get("walk") if isinstance(entry, dict) and isinstance(entry.get("walk"), str) \
             else f"entry {i}"
@@ -188,9 +195,12 @@ def coverage(entries: list, specs: list[dict], design: dict) -> dict:
         if cell not in design["cells"]:
             outside.append((label, f"{cell!r} is not a row of the design, so it covers no required walk"))
             continue
+        if entry["walk"] in pending:              # batch-8 ruling: a pending walk covers nothing
+            held.append(label)
+            continue
         covered.setdefault(key, []).append(label)
     missing = [spec for spec in specs if cover_key(spec, design) not in covered]
-    return {"covered": covered, "missing": missing, "outside": outside}
+    return {"covered": covered, "missing": missing, "outside": outside, "pending": held}
 
 
 def stand_in_ids(raw: bytes) -> list[str]:
@@ -271,6 +281,9 @@ def coverage_lines(got: dict, specs: list[dict], design: dict, n_entries: int) -
             lines.append(f"missing  {spec_line(spec)}")
     for label, why in got["outside"]:
         lines.append(f"outside the plan, not counted: walk {label!r}: {why}")
+    for label in got["pending"]:
+        lines.append(f"pending, not counted: walk {label!r}: its native cross-check is pending and no verified "
+                     f"regrade supersedes it")
     for arm, per in counts(specs).items():
         for model, n in per.items():
             gap = sum(1 for s in got["missing"] if (s["arm"], s["model"]) == (arm, model))
@@ -305,7 +318,8 @@ def main(argv=None) -> int:
     except RegisterUnreadable as exc:
         print(f"FAIL {exc}")
         return 2
-    got = coverage(entries, specs, design)
+    import pending_walk
+    got = coverage(entries, specs, design, pending_walk.pending_walks(base, [e["walk"] for e in entries]))
     print("\n".join(coverage_lines(got, specs, design, len(entries))))
     missing = got["missing"]
     if args.require_complete and missing:
