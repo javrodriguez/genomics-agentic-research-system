@@ -122,25 +122,77 @@ class ProjectionTests(unittest.TestCase):
         case("native error messages are unsupported", lambda r: r.append({"id": "error-1", "type": "error",
                                                                             "content": "failed"}))
         case("incomplete: its last model message ends on tool calls", lambda r: r.pop(3))
-        case("native user displayContent is unsupported", lambda r: r[1].__setitem__("displayContent", "exact sent"))
+        case("native user displayContent differs", lambda r: r[1].__setitem__("displayContent", "other text"))
         case("contradictory native models", lambda r: r[3].__setitem__("model", "different"))
         for why, records in cases:
             with self.subTest(why=why):
                 self.assertIn(why, self.reason(m, records))
 
-    def test_history_patched_parallel_results_stay_refused(self):
-        """Known false-refusal risk: the updateMessagesFromHistory caller is not retained (source report)."""
-        m = self.module()
+    def _parallel(self, both_c1=None, both_c2=None):
         def tool(cid):
             return {"id": cid, "name": "read_file", "args": {"file_path": cid}, "status": "success",
                     "result": [{"functionResponse": {"id": cid, "name": "read_file", "response": {"output": "x"}}}]}
         both = [tool("c1")["result"][0], tool("c2")["result"][0]]
-        records = self.native()[:2] + [
+        return self.native()[:2] + [
             {"id": "a1", "type": "gemini", "model": "m", "content": "t", "toolCalls": [tool("c1"), tool("c2")]},
-            {"$patch": {"updates": [{"id": "a1", "toolCalls": [{"id": "c1", "result": both},
-                                                               {"id": "c2", "result": both}]}]}},
+            {"$patch": {"updates": [{"id": "a1", "toolCalls": [{"id": "c1", "result": both_c1 or both},
+                                                               {"id": "c2", "result": both_c2 or both}]}]}},
             {"id": "a2", "type": "gemini", "model": "m", "content": "done"}]
-        self.assertIn("names another call", self.reason(m, records))
+
+    def test_history_patched_parallel_results_are_admitted(self):
+        """Ruling 6, source retained (gemini-0.64.0-source-retained-addendum): GeminiChat.initialize calls
+        updateMessagesFromHistory on every chat start, which sets a call's result to the whole user turn's parts."""
+        m = self.module()
+        tools = [o for o in m.project(self.raw(self._parallel()))[0]["output"] if o["kind"] == "tool"]
+        self.assertEqual([t["id"] for t in tools], ["c1", "c2"])
+        fr = lambda cid, name="read_file": {"functionResponse": {"id": cid, "name": name, "response": {}}}
+        for why, c1 in (("names another call", [fr("c2"), fr("c9")]),
+                        ("names another call", [fr("c1"), fr("c2", "glob")]),
+                        ("name this call exactly once", [fr("c2")]),
+                        ("name this call exactly once", [fr("c1"), fr("c1")]),
+                        ("unknown native tool response part", [fr("c1"), {"text": "x"}])):
+            with self.subTest(why=why, c1=c1):
+                self.assertIn(why, self.reason(m, self._parallel(both_c1=c1)))
+
+    def test_a_tool_response_turn_continues_its_interaction(self):
+        """Source retained: every tool round trip records a "user" message of functionResponse parts."""
+        m = self.module()
+        records = self.native()
+        records.insert(3, {"id": "user-tool-1", "type": "user", "content": [
+            {"functionResponse": {"id": "call-1", "name": "read_file", "response": {"output": "x"}}}]})
+        try:
+            facts = m.project(self.raw(records))
+        except m.ProjectionRefused as exc:
+            self.fail(f"a tool round trip was refused: {exc}")
+        self.assertEqual(len(facts), 1)
+        self.assertEqual(facts[0]["sent"], "exact sent")
+        self.assertEqual([o["kind"] for o in facts[0]["output"]], ["recorded-text", "recorded-text", "tool"])
+        for why, content in (("tool-response turn names no earlier call", [
+                                 {"functionResponse": {"id": "call-9", "name": "read_file", "response": {}}}]),
+                             ("tool-response turn names no earlier call", [
+                                 {"functionResponse": {"id": "call-1", "name": "glob", "response": {}}}])):
+            bad = self.native()
+            bad.insert(3, {"id": "user-tool-1", "type": "user", "content": content})
+            with self.subTest(why=why):
+                self.assertIn(why, self.reason(m, bad))
+        mixed = self.native()
+        mixed[1]["content"] = [{"functionResponse": {"id": "call-1", "name": "read_file", "response": {}}},
+                               {"text": "mixed"}]
+        self.assertIn("native user content must be one text part", self.reason(m, mixed))
+        early = self.native()
+        early.insert(2, {"id": "user-tool-0", "type": "user", "content": [
+            {"functionResponse": {"id": "call-1", "name": "read_file", "response": {}}}]})
+        self.assertIn("tool-response turn names no earlier call", self.reason(m, early))
+
+    def test_display_content_is_admitted_only_when_equal_to_the_sent_text(self):
+        """Ruling 5: the recorder writes displayContent only when it differs, so on real sessions it always refuses."""
+        m = self.module()
+        same = self.native()
+        same[1]["displayContent"] = [{"text": "exact sent"}]
+        self.assertEqual(m.project(self.raw(same))[0]["sent"], "exact sent")
+        other = self.native()
+        other[1]["displayContent"] = [{"text": "what the operator saw"}]
+        self.assertIn("displayContent differs", self.reason(m, other))
 
     def test_all_interactions_are_returned_without_invented_model_fields(self):
         m = self.module()

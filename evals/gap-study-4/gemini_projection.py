@@ -50,12 +50,19 @@ while a tool is still running leaves an ordinary-looking text message with no
 toolCalls (recordToolCalls runs only once tools complete). An interaction counts
 as complete only when joined to the stream's terminal result for that turn
 (the stream-side slice owes that join); this projection makes no such claim.
-Known false-refusal risks for the first recorded walk, kept refusing because the
-pinned source lines are not retained (lane-reports/gemini-0.64.0-source-
-retained-2026-10-14.md): user displayContent (GeminiChat's user-message
-recording), multi-part user content, and history-patched parallel tool results
-(the updateMessagesFromHistory caller). A refusal is a reader result only: it
-never erases an executed record or authorizes a replacement take.
+From the pinned bundle read on athena (lane-reports/gemini-0.64.0-source-
+retained-addendum-2026-10-14.md): a "user" message holding only functionResponse
+parts is GeminiChat's record of a tool round trip, so it continues its
+interaction, and each (id, name) it answers must be a call recorded earlier in
+that interaction; a call's result may hold the whole round trip's responses
+(updateMessagesFromHistory, run by GeminiChat.initialize on every chat start), so
+its parts may answer sibling calls of the same message by id and name and must
+answer this call exactly once; displayContent is recorded only when it differs
+from the sent text, so a present one is admitted only when equal and in practice
+refuses. Still a named false-refusal risk: multi-part user content (an @-include
+prompt), and the binary-injection road's synthetic thought and info messages.
+A refusal is a reader result only: it never erases an executed record or
+authorizes a replacement take.
 """
 from __future__ import annotations
 
@@ -69,7 +76,7 @@ class ProjectionRefused(ValueError):
     """The retained native session is outside the reviewed projection subset."""
 
 
-USER_KEYS = {"id", "timestamp", "type", "content"}
+USER_KEYS = {"id", "timestamp", "type", "content", "displayContent"}
 GEMINI_KEYS = {"id", "timestamp", "type", "content", "thoughts", "tokens", "model", "toolCalls"}
 TOOL_KEYS = {"id", "name", "args", "result", "status", "timestamp", "resultDisplay", "description",
              "displayName", "renderOutputAsMarkdown"}
@@ -121,19 +128,45 @@ def _no_escape(text):
         raise ProjectionRefused("ANSI escape in native text; the displayed transformation is unproven")
 
 
+def _text_of(value, what):
+    """A user content or displayContent as one string: a string, or a list of exactly one text part."""
+    if isinstance(value, list):
+        if len(value) != 1 or not isinstance(value[0], dict) or set(value[0]) != {"text"}:
+            raise ProjectionRefused(f"native user {what} must be one text part")
+        value = value[0]["text"]
+    if not _string(value):
+        raise ProjectionRefused(f"native user {what} is absent or not text")
+    return value
+
+
 def _sent(message):
-    if "displayContent" in message:
-        raise ProjectionRefused("native user displayContent is unsupported until its recording source is retained")
     if not set(message) <= USER_KEYS:
         raise ProjectionRefused("unsupported native user message keys")
-    content = message["content"]
-    if isinstance(content, list):
-        if (len(content) != 1 or not isinstance(content[0], dict) or set(content[0]) != {"text"}):
-            raise ProjectionRefused("native user content must be one text part")
-        content = content[0]["text"]
-    if not _string(content):
-        raise ProjectionRefused("native user content is absent or not text")
+    content = _text_of(message["content"], "content")
+    if "displayContent" in message:
+        # Ruling 5 (source retained: GeminiChat records displayContent only when its string differs from the sent
+        # parts'), so on sessions this version writes a present displayContent always refuses.
+        if _text_of(message["displayContent"], "displayContent") != content:
+            raise ProjectionRefused("native user displayContent differs from the sent text")
     return content
+
+
+def _tool_response_turn(message):
+    """A "user" message whose content is only functionResponse parts: GeminiChat's record of a tool round trip
+    (recordSyntheticMessage("user", userContent.parts) when isOriginalFunctionResponse; source retained). Its
+    [(id, name)], or None when the message is not one."""
+    content = message.get("content")
+    if not (isinstance(content, list) and content and set(message) <= USER_KEYS - {"displayContent"}
+            and all(isinstance(p, dict) and set(p) == {"functionResponse"} for p in content)):
+        return None
+    out = []
+    for part in content:
+        r = part["functionResponse"]
+        if (not isinstance(r, dict) or set(r) != RESPONSE_KEYS or not _string(r["id"]) or not _string(r["name"])
+                or not isinstance(r["response"], dict)):
+            raise ProjectionRefused("unknown native tool response part in a tool-response turn")
+        out.append((r["id"], r["name"]))
+    return out
 
 
 def _content(content):
@@ -167,7 +200,7 @@ def _content(content):
     return recorder_normalize("".join(text)), calls
 
 
-def _tool(tool):
+def _tool(tool, siblings):
     if not isinstance(tool, dict) or not set(tool) <= TOOL_KEYS:
         raise ProjectionRefused("unsupported native tool-call keys")
     if (not _string(tool.get("id")) or not _string(tool.get("name"))
@@ -178,12 +211,19 @@ def _tool(tool):
     result = tool.get("result")
     if not isinstance(result, list) or not result:
         raise ProjectionRefused("native tool call lacks model-facing response parts")
+    own = 0
     for part in result:
         response = part.get("functionResponse") if isinstance(part, dict) and set(part) == {"functionResponse"} else None
         if not isinstance(response, dict) or set(response) != RESPONSE_KEYS or not isinstance(response["response"], dict):
             raise ProjectionRefused("unknown native tool response part")
-        if response["id"] != tool["id"] or response["name"] != tool["name"]:
+        # Ruling 6 (source retained: updateMessagesFromHistory, called by GeminiChat.initialize on every chat start,
+        # sets a call's result to the whole user turn's parts): a part may answer a sibling call of the same message,
+        # by its id and name; it never names any other call.
+        if siblings.get(response["id"]) != response["name"]:
             raise ProjectionRefused("native tool response part names another call")
+        own += response["id"] == tool["id"]
+    if own != 1:
+        raise ProjectionRefused("native tool response parts must name this call exactly once")
     display = tool.get("resultDisplay")
     present = isinstance(display, str)
     if present:
@@ -224,7 +264,8 @@ def _interaction(session_id, user, replies, seen_ids):
         recorded_tools = message.get("toolCalls", [])
         if not isinstance(recorded_tools, list):
             raise ProjectionRefused("native toolCalls must be an array")
-        facts = [_tool(tool) for tool in recorded_tools]
+        siblings = {t.get("id"): t.get("name") for t in recorded_tools if isinstance(t, dict)}
+        facts = [_tool(tool, siblings) for tool in recorded_tools]
         _agree(calls, facts)
         for fact in facts:
             if fact["id"] in seen_ids:
@@ -252,6 +293,13 @@ def project(raw):
     session_id = replayed["metadata"]["sessionId"]
     groups = []
     for message in replayed["messages"]:
+        answered = _tool_response_turn(message) if message["type"] == "user" else None
+        if answered is not None:
+            called = {(t.get("id"), t.get("name")) for reply in (groups[-1][1] if groups else [])
+                      for t in (reply.get("toolCalls") or []) if isinstance(t, dict)}
+            if not answered or any(a not in called for a in answered):
+                raise ProjectionRefused("a tool-response turn names no earlier call of its interaction")
+            continue                                   # a tool round trip, never a new interaction
         if message["type"] == "user":
             groups.append((message, []))
         elif message["type"] == "gemini":
