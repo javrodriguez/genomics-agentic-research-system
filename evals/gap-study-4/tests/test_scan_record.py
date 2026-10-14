@@ -818,6 +818,53 @@ class TestRulesScannerFilled(unittest.TestCase):
             _rs.real_rules_scanner().build(object(), os.path.join(d, "reports"), binary=binary)
 
 
+class TestWalkLoginMask(Case):
+    """Review-walk-token W-3 (glitch-06's ruling, 14 Oct 2026): the model under test can read its own sign-in token
+    inside the box, so the records' exact-value mask must catch it. The scan's secrets come through the walk's own
+    road, walk_builders.login_secrets over a walk login file. The value is SYNTHETIC: Claude Code's docs give no
+    format for a setup-token value, so it is read_login's accepted shape (ASCII, 20+ characters, no whitespace or
+    quote), with no vendor prefix; never a real token."""
+
+    SYNTH = "SYNTHETIC0walk0login0value0" + "Ab9_-" * 12 + "AA"
+
+    def login_file(self):
+        d = tempfile.mkdtemp(prefix="wl-")
+        self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        sub = os.path.join(d, "claude1")
+        os.mkdir(sub, 0o700)
+        path = os.path.join(sub, "walk-login-file")
+        with open(path, "w") as fh:
+            fh.write(f"CLAUDE_CODE_OAUTH_TOKEN={self.SYNTH}\n")
+        os.chmod(path, 0o600)
+        return path
+
+    def test_the_walk_login_value_is_masked_in_records(self):
+        import walk_builders
+        secrets = walk_builders.login_secrets(self.login_file(), "claude-code")()
+        self.assertEqual(secrets, [("token", self.SYNTH)])
+        c = self.commit({"stream": self.SYNTH, "transcript": self.SYNTH, "session": self.SYNTH})
+        r = sr.scan(c.files(), secrets, rules_scanner=no_findings)
+        self.assertTrue(sr.passed(r), r.get("refused"))
+        for kind in ("stream", "transcript", "session"):
+            body = c.read(kind)
+            self.assertNotIn(self.SYNTH.encode(), body, kind)
+            self.assertIn(sr.MARKERS["token"].encode(), body, kind)
+        c2 = self.commit({"ledger": self.SYNTH})
+        r2 = sr.scan(c2.files(), secrets, rules_scanner=no_findings)
+        self.assertFalse(sr.passed(r2))                  # outside the maskable kinds: refused, never shipped
+        self.assertNotIn(self.SYNTH, json.dumps(r2))
+
+    def test_mutant_no_secrets_goes_red(self):
+        import walk_builders
+        with mock.patch.object(walk_builders, "login_secrets",
+                               lambda path, harness: (lambda: [("token", "OTHER-not-the-walk-value-0123456789")])):
+            secrets = walk_builders.login_secrets(self.login_file(), "claude-code")()
+        c = self.commit({"stream": self.SYNTH})
+        r = sr.scan(c.files(), secrets, rules_scanner=no_findings)
+        self.assertIn(self.SYNTH.encode(), c.read("stream"))  # without the walk value the value ships: the mask is the guard
+        red("walk login value not handed to the scan")
+
+
 # ------------------------------------------------------------------------------------------------- fold 2 (lane review 1)
 class TestFold2(Case):
     """Lane review round 1's findings, folded on the lane lead's decisions (W4C1-3, -4c, -10, -11)."""
