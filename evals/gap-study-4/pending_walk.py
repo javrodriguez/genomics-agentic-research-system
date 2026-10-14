@@ -47,3 +47,37 @@ def check_doc(walk: str, ledger) -> dict:
     if s is None:
         raise ValueError("the driver ledger records no pending native cross-check: not a pending walk")
     return {"walk": walk, "status": PENDING, "why": s["why"]}
+
+
+def _verified_regrade(base, walk: str) -> bool:
+    """A regrade supersedes a pending grade only when its bytes re-derive (walk_regrade.regrade_doc from the walk's
+    committed bytes) and it grades the walk; anything else, an error included, supersedes nothing."""
+    import walk_regrade
+    from pathlib import Path
+    path = Path(base) / walk / walk_regrade.REGRADE_FILE
+    if not path.is_file():
+        return False
+    try:
+        doc = walk_regrade.regrade_doc(walk, Path(base).parent)
+        return doc.get("graded") is True and walk_regrade.regrade_bytes(doc) == path.read_bytes()
+    except Exception:  # noqa: BLE001 - an unverifiable regrade leaves the walk pending, fail closed
+        return False
+
+
+def pending_walks(base, walks) -> frozenset:
+    """Batch-8 review finding 1 (glitch-06's ruling): the walks of `walks` under the rehearsals folder `base` whose
+    grade.json is a pending document (status PENDING) and that no verified regrade supersedes. walk_plan's coverage
+    never counts them. A walk with no readable grade.json is not reported here (walk_register --check refuses it)."""
+    import json
+    from pathlib import Path
+    out = set()
+    for walk in walks:
+        if not isinstance(walk, str):
+            continue
+        try:
+            grade = json.loads((Path(base) / walk / "grade.json").read_bytes())
+        except (OSError, ValueError):
+            continue
+        if isinstance(grade, dict) and grade.get("status") == PENDING and not _verified_regrade(base, walk):
+            out.add(walk)
+    return frozenset(out)

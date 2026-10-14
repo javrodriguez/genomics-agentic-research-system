@@ -17,3 +17,4 @@ python3 -W ignore evals/gap-study-4/tests/test_vendor_checker_road.py
 python3 -W ignore evals/gap-study-4/tests/test_native_reader_registration.py
 python3 -W ignore evals/gap-study-4/tests/test_codex_native.py
 python3 -B -W ignore evals/gap-study-4/tests/test_pending_walk.py
+python3 -B -W ignore evals/gap-study-4/walk_regrade.py --check

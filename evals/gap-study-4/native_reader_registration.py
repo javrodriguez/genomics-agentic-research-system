@@ -8,8 +8,8 @@ Registration review (finding 1, MAJOR: the first road was self-certifying, since
 could assert every field). Now:
   * every bound input (the record, the rehearsals register, the walk folder, the review, READER_SOURCES) is read from
     the committed tree (git show HEAD), and any difference between the working tree and HEAD for a bound path refuses;
-  * the walk must pass drive.walk_files (on its committed bytes) and be exactly one WalkRepo commit (subject
-    drive.WALK_SUBJECT) touching its folder; the native snapshot and the streams the record names must be the ones
+  * the walk must pass drive.walk_files (on its committed bytes) and its folder's first commit must carry
+    drive.WALK_SUBJECT (a subject anyone can write) and change exactly the folder and its register entry; the native snapshot and the streams the record names must be the ones
     that walk's own driver ledger names (the last native_snapshots ref, and its streams), byte for byte;
   * the evidence label is derived from those bindings (RECORDED), never asserted: a record carrying one refuses;
   * a synthetic marker (case-insensitive "synthetic") in the native session metadata, the register entry, the review
@@ -17,6 +17,14 @@ could assert every field). Now:
   * the acceptor is "javier" and the reviewer is a different principal.
 These are local, unsigned git records: anyone able to commit can write them. The final guarantee is procedural (the
 acceptance commit is made in Javier's own window); a hook-gated acceptance door is a named follow-up, not built here.
+
+What the gates are, stated plainly (batch-8 review finding 3): every gate below, the walk-commit, ledger, record and
+journal checks included, is a CONSISTENCY check over bytes the producer writes or can derive. It refuses an
+inconsistent walk, a placeholder record, or a walk committed by hand under another subject; it cannot tell a
+consistent fabrication (the road's bytes copied, or rewritten coherently, and committed by hand under WALK_SUBJECT)
+from a real walk. The guarantee against fabrication is procedural: the acceptance commit, made in Javier's window after
+the independent review of the real walk. Binding the walk to a record outside the producer's write reach (for example
+the box's per-take witness hashes recorded by another principal) is a named follow-up, not built.
 
 join_session() is the one function both the acceptance check (check_session) and the production cross-check
 (drive.gemini_cross_check) call: each turn's host-captured stream joined to that interaction of a native snapshot by
@@ -233,7 +241,7 @@ def _materialize(root: Path, rel: str, into: Path) -> None:
         local.write_bytes(_git(root, "cat-file", "blob", sha, binary=True))
 
 
-# ---- finding 1: the runner made the walk -------------------------------------------------------------------------
+# ---- finding 1: the walk's records are consistent with a runner-made walk (consistency, not provenance) -------------------------------------------------------------------------
 
 LEDGER_KEYS = ("kind", "task", "half", "wording", "pressure", "repeat", "arm", "model_requested", "agent", "session_id",
                "project", "source", "row", "row_commit", "permission_mode", "permission_mode_passed",
@@ -362,6 +370,21 @@ def _journal_problems(base: Path, entry: dict, ledger: dict) -> None:
         raise RegistrationRefused("the launch journals do not share one working folder and one stream folder")
 
 
+def _regrade_problems(base: Path, walk: str, study: Path) -> None:
+    """Batch-8 review finding 4: a regrade.json the walk carries must re-derive (walk_regrade.regrade_doc from the
+    committed bytes, through the candidate reader) to its exact bytes; anything else refuses."""
+    import walk_regrade
+    path = base / walk_regrade.REGRADE_FILE
+    if not path.is_file():
+        return
+    try:
+        again = walk_regrade.regrade_bytes(walk_regrade.regrade_doc(walk, study, readers={HARNESS: gemini_reader}))
+    except walk_regrade.RegradeRefused as e:
+        raise RegistrationRefused(f"the walk's regrade.json cannot be re-derived: {e}") from None
+    if again != path.read_bytes():
+        raise RegistrationRefused("the walk's regrade.json does not re-derive to its bytes")
+
+
 def acceptance_problems(record, study: Path = HERE) -> None:
     """Raise RegistrationRefused unless `record` (read from HEAD) binds a committed recorded walk, as above."""
     import drive                                    # lazily: drive imports this module
@@ -417,6 +440,7 @@ def acceptance_problems(record, study: Path = HERE) -> None:
         _ledger_problems(ledger, entries[0], base)
         _records_problems(base, entries[0], ledger)
         _journal_problems(base, entries[0], ledger)
+        _regrade_problems(base, walk, study)
         snaps, ledger_streams = list(ledger["native_snapshots"]), list(ledger["streams"])
         native_ref = _ref(record["native"], _NATIVE_FILE, "native")
         native = _hashed((base / native_ref["file"]).read_bytes() if (base / native_ref["file"]).is_file() else b"",
@@ -538,8 +562,10 @@ def main(argv=None) -> int:
         prov = acceptance_provenance()
         print(f"registered: {sorted(readers) or 'none'}; acceptance commit {prov['acceptance_commit']} by "
               f"{prov['acceptance_author']}; review commit {prov['review_commit']}; walk commit {prov['walk_commit']} "
-              f"authored by {prov['walk_author']}, committed by {prov['walk_committer']}; HEAD {prov['head']}; local "
-              f"unsigned records: the guarantee is that the acceptance commit was made in Javier's own window")
+              f"authored by {prov['walk_author']}, committed by {prov['walk_committer']}; HEAD {prov['head']}. The "
+              f"gates are consistency checks over producer-written bytes and cannot tell a consistent fabrication "
+              f"from a real walk; the guarantee against fabrication is procedural: the acceptance commit, made in "
+              f"Javier's own window after the independent review of the real walk")
         return 0
     got = check_session(Path(a.native).read_bytes(), [Path(s).read_text(encoding="utf-8") for s in a.stream])
     if got["status"] == "PASS":

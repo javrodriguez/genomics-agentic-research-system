@@ -102,7 +102,10 @@ def regrade_doc(walk: str, study: Path = HERE, *, readers=None, grade=None) -> d
         harness = (ledger.get("agent") or {}).get("harness")
         if harness not in REGRADE_HARNESSES:
             raise RegradeRefused(f"no regrade road for harness {harness!r} yet")
-        readers = nrr.production_readers(study) if readers is None else readers
+        try:
+            readers = nrr.production_readers(study) if readers is None else readers
+        except nrr.RegistrationRefused as e:
+            raise RegradeRefused(f"the reader registration refuses: {e}") from None
         cross = drive.gemini_cross_check(base, list(ledger.get("native_snapshots") or []),
                                          len(ledger.get("streams") or []), readers=readers)
         if cross["status"] == "pending":

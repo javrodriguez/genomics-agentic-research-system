@@ -538,8 +538,15 @@ class Regrade(unittest.TestCase):
         self.assertEqual(git(road.root, "log", "-1", "--format=%s"), walk_regrade.REGRADE_SUBJECT)
         self.assertEqual(git(road.root, "diff-tree", "-r", "--no-commit-id", "--name-only", commit),
                          "study/rehearsals/walk-g1/regrade.json")
-        self.assertEqual(set(road.nrr.production_readers(road.study)), {"gemini"})   # the regrade commit is admitted
-        self.assertEqual(walk_regrade.regrade_problems(road.study, grade=stand_in_grade), [])
+        import run
+        with mock.patch.object(run, "grade_walk_folder", stand_in_grade):     # the stand-in grader re-derives it
+            self.assertEqual(set(road.nrr.production_readers(road.study)), {"gemini"})   # the regrade is admitted
+        self.assertIn("regrade.json cannot be re-derived", road.refused())   # the real grader cannot grade a fake walk
+        import pending_walk
+        with mock.patch.object(run, "grade_walk_folder", stand_in_grade):
+            self.assertEqual(walk_regrade.regrade_problems(road.study, grade=stand_in_grade), [])
+            self.assertEqual(pending_walk.pending_walks(road.study / "rehearsals", [WALK]), frozenset(),
+                             "a verified regrade supersedes the pending grade (batch-8 finding 1)")
         stored = json.loads((road.folder / "grade.json").read_text())
         self.assertEqual(stored["status"], "pending-native-reader")                  # the walk's own record stays
         refusing = {"gemini": lambda raw, n: (_ for _ in ()).throw(road.nrr.vp.ProvenanceRefused("a stand-in"))}
@@ -550,6 +557,10 @@ class Regrade(unittest.TestCase):
         path.write_text(path.read_text().replace('"graded": true', '"graded": false'))
         git(road.root, "commit", "-q", "-am", walk_regrade.REGRADE_SUBJECT)
         self.assertTrue(walk_regrade.regrade_problems(road.study, grade=stand_in_grade))
+        with mock.patch.object(run, "grade_walk_folder", stand_in_grade):     # batch-8 finding 4: a hand-made
+            self.assertIn("does not re-derive", road.refused())               # regrade refuses the registration
+            self.assertEqual(pending_walk.pending_walks(road.study / "rehearsals", [WALK]), frozenset({WALK}),
+                             "a regrade that does not re-derive supersedes nothing")
 
 
 if __name__ == "__main__":
