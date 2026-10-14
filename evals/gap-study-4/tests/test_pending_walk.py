@@ -214,7 +214,7 @@ class Road:
         """The review and Javier's acceptance record, each committed (the record as his own window would)."""
         nrr = self.nrr
         (self.study / nrr.READER_DIR).mkdir(exist_ok=True)
-        (self.study / nrr.READER_DIR / "review.md").write_text(f"# {review}\nVerdict: PASS\n")
+        (self.study / nrr.READER_DIR / "gemini-review.md").write_text(f"# {review}\nVerdict: PASS\n")
         git(self.root, "add", "-A")
         git(self.root, "commit", "-q", "-m", "an independent review")
         ledger = json.loads((self.folder / "driver-ledger.json").read_text())
@@ -225,8 +225,8 @@ class Road:
                   "native": {"file": "session/" + last["file"], "sha256": last["sha256"]},
                   "streams": [{"file": s, "sha256": sha(self.folder / s)} for s in ledger["streams"]],
                   "join": {"status": "PASS", "interactions": len(ledger["streams"])},
-                  "review": {"verdict": "PASS", "file": "review.md",
-                             "sha256": sha(self.study / nrr.READER_DIR / "review.md"), "reviewer": reviewer},
+                  "review": {"verdict": "PASS", "file": "gemini-review.md",
+                             "sha256": sha(self.study / nrr.READER_DIR / "gemini-review.md"), "reviewer": reviewer},
                   "accepted_by": accepted_by}
         if edit:
             edit(record)

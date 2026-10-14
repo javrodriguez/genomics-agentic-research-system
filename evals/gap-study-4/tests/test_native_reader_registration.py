@@ -125,6 +125,48 @@ class CheckSession(unittest.TestCase):
         self.assertIn("vendor_provenance.py", nrr().READER_SOURCES)
 
 
+class ManifestClaim(unittest.TestCase):
+    """glitch-06's ruling (14 Oct 2026): native-readers/ is pre-declared by one pattern entry, so Javier's acceptance
+    commit never touches a manifest; it claims only <harness>-acceptance.json and <harness>-review.md for a vendor
+    harness, and nothing else there."""
+
+    def test_only_the_named_records_are_claimed(self):
+        import copy_manifest as cm
+        extra = {"native-readers/gemini-acceptance.json", "native-readers/gemini-review.md",
+                 "native-readers/codex-acceptance.json", "native-readers/codex-review.md",
+                 "native-readers/notes.txt", "native-readers/claude-code-acceptance.json",
+                 "native-readers/gemini-review.json", "native-readers/sub/gemini-review.md"}
+        got = cm.problems(present=cm.files_here() | extra, pinned=False)
+        unclaimed = sorted(n for n in extra if any(n + " is under" in g for g in got))
+        self.assertEqual(unclaimed, ["native-readers/claude-code-acceptance.json", "native-readers/gemini-review.json",
+                                     "native-readers/notes.txt", "native-readers/sub/gemini-review.md"])
+        self.assertEqual(nrr().ACCEPTANCE_FILE, "native-readers/gemini-acceptance.json")
+        self.assertTrue(nrr()._REVIEW_FILE.fullmatch("gemini-review.md"))
+
+    def test_a_fragment_cannot_claim_inside_the_folder(self):
+        import json
+        import shutil
+        import copy_manifest as cm
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "COPIED.d"
+            shutil.copytree(cm.FRAGMENTS, folder)
+            frag = folder / "live-harness-foundation.json"
+            doc = json.loads(frag.read_text())
+            for entry, why in (({"path": "native-readers/notes.txt", "status": "new", "reason": "x"}, "claimed only by"),
+                               ({"path": "native-readers/**", "status": "new", "reason": "x"}, "claimed only by")):
+                with self.subTest(entry=entry):
+                    frag.write_text(json.dumps(dict(doc, files=doc["files"] + [entry])))
+                    self.assertTrue(any(why in g for g in cm.problems(folder=folder, pinned=False)))
+            pattern = [e for e in doc["files"] if e["path"] == "native-readers/**"]
+            frag.write_text(json.dumps(dict(doc, files=[e for e in doc["files"] if e["path"] != "native-readers/**"]
+                                            + [dict(pattern[0], reason=" ")])))
+            self.assertTrue(any("claimed only by" in g for g in cm.problems(folder=folder, pinned=False)))
+            frag.write_text(json.dumps(dict(doc, files=[e for e in doc["files"] if e["path"] != "native-readers/**"])))
+            got = cm.problems(folder=folder, present=cm.files_here() | {"native-readers/gemini-acceptance.json"},
+                              pinned=False)                # without the pattern entry nothing there is claimed
+            self.assertTrue(any("native-readers/gemini-acceptance.json is under" in g for g in got))
+
+
 class NoRecord(unittest.TestCase):
     def test_the_study_has_no_acceptance_record_and_the_registry_is_empty(self):
         m = nrr()

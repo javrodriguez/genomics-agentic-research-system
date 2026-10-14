@@ -85,7 +85,7 @@ NEVER_COUNTED = ("parallel calls from one model message (the fact schema does no
 SYNTHETIC = re.compile(r"synthetic", re.IGNORECASE)
 _NATIVE_FILE = re.compile(r"session/native-turn-[1-9][0-9]*\.jsonl")
 _STREAM_FILE = re.compile(r"turn-[1-9][0-9]*\.jsonl")
-_REVIEW_FILE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.md")
+_REVIEW_FILE = re.compile(re.escape(HARNESS) + r"-review\.md")   # the one review name copy_manifest claims
 _HEX = re.compile(r"[0-9a-f]{64}")
 
 
