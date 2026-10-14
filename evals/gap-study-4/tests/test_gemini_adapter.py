@@ -1052,6 +1052,114 @@ def a10_mode(mod, p):
     return out
 
 
+def _adapter_in(mod, runtime, folder):
+    return mod.GeminiAdapter(runtime=runtime, take_id=TAKE, run_tree=str(SCRATCH / "tree"), login_file=login_file(),
+                             model=MODEL, pin={"permission_mode": MODE, "version": VERSION},
+                             stream_path_for=lambda n: str(folder / f"turn-{n}.jsonl"), counters_for=Counters(),
+                             clock=Clock())
+
+
+@guarded("A11-identity", GA_API + ("turn_identity",))
+def a11_identity(mod, p):
+    """Live harness 3b (integration A4 sweep survivors): where each pin field came from, spelled here. The model: the
+    init's (stream-init), else the result's one stats model (stream-stats), else unobserved; the version: version-exec;
+    the mode: submitted_mode's entry, passed through as given."""
+    out = []
+    mode = {"value": None, "source": "unobserved"}
+    for read, want in (({"init_model": "m-init", "served_models": ["m-stats"]}, {"value": "m-init", "source": "stream-init"}),
+                       ({"init_model": None, "served_models": ["m-stats"]}, {"value": "m-stats", "source": "stream-stats"}),
+                       ({"init_model": None, "served_models": []}, {"value": None, "source": "unobserved"}),
+                       ({"init_model": None, "served_models": ["a", "b"]}, {"value": None, "source": "unobserved"})):
+        got = mod.turn_identity(read, version="9.9.9", mode=mode)
+        if got != {"model": want, "permission_mode": mode, "version": {"value": "9.9.9", "source": "version-exec"}}:
+            out.append(f"{p}: {read} gave {got}")
+    a, _ = take(mod, [fixture("turn1-tools.jsonl")])
+    r = a.turn("one", first=True, budget_s=60)
+    if r.identity != {"model": {"value": MODEL, "source": "stream-init"}, "permission_mode": mode,
+                      "version": {"value": VERSION, "source": "version-exec"}}:
+        out.append(f"{p}: turn 1's identity is {r.identity}")
+    return out
+
+
+@guarded("A12-executed", GA_API + ("ExecutedStreamRefused",))
+def a12_executed(mod, p):
+    """Live harness 3a: an exec that ran is kept before its stream is read; a reader refusal is ExecutedStreamRefused
+    and a defect is a plain ExecutedTurnRefused, each carrying the kept record with its refusal "<type>: <words>"."""
+    out = []
+    keys = {"n", "exit_code", "timed_out", "started_at", "ended_at", "stream_path", "counters", "refused"}
+    a, _ = take(mod, [fixture("unknown-event.jsonl")])
+    try:
+        a.turn("one", first=True, budget_s=60)
+        out.append(f"{p}: a stream off the tables was not refused")
+    except mod.ExecutedStreamRefused as e:
+        cause = e.__cause__
+        rec = a.executed_turns[-1] if a.executed_turns else None
+        if len(a.executed_turns) != 1 or e.executed != rec or set(rec) != keys or rec["n"] != 1:
+            out.append(f"{p}: the kept exec record is {a.executed_turns}")
+        elif rec["refused"] != f"{type(cause).__name__}: {cause}" or not rec["refused"].startswith(
+                type(cause).__name__ + ": "):
+            out.append(f"{p}: the reader refusal is recorded as {rec['refused']!r}")
+    a, _ = take(mod, [fixture("turn1-tools.jsonl")])
+    a.turn("one", first=True, budget_s=60)
+    if len(a.executed_turns) != 1 or set(a.executed_turns[0]) != keys or a.executed_turns[0]["refused"] is not None:
+        out.append(f"{p}: a clean turn's kept exec record is {a.executed_turns}")
+    a, _ = take(mod, [fixture("turn1-tools.jsonl")])
+
+    def defect(got, n, first):
+        raise RuntimeError("a stand-in defect")
+    a._read_turn = defect
+    try:
+        a.turn("one", first=True, budget_s=60)
+        out.append(f"{p}: a defect after the exec was not refused")
+    except mod.StreamError:
+        out.append(f"{p}: a defect after the exec was read as a stream refusal")
+    except mod.aa.ExecutedTurnRefused as e:
+        rec = a.executed_turns[-1] if a.executed_turns else {}
+        if e.executed != rec or rec.get("refused") != "RuntimeError: a stand-in defect" or set(rec) != keys:
+            out.append(f"{p}: the defect is recorded as {rec}")
+    return out
+
+
+@guarded("A13-native", GA_API)
+def a13_native(mod, p):
+    """Live harness 3c: the native session file is the one under GEMINI_CLI_HOME named by turn 1's session id."""
+    out = []
+    a, _ = take(mod, [fixture("turn1-tools.jsonl")])
+    a.turn("one", first=True, budget_s=60)
+    home = Path(tempfile.mkdtemp(dir=SCRATCH))
+    chats = home / ".gemini" / "tmp" / "project-1" / "chats"
+    chats.mkdir(parents=True)
+    sid = json.loads(fixture("turn1-tools.jsonl").splitlines()[0])["session_id"]
+    want = chats / f"session-2026-10-14T05-00-{sid[:8]}.jsonl"
+    want.write_text("{}\n")
+    if a.native_session_path(str(home)) != str(want):
+        out.append(f"{p}: the native session located is not {want.name}")
+    return out
+
+
+@guarded("A14-journal", GA_API)
+def a14_journal(mod, p):
+    """The turn reads its mode from the journal beside its stream (<stream>.launch.json), against the registered
+    invocation: model, mode, run tree, stream, line, the resumed session (turn 1's "first-turn") and the ordinal."""
+    out = []
+    folder = Path(tempfile.mkdtemp(dir=SCRATCH))
+    box = FakeRuntime([fixture("turn1-tools.jsonl"), fixture("turn2-resume.jsonl")])
+    a = _adapter_in(mod, box, folder)
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    sid = json.loads(fixture("turn1-tools.jsonl").splitlines()[0])["session_id"]
+    for n, (line, session) in enumerate((("one", None), ("two", sid)), 1):
+        stream = str(folder / f"turn-{n}.jsonl")
+        Path(stream + ".launch.json").write_text(json.dumps({
+            "schema": 1, "harness": "gemini", "container_id": TAKE,
+            "argv": list(mod.argv(line, model=MODEL, mode=MODE, session_id=session, first=n == 1)),
+            "cwd": str(SCRATCH / "tree"), "stream": stream, "started_at": 1.0}))
+    for n, line in enumerate(("one", "two"), 1):
+        r = a.turn(line, first=n == 1, budget_s=60)
+        if r.identity["permission_mode"] != {"value": MODE, "source": "submitted-argv"}:
+            out.append(f"{p}: turn {n}'s mode from its journal is {r.identity['permission_mode']}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheShapes(unittest.TestCase):
     def test_s1_an_unknown_event_is_refused(self):
@@ -1106,6 +1214,18 @@ class TestTheAdapter(unittest.TestCase):
 
     def test_a10_the_mode_is_read_from_the_launch_journal(self):
         self.assertEqual(a10_mode(ga), [])
+
+    def test_a11_the_identity_sources(self):
+        self.assertEqual(a11_identity(ga), [])
+
+    def test_a12_an_executed_turn_is_kept_before_its_refusal(self):
+        self.assertEqual(a12_executed(ga), [])
+
+    def test_a13_the_native_session_is_located_by_turn_ones_id(self):
+        self.assertEqual(a13_native(ga), [])
+
+    def test_a14_the_turn_reads_its_mode_from_its_own_journal(self):
+        self.assertEqual(a14_journal(ga), [])
 
     def test_a_recorded_label_needs_its_walk_and_version(self):
         for rest in ("", " at walk w-1.", " at walk w-1, gemini-cli 0.63.", " at walk w-1, codex-cli 0.63.0.",
@@ -1497,16 +1617,21 @@ EQUIVALENT_CATEGORIES = {
                         "the study's hosts are POSIX, where the flag itself is used",
     "slice-past-end": "one more window start past the end yields a slice shorter than the flags, which never equals "
                       "them, so no window is found that the line's own range would miss",
+    "unreachable-fallback": "turn 1's _read_turn sets session_id before the identity line reads it, so the "
+                            "'first-turn' fallback is never taken (launch_facts ignores the session id on turn 1)",
 }
 # What each category's line must hold (checked against the named line of the file, so a reason cannot drift from it).
 EQUIVALENT_TOKENS = {"import-plumbing": ("_HERE", "__future__"), "falsy-alike": ("joining = False",),
                      "identical-mutant": ("None",), "message-label": None, "typed-bool": ("is True",),
                      "message-order": ("sorted(",), "sequence-alike": ("list(VERSION_ARGV)",),
-                     "platform-default": ("O_NOFOLLOW",), "slice-past-end": ("len(argv) - len(flags) + 1",)}
+                     "platform-default": ("O_NOFOLLOW",), "slice-past-end": ("len(argv) - len(flags) + 1",),
+                     "unreachable-fallback": ("first-turn",)}
 CMP_NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: ast.In, ast.Lt: ast.GtE,
               ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt, ast.Is: ast.IsNot, ast.IsNot: ast.Is}
 # {mutant key: (category, why, a token its source line holds)}; the key is printed by the sweep for each survivor.
 EQUIVALENT = {
+    "gemini_adapter: bool-drop#1 L390 8a4b94d4 self.session_id or 'first-turn'": ('unreachable-fallback', "_turn's want: session_id is already turn 1's own", 'first-turn'),
+    "gemini_adapter: str-change L390 1ed1c08a 'first-turn'": ('unreachable-fallback', "_turn's want: session_id is already turn 1's own", 'first-turn'),
     'gemini_adapter: int-change L266 5feceb66 0': ('platform-default', "submitted_mode's journal open: O_NOFOLLOW exists on the box's POSIX hosts", 'O_NOFOLLOW'),
     'gemini_adapter: int-change L278 6b86b273 1': ('slice-past-end', "submitted_mode's window range: an extra start past the end finds nothing", 'len(argv) - len(flags) + 1'),
     'gemini_adapter: stmt-delete L65 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),
@@ -1729,7 +1854,8 @@ def _build(tree, name: str, path: Path, inject=None) -> types.ModuleType:
 
 
 TG_CHECKS = (s1_event, s2_key, s3_words, s4_stats, s5_tools, s6_error_text, p1_view)
-GA_CHECKS = (a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source, a10_mode)
+GA_CHECKS = (a1_stream, a2_error, a3_output, a4_stats, a5_model, a6_argv, a7_session, a8_turn, a9_source, a10_mode,
+             a11_identity, a12_executed, a13_native, a14_journal)
 
 
 def all_checks(tgm, gam) -> list:

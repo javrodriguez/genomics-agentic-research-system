@@ -987,6 +987,43 @@ def b11_version(mod, p):
     return out
 
 
+@guarded("B12-executed", CA_API + ("ExecutedStreamRefused",))
+def b12_executed(mod, p):
+    """Live harness slice 6 (integration sweep survivors): an exec that ran is kept before its stream is read; a clean
+    turn's record says refused None; a reader refusal is ExecutedStreamRefused and a defect a plain
+    ExecutedTurnRefused, each carrying the kept record with its refusal "<type>: <words>"."""
+    out = []
+    keys = {"n", "exit_code", "timed_out", "started_at", "ended_at", "stream_path", "counters", "refused"}
+    a, _ = take_with(mod, [fixture("turn1-tools.jsonl")])
+    a.turn("first line", first=True, budget_s=60)
+    if len(a.executed_turns) != 1 or set(a.executed_turns[0]) != keys or a.executed_turns[0]["refused"] is not None:
+        out.append(f"{p}: a clean turn's kept exec record is {a.executed_turns}")
+    a, _ = take_with(mod, [fixture("unknown-event.jsonl")])
+    try:
+        a.turn("first line", first=True, budget_s=60)
+        out.append(f"{p}: a stream off the tables was not refused")
+    except mod.ExecutedStreamRefused as e:
+        cause = e.__cause__
+        rec = a.executed_turns[-1] if a.executed_turns else {}
+        if len(a.executed_turns) != 1 or e.executed != rec or set(rec) != keys or \
+                rec.get("refused") != f"{type(cause).__name__}: {cause}":
+            out.append(f"{p}: the reader refusal is kept as {a.executed_turns}")
+    a, _ = take_with(mod, [fixture("turn1-tools.jsonl")])
+
+    def defect(got, n, first):
+        raise RuntimeError("a stand-in defect")
+    a._read_turn = defect
+    try:
+        a.turn("first line", first=True, budget_s=60)
+        out.append(f"{p}: a defect after the exec was not refused")
+    except mod.StreamError:
+        out.append(f"{p}: a defect after the exec was read as a stream refusal")
+    except mod.aa.ExecutedTurnRefused as e:
+        rec = a.executed_turns[-1] if a.executed_turns else {}
+        if e.executed != rec or rec.get("refused") != "RuntimeError: a stand-in defect" or set(rec) != keys:
+            out.append(f"{p}: the defect is kept as {rec}")
+    return out
+
 # ------------------------------------------------------------------------------------------------ the tests
 class TestTheShapes(unittest.TestCase):
     def test_s1_an_unknown_event_is_refused(self):
@@ -1069,6 +1106,9 @@ class TestTheAdapter(unittest.TestCase):
 
     def test_b11_the_version_exec(self):
         self.assertEqual(b11_version(ca), [])
+
+    def test_b12_an_executed_turn_is_kept_before_its_refusal(self):
+        self.assertEqual(b12_executed(ca), [])
 
     def test_b10_a_cut_line_only_last(self):
         self.assertEqual(b10_cut(ca), [])
@@ -1244,7 +1284,7 @@ NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: as
           ast.IsNot: ast.Is, ast.Lt: ast.GtE, ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt}
 TC_CHECKS = (s1_event, s2_item, s3_key, p1_view, b3_required, b8_types)
 CA_CHECKS = (a1_stream, a2_error, a3_usage, a4_argv, a5_model, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
-             b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version)
+             b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version, b12_executed)
 
 _PREAMBLE = "the import preamble: this test puts the module folder on sys.path before it imports either module"
 _LABEL = "a what-label passed to _keys or _types, which use it only in their refusal's words"
