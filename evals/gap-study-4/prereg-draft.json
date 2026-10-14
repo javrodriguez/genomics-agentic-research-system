@@ -23527,9 +23527,33 @@
   "floor_evidence": "PENDING",
   "config_templates": {
     "claude-code": {
-      "claude-opus-5-5": "PENDING",
-      "claude-sonnet-5-5": "PENDING",
-      "claude-haiku-4-5-20251001": "PENDING"
+      "claude-opus-5-5": {
+        "files": [
+          {
+            "path": "settings.json",
+            "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          }
+        ],
+        "sha256": "a2993c9b40b365cd48edd9986e4dc26099e83e8115228f60c004dc24ffbe5ea0"
+      },
+      "claude-sonnet-5-5": {
+        "files": [
+          {
+            "path": "settings.json",
+            "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          }
+        ],
+        "sha256": "a2993c9b40b365cd48edd9986e4dc26099e83e8115228f60c004dc24ffbe5ea0"
+      },
+      "claude-haiku-4-5-20251001": {
+        "files": [
+          {
+            "path": "settings.json",
+            "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+          }
+        ],
+        "sha256": "a2993c9b40b365cd48edd9986e4dc26099e83e8115228f60c004dc24ffbe5ea0"
+      }
     },
     "codex": {
       "gpt-6.1-sol": "PENDING",
@@ -23622,9 +23646,6 @@
   "pending": {
     "/box_residuals/0/finding": "R8 plan 830: the real box supplies the conditional preflight finding.",
     "/checked_against/status": "R9 plan 831, PL-4: the first committed walk supplies the session check.",
-    "/config_templates/claude-code/claude-haiku-4-5-20251001": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
-    "/config_templates/claude-code/claude-opus-5-5": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
-    "/config_templates/claude-code/claude-sonnet-5-5": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
     "/config_templates/codex/gpt-6-luna": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
     "/config_templates/codex/gpt-6.1-sol": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
     "/config_templates/gemini/gemini-3.5-flash-lite": "R15 CP5-req 50: CP2 fills take_config's measured settings before templates can render.",
@@ -23670,9 +23691,6 @@
     "PENDING": [
       "/box_residuals/0/finding",
       "/checked_against/status",
-      "/config_templates/claude-code/claude-haiku-4-5-20251001",
-      "/config_templates/claude-code/claude-opus-5-5",
-      "/config_templates/claude-code/claude-sonnet-5-5",
       "/config_templates/codex/gpt-6-luna",
       "/config_templates/codex/gpt-6.1-sol",
       "/config_templates/gemini/gemini-3.5-flash-lite",
