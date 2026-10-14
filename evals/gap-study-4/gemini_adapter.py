@@ -387,7 +387,7 @@ class GeminiAdapter(aa.AgentAdapter):
                                  got["stream_path"] + ".launch.json",
                                  {"harness": NAME, "container_id": self.take_id, "model": self.model,
                                   "mode": self.mode, "run_tree": self.run_tree, "stream": got["stream_path"],
-                                  "sent": line, "vendor_session_id": self.session_id or "first-turn",
+                                  "sent": line, "vendor_session_id": "first-turn" if first else self.session_id,
                                   "ordinal": n})))
 
     def _read_turn(self, got: dict, n: int, first: bool) -> tuple:

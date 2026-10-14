@@ -24,12 +24,12 @@
     {
       "path": "vendor_provenance.py",
       "status": "new",
-      "reason": "Typed actual-submission, native-session, observed-version and pinned-file source validation; production session reader registry remains empty pending reviewed native schemas."
+      "reason": "Typed actual-submission, native-session, observed-version and pinned-file source validation; production session reader registry remains empty pending reviewed native schemas. Batch-8 review finding 5: launch_facts requires the expectation's session to be exactly 'first-turn' on turn 1 and never on a later turn."
     },
     {
       "path": "tests/test_vendor_provenance.py",
       "status": "new",
-      "reason": "Synthetic source-join checks; independently decoded session source mandatory, wrong invocation/hash/pin/identity rejected; no live readiness claim."
+      "reason": "Synthetic source-join checks; independently decoded session source mandatory, wrong invocation/hash/pin/identity rejected; no live readiness claim. Batch-8 review finding 5: turn 1's 'first-turn' expectation, and its three refusals."
     },
     {
       "path": "gemini_session_replay.py",

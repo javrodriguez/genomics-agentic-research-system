@@ -1157,6 +1157,19 @@ def a14_journal(mod, p):
         r = a.turn(line, first=n == 1, budget_s=60)
         if r.identity["permission_mode"] != {"value": MODE, "source": "submitted-argv"}:
             out.append(f"{p}: turn {n}'s mode from its journal is {r.identity['permission_mode']}")
+    # Batch-8 review finding 5: a first turn whose stream has no init leaves session_id unset, so the expectation's
+    # "first-turn" fallback is what launch_facts reads; the journal still gives the pinned mode.
+    folder = Path(tempfile.mkdtemp(dir=SCRATCH))
+    a = _adapter_in(mod, FakeRuntime([fixture("no-init.jsonl")]), folder)
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    stream = str(folder / "turn-1.jsonl")
+    Path(stream + ".launch.json").write_text(json.dumps({
+        "schema": 1, "harness": "gemini", "container_id": TAKE,
+        "argv": list(mod.argv("one", model=MODEL, mode=MODE, session_id=None, first=True)),
+        "cwd": str(SCRATCH / "tree"), "stream": stream, "started_at": 1.0}))
+    r = a.turn("one", first=True, budget_s=60)
+    if a.session_id is not None or r.identity["permission_mode"] != {"value": MODE, "source": "submitted-argv"}:
+        out.append(f"{p}: a no-init first turn's mode from its journal is {r.identity['permission_mode']}")
     return out
 
 
@@ -1617,21 +1630,16 @@ EQUIVALENT_CATEGORIES = {
                         "the study's hosts are POSIX, where the flag itself is used",
     "slice-past-end": "one more window start past the end yields a slice shorter than the flags, which never equals "
                       "them, so no window is found that the line's own range would miss",
-    "unreachable-fallback": "turn 1's _read_turn sets session_id before the identity line reads it, so the "
-                            "'first-turn' fallback is never taken (launch_facts ignores the session id on turn 1)",
 }
 # What each category's line must hold (checked against the named line of the file, so a reason cannot drift from it).
 EQUIVALENT_TOKENS = {"import-plumbing": ("_HERE", "__future__"), "falsy-alike": ("joining = False",),
                      "identical-mutant": ("None",), "message-label": None, "typed-bool": ("is True",),
                      "message-order": ("sorted(",), "sequence-alike": ("list(VERSION_ARGV)",),
-                     "platform-default": ("O_NOFOLLOW",), "slice-past-end": ("len(argv) - len(flags) + 1",),
-                     "unreachable-fallback": ("first-turn",)}
+                     "platform-default": ("O_NOFOLLOW",), "slice-past-end": ("len(argv) - len(flags) + 1",)}
 CMP_NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: ast.In, ast.Lt: ast.GtE,
               ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt, ast.Is: ast.IsNot, ast.IsNot: ast.Is}
 # {mutant key: (category, why, a token its source line holds)}; the key is printed by the sweep for each survivor.
 EQUIVALENT = {
-    "gemini_adapter: bool-drop#1 L390 8a4b94d4 self.session_id or 'first-turn'": ('unreachable-fallback', "_turn's want: session_id is already turn 1's own", 'first-turn'),
-    "gemini_adapter: str-change L390 1ed1c08a 'first-turn'": ('unreachable-fallback', "_turn's want: session_id is already turn 1's own", 'first-turn'),
     'gemini_adapter: int-change L266 5feceb66 0': ('platform-default', "submitted_mode's journal open: O_NOFOLLOW exists on the box's POSIX hosts", 'O_NOFOLLOW'),
     'gemini_adapter: int-change L278 6b86b273 1': ('slice-past-end', "submitted_mode's window range: an extra start past the end finds nothing", 'len(argv) - len(flags) + 1'),
     'gemini_adapter: stmt-delete L65 a6284e6d from __future__ import annotations': ('import-plumbing', "the module's __future__ import", '__future__'),

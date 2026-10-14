@@ -722,9 +722,11 @@ class R3DeadWalk(Case):
             self.assertEqual([g.get("state") for g in got], ["committed"], f"R3.dead-walk: {got}")
             copy = Path(tempfile.mkdtemp(dir=tbi.SCRATCH)) / "w-0001"
             shutil.copytree(folder_of(w, "w-0001"), copy)
+            # Every turn sign goes: the ledger, the transcript, each stream and each launch journal (on the merged
+            # head the box's run_turn writes turn-N.jsonl.launch.json itself, 0b6f60f9; the integration lane).
             for p in list(copy.iterdir()):
                 if p.name == "driver-ledger.json" or p.name == "transcript.jsonl" or (
-                        p.name.startswith("turn-") and p.name.endswith(".jsonl")):
+                        p.name.startswith("turn-") and p.name.endswith((".jsonl", ".jsonl.launch.json"))):
                     p.unlink()
             if not (copy / "preflight.json").exists() and not (copy / "refusal.json").exists():
                 (copy / "preflight.json").write_text('{"ok": true, "checks": []}\n')
@@ -1372,13 +1374,13 @@ EQUIVALENT: dict = {
     "walk_runner._run_one:drop-0:L2:C7:2b55246e":
         "run_one, _run_one's only caller, passes walk = row.get('walk') if row is a dict, else None; so whenever "
         "row is not a dict, walk is None and `not isinstance(walk, str)` alone already holds",
-    "walk_runner.run_walks:cond-false:L12:C11:aa50c7d9":
+    "walk_runner.run_walks:cond-false:L13:C11:aa50c7d9":   # re-anchored: the docstring grew a line (batch 8)
         "the `continue` is the loop body's tail but for the HELD test; a launch-refused state is not HELD, so "
         "without it the loop goes on the same way",
-    "walk_runner.run_walks:delete:L12:C8:35f36fd2":
+    "walk_runner.run_walks:delete:L13:C8:35f36fd2":
         "the `if launch-refused: continue` is the loop body's tail but for the HELD test; a launch-refused state is "
         "not HELD, so without it the loop goes on the same way",
-    "walk_runner.run_walks:delete:L13:C12:93cfda8b":
+    "walk_runner.run_walks:delete:L14:C12:93cfda8b":
         "`continue` replaced by `pass` falls to the HELD test, which a launch-refused state never meets, so the loop "
         "goes on the same way",
 }
@@ -1585,8 +1587,10 @@ class R10Guards(Case):
 # the exact refusal, so each kill is by assertion.
 def stub_driver(root: Path, *, walk_check=None, launch=None, drive=None, remove=None, published=None):
     """A walk driver stand-in whose class's launch carries the namespace walk_runner.driver_namespace reads (the drive
-    module's LaunchRefused and WALK_CHECK, or another WALK_CHECK)."""
+    module's LaunchRefused, NativeCrossCheckPending (the pending-walk road, batch-8 review finding 2) and WALK_CHECK,
+    or another WALK_CHECK)."""
     g = {"__name__": "synthetic_drive", "LaunchRefused": MODS["drive"].LaunchRefused,
+         "NativeCrossCheckPending": MODS["drive"].NativeCrossCheckPending,
          "WALK_CHECK": MODS["drive"].WALK_CHECK if walk_check is None else walk_check}
     exec("class StubDriver:\n    def launch(self, row):\n        return self.on_launch(row)\n", g)
     d = g["StubDriver"]()
