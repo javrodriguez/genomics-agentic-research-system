@@ -244,6 +244,51 @@ def run_time_readers(runtime_of, caller_env=None) -> tuple:
     return uid_map, cgroup_dir_for
 
 
+# glitch-06's queue item 3 and review NOTE S-2 (14 Oct 2026): the box's pinned rules scanner
+# (scan_record.real_rules_scanner(), box 35e61dec) is NOT callable; each walk builds its scan once with
+# build(runtime, report_dir) over a fresh, empty report folder, and a real walk (the production builders) scans only with
+# that build's product, held in a BuiltRulesScan that only walk_rules_scanner makes.
+_BUILD_KEY = object()
+
+
+class BuiltRulesScan:
+    """The per-walk scan(paths) the pinned scanner's build(runtime, report_dir) returned (review NOTE S-2)."""
+
+    __slots__ = ("scan", "report_dir", "source")
+
+    def __init__(self, scan, report_dir, source, key):
+        if key is not _BUILD_KEY:
+            raise BuilderRefused("a BuiltRulesScan is made only by walk_rules_scanner, from a pinned scanner's build")
+        self.scan, self.report_dir, self.source = scan, report_dir, source
+
+    def __call__(self, paths):
+        return self.scan(paths)
+
+
+def walk_rules_scanner(scanner, runtime, report_parent, *, real: bool):
+    """The walk's rules scan. real (the production builders): `scanner` must be exactly scan_record.RealRulesScanner,
+    built here; otherwise an injected scan(paths) is used as given, and anything with a build() is built the same way.
+    Each build gets its own fresh, empty folder under report_parent (outside every repository)."""
+    import tempfile
+
+    from box import scan_record
+    if real:
+        pinned = getattr(scan_record, "RealRulesScanner", None)
+        if pinned is None or type(scanner) is not pinned:
+            raise BuilderRefused(f"a real walk scans only with the pinned scanner (scan_record.RealRulesScanner), "
+                                 f"never {type(scanner).__name__}")
+    elif callable(scanner):
+        return scanner
+    build = getattr(scanner, "build", None)
+    if not callable(build):
+        raise BuilderRefused("the rules scanner is neither a scan(paths) nor a pinned scanner to build")
+    report_dir = tempfile.mkdtemp(prefix="walk-scan-", dir=report_parent)
+    scan = build(runtime, report_dir)
+    if not callable(scan):
+        raise BuilderRefused("the pinned scanner's build did not give a scan(paths)")
+    return BuiltRulesScan(scan, report_dir, scanner, _BUILD_KEY)
+
+
 def counters_reader(cgroup_dir_for):
     """The adapter's counters_for(take): run_take.counters over the absolute folder cgroup_dir_for(take) names."""
     if not callable(cgroup_dir_for):
@@ -451,11 +496,13 @@ def prepare(builders: dict, args) -> tuple[dict, str, Path]:
     return row, login, build_run_tree(args.walk, repo=repo, commit=commit, exclude=builders["run_tree_exclude"])
 
 
-def walk_driver_for(builders: dict, row: dict, login: str, tree: Path):
+def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: bool = False):
     """(the identity, drive.walk_driver(records='walks') over the study folder mode_binding reads, its WalkRepo):
-    the fixture built in the walk's checkout, the identity from it, every other collaborator from the builder set."""
+    the fixture built in the walk's checkout, the identity from it, every other collaborator from the builder set.
+    real (the production builders): the rules scan is the pinned scanner's per-walk build, nothing else (S-2)."""
     import check_take
     import drive
+    rules = walk_rules_scanner(builders["rules_scanner"], builders["runtime"], builders["config_parent"], real=real)
     project = drive.neutral_name(check_take.walk_session_id(row["walk"]))
     record, source = build_walk_fixture(row, tree, project)
     ident = walk_identity(row["walk"], source=source, fixture=record, gars_tree_sha=check_take.GARS_TREE_SHA)
@@ -469,11 +516,11 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path):
         lock_path=builders["lock_path"], hosts=builders["hosts"], login_file=login,
         counters_for=counters_reader(builders["cgroup_dir_for"]), pin_for=builders["pin_for"],
         design_for=builders["design_for"], project_for=lambda r: project,
-        identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=builders["rules_scanner"],
+        identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=rules,
         uid_map=builders["uid_map"], budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s,
         clock=builders["clock"], sleep=builders["sleep"], records="walks", ownership=builders["ownership"],
         settings_guard=builders["settings_guard"])
-    repo = drive.WalkRepo(runtime=builders["runtime"], secrets=secrets, rules_scanner=builders["rules_scanner"],
+    repo = drive.WalkRepo(runtime=builders["runtime"], secrets=secrets, rules_scanner=rules,
                           root=root, repo=drive.records_repo(root))
     return ident, driver, repo
 
@@ -485,6 +532,7 @@ def cli(argv, builders=None, *, refusal: str) -> int:
     walk, end to end, through walk_runner.run_walks, exit 0 only when it was committed (1 when refused at launch or
     held). A held walk keeps its run tree for a human, as it keeps its folder; so does a walk whose run_walks raised,
     and its path is printed on its own `kept run tree:` line before the exception goes on (W12B-R1-3)."""
+    real = builders is None                                    # S-2: a real walk takes the pinned scanner's build
     try:                                                       # W12B-R1-3: an unreadable value is a refusal too
         builders = production_builders() if builders is None else builders
     except Exception as e:  # noqa: BLE001
@@ -504,7 +552,7 @@ def cli(argv, builders=None, *, refusal: str) -> int:
         print(f"refused: {e}", file=sys.stderr)
         return 2
     try:
-        _, driver, repo = walk_driver_for(builders, row, login, tree)
+        _, driver, repo = walk_driver_for(builders, row, login, tree, real=real)
     except BaseException as e:
         left = remove_run_tree(tree)
         if not isinstance(e, BuilderRefused):

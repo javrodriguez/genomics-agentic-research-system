@@ -134,6 +134,15 @@ def mutants() -> dict:
                                       "os.path.normpath(source) != source:", "    if False:"),
         "identity-any-walk": ("B1.identity", "walk_builders", "        if walk not in prepared:",
                               "        if False:"),
+        "scanner-real-unchecked": ("B12.scanner", "walk_builders",
+                                   "        if pinned is None or type(scanner) is not pinned:", "        if False:"),
+        "scanner-raw-to-driver": ("B12.scanner", "walk_builders",
+                                  'identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=rules,',
+                                  'identity_for=identity_for({row["walk"]: ident}), secrets=secrets, '
+                                  'rules_scanner=builders["rules_scanner"],'),
+        "report-dir-shared": ("B12.scanner", "walk_builders",
+                              '    report_dir = tempfile.mkdtemp(prefix="walk-scan-", dir=report_parent)',
+                              '    report_dir = report_parent'),
         "login-reads-on": ("B2.login", "walk_builders", "        head = os.read(fd, len(want))",
                            "        head = os.read(fd, 4096)[:len(want)]"),
         "login-mode-unchecked": ("B2.login", "walk_builders", "    if stat.S_IMODE(st.st_mode) != 0o600:",
@@ -249,6 +258,9 @@ METHOD = {
     "held-tree-removed": "B9Cli.test_a_held_walk_keeps_its_run_tree",
     "held-exits-zero": "B9Cli.test_a_held_walk_keeps_its_run_tree",
     "refused-tree-left": "B9Cli.test_a_refused_fixture_removes_its_run_tree",
+    "scanner-real-unchecked": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
+    "scanner-raw-to-driver": "B12Scanner.test_a_pinned_scanner_is_built_once_for_a_walk",
+    "report-dir-shared": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
@@ -1375,6 +1387,99 @@ def b11_problems(mod) -> list:
 class B11Derived(Case):
     def test_cgroup_and_uid_map_are_derived_at_run_time(self):
         self.assertEqual(b11_problems(wb()), [])
+
+
+# ------------------------------------------------------------------------------------------------- B12
+# glitch-06's queue item 3 and review NOTE S-2: the box's pinned scanner (scan_record.real_rules_scanner(), box 35e61dec)
+# is built once per walk with build(runtime, report_dir), each walk a fresh, empty report folder, and a real walk (the
+# production builders) scans only with that build's product: a test fake never reaches one.
+class FakePinned:
+    """Stands in for the box's RealRulesScanner: not callable; build(runtime, report_dir) -> scan(paths)."""
+
+    def __init__(self, product=None):
+        self.builds = []
+        self.product = product
+
+    def build(self, runtime, report_dir):
+        self.builds.append((runtime, report_dir, os.path.isdir(report_dir) and not os.listdir(report_dir)))
+        return self.product if self.product is not None else (lambda paths: [])
+
+
+def b12_problems(mod) -> list:
+    out = []
+    if not callable(getattr(mod, "walk_rules_scanner", None)) or not hasattr(mod, "BuiltRulesScan"):
+        return ["B12.scanner: walk_builders has no walk_rules_scanner or BuiltRulesScan"]
+    fake = lambda paths: []  # noqa: E731
+    if mod.walk_rules_scanner(fake, "rt", "/nonexistent", real=False) is not fake:
+        out.append("B12.scanner: an injected scan is not passed through on a test walk")
+    with tempfile.TemporaryDirectory() as parent:
+        pinned = FakePinned()
+        a = mod.walk_rules_scanner(pinned, "rt", parent, real=False)
+        b = mod.walk_rules_scanner(pinned, "rt", parent, real=False)
+        dirs = [d for _, d, _ in pinned.builds]
+        if not (isinstance(a, mod.BuiltRulesScan) and callable(a) and a(["x"]) == []):
+            out.append(f"B12.scanner: the build's product is not handed on as a BuiltRulesScan: {a!r}")
+        if len(set(dirs)) != 2 or not all(empty for _, _, empty in pinned.builds) or not all(
+                os.path.dirname(d) == os.path.realpath(parent) or os.path.dirname(d) == parent for d in dirs):
+            out.append(f"B12.scanner: each walk did not get a fresh, empty report folder under the parent: "
+                       f"{pinned.builds}")
+        if a is b:
+            out.append("B12.scanner: two walks share one built scan")
+        for why, bad in (("a build giving a non-callable", FakePinned(product="not callable")),
+                         ("neither a scan nor a build", object())):
+            try:
+                mod.walk_rules_scanner(bad, "rt", parent, real=False)
+                out.append(f"B12.scanner: {why} was accepted")
+            except mod.BuilderRefused:
+                pass
+        from box import scan_record
+        for why, scanner in (("a plain callable", fake), ("another type with a build", FakePinned())):
+            try:
+                mod.walk_rules_scanner(scanner, "rt", parent, real=True)
+                out.append(f"B12.scanner: a real walk took {why}")
+            except mod.BuilderRefused:
+                pass
+        with mock.patch.object(scan_record, "RealRulesScanner", FakePinned, create=True):
+            got = mod.walk_rules_scanner(FakePinned(), "rt", parent, real=True)
+            if not isinstance(got, mod.BuiltRulesScan):
+                out.append(f"B12.scanner: a real walk did not take the pinned scanner's build: {got!r}")
+    try:
+        mod.BuiltRulesScan(lambda paths: [], "/x", None, object())
+        out.append("B12.scanner: a BuiltRulesScan was made outside walk_rules_scanner")
+    except mod.BuilderRefused:
+        pass
+    return out
+
+
+class B12Scanner(Case):
+    def test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk(self):
+        self.assertEqual(b12_problems(wb()), [])
+
+    def test_a_pinned_scanner_is_built_once_for_a_walk(self):
+        """A builder set whose scanner is a pinned one (not callable): the walk's driver and repo get its build's
+        product, built once, over a fresh, empty report folder, and the walk commits."""
+        with fake_world() as w:
+            pinned = FakePinned()
+            builders = dict(w.builders, rules_scanner=pinned)
+            code, out, err = self.must("B12.scanner", w.main, w.argv(), builders)
+            self.assertEqual(code, 0, f"B12.scanner: the walk with a pinned scanner did not commit: {err[-600:]}")
+            self.assertEqual(len(pinned.builds), 1, f"B12.scanner: built {len(pinned.builds)} times, not once")
+            self.assertTrue(pinned.builds[0][2], "B12.scanner: the report folder was not fresh and empty")
+
+    def test_the_production_road_refuses_a_fake_scanner(self):
+        """The command line with no builder set handed in (a real walk): a fake scan in the production builders is
+        refused by name before the walk's driver is built."""
+        with fake_world() as w:
+            mod = sys.modules["walk_builders"]
+            fake_set = dict(w.builders)
+            drive = MODS["drive"]
+            with mock.patch.object(mod, "production_builders", lambda: fake_set), \
+                    tbi.spying(tbi.Spy()), mock.patch.object(drive._mode_binding, "HERE", w.root), \
+                    generator(sha=pin(w.row["task"], w.row["half"])):
+                code, out, err = run_main(w.argv(), None)
+            self.assertEqual(code, 2, f"B12.scanner: a real walk ran with a fake scan: {err[-600:]}")
+            self.assertIn("a real walk scans only with the pinned scanner", err,
+                          "B12.scanner: the refusal is not the real walk's pinned-scanner rule")
 
 
 if __name__ == "__main__":
