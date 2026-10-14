@@ -352,3 +352,24 @@ list-removed /stats_design/PENDING | "/config_templates/claude-code/claude-opus-
 list-removed /stats_design/PENDING | "/config_templates/claude-code/claude-sonnet-5-5" -> null
 TOTAL 9
 ```
+
+## RESUME HERE (Mac shutdown 14 Oct)
+
+Written at 16:13 EDT, when Javier was turning the Mac off.
+
+- **Merge clone:** `/Users/javrodher/aegis-builds/gap4-live-merge-20261014`, branch `gap4/live-merge-20261014`. HEAD is the commit that carries this block; its parent is `40acb6de`.
+- **Heads carried:**
+  - box `5c73dab4` (merged in `40acb6de`, on top of `60093f55` in `9991f26a`);
+  - harness `1e8d0cd3` (merged in `de6616a3`; one conflict hunk in `walk_builders.py` `production_builders` `rules_scanner`, resolved with the harness `1e8d0cd3` hunk, as logged in that commit).
+- **Checks on `40acb6de`:** `build_draft.py --check` ok, `copy_manifest.py --check` ok (414 files), `freeze.py --check` ok (415 paths). On `de6616a3`, `batch.py --check` printed `batch: routing.json ready`.
+- **Athena runs:**
+  - Running: `gap4-merge-40acb6d-20261014T194627Z` (head `40acb6de`, solo, full). The launch completed, so it runs without the Mac. Do not cancel it.
+  - Finished, already read: `gap4-harness-alone-c2d0308-20261014T190412Z` (harness `c2d03086` alone) has a verdict derived on the Mac of FAIL, with `run_checks: 249 of 271 commands passed` and log SHA-256 `1677cd10…d59ed`.
+    - Its reds: test_walk_builders generated mutants (16 shards; survivors in `cgroup_dir_of_pid`, `container_pid`, `walk_rules_scanner`, `uid_map_of_pid`, `run_time_readers`, `take_spec_builder`, `take_a_spec`, `production_builders`, `cli`).
+    - Also: test_gemini_adapter generated mutants, shards 1, 2 and 16 (`native_snapshot.gemini_session_rel`, L418-419), and test_codex_adapter generated mutants (2 survivors in `CodexAdapter.native_session_rel`).
+    - Also: test_vendor_record_binding (1 error, `adapter.rollout_for(1)`), and test_round4 (`test_drive_ownership.TestOwnershipMutants.test_post_unchecked` fails, plus the vendor_record_binding error).
+- **Next step:**
+  1. `/usr/bin/python3 /Users/javrodher/glitch/workspaces/aegis/ops/athena_suite.py fetch gap4-merge-40acb6d-20261014T194627Z --wait`.
+  2. Derive its verdict on the Mac and group every red by owner, checking each against the lane heads alone (worktrees of this clone) where needed.
+  3. Write a dated checkpoint and report to glitch-06.
+  4. Re-merge only on glitch-06's go.
