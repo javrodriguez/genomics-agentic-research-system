@@ -36,6 +36,8 @@ box/ownership.py is the box lane's and may be absent from this tree.
                one_turn made to raise is graded clean
   U1-uid-map   (queue item 2) a uid map handed as (take) -> lines is read at run time for that take, and the take is
                graded as with the lines themselves
+  P2-machine   (P-2) a machine gate naming a problem, or no gate at all, refuses the launch before any folder or
+               runtime call, through batch too (a launch failure, nothing run); a quiet gate lets the take run
 
 Mutants (MUTANTS, each killed by its own check's line): grant skipped; restore moved after postflight; restore skipped
 on a LaunchError; a scan running after a failed restore; a commit reading a held take's records; a host-side save and a
@@ -651,10 +653,34 @@ def u1_uid_map(mod, p):
     return out
 
 
+@tbi.guarded("P2-machine")
+def p2_machine(mod, p):
+    out = []
+    for why, gate in (("a suite in progress", lambda: ["athena suite run x is still in progress"]),
+                      ("no gate", None)):
+        with tbi.scratch_repo() as root:
+            rig = tbi.Rig(mod, root)
+            rig.driver.machine_gate = gate
+            before = sorted(os.listdir(rig.cfg_parent))
+            b, got = tbi.run_batch(rig, [tbi.row(1)])
+            o = got[0]
+            if o["state"] != tbi.labels4.FAILED or o["drive_started"] is not False or "P-2" not in (o["reason"] or ""):
+                out.append(f"{p}: {why}: the take is {o['state']} (drive_started {o['drive_started']}): {o['reason']}")
+            if (launch_index(rig.box.calls) != len(rig.box.calls) or rig.ownership.events
+                    or sorted(os.listdir(rig.cfg_parent)) != before):
+                out.append(f"{p}: {why}: something was made or run before the refusal")
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        if got[0]["state"] != tbi.labels4.GRADED:
+            out.append(f"{p}: a quiet machine's take is {got[0]['state']} ({got[0]['reason']})")
+    return out
+
+
 CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch, "O4-held": o4_held,
           "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator,
           "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road,
-          "U1-uid-map": u1_uid_map}
+          "U1-uid-map": u1_uid_map, "P2-machine": p2_machine}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -685,6 +711,9 @@ MUTANTS = {
                        "O8-operator"),
     "reply-sha-unchecked": ((("        if not ok or sha != hashlib.sha256(data).hexdigest():",
                               "        if False:"),), "O8-operator"),
+    "machine-gate-unchecked": ((("        if busy:                                              # P-2: before any folder",
+                                 "        if False:                                              # P-2: before any folder"),),
+                               "P2-machine"),
     "uid-map-unread": ((("        uid_map = self.uid_map(take) if callable(self.uid_map) else self.uid_map",
                          "        uid_map = self.uid_map"),), "U1-uid-map"),
     "one-turn-reached": ((("        take.driven = True\n",
@@ -742,6 +771,9 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_u1_uid_map(self):
         self.assertEqual(u1_uid_map(tbi.drive), [])
+
+    def test_p2_machine(self):
+        self.assertEqual(p2_machine(tbi.drive), [])
 
 
 class TestOwnershipMutants(unittest.TestCase):
@@ -805,6 +837,9 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_uid_map_unread(self):
         self.kill("uid-map-unread")
+
+    def test_machine_gate_unchecked(self):
+        self.kill("machine-gate-unchecked")
 
 
 if __name__ == "__main__":

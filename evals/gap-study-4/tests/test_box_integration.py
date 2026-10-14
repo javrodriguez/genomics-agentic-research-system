@@ -679,6 +679,7 @@ class Rig:
         self.box = box or FakeBox()
         self.ownership = ownership or FakeOwnership(self.box)   # the box lane's road, faked (81ede46d)
         self.settings_guard = settings_guard or FakeSettingsGuard()   # the box lane's guard, faked (d3fd5305)
+        self.machine_gate = lambda: []                       # P-2: nothing runs on the fake machine
         self.clock = Clock()
         self.box.clock = self.clock                    # S6b: one host clock for the box, the turns and the driver
         self.turns = turns if turns is not None else [{"text": "plain"}, {"text": "plain again"}]
@@ -700,7 +701,7 @@ class Rig:
             secrets=secrets or (lambda: [("token", TOKEN)]), rules_scanner=scanner or (lambda paths: []),
             uid_map=UID_MAP, budget_s=600, finalize_wait_s=CAP_S, poll_s=POLL_S, clock=self.clock,
             sleep=self.clock.sleep, project_for=lambda r: PROJECT, identity_for=self.identity_for,
-            ownership=self.ownership, settings_guard=self.settings_guard)
+            ownership=self.ownership, settings_guard=self.settings_guard, machine_gate=self.machine_gate)
         self.repo = mod.TakeRepo(runtime=self.box, record_files=self.driver.record_files,
                                  secrets=lambda: [("token", TOKEN)], rules_scanner=lambda paths: [], root=root,
                                  repo=root, on_published=self.driver.published)

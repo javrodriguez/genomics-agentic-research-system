@@ -59,7 +59,8 @@ if str(HERE) not in sys.path:
 # Every value the command line needs, in the order it reports them. A builder set holds exactly these names.
 NAMES = ("runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts", "uid_map",
          "cgroup_dir_for", "rules_scanner", "login_path", "agent_version", "table", "pin_for", "design_for",
-         "budgets", "run_tree_origin", "run_tree_exclude", "clock", "sleep", "ownership", "settings_guard")
+         "budgets", "run_tree_origin", "run_tree_exclude", "clock", "sleep", "ownership", "settings_guard",
+         "machine_gate")
 CELL = ("task", "half", "wording", "arm", "model")
 # TakeSpec.resources: the take container's capacity POLICY, never a measurement (box lane report live-box-2026-10-13.md,
 # "TakeSpec.resources: values only, for walk_builders' take_spec", rule R-RES from athena's capacity and three
@@ -441,6 +442,9 @@ def production_builders() -> dict:
                             else scan_record.real_rules_scanner())
     table = routing.load_table()
     out["table"] = table
+    import machine_gate
+    check, why = machine_gate.gate_from_env()                       # P-2: the operator's machine names its paths
+    out["machine_gate"] = check if check is not None else Missing(f"the P-2 machine gate: {why}")
     out["uid_map"], out["cgroup_dir_for"] = run_time_readers(lambda: out["runtime"])   # queue item 2: never typed in
     out["ownership"] = (Missing("the ownership road: box/ownership.py (the box lane's 81ede46d) is not on this tree")
                         if drive._ownership is None else drive._ownership)
@@ -519,7 +523,7 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: 
         identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=rules,
         uid_map=builders["uid_map"], budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s,
         clock=builders["clock"], sleep=builders["sleep"], records="walks", ownership=builders["ownership"],
-        settings_guard=builders["settings_guard"])
+        settings_guard=builders["settings_guard"], machine_gate=builders["machine_gate"])
     repo = drive.WalkRepo(runtime=builders["runtime"], secrets=secrets, rules_scanner=rules,
                           root=root, repo=drive.records_repo(root))
     return ident, driver, repo

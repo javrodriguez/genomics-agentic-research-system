@@ -2055,12 +2055,14 @@ class TakeDriver:
                      None; launch refuses while ownership_problems names anything
     settings_guard   the run tree's settings guard (SETTINGS_GUARD_PARAMS): box/settings_guard.py when None; launch
                      refuses while settings_guard_problems names anything
+    machine_gate     P-2 (glitch-06, 14 Oct 2026): () -> [problem], machine_gate.gate's check (an athena suite in
+                     progress, a booked machine); launch refuses while it names anything, and when it is None
     """
 
     def __init__(self, *, runtime, take_folder, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts,
                  adapter_for, script_for, pin_for, checker, secrets, rules_scanner, uid_map, budget_s,
                  finalize_wait_s, poll_s, clock, sleep, project_for, identity_for, holdout_matcher=None,
-                 caller_env=None, strict_script=False, ownership=None, settings_guard=None):
+                 caller_env=None, strict_script=False, ownership=None, settings_guard=None, machine_gate=None):
         if not callable(getattr(runtime, "run", None)):
             raise TypeError("runtime must offer run(argv, env=, timeout=)")
         for name, fn in (("take_folder", take_folder), ("spec_for", spec_for), ("sidecar_for", sidecar_for),
@@ -2082,6 +2084,7 @@ class TakeDriver:
         self.strict_script = strict_script is True        # W6J-R1-3: True in the CP6 production wiring
         self.ownership = _ownership if ownership is None else ownership   # the box module unless one is handed in
         self.settings_guard = _settings_guard if settings_guard is None else settings_guard   # the same
+        self.machine_gate = machine_gate                  # P-2: () -> [problem]; None refuses every launch
         self._lock = threading.Lock()
         self._by_id: dict = {}        # take container id -> _Take
         self._by_slot: dict = {}      # slot -> the slot's latest _Take not yet published
@@ -2101,6 +2104,10 @@ class TakeDriver:
         road += settings_guard_problems(self.settings_guard)
         if road:
             raise DriveRefused("; ".join(road))
+        busy = (["no machine gate (P-2): a take never starts unchecked"] if not callable(self.machine_gate)
+                else list(self.machine_gate()))
+        if busy:                                              # P-2: before any folder or container
+            raise DriveRefused("P-2, the take does not start: " + "; ".join(busy))
         folder = self.take_folder(row) if _folder is None else _folder
         if not isinstance(folder, str) or not os.path.isabs(folder) or os.path.normpath(folder) != folder:
             raise DriveRefused(f"the take folder is not a normalised absolute path: {folder!r}")
@@ -3332,7 +3339,8 @@ class WalkDriver(TakeDriver):
 def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, lock_path, hosts, login_file,
                 counters_for, pin_for, design_for, project_for, identity_for, secrets, rules_scanner, uid_map,
                 budget_s, finalize_wait_s, poll_s, clock, sleep, holdout_matcher=None, caller_env=None,
-                records="takes", rollout_for=None, ownership=None, settings_guard=None) -> WalkDriver:
+                records="takes", rollout_for=None, ownership=None, settings_guard=None,
+                machine_gate=None) -> WalkDriver:
     """The CP6 production wiring (cp6-readiness row 3): batch's driver for a walk or a take of any of the three
     harnesses (registration review finding 2, glitch-06, 14 Oct 2026: harness_adapter_for, so a Gemini walk, and a
     Codex walk once its rollout_for road exists, runs on the same road; WalkDriver still admits only each harness's
@@ -3368,7 +3376,7 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
         secrets=secrets, rules_scanner=rules_scanner, holdout_matcher=holdout_matcher, uid_map=uid_map,
         budget_s=budget_s, finalize_wait_s=finalize_wait_s, poll_s=poll_s, clock=clock, sleep=sleep,
         project_for=project_for, identity_for=identity_for, caller_env=caller_env, ownership=ownership,
-        settings_guard=settings_guard)
+        settings_guard=settings_guard, machine_gate=machine_gate)
 
 
 # =====================================================================================================================

@@ -100,6 +100,7 @@ OWNERSHIP_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "ownership.py
 EXPECTED_MISSING += [] if OWNERSHIP_ON_TREE else ["ownership"]
 SETTINGS_GUARD_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "settings_guard.py").is_file()
 EXPECTED_MISSING += [] if SETTINGS_GUARD_ON_TREE else ["settings_guard"]
+EXPECTED_MISSING += ["machine_gate"]       # P-2: until the operator's runner names its paths (machine_gate's env)
 
 
 def road() -> dict:
@@ -927,6 +928,7 @@ class FakeWorld:
             "budgets": (600, tbi.CAP_S, tbi.POLL_S), "run_tree_origin": (origin_repo, sha),
             "run_tree_exclude": ["evals"], "clock": self.clock, "sleep": self.clock.sleep,
             "ownership": tbi.FakeOwnership(self.box), "settings_guard": tbi.FakeSettingsGuard(),
+            "machine_gate": lambda: [],
         }
 
     def pin_for(self, row):

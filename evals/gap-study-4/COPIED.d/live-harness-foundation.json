@@ -175,6 +175,16 @@
       "path": "tests/test_drive_ownership.py",
       "status": "new",
       "reason": "The ownership road in drive.py (the box lane's call contract at 81ede46d): grant before launch, restore after teardown and before postflight, scan and removal, a held take never committed; checks O1 to O7 on the shared fake box and fake road, five mutants."
+    },
+    {
+      "path": "machine_gate.py",
+      "status": "new",
+      "reason": "P-2 (glitch-06, 14 Oct 2026): no take starts while athena_suite list shows a run in progress or .machine-reserved is booked; the gate the take driver checks before each launch, built from the operator's own paths."
+    },
+    {
+      "path": "tests/test_machine_gate.py",
+      "status": "new",
+      "reason": "machine_gate's list parsing, booking, failure and environment checks on fakes, four witnesses."
     }
   ]
 }
