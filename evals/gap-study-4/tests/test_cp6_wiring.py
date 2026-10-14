@@ -222,7 +222,7 @@ def build_driver(drive, root: Path, records: str, cfg: Path, runtime=None):
         adapter_for=lambda r, t: None, script_for=lambda r: [], pin_for=lambda r: {}, checker=lambda r, t, n: {},
         secrets=lambda: [], rules_scanner=lambda p: [], uid_map=[], budget_s=1, finalize_wait_s=1, poll_s=1,
         clock=lambda: 0.0, sleep=lambda s: None, project_for=lambda r: tbi.PROJECT, identity_for=lambda r: {},
-        ownership=tbi.FakeOwnership())
+        ownership=tbi.FakeOwnership(), settings_guard=tbi.FakeSettingsGuard(), machine_gate=lambda: [])
 
 
 def register(root: Path, row: dict, attempt: int, rows=None):

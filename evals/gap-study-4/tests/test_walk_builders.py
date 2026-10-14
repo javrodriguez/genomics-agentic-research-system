@@ -88,8 +88,9 @@ LOGIN = "CLAUDE_CODE_OAUTH_TOKEN"
 TARGETS = ("walk_builders", "walk_runner")
 # The production values still missing, in walk_builders.NAMES' order: the real box's (item 4), the owner's login
 # (item 7) and the walks' (pins, constants, budgets, exclusions). A value filled later turns this list red on purpose.
-EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts", "uid_map",
-                    "cgroup_dir_for", "rules_scanner", "login_path", "agent_version", "design_for",
+# Queue item 2 (glitch-06, 14 Oct 2026): uid_map and cgroup_dir_for are run-time readers now (B11), never missing.
+EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts",
+                    "rules_scanner", "login_path", "agent_version", "design_for",
                     "budgets", "run_tree_exclude"]
 # CP5 (Javier, "CP5: all as recommended", 14 Oct 2026) registered arm A's pin profiles, so pin_for is no longer missing
 # in production (B8's rule, on the real table); it is checked present in B7.production.
@@ -97,6 +98,9 @@ EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "pro
 # present on the merged head (B7.production checks it is then drive's own `_ownership`).
 OWNERSHIP_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "ownership.py").is_file()
 EXPECTED_MISSING += [] if OWNERSHIP_ON_TREE else ["ownership"]
+SETTINGS_GUARD_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "settings_guard.py").is_file()
+EXPECTED_MISSING += [] if SETTINGS_GUARD_ON_TREE else ["settings_guard"]
+EXPECTED_MISSING += ["machine_gate"]       # P-2: until the operator's runner names its paths (machine_gate's env)
 
 
 def road() -> dict:
@@ -131,6 +135,15 @@ def mutants() -> dict:
                                       "os.path.normpath(source) != source:", "    if False:"),
         "identity-any-walk": ("B1.identity", "walk_builders", "        if walk not in prepared:",
                               "        if False:"),
+        "scanner-real-unchecked": ("B12.scanner", "walk_builders",
+                                   "        if pinned is None or type(scanner) is not pinned:", "        if False:"),
+        "scanner-raw-to-driver": ("B12.scanner", "walk_builders",
+                                  'identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=rules,',
+                                  'identity_for=identity_for({row["walk"]: ident}), secrets=secrets, '
+                                  'rules_scanner=builders["rules_scanner"],'),
+        "report-dir-shared": ("B12.scanner", "walk_builders",
+                              '    report_dir = tempfile.mkdtemp(prefix="walk-scan-", dir=report_parent)',
+                              '    report_dir = report_parent'),
         "login-reads-on": ("B2.login", "walk_builders", "        head = os.read(fd, len(want))",
                            "        head = os.read(fd, 4096)[:len(want)]"),
         "login-mode-unchecked": ("B2.login", "walk_builders", "    if stat.S_IMODE(st.st_mode) != 0o600:",
@@ -246,6 +259,9 @@ METHOD = {
     "held-tree-removed": "B9Cli.test_a_held_walk_keeps_its_run_tree",
     "held-exits-zero": "B9Cli.test_a_held_walk_keeps_its_run_tree",
     "refused-tree-left": "B9Cli.test_a_refused_fixture_removes_its_run_tree",
+    "scanner-real-unchecked": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
+    "scanner-raw-to-driver": "B12Scanner.test_a_pinned_scanner_is_built_once_for_a_walk",
+    "report-dir-shared": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
@@ -763,8 +779,8 @@ class B7Production(Case):
         self.assertEqual([n for n, _ in gaps], EXPECTED_MISSING, "B7.production: not exactly the missing values")
         self.assertTrue(all(isinstance(why, str) and len(why) > 20 for _, why in gaps), "B7.production")
         why = dict(gaps)
-        for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"), ("uid_map", rt.CALLER_PENDING["uid_map"]),
-                            ("cgroup_dir_for", rt.CALLER_PENDING["cgroup_dir"]), ("login_path", "walk token"),
+        for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"),
+                            ("login_path", "walk token"),
                             ("design_for", "PENDING"), ("run_tree_exclude", "run_location"),
                             ("agent_version", "version_pins"), ("rules_scanner", "gitleaks")):
             self.assertIn(words, why[name], f"B7.production: {name} does not say why")
@@ -779,6 +795,10 @@ class B7Production(Case):
             self.assertIs(got["ownership"], drive._ownership, "B7.production: the ownership road is not the box's")
         else:
             self.assertIn("box/ownership.py", why["ownership"], "B7.production: ownership does not say why")
+        if SETTINGS_GUARD_ON_TREE:
+            self.assertIs(got["settings_guard"], drive._settings_guard, "B7.production: the guard is not the box's")
+        else:
+            self.assertIn("box/settings_guard.py", why["settings_guard"], "B7.production: the guard does not say why")
         self.assertEqual(sorted(got), sorted(wb().NAMES), "B7.production: the set is not NAMES")
 
     def test_main_refuses_by_name_before_anything(self):
@@ -913,7 +933,8 @@ class FakeWorld:
             "table": self.table, "pin_for": self.pin_for, "design_for": self.design_for,
             "budgets": (600, tbi.CAP_S, tbi.POLL_S), "run_tree_origin": (origin_repo, sha),
             "run_tree_exclude": ["evals"], "clock": self.clock, "sleep": self.clock.sleep,
-            "ownership": tbi.FakeOwnership(self.box),
+            "ownership": tbi.FakeOwnership(self.box), "settings_guard": tbi.FakeSettingsGuard(),
+            "machine_gate": lambda: [],
         }
 
     def pin_for(self, row):
@@ -1239,6 +1260,234 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
         for x in ids:
             print(f"  {name}: {x}", flush=True)
     return 0 if not survived and not listed_killed and not inconclusive else 1
+
+
+# ------------------------------------------------------------------------------------------------- B10
+# glitch-06's queue item 1 (14 Oct 2026): TakeSpec.resources are the box lane's capacity POLICY (live-box report,
+# "TakeSpec.resources: values only, for walk_builders' take_spec": memory_reservation 2147483648, memory 6442450944,
+# cpus "8", pids_limit 4096), typed here once from that line.
+BOX_RESOURCES = {"memory_reservation": 2147483648, "memory": 6442450944, "cpus": "8", "pids_limit": 4096}
+
+
+def b10_problems(mod) -> list:
+    """B10.resources: the policy values, run_take's own spec check passing them, and the take spec built by the row's
+    arm's lock (a pending lock refuses at call time; a ready one gives its image id and the policy values)."""
+    from box import image_lock
+    out = []
+    if getattr(mod, "TAKE_RESOURCES", None) != BOX_RESOURCES:
+        return [f"B10.resources: TAKE_RESOURCES is {getattr(mod, 'TAKE_RESOURCES', None)!r}, not the box's policy"]
+    spec = rt.TakeSpec(image=tbi.IMAGE, run_tree="/synthetic/tree", config_dir="/synthetic/cfg",
+                       network=mod.NETWORK_PLACEHOLDER, **mod.TAKE_RESOURCES)
+    try:
+        rt.check_spec(spec)
+    except Exception as e:  # noqa: BLE001
+        out.append(f"B10.resources: run_take refuses the policy spec: {type(e).__name__}: {e}")
+    build = mod.take_spec_builder()
+    row = {"arm": "A"}
+    real = image_lock.load(str(HERE / mod.TAKE_LOCKS["A"]))
+    ready = dict(real, image_id="sha256:" + "a" * 64)
+    with mock.patch.object(image_lock, "load", lambda path: ready), \
+            mock.patch.object(image_lock, "require_ready", lambda lock: lock):
+        got = build(row, "/synthetic/cfg", "/synthetic/tree")
+    want = {"image": "sha256:" + "a" * 64, "run_tree": "/synthetic/tree", "config_dir": "/synthetic/cfg",
+            **BOX_RESOURCES}
+    if {k: getattr(got, k) for k in want} != want:
+        out.append(f"B10.resources: a ready lock's take spec is {got}")
+    with mock.patch.object(image_lock, "load", lambda path: dict(real, image_id=image_lock.PENDING)):
+        try:
+            build(row, "/synthetic/cfg", "/synthetic/tree")
+            out.append("B10.resources: a pending lock's take spec was built")
+        except Exception:  # noqa: BLE001 - NotReady, by the lock reader
+            pass
+    if set(mod.TAKE_LOCKS) != {"A", "O", "G"} or not all((HERE / v).is_file() for v in mod.TAKE_LOCKS.values()):
+        out.append(f"B10.resources: TAKE_LOCKS is not one existing lock per arm: {mod.TAKE_LOCKS}")
+    return out
+
+
+class B10Resources(Case):
+    def test_the_take_spec_carries_the_box_policy(self):
+        self.assertEqual(b10_problems(wb()), [])
+
+    def test_a_resource_drift_is_red(self):
+        mod = wb()
+        for k, v in (("memory", 4 * 1024 ** 3), ("cpus", "4"), ("pids_limit", 1024)):
+            with mock.patch.object(mod, "TAKE_RESOURCES", dict(mod.TAKE_RESOURCES, **{k: v})):
+                self.assertTrue(b10_problems(mod), k)
+
+
+# ------------------------------------------------------------------------------------------------- B11
+# glitch-06's queue item 2: the take container's cgroup folder and the runtime's uid map are derived at run time from the
+# container id and /proc (the box lane measured, on athena: /sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/
+# user.slice/docker-<id>.scope and ((0,1000,1),(1,100000,65536))), never typed in; anything else refuses.
+CID = "c" * 64
+
+
+class InspectBox:
+    def __init__(self, out="4242\n", code=0):
+        self.out, self.code, self.calls = out, code, []
+
+    def run(self, argv, env=None, timeout=None):
+        self.calls.append(list(argv))
+        return rt.Completed(self.code, self.out, "")
+
+
+def fake_proc(tmp: Path, *, uid_map="         0       1000          1\n         1     100000      65536\n",
+              cgroup=None, make_dir=True) -> tuple:
+    proc, root = tmp / "proc", tmp / "cgroup"
+    rel = f"/user.slice/user-1000.slice/user@1000.service/user.slice/docker-{CID}.scope"
+    (proc / "4242").mkdir(parents=True)
+    (proc / "4242" / "uid_map").write_text(uid_map)
+    (proc / "4242" / "cgroup").write_text(cgroup if cgroup is not None else f"0::{rel}\n")
+    if make_dir:
+        (root / rel.lstrip("/")).mkdir(parents=True)
+    return proc, root, str(root / rel.lstrip("/"))
+
+
+def b11_problems(mod) -> list:
+    out = []
+    for name in ("container_pid", "uid_map_of_pid", "cgroup_dir_of_pid"):
+        if not callable(getattr(mod, name, None)):
+            return [f"B11.derived: walk_builders has no {name}"]
+    with tempfile.TemporaryDirectory() as t:
+        tmp = Path(t)
+        proc, root, want = fake_proc(tmp)
+        box = InspectBox()
+        if mod.container_pid(box, CID) != 4242 or box.calls[0][:2] != [rt.RUNTIME_CLIENT, "inspect"]:
+            out.append(f"B11.derived: the pid was not read by inspect: {box.calls}")
+        if mod.uid_map_of_pid(4242, proc=str(proc)) != ((0, 1000, 1), (1, 100000, 65536)):
+            out.append(f"B11.derived: the uid map reads as {mod.uid_map_of_pid(4242, proc=str(proc))}")
+        if mod.cgroup_dir_of_pid(4242, CID, proc=str(proc), root=str(root)) != want:
+            out.append("B11.derived: the cgroup folder is not the container's scope")
+    bad = {
+        "inspect failed": lambda tmp: mod.container_pid(InspectBox(code=1), CID),
+        "not running (pid 0)": lambda tmp: mod.container_pid(InspectBox(out="0\n"), CID),
+        "pid not a number": lambda tmp: mod.container_pid(InspectBox(out="x\n"), CID),
+        "uid map empty": lambda tmp: mod.uid_map_of_pid(4242, proc=str(fake_proc(tmp, uid_map="")[0])),
+        "uid map malformed": lambda tmp: mod.uid_map_of_pid(4242, proc=str(fake_proc(tmp, uid_map="0 1000\n")[0])),
+        "cgroup v1": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup="1:memory:/docker/x\n"))[0]), root=str(f[1])),
+        "another container's scope": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::/user.slice/docker-{'d' * 64}.scope\n"))[0]), root=str(f[1])),
+        "scope folder missing": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, make_dir=False))[0]), root=str(f[1])),
+    }
+    for why, fn in bad.items():
+        with tempfile.TemporaryDirectory() as t:
+            try:
+                fn(Path(t))
+                out.append(f"B11.derived: {why} was not refused")
+            except mod.BuilderRefused:
+                pass
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B11.derived: {why} raised {type(e).__name__}, not BuilderRefused")
+    got = mod.production_builders()
+    for name in ("uid_map", "cgroup_dir_for"):
+        if not callable(got[name]):
+            out.append(f"B11.derived: production {name} is not a run-time reader: {got[name]!r}")
+    try:                                   # with no runtime yet, a reader refuses by name, never a silent default
+        got["uid_map"](types.SimpleNamespace(launched=types.SimpleNamespace(take_id=CID)))
+        out.append("B11.derived: the production uid map read with no runtime")
+    except mod.BuilderRefused:
+        pass
+    return out
+
+
+class B11Derived(Case):
+    def test_cgroup_and_uid_map_are_derived_at_run_time(self):
+        self.assertEqual(b11_problems(wb()), [])
+
+
+# ------------------------------------------------------------------------------------------------- B12
+# glitch-06's queue item 3 and review NOTE S-2: the box's pinned scanner (scan_record.real_rules_scanner(), box 35e61dec)
+# is built once per walk with build(runtime, report_dir), each walk a fresh, empty report folder, and a real walk (the
+# production builders) scans only with that build's product: a test fake never reaches one.
+class FakePinned:
+    """Stands in for the box's RealRulesScanner: not callable; build(runtime, report_dir) -> scan(paths)."""
+
+    def __init__(self, product=None):
+        self.builds = []
+        self.product = product
+
+    def build(self, runtime, report_dir):
+        self.builds.append((runtime, report_dir, os.path.isdir(report_dir) and not os.listdir(report_dir)))
+        return self.product if self.product is not None else (lambda paths: [])
+
+
+def b12_problems(mod) -> list:
+    out = []
+    if not callable(getattr(mod, "walk_rules_scanner", None)) or not hasattr(mod, "BuiltRulesScan"):
+        return ["B12.scanner: walk_builders has no walk_rules_scanner or BuiltRulesScan"]
+    fake = lambda paths: []  # noqa: E731
+    if mod.walk_rules_scanner(fake, "rt", "/nonexistent", real=False) is not fake:
+        out.append("B12.scanner: an injected scan is not passed through on a test walk")
+    with tempfile.TemporaryDirectory() as parent:
+        pinned = FakePinned()
+        a = mod.walk_rules_scanner(pinned, "rt", parent, real=False)
+        b = mod.walk_rules_scanner(pinned, "rt", parent, real=False)
+        dirs = [d for _, d, _ in pinned.builds]
+        if not (isinstance(a, mod.BuiltRulesScan) and callable(a) and a(["x"]) == []):
+            out.append(f"B12.scanner: the build's product is not handed on as a BuiltRulesScan: {a!r}")
+        if len(set(dirs)) != 2 or not all(empty for _, _, empty in pinned.builds) or not all(
+                os.path.dirname(d) == os.path.realpath(parent) or os.path.dirname(d) == parent for d in dirs):
+            out.append(f"B12.scanner: each walk did not get a fresh, empty report folder under the parent: "
+                       f"{pinned.builds}")
+        if a is b:
+            out.append("B12.scanner: two walks share one built scan")
+        for why, bad in (("a build giving a non-callable", FakePinned(product="not callable")),
+                         ("neither a scan nor a build", object())):
+            try:
+                mod.walk_rules_scanner(bad, "rt", parent, real=False)
+                out.append(f"B12.scanner: {why} was accepted")
+            except mod.BuilderRefused:
+                pass
+        from box import scan_record
+        for why, scanner in (("a plain callable", fake), ("another type with a build", FakePinned())):
+            try:
+                mod.walk_rules_scanner(scanner, "rt", parent, real=True)
+                out.append(f"B12.scanner: a real walk took {why}")
+            except mod.BuilderRefused:
+                pass
+        with mock.patch.object(scan_record, "RealRulesScanner", FakePinned, create=True):
+            got = mod.walk_rules_scanner(FakePinned(), "rt", parent, real=True)
+            if not isinstance(got, mod.BuiltRulesScan):
+                out.append(f"B12.scanner: a real walk did not take the pinned scanner's build: {got!r}")
+    try:
+        mod.BuiltRulesScan(lambda paths: [], "/x", None, object())
+        out.append("B12.scanner: a BuiltRulesScan was made outside walk_rules_scanner")
+    except mod.BuilderRefused:
+        pass
+    return out
+
+
+class B12Scanner(Case):
+    def test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk(self):
+        self.assertEqual(b12_problems(wb()), [])
+
+    def test_a_pinned_scanner_is_built_once_for_a_walk(self):
+        """A builder set whose scanner is a pinned one (not callable): the walk's driver and repo get its build's
+        product, built once, over a fresh, empty report folder, and the walk commits."""
+        with fake_world() as w:
+            pinned = FakePinned()
+            builders = dict(w.builders, rules_scanner=pinned)
+            code, out, err = self.must("B12.scanner", w.main, w.argv(), builders)
+            self.assertEqual(code, 0, f"B12.scanner: the walk with a pinned scanner did not commit: {err[-600:]}")
+            self.assertEqual(len(pinned.builds), 1, f"B12.scanner: built {len(pinned.builds)} times, not once")
+            self.assertTrue(pinned.builds[0][2], "B12.scanner: the report folder was not fresh and empty")
+
+    def test_the_production_road_refuses_a_fake_scanner(self):
+        """The command line with no builder set handed in (a real walk): a fake scan in the production builders is
+        refused by name before the walk's driver is built."""
+        with fake_world() as w:
+            mod = sys.modules["walk_builders"]
+            fake_set = dict(w.builders)
+            drive = MODS["drive"]
+            with mock.patch.object(mod, "production_builders", lambda: fake_set), \
+                    tbi.spying(tbi.Spy()), mock.patch.object(drive._mode_binding, "HERE", w.root), \
+                    generator(sha=pin(w.row["task"], w.row["half"])):
+                code, out, err = run_main(w.argv(), None)
+            self.assertEqual(code, 2, f"B12.scanner: a real walk ran with a fake scan: {err[-600:]}")
+            self.assertIn("a real walk scans only with the pinned scanner", err,
+                          "B12.scanner: the refusal is not the real walk's pinned-scanner rule")
 
 
 if __name__ == "__main__":

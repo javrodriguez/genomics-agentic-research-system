@@ -392,7 +392,7 @@ def build_walk_driver(drive, factory, root):
             pin_for=lambda r: {}, design_for=lambda r, t: None, project_for=lambda r: "run-0000abcd",
             identity_for=lambda r: {}, secrets=lambda: [], rules_scanner=lambda p: [], uid_map=[], budget_s=1,
             finalize_wait_s=1, poll_s=1, clock=lambda: 0.0, sleep=lambda s: None,
-            ownership=tbi.FakeOwnership())
+            ownership=tbi.FakeOwnership(), settings_guard=tbi.FakeSettingsGuard(), machine_gate=lambda: [])
 
 
 class A1AdapterClass(Case):

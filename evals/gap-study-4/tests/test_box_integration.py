@@ -67,6 +67,7 @@ import copy
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -322,6 +323,39 @@ class FakeOwnership:
 
     def names(self) -> list:
         return [name for name, _ in self.events]
+
+
+class FakeSettingsGuard:
+    """The box lane's run-tree settings guard (box/settings_guard.py, d3fd5305) as drive's interface names it, on
+    fakes only: baseline hashes every .claude/settings.json and .claude/settings.local.json in the run tree (or
+    raises SettingsRefused when told); snapshot_problems names each such file whose snapshot entry differs."""
+
+    class SettingsRefused(ValueError):
+        pass
+
+    SETTINGS = re.compile(r"(?:^|.*/)\.claude/settings(?:\.local)?\.json")
+
+    def __init__(self, *, refuse=False):
+        self.refuse = refuse
+        self.calls: list = []
+
+    def baseline(self, run_tree, *, model):
+        self.calls.append(("baseline", run_tree, model))
+        if self.refuse:
+            raise self.SettingsRefused("synthetic: a settings file carries a forbidden key")
+        out = {}
+        for base, dirs, files in os.walk(run_tree):
+            for f in files:
+                rel = os.path.relpath(os.path.join(base, f), run_tree).replace(os.sep, "/")
+                if self.SETTINGS.fullmatch(rel):
+                    with open(os.path.join(base, f), "rb") as fh:
+                        out[rel] = hashlib.sha256(fh.read()).hexdigest()
+        return out
+
+    def snapshot_problems(self, snapshot, base):
+        self.calls.append(("snapshot", snapshot.get("label")))
+        got = {k: v.get("sha256") for k, v in snapshot["entries"].items() if self.SETTINGS.fullmatch(k)}
+        return [f"{k}: not the baseline's" for k in sorted(set(got) | set(base)) if got.get(k) != base.get(k)]
 
 
 class FakeBox:
@@ -653,10 +687,12 @@ class Rig:
     """One scratch repository, one fake box, a TakeDriver and a TakeRepo wired the way the drive step runs them."""
 
     def __init__(self, mod, root: Path, *, box=None, turns=None, raise_at=None, checker=None, spy=None,
-                 scanner=None, secrets=None, ownership=None):
+                 scanner=None, secrets=None, ownership=None, settings_guard=None):
         self.mod, self.root = mod, root
         self.box = box or FakeBox()
         self.ownership = ownership or FakeOwnership(self.box)   # the box lane's road, faked (81ede46d)
+        self.settings_guard = settings_guard or FakeSettingsGuard()   # the box lane's guard, faked (d3fd5305)
+        self.machine_gate = lambda: []                       # P-2: nothing runs on the fake machine
         self.clock = Clock()
         self.box.clock = self.clock                    # S6b: one host clock for the box, the turns and the driver
         self.turns = turns if turns is not None else [{"text": "plain"}, {"text": "plain again"}]
@@ -678,7 +714,7 @@ class Rig:
             secrets=secrets or (lambda: [("token", TOKEN)]), rules_scanner=scanner or (lambda paths: []),
             uid_map=UID_MAP, budget_s=600, finalize_wait_s=CAP_S, poll_s=POLL_S, clock=self.clock,
             sleep=self.clock.sleep, project_for=lambda r: PROJECT, identity_for=self.identity_for,
-            ownership=self.ownership)
+            ownership=self.ownership, settings_guard=self.settings_guard, machine_gate=self.machine_gate)
         self.repo = mod.TakeRepo(runtime=self.box, record_files=self.driver.record_files,
                                  secrets=lambda: [("token", TOKEN)], rules_scanner=lambda paths: [], root=root,
                                  repo=root, on_published=self.driver.published)

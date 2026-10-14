@@ -147,6 +147,11 @@ def read_stream(text: str) -> dict:
                     its `error`, its text its words; a result record with is_error true adds one more, typed by its
                     subtype, with the result's own words; status is the result's api_error_status when an int
     calls           [{message_id, request_id, model}] per distinct (message.id, request_id) of the agent's records
+    served_models   the distinct message.model of every agent assistant record, in order (the harness's own API-error
+                    record, model <synthetic>, is never one); an agent record whose message.model is not a non-empty
+                    string refuses (StreamError): an unknown shape is never read as the pin's model
+    model_usage     the result record's modelUsage keys, in order, or None when the turn has no result or the result
+                    carries no modelUsage; a modelUsage that is not an object of objects refuses (StreamError)
     tool_use_ids    every tool_use block id the agent's records hold, in order
     result          the result record's RESULT_KEYS (absent keys None; permission_denials kept as {tool_name,
                     tool_use_id}), or None when the turn has no result record (a cut or dead turn)
@@ -158,6 +163,7 @@ def read_stream(text: str) -> dict:
     said, harness, output, api, calls, tools, result, sids = [], [], False, [], [], [], None, []
     seen_calls = set()
     status = None
+    models, usage = [], None
     for rec in recs:
         if rec.get("type") == "result" and _int(rec.get("api_error_status")):
             status = rec["api_error_status"]
@@ -191,6 +197,11 @@ def read_stream(text: str) -> dict:
                 output = True
             tools.extend(b.get("id") for b in blocks if b.get("type") == "tool_use")
             msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
+            served = msg.get("model")
+            if not isinstance(served, str) or not served:     # the served-model backstop reads every agent message
+                raise StreamError(f"an agent assistant record names no model ({served!r}): an unknown shape")
+            if served not in models:
+                models.append(served)
             key = (msg.get("id"), rec.get("request_id"))
             if key not in seen_calls:
                 seen_calls.add(key)
@@ -198,6 +209,11 @@ def read_stream(text: str) -> dict:
             continue
         if kind == "result":
             result = {k: rec.get(k) for k in RESULT_KEYS}
+            mu = rec.get("modelUsage")
+            if mu is not None and (not isinstance(mu, dict) or not all(isinstance(k, str) and k and isinstance(v, dict)
+                                                                      for k, v in mu.items())):
+                raise StreamError("the result's modelUsage is not an object of per-model objects: an unknown shape")
+            usage = None if mu is None else list(mu)
             denials = rec.get("permission_denials")
             result["permission_denials"] = ([{k: d.get(k) for k in DENIAL_KEYS} for d in denials
                                              if isinstance(d, dict)] if isinstance(denials, list) else None)
@@ -208,7 +224,27 @@ def read_stream(text: str) -> dict:
                             else None, "text": words or None})
     return {"init": init, "init_extra": extra, "inits": inits, "agent_text": "\n".join(said),
             "harness_text": "\n".join(h for h in harness if h), "agent_output": output, "api_errors": api,
-            "calls": calls, "tool_use_ids": tools, "result": result, "session_ids": sids, "undecoded": bad}
+            "calls": calls, "tool_use_ids": tools, "result": result, "session_ids": sids, "undecoded": bad,
+            "served_models": models, "model_usage": usage}
+
+
+def served_model_off(read: dict, model: str):
+    """THE SERVED-MODEL BACKSTOP (ownership review MAJOR 1, glitch-06, 14 Oct 2026): routing compares each turn's init
+    model with the pin, so a switch after an init that carried the pin would pass. The first model the turn served
+    that is not the pin's `model`, else None:
+      - every agent assistant record's message.model (read_stream's served_models) must be the pin's model;
+      - the result's modelUsage, when present and the turn made an agent call, must name the pin's model.
+    Another key BESIDE the pin's in modelUsage is a side call, recorded and not a mismatch: the recorded sonnet probe
+    (haiku-prestudy/verification/probes/claude-sonnet-5.auto.jsonl) carries claude-haiku-4-5-20251001 there (915 in,
+    11 out) while each of its assistant records is claude-sonnet-5, so "every key equals the pin" would route a sound
+    take as a mismatch (a departure from the assignment's wording, named in the lane report)."""
+    for m in read["served_models"]:
+        if m != model:
+            return m
+    if read["model_usage"] is not None and read["served_models"] and model not in read["model_usage"]:
+        others = [k for k in read["model_usage"] if k != model]
+        return others[0] if others else "<modelUsage names no model>"
+    return None
 
 
 def argv(line: str, *, model: str, permission_mode: str, session_id: str, first: bool) -> list:
@@ -296,14 +332,19 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
         after = self.counters_for()
         with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
             read = read_stream(fh.read())
+        off = served_model_off(read, self.model)
+        # The init as routed: the init event's fields, its model the first served model off the pin when there is
+        # one, so routing's init-mismatch row (after turn 1) or pin refusal (before it) reads the switch.
+        init = read["init"] if off is None or read["init"] is None else dict(read["init"], model=off)
         self.turn_records.append({
             "n": n, "first": first, "exit_code": got["exit_code"], "timed_out": got["timed_out"],
             "api_key_source": read["init_extra"]["api_key_source"], "init_session_id": read["init_extra"]["session_id"],
             "tools": read["init_extra"]["tools"], "inits": read["inits"], "calls": read["calls"],
             "tool_use_ids": read["tool_use_ids"], "result": read["result"], "session_ids": read["session_ids"],
-            "undecoded": read["undecoded"]})
+            "undecoded": read["undecoded"], "served_models": read["served_models"],
+            "model_usage": read["model_usage"], "served_off": off})
         return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
-                             end_reason=end_reason(got["exit_code"], got["timed_out"]), init=read["init"],
+                             end_reason=end_reason(got["exit_code"], got["timed_out"]), init=init,
                              api_errors=read["api_errors"], counters=rt.counter_delta(before, after),
                              started_at=got["started_at"], ended_at=got["ended_at"],
                              agent_output=read["agent_output"])
