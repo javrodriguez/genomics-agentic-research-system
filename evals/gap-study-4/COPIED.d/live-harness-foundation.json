@@ -85,6 +85,16 @@
       "path": "tests/test_nightly_stop.py",
       "status": "new",
       "reason": "Live harness step 4: the registered nightly stop on test_batch's fakes: the count, the block's last carries the stop, pauses outside, failed-after-drive counted apart, a restart that keeps counting and needs its ruling."
+    },
+    {
+      "path": "gemini_stream_join.py",
+      "status": "new",
+      "reason": "Live harness slice 5: unregistered join of one Gemini stream-json call to its projected native interaction: per-response recorder normalization against recorded-text segments, tool facts by id, name, order and status, completeness only from the terminal result, errors kept, every disagreement refused."
+    },
+    {
+      "path": "tests/test_gemini_stream_join.py",
+      "status": "new",
+      "reason": "Live harness slice 5: synthetic stream and native pairs: a matching join, no terminal result, failed results and error events kept, each disagreement refused for its reason, absent sent or init unknown, unregistered."
     }
   ]
 }
