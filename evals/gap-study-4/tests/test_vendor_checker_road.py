@@ -79,6 +79,49 @@ class PendingStops(unittest.TestCase):
         self.assertEqual(b.night_counts, {"harness_error": 0, "failed_after_drive_started": 1})
 
 
+class GeminiThroughBatch(unittest.TestCase):
+    def test_the_native_history_road_binds_to_the_batch_outcome(self):
+        """Review batch 6 N8: a Gemini take with retained snapshots, through batch: its ledger's native history is
+        pending, and the batch outcome is the typed stop waiting for a ruling."""
+        import json
+        import tempfile
+        for name, value in (("VENDOR_BILLING_ROUTE_VARIABLES", {tbi.rt.CODEX: (), tbi.rt.GEMINI: ()}),):
+            patch = mock.patch.object(tbi.rt, name, value)
+            patch.start()
+            self.addCleanup(patch.stop)
+        money = mock.patch.object(batch, "bills_money", lambda row: False)   # the money gate is W7C's, out of scope
+        money.start()
+        self.addCleanup(money.stop)
+        root_cm = tbi.scratch_repo()
+        root = root_cm.__enter__()
+        self.addCleanup(root_cm.__exit__, None, None, None)
+        home = tempfile.TemporaryDirectory()
+        self.addCleanup(home.cleanup)
+        rig = tbi.Rig(tbi.drive, root, turns=[{"text": "a"}, {"text": "b"}])
+        rig.driver.pin_for = lambda r: dict(tbi.PROFILE, model=r["model"], harness=r["agent"]["harness"])
+        cls = type("Vendor", (tvr.VendorAdapter,), {"name": "gemini"})
+        rig.adapter_for = rig.driver.adapter_for = lambda r, take: rig.adapters.append(
+            cls(rig.box, take, rig.turns, home=home.name)) or rig.adapters[-1]
+        table = tbi.table()
+        table["pin_profiles"]["gemini"] = {tbi.MODEL: dict(tbi.PROFILE)}
+        row = tbi.row(1, agent={"harness": "gemini", "version": tbi.PROFILE["version"]})
+        import prereg
+        frozen = mock.patch.object(prereg, "require_frozen", lambda what: {"rows": [row]})
+        frozen.start()
+        self.addCleanup(frozen.stop)
+        b = batch.Batch(rig.driver, rig.repo, tbi.Window(), table=table, serial=True)
+        with tbi.spying(rig.spy):
+            out = b.run([row])
+        self.assertEqual(len(out), 1, f"the loop stopped before the take: {b.stopped}")
+        self.assertEqual(out[0]["state"], labels4.FAILED)
+        self.assertIn("native cross-check pending", out[0]["reason"])
+        self.assertTrue(batch.needs_ruling(out[0]))
+        ledger = json.loads((Path(rig.take().folder) / "driver-ledger.json").read_text())
+        self.assertEqual(ledger["native_history"]["status"], "pending")
+        self.assertEqual([r["file"] for r in ledger["native_snapshots"]], ["native-turn-1.jsonl", "native-turn-2.jsonl"])
+        self.assertEqual(ledger["cross_check_status"]["status"], "pending")
+
+
 class CheckerNeverReadsPendingAsAgreement(unittest.TestCase):
     def test_the_checker_refuses_a_pending_cross_check(self):
         import types

@@ -119,7 +119,17 @@
     {
       "path": "tests/test_vendor_checker_road.py",
       "status": "new",
-      "reason": "Live harness integration: a pending vendor take stops typed (never graded, never readers-disagree), waits for a ruling through batch, and the checker never reads None as agreement; refused stays readers-disagree."
+      "reason": "Live harness integration: a pending vendor take stops typed (never graded, never readers-disagree), waits for a ruling through batch, and the checker never reads None as agreement; refused stays readers-disagree. Batch-6 N8: the Gemini through-batch twin."
+    },
+    {
+      "path": "native_reader_registration.py",
+      "status": "new",
+      "reason": "The Gemini native-reader registration road: the reader candidate, the acceptance check tool, and production_readers, empty unless a committed acceptance record re-derives in full (reader sources, pinned CLI, a registered arm-G walk's recorded evidence, the join, an independent review)."
+    },
+    {
+      "path": "tests/test_native_reader_registration.py",
+      "status": "new",
+      "reason": "Registration road on synthetic, labelled fixtures: the check prints PASS or the exact disagreement; no record means an empty registry; every forged, mismatched or synthetic record refuses; the driver reads the production registry."
     }
   ]
 }

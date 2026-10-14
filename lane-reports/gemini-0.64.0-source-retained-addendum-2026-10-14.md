@@ -141,3 +141,16 @@ The reviewer's three accepted shapes now refuse:
 - the same call answered twice;
 - an older round's call answered;
 - a missing round-trip record.
+
+## Addendum, 14 Oct 2026 01:37 EDT: N7, corrected offsets (batch-6 review)
+
+Section 4 above cites two offsets that point at the wrong places. Both corrections were re-read from the retained extracts.
+
+| What | Section 4 says | Correct offset | Read from |
+|---|---|---|---|
+| `GeminiChat.initialize` (`async initialize(resumedSessionData, kind = "main")`) | 14252516 | 14252358 | `extract-1-markers.json` |
+| The patch block, `for (const turn of history) {` | 12566400 | 12565520 | `extract-2-ranges.json` |
+| The patch block's role guard, `if (turn.content.role !== "user") continue;` | 12566400 | 12565558 | `extract-2-ranges.json` |
+| The assignment `tc.result = turnParts` | 12566400 | 12566400 (unchanged) | `extract-2-ranges.json` |
+
+The 14252516 that section 4 gives for `initialize` is the offset of its `updateMessagesFromHistory(` call, not of the method itself.

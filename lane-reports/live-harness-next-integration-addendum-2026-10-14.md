@@ -24,3 +24,13 @@ Why no registered class applies:
 So on this road a human ruling replaces classification. The take is never graded, rehearsed or re-run automatically; its exit, timeout, times, stream, launch journal, ledger row, quiescence kill and scan are all retained for that ruling.
 
 Finding for the orchestrator, not fixed here: the nightly stop rule ("three `harness-error`s in one night") has no implementation at this head. A search of `batch.py`, `routing.json`, `takes.py` and `prereg-draft.json` for night/stop-rule terms finds only review prose. So there is no counter the executed-refusal road could feed. Every executed refusal already stops the loop for a ruling (`failed` after drive start), which is at least as strict as the per-night rule for this road.
+
+## Named departure D-INT-1, 14 Oct 2026 01:37 EDT: a vendor take with a pending native cross-check stops for a ruling
+
+Ruled by glitch-06, 14 Oct 2026, under the standing delegation. Implemented in `5ec06353`; the reasoning is in `vendor-checker-road-2026-10-14.md`.
+
+**What happens to such a take:** a vendor take whose native cross-check cannot run is stopped with the typed `NativeCrossCheckPending`. A cross-check cannot run when no native reader is registered through a committed acceptance record. The stop comes after cleanup, ledger and scan. Batch records the take as failed after its drive started, so it needs a ruling. It is never graded, never readers-disagree, never re-run, and never counted as a harness-error.
+
+**What the registered text does and does not say:** it names the graded record, the stream cross-checked with the native record. It does not decide what happens while that cross-check cannot run. This departure decides it.
+
+**Effect:** the vendor arms cannot run unattended until each vendor has a registered reader.

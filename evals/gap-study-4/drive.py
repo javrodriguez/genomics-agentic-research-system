@@ -1808,6 +1808,7 @@ import threading  # noqa: E402
 import types  # noqa: E402  (live harness 3a: the executed-refused turn's end for _quiesce)
 import native_snapshot as _native_snapshot  # noqa: E402  (live harness 3c)
 import vendor_provenance as _vendor_provenance  # noqa: E402  (live harness integration: the native history record)
+import native_reader_registration as _registration  # noqa: E402  (the production native-reader registry)
 
 import agent_adapter as _adapter  # noqa: E402
 import harness_bookkeeping as _hb  # noqa: E402
@@ -2228,9 +2229,12 @@ class TakeDriver:
         published, text, recorded = None, None, "unrecorded"
         history = (native_history_record(harness, Path(take.folder) / _native_snapshot.SESSION_DIR,
                                          take.native_snapshots) if take.native_hook else None)
-        status = vendor_cross_check_status(harness, history) if vendor else None
+        cross = (gemini_cross_check(take.folder, take.native_snapshots, len(turns))
+                 if harness == "gemini" and history is not None and history["status"] == "joined" else None)
+        status = vendor_cross_check_status(harness, history, cross) if vendor else None
         if vendor:
-            take.cross_check = [status["why"]] if status["status"] == "refused" else None
+            take.cross_check = ([status["why"]] if status["status"] == "refused"
+                                else [] if status["status"] == "agreed" else None)
         elif src is not None:
             try:
                 published = publish_transcript(Path(src), Path(take.folder))
@@ -2630,7 +2634,35 @@ CODEX_NATIVE_PENDING = ("no reviewed Codex native rollout reader: the rollout so
                         "streams are not cross-checked against native evidence yet")
 
 
-def vendor_cross_check_status(harness: str, history) -> dict:
+def gemini_cross_check(take_folder, refs, n_turns: int, *, readers=None) -> dict:
+    """The Gemini cross-check D8 names: each turn's host-captured stream joined (gemini_stream_join.join) to that
+    interaction of the take's last retained native snapshot, read by the registered reader. `pending` without a
+    registered reader (production_readers: no acceptance record); `refused` on any disagreement, an extra or a missing
+    interaction; `agreed` only when every turn joins."""
+    import gemini_stream_join as _gsj
+    readers = _registration.production_readers() if readers is None else readers
+    reader = readers.get("gemini")
+    if reader is None:
+        return {"status": "pending", "why": "no registered Gemini native reader (no committed acceptance record)"}
+    folder = Path(take_folder)
+    try:
+        raw = _vendor_provenance.referenced_bytes(folder / _native_snapshot.SESSION_DIR, refs[-1])
+        for n in range(1, n_turns + 1):
+            fact = reader(raw, n)
+            stream = (folder / f"turn-{n}.jsonl").read_text(encoding="utf-8")
+            _gsj.join(fact, stream)
+        try:
+            reader(raw, n_turns + 1)
+        except _vendor_provenance.ProvenanceRefused:
+            pass
+        else:
+            return {"status": "refused", "why": f"the native session holds more than the take's {n_turns} turn(s)"}
+    except (IndexError, OSError, UnicodeError, _vendor_provenance.ProvenanceRefused, _gsj.JoinRefused) as e:
+        return {"status": "refused", "why": f"{type(e).__name__}: {e}"}
+    return {"status": "agreed", "why": None}
+
+
+def vendor_cross_check_status(harness: str, history, cross=None) -> dict:
     """Live harness integration: a non-Claude take's cross-check, from its own native evidence only. Gemini: its
     retained snapshots' history record (pending while no reviewed reader is registered; refused when the snapshots are
     missing, unreadable or inconsistent; a joined history still leaves the stream join pending, since the projection
@@ -2642,7 +2674,9 @@ def vendor_cross_check_status(harness: str, history) -> dict:
             return {"status": "refused", "why": f"native snapshots: {history['why']}"}
         if history["status"] == "pending":
             return {"status": "pending", "why": history["why"]}
-        return {"status": "pending", "why": "native snapshots join; the stream join to them is not registered yet"}
+        if cross is None:
+            return {"status": "pending", "why": "native snapshots join; the stream join to them is not registered yet"}
+        return dict(cross)
     if harness == "codex":
         return {"status": "pending", "why": CODEX_NATIVE_PENDING}
     raise DriveRefused(f"no vendor cross-check road for harness {harness!r}")
@@ -2656,6 +2690,7 @@ def native_history_record(harness: str, session_dir, refs, *, readers=None) -> d
     later snapshot reproduces every earlier interaction. `joined` is a stability join, never admission of the take.
     Each record names its basis: it is computed on the unmasked retained originals, before the drive scan, which may
     mask session/ bytes afterwards (the open masking-provenance design; a re-join over published bytes refuses)."""
+    readers = _registration.production_readers() if readers is None else readers
     try:
         facts = _vendor_provenance.session_history_facts(harness, Path(session_dir), list(refs), readers=readers)
     except _vendor_provenance.ProvenancePending as e:

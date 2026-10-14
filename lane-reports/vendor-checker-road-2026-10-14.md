@@ -42,3 +42,13 @@ My reading: the registered graded record is the host-captured stream cross-check
 - The merged-head athena suite.
 - Independent review.
 - A Javier or orchestrator ruling if grading a vendor stream before its native cross-check is wanted. That would be the first shape, and it needs a rule the registered text does not hold.
+
+## Addendum, 14 Oct 2026 01:37 EDT: the pending stop is departure D-INT-1
+
+The batch-6 review corrected this report. The typed stop (`NativeCrossCheckPending`) is a named departure, not a direct consequence of the registered text.
+
+The registered text says what is graded: the captured stream cross-checked with the native record. It does not say what happens to a take whose cross-check cannot run yet. Stopping such a take for a ruling is the orchestrator's choice.
+
+**D-INT-1:** ruled by glitch-06, 14 Oct 2026, under the standing delegation. It sits next to D-3a-1 in `live-harness-next-integration-addendum-2026-10-14.md`.
+
+Consequence, stated plainly: until a native reader is registered for a vendor (`native_reader_registration`, through a committed acceptance record), every take of that vendor stops the run for a ruling. **The vendor arms cannot run unattended.**
