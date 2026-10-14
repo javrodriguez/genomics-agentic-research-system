@@ -287,6 +287,12 @@ def is_ruling(entry) -> bool:
     return isinstance(entry, dict) and entry.get("kind") == labels4.RULING
 
 
+def is_outcome(entry) -> bool:
+    """The one shared predicate for "a committed outcome": neither a take's ruling nor a night ruling (THE NIGHTLY
+    STOP). Every reader that tells outcomes from rulings uses it, so a run-level record is never read as an outcome."""
+    return isinstance(entry, dict) and not is_ruling(entry) and not is_night_ruling(entry)
+
+
 def needs_ruling(outcome: dict) -> bool:
     """W1B3-1: the take stopped the loop on something a human must rule on before its slot goes on: it is blocked,
     or it failed after its drive started (the agent may have acted). A failed take where nothing ran needs none."""
@@ -304,6 +310,8 @@ def cell_event(outcome: dict) -> tuple:
 
 def effective_route(entry: dict):
     """What a history entry counts as for the usage window: an outcome's state, or a route ruling's route."""
+    if is_night_ruling(entry):
+        return None                                   # a run-level ruling routes nothing
     if is_ruling(entry):
         return entry["route"] if entry["ruling"] == labels4.RULE_ROUTE else None
     return entry["state"]
@@ -313,7 +321,7 @@ def restart_waits(history: list) -> bool:
     """Lane w1b decision 11, bound by W1B3-3: a restart waits for the usage window when a pause, committed or ruled, is
     among the last BLOCK committed outcomes (a block's worth: a pause first in it or in its middle counts) or the
     rulings committed among or after them."""
-    at = [i for i, e in enumerate(history) if not is_ruling(e)][-BLOCK:]
+    at = [i for i, e in enumerate(history) if is_outcome(e)][-BLOCK:]
     tail = history[at[0]:] if at else history
     return any(effective_route(e) == labels4.PAUSE for e in tail)
 
@@ -635,6 +643,8 @@ class Batch:
             if is_ruling(o):
                 p += cls._ruling_problems(i, o, seen, ruled, pending)
                 continue
+            if is_night_ruling(o):              # THE NIGHTLY STOP: checked whole by _night_walk below
+                continue
             if not isinstance(o, dict) or set(o) != set(OUTCOME_KEYS):
                 p.append(f"history[{i}] must hold exactly the committed outcome keys")
                 continue
@@ -678,12 +688,14 @@ class Batch:
             if o["state"] in labels4.TERMINAL_STATES and isinstance(o["drive_started"], bool) and needs_ruling(o):
                 pending[o["slot"]] = (o["attempt"], o["state"])
         for i, o in enumerate(history):   # an attempt after the slot's final one
-            if isinstance(o, dict) and not is_ruling(o) and o.get("final") is True and isinstance(o.get("attempt"), int):
+            if is_outcome(o) and o.get("final") is True and isinstance(o.get("attempt"), int):
                 final_at[o.get("slot")] = min(final_at.get(o.get("slot"), o["attempt"]), o["attempt"])
         for i, o in enumerate(history):
-            if (isinstance(o, dict) and not is_ruling(o) and o.get("slot") in final_at
+            if (is_outcome(o) and o.get("slot") in final_at
                     and isinstance(o.get("attempt"), int) and o["attempt"] > final_at[o["slot"]]):
                 p.append(f"history[{i}]: slot {o['slot']} attempt {o['attempt']} comes after its final attempt")
+        if not p:
+            p += cls._night_walk(history)[1]
         return p
 
     @staticmethod
@@ -1014,12 +1026,15 @@ class Batch:
         elif o["state"] == labels4.FAILED and o["drive_started"] is True:
             self.night_counts["failed_after_drive_started"] += 1
 
-    def _replay_night(self, history) -> None:
-        """THE NIGHTLY STOP on a restart: walk the history in commit order, count, and let each committed night ruling
-        close its window. A night ruling must be closed (exactly NIGHT_RULING_KEYS, `by` as THE RULINGS' `by`), come
-        while the window's count is at the registered number, and name the harness-error that brought it there;
-        anything else makes the history untrustworthy. The stop is pending when the count is at the number at the
-        end, wherever the stop text was committed, or whether it was."""
+    @classmethod
+    def _night_walk(cls, history):
+        """THE NIGHTLY STOP over a history in commit order: (the counting state, problems). Each committed night ruling
+        must be closed (exactly NIGHT_RULING_KEYS, `by` as THE RULINGS' `by`), come while the window's count is at the
+        registered number, and name the harness-error that brought it there; it closes that window. The counting is
+        _count_night's, on a bare state object, so one counter serves the loop and every reader."""
+        w = object.__new__(cls)
+        w.night_counts = {"harness_error": 0, "failed_after_drive_started": 0}
+        w.night_reaching = None
         p = []
         for i, e in enumerate(history if isinstance(history, list) else []):
             if is_night_ruling(e):
@@ -1027,19 +1042,26 @@ class Batch:
                     p.append(f"history[{i}]: a night ruling must hold exactly {list(NIGHT_RULING_KEYS)}")
                 elif not (isinstance(e["by"], str) and e["by"].strip()):
                     p.append(f"history[{i}]: a night ruling names who made it (`by`), got {e['by']!r}")
-                elif self.night_counts["harness_error"] < NIGHTLY_HARNESS_ERRORS:
+                elif w.night_counts["harness_error"] < NIGHTLY_HARNESS_ERRORS:
                     p.append(f"history[{i}]: a night ruling with no {NIGHTLY_STOP} pending "
-                             f"({self.night_counts['harness_error']} harness-errors in its window)")
-                elif (e["slot"], e["attempt"]) != self.night_reaching:
+                             f"({w.night_counts['harness_error']} harness-errors in its window)")
+                elif (e["slot"], e["attempt"]) != w.night_reaching:
                     p.append(f"history[{i}]: a night ruling names slot {e['slot']!r} attempt {e['attempt']!r}, not the "
-                             f"harness-error that reached the count, {self.night_reaching!r}")
+                             f"harness-error that reached the count, {w.night_reaching!r}")
                 else:
-                    self.night_counts["harness_error"] = 0
-                    self.night_reaching = None
-            elif isinstance(e, dict) and not is_ruling(e) and "state" in e:
-                self._count_night(e)
+                    w.night_counts["harness_error"] = 0
+                    w.night_reaching = None
+            elif is_outcome(e) and "state" in e:
+                w._count_night(e)
+        return w, p
+
+    def _replay_night(self, history) -> None:
+        """THE NIGHTLY STOP on a restart: the walk's state, or the history refused. The stop is pending when the count
+        is at the number at the end, wherever the stop text was committed, or whether it was."""
+        w, p = self._night_walk(history)
         if p:
             raise BatchConfigError("the repo's history cannot be trusted: " + "; ".join(p))
+        self.night_counts, self.night_reaching = w.night_counts, w.night_reaching
         self.nightly_stop_pending = self.night_counts["harness_error"] >= NIGHTLY_HARNESS_ERRORS
 
     def _nightly(self, row, attempt, outcome) -> None:

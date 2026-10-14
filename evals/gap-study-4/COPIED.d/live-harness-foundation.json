@@ -100,6 +100,11 @@
       "path": "tests/test_codex_executed_refusal.py",
       "status": "new",
       "reason": "Live harness slice 6: a Codex turn refused after its exec keeps the exec and is typed ExecutedTurnRefused; a pre-exec refusal keeps nothing; no codex identity table."
+    },
+    {
+      "path": "tests/test_night_ruling_history.py",
+      "status": "new",
+      "reason": "Night-ruling fold: a night ruling through the real git history reader and its door, and every outcome reader skipping it."
     }
   ]
 }

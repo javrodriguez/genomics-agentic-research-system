@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Night ruling in the production history, 2026-10-14:** a committed night ruling is now read by the real history reader, written by its own door (`takes.commit_night_ruling`), and skipped by every outcome reader through one shared predicate (`batch.is_outcome`). See the 01:04 addendum in [the step-4 report](lane-reports/nightly-stop-rule-2026-10-14.md).
+
 **Gemini source read, 2026-10-14:** the pinned 0.64.0 bundle was read on athena (hash-verified, container created and removed, never run). A tool round trip is recorded as a user message of functionResponse parts, which the projection had been refusing on every tool-using interaction; it now continues the interaction. History-patched parallel results are admitted by sibling id and name, and displayContent only when equal to the sent text. See [the retained source](lane-reports/gemini-0.64.0-source-retained-addendum-2026-10-14.md).
 
 **Nightly stop fold, 2026-10-14:** the step-4 review found a crash could bypass the stop. A restart now refuses whenever three harness-errors are committed since the last committed night ruling, whatever stop text was committed; a failed commit keeps the stop text; a closed, committed night ruling naming the reaching harness-error replaces the restart argument (D-4-2 retired). See the addendum in [the step-4 report](lane-reports/nightly-stop-rule-2026-10-14.md).

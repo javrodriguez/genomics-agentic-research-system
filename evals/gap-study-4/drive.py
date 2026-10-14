@@ -1588,7 +1588,7 @@ class TakeRepo:
         and every id of leaked_containers (ruling S6-gap4-2: a take's surviving sidecar or proxy too)."""
         ids = []
         for entry in self.history():
-            if takes_mod.batch.is_ruling(entry):
+            if not takes_mod.batch.is_outcome(entry):     # a take's or a night ruling
                 continue
             missing = [k for k in ("leaked_container", "leaked_containers") if k not in entry]
             if missing:          # W6H-R2-1 (S6b): a typed refusal, never a bare KeyError
@@ -3322,7 +3322,7 @@ def open_registration(root: Path, repo: Path, slot) -> dict:
     except (ValueError, KeyError, OSError) as e:
         raise LaunchRefused(f"the committed registrations cannot be read ({type(e).__name__}: {e}); nothing was "
                             f"launched") from None
-    done = {(o.get("slot"), o.get("attempt")) for o in history if not takes_mod.batch.is_ruling(o)}
+    done = {(o.get("slot"), o.get("attempt")) for o in history if takes_mod.batch.is_outcome(o)}
     mine = [r for r in rows if r.get("slot") == slot]
     open_ = [r for r in mine if (slot, r.get("attempt")) not in done]
     if len(open_) != 1:

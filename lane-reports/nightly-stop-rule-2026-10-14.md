@@ -83,3 +83,35 @@ Verification, each run behind a fresh light gate:
 - **Ten in-memory mutants**, tests passing `batch.Batch` at call time. Nine are killed by assertion; "count of four" fails 4 tests and also raises errors in others.
   - The killed mutants: pending only with a committed carrier, a ruling for any take, a ruling by anyone, a ruling that keeps the count, a failed commit that drops the stop, pauses counted, failed takes consumed, the stop on the reaching take, and count of four.
   - One survives as equivalent: "a ruling with no stop pending". The reaching take is set only when the count reaches 3 and is cleared with it, so the name check already refuses. The guard stays for its clearer message.
+
+## Addendum, 14 Oct 2026 01:04 EDT: the night ruling through the production history
+
+Review `review-harness-step4fix-5-6.md` passed `02682294`, but found that a committed night ruling would make the production history unreadable.
+- `takes.read_history` and `Batch.history_problems` refused it as a malformed outcome.
+- `takes.commit_ruling` can only write take rulings.
+- Every reader that filtered with `not is_ruling` would have read it as an outcome.
+
+The fix:
+- `batch.is_outcome` is the one shared predicate for a committed outcome. It excludes take rulings and night rulings, and every outcome reader now uses it:
+  - `batch.restart_waits` and the final-attempt checks;
+  - `check_results` (two outcome lists and the publication walk);
+  - `takes` (the done maps and `registration_outcomes`);
+  - `run.py`'s outcome check;
+  - `drive.py`'s `leaked_ids` and launch registration map.
+- `effective_route` returns None for a night ruling.
+- `Batch.history_problems` reads a night ruling by its kind and checks it through `_night_walk`. That walk runs the loop's own `_count_night` on a bare state object, so one counter serves both the loop and every reader.
+- `takes.commit_night_ruling` is the one door for a night ruling, with `commit_ruling`'s discipline:
+  - `by` is required and never defaulted;
+  - the record is checked against the committed history before anything is written;
+  - the tree must be clean;
+  - the commit needs an identity;
+  - it is one commit.
+
+Verification, each run behind a fresh light gate:
+- **Red:** `tests/test_night_ruling_history.py`, which uses a throwaway git repository and the real `read_history`, ran 3 tests with 2 failures and 1 error. The real reader refused a committed night ruling, and there was no door.
+- **Green:** 3/3. Neighbours: `test_nightly_stop` 13, `test_batch` 118, `test_drive_commit` 31, `test_pipeline` 85, `test_cp6_wiring` 5, `test_spend_wiring` 25.
+- **Mutants:** three attribute-level mutants were killed:
+  - `is_outcome` counts a night ruling;
+  - `history_problems` skips the night semantics;
+  - the door writes unchecked.
+  A fourth was malformed (it recursed into itself) and was dropped, not counted.
