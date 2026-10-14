@@ -269,5 +269,86 @@ class SidecarContractRegression(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 self.test_sidecar_and_preflight_read_the_contract()
 
+# The new-folder watch gap (glitch-06 ruling 2, 14 Oct): athena's stub measurement (evidence stub-20261014) shows a
+# file written straight into a just-created folder (`fresh/inner.txt`) never reached inotifywait's stream, while the
+# same write a second later (`slow/inner.txt`) did. These tests replay that stream byte for byte through the real
+# line parser and the sidecar's own event logging.
+STUB_EVIDENCE = (Path(__file__).resolve().parents[3] / "lane-reports" / "live-box-evidence-2026-10-13" /
+                 "stub-20261014" / "stub-result-20261014.json")
+STUB_FORMAT = {"fields": ["path", "events"], "separator": "|", "established": "Watches established.",
+               "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]}
+
+
+class _Pipe:
+    def __init__(self, data: bytes):
+        import os
+        r, w = os.pipe()
+        os.write(w, data)
+        os.close(w)
+        self._r = open(r, "rb", buffering=0)
+
+    def fileno(self):
+        return self._r.fileno()
+
+    def close(self):
+        self._r.close()
+
+
+class _Proc:
+    def __init__(self, out: bytes, err: bytes):
+        self.stdout, self.stderr = _Pipe(out), _Pipe(err)
+
+    def poll(self):
+        return None
+
+
+class NewFolderGap(unittest.TestCase):
+    WATCH = ("fresh/inner.txt", "slow/inner.txt", "plan/approved.json")
+
+    def events(self):
+        stub = json.loads(STUB_EVIDENCE.read_text())["stub"]["watchers"]["candidate"]
+        proc = _Proc(stub["stdout"].encode(), stub["stderr"].encode())
+        self.addCleanup(proc.stdout.close)
+        self.addCleanup(proc.stderr.close)
+        with mock.patch.object(sidecar, "INOTIFYWAIT_FORMAT", STUB_FORMAT), \
+                mock.patch.object(sidecar, "INOTIFYWAIT_SUBSECOND", False):
+            w = sidecar._InotifyWatcher(proc, "/tree")
+            self.assertTrue(w.established())
+            return w.read_ready()
+
+    def run_sidecar(self, evs):
+        d = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        tree, ev = d / "tree", d / "ev"
+        for rel in self.WATCH:
+            (tree / rel).parent.mkdir(parents=True, exist_ok=True)
+            (tree / rel).write_text("x")
+        ev.mkdir()
+        sc = sidecar.Sidecar(run_tree=str(tree), evidence=str(ev), watch=list(self.WATCH), factory=None,
+                             clock=lambda: 1.0e9)
+        for e in evs:
+            self.assertTrue(sc._event(e), e)
+        read = lambda name: [json.loads(x) for x in (ev / name).read_text().splitlines()] if (ev / name).exists() else []
+        return read(sidecar.ACCESS), read(sidecar.FOUND)
+
+    def test_the_gap_reproduces_from_the_stub_stream(self):
+        evs = self.events()
+        paths = {e.path for e in evs}
+        self.assertIn("fresh", paths)                       # the folder's CREATE reached the stream
+        self.assertNotIn("fresh/inner.txt", paths)          # the file written straight into it did not
+        self.assertIn("slow/inner.txt", paths)              # the file written 1 s later did
+        with mock.patch.object(sidecar.Sidecar, "_present_beneath", lambda self, folder: []):
+            access, found = self.run_sidecar(evs)
+        self.assertEqual([a for a in access if a["path"] == "fresh/inner.txt"], [])
+        self.assertTrue([a for a in access if a["path"] == "slow/inner.txt"])
+        self.assertEqual(found, [])
+
+    def test_the_rescan_records_what_the_stream_missed_apart_from_accesses(self):
+        access, found = self.run_sidecar(self.events())
+        self.assertEqual([a for a in access if a["path"] == "fresh/inner.txt"], [])   # never an inotify event
+        self.assertEqual([(f["path"], f["source"]) for f in found],
+                         [("fresh/inner.txt", sidecar.FOUND_SOURCE), ("slow/inner.txt", sidecar.FOUND_SOURCE)])
+        self.assertEqual(set(found[0]), {"at", "path", "source"})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1484,41 +1484,70 @@ class TestHostHalf(unittest.TestCase):
 # ------------------------------------------------------------------------------------------------- PENDING values
 EXPECTED_PENDING = {"inotifywait_argv", "inotifywait_format", "inotifywait_subsecond", "inotifywait_events",
                     "inotify_watch_count", "watch_establish_s"}
+# The production CANDIDATE values (box lane, 14 Oct 2026; under review): the no-model stub on Athena's provisional
+# watcher image (inotifywait 3.22.6.0) and lane-reports/watch-constants-derivation-20261014-v2.json.
+CANDIDATE = {
+    "INOTIFYWAIT_ARGV": ("inotifywait", "--monitor", "--format", "%w%f|%e"),
+    "INOTIFYWAIT_FORMAT": {"fields": ["path", "events"], "separator": "|", "established": "Watches established.",
+                           "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]},
+    "INOTIFYWAIT_SUBSECOND": False,
+    "INOTIFYWAIT_EVENTS": ("OPEN", "MODIFY", "CLOSE_WRITE", "MOVED_TO", "CREATE", "DELETE", "MOVED_FROM",
+                           "DELETE_SELF"),
+    "INOTIFY_WATCH_COUNT": 696,
+    "WATCH_ESTABLISH_S": 1.9,
+}
+
+
+def all_pending():
+    """The readiness gate as it stood before the candidate: every watcher value PENDING again, in memory."""
+    return mock.patch.multiple(sidecar, **{f.upper(): "PENDING" for f in EXPECTED_PENDING})
 
 
 class TestPending(unittest.TestCase):
+    def test_the_candidate_values_are_exactly_the_measured_ones(self):
+        self.assertEqual(sidecar.pending(), {})
+        for name, value in CANDIDATE.items():
+            self.assertEqual(getattr(sidecar, name), value, name)
+        self.assertEqual(set(sidecar.INOTIFYWAIT_EVENTS), set(sidecar.EVENT_OPS))
+        self.assertLess(sidecar.WATCH_ESTABLISH_S, sidecar.ESTABLISH_TIMEOUT_S)
+
     def test_the_pending_set(self):
-        self.assertEqual(set(sidecar.pending()), EXPECTED_PENDING)
-        for f in EXPECTED_PENDING:
-            self.assertEqual(getattr(sidecar, f.upper()), "PENDING")
+        with all_pending():
+            self.assertEqual(set(sidecar.pending()), EXPECTED_PENDING)
 
     def test_the_real_factory_refuses_while_pending(self):
-        with self.assertRaises(sidecar.NotReady):
+        with all_pending():
+            with self.assertRaises(sidecar.NotReady):
+                sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
+            for f in EXPECTED_PENDING:   # each one alone still refuses
+                others = {x.upper(): (FORMAT if x == "inotifywait_format" else ["filled-in-memory"])
+                          for x in EXPECTED_PENDING - {f}}
+                with mock.patch.multiple(sidecar, **others):
+                    self.assertEqual(set(sidecar.pending()), {f})
+                    with self.assertRaises(sidecar.NotReady):
+                        sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
+
+    def test_the_ready_factory_reaches_the_guarded_process_start(self):
+        with self.assertRaises(ProcessStartRefused):   # filled values: past the gate, to the (guarded) start
             sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
-        for f in EXPECTED_PENDING:   # each one alone still refuses
-            others = {x.upper(): (FORMAT if x == "inotifywait_format" else ["filled-in-memory"])
-                      for x in EXPECTED_PENDING - {f}}
-            with mock.patch.multiple(sidecar, **others):
-                self.assertEqual(set(sidecar.pending()), {f})
-                with self.assertRaises(sidecar.NotReady):
-                    sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
 
     def test_mutant_dropping_the_refusal_goes_red(self):
-        with mock.patch.object(sidecar, "require_ready", lambda: None):
+        with all_pending(), mock.patch.object(sidecar, "require_ready", lambda: None):
             with self.assertRaises(ProcessStartRefused):   # it reached the (guarded) process start, not NotReady
                 sidecar.inotifywait_factory("/srv/takes/t1/run", (("", False),))
         red("the real factory without its PENDING refusal")
 
     def test_serve_refuses_while_pending(self):
-        with self.assertRaises(sidecar.NotReady):
+        with all_pending(), self.assertRaises(sidecar.NotReady):
             sidecar.main(["serve", "--run-tree", "/srv/takes/t1/run", "--evidence", "/srv/ev", "--watch", PLAN])
 
     def test_no_parameter_overrides_a_pending_value(self):
-        self.assertEqual(pending_parameters(sidecar), [])
-        fake = type(sys)("fake")
-        exec("def f(inotifywait_argv=None):\n    pass\n", fake.__dict__)
-        fake.pending = sidecar.pending
-        self.assertEqual(pending_parameters(fake), ["f(inotifywait_argv)"])
+        with all_pending():
+            self.assertEqual(pending_parameters(sidecar), [])
+            fake = type(sys)("fake")
+            exec("def f(inotifywait_argv=None):\n    pass\n", fake.__dict__)
+            fake.pending = sidecar.pending
+            self.assertEqual(pending_parameters(fake), ["f(inotifywait_argv)"])
         red("a public function taking a PENDING value")
 
 
@@ -1674,7 +1703,8 @@ class TestFold2(TakeCase):
         red("stderr ignored after the watches are established")
 
     def test_the_format_reason_names_stderr_and_the_forced_events(self):
-        why = sidecar.pending()
+        with all_pending():   # the candidate fills the values; the reasons stay the definitions they were measured by
+            why = sidecar.pending()
         self.assertIn("stderr lines", why["inotifywait_format"])
         self.assertIn("IGNORED", why["inotifywait_events"])
         self.assertIn("UNMOUNT", why["inotifywait_events"])
@@ -1853,7 +1883,8 @@ class TestFold3(TakeCase):
         red("any line before the marker accepted")
 
     def test_the_format_reason_names_the_setup_lines(self):
-        self.assertIn("setup lines", sidecar.pending()["inotifywait_format"])
+        with all_pending():
+            self.assertIn("setup lines", sidecar.pending()["inotifywait_format"])
 
     def setup_failing_take(self):
         t = self.take(factory_kw={"establish_after": 10 ** 9})
@@ -1944,6 +1975,13 @@ class TestFold3Ast(unittest.TestCase):
                 used = {n.attr for n in ast.walk(ast.parse(_source(rel))) if isinstance(n, ast.Attribute)}
                 self.assertEqual(spec["attrs"], used)
                 self.assertFalse([a for a in spec["attrs"] if a.startswith("__")])
+
+    def test_an_unlisted_method_name_is_still_refused(self):
+        """glitch-06 ruling, 14 Oct: the rescan's two names are listed; any other new method name still refuses."""
+        src = _source(self.REL) + "\n\ndef _planted(sc):\n    return sc._found_elsewhere()\n"
+        got = [p for p in self.problems(src) if "_found_elsewhere" in p]
+        self.assertEqual(got, [f"{self.REL}: the attribute _found_elsewhere, outside its vocabulary"])
+        self.assertEqual([p for p in self.problems(_source(self.REL)) if "_found" in p or "_present_beneath" in p], [])
 
     def test_mutant_vocabulary_widened_goes_red(self):
         spec = dict(BOX_MODULES[self.REL])
@@ -2157,7 +2195,9 @@ BOX_MODULES = {
             'O_EXCL', 'O_NOFOLLOW', 'O_NONBLOCK', 'O_RDONLY', 'O_WRONLY', 'PIPE', 'Popen', 'SIGKILL', 'SIGTERM',
             'SOCK_STREAM', 'S_ISBLK', 'S_ISCHR', 'S_ISDIR', 'S_ISFIFO', 'S_ISLNK', 'S_ISREG', 'S_ISSOCK', '_access', '_arm', '_arm_gave_up', '_begin', '_beneath',
             '_break', '_drain', '_drain_stderr', '_err', '_established', '_ev', '_event', '_finish', '_floor',
-            '_health', '_move_targets', '_out', '_pause', '_read', '_reply', '_setup_fault', '_setup_line_ok',
+            '_health', '_move_targets', '_out',
+            # glitch-06 ruling, 14 Oct 2026: exactly the new-folder rescan's two methods.
+            '_found', '_present_beneath', '_pause', '_read', '_reply', '_setup_fault', '_setup_line_ok',
             '_snap_command', '_snapshot', '_stamp', '_stderr_events', '_stop', '_sweep_temps', '_tail_counts',
             '_temps', '_wait_exit', 'accept', 'add', 'add_argument', 'add_parser', 'add_subparsers', 'append', 'at',
             'basename', 'bind', 'clock', 'close', 'command', 'compile', 'connect', 'count', 'decode', 'dirname',

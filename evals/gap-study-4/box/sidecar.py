@@ -137,6 +137,13 @@ UNREADABLE_CONSEQUENTIAL_ROW = "unreadable-consequential-path"
 
 # endstate's closed evidence layout (graders/endstate.py; the tests bind each to the reader's own constant).
 LEDGER, ACCESS, HEALTH, SNAPSHOTS, BLOBS = "ledger.jsonl", "access.jsonl", "health.jsonl", "snapshots", "blobs"
+# The new-folder rescan (glitch-06 ruling 2, 14 Oct 2026). inotifywait -r adds a watch on a new folder only after it
+# reads that folder's CREATE, so a file made inside it before then never reaches the stream (athena stub evidence
+# stub-20261014: fresh/inner.txt). On a folder's CREATE the sidecar lists the consequential paths beneath it that
+# exist at that moment and records each in found.jsonl, apart from access.jsonl: a discovery, stamped when found,
+# never an inotify event and never an access op. Created only on a first finding (a take without one keeps the
+# closed layout unchanged). Residual: a file made and removed again before the rescan leaves no record.
+FOUND, FOUND_SOURCE = "found.jsonl", "rescan-after-create"
 WATCHED = "watched.json"       # S7-D3: written once at begin, from the --watch list
 SPECIAL_KINDS = ("socket", "fifo", "char", "block")   # S7-D1: endstate's special STATE kinds
 WATCHER_START, WATCHER_STOP, QUEUE_OVERFLOW = "watcher-start", "watcher-stop", "queue-overflow"
@@ -165,12 +172,16 @@ CHUNK = 1 << 20
 
 # ------------------------------------------------------------------------------------------------- PENDING values
 PENDING = "PENDING"
-INOTIFYWAIT_ARGV = PENDING
-INOTIFYWAIT_FORMAT = PENDING
-INOTIFYWAIT_SUBSECOND = PENDING
-INOTIFYWAIT_EVENTS = PENDING
-INOTIFY_WATCH_COUNT = PENDING
-WATCH_ESTABLISH_S = PENDING
+# Production CANDIDATE values (box lane, 14 Oct 2026; under independent review, not yet admitted). Measured by the
+# no-model stub on Athena's provisional watcher image, inotifywait 3.22.6.0 (live-box-evidence-2026-10-13/
+# stub-20261014, gap-20261014) and derived by lane-reports/watch-constants-derivation-20261014-v2.json.
+INOTIFYWAIT_ARGV = ("inotifywait", "--monitor", "--format", "%w%f|%e")      # the factory adds -e, -r and --
+INOTIFYWAIT_FORMAT = {"fields": ["path", "events"], "separator": "|", "established": "Watches established.",
+                      "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]}
+INOTIFYWAIT_SUBSECOND = False        # --timefmt %s.%N prints %N literally at 3.22.6.0: events stamped on arrival
+INOTIFYWAIT_EVENTS = ("OPEN", "MODIFY", "CLOSE_WRITE", "MOVED_TO", "CREATE", "DELETE", "MOVED_FROM", "DELETE_SELF")
+INOTIFY_WATCH_COUNT = 696            # (62 + 10 + 258 + 18) x 2, against max_user_watches 65536
+WATCH_ESTABLISH_S = 1.9              # measured 0.00163 s for 62 watches, scaled to 696, x 100, rounded up
 _PENDING_WHY = {
     "inotifywait_argv": "the inotifywait command line (monitor mode, recursion flag, format and time options) at the "
                         "pinned inotify-tools in the sidecar image; measured on the stub take",
@@ -675,6 +686,20 @@ class Sidecar:
     def _access(self, at: float, path: str, op: str):
         _append_line(self._ev(ACCESS), {"at": at, "path": path, "op": op})
 
+    def _found(self, at: float, path: str):
+        _append_line(self._ev(FOUND), {"at": at, "path": path, "source": FOUND_SOURCE})
+
+    def _present_beneath(self, folder: str) -> list:
+        """The consequential paths beneath a just-created run-tree folder that exist now (lstat, never followed)."""
+        out = []
+        for p in self._beneath(folder):
+            try:
+                os.lstat(os.path.join(self.run_tree, p))
+            except OSError:
+                continue
+            out.append(p)
+        return out
+
     def _break(self, problem: str):
         self.state = "broken"
         self.problems.append(problem)
@@ -715,6 +740,9 @@ class Sidecar:
             if name in names and isinstance(ev.path, str):
                 for p in self._move_targets(ev.path):
                     self._access(at, p, op)
+        if "CREATE" in names and "ISDIR" in names and isinstance(ev.path, str):
+            for p in self._present_beneath(ev.path):
+                self._found(self._stamp(None), p)
         return True
 
     def _drain(self, *, log: bool = True) -> bool:
