@@ -1,0 +1,75 @@
+{
+ "schema": 1,
+ "label": "derivation of sidecar INOTIFY_WATCH_COUNT and WATCH_ESTABLISH_S (rule-based upper bounds), 14 Oct 2026; NOT yet written into sidecar.py",
+ "ruling": "glitch-06 ruling 3 (14 Oct): derive from the manifest, never transfer .git; every term cited, explicit margin",
+ "sources": {
+  "manifest": {
+   "path": "lane-reports/live-box-evidence-2026-10-13/sanitized-tree-manifest-20261014.json",
+   "sha256": "1e2de9235276ab6c18835517e405600a957e6e014c894c647c45e6bb0b1e5a21"
+  },
+  "measurement": {
+   "path": "lane-reports/live-box-evidence-2026-10-13/measure-20261014/measurement-sanitized-full-tree-20261014.json",
+   "sha256": "5bf1b44904a705b492ce4d4781d116476f88c9d83c909f6dc9c885d8a3bfc26f",
+   "scope": "measured on the sanitized admitted tree (no .git), athena, pinned watcher image"
+  },
+  "max_user_watches": {
+   "value": 65536,
+   "source": "athena /proc/sys/fs/inotify/max_user_watches, lane report 'Nonsecret measurements'"
+  }
+ },
+ "watch_count": {
+  "rule": "bound = (A + B + C + D) * margin_factor",
+  "A_measured_non_git_watches": {
+   "value": 62,
+   "why": "inotifywait -r watch_count on the admitted tree: 61 directories plus the root"
+  },
+  "B_manifest_git_dirs_other_than_object_fanout": {
+   "value": 10,
+   "paths": [
+    ".git",
+    ".git/hooks",
+    ".git/info",
+    ".git/logs",
+    ".git/logs/refs",
+    ".git/logs/refs/heads",
+    ".git/objects",
+    ".git/refs",
+    ".git/refs/heads",
+    ".git/refs/tags"
+   ],
+   "why": "the export's .git directories except objects/<2 hex>, objects/info and objects/pack (counted in C)"
+  },
+  "B_check": {
+   "manifest_git_dirs_total": 164,
+   "object_fanout_present": 152,
+   "objects_info_pack_present": 2
+  },
+  "C_full_object_fanout": {
+   "value": 258,
+   "why": "every possible .git/objects/<2 hex> folder (256) plus objects/info and objects/pack, present or not: a take's commits may create any of them"
+  },
+  "D_fixture_and_working_folders": {
+   "value": 512,
+   "kind": "STATED ALLOWANCE, not measured",
+   "why": "the take's fixture (drive.build_take_fixture: data/staging/<name>/..., gars/projects/<name>/... by kind) and working folders (run_take RUN_TREE_TMP = <run tree>/.tmp) are not enumerated by TakeSpec; 512 is an allowance to be replaced by the stub take's measured fixture count"
+  },
+  "margin_factor": 2,
+  "subtotal": 842,
+  "bound": 1684,
+  "headroom": {
+   "max_user_watches": 65536,
+   "bound_fraction": 0.0257
+  },
+  "residual": "folders the agent creates during a take are added by -r as they appear and are not bounded by this rule; past max_user_watches inotifywait reports an error, which the sidecar reads as a watcher fault (fails closed)"
+ },
+ "establish_s": {
+  "rule": "bound = (measured establish_s / A) * watch_count bound * safety_factor, rounded up to 0.1 s; must stay below sidecar.ESTABLISH_TIMEOUT_S (30.0)",
+  "measured_establish_s": 0.0016319931019097567,
+  "per_watch_s": 2.6322469385641235e-05,
+  "linear_estimate_at_bound_s": 0.04432703844541984,
+  "safety_factor": 100,
+  "bound_s": 4.5,
+  "below_establish_timeout": true,
+  "residual": "the definition also covers how long -r takes to watch a new folder after its CREATE; that is a stub-take measurement, not derived here"
+ }
+}

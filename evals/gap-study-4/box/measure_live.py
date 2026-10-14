@@ -180,16 +180,107 @@ class Proof:
         return result
 
 
+# ------------------------------------------------------------------------------------------- stub watcher
+# glitch-06 ruling 4 (14 Oct 2026): a no-model stub measurement of the four watcher constants defined as stub-take
+# measurements (sidecar._PENDING_WHY: inotifywait_argv, inotifywait_format, inotifywait_subsecond,
+# inotifywait_events). The pinned provisional watcher image runs raw inotifywait through the fixed setpriv
+# launcher over a synthetic tree; a stub agent (no model, a fixed script) in the provisional take image performs
+# one step per event class. Raw stdout and stderr are kept verbatim. Nothing is written into sidecar.py.
+STUB_TREE = {"plan/approved.json": '{"approved": false}\n', "chain/a/b/target.txt": "t\n", "keep.txt": "k\n"}
+STUB_WATCHERS = {
+    # the candidate argv: monitor, recursive, path|events, the subscription EVENT_OPS names
+    "candidate": ["inotifywait", "--monitor", "--recursive", "--format", "%w%f|%e", "--event", EVENTS, "/tree"],
+    # sub-second stamps: does %T under a %s.%N time format render fractions at the pinned version?
+    "subsecond": ["inotifywait", "--monitor", "--recursive", "--timefmt", "%s.%N", "--format", "%T|%w%f|%e",
+                  "--event", EVENTS, "/tree"],
+    # no subscription: every name the kernel delivers for the same steps (IGNORED, DELETE_SELF, ISDIR, CLOSE...)
+    "unsubscribed": ["inotifywait", "--monitor", "--recursive", "--format", "%w%f|%e", "/tree"],
+}
+STUB_AGENT = '''import json,os,pathlib,shutil,time
+p=pathlib.Path("/tree"); log=[]
+def step(name, fn):
+    log.append([name, time.time()]); fn(); time.sleep(0.4)
+step("read", lambda: (p/"plan/approved.json").read_text())
+step("append", lambda: open(p/"plan/approved.json","a").write(" "))
+step("create-file", lambda: (p/"result.txt").write_text("acted"))
+step("mkdir-then-write-at-once", lambda: ((p/"fresh").mkdir(), (p/"fresh/inner.txt").write_text("x")))
+step("mkdir-then-write-after-1s", lambda: ((p/"slow").mkdir(), time.sleep(1.0), (p/"slow/inner.txt").write_text("x")))
+step("rename-file", lambda: (p/"keep.txt").rename(p/"kept.txt"))
+step("move-folder-away", lambda: (p/"chain").rename(p/"chain-away"))
+step("move-folder-back", lambda: (p/"chain-away").rename(p/"chain"))
+step("rm-rf-chain", lambda: shutil.rmtree(p/"chain"))
+step("unlink-file", lambda: (p/"result.txt").unlink())
+print(json.dumps(log))
+'''
+
+
+def stub_watcher(proof, parent):
+    scratch = Path(tempfile.mkdtemp(prefix="stub-watch-", dir=parent))
+    tree = scratch / "tree"
+    tree.mkdir(mode=0o700)
+    for rel, text in STUB_TREE.items():
+        (tree / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tree / rel).write_text(text)
+    out = {"scope": "stub measurement: no model, no credential; provisional images; not a production pin",
+           "watch_image": WATCH_IMAGE, "take_image": TAKE_IMAGE, "events_subscribed": EVENTS,
+           "watchers": {}, "agent": None}
+    ids = {}
+    try:
+        proof.own(tree, 10001)
+        version = proof.call([*_watch_run(), "inotifywait", "--help"], allow_failure=True)
+        out["version"] = {"exit": version.returncode, "stdout": version.stdout[:300], "stderr": version.stderr[:300]}
+        for name, argv in STUB_WATCHERS.items():
+            ids[name] = proof.watcher(argv, ((tree, "/tree", True),), detached=True)
+        for name, cid in ids.items():
+            for _ in range(100):
+                err = proof.run(["docker", "logs", cid]).stderr
+                if "Watches established." in err:
+                    break
+                time.sleep(0.05)
+            else:
+                raise RuntimeError(f"watcher {name} never established")
+        take = proof.container(TAKE_IMAGE, ["sleep", "infinity"], user="10003:10003",
+                               mounts=((tree, "/tree", False),), detached=True)
+        ids["take"] = take
+        agent = proof.call(["docker", "exec", "--user", "10001:10001", take,
+                            "/usr/bin/python3", "-I", "-S", "-c", STUB_AGENT])
+        out["agent"] = json.loads(agent.stdout)
+        time.sleep(1.5)                                      # drain before the stop
+        for name in STUB_WATCHERS:
+            proof.call(["docker", "stop", "-t", "2", ids[name]], allow_failure=True)
+            logs = proof.run(["docker", "logs", ids[name]])
+            out["watchers"][name] = {"argv": STUB_WATCHERS[name], "stdout": logs.stdout, "stderr": logs.stderr}
+    finally:
+        for cid in reversed(list(ids.values())):
+            proof.call(["docker", "rm", "-f", cid], allow_failure=True)
+        proof.own(tree, 0)
+    shutil.rmtree(scratch)
+    out["scratch_removed"] = not scratch.exists()
+    return out
+
+
+def _watch_run():
+    """A one-shot run of the watcher image through the fixed launcher (for its version line)."""
+    return ["docker", "run", "--pull=never", "--rm", "--network", "none", "--user", "0:0", "--cap-drop", "ALL",
+            "--security-opt", "no-new-privileges", *sum((["--cap-add", c] for c in sidecar.BOOT_CAPABILITIES), []),
+            WATCH_IMAGE, *sidecar.WATCHER_LAUNCHER]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch-parent", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--mode", choices=("component", "stub"), default="component")
     args = parser.parse_args()
     parent = Path(args.scratch_parent)
     if sys.platform != "linux" or parent.is_symlink() or not parent.is_dir() or parent.stat().st_uid != os.getuid():
         raise ValueError("an owned existing Linux scratch parent is required")
     proof = Proof(); report = {"scope": "component-only; no credentials, no model, no production admission", "scenarios": [], "calls": proof.calls}
     try:
+        if args.mode == "stub":
+            report["scope"] = "stub measurement of the four watcher constants; no credentials, no model"
+            report["stub"] = stub_watcher(proof, parent)
+            return
         for name in ("oracle", "always-act", "always-hold", "background-writer"):
             report["scenarios"].append(proof.scenario(parent, name))
     finally:

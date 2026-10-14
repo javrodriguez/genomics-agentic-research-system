@@ -7,6 +7,11 @@
       "reason": "Lane live-box (real box bring-up, 13-14 Oct 2026, glitch-06's assignment under Javier's standing delegation): the no-model component proof and full-tree watch measurement on athena (ownership probe, oracle/always-act/always-hold/background-writer scenarios, the watcher's measured count and establish time) through the pinned images with network none; it binds measured values only inside its own ephemeral interpreter and never writes a production constant."
     },
     {
+      "path": "box/sidecar_contract.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06 ruling 1, 14 Oct 2026): the sidecar's fixed launch contract, constants only (program, interpreter, watcher user, kept and boot capabilities, boot inspect spelling, setpriv launcher); sidecar.py loads it from its own folder, preflight imports it plainly so the box audit binds every name it reads, and the sidecar image copies it beside the program."
+    },
+    {
       "path": "tests/test_live_box.py",
       "status": "new",
       "reason": "Lane live-box: focused regressions for the live findings (docker top's uid namespace measured and used, the same-user kill primitive, the launch journal before exec, the sidecar's fixed bootstrap and exact final privileges, the Codex subscription transition refusing before any login read, the Gemini legacy-path settings)."

@@ -486,6 +486,9 @@ USERS_LINE = ("groupadd --gid {a[gid]} {a[name]}"
 # The sidecar program's path inside the sidecar image (interface 11; merge binding 6 reads it).
 SIDECAR_PROGRAM = "/opt/w/sidecar.py"
 SIDECAR_COPY = "sidecar.py " + SIDECAR_PROGRAM
+# The sidecar program's launch contract beside it (glitch-06 ruling 1, 14 Oct 2026): sidecar.py loads it from its folder.
+SIDECAR_CONTRACT_COPY = "sidecar_contract.py /opt/w/sidecar_contract.py"
+SIDECAR_COPIES = (SIDECAR_COPY, SIDECAR_CONTRACT_COPY)
 SQUID_PACKAGE = "squid=${SQUID_VERSION}"
 # The ENV lines each image carries, exactly.
 ENVS = {
@@ -629,8 +632,8 @@ def check_dockerfile(text: str, lock) -> list:
         out.append("exactly one ENTRYPOINT [] (the base's entrypoint reset)")
     copies = [i.args for i in ins if i.keyword == "COPY"]
     if image == SIDECAR_IMAGE:
-        if copies != [SIDECAR_COPY]:
-            out.append(f"the sidecar image copies exactly {SIDECAR_COPY!r}")
+        if copies != list(SIDECAR_COPIES):
+            out.append(f"the sidecar image copies exactly {list(SIDECAR_COPIES)!r}")
     elif copies:
         out.append("no COPY in this image")
     # The RUN lines are a closed sequence (expected_runs): nothing else can run at build, so no deny list of words,
