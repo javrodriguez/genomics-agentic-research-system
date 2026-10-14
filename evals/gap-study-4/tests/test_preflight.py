@@ -40,10 +40,15 @@ LANE_LEAD_WORDS = ("gap4", "round 4", "sidecar", "watcher", "evidence", "holdout
 
 
 def _round3_leak_words() -> tuple:
-    """Round 3's pre-registration key leak_words, that key alone, read once (interface 16). Never committed."""
+    """Round 3's pre-registration key leak_words, that key alone, read once (interface 16). Never committed.
+    The same one read also keeps run_location.excluded_from_the_run_tree's paths, in order, as ROUND3_EXCLUDED (the
+    CP5 ruling binds preflight.STUDY_PATHS to them; this stays the module's one process site)."""
+    global ROUND3_EXCLUDED
     shown = subprocess.run(["git", "-C", REPO, "show", f"{ROUND3}:evals/gap-study-3/prereg.json"],
                            capture_output=True, check=True)
-    return tuple(json.loads(shown.stdout)["leak_words"])
+    doc = json.loads(shown.stdout)
+    ROUND3_EXCLUDED = tuple(e["path"] for e in doc["run_location"]["excluded_from_the_run_tree"])
+    return tuple(doc["leak_words"])
 
 
 ROUND3_WORDS = _round3_leak_words()
@@ -120,7 +125,7 @@ HOSTS = {rt.CLAUDE_CODE: "api.anthropic.com", rt.CODEX: "api.openai.com", rt.GEM
 VERSION_OUT = {rt.CLAUDE_CODE: ("2.9.1 (Claude Code)\n", r"([0-9.]+) \(Claude Code\)", "2.9.1"),
                rt.CODEX: ("codex-cli 0.160.1\n", r"codex-cli ([0-9.]+)", "0.160.1"),
                rt.GEMINI: ("0.63.0\n", r"([0-9.]+)", "0.63.0")}
-STUDY = ("notes-a", "notes-b/inner")
+STUDY = pf.STUDY_PATHS   # the ruled list (TestCP5Values binds it); the fixture answers every path absent
 REFUSED_NAMES = {
     rt.CLAUDE_CODE: ["github.com", "huggingface.co", "api.openai.com", "generativelanguage.googleapis.com"],
     rt.CODEX: ["github.com", "huggingface.co", "api.anthropic.com", "generativelanguage.googleapis.com"],
@@ -481,8 +486,8 @@ BREAKS = {
         ("name-untried", edit_json("egress", lambda d: d["resolves"].pop("huggingface.co"))),
     ],
     "study-folders-absent": [
-        ("present", edit_value("study-folders", lambda v: v.update({"notes-a": True}))),
-        ("unlooked", edit_value("study-folders", lambda v: v.pop("notes-b/inner"))),
+        ("present", edit_value("study-folders", lambda v: v.update({STUDY[0]: True}))),
+        ("unlooked", edit_value("study-folders", lambda v: v.pop(STUDY[-1]))),
     ],
     "run-tree-path-neutral": [],   # driven by its own test (the path is the spec's)
 }
@@ -680,12 +685,62 @@ class TestEvaluate(MutantCase):
         ])
 
 
+def _lock_user_names() -> tuple:
+    """The box users' names in every committed take lock (users.agent.name, users.watcher.name); all must agree."""
+    seen = set()
+    for rel in ("image.lock", "codex/image.lock", "gemini/image.lock"):
+        with open(os.path.join(HERE, "box", rel), encoding="utf-8") as fh:
+            users = json.load(fh)["users"]
+        seen.add((users["agent"]["name"], users["watcher"]["name"]))
+    if len(seen) != 1:
+        raise AssertionError(f"the take locks name different box users: {sorted(seen)}")
+    return seen.pop()
+
+
+class TestCP5Values(MutantCase):
+    """Javier's ruling, "CP5: all as recommended" (08:11 EDT, 14 Oct 2026), on cp5-values-draft-2026-10-14.md:
+    STUDY_PATHS is round 3's seven excluded paths verbatim; LEAK_WORDS is prereg-draft.json's leak_words, the box
+    users' names from the committed locks, and gap4."""
+
+    def check(self):
+        out = []
+        if pf.STUDY_PATHS != ROUND3_EXCLUDED or len(pf.STUDY_PATHS) != 7:
+            out.append(f"STUDY_PATHS is not round 3's seven excluded paths: {pf.STUDY_PATHS!r}")
+        with open(os.path.join(HERE, "prereg-draft.json"), encoding="utf-8") as fh:
+            draft = tuple(json.load(fh)["leak_words"])
+        want = draft + _lock_user_names() + ("gap4",)
+        if len(draft) != 25 or tuple(draft[:23]) != ROUND3_WORDS:
+            out.append("the prereg draft's leak words are not round 3's 23 plus two")
+        if pf.LEAK_WORDS != want or len(pf.LEAK_WORDS) != 28 or len(set(pf.LEAK_WORDS)) != 28:
+            out.append(f"LEAK_WORDS is not the ruled 28: {pf.LEAK_WORDS!r}")
+        if not all(isinstance(w, str) and w for w in pf.LEAK_WORDS + pf.STUDY_PATHS):
+            out.append("an entry is not a non-empty string")
+        if pf.pending().keys() & {"STUDY_PATHS", "LEAK_WORDS"}:
+            out.append("a ruled value still reads as PENDING")
+        if pf.leak_hits("/srv/gars-gap4/run-1", pf.LEAK_WORDS) != ["gap4"] or \
+                pf.leak_hits("/tmp/run-0a1b2c3d", pf.LEAK_WORDS):
+            out.append("the path check does not read the ruled list as the draft's probe did")
+        return out
+
+    def test_the_ruled_values(self):
+        self.assert_green_then_red(self.check, [
+            ("study-entry-dropped", patched(pf, "STUDY_PATHS", pf.STUDY_PATHS[:-1])),
+            ("study-reordered", patched(pf, "STUDY_PATHS", tuple(reversed(pf.STUDY_PATHS)))),
+            ("leak-entry-dropped", patched(pf, "LEAK_WORDS", pf.LEAK_WORDS[1:])),
+            ("gap4-removed", patched(pf, "LEAK_WORDS", tuple(w for w in pf.LEAK_WORDS if w != "gap4"))),
+            ("box-user-dropped", patched(pf, "LEAK_WORDS", tuple(w for w in pf.LEAK_WORDS if w != "eli"))),
+            ("box-user-drifted", patched(pf, "LEAK_WORDS", tuple("dora" if w == "dana" else w for w in pf.LEAK_WORDS))),
+            ("lock-user-renamed", patched(sys.modules[__name__], "_lock_user_names", lambda: ("dora", "eli"))),
+        ])
+
+
 class TestPending(MutantCase):
-    EXPECT = {"VERSION_PATTERNS", "STUDY_PATHS", "LEAK_WORDS"}
+    # STUDY_PATHS and LEAK_WORDS are RULED (Javier, "CP5: all as recommended", 08:11 EDT 14 Oct 2026): TestCP5Values.
+    EXPECT = {"VERSION_PATTERNS"}
     EXPECT_RT = {"FALLBACK_ENV", "VENDOR_BILLING_ROUTE_VARIABLES", "TOP_FORMAT", "INSPECT_STATUS",
                  "TakeSpec.resources"}
     GATED = {"image-matches-lock", "harness-version-matches-lock", "take-inspect-matches-spec",
-             "sidecar-isolated", "study-folders-absent", "run-tree-path-neutral", "no-container-socket"}
+             "sidecar-isolated", "no-container-socket"}
 
     def check(self):
         out = []
