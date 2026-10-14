@@ -168,6 +168,11 @@ LAUNCHER = ("/usr/bin/python3", "-I", "-S", "-c", LAUNCHER_SOURCE)
 NO_LOGIN = "-"
 if CREDENTIAL in TAKE_ENV[CODEX].values():
     raise RuntimeError("the Codex row carries an environment credential: subscriptions only")
+# The review of 9d4bfd40, NIT 6: no Codex-row name is a key, API-key or subscription-token variable.
+_CODEX_ROW_KEYS = sorted(set(TAKE_ENV[CODEX]) & (set(VENDOR_KEY_VARIABLES) | set(API_KEY_VARIABLES)
+                                                 | set(SUBSCRIPTION_TOKEN_VARIABLES)))
+if _CODEX_ROW_KEYS:
+    raise RuntimeError(f"the Codex row names a key or token variable: {', '.join(_CODEX_ROW_KEYS)}")
 LOGIN_VARIABLE[CODEX] = NO_LOGIN
 
 # The model each arm's call names, where the harness has short aliases that resolve elsewhere (docs read 13 Oct 2026:
@@ -257,7 +262,8 @@ CLAUDE_BARE_FLAG = "--bare"
 # named from the harness's documentation at the pinned version. Until then the refused set is the closed list above,
 # and an exec of either harness is refused (NotReady): this lane's stricter reading.
 # CODEX FILLED 14 Oct 2026 (glitch-06's ruling 3), from the pinned Codex binary's own strings only
-# (lane-reports/live-box-evidence-2026-10-13/codex-auth-binary-markers.json, sources[0].matches[N].context; the strings
+# (lane-reports/live-box-evidence-2026-10-13/codex-auth-binary-markers.json, committed in 72239cd4, sha256
+# f7cfa2621e22c1a6f2b150ac00f14bef3e227fcc46d62e8e1fd2958f8cea3323; sources[0].matches[N].context; the strings
 # run together, so each name ends at the next CODEX_/OPENAI_ prefix or a lower-case byte). Refused if present, like
 # every other vendor's names. What the evidence cannot settle is listed in the lane report, never guessed.
 VENDOR_BILLING_ROUTE_VARIABLES = {
@@ -275,7 +281,10 @@ VENDOR_BILLING_ROUTE_VARIABLES = {
             # its Codex names not named above, refused if present (refusing more fails closed).
             "OPENAI_PROJECT", "OPENAI_BASE_URL", "CODEX_ACCESS_TOKEN", "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
             "CODEX_OSS_BASE_URL", "CODEX_OSS_PORT", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE"),
+            "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE",
+            # the review's NIT 7: matches[2] reads CODEX_APP_SERVER_LOGIN_ISSUERAmazon Bed..., an ambiguous end; both
+            # spellings are refused (refusing more fails closed)
+            "CODEX_APP_SERVER_LOGIN_ISSUER", "CODEX_APP_SERVER_LOGIN_ISSUERA"),
     GEMINI: PENDING}
 
 # What the runtime client itself needs from the caller's environment, and nothing else.
@@ -591,11 +600,14 @@ def exec_values(harness: str, run_tree: str) -> dict:
     return {k: v for k, v in take_environment(harness, run_tree).items() if v != CREDENTIAL}
 
 
-def launcher_argv(login: str, values: dict, inner, *, harness=None) -> list:
+def launcher_argv(login: str, values: dict, inner, *, harness) -> list:
     """The turn's command inside the take container: LAUNCHER, the credential's name, the count of pairs, the
     NAME=VALUE pairs in name order, then the harness's argv. The launcher execs the harness with exactly the pairs and
-    the credential (read by its name from the exec's environment): the agent starts from an empty environment. The
-    reserved NO_LOGIN copies no credential: admitted only for a Codex row (`harness`) behind the closed lease gate."""
+    the credential (read by its name from the exec's environment): the agent starts from an empty environment.
+    `harness` is required (the review of 41428177, MINOR 1): the login must be LOGIN_VARIABLE[harness], so a named key
+    for a Codex row refuses whatever the gate. The reserved NO_LOGIN copies no credential: admitted only for a Codex
+    row behind the closed lease gate, and only over exactly the Codex row's names with no other harness's config home
+    (MINOR 2: the values are read, not only the harness= claim)."""
     inner = _check_argv(inner) if inner else None
     if inner is None:
         raise Refused("the launcher needs the harness's argv")
@@ -603,8 +615,18 @@ def launcher_argv(login: str, values: dict, inner, *, harness=None) -> list:
         codex_lease_gate()
         if harness != CODEX:
             raise Refused("the no-login launcher name is admitted only for a Codex row")
+        names = set(values) if isinstance(values, dict) else set()
+        other_homes = sorted(names & (config_home_names() - set(HARNESS_ENV[CODEX])))
+        if other_homes:
+            raise Refused(f"the no-login launcher carries another harness's config home: {', '.join(other_homes)}")
+        if names != set(TAKE_ENV[CODEX]):
+            raise Refused("the no-login launcher's values must be exactly the Codex row's names")
     elif not isinstance(login, str) or not _NAME.fullmatch(login):
         raise Refused("the credential is named by a variable NAME")
+    else:
+        harness = _known_harness(harness)
+        if login != LOGIN_VARIABLE[harness]:
+            raise Refused(f"{login} is not the login of a {harness} row")
     pairs = []
     for k in sorted(values):
         v = values[k]
@@ -812,7 +834,7 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     check_login_place(login_file, run_tree)
     value = read_login(login_file, login)
     argv = [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, "--workdir", workdir, "-e", login,
-            container_id, *launcher_argv(login, values, inner)]
+            container_id, *launcher_argv(login, values, inner, harness=harness)]
     env = runtime_env(src)
     env[login] = value
     return argv, env

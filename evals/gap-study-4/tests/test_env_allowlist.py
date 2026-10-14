@@ -447,12 +447,18 @@ class E2Allowlist(Case):
                 continue
             with self.assertRaises(KeyError, msg=f"E2.launcher: {h}: a launcher without its credential ran"):
                 run_launcher(self.launch_for(h), dict(IMAGE_ENV))
-        self.refuses("E2.pairs", "NAME", m.launcher_argv, "CODEX_API_KEY", {"bad name": "x"}, ["codex"])
-        self.refuses("E2.pairs", "credential", m.launcher_argv, "CODEX_API_KEY", {"CODEX_API_KEY": "x"}, ["codex"])
-        self.refuses("E2.pairs", "NUL", m.launcher_argv, "CODEX_API_KEY", {"A": "x\0y"}, ["codex"])
-        self.refuses("E2.pairs", "harness", m.launcher_argv, "CODEX_API_KEY", {"A": "x"}, [])
-        got = self.must("E2.pairs", m.launcher_argv, "CODEX_API_KEY", {"B": "2", "A": "1=1"}, ["codex", "x"])
-        self.assertEqual(got, [*m.LAUNCHER, "CODEX_API_KEY", "2", "A=1=1", "B=2", "codex", "x"],
+        # harness= is required and the login must be that arm's own (the review of 41428177, MINOR 1); Codex has no
+        # named login, so the pairs are held to the rule on Gemini's
+        g = {"harness": m.GEMINI}
+        self.refuses("E2.pairs", "NAME", m.launcher_argv, "GEMINI_API_KEY", {"bad name": "x"}, ["gemini"], **g)
+        self.refuses("E2.pairs", "credential", m.launcher_argv, "GEMINI_API_KEY", {"GEMINI_API_KEY": "x"}, ["gemini"],
+                     **g)
+        self.refuses("E2.pairs", "NUL", m.launcher_argv, "GEMINI_API_KEY", {"A": "x\0y"}, ["gemini"], **g)
+        self.refuses("E2.pairs", "harness", m.launcher_argv, "GEMINI_API_KEY", {"A": "x"}, [], **g)
+        self.refuses("E2.pairs", "not the login of", m.launcher_argv, "CODEX_API_KEY", {"A": "x"}, ["codex"],
+                     harness=m.CODEX)
+        got = self.must("E2.pairs", m.launcher_argv, "GEMINI_API_KEY", {"B": "2", "A": "1=1"}, ["gemini", "x"], **g)
+        self.assertEqual(got, [*m.LAUNCHER, "GEMINI_API_KEY", "2", "A=1=1", "B=2", "gemini", "x"],
                          "E2.pairs: the launcher's argv is off")
 
 
@@ -660,9 +666,11 @@ class E5Units(Case):
     def test_launcher_argv_refusals(self):
         m = rt()
         for login in (None, 5, "bad name", "lower"):
-            self.refuses("E5.login", "credential is named", m.launcher_argv, login, {"A": "1"}, ["codex"])
+            self.refuses("E5.login", "credential is named", m.launcher_argv, login, {"A": "1"}, ["gemini"],
+                         harness=m.GEMINI)
         for value in (5, None, b"x"):
-            self.refuses("E5.value", "NUL", m.launcher_argv, "CODEX_API_KEY", {"A": value}, ["codex"])
+            self.refuses("E5.value", "NUL", m.launcher_argv, "GEMINI_API_KEY", {"A": value}, ["gemini"],
+                         harness=m.GEMINI)
 
     def test_check_model_edges(self):
         m = rt()
@@ -696,7 +704,7 @@ def mutants() -> dict:
                            '    GEMINI: {"PATH": TAKE_PATH, "HOME": "/home/dana",'),
         "values-in-client-env": ("E2.turn", "    env[login] = value\n", "    env[login] = value\n"
                                  "    env.update(values)\n"),
-        "no-launcher": ("E2.turn", "            container_id, *launcher_argv(login, values, inner)]",
+        "no-launcher": ("E2.turn", "            container_id, *launcher_argv(login, values, inner, harness=harness)]",
                         "            container_id, *inner]"),
         "launcher-keeps-env": ("E2.launcher", "                   \"e=dict(x.split('=',1) for x in a[2:2+n])\\n\"",
                                "                   \"e=dict(os.environ,**dict(x.split('=',1) for x in a[2:2+n]))\\n\""),
