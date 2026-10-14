@@ -666,7 +666,9 @@ def ready_problems(d):
          ns["uuid"] != "9607c78d-18c9-5965-9202-5f09043bdf0c", "R33.namespace")
     need(d["instruction_files"] == {CODEX: dict(take_config.CODEX_TOP)["project_doc_fallback_filenames"],
                                    GEMINI: dict(take_config.GEMINI_SETTINGS)["context.fileName"]}, "R15.instructions")
-    need(d["price_table"] == "PENDING" and all(v == "PENDING" for v in d["served_model_rule"].values()) and
+    import routing as _routing                   # D-INT-2: arm O's served-model rule is routing's own sentence
+    need(d["price_table"] == "PENDING" and d["served_model_rule"][CODEX] == _routing.SERVED_MODEL_LIMIT and
+         all(v == "PENDING" for h, v in d["served_model_rule"].items() if h != CODEX) and
          all(v == "PENDING" for v in d["furniture"].values()), "R15.values")
     need(all(v == "PENDING" for models in d["config_templates"].values() for v in models.values()) and
          all(v == "PENDING" for models in d["effort"].values() for v in models.values()), "R15.config")
