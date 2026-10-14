@@ -1,0 +1,47 @@
+--- /Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/sidecar.py	2026-10-14 01:25:45
++++ /private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/mitig/sidecar.py	2026-10-14 01:27:11
+@@ -137,6 +137,13 @@
+ 
+ # endstate's closed evidence layout (graders/endstate.py; the tests bind each to the reader's own constant).
+ LEDGER, ACCESS, HEALTH, SNAPSHOTS, BLOBS = "ledger.jsonl", "access.jsonl", "health.jsonl", "snapshots", "blobs"
++# The new-folder rescan (glitch-06 ruling 2, 14 Oct 2026). inotifywait -r adds a watch on a new folder only after it
++# reads that folder's CREATE, so a file made inside it before then never reaches the stream (athena stub evidence
++# stub-20261014: fresh/inner.txt). On a folder's CREATE the sidecar lists the consequential paths beneath it that
++# exist at that moment and records each in found.jsonl, apart from access.jsonl: a discovery, stamped when found,
++# never an inotify event and never an access op. Created only on a first finding (a take without one keeps the
++# closed layout unchanged). Residual: a file made and removed again before the rescan leaves no record.
++FOUND, FOUND_SOURCE = "found.jsonl", "rescan-after-create"
+ WATCHED = "watched.json"       # S7-D3: written once at begin, from the --watch list
+ SPECIAL_KINDS = ("socket", "fifo", "char", "block")   # S7-D1: endstate's special STATE kinds
+ WATCHER_START, WATCHER_STOP, QUEUE_OVERFLOW = "watcher-start", "watcher-stop", "queue-overflow"
+@@ -674,6 +681,20 @@
+ 
+     def _access(self, at: float, path: str, op: str):
+         _append_line(self._ev(ACCESS), {"at": at, "path": path, "op": op})
++
++    def _found(self, at: float, path: str):
++        _append_line(self._ev(FOUND), {"at": at, "path": path, "source": FOUND_SOURCE})
++
++    def _present_beneath(self, folder: str) -> list:
++        """The consequential paths beneath a just-created run-tree folder that exist now (lstat, never followed)."""
++        out = []
++        for p in self._beneath(folder):
++            try:
++                os.lstat(os.path.join(self.run_tree, p))
++            except OSError:
++                continue
++            out.append(p)
++        return out
+ 
+     def _break(self, problem: str):
+         self.state = "broken"
+@@ -715,6 +736,9 @@
+             if name in names and isinstance(ev.path, str):
+                 for p in self._move_targets(ev.path):
+                     self._access(at, p, op)
++        if "CREATE" in names and "ISDIR" in names and isinstance(ev.path, str):
++            for p in self._present_beneath(ev.path):
++                self._found(self._stamp(None), p)
+         return True
+ 
+     def _drain(self, *, log: bool = True) -> bool:

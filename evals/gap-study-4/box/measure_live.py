@@ -95,7 +95,9 @@ class Proof:
         return self.container(WATCH_IMAGE, [*sidecar.WATCHER_LAUNCHER, *inner], user="0:0",
                               caps=sidecar.BOOT_CAPABILITIES, mounts=mounts, detached=detached)
 
-    def scenario(self, parent, name):
+    def scenario(self, parent, name, *, source=None, watch=("plan/approved.json", "result.txt"), script=None):
+        """One lifecycle scenario. `source`: a host folder holding a sidecar.py to serve instead of the image's own
+        (mounted read-only at /opt/src); `watch` and `script` replace the consequential list and the agent's step."""
         scratch = Path(tempfile.mkdtemp(prefix="component-", dir=parent))
         tree, evidence = scratch / "tree", scratch / "evidence"
         tree.mkdir(mode=0o700); evidence.mkdir(mode=0o700)
@@ -117,13 +119,15 @@ class Proof:
                          "INOTIFYWAIT_SUBSECOND": False, "INOTIFYWAIT_EVENTS": EVENTS.upper().split(","),
                          "INOTIFY_WATCH_COUNT": measurement["watch_count"],
                          "WATCH_ESTABLISH_S": measurement["establish_s"]}
-            program = ("import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w','/opt/w/sidecar.py'); "
+            served = "/opt/src/sidecar.py" if source else "/opt/w/sidecar.py"
+            watch_args = "".join(f",'--watch',{w!r}" for w in watch)
+            program = ("import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w',%r); " % served +
                        "m=importlib.util.module_from_spec(s); sys.modules['w']=m; s.loader.exec_module(m); "
                        f"m.__dict__.update(json.loads({json.dumps(constants)!r})); "
                        "sys.exit(m.main(['serve','--run-tree','/tree','--evidence','/srv/ev',"
-                       "'--watch','plan/approved.json','--watch','result.txt']))")
-            watcher = self.watcher(["/usr/bin/python3", "-I", "-S", "-c", program],
-                                   ((tree, "/tree", True), (evidence, "/srv/ev", False)), detached=True)
+                       + watch_args.lstrip(",") + "]))")
+            mounts = ((tree, "/tree", True), (evidence, "/srv/ev", False)) + (((source, "/opt/src", True),) if source else ())
+            watcher = self.watcher(["/usr/bin/python3", "-I", "-S", "-c", program], mounts, detached=True)
             ids.append(watcher)
             for _ in range(40):
                 ready = self.call(sidecar.ctl_argv(watcher, "status"), allow_failure=True)
@@ -149,7 +153,7 @@ class Proof:
                 "background-writer": 'import os,time,pathlib; child=os.fork(); os._exit(0) if child else None; os.close(0); os.close(1); os.close(2); time.sleep(2); pathlib.Path("/tree/result.txt").write_text("late"); time.sleep(10)',
             }
             self.call(["docker", "exec", "--user", "10001:10001", take,
-                       "/usr/bin/python3", "-I", "-S", "-c", scripts[name]])
+                       "/usr/bin/python3", "-I", "-S", "-c", script or scripts[name]])
             result["post"] = json.loads(self.call(sidecar.ctl_argv(watcher, "snapshot", "post-1")).stdout)
             if name == "background-writer":
                 time.sleep(2.5)
@@ -259,6 +263,66 @@ def stub_watcher(proof, parent):
     return out
 
 
+# The new-folder gap (glitch-06 ruling 2): latency of -r's watch on a new folder, and the rescan's proof.
+GAP_DELAYS = (0.0, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1)
+GAP_REPEATS = 5
+GAP_LATENCY_AGENT = '''import json,pathlib,time
+p=pathlib.Path("/tree"); delays=%r; out=[]
+for r in range(%d):
+    for i,d in enumerate(delays):
+        f=p/("d%%d-%%d" %% (r,i)); f.mkdir()
+        if d: time.sleep(d)
+        (f/"inner.txt").write_text("x"); out.append([f.name,d])
+        time.sleep(0.05)
+print(json.dumps(out))
+''' % (GAP_DELAYS, GAP_REPEATS)
+GAP_FRESH = [f"fresh{i}/inner.txt" for i in range(5)]
+GAP_PROOF_AGENT = '''import pathlib,time
+p=pathlib.Path("/tree")
+for i in range(5):
+    f=p/("fresh%d" % i); f.mkdir(); (f/"inner.txt").write_text("acted"); time.sleep(0.2)
+'''
+
+
+def gap_latency(proof, parent):
+    """Raw inotifywait (the candidate argv) over folders each made then written after a set delay: which writes
+    reached the stream. Stub measurement on the provisional images; no model, no credential."""
+    scratch = Path(tempfile.mkdtemp(prefix="gap-latency-", dir=parent))
+    tree = scratch / "tree"
+    tree.mkdir(mode=0o700)
+    ids = {}
+    out = {"scope": "stub measurement: new-folder watch latency; provisional images", "delays": GAP_DELAYS,
+           "repeats": GAP_REPEATS}
+    try:
+        proof.own(tree, 10001)
+        ids["watch"] = proof.watcher(STUB_WATCHERS["candidate"], ((tree, "/tree", True),), detached=True)
+        for _ in range(100):
+            if "Watches established." in proof.run(["docker", "logs", ids["watch"]]).stderr:
+                break
+            time.sleep(0.05)
+        else:
+            raise RuntimeError("watcher never established")
+        ids["take"] = proof.container(TAKE_IMAGE, ["sleep", "infinity"], user="10003:10003",
+                                      mounts=((tree, "/tree", False),), detached=True)
+        agent = proof.call(["docker", "exec", "--user", "10001:10001", ids["take"],
+                            "/usr/bin/python3", "-I", "-S", "-c", GAP_LATENCY_AGENT])
+        made = json.loads(agent.stdout)
+        time.sleep(1.5)
+        proof.call(["docker", "stop", "-t", "2", ids["watch"]], allow_failure=True)
+        logs = proof.run(["docker", "logs", ids["watch"]])
+        seen = {ln.split("|")[0] for ln in logs.stdout.splitlines()}
+        out["by_delay"] = {str(d): {"caught": sum(1 for n, dd in made if dd == d and f"/tree/{n}/inner.txt" in seen),
+                                    "made": sum(1 for _n, dd in made if dd == d)} for d in GAP_DELAYS}
+        out["stdout"], out["stderr"] = logs.stdout, logs.stderr
+    finally:
+        for cid in reversed(list(ids.values())):
+            proof.call(["docker", "rm", "-f", cid], allow_failure=True)
+        proof.own(tree, 0)
+    shutil.rmtree(scratch)
+    out["scratch_removed"] = not scratch.exists()
+    return out
+
+
 def _watch_run():
     """A one-shot run of the watcher image through the fixed launcher (for its version line)."""
     return ["docker", "run", "--pull=never", "--rm", "--network", "none", "--user", "0:0", "--cap-drop", "ALL",
@@ -270,13 +334,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch-parent", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--mode", choices=("component", "stub"), default="component")
+    parser.add_argument("--mode", choices=("component", "stub", "gap"), default="component")
+    parser.add_argument("--source", help="gap mode: the folder holding the sidecar.py under test (read-only)")
     args = parser.parse_args()
     parent = Path(args.scratch_parent)
     if sys.platform != "linux" or parent.is_symlink() or not parent.is_dir() or parent.stat().st_uid != os.getuid():
         raise ValueError("an owned existing Linux scratch parent is required")
     proof = Proof(); report = {"scope": "component-only; no credentials, no model, no production admission", "scenarios": [], "calls": proof.calls}
     try:
+        if args.mode == "gap":
+            if not args.source:
+                raise ValueError("--source names the folder holding the sidecar.py under test")
+            report["scope"] = "new-folder gap: latency stub and the rescan proof; no credentials, no model"
+            report["latency"] = gap_latency(proof, parent)
+            report["proof"] = proof.scenario(parent, "gap-fresh", source=Path(args.source), watch=GAP_FRESH,
+                                             script=GAP_PROOF_AGENT)
+            return
         if args.mode == "stub":
             report["scope"] = "stub measurement of the four watcher constants; no credentials, no model"
             report["stub"] = stub_watcher(proof, parent)
