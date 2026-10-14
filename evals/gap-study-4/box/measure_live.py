@@ -260,6 +260,7 @@ def stub_watcher(proof, parent):
         proof.own(tree, 0)
     shutil.rmtree(scratch)
     out["scratch_removed"] = not scratch.exists()
+    out["containers_left"] = _survivors(proof, ids.values())
     return out
 
 
@@ -320,7 +321,17 @@ def gap_latency(proof, parent):
         proof.own(tree, 0)
     shutil.rmtree(scratch)
     out["scratch_removed"] = not scratch.exists()
+    out["containers_left"] = _survivors(proof, ids.values())
     return out
+
+
+def _survivors(proof, cids) -> list:
+    """Review nit 4 (14 Oct): after cleanup, every container this run made must be gone."""
+    left = [cid for cid in cids
+            if proof.run(["docker", "ps", "-a", "-q", "--no-trunc", "--filter", f"id={cid}"]).stdout.strip()]
+    if left:
+        raise RuntimeError(f"containers survived cleanup: {left}")
+    return left
 
 
 def _watch_run():
@@ -351,7 +362,9 @@ def main():
                                              script=GAP_PROOF_AGENT)
             return
         if args.mode == "stub":
-            report["scope"] = "stub measurement of the four watcher constants; no credentials, no model"
+            # Review nit 3 (14 Oct): the label at the top level, and no empty scenario list.
+            report["scope"] = "stub measurement of the four watcher constants; not a production pin; no credentials, no model"
+            report.pop("scenarios")
             report["stub"] = stub_watcher(proof, parent)
             return
         for name in ("oracle", "always-act", "always-hold", "background-writer"):

@@ -245,6 +245,11 @@ class SidecarContractRegression(unittest.TestCase):
         literal = {t.id for n in side.body if isinstance(n, ast.Assign) for t in n.targets
                    if isinstance(t, ast.Name) and t.id in CONTRACT_NAMES}
         self.assertEqual(sorted(literal), sorted(CONTRACT_NAMES))
+        # Review nit 1 (14 Oct): the whole module, not only its top level, assigns each contract name exactly once.
+        every = [t.id for n in ast.walk(side) if isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign))
+                 for t in (n.targets if isinstance(n, ast.Assign) else [n.target])
+                 if isinstance(t, ast.Name) and t.id in CONTRACT_NAMES]
+        self.assertEqual(sorted(every), sorted(CONTRACT_NAMES))
         pre = ast.parse((BOX / "preflight.py").read_text(encoding="utf-8"))
         froms = [(n.module, a.name, a.asname) for n in ast.walk(pre) if isinstance(n, ast.ImportFrom)
                  for a in n.names]
