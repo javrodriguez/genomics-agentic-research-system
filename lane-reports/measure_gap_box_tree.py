@@ -29,7 +29,7 @@ SCANNER_CONTROL_NAMES = (".gitleaksignore", ".gitleaks.toml")
 
 
 def _refuse_control_or_git(relative):
-    parts = relative.split("/")
+    parts = [part.casefold() for part in relative.split("/")]   # case-insensitive volumes (review r4 finding 1)
     if parts[-1] in SCANNER_CONTROL_NAMES or GIT_COMPONENT in parts:
         raise RuntimeError("a scanner control file or .git path is never admitted")
 
@@ -79,7 +79,8 @@ def source_inventory(tree):
         data = path.read_bytes()
         files.append({"path": relative, "bytes": len(data), "mode": stat.S_IMODE(st.st_mode),
                       "sha256": hashlib.sha256(data).hexdigest()})
-    return {"files": files, "directories": directories}
+    return {"files": sorted(files, key=lambda r: r["path"]),
+            "directories": sorted(directories, key=lambda r: r["path"])}
 
 
 def main():

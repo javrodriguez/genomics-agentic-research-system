@@ -74,6 +74,8 @@ class DirectoryAdmission(unittest.TestCase):
         self.scan["report_sha256"] = hashlib.sha256(self.report).hexdigest()
         self.scan["finding_count"] = 1
         self.scan["tree_inventory_sha256"] = admission.inventory_sha256(admission.inventory(self.tree))
+        self.scan["tree_inventory_sha256_after"] = self.scan["tree_inventory_sha256"]
+        self.scan["scanner_sha256_after"] = self.scan["context"]["scanner_sha256"]
 
     def run_admission(self, manifest=None, scan=None, findings=None, rules=None, report=None):
         scan = copy.deepcopy(self.scan if scan is None else scan)
@@ -157,8 +159,9 @@ class DirectoryAdmission(unittest.TestCase):
         changed = copy.deepcopy(self.manifest)
         changed["files"][0].update(bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
         # A scan record consistent with the changed tree, so only the full-file pin can refuse it.
-        scan = dict(self.scan, stderr=success_stderr(len(data)),
-                    tree_inventory_sha256=admission.inventory_sha256(admission.admitted_inventory(changed)[0]))
+        inv_sha = admission.inventory_sha256(admission.admitted_inventory(changed)[0])
+        scan = dict(self.scan, stderr=success_stderr(len(data)), tree_inventory_sha256=inv_sha,
+                    tree_inventory_sha256_after=inv_sha)
         with self.assertRaisesRegex(admission.Refused, "full-file"):
             self.run_admission(manifest=changed, scan=scan)
 
@@ -246,6 +249,49 @@ class DirectoryAdmission(unittest.TestCase):
             self.run_admission()
 
 
+    # Reviewer witnesses W4-W5 (r4, ported red-first 14 Oct) and the r4 fold's own refusals.
+    def test_W4_uppercase_gitleaksignore_refuses(self):
+        # On case-insensitive APFS, gitleaks' os.Stat(<tree>/.gitleaksignore) resolves to this file.
+        manifest = self._add_to_tree(".GITLEAKSIGNORE", b"x:generic-api-key:3\n")
+        total = sum(r["bytes"] for r in manifest["files"])
+        scan = dict(self.scan, stderr=success_stderr(total),
+                    tree_inventory_sha256="0" * 64)
+        with self.assertRaisesRegex(admission.Refused, "scanner control file"):
+            self.run_admission(manifest=manifest, scan=scan)
+
+    def test_W5_record_with_changed_after_inventory_refuses(self):
+        with self.assertRaisesRegex(admission.Refused, "changed during the scan"):
+            self.run_admission(scan=dict(self.scan, tree_inventory_sha256_after="0" * 64))
+        with self.assertRaisesRegex(admission.Refused, "changed during the scan"):
+            self.run_admission(scan={k: v for k, v in self.scan.items() if k != "tree_inventory_sha256_after"})
+
+    def test_scanner_sha_after_run_must_equal_before(self):
+        for after in ("0" * 64, None):
+            with self.subTest(after=after), self.assertRaisesRegex(admission.Refused, "scanner changed"):
+                self.run_admission(scan=dict(self.scan, scanner_sha256_after=after))
+
+    def test_mixed_case_control_and_git_names_refuse(self):
+        for rel, why in ((".GitLeaksIgnore", "scanner control file"), ("sub/.GITLEAKS.TOML", "scanner control file"),
+                         ("sub/.Git/config", r"\.git path")):
+            with self.subTest(rel=rel):
+                manifest = self._add_to_tree(rel, b"x\n")
+                with self.assertRaisesRegex(admission.Refused, why):
+                    self.run_admission(manifest=manifest)
+                with self.assertRaisesRegex(admission.Refused, why):
+                    admission.inventory(self.tree)
+                os.remove(self.tree / rel)
+
+    def test_inventory_order_is_path_string_order(self):
+        for rel in ("a.md", "a/x", "a-b/y"):
+            p = self.tree / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b"z")
+        inv = admission.inventory(self.tree)
+        for key in ("files", "directories"):
+            paths = [r["path"] for r in inv[key]]
+            self.assertEqual(paths, sorted(paths))
+
+
 class StageAdmittedTree(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -285,6 +331,16 @@ class StageAdmittedTree(unittest.TestCase):
             admission.stage_admitted_tree(self.export, self.manifest, self.root / "two")
         with self.assertRaisesRegex(admission.Refused, "another tree"):
             admission.stage_admitted_tree(self.export, dict(self.manifest, tree="/elsewhere"), self.root / "three")
+
+
+    def test_S1_intermediate_symlink_in_export_refuses(self):
+        outside = self.root / "outside"
+        (self.export / "a").rename(outside)
+        os.symlink(str(outside), self.export / "a")
+        dest = self.root / "admitted"
+        with self.assertRaisesRegex(admission.Refused, "link"):
+            admission.stage_admitted_tree(self.export, self.manifest, dest)
+        self.assertFalse((dest / "a" / "x.txt").exists())
 
 
 class ProduceScanGuards(unittest.TestCase):
@@ -410,7 +466,7 @@ class MeasureAdmissionCheck(unittest.TestCase):
             measure.check_admission(record, changed, changed_bytes)
 
     def test_source_with_git_or_control_file_refuses(self):
-        for rel in (".git/HEAD", "x/.gitleaksignore", "x/.gitleaks.toml"):
+        for rel in (".git/HEAD", "x/.gitleaksignore", "x/.gitleaks.toml", ".GIT/HEAD", "x/.GitLeaksIgnore"):
             with tempfile.TemporaryDirectory() as d:
                 p = Path(d) / rel
                 p.parent.mkdir(parents=True, exist_ok=True)

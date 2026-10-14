@@ -81,7 +81,9 @@ def _sha(data: bytes) -> str:
 
 
 def _refuse_control_or_git(relative: str):
-    parts = relative.split("/")
+    """Case-folded: this Mac's APFS volume is case-insensitive, so gitleaks' stat of <tree>/.gitleaksignore finds
+    .GITLEAKSIGNORE too (r4 finding 1); .git is folded the same way."""
+    parts = [part.casefold() for part in relative.split("/")]
     _need(parts[-1] not in SCANNER_CONTROL_NAMES, "a scanner control file (.gitleaksignore/.gitleaks.toml) refused")
     _need(GIT_COMPONENT not in parts, "a .git path is never scanned, so it is never admitted")
 
@@ -101,7 +103,9 @@ def inventory(tree: Path) -> dict:
         _need(stat.S_ISREG(st.st_mode), "nonregular exported entry refused")
         data = _regular_bytes(path)
         files.append({"path": relative, "bytes": len(data), "mode": stat.S_IMODE(st.st_mode), "sha256": _sha(data)})
-    return {"files": files, "directories": directories}
+    # One order for every inventory: the path string (r4 finding 4), as admitted_inventory sorts.
+    return {"files": sorted(files, key=lambda r: r["path"]),
+            "directories": sorted(directories, key=lambda r: r["path"])}
 
 
 def inventory_sha256(inv: dict) -> str:
@@ -150,6 +154,10 @@ def stage_admitted_tree(export: Path, manifest: dict, dest: Path) -> dict:
     for d in expected["directories"]:
         (dest / d["path"]).mkdir(mode=0o700)
     for row in expected["files"]:
+        parts = row["path"].split("/")
+        for depth in range(1, len(parts) + 1):   # no link in any component (r4 finding 3)
+            _need(not stat.S_ISLNK((export.joinpath(*parts[:depth])).lstat().st_mode),
+                  "a link inside the export refused")
         data = _regular_bytes(export / row["path"])
         _need(len(data) == row["bytes"] and _sha(data) == row["sha256"], "export bytes differ from manifest")
         _need(stat.S_IMODE((export / row["path"]).lstat().st_mode) == row["mode"], "export mode differs")
@@ -234,6 +242,9 @@ def admit_directory_finding(tree: Path, manifest: dict, scan: dict, report: byte
 
     expected_sha = inventory_sha256(expected)
     _need(scan.get("tree_inventory_sha256") == expected_sha, "tree at scan time differs from the admitted rows")
+    # Every refusal produce_scan makes after writing its record is visible here too (r4 finding 2).
+    _need(scan.get("tree_inventory_sha256_after") == scan["tree_inventory_sha256"], "tree changed during the scan")
+    _need(scan.get("scanner_sha256_after") == context["scanner_sha256"], "scanner changed during run")
     actual = inventory(tree)
     _need(actual == expected, "export changed since raw scan")
     row = next((r for r in actual["files"] if r["path"] == APPROVED_PATH), None)
@@ -288,6 +299,7 @@ def produce_scan(tree: Path, output: Path) -> dict:
             "--report-format", "json", "--report-path", str(report)]
     run = subprocess.run(argv, cwd=cwd, env=env, capture_output=True, text=True, timeout=120)
     after = inventory(tree)
+    scanner_hash_after = _sha(_regular_bytes(Path(SCANNER)))
     context = {"cwd": str(cwd), "env": env, "config_path": str(config),
                "config_sha256": _sha(DEFAULT_CONFIG),
                "scanner_sha256": scanner_hash, "scanner_version": version.stdout.strip()}
@@ -302,11 +314,11 @@ def produce_scan(tree: Path, output: Path) -> dict:
     result = {"argv": argv, "exit": run.returncode, "stdout": run.stdout, "stderr": run.stderr,
               "context": context, "report_sha256": report_sha, "finding_count": finding_count,
               "tree_inventory_sha256": inventory_sha256(before),
-              "tree_inventory_sha256_after": inventory_sha256(after)}
+              "tree_inventory_sha256_after": inventory_sha256(after), "scanner_sha256_after": scanner_hash_after}
     with (output / "raw-scan.json").open("x") as stream:
         json.dump(result, stream, indent=2, sort_keys=True)
         stream.write("\n")
-    _need(_sha(_regular_bytes(Path(SCANNER))) == scanner_hash, "scanner changed during run")
+    _need(scanner_hash_after == scanner_hash, "scanner changed during run")
     _need(before == after, "tree changed during the scan")
     _need(report_sha is not None and finding_count is not None, "scanner report absent or malformed")
     return result
