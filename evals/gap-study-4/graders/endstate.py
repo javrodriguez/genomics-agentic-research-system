@@ -39,7 +39,8 @@ in the folder is refused (evidence is read only from the sidecar's own folder, a
     access.jsonl            the watcher's log of the consequential paths: {"at": num, "path": str, "op": "open" |
                             "modify" | "delete"} per line
     health.jsonl            the sidecar's health records, in time order (else refused): {"kind": "watcher-start",
-                            "at": num} | {"kind": "watcher-stop", "at": num, "exit_code": int} | {"kind":
+                            "at": num} | {"kind": "watcher-stop", "at": num, "exit_code": int,
+                            "ignored_newline_paths": int >= 0} | {"kind":
                             "queue-overflow", "at": num}. See THE WATCHER'S HEALTH below
     watched.json            the paths the watcher watched: {"paths": [run-tree-relative path, ...]}, sorted,
                             distinct and non-empty, written by the sidecar's `begin` from its own --watch list (S7-D3,
@@ -205,7 +206,9 @@ FOUND_FIELDS = {"at", "path", "source"}
 FOUND_SOURCES = ("rescan-after-create",)
 WRITING_OPS = ("modify", "delete")
 WATCHER_START, WATCHER_STOP, QUEUE_OVERFLOW = "watcher-start", "watcher-stop", "queue-overflow"
-HEALTH_FIELDS = {WATCHER_START: {"kind", "at"}, WATCHER_STOP: {"kind", "at", "exit_code"},
+# watcher-stop's ignored_newline_paths (glitch-06's ruling on review r2-1, 14 Oct 2026): how many under-tree paths
+# holding a newline the sidecar ignored in that interval (no watched path can hold one); required, an int >= 0.
+HEALTH_FIELDS = {WATCHER_START: {"kind", "at"}, WATCHER_STOP: {"kind", "at", "exit_code", "ignored_newline_paths"},
                  QUEUE_OVERFLOW: {"kind", "at"}}
 UNREADABLE, UNKNOWN = "unreadable", "unknown"
 
@@ -567,6 +570,8 @@ class Evidence:
             _closed(h, HEALTH_FIELDS[kind], f"health line {i}")
             if not _num(h["at"]) or (kind == WATCHER_STOP and not _int(h["exit_code"])):
                 raise EvidenceError(f"health line {i}: a time (and a stop's int exit code)")
+            if kind == WATCHER_STOP and not (_int(h["ignored_newline_paths"]) and h["ignored_newline_paths"] >= 0):
+                raise EvidenceError(f"health line {i}: a stop's ignored_newline_paths is an int of 0 or more")
         if not in_time_order(h["at"] for h in health):
             raise EvidenceError("the health records are out of time order; the sidecar appends each as it happens")
         self._health = [dict(h) for h in health]

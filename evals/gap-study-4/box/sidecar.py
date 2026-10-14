@@ -675,6 +675,7 @@ class Sidecar:
         self._floor = 0.0
         self.state = "new"          # new -> running -> finished, or broken
         self.problems = []          # why the sidecar is broken (sticky)
+        self._ignored_newline = 0   # under-tree paths holding a newline, ignored this interval (review r2-1)
         self.next_label = None
 
     # --------------------------------------------------------------------------------------------- records
@@ -732,6 +733,12 @@ class Sidecar:
         """Log one stream event. False on a fault: an event name outside the closed table, or an event that maps
         to no run-tree path."""
         names = tuple(ev.names)
+        if isinstance(ev.path, str) and "\n" in ev.path:
+            # Review r2-1 (glitch-06's ruling, 14 Oct 2026): a name holding a newline under the tree is ignored, never
+            # a fault (an agent could otherwise turn its take into a harness-error), and counted in the interval's
+            # watcher-stop record. No watched path or chain folder can hold one (watch_path_ok).
+            self._ignored_newline += 1
+            return True
         unknown = [n for n in names if n not in EVENT_OPS and n not in EVENT_FLAGS and n != OVERFLOW_EVENT]
         if unknown or not names or not _mapped(ev.path):
             return False
@@ -779,7 +786,8 @@ class Sidecar:
         clean = self._drain(log=not fault)
         fault = fault or forced or not clean
         at = self.clock()
-        self._health(WATCHER_STOP, at, exit_code=stop_exit_code(rc, requested=requested, fault=fault))
+        self._health(WATCHER_STOP, at, exit_code=stop_exit_code(rc, requested=requested, fault=fault),
+                     ignored_newline_paths=self._ignored_newline)
         self.watcher = None
         if not requested and not fault:
             self._break(f"the watcher exited on its own (exit code {stop_exit_code(rc, requested=False, fault=False)})"
@@ -806,7 +814,7 @@ class Sidecar:
             self.sleep(POLL_S)
         at = self.clock()
         self._health(WATCHER_START, at)
-        self.watcher, self._floor = w, at
+        self.watcher, self._floor, self._ignored_newline = w, at, 0
         return at
 
     def _abandon(self, w):
@@ -833,7 +841,7 @@ class Sidecar:
             fault = not self._drain()   # fold 4, W4C3-5: a fault in the last drain is a fault
             at = self.clock()
             code = stop_exit_code(rc, requested=False, fault=fault)
-            self._health(WATCHER_STOP, at, exit_code=code)
+            self._health(WATCHER_STOP, at, exit_code=code, ignored_newline_paths=self._ignored_newline)
             self.watcher = None
             self._break(f"the watcher exited on its own (exit code {code}){' and faulted' if fault else ''}; "
                         f"it is not re-armed")

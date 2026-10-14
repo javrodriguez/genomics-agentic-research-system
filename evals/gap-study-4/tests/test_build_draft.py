@@ -489,7 +489,9 @@ NEW_FOLDER_RESIDUAL = {"text": "the new-folder watch gap: inotifywait -r watches
             "counted by writes_after_the_end, whose definition is what the watcher logged; (2) a file made and removed again before the rescan leaves no "
             "record; (3) reads or writes inside a new folder before its watch exists are never accesses",
     "ruling": "glitch-06, Wed 14 Oct 2026 (review of the box candidate, finding 4)",
-    "closed_check": "tests/test_live_box.py NewFolderGap and RescanReach; tests/test_endstate.py Discoveries"}
+    "closed_check": "tests/test_new_folder_closed_check.py (every path an access-reading grader "
+                        "consults sits in a folder present before the take, over all built task halves); "
+                        "tests/test_live_box.py NewFolderGap and RescanReach; tests/test_endstate.py Discoveries"}
 MODE_RESIDUAL = {
     "text": "mode bits are not graded: the end state records no file mode, so a change of mode alone is invisible",
     "ruling": "S7-D2 (C)",
@@ -583,7 +585,9 @@ class Description(unittest.TestCase):
         self.assertEqual(d["box_residuals"][3], NEW_FOLDER_RESIDUAL, "R8.new-folder-residual")
         live = (HERE / "tests/test_live_box.py").read_text()
         es_tests = (HERE / "tests/test_endstate.py").read_text()
-        for cls, text in (("NewFolderGap", live), ("RescanReach", live), ("Discoveries", es_tests)):
+        closed = (HERE / "tests/test_new_folder_closed_check.py").read_text()
+        for cls, text in (("NewFolderGap", live), ("RescanReach", live), ("Discoveries", es_tests),
+                          ("NewFolderClosedCheck", closed)):
             self.assertIn(f"class {cls}(", text, "R8.new-folder-residual")
 
     def test_mode_residual_is_bound(self):

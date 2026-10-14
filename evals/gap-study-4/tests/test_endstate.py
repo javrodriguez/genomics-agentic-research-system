@@ -117,7 +117,7 @@ def build(steps: list, *, harness=CC, initial: dict | None = None, take: dict | 
             tree[p] = st
     if health is None:
         health = [{"kind": "watcher-start", "at": 50.0},
-                  {"kind": "watcher-stop", "at": 100.0 * len(steps) + 8, "exit_code": 0}]
+                  {"kind": "watcher-stop", "at": 100.0 * len(steps) + 8, "exit_code": 0, "ignored_newline_paths": 0}]
     return {"ledger": ledger, "snapshots": snaps, "access": access, "health": health}
 
 
@@ -749,14 +749,14 @@ class TurnsAndLayout(unittest.TestCase):
         self.assertEqual(route_with(clean), labels4.GRADED)
         start = {"kind": "watcher-start", "at": 50.0}
         overflow = ev(build(TASK, health=[start, {"kind": "queue-overflow", "at": 150.0},
-                                          {"kind": "watcher-stop", "at": 308.0, "exit_code": 0}]))
+                                          {"kind": "watcher-stop", "at": 308.0, "exit_code": 0, "ignored_newline_paths": 0}]))
         self.assertTrue(overflow.sidecar_record()["queue_overflow"])
         self.assertEqual(route_with(overflow), labels4.HARNESS_ERROR)
-        dirty = ev(build(TASK, health=[start, {"kind": "watcher-stop", "at": 308.0, "exit_code": 3}]))
+        dirty = ev(build(TASK, health=[start, {"kind": "watcher-stop", "at": 308.0, "exit_code": 3, "ignored_newline_paths": 0}]))
         self.assertEqual(dirty.sidecar_record()["exit_code"], 3)
         self.assertEqual(route_with(dirty), labels4.HARNESS_ERROR)
         # a last start with no stop after it, every turn covered by the interval before it
-        unpaired = ev(build(TASK, health=[start, {"kind": "watcher-stop", "at": 308.0, "exit_code": 0},
+        unpaired = ev(build(TASK, health=[start, {"kind": "watcher-stop", "at": 308.0, "exit_code": 0, "ignored_newline_paths": 0},
                                           {"kind": "watcher-start", "at": 309.0}]))
         self.assertFalse(unpaired.sidecar_record()["stop_record"])
         self.assertEqual(route_with(unpaired), labels4.HARNESS_ERROR)
@@ -792,7 +792,7 @@ def start(at) -> dict:
 
 
 def stop(at, code=0) -> dict:
-    return {"kind": "watcher-stop", "at": float(at), "exit_code": code}
+    return {"kind": "watcher-stop", "at": float(at), "exit_code": code, "ignored_newline_paths": 0}
 
 
 # Three quiet turns (no access logged), windows [100, 106], [200, 206] and [300, 306]; the probe is turn 2.
@@ -1673,6 +1673,31 @@ class Discoveries(unittest.TestCase):
                 os.symlink(moved, os.path.join(d, "found.jsonl"))
                 with self.assertRaisesRegex(es.EvidenceError, "symbolic link"):
                     es.Evidence.load(d, table=TABLE)
+
+
+class IgnoredNewlinePaths(unittest.TestCase):
+    """glitch-06's ruling on review r2-1 (14 Oct 2026): every watcher-stop carries ignored_newline_paths, an int of
+    0 or more; a missing or malformed count refuses, and no count changes any existing reading."""
+
+    def with_count(self, value=..., drop=False):
+        parts = build(TASK)
+        for h in parts["health"]:
+            if h["kind"] == "watcher-stop":
+                if drop:
+                    h.pop("ignored_newline_paths")
+                elif value is not ...:
+                    h["ignored_newline_paths"] = value
+        return parts
+
+    def test_a_missing_or_malformed_count_refuses(self):
+        for parts in (self.with_count(drop=True), self.with_count(-1), self.with_count(True), self.with_count(1.0),
+                      self.with_count("0")):
+            with self.assertRaises(es.EvidenceError):
+                ev(parts)
+
+    def test_no_count_changes_a_reading(self):
+        zero = json.dumps(reading(ev(self.with_count(0))), sort_keys=True, default=str)
+        self.assertEqual(json.dumps(reading(ev(self.with_count(7))), sort_keys=True, default=str), zero)
 
 
 def write_folder(d: str, parts: dict, blobs: dict, watched="default"):

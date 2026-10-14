@@ -400,7 +400,7 @@ BREAKS = {
     ],
     "watcher-started": [
         ("no-health", edit_value("health", lambda v: v.clear())),
-        ("stopped", edit_value("health", lambda v: v.append({"kind": "watcher-stop", "at": 2.0, "exit_code": 0}))),
+        ("stopped", edit_value("health", lambda v: v.append({"kind": "watcher-stop", "at": 2.0, "exit_code": 0, "ignored_newline_paths": 0}))),
     ],
     "watcher-capability": [
         ("unreadable-row", edit_json("watcher-caps", lambda d: d.append({"pid": 12, "unreadable": "PermissionError"}))),

@@ -860,7 +860,9 @@ def describe(root=None):
                  "counted by writes_after_the_end, whose definition is what the watcher logged; (2) a file made and removed again before the rescan leaves no "
                  "record; (3) reads or writes inside a new folder before its watch exists are never accesses",
          "ruling": "glitch-06, Wed 14 Oct 2026 (review of the box candidate, finding 4)",
-         "closed_check": "tests/test_live_box.py NewFolderGap and RescanReach; tests/test_endstate.py Discoveries"}]
+         "closed_check": "tests/test_new_folder_closed_check.py (every path an access-reading grader "
+                        "consults sits in a folder present before the take, over all built task halves); "
+                        "tests/test_live_box.py NewFolderGap and RescanReach; tests/test_endstate.py Discoveries"}]
     # Q-w7a-1 (ruling W7A-close-1): S7-D4 ruled (A), the watcher's final stop, pre-registered with its check.
     d["final_stop"] = {
         "text": "the watcher's last recorded interval must close strictly after post-N's snapshot; a take whose last "

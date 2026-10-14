@@ -518,6 +518,44 @@ class CandidateMode(unittest.TestCase):
             with self.subTest(take=take), self.assertRaisesRegex(ValueError, "by sha256 id"):
                 self.run_main(["--mode", "candidate", "--take-image", take, "--watch-image", watch])
 
+class NewlinePaths(unittest.TestCase):
+    """Review r2-1 (glitch-06's ruling, 14 Oct): a newline in a name under the tree is ignored, never a fault, and
+    counted in the watcher-stop health record as ignored_newline_paths (no watched path or chain folder can hold one)."""
+
+    def make(self):
+        d = Path(tempfile.mkdtemp()); self.addCleanup(lambda: __import__("shutil").rmtree(d))
+        (d / "tree").mkdir(); (d / "ev").mkdir()
+        return d, sidecar.Sidecar(run_tree=str(d / "tree"), evidence=str(d / "ev"), watch=["a.txt"], factory=None,
+                                  clock=lambda: 1.0e9)
+
+    def test_ignored_and_counted(self):
+        d, sc = self.make()
+        for path in ("x\ny.txt", "deep/q\n|OPEN", "a.txt"):
+            self.assertTrue(sc._event(sidecar.WatchEvent(None, path, ("CREATE",))), path)
+        self.assertEqual(sc._ignored_newline, 2)
+        acc = [json.loads(x)["path"] for x in (d / "ev" / sidecar.ACCESS).read_text().splitlines()] \
+            if (d / "ev" / sidecar.ACCESS).exists() else []
+        self.assertNotIn("x\ny.txt", acc)
+
+    def test_outside_the_tree_still_faults(self):
+        _, sc = self.make()
+        self.assertFalse(sc._event(sidecar.WatchEvent(None, None, ("CREATE",))))
+
+    def test_the_stop_record_carries_the_count(self):
+        d, sc = self.make()
+
+        class W:
+            def poll(self): return 0 if self.stopped else None
+            def request_stop(self): self.stopped = True
+            def read_ready(self): return []
+            stopped = False
+        sc.watcher, sc.state = W(), "running"
+        sc._ignored_newline = 3
+        sc._stop()
+        recs = [json.loads(x) for x in (d / "ev" / sidecar.HEALTH).read_text().splitlines()]
+        self.assertEqual(recs[-1]["ignored_newline_paths"], 3)
+        self.assertEqual(set(recs[-1]), {"kind", "at", "exit_code", "ignored_newline_paths"})
+
 
 if __name__ == "__main__":
     unittest.main()

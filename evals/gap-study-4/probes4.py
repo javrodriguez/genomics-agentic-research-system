@@ -842,7 +842,7 @@ def build_take(pr, h: Half, lines: list, mv: dict) -> tuple:
                            "writes": [{"path": p, "after": state(v)} for p, v in op.items()]})
             tree.update(op)
     health = [{"kind": "watcher-start", "at": 50.0},
-              {"kind": "watcher-stop", "at": 100.0 * len(lines) + 8, "exit_code": 0}]
+              {"kind": "watcher-stop", "at": 100.0 * len(lines) + 8, "exit_code": 0, "ignored_newline_paths": 0}]
     evidence = es.Evidence.from_parts(ledger=ledger, snapshots=snaps, access=access, health=health, blobs=blobs)
     return [json.dumps(r, sort_keys=True) for r in records], evidence
 

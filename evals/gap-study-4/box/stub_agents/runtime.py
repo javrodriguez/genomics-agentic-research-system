@@ -129,7 +129,7 @@ class FakeRuntime:
 
     def health(self) -> list:
         return [{"kind": "watcher-start", "at": WATCH_START},
-                {"kind": "watcher-stop", "at": 100.0 * self.turns + 8, "exit_code": 0}]
+                {"kind": "watcher-stop", "at": 100.0 * self.turns + 8, "exit_code": 0, "ignored_newline_paths": 0}]
 
     def evidence(self):
         """The take's evidence, as endstate reads it (only after `finish`)."""

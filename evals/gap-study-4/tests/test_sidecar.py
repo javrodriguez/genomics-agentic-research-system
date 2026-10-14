@@ -371,7 +371,7 @@ class TestEndstateRoundTrip(TakeCase):
         h = t.health()
         self.assertEqual([x["kind"] for x in h], ["watcher-start", "watcher-stop", "watcher-start"])
         self.assertTrue(first.stop_requested)
-        self.assertEqual(h[1], {"kind": "watcher-stop", "at": r["taken_at"], "exit_code": 0})
+        self.assertEqual(h[1], {"kind": "watcher-stop", "at": r["taken_at"], "exit_code": 0, "ignored_newline_paths": 0})
         self.assertEqual(t.snap("post-1")["taken_at"], h[1]["at"])
         self.assertEqual(h[2]["at"], t.w.established_at)
         self.assertEqual(r["rearmed_at"], t.w.established_at)
@@ -753,7 +753,7 @@ class TestGaps(TakeCase):
         t.sc.pump()
         t.clock.tick(5.0)
         h = t.health()
-        self.assertEqual(h[-1], {"kind": "watcher-stop", "at": died, "exit_code": 1})   # stamped at detection
+        self.assertEqual(h[-1], {"kind": "watcher-stop", "at": died, "exit_code": 1, "ignored_newline_paths": 0})   # stamped at detection
         r = t.sc.handle("snapshot", "post-1")
         self.assertFalse(r["ok"])
         self.assertTrue(any("exited on its own" in p for p in r["problems"]), r)
@@ -960,7 +960,7 @@ class TestGaps(TakeCase):
     def test_mutant_a_second_stop_after_death_goes_red(self):
         class Twice(sidecar.Sidecar):
             def _finish(self):   # mutant: finish stamps a stop whatever happened before
-                self._health(sidecar.WATCHER_STOP, self.clock(), exit_code=0)
+                self._health(sidecar.WATCHER_STOP, self.clock(), exit_code=0, ignored_newline_paths=0)
                 return self._reply("finish", None)
         t = self.take(sidecar_cls=Twice)
         t.sc.handle("begin")
@@ -2200,7 +2200,9 @@ BOX_MODULES = {
             '_break', '_drain', '_drain_stderr', '_err', '_established', '_ev', '_event', '_finish', '_floor',
             '_health', '_move_targets', '_out',
             # glitch-06 ruling, 14 Oct 2026: exactly the new-folder rescan's two methods.
-            '_found', '_present_beneath', '_pause', '_read', '_reply', '_setup_fault', '_setup_line_ok',
+            '_found', '_present_beneath',
+            # glitch-06's ruling on review r2-1 (14 Oct): the interval's ignored-newline count
+            '_ignored_newline', '_pause', '_read', '_reply', '_setup_fault', '_setup_line_ok',
             '_snap_command', '_snapshot', '_stamp', '_stderr_events', '_stop', '_sweep_temps', '_tail_counts',
             '_temps', '_wait_exit', 'accept', 'add', 'add_argument', 'add_parser', 'add_subparsers', 'append', 'at',
             'basename', 'bind', 'clock', 'close', 'command', 'compile', 'connect', 'count', 'decode', 'dirname',

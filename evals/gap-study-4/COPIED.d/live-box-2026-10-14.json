@@ -40,6 +40,11 @@
       "path": "tests/test_write_image_lock.py",
       "status": "new",
       "reason": "Lane live-box (glitch-06's lock-writer rulings, 14 Oct 2026): ops/write_image_lock.py on a throwaway git repository only, never the real locks: one positive schema-1 to schema-2 write that image_lock validates and preflight.load_take_lock projects, and each refusal alone (an uncommitted record, a commit not an ancestor, each row condition, zero or two rows, an unresolved or changed input, a filled or other lock, another record schema, a lock changed after reading)."
+    },
+    {
+      "path": "tests/test_new_folder_closed_check.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's ruling on review r2-3, 14 Oct 2026): the new-folder gap's task-level closed check: over every built task half, each path an access-reading grader consults (scope_read planted, approval-scope link_paths) sits in a folder present before the take, so no registered task outcome rests on the gap; the access readers are pinned by a repository search."
     }
   ]
 }

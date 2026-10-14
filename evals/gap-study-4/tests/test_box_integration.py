@@ -408,12 +408,12 @@ class FakeBox:
             takes = [c for c, v in self.containers.items() if v["kind"] == "take"]
             self.snapshots.append((label, sum(len(self.alive(t)) for t in takes)))
             at = self.evidence(sid, label)                           # S6b: the stop stamped at the snapshot's instant
-            self.health(sid, sc.WATCHER_STOP, at=at, exit_code=0)
+            self.health(sid, sc.WATCHER_STOP, at=at, exit_code=0, ignored_newline_paths=0)
             if not self.gap:
                 self.health(sid, sc.WATCHER_START)
             return ok(reply("snapshot", label, unreadable_consequential=self.unreadable))
         if command == "finish":
-            self.health(sid, sc.WATCHER_STOP, exit_code=0)
+            self.health(sid, sc.WATCHER_STOP, exit_code=0, ignored_newline_paths=0)
             return ok(reply("finish"))
         return ok(reply("status"))
 
