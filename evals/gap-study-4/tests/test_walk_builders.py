@@ -1152,6 +1152,13 @@ class B9Cli(Case):
 
 # ------------------------------------------------------------------------------------------------- G1
 class G1Generated(Case):
+    def test_every_test_class_runs_under_a_generated_mutant(self):
+        """The sweep runs only GENERATED_ORDER's classes: a test class left out of it binds nothing in the sweep
+        (B10, B11 and B12 were, and every mutant of the functions they bind survived)."""
+        classes = {n for n, v in globals().items() if isinstance(v, type) and issubclass(v, unittest.TestCase)
+                   and any(a.startswith("test") for a in vars(v))}
+        self.assertEqual(sorted(classes - set(GENERATED_ORDER)), [], "G1.order: classes the sweep never runs")
+
     def test_the_equivalent_list_matches_the_generated_mutants(self):
         ids = set(self.must("G1.generated", by_id))
         self.assertGreater(len(ids), 0, "G1.generated: the generator produced nothing")
@@ -1176,8 +1183,8 @@ class TestSysPath(unittest.TestCase):
 
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
-GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B7Production", "B8Present", "B5Fixture",
-                   "B4RunTree", "G1Generated", "B9Cli", "TestSysPath")
+GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived", "B10Resources", "B7Production",
+                   "B8Present", "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli", "TestSysPath")
 
 
 def run_witnesses(names) -> int:
@@ -1271,6 +1278,21 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
 BOX_RESOURCES = {"memory_reservation": 2147483648, "memory": 6442450944, "cpus": "8", "pids_limit": 4096}
 
 
+def problems_by_assertion(prefix):
+    """A check that raises reports it as its own line, so a mutant that makes the code raise fails the test by
+    assertion (a kill), never by an error the generated sweep does not count."""
+    def wrap(fn):
+        def check(mod):
+            try:
+                return fn(mod)
+            except Exception as e:  # noqa: BLE001
+                return [f"{prefix}: raised {type(e).__name__}: {str(e)[:300]}"]
+        check.__name__ = fn.__name__
+        return check
+    return wrap
+
+
+@problems_by_assertion("B10.resources")
 def b10_problems(mod) -> list:
     """B10.resources: the policy values, run_take's own spec check passing them, and the take spec built by the row's
     arm's lock (a pending lock refuses at call time; a ready one gives its image id and the policy values)."""
@@ -1347,6 +1369,7 @@ def fake_proc(tmp: Path, *, uid_map="         0       1000          1\n         
     return proc, root, str(root / rel.lstrip("/"))
 
 
+@problems_by_assertion("B11.derived")
 def b11_problems(mod) -> list:
     out = []
     for name in ("container_pid", "uid_map_of_pid", "cgroup_dir_of_pid"):
@@ -1363,6 +1386,8 @@ def b11_problems(mod) -> list:
         if mod.cgroup_dir_of_pid(4242, CID, proc=str(proc), root=str(root)) != want:
             out.append("B11.derived: the cgroup folder is not the container's scope")
     bad = {
+        "a take id that is not 64 hex": lambda tmp: mod.container_pid(InspectBox(), "c" * 63),
+        "a take id that is not a string": lambda tmp: mod.container_pid(InspectBox(), 7),
         "inspect failed": lambda tmp: mod.container_pid(InspectBox(code=1), CID),
         "not running (pid 0)": lambda tmp: mod.container_pid(InspectBox(out="0\n"), CID),
         "pid not a number": lambda tmp: mod.container_pid(InspectBox(out="x\n"), CID),
@@ -1444,6 +1469,7 @@ def pinned_class():
         yield RealRulesScanner
 
 
+@problems_by_assertion("B12.scanner")
 def b12_problems(mod) -> list:
     out = []
     if not callable(getattr(mod, "walk_rules_scanner", None)) or not hasattr(mod, "BuiltRulesScan"):
