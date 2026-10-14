@@ -172,6 +172,78 @@ def login_secrets(login_file: str, harness):
 
 
 # ------------------------------------------------------------------------------------------------ the counters
+# glitch-06's queue item 2 (14 Oct 2026): the take container's cgroup folder and the runtime's uid map are read at run
+# time from the container's id and /proc, never typed in (measured on athena by the box lane:
+# /sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/user.slice/docker-<id>.scope and
+# ((0,1000,1),(1,100000,65536))). Every reader refuses (BuilderRefused) anything it cannot read exactly.
+_UID_MAP_LINE = re.compile(r"\s*([0-9]+)\s+([0-9]+)\s+([1-9][0-9]*)\s*")
+_CID = re.compile(r"[0-9a-f]{64}")
+
+
+def container_pid(runtime, take_id: str, caller_env=None) -> int:
+    """The take container's init process id on the host, by `docker inspect`; a stopped container (pid 0) refuses."""
+    from box import run_take as rt
+    if not isinstance(take_id, str) or not _CID.fullmatch(take_id):
+        raise BuilderRefused("the take container's id is not a full 64-hex id")
+    c = runtime.run([rt.RUNTIME_CLIENT, "inspect", "--format", "{{.State.Pid}}", take_id],
+                    env=rt.runtime_env(caller_env), timeout=rt.STEP_TIMEOUT_S)
+    text = (c.stdout or "").strip()
+    if c.returncode != 0 or not text.isdigit() or int(text) <= 0:
+        raise BuilderRefused(f"the take container's pid cannot be read (exit {c.returncode}): the run-time readers "
+                             f"refuse")
+    return int(text)
+
+
+def uid_map_of_pid(pid: int, *, proc: str = "/proc") -> tuple:
+    """The process's user-namespace map, ((container start, host start, length), ...), from /proc/<pid>/uid_map."""
+    try:
+        with open(os.path.join(proc, str(int(pid)), "uid_map"), encoding="ascii") as fh:
+            lines = [ln for ln in fh.read().splitlines() if ln.strip()]
+    except (OSError, ValueError, UnicodeError) as e:
+        raise BuilderRefused(f"the uid map of pid {pid} cannot be read ({type(e).__name__})") from None
+    rows = [_UID_MAP_LINE.fullmatch(ln) for ln in lines]
+    if not rows or not all(rows):
+        raise BuilderRefused(f"the uid map of pid {pid} is empty or not (start, host start, length) lines")
+    return tuple(tuple(int(x) for x in m.groups()) for m in rows)
+
+
+def cgroup_dir_of_pid(pid: int, take_id: str, *, proc: str = "/proc", root: str = "/sys/fs/cgroup") -> str:
+    """The process's cgroup v2 folder, from /proc/<pid>/cgroup's one `0::` line; it must be the take container's own
+    scope (docker-<id>.scope) and an existing folder under `root`."""
+    try:
+        with open(os.path.join(proc, str(int(pid)), "cgroup"), encoding="ascii") as fh:
+            lines = [ln for ln in fh.read().splitlines() if ln.strip()]
+    except (OSError, ValueError, UnicodeError) as e:
+        raise BuilderRefused(f"the cgroup of pid {pid} cannot be read ({type(e).__name__})") from None
+    if len(lines) != 1 or not lines[0].startswith("0::/"):
+        raise BuilderRefused(f"pid {pid} is not in exactly one cgroup v2 hierarchy")
+    rel = lines[0][len("0::"):]
+    if os.path.basename(rel) != f"docker-{take_id}.scope" or ".." in rel.split("/"):
+        raise BuilderRefused(f"pid {pid}'s cgroup is not the take container's own scope")
+    folder = os.path.join(root, rel.lstrip("/"))
+    if os.path.islink(folder) or not os.path.isdir(folder):
+        raise BuilderRefused(f"the take container's cgroup folder {folder} is not an existing folder")
+    return folder
+
+
+def run_time_readers(runtime_of, caller_env=None) -> tuple:
+    """(uid_map(take), cgroup_dir_for(take)) over the runtime `runtime_of()` gives at call time; a runtime that does not
+    exist yet (a Missing) refuses by name."""
+    def runtime():
+        r = runtime_of()
+        if not callable(getattr(r, "run", None)):
+            raise BuilderRefused(f"no container runtime to read the take container with: {r!r}")
+        return r
+
+    def uid_map(take):
+        return uid_map_of_pid(container_pid(runtime(), take.launched.take_id, caller_env))
+
+    def cgroup_dir_for(take):
+        cid = take.launched.take_id
+        return cgroup_dir_of_pid(container_pid(runtime(), cid, caller_env), cid)
+    return uid_map, cgroup_dir_for
+
+
 def counters_reader(cgroup_dir_for):
     """The adapter's counters_for(take): run_take.counters over the absolute folder cgroup_dir_for(take) names."""
     if not callable(cgroup_dir_for):
@@ -308,8 +380,6 @@ def production_builders() -> dict:
         "proxy": Missing(f"the egress proxy launch (box/egress, squid -k parse): {box}"),
         "lock_path": Missing(f"the take lock (box/image.lock, pinned at the bring-up): {box}"),
         "hosts": Missing(f"preflight's hosts mapping: {box}"),
-        "uid_map": Missing(f"the runtime's uid map: {rt.CALLER_PENDING['uid_map']}"),
-        "cgroup_dir_for": Missing(f"the take container's cgroup folder: {rt.CALLER_PENDING['cgroup_dir']}"),
         "login_path": Missing("the walk token's login file (the hands card's Part 3, next-slices plan item 7)"),
         "agent_version": Missing("the Claude Code version the walk runs: prereg-draft.json's version_pins are "
                                  "PENDING until a walk measures them"),
@@ -326,6 +396,7 @@ def production_builders() -> dict:
                             else scan_record.real_rules_scanner())
     table = routing.load_table()
     out["table"] = table
+    out["uid_map"], out["cgroup_dir_for"] = run_time_readers(lambda: out["runtime"])   # queue item 2: never typed in
     out["ownership"] = (Missing("the ownership road: box/ownership.py (the box lane's 81ede46d) is not on this tree")
                         if drive._ownership is None else drive._ownership)
     out["settings_guard"] = (Missing("the settings guard: box/settings_guard.py (the box lane's d3fd5305) is not on "

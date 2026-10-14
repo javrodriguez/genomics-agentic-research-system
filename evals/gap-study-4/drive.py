@@ -2047,7 +2047,8 @@ class TakeDriver:
                      script_from_design, hands steps with their markers); False keeps S6's synthetic line scripts
     secrets          () -> [(kind, value)] for the scan, read at scan time and never held
     rules_scanner, holdout_matcher   box/scan_record.py's
-    uid_map          the runtime's uid map lines (container start, host start, length)
+    uid_map          the runtime's uid map lines (container start, host start, length), or (take) -> those lines,
+                     read at run time from the take container (walk_builders.run_time_readers)
     budget_s, finalize_wait_s, poll_s   the turn budget, the quiescence cap and the poll interval (pre-registered)
     clock, sleep     the injected host clock and sleep (no real wait in a test)
     ownership        the ownership road (OWNERSHIP_GRANT_PARAMS, OWNERSHIP_RESTORE_PARAMS): box/ownership.py when
@@ -2215,8 +2216,9 @@ class TakeDriver:
         return _sidecar.parse_completed(self.runtime.run(argv, env=self._env(), timeout=_run_take.STEP_TIMEOUT_S))
 
     def _gone(self, take) -> list:
+        uid_map = self.uid_map(take) if callable(self.uid_map) else self.uid_map   # read at run time, or given
         return _run_take.wait_gone(self.runtime, take.launched.take_id, agent_uid=_run_take._uid_of(
-            _run_take.AGENT_USER), uid_map=self.uid_map, cap_s=self.finalize_wait_s, interval_s=self.poll_s,
+            _run_take.AGENT_USER), uid_map=uid_map, cap_s=self.finalize_wait_s, interval_s=self.poll_s,
             clock=self.clock, sleep=self.sleep, caller_env=self.caller_env)
 
     def _kill(self, take) -> int:

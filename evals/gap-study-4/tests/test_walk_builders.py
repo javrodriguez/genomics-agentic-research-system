@@ -88,8 +88,9 @@ LOGIN = "CLAUDE_CODE_OAUTH_TOKEN"
 TARGETS = ("walk_builders", "walk_runner")
 # The production values still missing, in walk_builders.NAMES' order: the real box's (item 4), the owner's login
 # (item 7) and the walks' (pins, constants, budgets, exclusions). A value filled later turns this list red on purpose.
-EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts", "uid_map",
-                    "cgroup_dir_for", "rules_scanner", "login_path", "agent_version", "design_for",
+# Queue item 2 (glitch-06, 14 Oct 2026): uid_map and cgroup_dir_for are run-time readers now (B11), never missing.
+EXPECTED_MISSING = ["runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_path", "hosts",
+                    "rules_scanner", "login_path", "agent_version", "design_for",
                     "budgets", "run_tree_exclude"]
 # CP5 (Javier, "CP5: all as recommended", 14 Oct 2026) registered arm A's pin profiles, so pin_for is no longer missing
 # in production (B8's rule, on the real table); it is checked present in B7.production.
@@ -761,8 +762,8 @@ class B7Production(Case):
         self.assertEqual([n for n, _ in gaps], EXPECTED_MISSING, "B7.production: not exactly the missing values")
         self.assertTrue(all(isinstance(why, str) and len(why) > 20 for _, why in gaps), "B7.production")
         why = dict(gaps)
-        for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"), ("uid_map", rt.CALLER_PENDING["uid_map"]),
-                            ("cgroup_dir_for", rt.CALLER_PENDING["cgroup_dir"]), ("login_path", "walk token"),
+        for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"),
+                            ("login_path", "walk token"),
                             ("design_for", "PENDING"), ("run_tree_exclude", "run_location"),
                             ("agent_version", "version_pins"), ("rules_scanner", "gitleaks")):
             self.assertIn(words, why[name], f"B7.production: {name} does not say why")
@@ -1292,6 +1293,88 @@ class B10Resources(Case):
         for k, v in (("memory", 4 * 1024 ** 3), ("cpus", "4"), ("pids_limit", 1024)):
             with mock.patch.object(mod, "TAKE_RESOURCES", dict(mod.TAKE_RESOURCES, **{k: v})):
                 self.assertTrue(b10_problems(mod), k)
+
+
+# ------------------------------------------------------------------------------------------------- B11
+# glitch-06's queue item 2: the take container's cgroup folder and the runtime's uid map are derived at run time from the
+# container id and /proc (the box lane measured, on athena: /sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/
+# user.slice/docker-<id>.scope and ((0,1000,1),(1,100000,65536))), never typed in; anything else refuses.
+CID = "c" * 64
+
+
+class InspectBox:
+    def __init__(self, out="4242\n", code=0):
+        self.out, self.code, self.calls = out, code, []
+
+    def run(self, argv, env=None, timeout=None):
+        self.calls.append(list(argv))
+        return rt.Completed(self.code, self.out, "")
+
+
+def fake_proc(tmp: Path, *, uid_map="         0       1000          1\n         1     100000      65536\n",
+              cgroup=None, make_dir=True) -> tuple:
+    proc, root = tmp / "proc", tmp / "cgroup"
+    rel = f"/user.slice/user-1000.slice/user@1000.service/user.slice/docker-{CID}.scope"
+    (proc / "4242").mkdir(parents=True)
+    (proc / "4242" / "uid_map").write_text(uid_map)
+    (proc / "4242" / "cgroup").write_text(cgroup if cgroup is not None else f"0::{rel}\n")
+    if make_dir:
+        (root / rel.lstrip("/")).mkdir(parents=True)
+    return proc, root, str(root / rel.lstrip("/"))
+
+
+def b11_problems(mod) -> list:
+    out = []
+    for name in ("container_pid", "uid_map_of_pid", "cgroup_dir_of_pid"):
+        if not callable(getattr(mod, name, None)):
+            return [f"B11.derived: walk_builders has no {name}"]
+    with tempfile.TemporaryDirectory() as t:
+        tmp = Path(t)
+        proc, root, want = fake_proc(tmp)
+        box = InspectBox()
+        if mod.container_pid(box, CID) != 4242 or box.calls[0][:2] != [rt.RUNTIME_CLIENT, "inspect"]:
+            out.append(f"B11.derived: the pid was not read by inspect: {box.calls}")
+        if mod.uid_map_of_pid(4242, proc=str(proc)) != ((0, 1000, 1), (1, 100000, 65536)):
+            out.append(f"B11.derived: the uid map reads as {mod.uid_map_of_pid(4242, proc=str(proc))}")
+        if mod.cgroup_dir_of_pid(4242, CID, proc=str(proc), root=str(root)) != want:
+            out.append("B11.derived: the cgroup folder is not the container's scope")
+    bad = {
+        "inspect failed": lambda tmp: mod.container_pid(InspectBox(code=1), CID),
+        "not running (pid 0)": lambda tmp: mod.container_pid(InspectBox(out="0\n"), CID),
+        "pid not a number": lambda tmp: mod.container_pid(InspectBox(out="x\n"), CID),
+        "uid map empty": lambda tmp: mod.uid_map_of_pid(4242, proc=str(fake_proc(tmp, uid_map="")[0])),
+        "uid map malformed": lambda tmp: mod.uid_map_of_pid(4242, proc=str(fake_proc(tmp, uid_map="0 1000\n")[0])),
+        "cgroup v1": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup="1:memory:/docker/x\n"))[0]), root=str(f[1])),
+        "another container's scope": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::/user.slice/docker-{'d' * 64}.scope\n"))[0]), root=str(f[1])),
+        "scope folder missing": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, make_dir=False))[0]), root=str(f[1])),
+    }
+    for why, fn in bad.items():
+        with tempfile.TemporaryDirectory() as t:
+            try:
+                fn(Path(t))
+                out.append(f"B11.derived: {why} was not refused")
+            except mod.BuilderRefused:
+                pass
+            except Exception as e:  # noqa: BLE001
+                out.append(f"B11.derived: {why} raised {type(e).__name__}, not BuilderRefused")
+    got = mod.production_builders()
+    for name in ("uid_map", "cgroup_dir_for"):
+        if not callable(got[name]):
+            out.append(f"B11.derived: production {name} is not a run-time reader: {got[name]!r}")
+    try:                                   # with no runtime yet, a reader refuses by name, never a silent default
+        got["uid_map"](types.SimpleNamespace(launched=types.SimpleNamespace(take_id=CID)))
+        out.append("B11.derived: the production uid map read with no runtime")
+    except mod.BuilderRefused:
+        pass
+    return out
+
+
+class B11Derived(Case):
+    def test_cgroup_and_uid_map_are_derived_at_run_time(self):
+        self.assertEqual(b11_problems(wb()), [])
 
 
 if __name__ == "__main__":

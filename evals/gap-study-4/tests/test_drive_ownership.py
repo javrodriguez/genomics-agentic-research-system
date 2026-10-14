@@ -34,6 +34,8 @@ box/ownership.py is the box lane's and may be absent from this tree.
   B3-one-road  (box review NOTE B-3) round 3's host road drive.one_turn skips exec_argv, --settings and every guard,
                so no TakeDriver or WalkDriver method names it (read from the compiled methods), and a take driven with
                one_turn made to raise is graded clean
+  U1-uid-map   (queue item 2) a uid map handed as (take) -> lines is read at run time for that take, and the take is
+               graded as with the lines themselves
 
 Mutants (MUTANTS, each killed by its own check's line): grant skipped; restore moved after postflight; restore skipped
 on a LaunchError; a scan running after a failed restore; a commit reading a held take's records; a host-side save and a
@@ -630,9 +632,29 @@ def b3_one_road(mod, p):
     return out
 
 
+@tbi.guarded("U1-uid-map")
+def u1_uid_map(mod, p):
+    out = []
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+        seen = []
+
+        def reader(take):
+            seen.append(take.launched.take_id)
+            return tbi.UID_MAP
+        rig.driver.uid_map = reader
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        if got[0]["state"] != tbi.labels4.GRADED:
+            out.append(f"{p}: a take with a run-time uid map is {got[0]['state']} ({got[0]['reason']})")
+        if not seen or set(seen) != {rig.take().launched.take_id}:
+            out.append(f"{p}: the run-time uid map was not read for the take: {seen}")
+    return out
+
+
 CHECKS = {"O1-grant": o1_grant, "O2-restore": o2_restore, "O3-launch": o3_launch, "O4-held": o4_held,
           "O5-grant-fails": o5_grant_fails, "O6-image": o6_image, "O7-road": o7_road, "O8-operator": o8_operator,
-          "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road}
+          "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road,
+          "U1-uid-map": u1_uid_map}
 
 # name: (edits to drive.py, the check whose own line must go red)
 MUTANTS = {
@@ -663,6 +685,8 @@ MUTANTS = {
                        "O8-operator"),
     "reply-sha-unchecked": ((("        if not ok or sha != hashlib.sha256(data).hexdigest():",
                               "        if False:"),), "O8-operator"),
+    "uid-map-unread": ((("        uid_map = self.uid_map(take) if callable(self.uid_map) else self.uid_map",
+                         "        uid_map = self.uid_map"),), "U1-uid-map"),
     "one-turn-reached": ((("        take.driven = True\n",
                            "        take.driven = True\n        if row.get(\"slot\") is None:\n"
                            "            one_turn(\"x\", \"s\", row[\"model\"], True)\n"),), "B3-one-road"),
@@ -715,6 +739,9 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_b3_one_road(self):
         self.assertEqual(b3_one_road(tbi.drive), [])
+
+    def test_u1_uid_map(self):
+        self.assertEqual(u1_uid_map(tbi.drive), [])
 
 
 class TestOwnershipMutants(unittest.TestCase):
@@ -775,6 +802,9 @@ class TestOwnershipMutants(unittest.TestCase):
 
     def test_one_turn_reached(self):
         self.kill("one-turn-reached")
+
+    def test_uid_map_unread(self):
+        self.kill("uid-map-unread")
 
 
 if __name__ == "__main__":
