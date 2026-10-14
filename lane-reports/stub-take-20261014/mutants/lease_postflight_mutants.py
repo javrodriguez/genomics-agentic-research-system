@@ -16,6 +16,7 @@ MUTANTS = [
  ("second credential-shaped file admitted", '        if name in _credential_names() or CREDENTIAL_LIKE.search(name):\n            problems.append(f"{rel}: a credential-shaped', '        if False:\n            problems.append(f"{rel}: a credential-shaped'),
  ("renamed copy admitted", '                and _read_capped(path, LEASE_CREDENTIAL_MAX_BYTES) == reg_bytes:', '                and False:'),
  ("registered file not exempted by path", '        if rel == reg:\n            continue', '        if False:\n            continue'),
+ ("absent credential admitted", '        problems.append(f"{reg}: absent; the lease home must hold exactly one registered credential file")', '        pass'),
 ]
 def run(mod):
     tt.pf = mod

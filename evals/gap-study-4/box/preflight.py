@@ -1047,7 +1047,8 @@ def lease_credential_problems(config_dir: str, harness: str, listing: list) -> t
     the file's path and the rule, never its contents: a credential-shaped name anywhere else (a second auth file, a
     renamed auth file); a file anywhere else whose bytes equal the registered file's (a renamed copy, whatever its
     name); a symbolic link to the registered file; the registered path as a link, a non-regular file, with another
-    hard link, another mode or another owner. Absent is admitted: no credential is left."""
+    hard link, another mode or another owner. Absent is refused too (glitch-06, 14 Oct 2026): "exactly one registered
+    credential file" means exactly one."""
     reg = LEASE_CREDENTIAL[harness]
     reg_path = os.path.join(config_dir, reg)
     problems, admitted, reg_bytes = [], [], None
@@ -1068,6 +1069,8 @@ def lease_credential_problems(config_dir: str, harness: str, listing: list) -> t
                                 f"{LEASE_CREDENTIAL_MAX_BYTES} bytes")
             else:
                 admitted.append(reg)
+    else:
+        problems.append(f"{reg}: absent; the lease home must hold exactly one registered credential file")
     reg_real = os.path.realpath(reg_path)
     for rel in listing:
         if rel == reg:
@@ -1094,7 +1097,8 @@ def _credential_names() -> set:
 
 def postflight(config_dir: str, harness: str) -> dict:
     """The per-take config folder holds no credential file after a take; the full listing is recorded. A Codex lease
-    home (LEASE_CREDENTIAL) admits exactly its one registered credential file and nothing else credential-shaped."""
+    home (LEASE_CREDENTIAL) holds exactly its one registered credential file, refusing it absent, and nothing else
+    credential-shaped."""
     run_take._known_harness(harness)
     config_dir = run_take._abs_path(config_dir, "config_dir")
     listing, problems = [], []

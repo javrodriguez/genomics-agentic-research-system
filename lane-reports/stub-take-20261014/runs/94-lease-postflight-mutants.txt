@@ -1,0 +1,13 @@
+  mutant no-lease: red - the clean lease home was refused: credential-like files present: ['auth.json']
+  mutant lease-for-every-harness: red - another harness admitted auth.json
+control 0 of 1
+RED   1/1 registered path may be a link
+RED   1/1 second hard link admitted
+RED   1/1 any mode admitted
+RED   1/1 any owner admitted
+RED   1/1 links to it admitted
+RED   1/1 second credential-shaped file admitted
+RED   1/1 renamed copy admitted
+RED   1/1 registered file not exempted by path
+RED   1/1 absent credential admitted
+ALIVE: none

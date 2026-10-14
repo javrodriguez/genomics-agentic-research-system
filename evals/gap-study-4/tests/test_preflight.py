@@ -700,7 +700,8 @@ def _lock_user_names() -> tuple:
 class TestLeasePostflight(MutantCase):
     """The Codex lease postflight (glitch-06, 14 Oct 2026): the lease home (the per-take config folder, CODEX_HOME)
     admits exactly its one registered credential file, auth.json at its root, mode 600, owned by the host user, one
-    link; anything else credential-shaped refuses, each refusal naming the file and the rule, never the contents.
+    link; anything else credential-shaped refuses, and so does a home with no auth.json (glitch-06: exactly one), each
+    refusal naming the file and the rule, never the contents.
     The planted value is a fake."""
 
     FAKE_AUTH = b'{"tokens": {"access_token": "FAKE-lease-0123456789abcdef-PLANTED"}}\n'
@@ -739,9 +740,12 @@ class TestLeasePostflight(MutantCase):
             out.append(f"the clean lease home was refused: {r['checks'][0]['detail']}")
         if "PLANTED" in json.dumps(r):
             out.append("the clean record carries the credential's contents")
-        r = pf.postflight(self.home(auth=False), rt.CODEX)
-        if r["ok"] is not True or r["recorded"]["admitted_credential"] != []:
-            out.append("a lease home with no credential was refused")
+        # glitch-06's ruling (14 Oct 2026): "exactly one registered credential file" means exactly one, so a lease
+        # home with no auth.json refuses, naming the file and the rule
+        self.refused(out, "a lease home with no credential", self.home(auth=False), "auth.json",
+                     "exactly one registered credential file")
+        if pf.postflight(self.home(auth=False), rt.CODEX)["recorded"]["admitted_credential"] != []:
+            out.append("a lease home with no credential records an admitted credential")
         # a second auth file
         d = self.home()
         with open(os.path.join(d, "sessions", "auth.json"), "wb") as fh:
@@ -1159,6 +1163,10 @@ class TestRecordAndPostflight(MutantCase):
             d = tempfile.mkdtemp(prefix="w-")
             os.makedirs(os.path.join(d, "sessions"))
             open(os.path.join(d, "config.toml"), "w").close()
+            if h in pf.LEASE_CREDENTIAL:                 # a clean lease home holds its one registered credential
+                fd = os.open(os.path.join(d, pf.LEASE_CREDENTIAL[h]), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                os.write(fd, b"{}")
+                os.close(fd)
             if pf.postflight(d, h)["ok"] is not True:
                 out.append(f"{h}: a clean folder failed")
             open(os.path.join(d, "sessions", name), "w").close()
