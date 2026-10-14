@@ -39,7 +39,10 @@ HOST_UID = 0                                    # container uid 0 is the host us
 AGENT_UID = int(run_take.AGENT_USER.split(":")[0])
 WATCHER_UID = 10002                             # merge binding 1: every image.lock's users.watcher.uid (test-bound)
 MOUNT = "/scratch"
-CAPS = ("CHOWN", "DAC_OVERRIDE")
+# Review minor 6, measured on athena (lane-reports/stub-take-20261014/ownership-caps-probe-20261014.json): the walk
+# needs only CHOWN and DAC_READ_SEARCH (it opens read-only, lists folders and chowns), even over folders at 0700 and
+# 0000 and files at 0600 and 0000 that the agent made; DAC_OVERRIDE is no longer granted.
+CAPS = ("CHOWN", "DAC_READ_SEARCH")
 STEP_TIMEOUT_S = 600
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")
 

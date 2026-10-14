@@ -87,7 +87,7 @@ class Grant(Base):
                                  ow.own_argv(IMAGE, self.cfg, 10001, strict=True),
                                  ow.own_argv(IMAGE, self.ev, 10002, strict=True)])
         self.assertEqual(calls[0][:16], ["docker", "run", "--rm", "--pull=never", "--network", "none", "--user", "0:0",
-                                         "--cap-drop", "ALL", "--cap-add", "CHOWN", "--cap-add", "DAC_OVERRIDE",
+                                         "--cap-drop", "ALL", "--cap-add", "CHOWN", "--cap-add", "DAC_READ_SEARCH",
                                          "--security-opt", "no-new-privileges"])
         self.assertEqual(calls[0][16:18], ["--mount", f"type=bind,source={self.tree},target=/scratch"])
         self.assertEqual(calls[0][18:], [IMAGE, "/usr/bin/python3", "-I", "-S", "-c", ow.OWN_PROGRAM, "10001",
