@@ -31,6 +31,14 @@ memory (the registry pattern of the earlier gap4 lanes):
                given (its printed total unmeasured, its usage the per-call sum). Witnesses: count-records,
                missing-class-as-zero, zero-dollars-per-call.
 
+  A7-served    (ownership review MAJOR 1) the served-model backstop: every agent assistant record's message.model is
+               read; on the five recorded probes none is off the pin, and the sonnet probe's haiku modelUsage key is a
+               side call, never a mismatch; a later assistant record on another model, or a modelUsage without the
+               pin's model, makes the routed init carry that model (so routing reads a mismatch); the harness's
+               <synthetic> API-error record is never a served model; an agent record with no model, or a modelUsage
+               that is not an object of objects, refuses the stream. Witnesses: served-unread, model-usage-unread,
+               modelless-accepted, routed-init-unchanged.
+
 Fakes only: no model, vendor, network, container runtime, credential or holdout. setUpModule arms a process guard
 that refuses every process start, and clears this process's environment to a fixed few names (run_take refuses a
 take when a login or key name is set in the caller's environment).
@@ -342,6 +350,63 @@ def a4_turn(mod, p):
     return out
 
 
+def switched_turn(second: str, *, usage=None) -> str:
+    """One turn whose init and first call are the pin's model and whose second call is `second`."""
+    one = synthetic_turn(msg="m1", req="r1", result=False).splitlines()
+    two = json.loads(synthetic_turn(msg="m2", req="r2", model=second).splitlines()[1])
+    res = json.loads(synthetic_turn(msg="m2", req="r2").splitlines()[2])
+    if usage is not None:
+        res["modelUsage"] = usage
+    return "\n".join(one + [json.dumps(two), json.dumps(res)]) + "\n"
+
+
+@guarded("A7-served")
+def a7_served(mod, p):
+    out = []
+    if not hasattr(mod, "served_model_off"):
+        return [f"{p}: claude_code_adapter.py has no served_model_off"]
+    for name, (model, *_rest) in RECORDED.items():        # the recorded probes: nothing off the pin
+        r = mod.read_stream(recorded(name))
+        if r.get("served_models") != [model] or mod.served_model_off(r, model) is not None:
+            out.append(f"{p}: {name}: served {r.get('served_models')}, off {mod.served_model_off(r, model)!r}")
+    r = mod.read_stream(recorded("claude-sonnet-5.auto.jsonl"))
+    if r.get("model_usage") != ["claude-haiku-4-5-20251001", "claude-sonnet-5"]:
+        out.append(f"{p}: the sonnet probe's modelUsage keys read as {r.get('model_usage')}")
+    if mod.served_model_off(mod.read_stream(api_error_stream()), "no-such-model") is not None:
+        out.append(f"{p}: the harness's <synthetic> API-error record was read as a served model")
+    other = "claude-sonnet-5-5"                          # a model other than the pin's (MODEL)
+    assert other != MODEL
+    for why, stream in (("a second call on another model", switched_turn(other)),
+                        ("a modelUsage without the pin's model", synthetic_turn().replace(
+                            json.dumps({MODEL: {"costUSD": 0.01}})[1:-1], json.dumps({other: {"costUSD": 0.01}})[1:-1]))):
+        box = FakeRuntime([stream])
+        a = adapter(mod, box)
+        a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+        t = a.turn("one", first=True, budget_s=60)
+        if (t.init or {}).get("model") != other:
+            out.append(f"{p}: {why}: the routed init's model is {(t.init or {}).get('model')!r}, not {other!r}")
+        if a.turn_records[-1].get("served_off") != other:
+            out.append(f"{p}: {why}: the turn record's served_off is {a.turn_records[-1].get('served_off')!r}")
+    box = FakeRuntime([synthetic_turn()])                     # a clean turn keeps the init event as it is
+    a = adapter(mod, box)
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    t = a.turn("one", first=True, budget_s=60)
+    if t.init != {"model": MODEL, "permission_mode": BYPASS, "version": VERSION}:
+        out.append(f"{p}: a clean turn's init was changed: {t.init}")
+    modelless = synthetic_turn().replace(f'"model": "{MODEL}", "role"', '"role"')
+    badusage = synthetic_turn().replace(json.dumps({MODEL: {"costUSD": 0.01}}), json.dumps([MODEL]))
+    for why, stream in (("an agent record with no model", modelless), ("a modelUsage list", badusage)):
+        if stream.count("\n") < 3 or stream == synthetic_turn():
+            out.append(f"{p}: {why}: the fixture was not built")
+            continue
+        try:
+            mod.read_stream(stream)
+            out.append(f"{p}: {why} was read, not refused")
+        except mod.StreamError:
+            pass
+    return out
+
+
 def session_record(msg, req, block, usage, *, sid=SID, error=False) -> dict:
     rec = {"type": "assistant", "sessionId": sid, "requestId": req,
            "message": {"id": msg, "model": "<synthetic>" if error else MODEL, "role": "assistant",
@@ -448,6 +513,9 @@ class TestTheReaders(unittest.TestCase):
     def test_a6_a_null_session_id_is_a_problem(self):
         self.assertEqual(a6_null_id(cca), [])
 
+    def test_a7_the_served_model_backstop(self):
+        self.assertEqual(a7_served(cca), [])
+
     def test_a5_the_cost_is_read_per_call(self):
         self.assertEqual(a5_cost(cca), [])
 
@@ -518,6 +586,17 @@ WITNESSES = {
                              "    sids = sorted({x for x in raw_sids if isinstance(x, str)})",
                              "    sids = sorted(set(raw_sids))"),), a6_null_id, "A6-null-id"),
 }
+WITNESSES.update({
+    "served-unread": ((("    for m in read[\"served_models\"]:\n        if m != model:\n            return m\n",
+                        "    pass\n"),), a7_served, "A7-served"),
+    "model-usage-unread": ((("    if read[\"model_usage\"] is not None and read[\"served_models\"] and model not in "
+                             "read[\"model_usage\"]:", "    if False:"),), a7_served, "A7-served"),
+    "modelless-accepted": ((("            if not isinstance(served, str) or not served:",
+                             "            if False:"),), a7_served, "A7-served"),
+    "routed-init-unchanged": ((("        init = read[\"init\"] if off is None or read[\"init\"] is None else "
+                                "dict(read[\"init\"], model=off)", "        init = read[\"init\"]"),),
+                              a7_served, "A7-served"),
+})
 WITNESS_LOG: list = []
 
 
@@ -551,6 +630,18 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_exit_ignored(self):
         self.kill("exit-ignored")
 
+    def test_witness_served_unread(self):
+        self.kill("served-unread")
+
+    def test_witness_model_usage_unread(self):
+        self.kill("model-usage-unread")
+
+    def test_witness_modelless_accepted(self):
+        self.kill("modelless-accepted")
+
+    def test_witness_routed_init_unchanged(self):
+        self.kill("routed-init-unchanged")
+
     def test_witness_count_records(self):
         self.kill("count-records")
 
@@ -567,7 +658,8 @@ class TestWitnesses(unittest.TestCase):
         self.assertEqual(sorted(WITNESSES), sorted(["init-any-record", "api-error-as-agent", "allowed-tools-back",
                                                     "mode-constant", "exit-ignored", "count-records",
                                                     "missing-class-as-zero", "zero-dollars-per-call",
-                                                    "null-id-unreported"]))
+                                                    "null-id-unreported", "served-unread", "model-usage-unread",
+                                                    "modelless-accepted", "routed-init-unchanged"]))
 
 
 if __name__ == "__main__":
