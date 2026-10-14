@@ -202,7 +202,7 @@ CLAUDE_SETTINGS_FLAG = "--settings"
 # the reading user's own mode-700 folder). Its one line is `CLAUDE_CODE_OAUTH_TOKEN=<the token from claude
 # setup-token>`, the variable Claude Code reads in a -p run (code.claude.com/docs/en/authentication, "Generate a
 # long-lived token" and "Authentication precedence" item 5; env-vars.md). Prepared and verified by
-# lane-reports/walk-token/prepare_walk_token.sh and verify_walk_token.sh; the value is never read by any session.
+# lane-reports/walk-login/prepare_walk_login.py and verify_walk_login.py; the value is never read by any session.
 WALK_LOGIN_FILES = {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token"}
 
 # The bypass acceptance: RULED not required in -p (glitch-06, 14 Oct 2026, on the docs read in Addendum E of
