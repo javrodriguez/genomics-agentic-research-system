@@ -33,3 +33,15 @@ The commit that adds this file (see `git log -1`); its parent is 1e8d0cd3.
 - A post-k or later pre-k settings problem stops the take for a ruling (no registered harness-error row reads it).
 - SIDE_MODELS is the one observed haiku key; FIRST_WALK_ACCEPTANCE records the subagent-stream check.
 - The merged head needs box >= 22b15f56 (settings guard model=) and box operator_list for the vendor arms; until then their launches refuse (fail closed).
+
+## Window 2, after the restart: the generated-mutant item done locally (14 Oct 2026, 18:46 EDT)
+
+Local Mac sweep, python3.13, one function at a time under a heavy mac_slot (acquired and released each time), light-ok before every test batch. athena offline: no athena sweep run.
+
+- Sweep 1 (17:02-17:57, on 8b3adf14's tree): 265 run, 237 killed, 28 survived. Per function, killed/survived: take_a_spec 10/1, take_spec_builder 11/1, walk_login_path 19/0, pinned_scanner_class 5/3, walk_rules_scanner 32/1, production_builders 46/2, cli 51/0, container_pid 22/1, uid_map_of_pid 13/1, cgroup_dir_of_pid 19/12, run_time_readers 9/6.
+- Correction: the message of 0f1aa5ea says "255 run, 225 killed, 30 survived"; the logs give 265, 237 and 28 (a tally slip, kept in history, corrected here).
+- 0f1aa5ea binds every survivor (four by removing redundant code, the rest by real tests); nothing is listed in EQUIVALENT.
+- Sweep 2 (18:16-18:45, on 802e720f's tree), every changed function again: take_a_spec 10/0, take_spec_builder 11/0, pinned_scanner_class 8/0, walk_rules_scanner 30/0, production_builders 47/0, container_pid 23/0, uid_map_of_pid 14/0, cgroup_dir_of_pid 31/0, run_time_readers 15/0: 189 run, 189 killed. cli (51/51) and walk_login_path (19/19) are unchanged since sweep 1.
+- Not swept in this window: the functions swept before it (walk_identity through walk_row, missing, parse, prepare, walk_driver_for, walk_runner.main); the full 531-mutant sweep is the athena run, deferred.
+
+Owed to athena when it is back: the full generated sweep of test_walk_builders (`athena_suite.py list` first), and the full suite on this head.
