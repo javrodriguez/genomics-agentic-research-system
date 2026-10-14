@@ -105,6 +105,11 @@
       "path": "tests/test_night_ruling_history.py",
       "status": "new",
       "reason": "Night-ruling fold: a night ruling through the real git history reader and its door, and every outcome reader skipping it."
+    },
+    {
+      "path": "tests/test_native_history_record.py",
+      "status": "new",
+      "reason": "Live harness integration: the driver ledger's native history record is pending through the empty production registry, joined or refused with a reviewed reader, and absent for Claude takes."
     }
   ]
 }
