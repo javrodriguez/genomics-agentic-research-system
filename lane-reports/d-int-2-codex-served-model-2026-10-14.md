@@ -39,3 +39,11 @@ Adding a twelfth needs a sourced sentence in the plan and the draft owner's rebu
   - no departure at all;
   - the ledger record dropped.
 - Neighbours green: `test_routing` 276, `test_batch` 118, `test_vendor_take_records` 4, `test_vendor_checker_road` 5, `test_drive_loop` 27, `test_codex_adapter` 47.
+
+## Addendum, Wed 14 Oct 2026 08:36 EDT: Javier's word on D-INT-2
+
+Javier typed "D-INT-2 ok" at 08:06 EDT on Wed 14 Oct 2026, in glitch-06's window.
+This record is relayed by glitch-06 to the harness lane, so it notes his word; it does not replace it.
+The departure above is no longer only glitch-06's ruling flagged for review: Javier has accepted it.
+Nothing in the code changes with this addendum; `routing.UNOBSERVED_ACCEPTED` and `served_model_rule.codex` stay as they are.
+The limitations follow-up named above (the sentence is not yet in the draft's limitations) is still open for the draft owner.
