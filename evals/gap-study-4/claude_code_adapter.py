@@ -277,6 +277,24 @@ def served_model_off(read: dict, model: str):
     return None
 
 
+def unlisted_side_model(read: dict, model: str):
+    """glitch-06's ruling (14 Oct 2026, window 2) on departure D-INT-2c: a side call off SIDE_MODELS stops the take and
+    is reported. The first modelUsage key beside the pin's that is off SIDE_MODELS, on a turn whose served models are
+    all the pin's and whose modelUsage names the pin's (when it served any): a side model, not a switch. A switch (an
+    assistant record on another model, or a modelUsage without the pin's) is None here: the init-mismatch route."""
+    usage = read["model_usage"] or ()
+    if any(m != model for m in read["served_models"]) or (read["served_models"] and model not in usage):
+        return None
+    for k in usage:
+        if k != model and k not in SIDE_MODELS:
+            return k
+    return None
+
+
+class SideModelOffList(RuntimeError):
+    """A turn called a side model off SIDE_MODELS: the take stops for a ruling (an executed turn's refusal)."""
+
+
 def argv(line: str, *, model: str, permission_mode: str, session_id: str, first: bool) -> list:
     """The turn's argv inside the box (C15-1..3)."""
     for what, v in (("line", line), ("model", model), ("permission_mode", permission_mode),
@@ -372,6 +390,11 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
             with open(got["stream_path"], encoding="utf-8", errors="surrogateescape") as fh:
                 read = read_stream(fh.read())
             off = served_model_off(read, self.model)
+            side = unlisted_side_model(read, self.model)
+            if side is not None:                       # D-INT-2c: stops the take, its tokens in the refusal
+                raise SideModelOffList(f"turn {n} called side model {side!r}, not on SIDE_MODELS "
+                                       f"{list(SIDE_MODELS)}; its tokens {side_calls(read, self.model).get(side)}: "
+                                       f"the take stops for a ruling (glitch-06, 14 Oct 2026)")
         except (StreamError, OSError) as e:
             executed["refused"] = f"{type(e).__name__}: {e}"
             raise ExecutedStreamRefused(str(e), executed=executed) from e

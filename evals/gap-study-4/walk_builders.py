@@ -163,6 +163,26 @@ def login_file_by_name(path, harness) -> str:
     return path
 
 
+# glitch-06's queue item 2 of 14 Oct 2026 (window 2): the walk token's file is the box's own record of it,
+# run_take.WALK_LOGIN_FILES (box lane 1eb02a9e: one file per account, prepared and verified on athena), never typed here.
+# The CP6 walks run on the Claude1 account's token. A tree without that record leaves login_path Missing, by name.
+WALK_ACCOUNT = "claude1"
+
+
+def walk_login_path():
+    """The walk token's login file as the box records it (run_take.WALK_LOGIN_FILES[WALK_ACCOUNT]), or Missing while
+    this tree's run_take has no such record. Only the path: prepare's login_file_by_name checks the file by NAME."""
+    from box import run_take as rt
+    files = getattr(rt, "WALK_LOGIN_FILES", None)
+    if not isinstance(files, dict) or WALK_ACCOUNT not in files:
+        return Missing(f"the walk token's login file: box/run_take.py records no WALK_LOGIN_FILES[{WALK_ACCOUNT!r}] on "
+                       f"this tree (the box lane's 1eb02a9e; the hands card's Part 3, next-slices plan item 7)")
+    path = files[WALK_ACCOUNT]
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise BuilderRefused(f"run_take.WALK_LOGIN_FILES[{WALK_ACCOUNT!r}] is not an absolute path: {path!r}")
+    return path
+
+
 def login_secrets(login_file: str, harness):
     """The scan's secrets(): the login value read at scan time by scan_record.read_login (never held here)."""
     from box import run_take as rt
@@ -303,7 +323,7 @@ def walk_rules_scanner(scanner, runtime, report_parent, *, real: bool):
     import tempfile
     if real:
         pinned = pinned_scanner_class()
-        if pinned is None or type(scanner) is not pinned:
+        if type(scanner) is not pinned:              # type() is never None: no pinned class refuses every scanner
             raise BuilderRefused(f"a real walk scans only with the pinned scanner (rules_scanner.RealRulesScanner), "
                                  f"never {type(scanner).__module__}.{type(scanner).__name__}")
     elif callable(scanner):
@@ -405,8 +425,6 @@ def walk_row(walk: str, cell: dict, agent_version: str, rows: list) -> dict:
 def take_spec_builder(root=None):
     """(row, config_dir, run_tree) -> run_take.TakeSpec: the row's arm's take image by its lock's image id (a lock that
     is not ready refuses at call time, image_lock.NotReady) and TAKE_RESOURCES; the network a placeholder."""
-    from pathlib import Path
-
     from box import image_lock
     from box import run_take as rt
     base = Path(root) if root is not None else Path(__file__).resolve().parent
@@ -422,8 +440,6 @@ def take_spec_builder(root=None):
 def take_a_spec():
     """The production take spec: built once take-a's lock is ready (an arm A walk's image), else Missing naming what
     the lock still holds PENDING. TakeSpec.resources are wired (TAKE_RESOURCES)."""
-    from pathlib import Path
-
     from box import image_lock
     lock = image_lock.load(str(Path(__file__).resolve().parent / TAKE_LOCKS["A"]))
     held = image_lock.pending(lock)
@@ -442,7 +458,6 @@ def production_builders() -> dict:
     import routing
     import time
     import variants
-    from box import run_take as rt
     from box import scan_record
     box = "next-slices plan item 4, the real-box bring-up (Q-w7b-3)"
     out = {
@@ -454,7 +469,7 @@ def production_builders() -> dict:
         "proxy": Missing(f"the egress proxy launch (box/egress, squid -k parse): {box}"),
         "lock_path": Missing(f"the take lock (box/image.lock, pinned at the bring-up): {box}"),
         "hosts": Missing(f"preflight's hosts mapping: {box}"),
-        "login_path": Missing("the walk token's login file (the hands card's Part 3, next-slices plan item 7)"),
+        "login_path": walk_login_path(),
         "agent_version": Missing("the Claude Code version the walk runs: prereg-draft.json's version_pins are "
                                  "PENDING until a walk measures them"),
         "budgets": Missing("the turn budget (check_take.CHECKER_CONSTANTS budgets.turn_timeout_s), the quiescence cap "

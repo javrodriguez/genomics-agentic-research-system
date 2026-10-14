@@ -911,7 +911,8 @@ MUTANTS = {
                              "                first = []"),), "S2-turn-one"),
     "later-unchecked": ((("                        later = self._settings_problems(take, f\"pre-{n}\")",
                           "                        later = []"),), "S3-later"),
-    "post-unchecked": ((("                    after = self._settings_problems(take, f\"post-{n}\")",
+    "post-unchecked": ((("                    after = self._settings_problems(take, f\"post-{n}\")   # the settings guard, "
+                         "the last turn's too",
                          "                    after = []"),), "S3-later"),
     "missing-snapshot-passes": ((("            problems = [f\"{label}: the settings check could not run "
                                   "({type(e).__name__}: {str(e)[:200]})\"]",

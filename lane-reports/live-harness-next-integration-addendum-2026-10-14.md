@@ -34,3 +34,31 @@ Ruled by glitch-06, 14 Oct 2026, under the standing delegation. Implemented in `
 **What the registered text does and does not say:** it names the graded record, the stream cross-checked with the native record. It does not decide what happens while that cross-check cannot run. This departure decides it.
 
 **Effect:** the vendor arms cannot run unattended until each vendor has a registered reader.
+
+## glitch-06's rulings on the three drive-wiring departures, recorded 14 Oct 2026 17:04 EDT (harness lane, window 2)
+
+Ruled by glitch-06 under the standing delegation, in the window 2 resume brief of 14 Oct 2026.
+
+### D-INT-2a (ACCEPTED): a failed grant or a refused settings baseline is BLOCKED before launch, never a rehearsal
+
+Implemented in `cd824501`.
+The box contract called both a rehearsal.
+Nothing ran, so neither can be routed as a take: both raise `LaunchNeedsRuling`, and batch records the launch failure BLOCKED ("failed before launch, a ruling needed"), `drive_started` false.
+The loop stops; the slot goes on only by a ruling, and a restart never re-drives it.
+
+### D-INT-2b (ACCEPTED as a departure): a settings change found after turn 1 stops the take for a ruling
+
+Implemented in `0768f478`, with the executed-refusal road in `e0acd771`.
+The box contract routes a post-k problem (and a pre-k problem for k > 1) as harness-error.
+`routing.json` has no registered row that reads a settings snapshot, so routing it as harness-error would invent a meaning for a registered class.
+Instead no further turn is sent, and the drive raises `DriveRefused` after cleanup, restore, postflight and scan: failed after the drive started, never re-run, for a ruling.
+A pre-1 problem stays preflight's pre-turn refusal (a rehearsal), as the contract says.
+Routing it as harness-error would need a registered row, which is a pre-registration change.
+
+### D-INT-2c (ACCEPTED for now): SIDE_MODELS holds only the observed haiku key; any other side model stops the take and is reported
+
+The closed list is `c2d03086`; the stop lands in the same commit as this section (`claude_code_adapter.unlisted_side_model` and `SideModelOffList`; test A7-served and its witness side-model-not-stopped).
+`claude_code_adapter.SIDE_MODELS` is `("claude-haiku-4-5-20251001",)`, the one side model observed (the recorded sonnet probe: 915 tokens in, 11 out).
+A modelUsage key beside the pin's that is off that list, on a turn whose served models are all the pin's, stops the take: the turn is an executed turn's refusal whose recorded reason names the side model and its tokens, so the driver takes the executed-refusal road (ledger, post-n settings check, scan) and the take waits for a ruling.
+A real switch (an assistant record on another model, or a modelUsage without the pin's model) stays the registered init-mismatch route.
+`FIRST_WALK_ACCEPTANCE` records the subagent-stream check the first walk must show.

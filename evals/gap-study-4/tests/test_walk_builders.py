@@ -106,6 +106,11 @@ def _take_a_lock_ready() -> bool:
 TAKE_A_LOCK_READY = _take_a_lock_ready()
 if TAKE_A_LOCK_READY:
     EXPECTED_MISSING.remove("take_spec")
+# The walk token's login file is the box's record, run_take.WALK_LOGIN_FILES["claude1"] (box lane 1eb02a9e): missing, by
+# name, on a tree whose run_take has no such record, and that exact path where it does (B7.login checks both ways).
+WALK_LOGIN_ON_TREE = isinstance(getattr(rt, "WALK_LOGIN_FILES", None), dict) and "claude1" in rt.WALK_LOGIN_FILES
+if WALK_LOGIN_ON_TREE:
+    EXPECTED_MISSING.remove("login_path")
 # CP5 (Javier, "CP5: all as recommended", 14 Oct 2026) registered arm A's pin profiles, so pin_for is no longer missing
 # in production (B8's rule, on the real table); it is checked present in B7.production.
 # The ownership road is the box lane's box/ownership.py (81ede46d): missing, by name, on a tree without that module, and
@@ -350,6 +355,20 @@ class Case(unittest.TestCase):
         except Exception as e:  # noqa: BLE001
             self.fail(f"{clause}: raised {type(e).__name__}, not BuilderRefused: {str(e)[:300]}")
         self.fail(f"{clause}: not refused ({words!r})")
+
+
+def problems_by_assertion(prefix):
+    """A check that raises reports it as its own line, so a mutant that makes the code raise fails the test by
+    assertion (a kill), never by an error the generated sweep does not count."""
+    def wrap(fn):
+        def check(mod):
+            try:
+                return fn(mod)
+            except Exception as e:  # noqa: BLE001
+                return [f"{prefix}: raised {type(e).__name__}: {str(e)[:300]}"]
+        check.__name__ = fn.__name__
+        return check
+    return wrap
 
 
 def wb():
@@ -798,10 +817,15 @@ class B7Production(Case):
         self.assertTrue(all(isinstance(why, str) and len(why) > 20 for _, why in gaps), "B7.production")
         why = dict(gaps)
         for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"),
-                            ("login_path", "walk token"),
+                            ("login_path", "WALK_LOGIN_FILES['claude1']"),
                             ("design_for", "PENDING"), ("run_tree_exclude", "run_location"),
                             ("agent_version", "version_pins"), ("rules_scanner", "gitleaks")):
-            self.assertIn(words, why[name], f"B7.production: {name} does not say why")
+            if name in why or name in EXPECTED_MISSING:
+                self.assertIn(words, why[name], f"B7.production: {name} does not say why")
+        if WALK_LOGIN_ON_TREE:
+            self.assertEqual(got["login_path"], rt.WALK_LOGIN_FILES["claude1"], "B7.login: not the box's record")
+        if TAKE_A_LOCK_READY:
+            self.assertTrue(callable(got["take_spec"]), "B7.production: take-a's ready lock gives no take spec")
         import time
         import drive
         import routing
@@ -865,6 +889,70 @@ class B7Production(Case):
         self.assertEqual(repr(wb().Missing("x y")), "Missing('x y')", "B7.production")
 
 
+    def test_the_walk_login_is_the_box_record(self):
+        self.assertEqual(b7_login_problems(wb()), [])
+
+
+@contextlib.contextmanager
+def walk_login_files(value):
+    """run_take.WALK_LOGIN_FILES set to `value` for the block, or absent when value is ABSENT; put back after."""
+    had = hasattr(rt, "WALK_LOGIN_FILES")
+    old = getattr(rt, "WALK_LOGIN_FILES", None)
+    if value is ABSENT:
+        if had:
+            delattr(rt, "WALK_LOGIN_FILES")
+    else:
+        rt.WALK_LOGIN_FILES = value
+    try:
+        yield
+    finally:
+        if had:
+            rt.WALK_LOGIN_FILES = old
+        elif hasattr(rt, "WALK_LOGIN_FILES"):
+            delattr(rt, "WALK_LOGIN_FILES")
+
+
+ABSENT = object()
+SYNTHETIC_LOGIN = "/synthetic/gap4-secrets/claude1/claude-walk-token"
+
+
+@problems_by_assertion("B7.login")
+def b7_login_problems(mod) -> list:
+    """B7.login: login_path is run_take.WALK_LOGIN_FILES["claude1"] as the box records it (only the path; prepare
+    checks the file by name), Missing by name while the record is absent or lacks claude1, refused when not absolute."""
+    out = []
+    if getattr(mod, "WALK_ACCOUNT", None) != "claude1":
+        out.append(f"B7.login: the walk account is {getattr(mod, 'WALK_ACCOUNT', None)!r}, not claude1")
+    with walk_login_files({"claude2": "/synthetic/other", "claude1": SYNTHETIC_LOGIN}):
+        got = mod.walk_login_path()
+        if got != SYNTHETIC_LOGIN:
+            out.append(f"B7.login: login_path is {got!r}, not the record's claude1 file")
+        got = mod.production_builders()["login_path"]
+        if got != SYNTHETIC_LOGIN:
+            out.append(f"B7.login: the production builders' login_path is {got!r}")
+    for label, value in (("absent", ABSENT), ("without claude1", {"claude2": "/synthetic/other"}),
+                         ("not a mapping", ["claude1"]), ("None", None)):
+        with walk_login_files(value):
+            got = mod.walk_login_path()
+            if not isinstance(got, mod.Missing):
+                out.append(f"B7.login: a record {label} gave {got!r}, not Missing")
+            elif "WALK_LOGIN_FILES['claude1']" not in got.why or "walk token" not in got.why:
+                out.append(f"B7.login: a record {label} is Missing without saying why: {got.why!r}")
+            if label == "absent":
+                prod = mod.production_builders()["login_path"]
+                if not isinstance(prod, mod.Missing):
+                    out.append(f"B7.login: the production builders hold {prod!r} with no record")
+    for bad in ("relative/claude-walk-token", "", None, 3):
+        with walk_login_files({"claude1": bad}):
+            try:
+                got = mod.walk_login_path()
+                out.append(f"B7.login: a record of {bad!r} was taken: {got!r}")
+            except mod.BuilderRefused as e:
+                if "WALK_LOGIN_FILES['claude1']" not in str(e):
+                    out.append(f"B7.login: the refusal of {bad!r} does not name the record: {e}")
+    return out
+
+
 # ------------------------------------------------------------------------------------------------- B8
 class B8Present(Drafted):
     def test_a_measured_pin_is_present(self):
@@ -901,7 +989,7 @@ class B8Present(Drafted):
             from box import rules_scanner
             with mock.patch.object(rules_scanner, "real_rules_scanner", lambda: scanner, create=True):
                 got = self.must("B8.present", wb().production_builders)
-        self.assertIs(got["rules_scanner"], scanner, "B8.present")
+        self.assertIs(got.get("rules_scanner"), scanner, "B8.present")   # an absent key fails by assertion
 
 
 # ------------------------------------------------------------------------------------------------- B9
@@ -1174,6 +1262,13 @@ class B9Cli(Case):
 
 # ------------------------------------------------------------------------------------------------- G1
 class G1Generated(Case):
+    def test_every_test_class_runs_under_a_generated_mutant(self):
+        """The sweep runs only GENERATED_ORDER's classes: a test class left out of it binds nothing in the sweep
+        (B10, B11 and B12 were, and every mutant of the functions they bind survived)."""
+        classes = {n for n, v in globals().items() if isinstance(v, type) and issubclass(v, unittest.TestCase)
+                   and any(a.startswith("test") for a in vars(v))}
+        self.assertEqual(sorted(classes - set(GENERATED_ORDER)), [], "G1.order: classes the sweep never runs")
+
     def test_the_equivalent_list_matches_the_generated_mutants(self):
         ids = set(self.must("G1.generated", by_id))
         self.assertGreater(len(ids), 0, "G1.generated: the generator produced nothing")
@@ -1198,8 +1293,8 @@ class TestSysPath(unittest.TestCase):
 
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
-GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B7Production", "B8Present", "B5Fixture",
-                   "B4RunTree", "G1Generated", "B9Cli", "TestSysPath")
+GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived", "B10Resources", "B7Production",
+                   "B8Present", "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli", "TestSysPath")
 
 
 def run_witnesses(names) -> int:
@@ -1293,6 +1388,7 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
 BOX_RESOURCES = {"memory_reservation": 2147483648, "memory": 6442450944, "cpus": "8", "pids_limit": 4096}
 
 
+@problems_by_assertion("B10.resources")
 def b10_problems(mod) -> list:
     """B10.resources: the policy values, run_take's own spec check passing them, and the take spec built by the row's
     arm's lock (a pending lock refuses at call time; a ready one gives its image id and the policy values)."""
@@ -1330,9 +1426,60 @@ def b10_problems(mod) -> list:
     return out
 
 
+@problems_by_assertion("B10.take-a")
+def b10_take_a_problems(mod) -> list:
+    """B10.take-a: take_a_spec reads take-a's own lock (TAKE_LOCKS["A"] beside walk_builders); a lock holding PENDING
+    values gives Missing naming the lock and each held field; a ready one gives the take spec builder, which builds
+    the arm's spec from its lock's image id (the ready-lock branch, as on the merged head: 6e965d12)."""
+    from box import image_lock
+    out = []
+    real = image_lock.load(str(HERE / mod.TAKE_LOCKS["A"]))
+    seen = []
+
+    def load(path):
+        seen.append(path)
+        return lock_now[0]
+    lock_now = [dict(real, image_id="sha256:" + "b" * 64)]
+    with mock.patch.object(image_lock, "load", load), \
+            mock.patch.object(image_lock, "pending", lambda lock: ("base", "image_id") if lock is held else ()), \
+            mock.patch.object(image_lock, "require_ready", lambda lock: lock):
+        held = dict(real)
+        lock_now[0] = held
+        got = mod.take_a_spec()
+        if not isinstance(got, mod.Missing):
+            out.append(f"B10.take-a: a pending lock gave {got!r}, not Missing")
+        else:
+            for words in (mod.TAKE_LOCKS["A"], "PENDING (base, image_id)", "TAKE_RESOURCES"):
+                if words not in got.why:
+                    out.append(f"B10.take-a: the pending lock's Missing does not say {words!r}: {got.why!r}")
+        if seen != [str(HERE / mod.TAKE_LOCKS["A"])]:
+            out.append(f"B10.take-a: read {seen}, not take-a's own lock")
+        lock_now[0] = dict(real, image_id="sha256:" + "b" * 64)
+        got = mod.take_a_spec()
+        if isinstance(got, mod.Missing) or not callable(got):
+            out.append(f"B10.take-a: a ready lock gave {got!r}, not a take spec builder")
+        else:
+            spec = got({"arm": "A"}, "/synthetic/cfg", "/synthetic/tree")
+            want = {"image": "sha256:" + "b" * 64, "run_tree": "/synthetic/tree", "config_dir": "/synthetic/cfg",
+                    "network": mod.NETWORK_PLACEHOLDER, **BOX_RESOURCES}
+            if {k: getattr(spec, k, None) for k in want} != want:
+                out.append(f"B10.take-a: a ready lock's take spec is {spec}")
+    on_tree = mod.take_a_spec()                    # the lock as it is on this tree, unpatched
+    if TAKE_A_LOCK_READY != (not isinstance(on_tree, mod.Missing)):
+        out.append(f"B10.take-a: this tree's lock (ready {TAKE_A_LOCK_READY}) gave {on_tree!r}")
+    elif not TAKE_A_LOCK_READY:
+        fields = image_lock.pending(real)
+        if f"PENDING ({', '.join(fields)})" not in on_tree.why:
+            out.append(f"B10.take-a: this tree's pending lock names another list: {on_tree.why!r}")
+    return out
+
+
 class B10Resources(Case):
     def test_the_take_spec_carries_the_box_policy(self):
         self.assertEqual(b10_problems(wb()), [])
+
+    def test_take_a_spec_on_a_pending_and_a_ready_lock(self):
+        self.assertEqual(b10_take_a_problems(wb()), [])
 
     def test_a_resource_drift_is_red(self):
         mod = wb()
@@ -1346,6 +1493,7 @@ class B10Resources(Case):
 # container id and /proc (the box lane measured, on athena: /sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/
 # user.slice/docker-<id>.scope and ((0,1000,1),(1,100000,65536))), never typed in; anything else refuses.
 CID = "c" * 64
+SCOPE = f"/user.slice/user-1000.slice/user@1000.service/user.slice/docker-{CID}.scope"
 
 
 class InspectBox:
@@ -1358,17 +1506,26 @@ class InspectBox:
 
 
 def fake_proc(tmp: Path, *, uid_map="         0       1000          1\n         1     100000      65536\n",
-              cgroup=None, make_dir=True) -> tuple:
+              cgroup=None, make_dir=True, extra=(), link=False) -> tuple:
+    """A fake /proc/4242 and cgroup root; `extra` folders made under the root too; `link`: the scope folder is a link
+    to an existing folder."""
     proc, root = tmp / "proc", tmp / "cgroup"
-    rel = f"/user.slice/user-1000.slice/user@1000.service/user.slice/docker-{CID}.scope"
+    rel = SCOPE
     (proc / "4242").mkdir(parents=True)
     (proc / "4242" / "uid_map").write_text(uid_map)
     (proc / "4242" / "cgroup").write_text(cgroup if cgroup is not None else f"0::{rel}\n")
-    if make_dir:
+    if link:
+        (root / rel.lstrip("/")).parent.mkdir(parents=True)
+        (tmp / "elsewhere").mkdir()
+        (root / rel.lstrip("/")).symlink_to(tmp / "elsewhere")
+    elif make_dir:
         (root / rel.lstrip("/")).mkdir(parents=True)
+    for e in extra:
+        (root / e.lstrip("/")).mkdir(parents=True, exist_ok=True)
     return proc, root, str(root / rel.lstrip("/"))
 
 
+@problems_by_assertion("B11.derived")
 def b11_problems(mod) -> list:
     out = []
     for name in ("container_pid", "uid_map_of_pid", "cgroup_dir_of_pid"):
@@ -1385,6 +1542,8 @@ def b11_problems(mod) -> list:
         if mod.cgroup_dir_of_pid(4242, CID, proc=str(proc), root=str(root)) != want:
             out.append("B11.derived: the cgroup folder is not the container's scope")
     bad = {
+        "a take id that is not 64 hex": lambda tmp: mod.container_pid(InspectBox(), "c" * 63),
+        "a take id that is not a string": lambda tmp: mod.container_pid(InspectBox(), 7),
         "inspect failed": lambda tmp: mod.container_pid(InspectBox(code=1), CID),
         "not running (pid 0)": lambda tmp: mod.container_pid(InspectBox(out="0\n"), CID),
         "pid not a number": lambda tmp: mod.container_pid(InspectBox(out="x\n"), CID),
@@ -1396,6 +1555,22 @@ def b11_problems(mod) -> list:
             tmp, cgroup=f"0::/user.slice/docker-{'d' * 64}.scope\n"))[0]), root=str(f[1])),
         "scope folder missing": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
             tmp, make_dir=False))[0]), root=str(f[1])),
+        # each guard alone (the generated sweep, 14 Oct window 2): every case below passes the other guards
+        "inspect printed nothing (None)": lambda tmp: mod.container_pid(InspectBox(out=None), CID),
+        "uid map unreadable": lambda tmp: mod.uid_map_of_pid(4243, proc=str(fake_proc(tmp)[0])),
+        "cgroup unreadable": lambda tmp: mod.cgroup_dir_of_pid(4243, CID, proc=str((f := fake_proc(tmp))[0]),
+                                                               root=str(f[1])),
+        "two cgroup lines": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::{SCOPE}\n0::{SCOPE}\n"))[0]), root=str(f[1])),
+        "a cgroup line not 0::": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"1::{SCOPE}\n"))[0]), root=str(f[1])),
+        "another container's existing scope": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::/user.slice/docker-{'d' * 64}.scope\n", extra=(f"/user.slice/docker-{'d' * 64}.scope",)
+            ))[0]), root=str(f[1])),
+        "a .. in an existing scope's path": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::/zz/..{SCOPE}\n", extra=("/zz",)))[0]), root=str(f[1])),
+        "the scope folder a link": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, link=True))[0]), root=str(f[1])),
     }
     for why, fn in bad.items():
         with tempfile.TemporaryDirectory() as t:
@@ -1410,11 +1585,30 @@ def b11_problems(mod) -> list:
     for name in ("uid_map", "cgroup_dir_for"):
         if not callable(got[name]):
             out.append(f"B11.derived: production {name} is not a run-time reader: {got[name]!r}")
-    try:                                   # with no runtime yet, a reader refuses by name, never a silent default
-        got["uid_map"](types.SimpleNamespace(launched=types.SimpleNamespace(take_id=CID)))
-        out.append("B11.derived: the production uid map read with no runtime")
-    except mod.BuilderRefused:
-        pass
+    take = types.SimpleNamespace(launched=types.SimpleNamespace(take_id=CID))
+    for name in ("uid_map", "cgroup_dir_for"):
+        try:                               # with no runtime yet, a reader refuses by name, never a silent default
+            got[name](take)
+            out.append(f"B11.derived: the production {name} read with no runtime")
+        except mod.BuilderRefused:
+            pass
+    # the readers over a runtime given at call time: inspect for the take's own id, then its pid's map and scope
+    seen, box = [], [None]
+    with mock.patch.object(mod, "uid_map_of_pid", lambda pid: seen.append(("uid", pid)) or "the-map"), \
+            mock.patch.object(mod, "cgroup_dir_of_pid", lambda pid, cid: seen.append(("cg", pid, cid)) or "the-dir"):
+        uid_map, cgroup_dir_for = mod.run_time_readers(lambda: box[0])
+        box[0] = InspectBox()                      # the runtime exists only after the readers were made
+        got_map, got_dir = uid_map(take), cgroup_dir_for(take)
+        if (got_map, got_dir) != ("the-map", "the-dir") or seen != [("uid", 4242), ("cg", 4242, CID)]:
+            out.append(f"B11.derived: the readers gave {(got_map, got_dir)} over {seen}")
+        if [c[-1] for c in box[0].calls] != [CID, CID]:
+            out.append(f"B11.derived: inspect was not run for the take's own id: {box[0].calls}")
+        box[0] = object()                          # no run(): refused by name
+        try:
+            cgroup_dir_for(take)
+            out.append("B11.derived: a runtime with no run() was used")
+        except mod.BuilderRefused:
+            pass
     return out
 
 
@@ -1466,6 +1660,7 @@ def pinned_class():
         yield RealRulesScanner
 
 
+@problems_by_assertion("B12.scanner")
 def b12_problems(mod) -> list:
     out = []
     if not callable(getattr(mod, "walk_rules_scanner", None)) or not hasattr(mod, "BuiltRulesScan"):
@@ -1509,6 +1704,13 @@ def b12_problems(mod) -> list:
             got = mod.walk_rules_scanner(real, "rt", parent, real=True)
             if not isinstance(got, mod.BuiltRulesScan) or len(builds) != 1:
                 out.append(f"B12.scanner: a real walk did not take the pinned scanner's build: {got!r}")
+    import importlib.util
+    with pinned_class() as pinned:
+        if mod.pinned_scanner_class() is not pinned:
+            out.append("B12.scanner: the pinned class is not rules_scanner.RealRulesScanner")
+        with mock.patch.object(importlib.util, "find_spec", lambda name, *a: None):
+            if mod.pinned_scanner_class() is not None:       # absent by find_spec: None, never an import
+                out.append("B12.scanner: a tree without box/rules_scanner.py still gave a pinned class")
     try:
         mod.BuiltRulesScan(lambda paths: [], "/x", None, object())
         out.append("B12.scanner: a BuiltRulesScan was made outside walk_rules_scanner")
