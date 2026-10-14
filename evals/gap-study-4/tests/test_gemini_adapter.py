@@ -1075,7 +1075,10 @@ def a11_identity(mod, p):
             out.append(f"{p}: {read} gave {got}")
     a, _ = take(mod, [fixture("turn1-tools.jsonl")])
     r = a.turn("one", first=True, budget_s=60)
-    if r.identity != {"model": {"value": MODEL, "source": "stream-init"}, "permission_mode": mode,
+    # The box's run_turn writes the turn's journal (0b6f60f9; the integration lane), so a real turn's mode is the
+    # submitted argv's; the pass-through of any given entry is bound by the turn_identity loop above.
+    if r.identity != {"model": {"value": MODEL, "source": "stream-init"},
+                      "permission_mode": {"value": MODE, "source": "submitted-argv"},
                       "version": {"value": VERSION, "source": "version-exec"}}:
         out.append(f"{p}: turn 1's identity is {r.identity}")
     return out
@@ -1146,13 +1149,8 @@ def a14_journal(mod, p):
     box = FakeRuntime([fixture("turn1-tools.jsonl"), fixture("turn2-resume.jsonl")])
     a = _adapter_in(mod, box, folder)
     a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
-    sid = json.loads(fixture("turn1-tools.jsonl").splitlines()[0])["session_id"]
-    for n, (line, session) in enumerate((("one", None), ("two", sid)), 1):
-        stream = str(folder / f"turn-{n}.jsonl")
-        Path(stream + ".launch.json").write_text(json.dumps({
-            "schema": 1, "harness": "gemini", "container_id": TAKE,
-            "argv": list(mod.argv(line, model=MODEL, mode=MODE, session_id=session, first=n == 1)),
-            "cwd": str(SCRATCH / "tree"), "stream": stream, "started_at": 1.0}))
+    # The journal beside each stream is the box's own: run_take.run_turn writes it before the exec and refuses one
+    # already there (0b6f60f9; the integration lane), so the check no longer plants it.
     for n, line in enumerate(("one", "two"), 1):
         r = a.turn(line, first=n == 1, budget_s=60)
         if r.identity["permission_mode"] != {"value": MODE, "source": "submitted-argv"}:
@@ -1162,11 +1160,6 @@ def a14_journal(mod, p):
     folder = Path(tempfile.mkdtemp(dir=SCRATCH))
     a = _adapter_in(mod, FakeRuntime([fixture("no-init.jsonl")]), folder)
     a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
-    stream = str(folder / "turn-1.jsonl")
-    Path(stream + ".launch.json").write_text(json.dumps({
-        "schema": 1, "harness": "gemini", "container_id": TAKE,
-        "argv": list(mod.argv("one", model=MODEL, mode=MODE, session_id=None, first=True)),
-        "cwd": str(SCRATCH / "tree"), "stream": stream, "started_at": 1.0}))
     r = a.turn("one", first=True, budget_s=60)
     if a.session_id is not None or r.identity["permission_mode"] != {"value": MODE, "source": "submitted-argv"}:
         out.append(f"{p}: a no-init first turn's mode from its journal is {r.identity['permission_mode']}")
