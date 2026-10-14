@@ -111,6 +111,17 @@ if TAKE_A_LOCK_READY:
 WALK_LOGIN_ON_TREE = isinstance(getattr(rt, "WALK_LOGIN_FILES", None), dict) and "claude1" in rt.WALK_LOGIN_FILES
 if WALK_LOGIN_ON_TREE:
     EXPECTED_MISSING.remove("login_path")
+# The rules scanner is missing, by name, while box/scan_record.py's RULES_SCANNER is PENDING, and built from
+# box/rules_scanner.real_rules_scanner() where the box lane has pinned it (the merged head, 2d6983e9: the integration
+# lane's red 1-4). B7.production checks it is then the pinned class's instance.
+def _rules_scanner_on_tree() -> bool:
+    from box import scan_record
+    return "rules_scanner" not in scan_record.pending()
+
+
+RULES_SCANNER_ON_TREE = _rules_scanner_on_tree()
+if RULES_SCANNER_ON_TREE:
+    EXPECTED_MISSING.remove("rules_scanner")
 # CP5 (Javier, "CP5: all as recommended", 14 Oct 2026) registered arm A's pin profiles, so pin_for is no longer missing
 # in production (B8's rule, on the real table); it is checked present in B7.production.
 # The ownership road is the box lane's box/ownership.py (81ede46d): missing, by name, on a tree without that module, and
@@ -820,6 +831,10 @@ class B7Production(Case):
                 self.assertIn(words, why[name], f"B7.production: {name} does not say why")
         if WALK_LOGIN_ON_TREE:
             self.assertEqual(got["login_path"], rt.WALK_LOGIN_FILES["claude1"], "B7.login: not the box's record")
+        if RULES_SCANNER_ON_TREE:
+            from box import rules_scanner
+            self.assertIs(type(got["rules_scanner"]), rules_scanner.RealRulesScanner,
+                          "B7.production: the pinned rules scanner is not handed to the walks")
         if TAKE_A_LOCK_READY:
             self.assertTrue(callable(got["take_spec"]), "B7.production: take-a's ready lock gives no take spec")
         import time
@@ -1383,6 +1398,17 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
 BOX_RESOURCES = {"memory_reservation": 2147483648, "memory": 6442450944, "cpus": "8", "pids_limit": 4096}
 
 
+def pending_lock(real: dict) -> dict:
+    """take-a's lock as the unfilled schema-1 lock (image_id PENDING with its reason), made from the tree's own lock of
+    either schema: a schema-2 lock (the merged head) may hold no PENDING value at all, so its schema-2 keys go
+    (integration lane's red 5, 2d6983e9). image_lock is never loosened: the fixture must pass its problems()."""
+    from box import image_lock
+    held = {k: v for k, v in real.items() if k not in getattr(image_lock, "SCHEMA_2_KEYS", ())}
+    held.update(schema=image_lock.SCHEMA, image_id=image_lock.PENDING,
+                pending=dict(real.get("pending") or {}, image_id="synthetic: only a built image has an id"))
+    return held
+
+
 @problems_by_assertion("B10.resources")
 def b10_problems(mod) -> list:
     """B10.resources: the policy values, run_take's own spec check passing them, and the take spec built by the row's
@@ -1408,7 +1434,10 @@ def b10_problems(mod) -> list:
             **BOX_RESOURCES}
     if {k: getattr(got, k) for k in want} != want:
         out.append(f"B10.resources: a ready lock's take spec is {got}")
-    with mock.patch.object(image_lock, "load", lambda path: dict(real, image_id=image_lock.PENDING)):
+    held = pending_lock(real)
+    if image_lock.problems(held):
+        return [f"B10.resources: the pending-lock fixture is not a valid lock: {image_lock.problems(held)}"]
+    with mock.patch.object(image_lock, "load", lambda path: held):
         try:
             build(row, "/synthetic/cfg", "/synthetic/tree")
             out.append("B10.resources: a pending lock's take spec was built")
