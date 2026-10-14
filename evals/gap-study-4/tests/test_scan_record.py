@@ -691,9 +691,10 @@ class TestPending(unittest.TestCase):
         for n, obj in vars(sr).items():
             if inspect.isfunction(obj) and obj.__module__ == sr.__name__:
                 hits += [f"{n}({p})" for p in inspect.signature(obj).parameters if p.lower() in names]
-        # The one named exemption: interface 14 pins scan's injected rules_scanner callable; it overrides no
+        # The named exemptions: interface 14 pins scan's injected rules_scanner callable; it overrides no
         # constant (RULES_SCANNER is read only by real_rules_scanner), and a scan without one refuses.
-        self.assertEqual(hits, ["scan(rules_scanner)"])
+        # scan_with_witness is the same interface through the same core (gap4 box lane, 14 Oct: the witness).
+        self.assertEqual(hits, ["scan(rules_scanner)", "scan_with_witness(rules_scanner)"])
 
     def test_scan_never_reads_the_pending_constant(self):
         c = Commit()
@@ -783,8 +784,11 @@ class TestFold2(Case):
 
     def test_mutant_survival_unchecked_goes_red(self):
         c = self.commit({"stream": TOKEN})
+        # The witness's rebuild check (scan_with_witness's shared core) is a second guard on the same write; it is
+        # removed here too, so this mutant still shows the survival check alone (test_scan_witness has its own).
         with mock.patch.object(sr, "_mask", lambda line, spans: line + b" "), \
-                mock.patch.object(sr, "_survived", lambda after, needles: False):
+                mock.patch.object(sr, "_survived", lambda after, needles: False), \
+                mock.patch.object(sr, "_witness", lambda path, before, after, replacements: {}):
             sr.scan(c.files(), SECRETS, rules_scanner=no_findings)
         self.assertIn(TOKEN.encode(), c.read("stream"))   # the value was written back
         red("a value surviving its mask written")

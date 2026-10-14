@@ -45,6 +45,14 @@ commit step's binding, deferred there: the lane lead's call, fold 1 Q3).
 Result: {"masked": [{"path", "line", "kind", "offset"}], "events": int, "refused": [{"path", "line", "kind",
 "why"}], "files": [{"path", "sha256_before", "sha256_after"}], "holdout": "checked" | "not-checked"}.
 
+THE WITNESS. scan_with_witness(...) -> (the same result, {path: witness}) through the same core. Per file:
+{"schema": 1, "original_sha256", "published_sha256", "original_bytes", "published_bytes", "replacements":
+[{"start", "end", "kind", "replacement_id"}]}: absolute byte offsets in the original, end exclusive, nonempty,
+disjoint and increasing; replacement_id fixed per kind by REPLACEMENT_IDS over the pinned MARKERS; derived only from
+the masked entries (an unchanged or refused file carries an empty list); checked to rebuild the masked bytes before
+the file is written. A witness never carries a secret's value or a digest of one. Hashes alone do not prove the
+transformation: a verifier needs the private original bytes.
+
 No model, no network, stdlib only (plus the round's own scrub.py, for its marker).
 """
 
@@ -72,6 +80,12 @@ HOLDOUT_KIND, RULE_KIND = "holdout", "rule"
 CHECKED, NOT_CHECKED = "checked", "not-checked"
 MIN_LENGTH = {"token": 20, "key": 20, "email": 6}
 RESULT_FIELDS = ("masked", "events", "refused", "files", "holdout")
+# The transformation witness (scan_with_witness): one fixed replacement identity per secret kind, bound to the pinned
+# marker map above; a verifier maps an id back to its marker's bytes through replacement_marker, never to caller bytes.
+WITNESS_SCHEMA = 1
+WITNESS_FIELDS = ("schema", "original_sha256", "published_sha256", "original_bytes", "published_bytes",
+                  "replacements")
+REPLACEMENT_IDS = {"token": "mask-token-v1", "key": "mask-key-v1", "email": "mask-email-v1"}
 
 # The login-file rule (interface 11; the card's Part 3 step 7): one newline-terminated line NAME=<value>, the value
 # at least 20 characters with no whitespace and no double quote; mode 600, owned by the reader, outside every git
@@ -360,15 +374,71 @@ def _write(path: str, data: bytes):
         os.fsync(fh.fileno())
 
 
-def scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict:
-    """Scan every file of a take's commit (see the module docstring)."""
-    _require_scanner(rules_scanner)   # the injected callable (interface 14); never RULES_SCANNER
+def replacement_marker(replacement_id: str) -> bytes:
+    """The fixed marker bytes a witness replacement id stands for (the pinned MARKERS map); an unknown id refuses."""
+    for kind, rid in REPLACEMENT_IDS.items():
+        if rid == replacement_id:
+            return MARKERS[kind].encode("utf-8")
+    raise ScanError("an unknown replacement id (the witness names only the pinned markers)")
+
+
+def _line_offsets(data: bytes) -> list:
+    """The absolute byte offset where each of _lines(data) starts."""
+    out, at = [], 0
+    for line in _lines(data):
+        out.append(at)
+        at += len(line)
+    return out
+
+
+def _replacements(before: bytes, masked, needles) -> list:
+    """The witness spans of one file, derived only from its masked entries (the successful masking branch): each
+    entry's line and in-line start, its end from the same longest-first selection, as absolute original offsets."""
+    if not masked:
+        return []
+    offsets, lines = _line_offsets(before), _lines(before)
+    out = []
+    for m in masked:
+        line = lines[m["line"] - 1]
+        body = line[:-1] if line.endswith(b"\n") else line
+        ends = [e for s, e, k in _spans(body, needles) if s == m["offset"] and k == m["kind"]]
+        if len(ends) != 1:
+            raise ScanError(f"{m['path']}: a masked entry has no single span; nothing written")
+        base = offsets[m["line"] - 1]
+        out.append({"start": base + m["offset"], "end": base + ends[0], "kind": m["kind"],
+                    "replacement_id": REPLACEMENT_IDS[m["kind"]]})
+    return sorted(out, key=lambda r: r["start"])
+
+
+def _rebuild(before: bytes, replacements) -> bytes:
+    out, at = [], 0
+    for r in replacements:
+        if not (at <= r["start"] < r["end"] <= len(before)):
+            raise ScanError("witness spans are nonempty, disjoint, increasing and inside the original")
+        out += [before[at:r["start"]], replacement_marker(r["replacement_id"])]
+        at = r["end"]
+    out.append(before[at:])
+    return b"".join(out)
+
+
+def _witness(path: str, before: bytes, after: bytes, replacements) -> dict:
+    """One file's witness; fails closed (ScanError, before anything is written) unless the spans rebuild `after`."""
+    if _rebuild(before, replacements) != after:
+        raise ScanError(f"{path}: the witness spans do not rebuild the masked bytes; nothing written")
+    return {"schema": WITNESS_SCHEMA, "original_sha256": _sha(before), "published_sha256": _sha(after),
+            "original_bytes": len(before), "published_bytes": len(after), "replacements": replacements}
+
+
+def _scan_core(files, secrets, scanner, holdout_matcher):
+    """The shared scan: (the scan result, {path: witness}). Each file's witness is built and checked before that
+    file is written, so a refused witness never writes its file."""
+    _require_scanner(scanner)   # the injected callable (interface 14); never RULES_SCANNER
     files, secrets = list(files), list(secrets)
     _require_files(files)
     _require_search(secrets)
     _check_inputs(files, secrets)
     needles = _needles(secrets)
-    masked, refused, records = [], [], []
+    masked, refused, records, witnesses = [], [], [], {}
     for path, kind in files:
         with open(path, "rb") as fh:
             before = fh.read()
@@ -380,15 +450,31 @@ def scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict:
             if [ln for ln in _lines(before) if not _spans(ln, needles)] != \
                     [ln for ln, old in zip(_lines(after), _lines(before)) if not _spans(old, needles)]:
                 raise ScanError(f"{path}: masking changed a line it should not touch; nothing written")
+        witnesses[path] = _witness(path, before, after, _replacements(before, m if new is not None else [],
+                                                                      needles))
+        if new is not None:
             _write(path, after)
         masked += m
         refused += r
         if holdout_matcher is not None:
             refused += _holdout(holdout_matcher, path, after)
         records.append({"path": path, "sha256_before": _sha(before), "sha256_after": _sha(after)})
-    refused += _rules(rules_scanner, [p for p, _ in files])
-    return {"masked": masked, "events": len(masked), "refused": refused, "files": records,
-            "holdout": NOT_CHECKED if holdout_matcher is None else CHECKED}
+    refused += _rules(scanner, [p for p, _ in files])
+    result = {"masked": masked, "events": len(masked), "refused": refused, "files": records,
+              "holdout": NOT_CHECKED if holdout_matcher is None else CHECKED}
+    return result, witnesses
+
+
+def scan(files, secrets, *, rules_scanner, holdout_matcher=None) -> dict:
+    """Scan every file of a take's commit (see the module docstring)."""
+    return _scan_core(files, secrets, rules_scanner, holdout_matcher)[0]
+
+
+def scan_with_witness(files, secrets, *, rules_scanner, holdout_matcher=None) -> tuple:
+    """scan's result unchanged, plus {path: witness} for every scanned file (unchanged files carry an empty
+    replacement list). A witness carries offsets, lengths, kinds, fixed marker ids and whole-file sha256s only: never
+    a secret's value or a digest of one."""
+    return _scan_core(files, secrets, rules_scanner, holdout_matcher)
 
 
 def passed(result: dict) -> bool:
