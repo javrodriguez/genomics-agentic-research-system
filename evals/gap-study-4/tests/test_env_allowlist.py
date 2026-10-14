@@ -81,6 +81,10 @@ CALLER = {"PATH": "/usr/bin:/bin", "HOME": "/home/op", "DOCKER_HOST": "unix:///r
           "XDG_RUNTIME_DIR": "/run/user/1000"}
 ARMS = ("claude-code", "codex", "gemini")
 LOGINS = {"claude-code": "CLAUDE_CODE_OAUTH_TOKEN", "codex": "CODEX_API_KEY", "gemini": "GEMINI_API_KEY"}
+# The arms whose turn still reaches an exec. The Codex subscription transition (0b6f60f9, owner amendment 13 Oct 2026)
+# refuses every Codex exec in exec_argv before the login is read; E2Allowlist.test_codex_turn_refuses_before_its_login
+# binds that refusal, and the exec-shape checks below run over the other two arms.
+EXEC_ARMS = ("claude-code", "gemini")
 # The docs read of 13 Oct (section d): every billing and route variable both lists name, docs and source.
 DOCS_READ_VARIABLES = (
     # Codex, read by the source at rust-v0.162.1 beyond its docs
@@ -343,7 +347,7 @@ class E2Allowlist(Case):
             | set(m.SUBSCRIPTION_TOKEN_VARIABLES)
         passable = {k: v for k, v in PARENT.items() if k not in on_old_list}
         self.assertIn("OPENAI_PROJECT", passable, "E2.turn: the test's own parent set is off")
-        for h in ARMS:
+        for h in EXEC_ARMS:
             argv, env = self.must("E2.turn", self.turn, h, caller=passable, environ=passable)
             at = argv.index(ID) + 1
             self.assertEqual(tuple(argv[at:at + len(m.LAUNCHER)]), tuple(m.LAUNCHER),
@@ -367,14 +371,22 @@ class E2Allowlist(Case):
             self.assertEqual(got.get("env"), dict(expected_row(h, "/srv/w/t1/tree"), **{LOGINS[h]: FAKE_VALUE}),
                              f"E2.launcher: {h}: the harness does not start with exactly the row and its credential")
 
+    def test_codex_turn_refuses_before_its_login(self):
+        m = rt()
+        with mock.patch.object(m, "read_login", side_effect=AssertionError("E2.codex: the login was read")):
+            with self.assertRaisesRegex(m.NotReady, "subscription binding not ready", msg="E2.codex: an exec built"):
+                self.turn("codex", caller={"OPENAI_API_KEY": FAKE_VALUE})
+            with self.assertRaisesRegex(m.NotReady, "subscription binding not ready", msg="E2.codex: an exec built"):
+                self.turn("codex")
+
     def test_an_old_list_name_is_still_refused(self):
-        for h in ARMS:
+        for h in EXEC_ARMS:
             for name in ("AWS_BEARER_TOKEN_BEDROCK", "OPENAI_API_KEY", "ANTHROPIC_BASE_URL"):
                 self.refuses("E2.refused", name, self.turn, h, caller={name: FAKE_VALUE})
 
     def test_launcher_refuses_container_ancestors_and_current_home(self):
         # These are virtual names only: no protected path is created or inspected.
-        for h in ARMS:
+        for h in EXEC_ARMS:
             argv, _ = self.turn(h)
             launch = argv[argv.index(ID) + 1:]
             home = rt().CONFIG_MOUNT
@@ -388,7 +400,7 @@ class E2Allowlist(Case):
 
     def test_the_launcher_needs_the_credential(self):
         m = rt()
-        argv, _ = self.turn("codex")
+        argv, _ = self.turn("claude-code")
         with self.assertRaises(KeyError, msg="E2.launcher: a launcher without its credential ran"):
             run_launcher(argv[argv.index(ID) + 1:], dict(IMAGE_ENV))
         self.refuses("E2.pairs", "NAME", m.launcher_argv, "CODEX_API_KEY", {"bad name": "x"}, ["codex"])

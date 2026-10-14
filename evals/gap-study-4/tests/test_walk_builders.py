@@ -473,9 +473,13 @@ class B2Login(Case):
                 said = self.refuses("B2.login", f"does not start with {LOGIN}=", wb().login_file_by_name, str(path),
                                     "claude-code")
                 self.assertNotIn(tbi.TOKEN, said, "B2.login: a refusal carries the value")
+        # The Codex subscription transition (0b6f60f9, owner amendment 13 Oct 2026): an API-key login file for Codex
+        # is refused by name before it is opened, and the refusal never carries the value.
         codex = login_file(f"CODEX_API_KEY={tbi.TOKEN}\n")
-        self.assertEqual(self.must("B2.login", wb().login_file_by_name, str(codex), "codex"), str(codex),
-                         "B2.login: the harness's own variable")
+        with mock.patch.object(os, "open", side_effect=AssertionError("B2.login: the Codex login file was opened")):
+            said = self.refuses("B2.login", "subscription binding not ready", wb().login_file_by_name, str(codex),
+                                "codex")
+        self.assertNotIn(tbi.TOKEN, said, "B2.login: a refusal carries the value")
 
     def test_the_secrets_read_the_value_only_when_asked(self):
         from box import scan_record
@@ -850,8 +854,10 @@ class B8Present(Drafted):
 def sidecar_for(row, ev, tree):
     """test_walk_wiring's fake sidecar launch, over the walk's own run tree."""
     from box import sidecar as sc
-    expect = {"user": sc.WATCHER_USER, "network_mode": "none", "cap_drop": ["ALL"],
-              "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
+    # The sidecar's accepted launch (0b6f60f9; its fake inspect is test_box_integration's, fixed in 5f1b33ee).
+    expect = {"user": sc.BOOT_USER, "network_mode": "none", "cap_drop": ["ALL"],
+              "cap_add": list(sc.BOOT_INSPECT_CAPABILITIES), "security_opt": ["no-new-privileges"],
+              "privileged": False, "image": tbi.SIDECAR_IMAGE, "cmd": tbi.sidecar_cmd(tree), "entrypoint": [],
               "pid_mode": "", "mounts": [{"source": tree, "destination": tree, "rw": False},
                                          {"source": ev, "destination": sc.EVIDENCE_MOUNT, "rw": True}]}
     return rt.SidecarLaunch(
