@@ -2635,11 +2635,11 @@ CODEX_NATIVE_PENDING = ("no reviewed Codex native rollout reader: the rollout so
 
 
 def gemini_cross_check(take_folder, refs, n_turns: int, *, readers=None) -> dict:
-    """The Gemini cross-check D8 names: each turn's host-captured stream joined (gemini_stream_join.join) to that
-    interaction of the take's last retained native snapshot, read by the registered reader. `pending` without a
-    registered reader (production_readers: no acceptance record); `refused` on any disagreement, an extra or a missing
-    interaction; `agreed` only when every turn joins."""
-    import gemini_stream_join as _gsj
+    """The Gemini cross-check D8 names, through the ONE join the acceptance check also runs
+    (native_reader_registration.join_session; registration review finding 2): each turn's host-captured stream joined
+    to that interaction of the take's last retained native snapshot, read by the registered reader. `pending` without a
+    registered reader (production_readers: no committed acceptance record); `refused` on any disagreement, an extra or
+    a missing interaction, or an incomplete interaction; `agreed` only when every turn joins complete."""
     readers = _registration.production_readers() if readers is None else readers
     reader = readers.get("gemini")
     if reader is None:
@@ -2647,18 +2647,12 @@ def gemini_cross_check(take_folder, refs, n_turns: int, *, readers=None) -> dict
     folder = Path(take_folder)
     try:
         raw = _vendor_provenance.referenced_bytes(folder / _native_snapshot.SESSION_DIR, refs[-1])
-        for n in range(1, n_turns + 1):
-            fact = reader(raw, n)
-            stream = (folder / f"turn-{n}.jsonl").read_text(encoding="utf-8")
-            _gsj.join(fact, stream)
-        try:
-            reader(raw, n_turns + 1)
-        except _vendor_provenance.ProvenanceRefused:
-            pass
-        else:
-            return {"status": "refused", "why": f"the native session holds more than the take's {n_turns} turn(s)"}
-    except (IndexError, OSError, UnicodeError, _vendor_provenance.ProvenanceRefused, _gsj.JoinRefused) as e:
+        streams = [(folder / f"turn-{n}.jsonl").read_text(encoding="utf-8") for n in range(1, n_turns + 1)]
+    except (IndexError, OSError, UnicodeError, _vendor_provenance.ProvenanceRefused) as e:
         return {"status": "refused", "why": f"{type(e).__name__}: {e}"}
+    got = _registration.join_session(raw, streams, reader)
+    if got["status"] != "PASS":
+        return {"status": "refused", "why": got["why"]}
     return {"status": "agreed", "why": None}
 
 
