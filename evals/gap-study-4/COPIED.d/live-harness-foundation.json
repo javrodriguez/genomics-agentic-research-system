@@ -40,6 +40,21 @@
       "path": "tests/test_gemini_session_replay.py",
       "status": "new",
       "reason": "Synthetic native replay witnesses for replacement, patches, immutable earlier snapshots and fail-closed unsupported or malformed records."
+    },
+    {
+      "path": "gemini_projection.py",
+      "status": "new",
+      "reason": "Unregistered source-derived Gemini native-session projection: per-interaction facts with exact visible text and ordered tool facts; model-facing response parts never displayed output; unsupported or contradictory shapes refuse; no production admission."
+    },
+    {
+      "path": "tests/test_gemini_projection.py",
+      "status": "new",
+      "reason": "Synthetic projection witnesses for exact text/tool comparison, display versus model-facing results, absent optional model, contradictions, unsupported shapes and reused call ids."
+    },
+    {
+      "path": "tests/test_vendor_record_kinds.py",
+      "status": "new",
+      "reason": "Exact public-config.json and turn-N.jsonl.launch.json classification as unmaskable launch records; nearby and nested names still refuse."
     }
   ]
 }

@@ -1,3 +1,5 @@
 python3 -W ignore evals/gap-study-4/tests/test_vendor_record_binding.py
 python3 -W ignore evals/gap-study-4/tests/test_vendor_provenance.py
 python3 -W ignore evals/gap-study-4/tests/test_gemini_session_replay.py
+python3 -W ignore evals/gap-study-4/tests/test_gemini_projection.py
+python3 -W ignore evals/gap-study-4/tests/test_vendor_record_kinds.py

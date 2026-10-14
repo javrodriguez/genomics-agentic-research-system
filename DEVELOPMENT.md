@@ -15,6 +15,8 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Gemini projection and launch record kinds, 2026-10-14:** an unregistered source-derived projection returns per-interaction native facts with exact visible text and ordered tool facts, never model-facing response parts as display; unsupported or contradictory shapes refuse. `public-config.json` and `turn-N.jsonl.launch.json` are exact unmaskable launch records. Both tests ran red first, then 4/4 and 2/2; seven mutations killed; manifest 372 files/56 fragments. Independent review pending. See [the slice report](lane-reports/gemini-projection-record-kinds-2026-10-14.md).
+
 **Native snapshot history join, 2026-10-13:** each later retained snapshot must reproduce all previously checked native facts exactly, with stable session identity and unique snapshot filenames. Six provenance tests passed, and the final strengthened history witness kills three mutations. Focused static review passes. Extra/unassigned interaction checks and native semantic readers remain required; the production registry is still closed.
 
 **Gemini native replay foundation, 2026-10-13:** three source-derived replay tests pass after an actual red-first baseline; three in-memory mutations are killed by assertion. Independent focused static review passes; manifest passes 369 files/56 fragments. The helper is unregistered and produces raw replayed records only: native semantic projection, prior-interaction joins and recorded-stream validation remain owed. See [the replay checkpoint](lane-reports/gemini-replay-foundation-2026-10-13.md).

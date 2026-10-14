@@ -1819,8 +1819,12 @@ TAKE_FILE_KINDS = {"launch.json": "launch", "teardown.json": "launch", "proxy.lo
                    "preflight.json": "preflight", "refusal.json": "preflight", "transcript.jsonl": "transcript",
                    "postflight.json": "preflight",    # S6b (e)
                    "operator-check.json": "launch",   # S6b C11
-                   "driver-ledger.json": "ledger", "environment.json": "launch", "scrub.json": "launch"}   # S6c C6-C8
+                   "driver-ledger.json": "ledger", "environment.json": "launch", "scrub.json": "launch",   # S6c C6-C8
+                   "public-config.json": "launch"}   # live harness 13 Oct: box take_config.public_record's bytes
 STREAM_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl")
+# Live harness 13 Oct: the box's per-turn actual-submission journal (run_take: stream path + ".launch.json"), an exact
+# top-level sibling of a turn stream, scanned as an unmaskable launch record. Nearby or nested spellings still refuse.
+LAUNCH_JOURNAL_NAME = re.compile(r"turn-[1-9][0-9]*\.jsonl\.launch\.json")
 EVIDENCE_DIR, SESSION_DIR = "evidence", "session"
 EVIDENCE_KINDS = {_sidecar.SNAPSHOTS: "snapshot", _sidecar.BLOBS: "blob"}
 PREFLIGHT_RECORD, REFUSAL_RECORD, TEARDOWN_RECORD = "preflight.json", "refusal.json", "teardown.json"
@@ -2933,13 +2937,15 @@ FROZEN_NAME = prereg.FROZEN.name               # prereg.json: once it exists, no
 
 def record_kind(rel: list, extra: dict | None = None) -> str:
     """The scan kind of a record file at `rel` (its path parts inside the record folder), by the closed map: a take
-    folder's files (TAKE_FILE_KINDS, turn-N.jsonl), evidence/** and session/**, plus `extra` top-level names (a walk
+    folder's files (TAKE_FILE_KINDS, turn-N.jsonl, turn-N.jsonl.launch.json), evidence/** and session/**, plus `extra` top-level names (a walk
     folder's grade.json). Anything else refuses: nothing rides a commit unscanned under a guessed kind."""
     name = rel[-1]
     if len(rel) == 1 and extra and name in extra:
         return extra[name]
     if len(rel) == 1 and (name in TAKE_FILE_KINDS or STREAM_NAME.fullmatch(name)):
         return TAKE_FILE_KINDS.get(name, "stream")
+    if len(rel) == 1 and LAUNCH_JOURNAL_NAME.fullmatch(name):
+        return "launch"
     if rel[0] == EVIDENCE_DIR and len(rel) >= 2:
         return EVIDENCE_KINDS.get(rel[1], "evidence") if len(rel) > 2 else "evidence"
     if rel[0] == SESSION_DIR and len(rel) >= 2:
