@@ -16,6 +16,8 @@ Nothing was pushed.
 | `7b5a9dd4` | harness head `86ca78e6` (the Codex stub exec on glitch-06's option a, and the harness-owned fixes queued after run `gap4-merge-01e1217`) | none |
 | `2189a8e5` | box head `0dbe18ed` (the reviewed lock writer and the build records; the real locks had not landed by 05:03) | none |
 | `71b1cc7f` | harness head `9649aa0a` (batch 8 and the three harness reds of run `gap4-merge-a1f7405`) | none: see the R3DeadWalk line below |
+| `0afb6825` | box head `6221c297` (the five reviewed image locks, schema 2, with the post-write guard) | none |
+| `9588a563` | harness head `840048ab` (carries `a36a5743`, `19ec4c41` and the lint fix) | none: see the test_identity_mode_evidence line below |
 
 How "no conflict" was checked: `comm -12` of `git diff --name-only a12569a <box head>` and `git diff --name-only a12569a <harness head>` printed no path for the first merge, so no file was changed on both sides.
 For `0d2085ee` and `7b5a9dd4`, `comm -12` of the two heads' changed paths since `fa98717e` (`git diff --name-only HEAD...<head>`) printed no path, so again no file was changed on both sides.
@@ -27,6 +29,8 @@ Each later merge reported "Automatic merge went well" and left no unmerged path 
 ## Conflict resolutions, one line per hunk
 
 - `71b1cc7f`, `evals/gap-study-4/tests/test_walk_runner.py`, `R3DeadWalk.test_a_ledgerless_walk_with_only_a_launch_journal_is_refused` strip loop: the harness lane mirrored `492af633` byte for byte, so git merged it with no conflict marker. `git diff harness/<head> -- tests/test_walk_runner.py` is empty, so the merged file is the harness lane's text, as glitch-06 ruled.
+- `9588a563`, `evals/gap-study-4/tests/test_identity_mode_evidence.py`: harness `a36a5743` changed `AcceptancePerHarness` (Codex now has an identity source table), and this lane's `fa98717e` changed the `Journal` fake. The lines do not overlap, so git merged them with no conflict marker and both are kept. The merged-head `Journal` that wraps the box's real `run_turn` stays, as glitch-06 ruled.
+- `9588a563`, `evals/gap-study-4/tests/test_gemini_adapter.py`: the harness branch did not change this file after `ce852b01`, so this lane's A11/A14 change carries through unchanged.
 
 There were no conflict hunks in any of the three merges, so there are no resolution lines.
 
