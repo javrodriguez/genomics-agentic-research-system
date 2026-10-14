@@ -141,6 +141,9 @@ def mutants() -> dict:
                                   'identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=rules,',
                                   'identity_for=identity_for({row["walk"]: ident}), secrets=secrets, '
                                   'rules_scanner=builders["rules_scanner"],'),
+        "scanner-class-by-name": ("B12.scanner", "walk_builders",
+                                  "        if pinned is None or type(scanner) is not pinned:",
+                                  "        if pinned is None or type(scanner).__name__ != pinned.__name__:"),
         "report-dir-shared": ("B12.scanner", "walk_builders",
                               '    report_dir = tempfile.mkdtemp(prefix="walk-scan-", dir=report_parent)',
                               '    report_dir = report_parent'),
@@ -262,6 +265,7 @@ METHOD = {
     "scanner-real-unchecked": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
     "scanner-raw-to-driver": "B12Scanner.test_a_pinned_scanner_is_built_once_for_a_walk",
     "report-dir-shared": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
+    "scanner-class-by-name": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
@@ -869,11 +873,14 @@ class B8Present(Drafted):
                                                       "run_tree": "/synthetic/tree"}), "B8.present")
 
     def test_a_real_rules_scanner_is_present(self):
+        """Box 8ad2978a: once scan_record's record is not PENDING, the production scanner is
+        rules_scanner.real_rules_scanner()'s (on this branch, the stand-in module of pinned_class)."""
         from box import scan_record
         scanner = object()
-        with mock.patch.object(scan_record, "pending", lambda: {}), \
-                mock.patch.object(scan_record, "real_rules_scanner", lambda: scanner):
-            got = self.must("B8.present", wb().production_builders)
+        with pinned_class(), mock.patch.object(scan_record, "pending", lambda: {}):
+            from box import rules_scanner
+            with mock.patch.object(rules_scanner, "real_rules_scanner", lambda: scanner, create=True):
+                got = self.must("B8.present", wb().production_builders)
         self.assertIs(got["rules_scanner"], scanner, "B8.present")
 
 
@@ -1292,8 +1299,10 @@ def b10_problems(mod) -> list:
         try:
             build(row, "/synthetic/cfg", "/synthetic/tree")
             out.append("B10.resources: a pending lock's take spec was built")
-        except Exception:  # noqa: BLE001 - NotReady, by the lock reader
+        except image_lock.NotReady:               # review nit 7: the lock reader's own refusal, nothing else
             pass
+        except Exception as e:  # noqa: BLE001
+            out.append(f"B10.resources: a pending lock raised {type(e).__name__}, not image_lock.NotReady")
     if set(mod.TAKE_LOCKS) != {"A", "O", "G"} or not all((HERE / v).is_file() for v in mod.TAKE_LOCKS.values()):
         out.append(f"B10.resources: TAKE_LOCKS is not one existing lock per arm: {mod.TAKE_LOCKS}")
     return out
@@ -1408,6 +1417,33 @@ class FakePinned:
         return self.product if self.product is not None else (lambda paths: [])
 
 
+@contextlib.contextmanager
+def pinned_class():
+    """box/rules_scanner.py's RealRulesScanner (box 8ad2978a) when the module is on this tree; on a branch without it,
+    a stand-in module of that exact name holding the class, so walk_builders binds by module and class identity
+    either way (never a create=True patch of another module)."""
+    import importlib.machinery
+    import importlib.util
+    if importlib.util.find_spec("box.rules_scanner") is not None:
+        from box import rules_scanner
+        yield rules_scanner.RealRulesScanner
+        return
+    fake = types.ModuleType("box.rules_scanner")
+    fake.__spec__ = importlib.machinery.ModuleSpec("box.rules_scanner", None)
+
+    class RealRulesScanner:
+        __slots__ = ("build", "version", "sha256", "binary")
+
+        def __init__(self, build, version, sha256, binary):
+            self.build, self.version, self.sha256, self.binary = build, version, sha256, binary
+    RealRulesScanner.__module__ = "box.rules_scanner"
+    fake.RealRulesScanner = RealRulesScanner
+    import box
+    with mock.patch.dict(sys.modules, {"box.rules_scanner": fake}), \
+            mock.patch.object(box, "rules_scanner", fake, create=True):
+        yield RealRulesScanner
+
+
 def b12_problems(mod) -> list:
     out = []
     if not callable(getattr(mod, "walk_rules_scanner", None)) or not hasattr(mod, "BuiltRulesScan"):
@@ -1435,16 +1471,21 @@ def b12_problems(mod) -> list:
                 out.append(f"B12.scanner: {why} was accepted")
             except mod.BuilderRefused:
                 pass
-        from box import scan_record
-        for why, scanner in (("a plain callable", fake), ("another type with a build", FakePinned())):
-            try:
-                mod.walk_rules_scanner(scanner, "rt", parent, real=True)
-                out.append(f"B12.scanner: a real walk took {why}")
-            except mod.BuilderRefused:
-                pass
-        with mock.patch.object(scan_record, "RealRulesScanner", FakePinned, create=True):
-            got = mod.walk_rules_scanner(FakePinned(), "rt", parent, real=True)
-            if not isinstance(got, mod.BuiltRulesScan):
+        class RealRulesScanner(FakePinned):          # the right name, from another module: never the pinned class
+            pass
+        with pinned_class() as pinned:
+            for why, scanner in (("a plain callable", fake), ("another type with a build", FakePinned()),
+                                 ("a same-named class from another module", RealRulesScanner())):
+                try:
+                    mod.walk_rules_scanner(scanner, "rt", parent, real=True)
+                    out.append(f"B12.scanner: a real walk took {why}")
+                except mod.BuilderRefused:
+                    pass
+            builds = []
+            real = pinned(lambda runtime, report_dir: builds.append(report_dir) or (lambda paths: []),
+                          "8.30.1", "0" * 64, "/synthetic/gitleaks")
+            got = mod.walk_rules_scanner(real, "rt", parent, real=True)
+            if not isinstance(got, mod.BuiltRulesScan) or len(builds) != 1:
                 out.append(f"B12.scanner: a real walk did not take the pinned scanner's build: {got!r}")
     try:
         mod.BuiltRulesScan(lambda paths: [], "/x", None, object())

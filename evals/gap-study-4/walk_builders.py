@@ -246,7 +246,7 @@ def run_time_readers(runtime_of, caller_env=None) -> tuple:
 
 
 # glitch-06's queue item 3 and review NOTE S-2 (14 Oct 2026): the box's pinned rules scanner
-# (scan_record.real_rules_scanner(), box 35e61dec) is NOT callable; each walk builds its scan once with
+# (rules_scanner.real_rules_scanner(), box 8ad2978a) is NOT callable; each walk builds its scan once with
 # build(runtime, report_dir) over a fresh, empty report folder, and a real walk (the production builders) scans only with
 # that build's product, held in a BuiltRulesScan that only walk_rules_scanner makes.
 _BUILD_KEY = object()
@@ -266,18 +266,26 @@ class BuiltRulesScan:
         return self.scan(paths)
 
 
+def pinned_scanner_class():
+    """The box's pinned scanner class, rules_scanner.RealRulesScanner (box 8ad2978a moved it there from scan_record),
+    or None while box/rules_scanner.py is not on this tree (a real walk is then refused)."""
+    import importlib.util
+    if importlib.util.find_spec("box.rules_scanner") is None:
+        return None
+    from box import rules_scanner
+    return getattr(rules_scanner, "RealRulesScanner", None)
+
+
 def walk_rules_scanner(scanner, runtime, report_parent, *, real: bool):
-    """The walk's rules scan. real (the production builders): `scanner` must be exactly scan_record.RealRulesScanner,
-    built here; otherwise an injected scan(paths) is used as given, and anything with a build() is built the same way.
+    """The walk's rules scan. real (the production builders): `scanner` must be exactly rules_scanner.RealRulesScanner
+    (by class identity, never by name), built here; otherwise an injected scan(paths) is used as given, and anything with a build() is built the same way.
     Each build gets its own fresh, empty folder under report_parent (outside every repository)."""
     import tempfile
-
-    from box import scan_record
     if real:
-        pinned = getattr(scan_record, "RealRulesScanner", None)
+        pinned = pinned_scanner_class()
         if pinned is None or type(scanner) is not pinned:
-            raise BuilderRefused(f"a real walk scans only with the pinned scanner (scan_record.RealRulesScanner), "
-                                 f"never {type(scanner).__name__}")
+            raise BuilderRefused(f"a real walk scans only with the pinned scanner (rules_scanner.RealRulesScanner), "
+                                 f"never {type(scanner).__module__}.{type(scanner).__name__}")
     elif callable(scanner):
         return scanner
     build = getattr(scanner, "build", None)
@@ -438,8 +446,11 @@ def production_builders() -> dict:
         "run_tree_origin": (drive.REPO, variants.PINNED_TREE),
     }
     pending = scan_record.pending()
-    out["rules_scanner"] = (Missing(f"the rules scanner: {pending['rules_scanner']}") if "rules_scanner" in pending
-                            else scan_record.real_rules_scanner())
+    if "rules_scanner" in pending:
+        out["rules_scanner"] = Missing(f"the rules scanner: {pending['rules_scanner']}")
+    else:                         # box 8ad2978a: the binding is rules_scanner.real_rules_scanner(), built per walk
+        from box import rules_scanner
+        out["rules_scanner"] = rules_scanner.real_rules_scanner()
     table = routing.load_table()
     out["table"] = table
     import machine_gate
