@@ -71,7 +71,7 @@ def exec_stream(*, terminal="completed", text="Done.", output="out", reroute=Non
             {"type": "item.completed", "item": {"id": "item_1", "type": "agent_message", "text": text}}]
     if reroute:
         recs.insert(2, {"type": "item.completed", "item": {"id": "item_r", "type": "error",
-                                                           "message": f"model rerouted: {reroute} (HighRiskCyber)"}})
+                                                           "message": f"model rerouted: {reroute} (HighRiskCyberActivity)"}})
     if terminal == "completed":
         recs.append({"type": "turn.completed", "usage": {"input_tokens": 0, "cached_input_tokens": 0,
                                                          "cache_write_input_tokens": 0, "output_tokens": 0,
@@ -265,6 +265,29 @@ class Join(unittest.TestCase):
         turn = m.read_rollout(raw(recs))["turns"][0]
         with self.assertRaises(m.JoinRefused):              # the writer would have truncated it: never stored whole
             m.join(turn, exec_stream(output=over), exit_code=0, session_id=TID)
+
+    def test_one_reroute_parser_and_two_different_reroutes_refuse(self):
+        """Codex road review F2: read_exec reads reroutes with codex_adapter's one parser (the reason pinned, `from`
+        the turn's requested model) and refuses two different reroutes in one exec."""
+        m = cn()
+        turn = m.read_rollout(raw(rollout()))["turns"][0]
+        base = exec_stream(reroute="SYNTHETIC-MODEL -> OTHER-MODEL")
+        self.assertEqual(m.join(turn, base, exit_code=0, session_id=TID)["served_model"], "OTHER-MODEL")
+        for message in ("model rerouted: SYNTHETIC-MODEL -> OTHER-MODEL (HighRiskCyberActivity) trailing",
+                        "model rerouted: SYNTHETIC MODEL -> OTHER-MODEL (HighRiskCyberActivity)",
+                        "model rerouted: ANOTHER-MODEL -> OTHER-MODEL (HighRiskCyberActivity)",
+                        "model rerouted: SYNTHETIC-MODEL -> OTHER-MODEL (Other)"):
+            with self.subTest(message=message):
+                text = base.replace("model rerouted: SYNTHETIC-MODEL -> OTHER-MODEL (HighRiskCyberActivity)", message)
+                self.assertIsNone(m.join(turn, text, exit_code=0, session_id=TID)["served_model"])
+        lines = base.splitlines(keepends=True)
+        second = json.dumps({"type": "item.completed", "item": {"id": "item_s", "type": "error", "message":
+                             "model rerouted: SYNTHETIC-MODEL -> THIRD-MODEL (HighRiskCyberActivity)"}}) + "\n"
+        with self.assertRaises(m.JoinRefused) as cm:
+            m.read_exec("".join(lines[:3] + [second] + lines[3:]), model="SYNTHETIC-MODEL")
+        self.assertIn("two different models", str(cm.exception))
+        import codex_adapter
+        self.assertIs(codex_adapter.reroute_of, m.reroute_of)
 
     def test_unregistered(self):
         import vendor_provenance

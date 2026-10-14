@@ -200,7 +200,22 @@ def codex_join_session(raw: bytes, streams: list, exit_codes: list) -> dict:
     shapes = {"interactions": len(joined), "command_round_trips": sum(j["commands"] for j in joined),
               "reroutes": sum(j["served_model"] is not None for j in joined),
               "marker_texts": sum(bool(j["marker_text"]) for j in joined)}
-    return {"status": "PASS", "interactions": len(joined), "shapes": shapes}
+    return {"status": "PASS", "interactions": len(joined), "shapes": shapes,
+            "served_models": [j["served_model"] for j in joined]}
+
+
+def codex_check(native: bytes, streams: list, ledger: dict) -> dict:
+    """The Codex acceptance check: the shared join, and (Codex road review F3) the driver ledger's served_model bound to
+    each turn's own stream: unobserved with no value when it holds no reroute, stream-reroute with its `to` model when
+    it does. A served model claimed in the ledger and not observed in its stream refuses."""
+    got = codex_join_session(native, streams, [t.get("exit") for t in ledger["turns"]])
+    if got["status"] != "PASS":
+        return got
+    want = [{"value": None, "source": "unobserved"} if s is None else {"value": s, "source": "stream-reroute"}
+            for s in got["served_models"]]
+    if ledger.get("served_model") != want:
+        return {"status": "DISAGREE", "why": f"the ledger's served_model is not each turn's own stream evidence: {want}"}
+    return got
 
 
 def coverage_line(shapes: dict) -> str:
@@ -570,8 +585,7 @@ PROFILES = {
     "codex": {"cli": CODEX_PINNED_CLI, "arm": "O", "acceptance": CODEX_ACCEPTANCE_FILE,
               "review": re.compile(r"codex-review\.md"), "reader": codex_reader, "sources": CODEX_SOURCES,
               "floor": CODEX_FLOOR,
-              "check": lambda native, streams, ledger: codex_join_session(native, streams,
-                                                                         [t.get("exit") for t in ledger["turns"]]),
+              "check": codex_check,
               "session_of": _codex_thread, "ledger_keys": LEDGER_KEYS + ("served_model",),
               "metadata": _codex_metadata},
 }

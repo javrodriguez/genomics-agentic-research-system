@@ -505,11 +505,13 @@ def a5_model(mod, p):
     if t1.identity != {"model": unobserved, "permission_mode": unobserved,
                        "version": {"value": VERSION, "source": "version-exec"}}:
         out.append(f"{p}: turn 1's identity is {t1.identity}")
+    # Codex road review F1, F2: one parser (codex_native.reroute_of), the reason pinned to HighRiskCyberActivity and
+    # `from` the turn's own -m model; spelled here from the source, never read from the module.
+    good = f"model rerouted: {MODEL} -> gpt-6-sol (HighRiskCyberActivity)"
     rerouted = "\n".join(lines("turn1-tools.jsonl")[:1] + [json.dumps({"type": "item.completed", "item": {
-        "id": "item_9", "type": "error", "message": f"model rerouted: {MODEL} -> gpt-6-sol (HighRiskCyber)"}})]
-        + lines("turn1-tools.jsonl")[1:]) + "\n"
+        "id": "item_9", "type": "error", "message": good}})] + lines("turn1-tools.jsonl")[1:]) + "\n"
     try:
-        r = mod.read_stream(rerouted)
+        r = mod.read_stream(rerouted, model=MODEL)
     except mod.StreamError as e:
         return out + [f"{p}: a reroute item is refused as off the tables: {e}"]
     if r["served_model"] != "gpt-6-sol" or r["agent_output"] is not True or r["api_errors"]:
@@ -518,28 +520,34 @@ def a5_model(mod, p):
     if mod.turn_identity(r, version="9.9.9", mode=unobserved)["model"] != {"value": "gpt-6-sol",
                                                                             "source": "stream-reroute"}:
         out.append(f"{p}: the reroute is not the identity's model")
-    for msg in ("model rerouted: a -> b", "Model rerouted: a -> b (X)", "model rerouted: a -> b (X) extra",
-                "a warning that is not a reroute"):
+    if refusal(lambda: mod.read_stream(rerouted), mod.StreamError):
+        out.append(f"{p}: with no requested model named, a reroute-shaped item was not refused as off the tables")
+    for msg in (f"model rerouted: {MODEL} -> b", f"Model rerouted: {MODEL} -> b (HighRiskCyberActivity)",
+                f"model rerouted: {MODEL} -> b (HighRiskCyberActivity) extra",
+                f"model rerouted: {MODEL} -> b (HighRiskCyber)", f"model rerouted: {MODEL} -> b (Other)",
+                "model rerouted: gpt-other -> b (HighRiskCyberActivity)", "a warning that is not a reroute"):
         rec = {"type": "item.completed", "item": {"id": "i", "type": "error", "message": msg}}
-        if mod.reroute_of(rec) is not None:
+        if mod.reroute_of(rec, MODEL) is not None:
             out.append(f"{p}: {msg!r} read as a reroute")
-    for rec in ({"type": "item.started", "item": {"id": "i", "type": "error", "message": "model rerouted: a -> b (X)"}},
-                {"type": "item.completed", "item": {"id": "i", "type": "error", "message": "model rerouted: a -> b (X)",
-                                                    "extra": 1}},
-                {"type": "item.completed", "item": {"id": 7, "type": "error", "message": "model rerouted: a -> b (X)"}},
-                {"type": "item.completed", "item": {"id": "i", "type": "warning", "message": "model rerouted: a -> b (X)"}},
+    shaped = f"model rerouted: {MODEL} -> b (HighRiskCyberActivity)"
+    if mod.reroute_of({"type": "item.completed", "item": {"id": "i", "type": "error", "message": shaped}}, MODEL) != "b":
+        out.append(f"{p}: the control reroute is not read")
+    for rec in ({"type": "item.started", "item": {"id": "i", "type": "error", "message": shaped}},
+                {"type": "item.completed", "item": {"id": "i", "type": "error", "message": shaped, "extra": 1}},
+                {"type": "item.completed", "item": {"id": 7, "type": "error", "message": shaped}},
+                {"type": "item.completed", "item": {"id": "i", "type": "warning", "message": shaped}},
                 {"type": "item.completed", "item": {"id": "i", "type": "error", "message": 7}},
                 {"type": "item.completed", "item": ["id", "type", "message"]},
                 ["type", "item"]):
         try:
-            got = mod.reroute_of(rec)
+            got = mod.reroute_of(rec, MODEL)
         except Exception as e:  # noqa: BLE001 - a crash on a malformed record is a finding, never a kill by error
             got = f"a crash: {type(e).__name__}"
         if got is not None:
             out.append(f"{p}: {rec} read as a reroute ({got})")
     two = rerouted + json.dumps({"type": "item.completed", "item": {
-        "id": "item_10", "type": "error", "message": f"model rerouted: {MODEL} -> gpt-6-luna (Other)"}}) + "\n"
-    got = refusal(lambda: mod.read_stream(two), mod.StreamError)
+        "id": "item_10", "type": "error", "message": f"model rerouted: {MODEL} -> gpt-6-luna (HighRiskCyberActivity)"}}) + "\n"
+    got = refusal(lambda: mod.read_stream(two, model=MODEL), mod.StreamError)
     if got:
         out.append(f"{p}: two reroutes to different models {got}")
     other = "\n".join(lines("turn1-tools.jsonl") + [json.dumps({"type": "item.completed", "item": {

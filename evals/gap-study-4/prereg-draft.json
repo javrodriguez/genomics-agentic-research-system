@@ -23573,7 +23573,7 @@
   },
   "served_model_rule": {
     "claude-code": "PENDING",
-    "codex": "PENDING",
+    "codex": "for the OpenAI arm, the served model is verified only when the CLI reports a reroute; otherwise the requested model is assumed",
     "gemini": "PENDING"
   },
   "furniture": {
@@ -23676,7 +23676,6 @@
     "/routing_marker_inputs/gemini/rate_limit_markers": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
     "/routing_marker_inputs/gemini/spend_cap_markers": "R15 CP5-req 55: CP2 adds each vendor's markers with its adapter.",
     "/served_model_rule/claude-code": "R15 CP5-req 53: the harness owners supply the served-model rule.",
-    "/served_model_rule/codex": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/served_model_rule/gemini": "R15 CP5-req 53: the harness owners supply the served-model rule.",
     "/stats_design_inputs/floors": "V5, R17: the published probes table exposes no floor field; the table owner must supply one.",
     "/version_pins/claude-code/claude-haiku-4-5-20251001/image_version": "R6/R14 plan 828, CP5-req 49: routing and image pins require the same measured version.",
@@ -23756,7 +23755,6 @@
       "/routing_marker_inputs/gemini/rate_limit_markers",
       "/routing_marker_inputs/gemini/spend_cap_markers",
       "/served_model_rule/claude-code",
-      "/served_model_rule/codex",
       "/served_model_rule/gemini",
       "/stats_design_inputs/floors",
       "/version_pins/claude-code/claude-haiku-4-5-20251001/image_version",

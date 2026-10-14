@@ -562,6 +562,16 @@ class FixtureWalkCoverage(unittest.TestCase):
         patch.start()
         self.addCleanup(patch.stop)
         self.assertEqual(fixture_walk.walk_coverage(road.study)[task]["walks_committed"], 0)
+        import walk_regrade
+        import drive
+        refused = lambda *a, **k: {"status": "refused", "why": "a stand-in refusal"}   # noqa: E731
+        with mock.patch.object(drive, "gemini_cross_check", refused):
+            doc = walk_regrade.regrade_doc(WALK, road.study, readers={"gemini": road.nrr.gemini_reader})
+            (road.folder / "regrade.json").write_bytes(walk_regrade.regrade_bytes(doc))
+            with mock.patch.object(road.nrr, "production_readers", lambda study=None: {"gemini": road.nrr.gemini_reader}):
+                self.assertEqual(fixture_walk.walk_coverage(road.study)[task]["walks_committed"], 0,
+                                 "a walk whose verified regrade refused is not counted either")
+        (road.folder / "regrade.json").unlink()
         grade = road.folder / "grade.json"
         grade.write_text(json.dumps({"graded": True, "row": {}, "grade": {}}))
         self.assertEqual(fixture_walk.walk_coverage(road.study)[task]["walks_committed"], 1, "the control counts")

@@ -105,6 +105,14 @@ class ServedModelRecorded(unittest.TestCase):
         with unittest.mock.patch.object(tbi.FakeAdapter, "_turn", turn):
             rig, ledger, refused = tvr.drive_vendor(self, "codex", native=False)
         self.assertEqual(ledger["served_model"], [unobserved, unobserved])
+        rerouted = {"value": "gpt-6-sol", "source": "stream-reroute"}      # a turn the CLI reports rerouted
+
+        def reroute(adapter, line, *, first, budget_s):
+            got = turn(adapter, line, first=first, budget_s=budget_s)
+            return got if first else dataclasses.replace(got, identity=dict(got.identity, model=dict(rerouted)))
+        with unittest.mock.patch.object(tbi.FakeAdapter, "_turn", reroute):
+            rig, ledger, refused = tvr.drive_vendor(self, "codex", native=False)
+        self.assertEqual(ledger["served_model"], [unobserved, rerouted])
         rig, ledger, refused = tvr.drive_vendor(self, "gemini")
         self.assertNotIn("served_model", ledger)
 
