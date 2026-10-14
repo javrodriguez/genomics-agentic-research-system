@@ -1241,6 +1241,59 @@ def run_generated(shard=None, sample=None, timeout=600, only=None) -> int:
     return 0 if not survived and not listed_killed and not inconclusive else 1
 
 
+# ------------------------------------------------------------------------------------------------- B10
+# glitch-06's queue item 1 (14 Oct 2026): TakeSpec.resources are the box lane's capacity POLICY (live-box report,
+# "TakeSpec.resources: values only, for walk_builders' take_spec": memory_reservation 2147483648, memory 6442450944,
+# cpus "8", pids_limit 4096), typed here once from that line.
+BOX_RESOURCES = {"memory_reservation": 2147483648, "memory": 6442450944, "cpus": "8", "pids_limit": 4096}
+
+
+def b10_problems(mod) -> list:
+    """B10.resources: the policy values, run_take's own spec check passing them, and the take spec built by the row's
+    arm's lock (a pending lock refuses at call time; a ready one gives its image id and the policy values)."""
+    from box import image_lock
+    out = []
+    if getattr(mod, "TAKE_RESOURCES", None) != BOX_RESOURCES:
+        return [f"B10.resources: TAKE_RESOURCES is {getattr(mod, 'TAKE_RESOURCES', None)!r}, not the box's policy"]
+    spec = rt.TakeSpec(image=tbi.IMAGE, run_tree="/synthetic/tree", config_dir="/synthetic/cfg",
+                       network=mod.NETWORK_PLACEHOLDER, **mod.TAKE_RESOURCES)
+    try:
+        rt.check_spec(spec)
+    except Exception as e:  # noqa: BLE001
+        out.append(f"B10.resources: run_take refuses the policy spec: {type(e).__name__}: {e}")
+    build = mod.take_spec_builder()
+    row = {"arm": "A"}
+    real = image_lock.load(str(HERE / mod.TAKE_LOCKS["A"]))
+    ready = dict(real, image_id="sha256:" + "a" * 64)
+    with mock.patch.object(image_lock, "load", lambda path: ready), \
+            mock.patch.object(image_lock, "require_ready", lambda lock: lock):
+        got = build(row, "/synthetic/cfg", "/synthetic/tree")
+    want = {"image": "sha256:" + "a" * 64, "run_tree": "/synthetic/tree", "config_dir": "/synthetic/cfg",
+            **BOX_RESOURCES}
+    if {k: getattr(got, k) for k in want} != want:
+        out.append(f"B10.resources: a ready lock's take spec is {got}")
+    with mock.patch.object(image_lock, "load", lambda path: dict(real, image_id=image_lock.PENDING)):
+        try:
+            build(row, "/synthetic/cfg", "/synthetic/tree")
+            out.append("B10.resources: a pending lock's take spec was built")
+        except Exception:  # noqa: BLE001 - NotReady, by the lock reader
+            pass
+    if set(mod.TAKE_LOCKS) != {"A", "O", "G"} or not all((HERE / v).is_file() for v in mod.TAKE_LOCKS.values()):
+        out.append(f"B10.resources: TAKE_LOCKS is not one existing lock per arm: {mod.TAKE_LOCKS}")
+    return out
+
+
+class B10Resources(Case):
+    def test_the_take_spec_carries_the_box_policy(self):
+        self.assertEqual(b10_problems(wb()), [])
+
+    def test_a_resource_drift_is_red(self):
+        mod = wb()
+        for k, v in (("memory", 4 * 1024 ** 3), ("cpus", "4"), ("pids_limit", 1024)):
+            with mock.patch.object(mod, "TAKE_RESOURCES", dict(mod.TAKE_RESOURCES, **{k: v})):
+                self.assertTrue(b10_problems(mod), k)
+
+
 if __name__ == "__main__":
     if "--generated-mutants" in sys.argv:
         shard = sample = None

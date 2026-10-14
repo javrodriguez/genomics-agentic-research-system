@@ -61,6 +61,12 @@ NAMES = ("runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_
          "cgroup_dir_for", "rules_scanner", "login_path", "agent_version", "table", "pin_for", "design_for",
          "budgets", "run_tree_origin", "run_tree_exclude", "clock", "sleep", "ownership", "settings_guard")
 CELL = ("task", "half", "wording", "arm", "model")
+# TakeSpec.resources: the take container's capacity POLICY, never a measurement (box lane report live-box-2026-10-13.md,
+# "TakeSpec.resources: values only, for walk_builders' take_spec", rule R-RES from athena's capacity and three
+# concurrent takes; run_take.check_spec requires memory = 3 x memory_reservation). glitch-06's queue item 1, 14 Oct 2026.
+TAKE_RESOURCES = {"memory_reservation": 2 * 1024 ** 3, "memory": 6 * 1024 ** 3, "cpus": "8", "pids_limit": 4096}
+NETWORK_PLACEHOLDER = "0" * 64       # a 64-hex placeholder: run_take.launch replaces it with the network it creates
+TAKE_LOCKS = {"A": "box/image.lock", "O": "box/codex/image.lock", "G": "box/gemini/image.lock"}   # each arm's take image
 COMMITTED = "committed"
 HEX40 = re.compile(r"[0-9a-f]{40}")
 
@@ -250,6 +256,37 @@ def walk_row(walk: str, cell: dict, agent_version: str, rows: list) -> dict:
 
 
 # ------------------------------------------------------------------------------------------------ the builder set
+def take_spec_builder(root=None):
+    """(row, config_dir, run_tree) -> run_take.TakeSpec: the row's arm's take image by its lock's image id (a lock that
+    is not ready refuses at call time, image_lock.NotReady) and TAKE_RESOURCES; the network a placeholder."""
+    from pathlib import Path
+
+    from box import image_lock
+    from box import run_take as rt
+    base = Path(root) if root is not None else Path(__file__).resolve().parent
+
+    def take_spec(row, config_dir, run_tree):
+        lock = image_lock.load(str(base / TAKE_LOCKS[row["arm"]]))
+        image_lock.require_ready(lock)
+        return rt.TakeSpec(image=lock["image_id"], run_tree=run_tree, config_dir=config_dir,
+                           network=NETWORK_PLACEHOLDER, **TAKE_RESOURCES)
+    return take_spec
+
+
+def take_a_spec():
+    """The production take spec: built once take-a's lock is ready (an arm A walk's image), else Missing naming what
+    the lock still holds PENDING. TakeSpec.resources are wired (TAKE_RESOURCES)."""
+    from pathlib import Path
+
+    from box import image_lock
+    lock = image_lock.load(str(Path(__file__).resolve().parent / TAKE_LOCKS["A"]))
+    held = image_lock.pending(lock)
+    if held:
+        return Missing(f"the take spec: take-a's image lock ({TAKE_LOCKS['A']}) is PENDING ({', '.join(held)}); "
+                       f"TakeSpec.resources are wired (walk_builders.TAKE_RESOURCES)")
+    return take_spec_builder()
+
+
 def production_builders() -> dict:
     """The builders and values as they stand in production: built ones, and a Missing (with its reason) for each
     value only the real box, the owner or a walk can give. Nothing here fills a PENDING value."""
@@ -265,8 +302,7 @@ def production_builders() -> dict:
     out = {
         "runtime": Missing(f"the DockerRuntime, built at {box}"),
         "config_parent": Missing(f"the folder per-walk config folders are made in, outside every repository: {box}"),
-        "take_spec": Missing(f"the take spec: box/image.lock's pinned image and run_take's TakeSpec.resources "
-                             f"({rt.PENDING_WHY['TakeSpec.resources']}): {box}"),
+        "take_spec": take_a_spec(),
         "sidecar_for": Missing(f"the sidecar launch, its image pinned and sidecar.expect bound to launched.sidecar_id "
                                f"(cp6-readiness:62): {box}"),
         "proxy": Missing(f"the egress proxy launch (box/egress, squid -k parse): {box}"),
