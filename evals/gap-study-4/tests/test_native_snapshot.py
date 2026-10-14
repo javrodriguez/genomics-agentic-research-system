@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""Live harness step 3c: each native session snapshot is retained before the next resume.
+
+A Gemini take resumes one native session file turn after turn (resumedSessionData.filePath, appended to), so the only
+proof of what the session held after turn n is a copy taken after turn n's quiescence and before turn n+1's exec.
+native_snapshot locates the file only where the pinned 0.64.0 source writes it (GEMINI_CLI_HOME/.gemini/tmp/<project
+identifier>/chats/session-<YYYY-MM-DDTHH-MM>[-<k>]-<first 8 of the session id>.jsonl), reading directory names only,
+and copies it into the take folder's session/ as native-turn-<n>.jsonl with a {file, sha256} reference. The driver
+calls it after each turn's post-n snapshot, for an adapter that names a native session; a failure stops the take for
+a human after cleanup and scan. step 1's session_history_facts then joins the retained snapshots.
+
+Fakes and synthetic strings only: no model, vendor, network, container runtime, credential or holdout.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent.parent
+for p in (HERE, HERE / "tests"):
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
+
+import agent_adapter as aa  # noqa: E402
+import batch  # noqa: E402
+import test_box_integration as tbi  # noqa: E402
+from graders import labels4  # noqa: E402
+
+SID = "1a2b3c4d-0000-4000-8000-00000000abcd"
+
+
+def setUpModule():
+    tbi.setUpModule()
+
+
+def tearDownModule():
+    tbi.tearDownModule()
+
+
+def ns():
+    import native_snapshot
+    return native_snapshot
+
+
+def chats(home: Path, project="synthetic-project") -> Path:
+    d = home / ".gemini" / "tmp" / project / "chats"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+class Locate(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.home = Path(self.tmp.name) / "home"
+        self.home.mkdir()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_the_source_named_file_is_found_and_nothing_else(self):
+        m = ns()
+        d = chats(self.home)
+        want = d / f"session-2026-10-14T04-20-{SID[:8]}.jsonl"
+        want.write_text("{}\n")
+        (d / "session-2026-10-14T04-20-ffffffff.jsonl").write_text("{}\n")      # another session
+        sub = d / SID
+        sub.mkdir()
+        (sub / "child.jsonl").write_text("{}\n")                                 # a subagent's file
+        self.assertEqual(m.gemini_session_file(str(self.home), SID), str(want))
+        want.unlink()
+        (d / f"session-2026-10-14T04-20-2-{SID[:8]}.jsonl").write_text("{}\n")   # a collision index
+        self.assertTrue(m.gemini_session_file(str(self.home), SID).endswith(f"-2-{SID[:8]}.jsonl"))
+
+    def test_none_two_or_a_link_refuses(self):
+        m = ns()
+        with self.assertRaises(m.SnapshotRefused):
+            m.gemini_session_file(str(self.home), SID)                           # none
+        d = chats(self.home)
+        (d / f"session-2026-10-14T04-20-{SID[:8]}.jsonl").write_text("{}\n")
+        (d / f"session-2026-10-14T04-21-{SID[:8]}.jsonl").write_text("{}\n")
+        with self.assertRaises(m.SnapshotRefused):
+            m.gemini_session_file(str(self.home), SID)                           # two
+        (d / f"session-2026-10-14T04-21-{SID[:8]}.jsonl").unlink()
+        other = chats(self.home, "second-project")
+        (other / f"session-2026-10-14T04-20-{SID[:8]}.jsonl").write_text("{}\n")
+        with self.assertRaises(m.SnapshotRefused):
+            m.gemini_session_file(str(self.home), SID)                           # two projects
+        (other / f"session-2026-10-14T04-20-{SID[:8]}.jsonl").unlink()
+        real = d / f"session-2026-10-14T04-20-{SID[:8]}.jsonl"
+        real.rename(d / "elsewhere.txt")
+        os.symlink(d / "elsewhere.txt", real)
+        with self.assertRaises(m.SnapshotRefused):
+            m.gemini_session_file(str(self.home), SID)                           # a symbolic link
+        for bad in ("", "../x", "latest", None):
+            with self.subTest(bad=bad), self.assertRaises(m.SnapshotRefused):
+                m.gemini_session_file(str(self.home), bad)
+
+    def test_a_linked_directory_on_the_way_refuses(self):
+        m = ns()
+        real = Path(self.tmp.name) / "outside"
+        (real / "synthetic-project" / "chats").mkdir(parents=True)
+        (real / "synthetic-project" / "chats" / f"session-2026-10-14T04-20-{SID[:8]}.jsonl").write_text("{}\n")
+        (self.home / ".gemini").mkdir()
+        os.symlink(real, self.home / ".gemini" / "tmp")
+        with self.assertRaises(m.SnapshotRefused):
+            m.gemini_session_file(str(self.home), SID)
+
+
+class Retain(unittest.TestCase):
+    def test_bytes_are_copied_once_with_their_reference(self):
+        m = ns()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "src.jsonl"
+            src.write_bytes(b'{"sessionId": "s"}\n')
+            take = Path(tmp) / "take"
+            take.mkdir()
+            ref = m.retain(str(take), 1, str(src))
+            self.assertEqual(ref, {"file": "native-turn-1.jsonl",
+                                   "sha256": hashlib.sha256(src.read_bytes()).hexdigest()})
+            self.assertEqual((take / "session" / "native-turn-1.jsonl").read_bytes(), src.read_bytes())
+            src.write_bytes(b'{"sessionId": "s"}\n{"later": 1}\n')
+            with self.assertRaises(m.SnapshotRefused):
+                m.retain(str(take), 1, str(src))                                  # never overwritten
+            self.assertEqual(m.retain(str(take), 2, str(src))["file"], "native-turn-2.jsonl")
+            link = Path(tmp) / "link.jsonl"
+            os.symlink(src, link)
+            for bad_src, n in ((str(link), 3), (tmp, 4)):
+                with self.subTest(src=bad_src), self.assertRaises(m.SnapshotRefused):
+                    m.retain(str(take), n, bad_src)
+            for n in (0, -1, True, "1"):
+                with self.subTest(n=n), self.assertRaises(m.SnapshotRefused):
+                    m.retain(str(take), n, str(src))
+
+
+class NativeAdapter(tbi.FakeAdapter):
+    """FakeAdapter that keeps a growing native session file in its own home, as a resumed Gemini session does."""
+
+    def __init__(self, *a, home, fail_at=None, **kw):
+        super().__init__(*a, **kw)
+        self.home, self.fail_at, self.seen_before = Path(home), fail_at, []
+        self.file = chats(self.home) / f"session-2026-10-14T04-20-{SID[:8]}.jsonl"
+
+    def native_session_path(self, home):
+        if self.fail_at == self._turns:
+            raise ns().SnapshotRefused("synthetic: no session file")
+        return ns().gemini_session_file(str(self.home), SID)
+
+    def _turn(self, line, *, first, budget_s):
+        n = self._turns + 1
+        self.seen_before.append(sorted(p.name for p in (Path(self.take.folder) / "session").glob("native-turn-*"))
+                                if (Path(self.take.folder) / "session").is_dir() else [])
+        with open(self.file, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"turn": n, "line": line}) + "\n")
+        return super()._turn(line, first=first, budget_s=budget_s)
+
+
+class DriverRetains(unittest.TestCase):
+    def drive(self, fail_at=None, plain=False):
+        tbi.need(self, "TakeDriver", "TakeRepo", "DriveRefused", "sidecar_health")
+        root_cm = tbi.scratch_repo()
+        root = root_cm.__enter__()
+        self.addCleanup(root_cm.__exit__, None, None, None)
+        home = tempfile.TemporaryDirectory()
+        self.addCleanup(home.cleanup)
+        rig = tbi.Rig(tbi.drive, root, turns=[{"text": "a"}, {"text": "b"}, {"text": "c"}])
+        if not plain:
+            def make(r, take):
+                rig.adapters.append(NativeAdapter(rig.box, take, rig.turns, home=home.name, fail_at=fail_at))
+                return rig.adapters[-1]
+            rig.adapter_for = rig.driver.adapter_for = make
+        b, got = tbi.run_batch(rig, [tbi.row(1)])
+        folder = Path(rig.take().folder)
+        ledger = json.loads((folder / "driver-ledger.json").read_text()) if (folder / "driver-ledger.json").is_file() else None
+        return rig, got[0], folder, ledger
+
+    def test_each_snapshot_is_retained_before_the_next_resume(self):
+        rig, o, folder, ledger = self.drive()
+        a = rig.adapters[0]
+        self.assertEqual(o["state"], labels4.GRADED)
+        self.assertEqual(a.seen_before, [[], ["native-turn-1.jsonl"], ["native-turn-1.jsonl", "native-turn-2.jsonl"]])
+        refs = ledger["native_snapshots"]
+        self.assertEqual([r["file"] for r in refs], [f"native-turn-{n}.jsonl" for n in (1, 2, 3)])
+        for n, r in enumerate(refs, 1):
+            raw = (folder / "session" / r["file"]).read_bytes()
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), r["sha256"])
+            self.assertEqual(len(raw.decode().splitlines()), n, "snapshot n holds the session after turn n")
+
+    def test_a_retention_failure_stops_the_take_for_a_human(self):
+        rig, o, folder, ledger = self.drive(fail_at=2)
+        self.assertEqual(o["state"], labels4.FAILED)
+        self.assertIn("native session snapshot", o["reason"])
+        self.assertTrue(batch.needs_ruling(o))
+        self.assertIs(o["rerun"], False)
+        self.assertEqual(len(rig.adapters[0].lines), 2, "nothing is sent after a snapshot that was not retained")
+        self.assertEqual([r["file"] for r in ledger["native_snapshots"]], ["native-turn-1.jsonl"])
+        self.assertIn("native session snapshot", ledger["native_snapshot_refusal"])
+        self.assertEqual(rig.checked, [])
+        self.assertEqual(rig.box.empty(), [])
+
+    def test_an_adapter_without_a_native_session_is_unchanged(self):
+        rig, o, folder, ledger = self.drive(plain=True)
+        self.assertEqual(o["state"], labels4.GRADED)
+        self.assertNotIn("native_snapshots", ledger)
+        self.assertFalse((folder / "session").exists())
+
+    def test_retained_snapshots_join_through_session_history_facts(self):
+        import vendor_provenance as vp
+        rig, o, folder, ledger = self.drive()
+        def reader(raw, ordinal):
+            rows = [json.loads(x) for x in raw.decode().splitlines()]
+            if ordinal > len(rows):
+                raise vp.ProvenanceRefused("snapshot lacks requested interaction")
+            r = rows[ordinal - 1]
+            return {"session_id": SID, "requested_model": None, "version": None, "cwd": None,
+                    "permission_mode": None, "sent": r["line"], "output": [r["turn"]]}
+        got = vp.session_history_facts("gemini", folder / "session", ledger["native_snapshots"],
+                                       readers={"gemini": reader})
+        self.assertEqual([g["sent"]["value"] for g in got], ["line 1", "line 2", "line 3"])
+        (folder / "session" / "native-turn-2.jsonl").write_bytes(b'{"turn": 1, "line": "rewritten"}\n')
+        with self.assertRaises(vp.ProvenanceRefused):
+            vp.session_history_facts("gemini", folder / "session", ledger["native_snapshots"],
+                                     readers={"gemini": reader})
+
+
+class GeminiAdapterNamesItsSession(unittest.TestCase):
+    def test_the_session_is_located_by_the_id_turn_one_named(self):
+        import gemini_adapter as ga
+        m = ns()
+        a = ga.GeminiAdapter.__new__(ga.GeminiAdapter)
+        a.session_id = None
+        with self.assertRaises(m.SnapshotRefused):
+            a.native_session_path("/nonexistent")
+        with tempfile.TemporaryDirectory() as tmp:
+            f = chats(Path(tmp)) / f"session-2026-10-14T04-20-{SID[:8]}.jsonl"
+            f.write_text("{}\n")
+            a.session_id = SID
+            self.assertEqual(a.native_session_path(tmp), str(f))
+
+
+if __name__ == "__main__":
+    unittest.main()

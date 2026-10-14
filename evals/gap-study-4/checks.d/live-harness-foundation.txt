@@ -5,3 +5,4 @@ python3 -W ignore evals/gap-study-4/tests/test_gemini_projection.py
 python3 -W ignore evals/gap-study-4/tests/test_vendor_record_kinds.py
 python3 -W ignore evals/gap-study-4/tests/test_executed_turn_refusal.py
 python3 -W ignore evals/gap-study-4/tests/test_identity_evidence.py
+python3 -W ignore evals/gap-study-4/tests/test_native_snapshot.py

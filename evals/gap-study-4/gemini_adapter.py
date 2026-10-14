@@ -357,3 +357,9 @@ class GeminiAdapter(aa.AgentAdapter):
     def _end(self) -> None:
         """Nothing of the adapter's own to tear down: the driver removes the container by its recorded id."""
         return None
+
+    def native_session_path(self, home: str) -> str:
+        """Live harness 3c: the native session file this take resumes, under GEMINI_CLI_HOME `home`, located by the
+        session id turn 1's init named (native_snapshot.gemini_session_file; directory names only)."""
+        import native_snapshot
+        return native_snapshot.gemini_session_file(home, self.session_id)

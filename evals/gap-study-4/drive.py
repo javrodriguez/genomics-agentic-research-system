@@ -1806,6 +1806,7 @@ class TakeRepo:
 
 import threading  # noqa: E402
 import types  # noqa: E402  (live harness 3a: the executed-refused turn's end for _quiesce)
+import native_snapshot as _native_snapshot  # noqa: E402  (live harness 3c)
 
 import agent_adapter as _adapter  # noqa: E402
 import harness_bookkeeping as _hb  # noqa: E402
@@ -1904,6 +1905,10 @@ class _Take:
         self.environment = None        # S6c C8: environment.json as written before the first turn
         self.cross_check = None        # S6c C6: the streams against the session file (problems; [] when they agree)
         self.executed_refusal = None   # live harness 3a: the executed turn whose own record the harness refused
+        self.adapter_ref = None        # live harness 3c: the adapter the executed-refusal road retains through
+        self.native_hook = False       # live harness 3c: the adapter names a native session to retain per turn
+        self.native_snapshots: list = []        # 3c: {file, sha256} per retained turn, under session/
+        self.native_snapshot_refusal = None     # 3c: why a turn's snapshot was not retained (the take stops)
 
 
 class TakeDriver:
@@ -2180,7 +2185,26 @@ class TakeDriver:
             stopped = self.clock()
             for pid in left:
                 self._evidence_line(take, {"kind": "background", "pid": pid, "stopped_at": stopped})
-        return self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
+        unreadable = self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
+        self._retain_native(take, take.adapter_ref, n)    # 3c: kept as evidence when the source allows; never raised
+        return unreadable
+
+    def _retain_native(self, take, adapter, n: int) -> bool:
+        """Live harness 3c: for an adapter that names a native session (native_session_path(home), home the take's
+        config folder), copy it into session/native-turn-<n>.jsonl after turn n's post-n snapshot and before any next
+        resume (native_snapshot.retain). False, with the reason kept, when it cannot be located or retained: nothing
+        further is sent and the take stops for a human after cleanup and scan. An adapter without one: True."""
+        locate = getattr(adapter, "native_session_path", None)
+        if not callable(locate):
+            return True
+        take.native_hook = True
+        try:
+            take.native_snapshots.append(_native_snapshot.retain(take.folder, n, locate(take.config_dir)))
+            return True
+        except (_native_snapshot.SnapshotRefused, OSError) as e:
+            if take.native_snapshot_refusal is None:
+                take.native_snapshot_refusal = f"turn {n}: native session snapshot not retained: {e}"
+            return False
 
     def _take_records(self, take, row, adapter, turns) -> None:
         """S6c C6, C7, C8, C14, once the agent's processes are gone and before the scan: the session file copied out
@@ -2236,6 +2260,9 @@ class TakeDriver:
                   "cross_check": list(take.cross_check),
                   "cost": cost,
                   "streams": [os.path.basename(t.stream_path) for t in turns if t.stream_path]}
+        if take.native_hook:                      # live harness 3c: only for an adapter that names a native session
+            ledger["native_snapshots"] = [dict(r) for r in take.native_snapshots]
+            ledger["native_snapshot_refusal"] = take.native_snapshot_refusal
         if take.executed_refusal is not None:     # live harness 3a: only when a turn's record was refused
             ledger["executed_refusal"] = dict(take.executed_refusal)
             if take.executed_refusal["stream"] is not None:
@@ -2330,6 +2357,7 @@ class TakeDriver:
                 for n, line in enumerate(script, 1):
                     if n > 1:
                         unreadable += self._ctl(take, "snapshot", f"pre-{n}")["unreadable_consequential"]
+                    take.adapter_ref = adapter
                     try:
                         turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
                     except _adapter.ExecutedTurnRefused as e:     # live harness 3a: the turn ran; account for it
@@ -2347,7 +2375,8 @@ class TakeDriver:
                             self._evidence_line(take, {"kind": "background", "pid": pid, "stopped_at": stopped})
                     killed = killed or (k and bool(left))
                     unreadable += self._ctl(take, "snapshot", f"post-{n}")["unreadable_consequential"]
-                    if not script.read(turn):                         # S6c C13: an unheld marker, or a cut turn
+                    retained = self._retain_native(take, adapter, n)  # live harness 3c: before any next resume
+                    if not script.read(turn) or not retained:         # S6c C13: an unheld marker, or a cut turn
                         break
                     step = OPERATOR_STEPS.get((row["task"], script.done)) if script.done is not None else None
                     if step is not None and script.pending is not None:   # S6b C9: between post-n and pre-(n+1)
@@ -2381,6 +2410,9 @@ class TakeDriver:
             r = take.executed_refusal
             raise DriveRefused(f"turn {r['n']} executed and its record was refused ({r['refused']}): the take is "
                                f"kept for a human ruling, never a rehearsal or a re-run")
+        if take.native_snapshot_refusal is not None:     # live harness 3c: cleaned, recorded and scanned
+            raise DriveRefused(f"{take.native_snapshot_refusal}: the take is kept for a human ruling, never a "
+                               f"rehearsal or a re-run")
         ids = tuple(_routing.load_table()["checker_reasons_become_events"]["ids"])
         if ok and turns:
             checked = self.checker(row, take, list(turns))

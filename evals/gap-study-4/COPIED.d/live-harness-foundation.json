@@ -65,6 +65,16 @@
       "path": "tests/test_identity_evidence.py",
       "status": "new",
       "reason": "Live harness 3b: typed identity evidence beside init is closed and typed, carried only when stated, and routed so a matching typed identity is no mismatch while every unobserved, unaccepted or differing field still is; Gemini states its sources."
+    },
+    {
+      "path": "native_snapshot.py",
+      "status": "new",
+      "reason": "Live harness 3c: locates Gemini CLI 0.64.0's native session file by directory names only, where the pinned source writes it, and retains each turn's snapshot under session/ with a {file, sha256} reference, never overwriting or following a link."
+    },
+    {
+      "path": "tests/test_native_snapshot.py",
+      "status": "new",
+      "reason": "Live harness 3c: the locator's confinement, the copy's reference and no-overwrite, the driver's retention before each next resume and its stop on failure, an unchanged plain adapter, and the join through session_history_facts."
     }
   ]
 }
