@@ -577,9 +577,18 @@ class Description(unittest.TestCase):
         with mock.patch.object(b, "prior_metadata", return_value=prior):
             self.assertEqual(b.describe()["predictions"], d["predictions"])
 
+    def test_new_folder_residual_is_bound(self):
+        """Box lane, 14 Oct (glitch-06, review finding 4): the residual names its three cases and its checks exist."""
+        d = self.get()
+        self.assertEqual(d["box_residuals"][3], NEW_FOLDER_RESIDUAL, "R8.new-folder-residual")
+        live = (HERE / "tests/test_live_box.py").read_text()
+        es_tests = (HERE / "tests/test_endstate.py").read_text()
+        for cls, text in (("NewFolderGap", live), ("RescanReach", live), ("Discoveries", es_tests)):
+            self.assertIn(f"class {cls}(", text, "R8.new-folder-residual")
+
     def test_mode_residual_is_bound(self):
         d = self.get()
-        self.assertEqual(len(d["box_residuals"]), 3, "R8.mode-residual")
+        self.assertEqual(len(d["box_residuals"]), 4, "R8.mode-residual")   # 4th: the new-folder gap (14 Oct)
         self.assertEqual(d["box_residuals"][2], MODE_RESIDUAL, "R8.mode-residual")
         endstate_tests = (HERE / MODE_CHECK[0]).read_text()
         self.assertIn(f"class {MODE_CHECK[1]}(", endstate_tests, "R8.mode-residual")
