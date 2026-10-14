@@ -72,6 +72,9 @@ mutants = [
  ("R2-2 provenance revision not compared", 'and args.get("vcs:revision") == record["source_commit"]', ''),
  ("R2-2 provenance context not compared", '          and args.get("vcs:localdir:context") == rel_box,', '          ,'),
  ("R2-3 problems not read", '_need(record.get("problems") == [],', '_need(True,'),
+ ("rederive schema-2 not required", '_need(lock["schema"] == il.SCHEMA_2 and lock["image"] == image,', '_need(True,'),
+ ("rederive plan written", '_need(read_bytes is not None, "a re-derived plan is never written")', 'pass'),
+ ("rederive keeps the committed digests", 'unfilled = {k: v for k, v in lock.items() if k not in il.SCHEMA_2_KEYS}', 'unfilled = dict(lock)'),
  ("R2-4 head_blob by git show", '_git(repo, "cat-file", "blob", "HEAD:" + rel)', '_git(repo, "show", "HEAD:" + rel)'),
 ]
 

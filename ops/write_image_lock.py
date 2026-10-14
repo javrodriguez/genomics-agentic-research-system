@@ -221,8 +221,11 @@ def check_build(il, repo: Path, record_path: Path, record: dict, row: dict, new:
           f"{image}'s --metadata-file is not the committed {row['metadata_file']}")
 
 
-def plan(il, repo: Path, record_path: Path, lock_path: Path, image: str) -> tuple:
-    """(the schema-2 lock to write, the lock's bytes as read). Refuses (Refused or image_lock.LockError)."""
+def plan(il, repo: Path, record_path: Path, lock_path: Path, image: str, *, unfilled: dict | None = None) -> tuple:
+    """(the schema-2 lock to write, the lock's bytes as read). Refuses (Refused or image_lock.LockError).
+
+    `unfilled` is only for rederive(): the committed lock re-made unfilled in memory, planned at its own path; its
+    bytes-as-read are then None and nothing may be written from it."""
     repo = Path(repo)
     record = json.loads(committed_bytes(repo, Path(record_path)))
     _need(isinstance(record, dict) and record.get("schema") == RECORD_SCHEMA,
@@ -244,9 +247,12 @@ def plan(il, repo: Path, record_path: Path, lock_path: Path, image: str) -> tupl
         _need(isinstance(row.get(k), str) and DIGEST.fullmatch(row[k]) is not None, f"{image}'s {k} is not a digest")
     inputs = row.get("lock_inputs")
     _need(isinstance(inputs, dict), f"{image}'s row carries no lock_inputs")
-    with open(lock_path, "rb") as fh:
-        lock_bytes = fh.read()
-    lock = il.load(str(lock_path))
+    if unfilled is None:
+        with open(lock_path, "rb") as fh:
+            lock_bytes = fh.read()
+        lock = il.load(str(lock_path))
+    else:
+        lock_bytes, lock = None, il.validate(copy.deepcopy(unfilled))
     _need(lock["schema"] == il.SCHEMA, "the lock is not the unfilled schema-1 lock")
     _need(lock["image"] == image, f"the lock is {lock['image']}'s, not {image}'s")
     check_inputs(il, repo, record, row, lock, Path(lock_path), commit)
@@ -273,6 +279,25 @@ def plan(il, repo: Path, record_path: Path, lock_path: Path, image: str) -> tupl
     return new, lock_bytes
 
 
+def lock_text(new: dict) -> str:
+    """A written lock's exact text (write() and the dry run print the same bytes)."""
+    return json.dumps(new, indent=1, sort_keys=True) + "\n"
+
+
+def rederive(il, repo: Path, record_path: Path, lock_path: Path, image: str) -> bytes:
+    """The bytes a committed lock must hold (glitch-06's ruling on the post-write guard, 14 Oct 2026): the committed
+    lock must be the named image's schema-2 lock; its schema-2 fields are removed and image_id is PENDING again, and
+    plan() over the committed build record re-derives it. A hand-edited pin, a pin from another record or row, or a
+    stale pin (an input changed at HEAD) differs from these bytes or refuses."""
+    lock = il.load(str(lock_path))
+    _need(lock["schema"] == il.SCHEMA_2 and lock["image"] == image,
+          f"{lock_path} is not {image}'s filled schema-{il.SCHEMA_2} lock")
+    unfilled = {k: v for k, v in lock.items() if k not in il.SCHEMA_2_KEYS}
+    unfilled.update(schema=il.SCHEMA, image_id=il.PENDING, pending={"image_id": "re-derived by rederive()"})
+    new, _ = plan(il, repo, record_path, lock_path, image, unfilled=unfilled)
+    return lock_text(new).encode()
+
+
 def write(lock_path: Path, new: dict, read_bytes: bytes) -> None:
     """Compare and replace under an exclusive flock on the lock's folder (LW-6); refuses if another writer holds it."""
     try:
@@ -285,13 +310,13 @@ def write(lock_path: Path, new: dict, read_bytes: bytes) -> None:
             fcntl.flock(dfd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             raise Refused("another writer holds the lock's folder") from None
+        _need(read_bytes is not None, "a re-derived plan is never written")
         with open(lock_path, "rb") as fh:
             _need(fh.read() == read_bytes, "the lock changed since it was read")
         tmp = Path(str(lock_path) + ".writing")
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(new, fh, indent=1, sort_keys=True)
-            fh.write("\n")
+            fh.write(lock_text(new))
         os.replace(tmp, lock_path)
     finally:
         os.close(dfd)   # closing the descriptor releases the flock
@@ -327,7 +352,7 @@ def main(argv=None) -> int:
             return 1
         print(f"write_image_lock: wrote {a.lock} (schema {new['schema']}, from {new['source_commit']})")
     else:
-        print(json.dumps(new, indent=1, sort_keys=True))
+        print(lock_text(new), end="")
     return 0
 
 

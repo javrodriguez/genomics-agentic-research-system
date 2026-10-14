@@ -51,9 +51,27 @@ SIDECAR_COPY = "COPY sidecar.py /opt/w/sidecar.py\n"
 REAL_BOX = il.BOX_DIR
 
 
+# The fields a fixture's unfilled lock holds PENDING (the locks before the reviewed write).
+UNFILLED_PENDING = {"take-a": ("base", "harness.version", "python", "image_id"),
+                    "sidecar": ("base", "python", "image_id")}
+
+
 def committed(image: str) -> dict:
+    """The fixture's unfilled (schema-1) lock, made synthetically from the committed lock (now the reviewed schema-2
+    pin, glitch-06's post-write ruling): its schema-2 fields removed and UNFILLED_PENDING PENDING again. Never the
+    committed lock read as schema 1."""
     with mock.patch.object(il, "BOX_DIR", REAL_BOX):     # the committed lock, even while a fixture box is active
-        return il.load(os.path.join(REAL_BOX, os.path.dirname(il.DOCKERFILES[image]), "image.lock"))
+        lock = il.load(os.path.join(REAL_BOX, os.path.dirname(il.DOCKERFILES[image]), "image.lock"))
+    lock = {k: v for k, v in copy.deepcopy(lock).items() if k not in il.SCHEMA_2_KEYS}
+    lock["schema"] = il.SCHEMA
+    for field in UNFILLED_PENDING[image]:
+        head, _, tail = field.partition(".")
+        if tail:
+            lock[head][tail] = il.PENDING
+        else:
+            lock[head] = il.PENDING
+    lock["pending"] = {f: "synthetic: re-PENDINGed from the committed lock" for f in UNFILLED_PENDING[image]}
+    return il.validate(lock)
 
 
 def inputs(lock: dict) -> dict:
@@ -588,6 +606,37 @@ class RefusalsDoNotFallThroughL4(unittest.TestCase):
                          "--image", "take-a", "--write"])
         self.assertEqual((rc, r.lock_path.read_bytes()), (1, before))
         self.assertIn("REFUSED", buf.getvalue())
+
+
+class Rederive(unittest.TestCase):
+    """rederive(): the bytes a committed lock must hold, re-derived by plan() from the committed record."""
+
+    def test_a_written_lock_rederives_to_its_own_bytes(self):
+        r = Repo(self)
+        new, read = r.plan()
+        w.write(r.lock_path, new, read)
+        self.assertEqual(w.rederive(il, r.root, r.record_path, r.lock_path, "take-a"), r.lock_path.read_bytes())
+
+    def test_a_hand_edited_pin_differs(self):
+        r = Repo(self)
+        new, read = r.plan()
+        w.write(r.lock_path, dict(new, manifest_digest=OTHER), read)
+        self.assertNotEqual(w.rederive(il, r.root, r.record_path, r.lock_path, "take-a"), r.lock_path.read_bytes())
+
+    def test_an_unfilled_or_other_lock_refuses(self):
+        r = Repo(self)
+        with self.assertRaisesRegex(w.Refused, "is not take-a's filled schema-2 lock"):
+            w.rederive(il, r.root, r.record_path, r.lock_path, "take-a")
+        new, read = r.plan()
+        w.write(r.lock_path, new, read)
+        with self.assertRaisesRegex(w.Refused, "is not sidecar's filled schema-2 lock"):
+            w.rederive(il, r.root, r.record_path, r.lock_path, "sidecar")
+
+    def test_a_rederived_plan_is_never_written(self):
+        r = Repo(self)
+        new, _ = r.plan()
+        with self.assertRaisesRegex(w.Refused, "never written"):
+            w.write(r.lock_path, new, None)
 
 
 class WriteLW6(unittest.TestCase):
