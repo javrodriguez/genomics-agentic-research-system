@@ -189,8 +189,8 @@ class World:
             "mounts": [{"source": self.tree, "destination": self.tree, "rw": False},
                        {"source": self.ev, "destination": "/srv/ev", "rw": True}]}
         self.sidecar_expect.update(image=IMAGE, entrypoint=[],
-                                   cmd=[*pf.sidecar_module.WATCHER_LAUNCHER, *pf.sidecar_module.INTERPRETER,
-                                        pf.sidecar_module.PROGRAM, "serve", "--run-tree", self.tree,
+                                   cmd=[*pf.sidecar_contract.WATCHER_LAUNCHER, *pf.sidecar_contract.INTERPRETER,
+                                        pf.sidecar_contract.PROGRAM, "serve", "--run-tree", self.tree,
                                         "--evidence", "/srv/ev", "--watch", "plan"])
         self.begin = {"ok": True, "command": "begin", "label": None, "taken_at": 1.0, "rearmed_at": None,
                       "unreadable": [], "unreadable_consequential": [], "problems": []}

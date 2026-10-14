@@ -426,12 +426,13 @@ class TestBinding6Program(Binding):
     def check(self):
         out = []
         copies = [i.args for i in dockerfile(il.SIDECAR_IMAGE) if i.keyword == "COPY"]
-        if len(copies) != 1 or copies[0].split()[-1] != sc.PROGRAM:
+        if not copies or copies[0].split()[-1] != sc.PROGRAM:
             out.append(f"the sidecar Dockerfile copies to {copies}, not {sc.PROGRAM}")
         if il.SIDECAR_PROGRAM != sc.PROGRAM:
             out.append(f"image_lock.SIDECAR_PROGRAM {il.SIDECAR_PROGRAM} != sidecar.PROGRAM {sc.PROGRAM}")
-        if copies != [il.SIDECAR_COPY]:
-            out.append("the Dockerfile's COPY is not image_lock.SIDECAR_COPY")
+        # glitch-06 ruling 1 (14 Oct): the program and its launch contract, in that order.
+        if copies != list(il.SIDECAR_COPIES) or il.SIDECAR_COPIES[0] != il.SIDECAR_COPY:
+            out.append("the Dockerfile's COPY lines are not image_lock.SIDECAR_COPIES")
         argv = sc.create_argv(image=IMAGE, run_tree=RUN_TREE, evidence="/srv/e/t1", watch=["a"])
         if sc.PROGRAM not in argv:
             out.append("the sidecar's create argv does not run sidecar.PROGRAM")

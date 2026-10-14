@@ -40,7 +40,7 @@ from typing import Callable
 
 from box import image_lock
 from box import run_take
-from box import sidecar as sidecar_module
+from box import sidecar_contract
 
 PENDING = run_take.PENDING
 NotReady = run_take.NotReady
@@ -416,7 +416,7 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
         Probe("processes", agent(_py(PROCESSES_PROGRAM))),
         Probe("sidecar-inspect", inspect(sidecar_id)),
         Probe("health", read=lambda: _read_health(os.path.join(evidence_dir, HEALTH))),
-        Probe("watcher-caps", (run_take.RUNTIME_CLIENT, "exec", "--user", sidecar_module.WATCHER_USER,
+        Probe("watcher-caps", (run_take.RUNTIME_CLIENT, "exec", "--user", sidecar_contract.WATCHER_USER,
                                sidecar_id, *_py(PROCESSES_PROGRAM))),
         Probe("sockets", agent(_py(SOCKETS_PROGRAM))),
         Probe("egress", agent(_py(EGRESS_PROGRAM, run_take.PROXY_ALIAS, _proxy_port(), hosts[harness],
@@ -593,16 +593,16 @@ def _check_sidecar(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir
           f"sidecar_expect must name exactly {list(SIDECAR_EXPECT_KEYS)}")
     still = sorted(k for k, v in exp.items() if _is_pending(v))
     _need(not still, f"sidecar_expect PENDING: {', '.join(still)}")
-    _need(exp["user"] == sidecar_module.BOOT_USER, "the sidecar launch does not use the fixed privilege-drop bootstrap")
+    _need(exp["user"] == sidecar_contract.BOOT_USER, "the sidecar launch does not use the fixed privilege-drop bootstrap")
     _need(exp["network_mode"] == "none", "the sidecar's expected network is not none")
     _need(exp["security_opt"] == ["no-new-privileges"], "the sidecar's expected security option is not no-new-privileges")
     _need([m.get("destination") for m in exp["mounts"] if isinstance(m, dict) and m.get("rw") is True]
           == [SIDECAR_EVIDENCE_MOUNT], f"the sidecar's one read-write mount is not {SIDECAR_EVIDENCE_MOUNT}")
     _need(exp["cap_drop"] == ["ALL"] and isinstance(exp["cap_add"], list)
-          and sorted(exp["cap_add"]) == sorted(sidecar_module.BOOT_INSPECT_CAPABILITIES),
+          and sorted(exp["cap_add"]) == sorted(sidecar_contract.BOOT_INSPECT_CAPABILITIES),
           "the sidecar drops ALL and adds exactly its registered bootstrap capabilities")
     _need(exp["privileged"] is False and exp["pid_mode"] == "", "the sidecar is privileged or shares a pid space")
-    prefix = [*sidecar_module.WATCHER_LAUNCHER, *sidecar_module.INTERPRETER, sidecar_module.PROGRAM, "serve"]
+    prefix = [*sidecar_contract.WATCHER_LAUNCHER, *sidecar_contract.INTERPRETER, sidecar_contract.PROGRAM, "serve"]
     _need(isinstance(exp["cmd"], list) and exp["cmd"][:len(prefix)] == prefix and exp["entrypoint"] == [],
           "the sidecar does not exec the fixed privilege-drop launcher")
     want_mounts = [{"source": spec.run_tree, "destination": spec.run_tree, "rw": False}]

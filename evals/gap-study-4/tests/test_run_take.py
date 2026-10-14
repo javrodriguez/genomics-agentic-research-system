@@ -1616,8 +1616,10 @@ SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})
 # attribute used on each allowed module, and every getattr as (base, constant name).
 # Lane w6a (CP2-preflight-2; glitch-1b's ruling w6a-1, ratified 11 Oct): preflight reads the take lock through w4a's
 # image_lock (load and require_ready only); the two lists below name exactly that, and REACH_MODULES audits its reach.
+# Box lane 14 Oct (glitch-06 ruling 1): preflight imports the sidecar's constants-only launch contract plainly and
+# reads exactly the six names below; the sidecar program itself is never imported by an audited module.
 IMPORT_FROM_ALLOWED = frozenset({("__future__", "annotations"), ("box", "image_lock"), ("box", "preflight"),
-                                 ("box", "run_take"), ("dataclasses", "dataclass"), ("dataclasses", "field"),
+                                 ("box", "run_take"), ("box", "sidecar_contract"), ("dataclasses", "dataclass"), ("dataclasses", "field"),
                                  ("decimal", "Decimal"), ("decimal", "InvalidOperation"), ("typing", "Callable")})
 MODULE_ATTRS = {
     "agent_adapter": frozenset({"COUNTER_FIELDS"}), "dataclasses": frozenset({"replace"}),
@@ -1633,6 +1635,8 @@ MODULE_ATTRS = {
                            "_write_json", "agent_exec_argv", "check_spec", "config_home_names",
                            "outside_every_repository", "refused_variables", "runtime_env"}),
     "secrets": frozenset({"token_hex"}), "shutil": frozenset({"rmtree"}),
+    "sidecar_contract": frozenset({"BOOT_INSPECT_CAPABILITIES", "BOOT_USER", "INTERPRETER", "PROGRAM",
+                                   "WATCHER_LAUNCHER", "WATCHER_USER"}),
     "stat": frozenset({"S_IMODE", "S_ISLNK", "S_ISREG"}), "sys": frozenset({"path"}),
 }
 GETATTR_ALLOWED = frozenset({("e", "filename"), ("e", "stdout")})

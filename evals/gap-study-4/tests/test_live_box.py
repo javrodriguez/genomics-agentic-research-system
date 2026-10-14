@@ -206,5 +206,60 @@ class SidecarPrivilegeRegression(unittest.TestCase):
                          ["docker", "exec", "--user", "10002:10002"])
 
 
+
+# The sidecar launch contract (glitch-06 ruling 1, 14 Oct): the fixed launch constants live in one constants-only
+# module, box/sidecar_contract.py, which preflight imports plainly and the sidecar image carries beside the program.
+CONTRACT_NAMES = ("ADDED_CAPABILITY", "BOOT_USER", "BOOT_CAPABILITIES", "BOOT_INSPECT_CAPABILITIES", "WATCHER_USER",
+                  "WATCHER_LAUNCHER", "INTERPRETER", "PROGRAM")
+BOX = Path(__file__).resolve().parents[1] / "box"
+
+
+class SidecarContractRegression(unittest.TestCase):
+    def contract(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("contract_under_test", BOX / "sidecar_contract.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_contract_is_constants_only(self):
+        import ast
+        tree = ast.parse((BOX / "sidecar_contract.py").read_text(encoding="utf-8"))
+        for node in tree.body:
+            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+                continue                                                  # the docstring
+            if isinstance(node, ast.ImportFrom) and node.module == "__future__":
+                continue
+            self.assertIsInstance(node, ast.Assign, ast.dump(node)[:80])
+            self.assertTrue(all(isinstance(t, ast.Name) and t.id.isupper() for t in node.targets))
+        self.assertEqual(sorted(n for n in vars(self.contract()) if n.isupper()), sorted(CONTRACT_NAMES))
+
+    def test_sidecar_and_preflight_read_the_contract(self):
+        c = self.contract()
+        for name in CONTRACT_NAMES:
+            self.assertEqual(getattr(sidecar, name), getattr(c, name), name)
+        import ast
+        side = ast.parse((BOX / "sidecar.py").read_text(encoding="utf-8"))
+        # sidecar.py may only re-export each contract name as `NAME = _contract.NAME`, never define it.
+        for n in side.body:
+            if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id in CONTRACT_NAMES for t in n.targets):
+                name = n.targets[0].id
+                self.assertTrue(isinstance(n.value, ast.Attribute) and isinstance(n.value.value, ast.Name)
+                                and n.value.value.id == "_contract" and n.value.attr == name,
+                                f"sidecar.py defines {name} itself")
+        pre = ast.parse((BOX / "preflight.py").read_text(encoding="utf-8"))
+        froms = [(n.module, a.name, a.asname) for n in ast.walk(pre) if isinstance(n, ast.ImportFrom)
+                 for a in n.names]
+        self.assertIn(("box", "sidecar_contract", None), froms)
+        self.assertEqual([f for f in froms if f[1] == "sidecar"], [], "preflight imports the sidecar program")
+
+    def test_sidecar_image_carries_the_contract(self):
+        from box import image_lock as il
+        self.assertEqual(il.SIDECAR_COPIES, ("sidecar.py /opt/w/sidecar.py",
+                                             "sidecar_contract.py /opt/w/sidecar_contract.py"))
+        lines = [ln.strip() for ln in (BOX / "sidecar" / "Dockerfile").read_text(encoding="utf-8").splitlines()]
+        self.assertEqual([ln for ln in lines if ln.startswith("COPY ")], ["COPY " + c for c in il.SIDECAR_COPIES])
+
+
 if __name__ == "__main__":
     unittest.main()
