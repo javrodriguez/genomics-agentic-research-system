@@ -1,0 +1,6 @@
+== test_run_take -k TestNoLoginLauncher against 6c21320b's run_take.py
+FAIL: test_no_login_launcher (test_run_take.TestNoLoginLauncher.test_no_login_launcher)
+AssertionError: Lists differ: ["raised AttributeError: module 'box.run_take' has no attribute 'NO_LOGIN'"] != []
+- ["raised AttributeError: module 'box.run_take' has no attribute 'NO_LOGIN'"]
+Ran 1 test in 0.007s
+FAILED (failures=1)

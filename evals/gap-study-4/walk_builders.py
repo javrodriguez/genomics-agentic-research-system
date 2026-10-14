@@ -174,6 +174,24 @@ def login_secrets(login_file: str, harness):
     return secrets
 
 
+
+def lease_secrets(auth_path: str):
+    """A Codex take's secrets() (glitch-06, 14 Oct 2026): the lease's access and refresh tokens, read from the
+    registered auth.json now, at take start (no lease file, no take: LoginError), and again at each scan, where a
+    refreshed token is added when still present at scan time (a value refreshed and then replaced again before a scan
+    is never read: the refresh residual, closed on the lease road by refreshing only on the host, between turns). A
+    departure from login_secrets' "never held", named: the values read are kept for this take's scans, because a
+    refresh rewrites auth.json and the first values may already be in the records."""
+    from box import scan_record
+    seen = list(scan_record.read_lease_tokens(auth_path))
+
+    def secrets():
+        for v in scan_record.read_lease_tokens(auth_path):
+            if v not in seen:
+                seen.append(v)
+        return [("token", v) for v in seen]
+    return secrets
+
 # ------------------------------------------------------------------------------------------------ the counters
 # glitch-06's queue item 2 (14 Oct 2026): the take container's cgroup folder and the runtime's uid map are read at run
 # time from the container's id and /proc, never typed in (measured on athena by the box lane:

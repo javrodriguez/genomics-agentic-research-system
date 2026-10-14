@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify one account's walk-token file after Javier pastes the token (box lane, 14 Oct 2026).
 
-    python3 -I verify_walk_token.py claude1
+    python3 -I verify_walk_login.py claude1
 
 Prints only: present, mode ok, owner ok, folder ok, one line, format ok, three paste checks (the value contains '=',
 was pasted twice, or starts with the variable name: each must be "no"), and a coarse length (empty, under 20, 20 or
@@ -18,7 +18,7 @@ import sys
 
 def main(argv):
     if len(argv) != 2 or not re.fullmatch(r"[a-z][a-z0-9]{0,15}", argv[1]):
-        print("usage: verify_walk_token.py <account>, e.g. claude1")
+        print("usage: verify_walk_login.py <account>, e.g. claude1")
         return 1
     folder = os.path.join(os.path.expanduser("~"), "gap4-secrets", argv[1])
     path = os.path.join(folder, "claude-walk-token")

@@ -114,18 +114,25 @@ TAKE_ENV = {
                   "CLAUDE_CONFIG_DIR": CONFIG_MOUNT, "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
     CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
             "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
-            "CODEX_HOME": CONFIG_MOUNT, "CODEX_API_KEY": CREDENTIAL},
+            "CODEX_HOME": CONFIG_MOUNT},     # no credential: subscriptions only (glitch-06, 14 Oct; the 13 Oct amendment)
     GEMINI: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
              "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
              "GEMINI_CLI_HOME": CONFIG_MOUNT, "GEMINI_API_KEY": CREDENTIAL},
 }
 # The base every row carries (bound by the tests); the views below are DERIVED from TAKE_ENV, never declared apart.
 BASE_NAMES = ("PATH", "HOME", "LANG")
-LOGIN_VARIABLE = {h: next(k for k, v in row.items() if v == CREDENTIAL) for h, row in TAKE_ENV.items()}
+# Codex has no environment login (glitch-06's ruling 1, 14 Oct 2026): its login is the lease file in CODEX_HOME
+# (place_lease), and LOGIN_VARIABLE[CODEX] is the launcher's reserved NO_LOGIN, set below where it is defined. Every
+# road that expects an environment login refuses it explicitly (read_login; exec_argv refuses Codex outright).
+LOGIN_VARIABLE = {h: next(k for k, v in row.items() if v == CREDENTIAL) for h, row in TAKE_ENV.items()
+                  if CREDENTIAL in row.values()}
 # Owner amendment, 13 Oct 2026: Codex must use an isolated ChatGPT subscription.
 # The historical API row above is not an admissible route. All execution and
 # builder login entry points refuse until the reviewed subscription lease exists.
 CODEX_SUBSCRIPTION_NOT_READY = "Codex subscription binding not ready; API-key login is not permitted"
+# The Codex lease road's gate (glitch-06, 14 Oct 2026): CLOSED. It opens only after Javier's Codex2 login and the first
+# real walk; every lease step (place_lease today) refuses with NotReady(CODEX_SUBSCRIPTION_NOT_READY) while it is.
+CODEX_SUBSCRIPTION_READY = False
 # Each harness's own non-secret values (its switches, proxy and config home): the row less the base, the run tree's
 # temporary folder and the credential. config_home_names() and preflight read this view.
 HARNESS_ENV = {h: {k: v for k, v in row.items() if k not in BASE_NAMES and v not in (RUN_TREE_TMP, CREDENTIAL)}
@@ -139,7 +146,7 @@ LAUNCHER_SOURCE = ("import os,sys\n"
                    "a=sys.argv[1:]\n"
                    "k,n=a[0],int(a[1])\n"
                    "e=dict(x.split('=',1) for x in a[2:2+n])\n"
-                   "e[k]=os.environ[k]\n"
+                   "if k!='-':e[k]=os.environ[k]\n"
                    "dirs=[e['HOME']]\n"
                    "d=os.getcwd()\n"
                    "while True:\n"
@@ -154,6 +161,14 @@ LAUNCHER_SOURCE = ("import os,sys\n"
                    "c=a[2+n:]\n"
                    "os.execvpe(c[0],c,e)\n")
 LAUNCHER = ("/usr/bin/python3", "-I", "-S", "-c", LAUNCHER_SOURCE)
+# glitch-06's ruling (14 Oct 2026), the Codex lease road: LAUNCHER_SOURCE is supplied at run time (the exec's argv),
+# never baked into the image, so it carries one variant. The reserved name NO_LOGIN, which no variable NAME can be,
+# copies no credential into the agent's environment; launcher_argv admits it only for a Codex row behind the closed
+# lease gate (codex_lease_gate). Every other road still copies its one credential by name.
+NO_LOGIN = "-"
+if CREDENTIAL in TAKE_ENV[CODEX].values():
+    raise RuntimeError("the Codex row carries an environment credential: subscriptions only")
+LOGIN_VARIABLE[CODEX] = NO_LOGIN
 
 # The model each arm's call names, where the harness has short aliases that resolve elsewhere (docs read 13 Oct 2026:
 # Gemini CLI v0.63.0 docs/cli/cli-reference.md, its alias table; `flash-lite` resolves to gemini-2.5-flash-lite).
@@ -241,7 +256,27 @@ CLAUDE_BARE_FLAG = "--bare"
 # Arms O and G's own billing-route variables (a Vertex switch for Gemini CLI, for example): a tuple of names each,
 # named from the harness's documentation at the pinned version. Until then the refused set is the closed list above,
 # and an exec of either harness is refused (NotReady): this lane's stricter reading.
-VENDOR_BILLING_ROUTE_VARIABLES = {CODEX: PENDING, GEMINI: PENDING}
+# CODEX FILLED 14 Oct 2026 (glitch-06's ruling 3), from the pinned Codex binary's own strings only
+# (lane-reports/live-box-evidence-2026-10-13/codex-auth-binary-markers.json, sources[0].matches[N].context; the strings
+# run together, so each name ends at the next CODEX_/OPENAI_ prefix or a lower-case byte). Refused if present, like
+# every other vendor's names. What the evidence cannot settle is listed in the lane report, never guessed.
+VENDOR_BILLING_ROUTE_VARIABLES = {
+    CODEX: ("CODEX_AUTHAPI_BASE_URL",                  # matches[46], [50]: before https://auth.openai.com/api/accounts
+            "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL",   # matches[68]
+            "CODEX_AGENT_IDENTITY_JWKS_BASE_URL",      # matches[46], [68]
+            "CODEX_REVOKE_TOKEN_URL_OVERRIDE",         # matches[65]: before https://auth.openai.com/oauth/revoke
+            "CODEX_CONNECTORS_TOKEN",                  # matches[33]
+            "OPENAI_ORGANIZATION",                     # matches[40]: beside the OpenAI-Organization header
+            "OPENAI_FEDERATION_RULE_ID",               # matches[31]
+            "OPENAI_IDENTITY_TOKEN_FILE",              # matches[31]
+            # glitch-06's ruling on the docs-read candidates (14 Oct 2026): the pinned Codex is 0.162.1
+            # (box/codex/image.lock line 7, harness.version), the version tests/test_env_allowlist.py's
+            # DOCS_READ_VARIABLES was read at ("Codex, read by the source at rust-v0.162.1" and "Codex, documented");
+            # its Codex names not named above, refused if present (refusing more fails closed).
+            "OPENAI_PROJECT", "OPENAI_BASE_URL", "CODEX_ACCESS_TOKEN", "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
+            "CODEX_OSS_BASE_URL", "CODEX_OSS_PORT", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE"),
+    GEMINI: PENDING}
 
 # What the runtime client itself needs from the caller's environment, and nothing else.
 RUNTIME_ENV_NAMES = ("PATH", "HOME", "DOCKER_HOST", "XDG_RUNTIME_DIR")
@@ -556,14 +591,19 @@ def exec_values(harness: str, run_tree: str) -> dict:
     return {k: v for k, v in take_environment(harness, run_tree).items() if v != CREDENTIAL}
 
 
-def launcher_argv(login: str, values: dict, inner) -> list:
+def launcher_argv(login: str, values: dict, inner, *, harness=None) -> list:
     """The turn's command inside the take container: LAUNCHER, the credential's name, the count of pairs, the
     NAME=VALUE pairs in name order, then the harness's argv. The launcher execs the harness with exactly the pairs and
-    the credential (read by its name from the exec's environment): the agent starts from an empty environment."""
+    the credential (read by its name from the exec's environment): the agent starts from an empty environment. The
+    reserved NO_LOGIN copies no credential: admitted only for a Codex row (`harness`) behind the closed lease gate."""
     inner = _check_argv(inner) if inner else None
     if inner is None:
         raise Refused("the launcher needs the harness's argv")
-    if not isinstance(login, str) or not _NAME.fullmatch(login):
+    if login == NO_LOGIN:
+        codex_lease_gate()
+        if harness != CODEX:
+            raise Refused("the no-login launcher name is admitted only for a Codex row")
+    elif not isinstance(login, str) or not _NAME.fullmatch(login):
         raise Refused("the credential is named by a variable NAME")
     pairs = []
     for k in sorted(values):
@@ -849,6 +889,8 @@ def check_login_place(path: str, run_tree: str) -> None:
 def read_login(path: str, name: str) -> str:
     """The one value of a login file: exactly `name=<20+ chars, no whitespace, no double quote>\\n`, mode 600, owned by
     the reading uid, outside every repository. Every refusal names the file and the rule, never the value."""
+    if name == NO_LOGIN:
+        raise LoginRefused("a Codex row has no environment login: its login is the lease (place_lease)")
     if not isinstance(name, str) or name not in LOGIN_VARIABLE.values():
         raise LoginRefused(f"the login variable must be one of {sorted(LOGIN_VARIABLE.values())}")
     if not isinstance(path, str) or not os.path.isabs(path):
@@ -899,6 +941,92 @@ def make_config_dir(parent: str) -> str:
     path = os.path.join(parent, "cfg-" + secrets.token_hex(8))
     os.mkdir(path, 0o700)
     return path
+
+
+# The Codex lease (glitch-06, 14 Oct 2026): the subscription login lives at CODEX_HOME/auth.json, and CODEX_HOME is the
+# per-take config folder (the owner's 13 Oct amendment); postflight admits exactly that one file after the take.
+LEASE_FILE = "auth.json"
+LEASE_MAX_BYTES = 1024 * 1024
+
+
+def codex_lease_gate() -> None:
+    """Refuses (NotReady, CODEX_SUBSCRIPTION_NOT_READY) while the Codex lease road's gate is closed."""
+    if CODEX_SUBSCRIPTION_READY is not True:
+        raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)
+
+
+def place_lease(lease_src: str, config_dir: str) -> str:
+    """Copy the registered Codex lease file into the per-take config folder as LEASE_FILE; the placed path. Behind the
+    closed gate (codex_lease_gate). The source: an absolute regular file (never a link), one link, mode 600, owned by
+    the reading user, outside every repository, 1 to LEASE_MAX_BYTES bytes. The folder: an absolute folder (never a
+    link), mode 700, owned by the reading user, outside every repository, not already holding LEASE_FILE. The copy is
+    an exclusive no-follow create at mode 600, then lstat checks it: a regular file, one link, mode 600 (a umask that
+    narrows it refuses: no chmod, it fails closed), owned by the reading user, the source's size. Every refusal
+    (LoginRefused) names the file and the rule, never the contents; a refused copy stays in the folder, which is
+    removed with the take's other config files and never launched."""
+    codex_lease_gate()
+    if not isinstance(lease_src, str) or not os.path.isabs(lease_src):
+        raise LoginRefused("the lease file is named by an absolute path")
+    try:
+        st = os.lstat(lease_src)
+    except OSError:
+        raise LoginRefused(f"{lease_src}: the lease file does not exist or cannot be read") from None
+    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+        raise LoginRefused(f"{lease_src}: the lease file must be a regular file, never a link")
+    if st.st_nlink != 1:
+        raise LoginRefused(f"{lease_src}: the lease file must have exactly one link")
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        raise LoginRefused(f"{lease_src}: the lease file's mode must be 600")
+    if st.st_uid != os.getuid():
+        raise LoginRefused(f"{lease_src}: the lease file must be owned by the reading user")
+    if not outside_every_repository(lease_src):
+        raise LoginRefused(f"{lease_src}: the lease file must sit outside every repository")
+    try:
+        fd = os.open(lease_src, os.O_RDONLY | os.O_NOFOLLOW)
+        with os.fdopen(fd, "rb") as fh:
+            data = fh.read(LEASE_MAX_BYTES + 1)
+    except OSError:
+        raise LoginRefused(f"{lease_src}: the lease file cannot be read") from None
+    if len(data) > LEASE_MAX_BYTES:
+        raise LoginRefused(f"{lease_src}: the lease file must be at most {LEASE_MAX_BYTES} bytes")
+    if not data:
+        raise LoginRefused(f"{lease_src}: the lease file is empty")
+    if not isinstance(config_dir, str) or not os.path.isabs(config_dir):
+        raise LoginRefused("the config folder is named by an absolute path")
+    try:
+        cst = os.lstat(config_dir)
+    except OSError:
+        raise LoginRefused(f"{config_dir}: the config folder does not exist or cannot be read") from None
+    if stat.S_ISLNK(cst.st_mode) or not os.path.isdir(config_dir):
+        raise LoginRefused(f"{config_dir}: the config folder must be a folder, never a link")
+    if stat.S_IMODE(cst.st_mode) != 0o700 or cst.st_uid != os.getuid():
+        raise LoginRefused(f"{config_dir}: the config folder must be mode 700 and owned by the reading user")
+    if not outside_every_repository(config_dir):
+        raise LoginRefused(f"{config_dir}: the config folder must sit outside every repository")
+    dst = os.path.join(config_dir, LEASE_FILE)
+    if os.path.lexists(dst):
+        raise LoginRefused(f"{dst}: the config folder already holds {LEASE_FILE}")
+    try:
+        fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+    except OSError:
+        raise LoginRefused(f"{dst}: the lease could not be written") from None
+    try:
+        pst = os.lstat(dst)
+    except OSError:
+        raise LoginRefused(f"{dst}: the placed lease cannot be read back") from None
+    if stat.S_ISLNK(pst.st_mode) or not stat.S_ISREG(pst.st_mode) or pst.st_nlink != 1:
+        raise LoginRefused(f"{dst}: the placed lease must be a regular file with exactly one link")
+    if stat.S_IMODE(pst.st_mode) != 0o600:
+        raise LoginRefused(f"{dst}: the placed lease's mode must be 600 (a umask narrowed it; nothing widens it)")
+    if pst.st_uid != os.getuid():
+        raise LoginRefused(f"{dst}: the placed lease must be owned by the reading user")
+    if pst.st_size != len(data):
+        raise LoginRefused(f"{dst}: the placed lease is not the whole lease file")
+    return dst
 
 
 def remove_config_dir(launched: "Launched", *, published: bool) -> str:

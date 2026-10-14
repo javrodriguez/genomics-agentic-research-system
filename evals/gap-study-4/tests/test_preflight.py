@@ -697,6 +697,206 @@ def _lock_user_names() -> tuple:
     return seen.pop()
 
 
+class TestCodexCreateEnvironment(unittest.TestCase):
+    """glitch-06's ruling 1: preflight refuses a Codex take whose create-time environment carries CODEX_API_KEY or
+    OPENAI_API_KEY at all, naming the variable, never its value."""
+
+    def test_codex_api_key_names_refused_at_create(self):
+        for name in ("CODEX_API_KEY", "OPENAI_API_KEY"):
+            w = World(rt.CODEX)
+            raw = w.raw()
+            edit_json("take-inspect", lambda d, n=name: d[0]["Config"]["Env"].append(
+                f"{n}=FAKEVALUE-0123456789abcdef-PLANTED"))(raw, w)
+            rec = w.evaluate(raw)
+            check = [c for c in rec["checks"] if c["id"] == "no-container-socket"][0]
+            self.assertFalse(check["ok"], name)
+            self.assertIn(name, check["detail"])
+            self.assertNotIn("PLANTED", json.dumps(rec))
+
+
+class TestLeasePostflight(MutantCase):
+    """The Codex lease postflight (glitch-06, 14 Oct 2026): the lease home (the per-take config folder, CODEX_HOME)
+    admits exactly its one registered credential file, auth.json at its root, mode 600, owned by the host user, one
+    link; anything else credential-shaped refuses, and so does a home with no auth.json (glitch-06: exactly one), each
+    refusal naming the file and the rule, never the contents.
+    The planted value is a fake."""
+
+    FAKE_AUTH = b'{"tokens": {"access_token": "FAKE-lease-0123456789abcdef-PLANTED"}}\n'
+
+    def home(self, auth=True, mode=0o600):
+        d = tempfile.mkdtemp(prefix="w-")
+        os.makedirs(os.path.join(d, "sessions", "2026", "10", "14"))
+        with open(os.path.join(d, "config.toml"), "w") as fh:
+            fh.write('model = "m"\n')
+        with open(os.path.join(d, "sessions", "2026", "10", "14", "rollout-1.jsonl"), "w") as fh:
+            fh.write("{}\n")
+        if auth:
+            fd = os.open(os.path.join(d, "auth.json"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            os.write(fd, self.FAKE_AUTH)
+            os.close(fd)
+            os.chmod(os.path.join(d, "auth.json"), mode)
+        return d
+
+    def refused(self, out, label, d, path_word, rule_word, **patches):
+        ctx = mock.patch.object(pf.os, "getuid", patches["uid"]) if "uid" in patches else contextlib.nullcontext()
+        with ctx:
+            r = pf.postflight(d, rt.CODEX)
+        detail = r["checks"][0]["detail"]
+        if r["ok"]:
+            out.append(f"{label}: admitted")
+        elif path_word not in detail or rule_word not in detail:
+            out.append(f"{label}: refused without naming {path_word!r} and {rule_word!r}: {detail}")
+        if "PLANTED" in json.dumps(r):
+            out.append(f"{label}: the record carries the credential's contents")
+
+    def check(self):
+        out = []
+        d = self.home()
+        r = pf.postflight(d, rt.CODEX)
+        if r["ok"] is not True or r["recorded"]["admitted_credential"] != ["auth.json"]:
+            out.append(f"the clean lease home was refused: {r['checks'][0]['detail']}")
+        if "PLANTED" in json.dumps(r):
+            out.append("the clean record carries the credential's contents")
+        # glitch-06's ruling (14 Oct 2026): "exactly one registered credential file" means exactly one, so a lease
+        # home with no auth.json refuses, naming the file and the rule
+        self.refused(out, "a lease home with no credential", self.home(auth=False), "auth.json",
+                     "exactly one registered credential file")
+        if pf.postflight(self.home(auth=False), rt.CODEX)["recorded"]["admitted_credential"] != []:
+            out.append("a lease home with no credential records an admitted credential")
+        # a second auth file
+        d = self.home()
+        with open(os.path.join(d, "sessions", "auth.json"), "wb") as fh:
+            fh.write(b"{}")
+        self.refused(out, "a second auth file", d, "sessions/auth.json", "credential-shaped")
+        # a renamed copy, by a credential-shaped name and by an innocuous one
+        d = self.home()
+        with open(os.path.join(d, "auth.json.bak"), "wb") as fh:
+            fh.write(self.FAKE_AUTH)
+        self.refused(out, "a renamed copy (credential-shaped name)", d, "auth.json.bak", "credential-shaped")
+        d = self.home()
+        with open(os.path.join(d, "sessions", "notes.txt"), "wb") as fh:
+            fh.write(self.FAKE_AUTH)
+        self.refused(out, "a renamed copy (innocuous name)", d, "sessions/notes.txt", "copy of the registered")
+        # a symlink to it, and the registered path as a link
+        d = self.home()
+        os.symlink(os.path.join(d, "auth.json"), os.path.join(d, "sessions", "plain-link"))
+        self.refused(out, "a link to the registered credential", d, "sessions/plain-link", "a link to the registered")
+        d = self.home(auth=False)
+        with open(os.path.join(d, "elsewhere.json"), "wb") as fh:
+            fh.write(b"{}")
+        os.symlink(os.path.join(d, "elsewhere.json"), os.path.join(d, "auth.json"))
+        self.refused(out, "the registered path as a link", d, "auth.json", "never a link")
+        # wrong mode, wrong owner, a second hard link
+        self.refused(out, "mode 644", self.home(mode=0o644), "auth.json", "mode must be 600")
+        self.refused(out, "another owner", self.home(), "auth.json", "owned by the host user",
+                     uid=lambda me=os.getuid(): me + 1)
+        d = self.home()
+        os.link(os.path.join(d, "auth.json"), os.path.join(d, "sessions", "hardlink"))
+        self.refused(out, "a second hard link", d, "auth.json", "exactly one link")
+        # review of 2fd8215a (14 Oct): the size and non-regular branches, a credential-named link to an innocuous
+        # target, a link to a folder above auth.json, and an unreadable copy candidate (refused, never raised)
+        d = self.home(auth=False)
+        fd = os.open(os.path.join(d, "auth.json"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, b"x" * (pf.LEASE_CREDENTIAL_MAX_BYTES + 1))
+        os.close(fd)
+        self.refused(out, "an oversize registered file", d, "auth.json", "larger than")
+        d = self.home(auth=False)
+        os.mkfifo(os.path.join(d, "auth.json"), 0o600)
+        self.refused(out, "a FIFO at the registered path", d, "auth.json", "must be a regular file")
+        d = self.home(auth=False)
+        os.mkdir(os.path.join(d, "auth.json"), 0o700)
+        self.refused(out, "a folder at the registered path", d, "auth.json", "must be a regular file")
+        d = self.home()
+        os.symlink(os.path.join(d, "config.toml"), os.path.join(d, "sessions", "token-link"))
+        self.refused(out, "a credential-named link to an innocuous file", d, "sessions/token-link", "a link")
+        d = self.home()
+        os.symlink(d, os.path.join(d, "sessions", "up"))
+        self.refused(out, "a link to the folder holding the credential", d, "sessions/up", "a link")
+        d = self.home()
+        cand = os.path.join(d, "sessions", "notes.txt")
+        with open(cand, "wb") as fh:
+            fh.write(b"y" * len(self.FAKE_AUTH))
+        os.chmod(cand, 0)
+        try:
+            try:
+                self.refused(out, "an unreadable same-size file", d, "sessions/notes.txt", "unreadable")
+            except OSError as e:
+                out.append(f"an unreadable same-size file raised {type(e).__name__} instead of refusing")
+        finally:
+            os.chmod(cand, 0o600)
+        # other harnesses keep the old rule: no credential file at all
+        d = self.home()
+        if pf.postflight(d, rt.CLAUDE_CODE)["ok"] or pf.postflight(d, rt.GEMINI)["ok"]:
+            out.append("another harness admitted auth.json")
+        return out
+
+    def check_read(self):
+        """glitch-06's NIT 5 ruling: the registered file read is the file checked. A swap between the lstat and the
+        open (a FIFO, or another regular file with the same bytes) refuses, never hangs; and an unreadable registered
+        file refuses, never raises."""
+        out = []
+        for label, swap in (("a same-bytes file with a second link", "relink"), ("a FIFO", "fifo"),
+                            ("a fresh same-bytes file (one link, same mode and owner: only the inode differs)",
+                             "fresh")):
+            d = self.home()
+            reg = os.path.join(d, "auth.json")
+            real_lstat, done, calls = os.lstat, [], []
+
+            def swapping(p, *a, _reg=reg, _swap=swap, _d=d, **k):
+                st = real_lstat(p, *a, **k)
+                if p == _reg:
+                    calls.append(1)
+                # the first lstat of auth.json is lexists; the second is the check, whose result the read must match
+                if p == _reg and len(calls) == 2 and not done:
+                    done.append(1)
+                    if _swap == "fresh":                 # made beside it, then renamed over: a new inode for sure
+                        tmp = os.path.join(_d, "fresh.tmp")
+                        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                        os.write(fd, self.FAKE_AUTH)
+                        os.close(fd)
+                        os.chmod(tmp, 0o600)
+                        os.replace(tmp, _reg)
+                        new = real_lstat(_reg)
+                        if (new.st_nlink, new.st_mode, new.st_uid) != (st.st_nlink, st.st_mode, st.st_uid) \
+                                or new.st_ino == st.st_ino:
+                            raise AssertionError("the fresh swap differs in more than the inode")
+                        return st
+                    os.unlink(_reg)
+                    if _swap == "fifo":
+                        os.mkfifo(_reg, 0o600)
+                    else:
+                        fd = os.open(_reg, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                        os.write(fd, self.FAKE_AUTH)
+                        os.close(fd)
+                        os.link(_reg, os.path.join(_d, "outside-link"))
+                return st
+            with mock.patch.object(pf.os, "lstat", swapping):
+                r = pf.postflight(d, rt.CODEX)
+            detail = r["checks"][0]["detail"]
+            if not done:
+                out.append(f"{label}: the swap never ran (the check did not lstat auth.json)")
+            elif r["ok"] or "changed between its check and its read" not in detail or "auth.json" not in detail:
+                out.append(f"{label} swapped in after the check was not refused by file and rule: {detail}")
+            if "PLANTED" in json.dumps(r):
+                out.append(f"{label}: the record carries the credential's contents")
+        d = self.home()
+        with mock.patch.object(pf, "_read_capped", side_effect=PermissionError("planted")):
+            try:
+                self.refused(out, "an unreadable registered file", d, "auth.json", "unreadable")
+            except OSError as e:
+                out.append(f"an unreadable registered file raised {type(e).__name__} instead of refusing")
+        return out
+
+    def test_the_registered_file_read_is_the_file_checked(self):
+        self.assertEqual(_problems(self.check_read), [])
+
+    def test_the_lease_admits_exactly_its_one_credential(self):
+        self.assert_green_then_red(self.check, [
+            ("no-lease", patched(pf, "LEASE_CREDENTIAL", {})),
+            ("lease-for-every-harness", patched(pf, "LEASE_CREDENTIAL", {h: "auth.json" for h in rt.LOGIN_VARIABLE})),
+        ])
+
+
 class TestCP5Values(MutantCase):
     """Javier's ruling, "CP5: all as recommended" (08:11 EDT, 14 Oct 2026), on cp5-values-draft-2026-10-14.md:
     STUDY_PATHS is round 3's seven excluded paths verbatim; LEAK_WORDS is prereg-draft.json's leak_words, the box
@@ -1071,6 +1271,10 @@ class TestRecordAndPostflight(MutantCase):
             d = tempfile.mkdtemp(prefix="w-")
             os.makedirs(os.path.join(d, "sessions"))
             open(os.path.join(d, "config.toml"), "w").close()
+            if h in pf.LEASE_CREDENTIAL:                 # a clean lease home holds its one registered credential
+                fd = os.open(os.path.join(d, pf.LEASE_CREDENTIAL[h]), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                os.write(fd, b"{}")
+                os.close(fd)
             if pf.postflight(d, h)["ok"] is not True:
                 out.append(f"{h}: a clean folder failed")
             open(os.path.join(d, "sessions", name), "w").close()

@@ -1,0 +1,3 @@
+== test_preflight -k TestLeasePostflight (the swap and unreadable-registered cases) against dac954f3's preflight.py; a hang is stopped at 120 s by SIGINT
+exit=124
+the run hung in the FIFO swap case and was stopped by SIGINT at 120 s (timeout exit 124); no test output line was printed before the stop

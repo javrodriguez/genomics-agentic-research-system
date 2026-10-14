@@ -83,7 +83,10 @@ CANARY_VALUE = "canary-value-w12a"
 CALLER = {"PATH": "/usr/bin:/bin", "HOME": "/home/op", "DOCKER_HOST": "unix:///run/user/1000/docker.sock",
           "XDG_RUNTIME_DIR": "/run/user/1000"}
 ARMS = ("claude-code", "codex", "gemini")
-LOGINS = {"claude-code": "CLAUDE_CODE_OAUTH_TOKEN", "codex": "CODEX_API_KEY", "gemini": "GEMINI_API_KEY"}
+# Codex has no environment login (glitch-06's ruling 1, 14 Oct 2026: subscriptions only, the lease road): its row has
+# no credential and its LOGIN_VARIABLE is the launcher's reserved "-" (run_take.NO_LOGIN).
+LOGINS = {"claude-code": "CLAUDE_CODE_OAUTH_TOKEN", "codex": "-", "gemini": "GEMINI_API_KEY"}
+ENV_CREDENTIAL = {"claude-code": ["CLAUDE_CODE_OAUTH_TOKEN"], "codex": [], "gemini": ["GEMINI_API_KEY"]}
 # The docs read of 13 Oct (section d): every billing and route variable both lists name, docs and source.
 DOCS_READ_VARIABLES = (
     # Codex, read by the source at rust-v0.162.1 beyond its docs
@@ -279,7 +282,7 @@ class E1Table(Case):
         for h in ARMS:
             row = table[h]
             creds = [k for k, v in row.items() if v == m.CREDENTIAL]
-            self.assertEqual(creds, [LOGINS[h]], f"E1.table: {h}'s credential is not its one login, by name")
+            self.assertEqual(creds, ENV_CREDENTIAL[h], f"E1.table: {h}'s credential is not its one login, by name")
             filled = {k: (v.replace(m.RUN_TREE_TMP, "/r/t/.tmp") if v == m.RUN_TREE_TMP else v)
                       for k, v in row.items() if v != m.CREDENTIAL}
             self.assertEqual(filled, expected_row(h, "/r/t"), f"E1.table: {h}'s row is off the ruling's set")
@@ -321,7 +324,7 @@ class E2Allowlist(Case):
         with filled(), mock.patch.dict(os.environ, PARENT):
             for h in ARMS:
                 got = self.must("E2.built", m.take_environment, h, "/srv/w/t1/tree")
-                want = dict(expected_row(h, "/srv/w/t1/tree"), **{LOGINS[h]: m.CREDENTIAL})
+                want = dict(expected_row(h, "/srv/w/t1/tree"), **{n: m.CREDENTIAL for n in ENV_CREDENTIAL[h]})
                 self.assertEqual(got, want, f"E2.built: {h}'s environment is not exactly its row")
                 leaked = sorted(set(got) & set(PARENT))
                 self.assertEqual(leaked, [], f"E2.built: {h}: parent variables reached the child: {leaked}")
@@ -355,9 +358,10 @@ class E2Allowlist(Case):
         refused until its subscription binding is built (run_take.CODEX_SUBSCRIPTION_NOT_READY, test_codex_turn_*), so
         its launcher is built by the same launcher_argv over the same exec_values that exec_argv would use."""
         m = rt()
-        if h == m.CODEX:
-            with filled():
-                return m.launcher_argv(LOGINS[h], m.exec_values(h, "/srv/w/t1/tree"), self.inner_for(h))
+        if h == m.CODEX:          # the no-login launcher (glitch-06, 14 Oct 2026), behind the lease gate held open
+            with filled(), mock.patch.object(m, "CODEX_SUBSCRIPTION_READY", True):
+                return m.launcher_argv(m.NO_LOGIN, m.exec_values(h, "/srv/w/t1/tree"), self.inner_for(h),
+                                       harness=m.CODEX)
         argv, _ = self.turn(h)
         return argv[argv.index(ID) + 1:]
 
@@ -379,11 +383,12 @@ class E2Allowlist(Case):
                 # No Codex turn exists until its subscription binding (test_codex_turn_*); its launcher, built from
                 # the same exec_values, is held to (c) below exactly as the other arms' are.
                 launch = self.must("E2.launcher", self.launch_for, h)
-                start = dict(IMAGE_ENV, **PARENT, **{LOGINS[h]: FAKE_VALUE})
+                # no environment login: an API key in the exec's environment is never copied (subscriptions only)
+                start = dict(IMAGE_ENV, **PARENT, CODEX_API_KEY=FAKE_VALUE, OPENAI_API_KEY=FAKE_VALUE)
                 got = self.must("E2.launcher", run_launcher, launch, start)
                 self.assertEqual(got.get("argv"), self.inner_for(h), f"E2.launcher: {h}: the harness argv is off")
-                self.assertEqual(got.get("env"), dict(expected_row(h, "/srv/w/t1/tree"), **{LOGINS[h]: FAKE_VALUE}),
-                                 f"E2.launcher: {h}: the harness does not start with exactly the row and its credential")
+                self.assertEqual(got.get("env"), expected_row(h, "/srv/w/t1/tree"),
+                                 f"E2.launcher: {h}: the harness does not start with exactly its row, no credential")
                 continue
             argv, env = self.must("E2.turn", self.turn, h, caller=passable, environ=passable)
             at = argv.index(ID) + 1
@@ -436,6 +441,10 @@ class E2Allowlist(Case):
     def test_the_launcher_needs_the_credential(self):
         m = rt()
         for h in ARMS:
+            if h == m.CODEX:      # the no-login launcher needs none, and copies none
+                got = run_launcher(self.launch_for(h), dict(IMAGE_ENV))
+                self.assertEqual(got.get("env"), expected_row(h, "/srv/w/t1/tree"), "E2.launcher: codex: no-login off")
+                continue
             with self.assertRaises(KeyError, msg=f"E2.launcher: {h}: a launcher without its credential ran"):
                 run_launcher(self.launch_for(h), dict(IMAGE_ENV))
         self.refuses("E2.pairs", "NAME", m.launcher_argv, "CODEX_API_KEY", {"bad name": "x"}, ["codex"])
@@ -629,7 +638,7 @@ class E5Units(Case):
             with mock.patch.object(m, "FALLBACK_ENV", m.PENDING):   # FILLED 14 Oct 2026; the clause stays red-tested
                 self.not_ready("E5.pending", "FALLBACK_ENV is PENDING", m.take_environment, "claude-code", "/r/t")
         with mock.patch.object(m, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}):
-            for h in ("codex", "gemini"):
+            for h in ("gemini",):              # codex's was FILLED 14 Oct 2026 (glitch-06's ruling 3)
                 self.not_ready("E5.pending", f"VENDOR_BILLING_ROUTE_VARIABLES[{h!r}] is PENDING",
                                m.take_environment, h, "/r/t")
 

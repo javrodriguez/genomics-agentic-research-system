@@ -327,7 +327,13 @@ def _take_root(root_kind, run_tree, config_dir) -> str:
 def credential_name(name: str) -> bool:
     """Review-operator-read O-2: a name the config folder's reads and listings refuse (preflight's CREDENTIAL_FILES of
     every harness, auth.json among them, and the CREDENTIAL_LIKE backstop). Once the Codex file store lands CODEX_HOME
-    holds the login, and the host never receives it."""
+    holds the login, and the host never receives it through these operator reads and listings.
+
+    The one exception (glitch-06, 14 Oct 2026, the lease postflight review's NIT 6): preflight.postflight reads the
+    Codex lease's registered auth.json on the host, compare-only, to refuse a copy of it under another name. Its
+    bytes are compared and never returned, written, logged or put in a record or message. (The commit scan's own
+    read of the same file, scan_record.read_lease_tokens via walk_builders.lease_secrets, is not an operator read:
+    it hands the token values to the exact-value search only, as read_login does for a login file.)"""
     from box import preflight
     names = {n for files in preflight.CREDENTIAL_FILES.values() for n, _source in files}
     return name in names or bool(preflight.CREDENTIAL_LIKE.search(name))

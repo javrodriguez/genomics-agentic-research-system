@@ -1,0 +1,11 @@
+control 0 of 2
+RED   load the Codex row keeps CODEX_API_KEY (RuntimeError: the Codex row carries an environment credential: subscriptio)
+RED   1/2 LOGIN_VARIABLE[codex] not NO_LOGIN
+RED   1/2 read_login reads a Codex row
+RED   1/2 a route name dropped
+RED   1/2 route names never refused
+RED   1/2 OPENAI_API_KEY admitted for codex
+RED   1/2 a docs-read name dropped
+RED   1/2 the docs-read names dropped
+RED   1/2 scan_record reads a Codex row by its own rule
+ALIVE: none

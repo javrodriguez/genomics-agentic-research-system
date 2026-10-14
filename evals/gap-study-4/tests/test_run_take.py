@@ -118,7 +118,8 @@ FAKE_VALUE = "FAKEVALUE-0123456789abcdef-PLANTED"
 CALLER = {"PATH": "/usr/bin:/bin", "HOME": "/home/op", "DOCKER_HOST": "unix:///run/user/1000/docker.sock",
           "XDG_RUNTIME_DIR": "/run/user/1000", "UNRELATED": "x"}
 ARMS = (harness_bookkeeping.CLAUDE_CODE, "codex", "gemini")
-LOGINS = dict(zip(ARMS, ("CLAUDE_CODE_OAUTH_TOKEN", "CODEX_API_KEY", "GEMINI_API_KEY")))
+# Codex has no environment login (glitch-06's ruling 1, 14 Oct 2026): its LOGIN_VARIABLE is the reserved "-" (NO_LOGIN).
+LOGINS = dict(zip(ARMS, ("CLAUDE_CODE_OAUTH_TOKEN", "-", "GEMINI_API_KEY")))
 
 
 class FakeRuntime:
@@ -329,7 +330,7 @@ class TestSharedValues(MutantCase):
         keys = set(rt.LOGIN_VARIABLE)
         if keys != {rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI} or set(rt.HARNESS_ENV) != keys:
             out.append("the per-harness tables do not hold exactly the three harnesses")
-        if rt.LOGIN_VARIABLE != {rt.CLAUDE_CODE: "CLAUDE_CODE_OAUTH_TOKEN", rt.CODEX: "CODEX_API_KEY",
+        if rt.LOGIN_VARIABLE != {rt.CLAUDE_CODE: "CLAUDE_CODE_OAUTH_TOKEN", rt.CODEX: "-",
                                  rt.GEMINI: "GEMINI_API_KEY"}:
             out.append("LOGIN_VARIABLE is not the card's three names")
         return out
@@ -503,9 +504,9 @@ class TestArmVariables(MutantCase):
         """A take in each arm carrying each other arm's variable (or any refused name) is refused."""
         out = []
         for arm in ARMS:
-            others = [rt.LOGIN_VARIABLE[h] for h in ARMS if h != arm]
-            others += ["OPENAI_API_KEY", "GOOGLE_API_KEY", "ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_REFRESH_TOKEN",
-                       "CLAUDE_CODE_USE_VERTEX"]
+            others = [rt.LOGIN_VARIABLE[h] for h in ARMS if h != arm and rt.LOGIN_VARIABLE[h] != rt.NO_LOGIN]
+            others += ["CODEX_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY", "ANTHROPIC_API_KEY",
+                       "CLAUDE_CODE_OAUTH_REFRESH_TOKEN", "CLAUDE_CODE_USE_VERTEX"]
             for var in others:
                 for where in ("caller", "pending"):
                     try:
@@ -562,7 +563,8 @@ class TestArmVariables(MutantCase):
     def check_refused_sets(self):
         out = []
         closed = (set(rt.API_KEY_VARIABLES) | set(rt.BILLING_ROUTE_VARIABLES) | set(rt.SUBSCRIPTION_TOKEN_VARIABLES)
-                  | {"CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"})
+                  | {"CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"}
+                  | set(CODEX_ROUTE_NAMED) | set(CODEX_ROUTE_DOCS_READ))   # glitch-06's rulings: every arm
         for arm in ARMS:
             got = rt.refused_variables(arm)
             expected = closed - {LOGINS[arm]}
@@ -572,11 +574,15 @@ class TestArmVariables(MutantCase):
                 out.append(f"{arm}: refused set {sorted(got ^ expected)} off")
         if "CLAUDE_CODE_OAUTH_TOKEN" not in rt.refused_variables(rt.CODEX):
             out.append("arm O admits Anthropic's token")
+        if not {"CODEX_API_KEY", "OPENAI_API_KEY"} <= rt.refused_variables(rt.CODEX):
+            out.append("arm O admits an API key (subscriptions only)")
         return out
 
     def test_refused_sets(self):
         self.assert_green_then_red(self.check_refused_sets, [
-            ("own-login-refused", patched(rt, "LOGIN_VARIABLE", dict(rt.LOGIN_VARIABLE, codex="NOT_A_VAR"))),
+            ("own-login-refused", patched(rt, "LOGIN_VARIABLE", dict(rt.LOGIN_VARIABLE,
+                                                                     **{rt.CLAUDE_CODE: "NOT_A_VAR"}))),
+            ("codex-key-admitted", patched(rt, "LOGIN_VARIABLE", dict(rt.LOGIN_VARIABLE, codex="CODEX_API_KEY"))),
             ("vendor-list-short", patched(rt, "VENDOR_KEY_VARIABLES", ("CODEX_API_KEY", "GEMINI_API_KEY"))),
         ])
 
@@ -1835,6 +1841,307 @@ class TestConfigDir(MutantCase):
 ORIG_REMOVE = rt.remove_config_dir
 
 
+# ------------------------------------------------------------------- the Codex lease's placement (glitch-06, 14 Oct)
+class TestLeasePlacement(MutantCase):
+    """place_lease copies the registered Codex lease file into the per-take config folder as auth.json, behind the
+    closed CODEX_SUBSCRIPTION_NOT_READY gate (opened only after Javier's Codex2 login and the first real walk). It uses
+    no os name beyond OS_ATTRS: an exclusive no-follow create at mode 600, then the existing lstat verifies mode and
+    owner; a mode other than 600 (a umask, say) refuses, failing closed. Every refusal names the file and the rule,
+    never the contents. The planted value is a fake."""
+
+    FAKE = b'{"tokens": {"access_token": "FAKE-lease-access-0123456789-PLANTED"}}\n'
+
+    def src(self, body=None, mode=0o600, folder_mode=0o700):
+        d = tempfile.mkdtemp(prefix="lease-src-")
+        os.chmod(d, folder_mode)
+        p = os.path.join(d, "codex2-auth.json")
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, self.FAKE if body is None else body)
+        os.close(fd)
+        os.chmod(p, mode)
+        return p
+
+    def cfg(self, mode=0o700):
+        parent = tempfile.mkdtemp(prefix="w-")
+        path = rt.make_config_dir(parent)
+        os.chmod(path, mode)
+        return path
+
+    def refused(self, out, label, src, cfg, *words):
+        try:
+            rt.place_lease(src, cfg)
+            out.append(f"{label}: placed")
+            return
+        except rt.LoginRefused as e:
+            msg = str(e)
+        except Exception as e:  # noqa: BLE001 - any other exception is a crash, not a refusal
+            out.append(f"{label}: raised {type(e).__name__}, not a refusal")
+            return
+        if any(w not in msg for w in words):
+            out.append(f"{label}: the refusal does not name {words}: {msg}")
+        if "PLANTED" in msg:
+            out.append(f"{label}: the refusal carries the lease's contents")
+
+    def check_gate(self):
+        out = []
+        src, cfg = self.src(), self.cfg()
+        try:
+            rt.place_lease(src, cfg)
+            out.append("the closed gate placed a lease")
+        except rt.NotReady as e:
+            if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
+                out.append(f"the closed gate refused with another message: {e}")
+        if os.path.lexists(os.path.join(cfg, "auth.json")):
+            out.append("the closed gate left a file in the config folder")
+        if rt.CODEX_SUBSCRIPTION_READY is not False:
+            out.append("the Codex gate is not closed in the committed module")
+        return out
+
+    def test_the_gate_stays_closed(self):
+        self.assertEqual(problems_of(self.check_gate), [])
+
+    def check(self):
+        out = []
+        src, cfg = self.src(), self.cfg()
+        dst = rt.place_lease(src, cfg)
+        if dst != os.path.join(cfg, "auth.json"):
+            out.append(f"the lease was placed at {dst!r}, not the config folder's auth.json")
+        else:
+            st = os.lstat(dst)
+            with open(dst, "rb") as fh:
+                same = fh.read() == self.FAKE
+            if not same or not stat_reg(st) or (st.st_mode & 0o7777) != 0o600 or st.st_uid != os.getuid() \
+                    or st.st_nlink != 1:
+                out.append("the placed lease is not the same bytes, a regular file, mode 600, ours, one link")
+        # the source
+        self.refused(out, "a relative source", "codex2-auth.json", self.cfg(), "absolute path")
+        self.refused(out, "a missing source", os.path.join(tempfile.mkdtemp(prefix="w-"), "none.json"), self.cfg(),
+                     "none.json", "does not exist")
+        real = self.src()
+        link = os.path.join(os.path.dirname(real), "link.json")
+        os.symlink(real, link)
+        self.refused(out, "a linked source", link, self.cfg(), "link.json", "regular file, never a link")
+        self.refused(out, "a source at mode 644", self.src(mode=0o644), self.cfg(), "mode must be 600")
+        two = self.src()
+        os.link(two, two + ".2")
+        self.refused(out, "a source with two links", two, self.cfg(), "exactly one link")
+        self.refused(out, "an oversize source", self.src(body=b"x" * (rt.LEASE_MAX_BYTES + 1)), self.cfg(),
+                     "at most")
+        self.refused(out, "an empty source", self.src(body=b""), self.cfg(), "empty")
+        repo = tempfile.mkdtemp(prefix="w-")
+        os.makedirs(os.path.join(repo, ".git"))
+        inrepo = os.path.join(repo, "auth.json")
+        fd = os.open(inrepo, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, self.FAKE)
+        os.close(fd)
+        self.refused(out, "a source inside a repository", inrepo, self.cfg(), "outside every repository")
+        # the config folder
+        self.refused(out, "a relative config folder", self.src(), "cfg-x", "absolute path")
+        c = self.cfg()
+        clink = c + "-link"
+        os.symlink(c, clink)
+        self.refused(out, "a linked config folder", self.src(), clink, "a folder, never a link")
+        self.refused(out, "a config folder at mode 755", self.src(), self.cfg(mode=0o755), "mode 700")
+        rcfg = os.path.join(repo, "cfg")
+        os.mkdir(rcfg, 0o700)
+        self.refused(out, "a config folder inside a repository", self.src(), rcfg, "outside every repository")
+        c = self.cfg()
+        open(os.path.join(c, "auth.json"), "w").close()
+        self.refused(out, "a config folder that already holds auth.json", self.src(), c, "auth.json",
+                     "already holds")
+        # a umask that narrows the create: refused, never widened by a chmod
+        c, narrowed_src = self.cfg(), self.src()          # made first: the umask narrows only the placement
+        old = os.umask(0o277)
+        try:
+            self.refused(out, "a placement narrowed by the umask to 400", narrowed_src, c, "auth.json",
+                         "mode must be 600")
+        finally:
+            os.umask(old)
+        with mock.patch.object(rt.os, "getuid", lambda me=os.getuid(): me + 1):
+            self.refused(out, "a source not owned by the reading user", self.src(), self.cfg(), "codex2-auth.json",
+                         "lease file must be owned")
+        self.refused(out, "a missing config folder", self.src(), os.path.join(tempfile.mkdtemp(prefix="w-"), "nope"),
+                     "nope", "does not exist")
+        real_lstat = os.lstat
+        # the placed file read back as another user's, with a second link, or short of the source's size
+        for label, field, words in (("a placed lease not owned by the reading user", 4, ("auth.json", "owned")),
+                                    ("a placed lease with a second link", 3, ("auth.json", "exactly one link")),
+                                    ("a placed lease short of the source", 6, ("auth.json", "whole lease file"))):
+            c = self.cfg()
+
+            def readback(p, *a, _placed=os.path.join(c, "auth.json"), _field=field, **k):
+                st = real_lstat(p, *a, **k)
+                if p == _placed:
+                    f = list(st)
+                    f[_field] = f[_field] + 1
+                    return os.stat_result(f)
+                return st
+            with mock.patch.object(rt.os, "lstat", readback):
+                self.refused(out, label, self.src(), c, *words)
+        return out
+
+    def test_placement(self):
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
+            self.assertEqual(problems_of(self.check), [])
+
+
+# ------------------------------------------------------------- the no-login launcher variant (glitch-06, 14 Oct)
+class TestNoLoginLauncher(MutantCase):
+    """glitch-06's ruling 2: LAUNCHER_SOURCE is supplied at run time (docker exec ... python3 -I -S -c SOURCE), never
+    baked into the image, so a variant is built here: the reserved name NO_LOGIN copies no credential into the agent's
+    environment, and launcher_argv admits it only for a Codex row behind the closed lease gate. Claude Code's road is
+    unchanged. The launcher program runs in-process here with os.execvpe faked: no process starts."""
+
+    def run_launcher(self, argv, environ):
+        """The environment the launcher would exec the harness with, or the exception it raised."""
+        import os as real_os
+        got = {}
+
+        def fake_exec(prog, args, env):
+            got["env"] = dict(env)
+            got["args"] = list(args)
+            raise SystemExit(0)
+        cwd = real_os.getcwd()
+        home = tempfile.mkdtemp(prefix="w-")
+        real_os.chdir(home)
+        try:
+            with mock.patch.object(real_os, "execvpe", fake_exec), mock.patch.dict(real_os.environ, environ,
+                                                                                    clear=True), \
+                    mock.patch.object(sys, "argv", ["-c", *argv]):
+                try:
+                    exec(compile(rt.LAUNCHER_SOURCE, "<launcher>", "exec"), {"__name__": "__main__"})
+                except SystemExit:
+                    pass
+                except Exception as e:  # noqa: BLE001 - reported as the launcher's failure
+                    return e
+        finally:
+            real_os.chdir(cwd)
+        return got
+
+    def check(self):
+        out = []
+        home = tempfile.mkdtemp(prefix="w-")
+        # Claude Code's road: the one credential is copied from the exec's environment by its name
+        got = self.run_launcher(["CLAUDE_CODE_OAUTH_TOKEN", "1", f"HOME={home}", "claude", "-p"],
+                                {"CLAUDE_CODE_OAUTH_TOKEN": "FAKE-claude-0123456789-PLANTED"})
+        if not isinstance(got, dict) or got["env"] != {"HOME": home,
+                                                       "CLAUDE_CODE_OAUTH_TOKEN": "FAKE-claude-0123456789-PLANTED"}:
+            out.append(f"the credential road changed: {got!r}"[:200])
+        # the no-login road: nothing is copied, whatever the exec's environment holds
+        got = self.run_launcher([rt.NO_LOGIN, "1", f"HOME={home}", "codex", "exec"],
+                                {"CODEX_API_KEY": "FAKE-api-0123456789-PLANTED", "OPENAI_API_KEY": "FAKE-oa-PLANTED"})
+        if not isinstance(got, dict) or got["env"] != {"HOME": home}:
+            out.append(f"the no-login launcher copied something or failed: {type(got).__name__}")
+        if rt.NO_LOGIN != "-" or rt._NAME.fullmatch(rt.NO_LOGIN):
+            out.append("NO_LOGIN is not the reserved '-' (a name no variable can have)")
+        # launcher_argv: the reserved name only for a Codex row, only behind the open gate
+        try:
+            rt.launcher_argv(rt.NO_LOGIN, {"A": "1"}, ["codex", "exec"], harness=rt.CODEX)
+            out.append("the closed gate admitted the no-login launcher")
+        except rt.NotReady as e:
+            if str(e) != rt.CODEX_SUBSCRIPTION_NOT_READY:
+                out.append(f"the closed gate refused with another message: {e}")
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", True):
+            argv = rt.launcher_argv(rt.NO_LOGIN, {"B": "2", "A": "1"}, ["codex", "exec"], harness=rt.CODEX)
+            if argv != [*rt.LAUNCHER, "-", "2", "A=1", "B=2", "codex", "exec"]:
+                out.append(f"the no-login launcher argv is {argv!r}"[:200])
+            for harness in (rt.CLAUDE_CODE, rt.GEMINI, None):
+                try:
+                    rt.launcher_argv(rt.NO_LOGIN, {"A": "1"}, ["x"], harness=harness)
+                    out.append(f"the no-login launcher was admitted for {harness!r}")
+                except rt.NotReady:
+                    out.append(f"{harness!r}: NotReady, not a refusal")
+                except rt.Refused as e:
+                    if "only for a Codex row" not in str(e):
+                        out.append(f"{harness!r}: refused without naming the rule: {e}")
+        return out
+
+    def test_no_login_launcher(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+# ----------------------------------------------- the Codex row: subscriptions only, no environment login (glitch-06)
+# The billing-route variables named from the pinned Codex binary's own strings (codex-auth-binary-markers.json,
+# sources[0].matches[N].context; the binary's strings run together, so each boundary is the next CODEX_/OPENAI_
+# prefix). The lane report cites each one and lists what the evidence cannot settle.
+CODEX_ROUTE_NAMED = ("CODEX_AUTHAPI_BASE_URL", "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL",
+                     "CODEX_AGENT_IDENTITY_JWKS_BASE_URL", "CODEX_REVOKE_TOKEN_URL_OVERRIDE", "CODEX_CONNECTORS_TOKEN",
+                     "OPENAI_ORGANIZATION", "OPENAI_FEDERATION_RULE_ID", "OPENAI_IDENTITY_TOKEN_FILE")
+# glitch-06's ruling on the docs-read candidates (14 Oct 2026): the pinned Codex is 0.162.1 (box/codex/image.lock,
+# harness.version), the version test_env_allowlist's DOCS_READ_VARIABLES was read at (rust-v0.162.1), so its Codex names
+# not already above are refused if present too. Refusing more fails closed.
+CODEX_ROUTE_DOCS_READ = ("OPENAI_PROJECT", "OPENAI_BASE_URL", "CODEX_ACCESS_TOKEN", "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
+                         "CODEX_OSS_BASE_URL", "CODEX_OSS_PORT", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",
+                         "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE")
+
+
+class TestCodexRow(MutantCase):
+    """glitch-06's ruling 1 (14 Oct 2026): no API-key route for Codex, ever. TAKE_ENV[CODEX] carries no credential;
+    LOGIN_VARIABLE[CODEX] is NO_LOGIN (the lease road); every road that expects an environment login refuses a Codex
+    row explicitly; CODEX_API_KEY and OPENAI_API_KEY are refused for a Codex take, by name, never by value. Ruling 3:
+    VENDOR_BILLING_ROUTE_VARIABLES[CODEX] is named from the pinned version's evidence, refused if present."""
+
+    PLANT = "FAKE-api-0123456789abcdef-PLANTED"
+
+    def check(self):
+        out = []
+        row = rt.TAKE_ENV[rt.CODEX]
+        if "CODEX_API_KEY" in row or rt.CREDENTIAL in row.values():
+            out.append("the Codex row still carries an environment credential")
+        if rt.LOGIN_VARIABLE[rt.CODEX] != rt.NO_LOGIN:
+            out.append(f"LOGIN_VARIABLE[codex] is {rt.LOGIN_VARIABLE[rt.CODEX]!r}, not NO_LOGIN")
+        if rt.LOGIN_VARIABLE[rt.CLAUDE_CODE] != "CLAUDE_CODE_OAUTH_TOKEN" or \
+                rt.LOGIN_VARIABLE[rt.GEMINI] != "GEMINI_API_KEY":
+            out.append("another arm's login variable moved")
+        refused = rt.refused_variables(rt.CODEX)
+        for name in ("CODEX_API_KEY", "OPENAI_API_KEY") + CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ:
+            if name not in refused:
+                out.append(f"{name} is not refused for a Codex take")
+            with mock.patch.dict(os.environ, {}, clear=True):
+                try:
+                    rt.check_environment(rt.CODEX, {"PATH": "/bin", name: self.PLANT})
+                    out.append(f"a Codex take admitted {name} in the caller's environment")
+                except rt.Refused as e:
+                    if name not in str(e) or "PLANTED" in str(e):
+                        out.append(f"{name}: the refusal does not name it, or carries the value: {e}")
+        if tuple(rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.CODEX]) != CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ:
+            out.append(f"VENDOR_BILLING_ROUTE_VARIABLES[codex] is {rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.CODEX]!r}")
+        for name in CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ:     # refuse-if-present for every arm, like the others'
+            if name not in rt.refused_variables(rt.CLAUDE_CODE):
+                out.append(f"{name} is not refused for a Claude Code take")
+        # a road that expects an environment login refuses a Codex row explicitly, never by KeyError
+        d = tempfile.mkdtemp(prefix="w-")
+        p = os.path.join(d, "login")
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(fd, b"-=" + self.PLANT.encode() + b"\n")
+        os.close(fd)
+        try:
+            rt.read_login(p, rt.NO_LOGIN)
+            out.append("read_login read a Codex environment login")
+        except rt.LoginRefused as e:
+            if "no environment login" not in str(e) or "PLANTED" in str(e):
+                out.append(f"read_login refused a Codex row without naming the rule: {e}")
+        except Exception as e:  # noqa: BLE001
+            out.append(f"read_login crashed on a Codex row: {type(e).__name__}")
+        try:
+            rt.exec_argv("a" * 64, ["codex", "exec"], user=rt.AGENT_USER, workdir="/", harness=rt.CODEX,
+                         run_tree=d, login_file=p, caller_env={"PATH": "/bin"})
+            out.append("exec_argv admitted a Codex row")
+        except rt.NotReady:
+            pass
+        except Exception as e:  # noqa: BLE001
+            out.append(f"exec_argv refused a Codex row with {type(e).__name__}, not NotReady")
+        return out
+
+    def test_codex_row(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
+def stat_reg(st) -> bool:
+    import stat as _stat
+    return _stat.S_ISREG(st.st_mode)
+
+
 # ------------------------------------------------------------------------------- PENDING and neutral names
 class TestPendingAndNames(MutantCase):
     # TOP_FORMAT and INSPECT_STATUS FILLED 14 Oct 2026 (stub-take review PASS); FALLBACK_ENV FILLED the same day from
@@ -1985,8 +2292,15 @@ SUBPROCESS_NAMES = frozenset({"run", "TimeoutExpired"})
 GUARDED_MODULES = ("os", "subprocess")
 # W4B2-2, derived once from the three box modules' source and committed (TestAuditAllowlists binds both ways).
 # Box lane 14 Oct: run_turn's launch journal is flushed to disk before the exec (os.fsync), 0b6f60f9.
+# Box lane 14 Oct (glitch-06's ruling on the lease postflight review's NIT 5, exactly these three, nothing else):
+# preflight._read_capped opens the registered auth.json and then fstats the descriptor, so the file cannot be swapped
+# between the lstat check and the read:
+#   O_NONBLOCK - the open never blocks on a FIFO swapped in after the check;
+#   fstat      - the opened descriptor's device, inode, type, links, mode and owner are compared with the check's lstat;
+#   close      - the descriptor is closed when that comparison refuses, before any byte is read.
 OS_ATTRS = frozenset({"O_CREAT", "O_EXCL", "O_NOFOLLOW", "O_RDONLY", "O_WRONLY", "environ", "fdopen", "fsync",
-                      "getuid", "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk"})
+                      "getuid", "listdir", "lstat", "makedirs", "mkdir", "open", "path", "sep", "walk",
+                      "O_NONBLOCK", "fstat", "close"})
 DUNDERS_ALLOWED = frozenset({"__file__", "__init__", "__name__"})
 # How subprocess may appear, at DockerRuntime.run only: run as the func of a call, TimeoutExpired in an except.
 SUBPROCESS_USES = frozenset({("run", "call"), ("TimeoutExpired", "except")})

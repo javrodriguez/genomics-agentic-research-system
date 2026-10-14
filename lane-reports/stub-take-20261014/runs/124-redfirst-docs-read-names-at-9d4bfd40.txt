@@ -1,0 +1,8 @@
+== test_run_take -k TestCodexRow against 9d4bfd40's run_take.py
+FAIL: test_codex_row (test_run_take.TestCodexRow.test_codex_row)
+Ran 1 test in 0.026s
+FAILED (failures=1)
+== test_run_take -k test_refused_sets against 9d4bfd40's run_take.py
+FAIL: test_refused_sets (test_run_take.TestArmVariables.test_refused_sets)
+Ran 1 test in 0.010s
+FAILED (failures=1)

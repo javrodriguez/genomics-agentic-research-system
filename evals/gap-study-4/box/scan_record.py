@@ -197,6 +197,8 @@ def read_login(path: str, name: str, *, allowed) -> str:
     """The value of a login file `NAME=<value>`, read at run time and never written down. Refused (LoginError, whose
     message names the rule broken and never the content) unless the file keeps the rule. `allowed` is the caller's
     closed set of login names (binding 5: run_take.LOGIN_VARIABLE's values)."""
+    if name == "-":            # run_take.NO_LOGIN (this module never imports run_take): glitch-06's ruling 1
+        raise LoginError("a Codex row has no environment login: its login is the lease (read_lease_tokens)")
     if not isinstance(name, str) or not _NAME.fullmatch(name):
         raise LoginError("the variable name is upper-case letters, digits and underscores")
     if not _name_allowed(name, allowed):
@@ -232,6 +234,79 @@ def read_login(path: str, name: str, *, allowed) -> str:
     except UnicodeDecodeError:
         raise LoginError("the login file's value is not ASCII") from None
 
+
+# The Codex lease's registered auth.json (glitch-06, 14 Oct 2026, ruling on the lease postflight review's MINOR 3):
+# every login value is in the exact-value scan, so a Codex take's secrets carry the lease's access and refresh tokens.
+# The two names are read under any JSON object of the file (their nesting is the CLI's, not ours); each must be found.
+LEASE_TOKEN_KEYS = ("access_token", "refresh_token")
+LEASE_MAX_BYTES = 1024 * 1024
+
+
+def _lease_values(node, key, out):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == key:
+                out.append(v)
+            _lease_values(v, key, out)
+    elif isinstance(node, list):
+        for v in node:
+            _lease_values(v, key, out)
+
+
+def read_lease_tokens(path: str) -> list:
+    """The access and refresh token values of a Codex lease's registered auth.json, read at run time and never written
+    down. Refused (LoginError, naming the rule broken and never the content) unless the file is an absolute, plain
+    (never a link or special) file, mode 600, owned by its reader, at most LEASE_MAX_BYTES of JSON, and each of
+    LEASE_TOKEN_KEYS holds single-line strings of at least MIN_LENGTH["token"]. Opened as read_login opens a login
+    file (no link followed, never blocking); like read_login, it does not bind the read to the check by inode
+    (test_sidecar's closed vocabulary for this module holds no fstat)."""
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise LoginError("the lease file is named by an absolute path")
+    try:
+        st = os.lstat(path)
+    except OSError:
+        raise LoginError("the lease file cannot be found") from None
+    if not stat.S_ISREG(st.st_mode):
+        raise LoginError("the lease file is not a plain file (a link or a special file is refused)")
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        raise LoginError("the lease file's mode is not 600")
+    if not _owned(st):
+        raise LoginError("the lease file is not owned by its reader")
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        raise LoginError("the lease file cannot be opened") from None
+    try:
+        data = os.read(fd, LEASE_MAX_BYTES + 1)
+    except OSError:
+        raise LoginError("the lease file cannot be read") from None
+    finally:
+        os.close(fd)
+    if len(data) > LEASE_MAX_BYTES:
+        raise LoginError(f"the lease file is at most {LEASE_MAX_BYTES} bytes")
+    # a nesting past the recursion limit refuses by rule (review of b9f876b5, MINOR 2): RecursionError is caught as
+    # its base RuntimeError, already in test_sidecar's closed name set for this module (that set is not widened)
+    try:
+        doc = json.loads(data.decode("utf-8"))
+        found_by_key = {}
+        for key in LEASE_TOKEN_KEYS:
+            found_by_key[key] = []
+            _lease_values(doc, key, found_by_key[key])
+    except (UnicodeDecodeError, ValueError, RuntimeError):
+        raise LoginError("the lease file is not JSON within the nesting the reader walks") from None
+    values = []
+    for key in LEASE_TOKEN_KEYS:
+        found = found_by_key[key]
+        if not found:
+            raise LoginError(f"the lease file holds no {key}")
+        for v in found:
+            if not isinstance(v, str) or len(v) < MIN_LENGTH["token"]:
+                raise LoginError(f"a {key} is a string of at least {MIN_LENGTH['token']} characters")
+            if "\n" in v or "\r" in v:
+                raise LoginError(f"a {key} is a single-line string")
+            if v not in values:
+                values.append(v)
+    return values
 
 # ------------------------------------------------------------------------------------------------- the scan
 def _sha(b: bytes) -> str:
