@@ -615,7 +615,7 @@ class TestExecArgv(MutantCase):
     def check(self):
         out = []
         with filled():
-            argv, env = rt.exec_argv(ID["take"], ["agent-cli", "-p", "x"], user=rt.AGENT_USER,
+            argv, env = rt.exec_argv(ID["take"], CLAUDE_INNER, user=rt.AGENT_USER,
                                      workdir="/srv/w/t1/tree", harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
                                      login_file=self.login, caller_env=CALLER)
         t = "/srv/w/t1/tree/.tmp"
@@ -627,7 +627,7 @@ class TestExecArgv(MutantCase):
                 "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK=1",
                 "CLAUDE_CONFIG_DIR=/opt/cfg", "DISABLE_AUTOUPDATER=1", "ENABLE_CLAUDEAI_MCP_SERVERS=false",
                 "HOME=/opt/cfg", "HTTPS_PROXY=http://proxy:3128", "LANG=C.UTF-8",
-                f"PATH={rt.TAKE_PATH}", f"TEMP={t}", f"TMP={t}", f"TMPDIR={t}", "agent-cli", "-p", "x"]
+                f"PATH={rt.TAKE_PATH}", f"TEMP={t}", f"TMP={t}", f"TMPDIR={t}", *CLAUDE_INNER]
         if argv != want:
             out.append(f"exec argv differs: {argv}")
         if any(FAKE_VALUE in a for a in argv):
@@ -650,7 +650,7 @@ class TestExecArgv(MutantCase):
                 pass
         try:
             with mock.patch.object(rt, "FALLBACK_ENV", rt.PENDING):   # FILLED 14 Oct 2026; the clause stays tested
-                rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                rt.exec_argv(ID["take"], CLAUDE_INNER, user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
                              run_tree="/srv/w/t1/tree", login_file=self.login, caller_env=CALLER)
             out.append("an exec was built while FALLBACK_ENV is PENDING")
         except rt.NotReady:
@@ -659,8 +659,9 @@ class TestExecArgv(MutantCase):
         if rt.FALLBACK_ENV != {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}:
             out.append(f"FALLBACK_ENV is not the ruled value: {rt.FALLBACK_ENV!r}")
         # No availability-fallback chain: --fallback-model in any spelling is refused before any login read.
-        for inner in (["claude", "-p", "x", "--fallback-model", "claude-sonnet-5-5"],
-                      ["claude", "--fallback-model=claude-sonnet-5-5", "-p", "x"]):
+        # Each is otherwise a well-formed turn (its model and the study's settings), so only the flag can refuse it.
+        for inner in (CLAUDE_INNER + ["--fallback-model", "claude-sonnet-5-5"],
+                      CLAUDE_INNER[:1] + ["--fallback-model=claude-sonnet-5-5"] + CLAUDE_INNER[1:]):
             try:
                 with filled(), mock.patch.object(rt, "read_login", side_effect=AssertionError("login read")):
                     rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
@@ -1185,6 +1186,70 @@ class TestLaunch(MutantCase):
         ])
 
 
+# A claude-code turn as the adapter builds it: its model once and the study's inline settings (review finding 1).
+CLAUDE_MODEL = "claude-opus-5-5"
+CLAUDE_INNER = ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", rt.claude_study_settings(CLAUDE_MODEL)]
+
+
+class TestClaudeSettings(MutantCase):
+    """glitch-06's ruling on review finding 1 (14 Oct 2026): the study's Claude settings ride inline by --settings
+    (command-line level, above the agent-owned project and local files); exec_argv refuses a turn without exactly them."""
+
+    def check(self):
+        out = []
+        want = rt.claude_study_settings(CLAUDE_MODEL)
+        doc = json.loads(want)
+        if doc != {"availableModels": [CLAUDE_MODEL], "env": {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"},
+                   "fallbackModel": [], "switchModelsOnFlag": False}:
+            out.append(f"the study's settings are {doc}")
+        good = [CLAUDE_INNER, ["claude", "-p", "--settings is just prompt text", "--model", CLAUDE_MODEL,
+                               "--settings=" + want]]
+        for inner in good:
+            try:
+                rt.check_claude_settings(inner)
+            except rt.Refused as e:
+                out.append(f"a well-formed turn was refused: {e}")
+        other = rt.claude_study_settings("claude-sonnet-5-5")
+        bad = {"no-settings": ["claude", "-p", "x", "--model", CLAUDE_MODEL],
+               "two-settings": CLAUDE_INNER + ["--settings", want],
+               "another-model's": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", other],
+               "switch-true": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings",
+                               want.replace('"switchModelsOnFlag":false', '"switchModelsOnFlag":true')],
+               "no-model": ["claude", "-p", "x", "--settings", want],
+               "two-models": CLAUDE_INNER + ["--model", "claude-sonnet-5-5"],
+               "settings-file": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings", "/opt/cfg/s.json"]}
+        for name, inner in bad.items():
+            try:
+                rt.check_claude_settings(inner)
+                out.append(f"{name}: admitted")
+            except rt.Refused:
+                pass
+        login = plant_login(tempfile.mkdtemp(prefix="w-"), "CLAUDE_CODE_OAUTH_TOKEN")
+        try:
+            with mock.patch.object(rt, "read_login", side_effect=AssertionError("login read")):
+                rt.exec_argv(ID["take"], bad["no-settings"], user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                             run_tree="/srv/w/t1/tree", login_file=login, caller_env=CALLER)
+            out.append("exec_argv built a claude-code turn without the study's settings")
+        except rt.Refused:
+            pass
+        except AssertionError:
+            out.append("the login was read before the settings refusal")
+        return out
+
+    def test_the_inline_settings(self):
+        self.assert_green_then_red(self.check, [
+            ("check-skipped", patched(rt, "check_claude_settings", lambda inner: None)),
+            ("switch-on", patched(rt, "claude_study_settings", lambda m: json.dumps(
+                {"availableModels": [m], "env": dict(rt.FALLBACK_ENV), "fallbackModel": [],
+                 "switchModelsOnFlag": True}, sort_keys=True, separators=(",", ":")))),
+            ("no-allowlist", patched(rt, "claude_study_settings", lambda m: json.dumps(
+                {"env": dict(rt.FALLBACK_ENV), "fallbackModel": [], "switchModelsOnFlag": False}, sort_keys=True,
+                separators=(",", ":")))),
+            ("prompt-read-as-flag", patched(rt, "_flag_values", lambda inner, flag: [
+                inner[i + 1] if i + 1 < len(inner) else None for i, t in enumerate(inner) if t == flag])),
+        ])
+
+
 def _inspect_clause_only(sidecar):
     """A mutant of run_take._check_launch_ready with its sidecar-expectation clause removed."""
     if rt._is_pending(rt.INSPECT_STATUS):
@@ -1481,7 +1546,7 @@ class TestRunTurn(MutantCase):
         stream = os.path.join(tmp, "turn-1.jsonl")
         fake = FakeRuntime([(["docker", "exec", "--user", "10001:10001"], ok('{"type":"x"}\n', "warn\n"))])
         with filled():
-            r = rt.run_turn(fake, ID["take"], ["agent-cli"], harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
+            r = rt.run_turn(fake, ID["take"], CLAUDE_INNER, harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
                             login_file=login, stream_path=stream, budget_s=900, clock=clock, caller_env=CALLER)
         if (r["exit_code"], r["timed_out"], r["started_at"], r["ended_at"]) != (0, False, 100.0, 107.5):
             out.append(f"turn record {r}")
@@ -1496,7 +1561,7 @@ class TestRunTurn(MutantCase):
         err.stdout = "partial\n"
         fake = FakeRuntime([(["docker", "exec"], err)])
         with filled():
-            r = rt.run_turn(fake, ID["take"], ["agent-cli"], harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
+            r = rt.run_turn(fake, ID["take"], CLAUDE_INNER, harness=rt.CLAUDE_CODE, run_tree="/srv/w/t1/tree",
                             login_file=login, stream_path=stream2, budget_s=900, clock=clock, caller_env=CALLER)
         if not r["timed_out"] or r["exit_code"] is not None or open(stream2).read() != "partial\n":
             out.append(f"a timeout was not recorded as a timed-out exec: {r}")

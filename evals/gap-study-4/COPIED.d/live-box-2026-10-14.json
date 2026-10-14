@@ -75,6 +75,16 @@
       "path": "tests/test_rules_scanner.py",
       "status": "new",
       "reason": "Lane live-box: the scanner with a fake runtime (argv, findings by path/line/rule, feeding scan_record), every refusal (sha, version, exit, missing or malformed report, used report folder), and the pin bound to the four stub takes' athena readings."
+    },
+    {
+      "path": "box/settings_guard.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's ruling on review finding 1, 14 Oct 2026): the run tree's Claude Code settings files: a host-side baseline before grant and launch refusing env, model, fallbackModel, switchModelsOnFlag or availableModels, and a pre-turn check on the sidecar's own pre-k snapshot refusing any changed, new, removed or linked settings file."
+    },
+    {
+      "path": "tests/test_settings_guard.py",
+      "status": "new",
+      "reason": "Lane live-box: the settings guard against GARS's shipped gars/.claude/settings.json at the pinned commit and stub take 5's athena pre-1 snapshot, each forbidden key, links, shapes and every snapshot change."
     }
   ]
 }

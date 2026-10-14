@@ -5,8 +5,7 @@ The folder is mounted at `run_take.CONFIG_MOUNT` in the take container and is th
 (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GEMINI_CLI_HOME`, set by run_take's environment per harness). Split from
 run_take.py (this lane's decision) so each file stays one owner and small.
 
-  - claude-code: `settings.json` holding the bypass acceptance and `switchModelsOnFlag: false` (glitch-06's ruling,
-    14 Oct 2026, a named departure from the plan's "ONLY the bypass acceptance"; the plan's words follow) ("setting sources that include the per-take user
+  - claude-code: `settings.json` holding ONLY the bypass acceptance ("setting sources that include the per-take user
     settings, which carry only the bypass acceptance; the host's user settings never exist in the box"). Its key is
     PENDING: the guards plan names `skipDangerousModePermissionPrompt` (its line 77), confirmed at the pinned version.
   - codex: `config.toml` with D8's values and the owner's subscription amendment, `model` from the caller, `model_reasoning_effort` PENDING (the
@@ -38,12 +37,6 @@ CLAUDE_CODE, CODEX, GEMINI = run_take.CLAUDE_CODE, run_take.CODEX, run_take.GEMI
 # claude-code: the user-settings key that pre-accepts the bypass-mode warning.
 CLAUDE_BYPASS_KEY = PENDING
 CLAUDE_SETTINGS = "settings.json"
-# The second guard against a silent model switch (glitch-06's ruling, 14 Oct 2026; settings-reference.md
-# `switchModelsOnFlag`, sha256 2db99684...; the key is in the pinned 2.1.296 binary, claude-settings-names-probe):
-# off, a safety-flagged request ends as an error or refusal instead of switching models. run_take.FALLBACK_ENV is
-# the first. fallbackModel (the availability chain, on only if configured) is never written.
-CLAUDE_FIXED_SETTINGS = (("switchModelsOnFlag", False),)
-CLAUDE_FORBIDDEN_SETTINGS = ("fallbackModel",)
 
 # Codex: D8 section 3 plus owner's 13 Oct subscription-only amendment.
 CODEX_CONFIG = "config.toml"
@@ -143,13 +136,7 @@ def _claude(model) -> dict:
         raise Refused("Claude Code's per-take settings carry only the bypass acceptance; the model rides as a flag")
     if not isinstance(CLAUDE_BYPASS_KEY, str) or not _KEY.fullmatch(CLAUDE_BYPASS_KEY):
         raise Refused("the bypass key is off its shape")
-    doc = {}
-    _set(doc, CLAUDE_BYPASS_KEY, True)
-    for key, value in CLAUDE_FIXED_SETTINGS:
-        _set(doc, key, value)
-    if [k for k in doc if k in CLAUDE_FORBIDDEN_SETTINGS] or doc.get("switchModelsOnFlag") is not False:
-        raise Refused("Claude Code's settings never configure a model fallback, and switchModelsOnFlag is false")
-    return {CLAUDE_SETTINGS: _json_bytes(doc)}
+    return {CLAUDE_SETTINGS: _json_bytes({CLAUDE_BYPASS_KEY: True})}
 
 
 def _codex(model) -> dict:
