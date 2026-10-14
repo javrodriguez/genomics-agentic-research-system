@@ -885,12 +885,23 @@ def _check_sidecar(sidecar: SidecarLaunch) -> None:
         raise Refused("the sidecar's expectation is a dict")
 
 
-# glitch-06's ruling on P-2 (14 Oct 2026): the egress proxy's memory cap (the sidecar's is sidecar.MEMORY_BYTES).
+# glitch-06's ruling on P-2 (14 Oct 2026): the egress proxy's and the sidecar's memory caps. The sidecar's is applied
+# here, by launch, to the caller's sidecar create argv (sidecar_create_argv), so box/sidecar.py stays byte-identical
+# to the program baked into the locked sidecar image (the lock's re-derivation guard, tests/test_image.py).
 # Policy beside it (P-1 and P-2, the same ruling): a take's cgroup counters are read every turn and an oom_kill rise is
 # routed by routing.json (row cgroup-kill); the first walk records each turn's memory.peak and pids.peak, and a cap is
 # re-ruled before measured takes if a rehearsal OOMs, never mid-run; no athena_suite or other heavy job runs while any
 # take runs.
 PROXY_MEMORY_BYTES = 512 * 1024 * 1024
+SIDECAR_MEMORY_BYTES = 512 * 1024 * 1024
+
+
+def sidecar_create_argv(sidecar: SidecarLaunch) -> list:
+    """The sidecar's `docker create` as launch runs it: the caller's argv with the memory cap after `create`."""
+    argv = _check_argv(sidecar.create_argv)
+    if argv[:2] != [RUNTIME_CLIENT, "create"] or "--memory" in argv or any(a.startswith("--memory") for a in argv):
+        raise Refused("the sidecar's create argv starts with docker create and sets no memory value of its own")
+    return argv[:2] + ["--memory", str(SIDECAR_MEMORY_BYTES)] + argv[2:]
 
 
 def proxy_create_argv(network_id: str, proxy: ProxyLaunch) -> list:
@@ -954,7 +965,7 @@ def launch(runtime, spec: TakeSpec, *, sidecar: SidecarLaunch, proxy: ProxyLaunc
         _step(runtime, launched, "proxy-connect",
               [RUNTIME_CLIENT, "network", "connect", DEFAULT_NETWORK, launched.proxy_id], env)
         _step(runtime, launched, "proxy-start", [RUNTIME_CLIENT, "start", launched.proxy_id], env)
-        c = _step(runtime, launched, "sidecar-create", list(sidecar.create_argv), env)
+        c = _step(runtime, launched, "sidecar-create", sidecar_create_argv(sidecar), env)
         launched.sidecar_id = _new_id(c, "sidecar-create")
         got = _inspect(runtime, launched, "sidecar-inspect", launched.sidecar_id, env)
         bad = preflight.inspect_mismatches(got, sidecar.expect, kind="sidecar")

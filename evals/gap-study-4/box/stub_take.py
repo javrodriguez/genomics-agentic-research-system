@@ -219,7 +219,7 @@ def launch_mirror(runtime, spec, *, sidecar: run_take.SidecarLaunch, proxy: run_
         run_take._step(runtime, launched, "proxy-connect",
                        [client, "network", "connect", run_take.DEFAULT_NETWORK, launched.proxy_id], env)
         run_take._step(runtime, launched, "proxy-start", [client, "start", launched.proxy_id], env)
-        c = run_take._step(runtime, launched, "sidecar-create", list(sidecar.create_argv), env)
+        c = run_take._step(runtime, launched, "sidecar-create", run_take.sidecar_create_argv(sidecar), env)
         launched.sidecar_id = run_take._new_id(c, "sidecar-create")
         run_take._inspect(runtime, launched, "sidecar-inspect", launched.sidecar_id, env)
         run_take._step(runtime, launched, "sidecar-start", list(sidecar.start_argv_for(launched.sidecar_id)), env)

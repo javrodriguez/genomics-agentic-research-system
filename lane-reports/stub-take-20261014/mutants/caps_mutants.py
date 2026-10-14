@@ -5,12 +5,15 @@ T = str(Path(__file__).resolve().parents[3] / "evals/gap-study-4/tests")
 sys.path.insert(0, T); sys.dont_write_bytecode = True
 import test_live_box as tl
 MUTANTS = [
- ("sidecar", "sidecar uncapped", '"--security-opt", "no-new-privileges", "--memory", str(MEMORY_BYTES),', '"--security-opt", "no-new-privileges",'),
- ("sidecar", "sidecar cap 1 GiB", "MEMORY_BYTES = 512 * 1024 * 1024", "MEMORY_BYTES = 1024 * 1024 * 1024"),
- ("sidecar", "flag not in the closed list", '"--security-opt": True, "--memory": True, "--mount": True}', '"--security-opt": True, "--mount": True}'),
+ ("rt", "sidecar uncapped", 'return argv[:2] + ["--memory", str(SIDECAR_MEMORY_BYTES)] + argv[2:]', 'return argv'),
+ ("rt", "sidecar cap 1 GiB", "SIDECAR_MEMORY_BYTES = 512 * 1024 * 1024", "SIDECAR_MEMORY_BYTES = 1024 * 1024 * 1024"),
+ ("rt", "caller's own memory admitted", ' or "--memory" in argv or any(a.startswith("--memory") for a in argv):', ':'),
+ ("rt", "launch skips the cap", '"sidecar-create", sidecar_create_argv(sidecar), env)', '"sidecar-create", list(sidecar.create_argv), env)'),
  ("rt", "proxy uncapped", '"--security-opt", "no-new-privileges", "--memory", str(PROXY_MEMORY_BYTES),', '"--security-opt", "no-new-privileges",'),
- ("rt", "proxy cap after the image", 'proxy.image, *proxy.command]', 'proxy.image, *proxy.command][:0] or [RUNTIME_CLIENT]'),
+ ("rt", "proxy cap 1 GiB", "PROXY_MEMORY_BYTES = 512 * 1024 * 1024", "PROXY_MEMORY_BYTES = 1024 * 1024 * 1024"),
 ]
+c = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(unittest.defaultTestLoader.loadTestsFromTestCase(tl.MemoryCaps))
+print("control", len(c.failures) + len(c.errors), "of", c.testsRun)
 alive = []
 for attr, name, old, new in MUTANTS:
     orig = getattr(tl, attr)

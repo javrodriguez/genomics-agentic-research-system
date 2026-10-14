@@ -1,0 +1,333 @@
+test_a_planted_leftover_temp_makes_the_load_refuse (__main__.TestCrossMount.test_a_planted_leftover_temp_makes_the_load_refuse) ... ok
+test_a_take_under_the_cross_mount_rename_is_green (__main__.TestCrossMount.test_a_take_under_the_cross_mount_rename_is_green) ... ok
+test_finish_removes_any_temp_it_made (__main__.TestCrossMount.test_finish_removes_any_temp_it_made) ... ok
+test_mutant_finish_without_the_sweep_goes_red (__main__.TestCrossMount.test_mutant_finish_without_the_sweep_goes_red) ... ok
+test_mutant_temp_in_tmp_goes_red (__main__.TestCrossMount.test_mutant_temp_in_tmp_goes_red) ... ok
+test_mutant_the_old_private_folder_layout_goes_red (__main__.TestCrossMount.test_mutant_the_old_private_folder_layout_goes_red) ... ok
+test_the_temp_sits_beside_its_destination (__main__.TestCrossMount.test_the_temp_sits_beside_its_destination) ... ok
+test_begin_order_and_stamps (__main__.TestEndstateRoundTrip.test_begin_order_and_stamps) ... ok
+test_one_turn_take_loads_clean (__main__.TestEndstateRoundTrip.test_one_turn_take_loads_clean) ... ok
+test_pause_protocol_stamps (__main__.TestEndstateRoundTrip.test_pause_protocol_stamps) ... ok
+test_reply_shape (__main__.TestEndstateRoundTrip.test_reply_shape) ... ok
+test_snapshot_entries_and_blobs (__main__.TestEndstateRoundTrip.test_snapshot_entries_and_blobs) ... ok
+test_a_stop_by_the_sidecars_signal_records_0 (__main__.TestExitCodes.test_a_stop_by_the_sidecars_signal_records_0) ... ok
+test_a_watcher_that_exits_by_itself_at_stop_time_records_its_code (__main__.TestExitCodes.test_a_watcher_that_exits_by_itself_at_stop_time_records_its_code) ... ok
+test_an_unknown_event_name_is_a_fault (__main__.TestExitCodes.test_an_unknown_event_name_is_a_fault) ... ok
+test_mutant_any_requested_stop_reads_clean_goes_red (__main__.TestExitCodes.test_mutant_any_requested_stop_reads_clean_goes_red) ... ok
+test_mutant_raw_signal_code_on_a_clean_stop_goes_red (__main__.TestExitCodes.test_mutant_raw_signal_code_on_a_clean_stop_goes_red) ... ok
+test_mutant_unknown_names_ignored_goes_red (__main__.TestExitCodes.test_mutant_unknown_names_ignored_goes_red) ... ok
+test_the_event_table_is_exactly_the_plans (__main__.TestExitCodes.test_the_event_table_is_exactly_the_plans) ... ok
+test_the_exit_code_rule (__main__.TestExitCodes.test_the_exit_code_rule) ... ok
+test_a_consequential_folder_moved_deletes_what_is_beneath (__main__.TestFold2.test_a_consequential_folder_moved_deletes_what_is_beneath) ... ok
+test_a_dash_segment_is_refused (__main__.TestFold2.test_a_dash_segment_is_refused) ... ok
+test_a_death_before_established_is_seen_at_once (__main__.TestFold2.test_a_death_before_established_is_seen_at_once) ... ok
+test_a_non_object_request (__main__.TestFold2.test_a_non_object_request) ... ok
+test_a_rearm_before_its_snapshot_is_refused (__main__.TestFold2.test_a_rearm_before_its_snapshot_is_refused) ... ok
+test_a_stderr_line_after_established_is_a_fault (__main__.TestFold2.test_a_stderr_line_after_established_is_a_fault) ... ok
+test_a_stderr_line_before_established_is_not_a_fault (__main__.TestFold2.test_a_stderr_line_before_established_is_not_a_fault) ... ok
+test_mutant_control_folder_in_the_evidence_goes_red (__main__.TestFold2.test_mutant_control_folder_in_the_evidence_goes_red) ... ok
+test_mutant_dash_segment_accepted_goes_red (__main__.TestFold2.test_mutant_dash_segment_accepted_goes_red) ... ok
+test_mutant_death_while_arming_unseen_goes_red (__main__.TestFold2.test_mutant_death_while_arming_unseen_goes_red) ... ok
+test_mutant_logging_on_after_a_fault_goes_red (__main__.TestFold2.test_mutant_logging_on_after_a_fault_goes_red) ... ok
+test_mutant_nested_paths_skipped_goes_red (__main__.TestFold2.test_mutant_nested_paths_skipped_goes_red) ... ok
+test_mutant_rearm_order_unchecked_goes_red (__main__.TestFold2.test_mutant_rearm_order_unchecked_goes_red) ... ok
+test_mutant_request_shape_unchecked_goes_red (__main__.TestFold2.test_mutant_request_shape_unchecked_goes_red) ... ok
+test_mutant_stderr_ignored_goes_red (__main__.TestFold2.test_mutant_stderr_ignored_goes_red) ... ok
+test_nothing_is_logged_after_a_fault (__main__.TestFold2.test_nothing_is_logged_after_a_fault) ... ok
+test_the_control_folder (__main__.TestFold2.test_the_control_folder) ... ok
+test_the_format_reason_names_stderr_and_the_forced_events (__main__.TestFold2.test_the_format_reason_names_stderr_and_the_forced_events) ... ok
+test_a_deeply_nested_request (__main__.TestFold3.test_a_deeply_nested_request) ... ok
+test_a_late_stderr_line_is_a_fault (__main__.TestFold3.test_a_late_stderr_line_is_a_fault) ... ok
+test_a_setup_failure_fails_the_arm_at_once (__main__.TestFold3.test_a_setup_failure_fails_the_arm_at_once) ... ok
+test_an_exited_watchers_tail_is_a_fault (__main__.TestFold3.test_an_exited_watchers_tail_is_a_fault) ... ok
+test_an_unknown_line_before_the_marker_fails_the_arm (__main__.TestFold3.test_an_unknown_line_before_the_marker_fails_the_arm) ... ok
+test_mutant_any_line_before_the_marker_goes_red (__main__.TestFold3.test_mutant_any_line_before_the_marker_goes_red) ... ok
+test_mutant_no_drain_loop_goes_red (__main__.TestFold3.test_mutant_no_drain_loop_goes_red) ... ok
+test_mutant_recursion_uncaught_goes_red (__main__.TestFold3.test_mutant_recursion_uncaught_goes_red) ... ok
+test_mutant_setup_failure_unseen_goes_red (__main__.TestFold3.test_mutant_setup_failure_unseen_goes_red) ... ok
+test_mutant_tail_never_counted_goes_red (__main__.TestFold3.test_mutant_tail_never_counted_goes_red) ... ok
+test_mutant_unnormalised_control_folder_goes_red (__main__.TestFold3.test_mutant_unnormalised_control_folder_goes_red) ... ok
+test_the_control_folder_is_normalised (__main__.TestFold3.test_the_control_folder_is_normalised) ... ok
+test_the_format_reason_names_the_setup_lines (__main__.TestFold3.test_the_format_reason_names_the_setup_lines) ... ok
+test_a_dunder_attribute_is_refused_even_when_listed (__main__.TestFold3Ast.test_a_dunder_attribute_is_refused_even_when_listed) ... ok
+test_an_unlisted_method_name_is_still_refused (__main__.TestFold3Ast.test_an_unlisted_method_name_is_still_refused)
+glitch-06 ruling, 14 Oct: the rescan's two names are listed; any other new method name still refuses. ... ok
+test_each_vocabulary_is_exactly_the_modules_own (__main__.TestFold3Ast.test_each_vocabulary_is_exactly_the_modules_own) ... ok
+test_mutant_popen_shape_unpinned_goes_red (__main__.TestFold3Ast.test_mutant_popen_shape_unpinned_goes_red) ... ok
+test_mutant_vocabulary_emptied_goes_red (__main__.TestFold3Ast.test_mutant_vocabulary_emptied_goes_red) ... ok
+test_mutant_vocabulary_widened_goes_red (__main__.TestFold3Ast.test_mutant_vocabulary_widened_goes_red) ... ok
+test_the_popen_shape_holds_and_binds (__main__.TestFold3Ast.test_the_popen_shape_holds_and_binds) ... ok
+test_a_badly_filled_format_still_reads_pending (__main__.TestFold4.test_a_badly_filled_format_still_reads_pending) ... ok
+test_a_fault_in_the_last_drain_is_named (__main__.TestFold4.test_a_fault_in_the_last_drain_is_named) ... ok
+test_a_free_name_outside_the_set_is_refused (__main__.TestFold4.test_a_free_name_outside_the_set_is_refused) ... ok
+test_each_names_set_is_exactly_the_modules_own (__main__.TestFold4.test_each_names_set_is_exactly_the_modules_own) ... ok
+test_mutant_abandoned_watcher_left_running_goes_red (__main__.TestFold4.test_mutant_abandoned_watcher_left_running_goes_red) ... ok
+test_mutant_format_shape_unchecked_goes_red (__main__.TestFold4.test_mutant_format_shape_unchecked_goes_red) ... ok
+test_mutant_last_drain_fault_dropped_goes_red (__main__.TestFold4.test_mutant_last_drain_fault_dropped_goes_red) ... ok
+test_mutant_names_emptied_goes_red (__main__.TestFold4.test_mutant_names_emptied_goes_red) ... ok
+test_mutant_names_widened_goes_red (__main__.TestFold4.test_mutant_names_widened_goes_red) ... ok
+test_a_builtin_binding_is_refused_and_never_exempts_a_read (__main__.TestFold5.test_a_builtin_binding_is_refused_and_never_exempts_a_read) ... ok
+test_each_rebinds_set_is_exactly_the_modules_own (__main__.TestFold5.test_each_rebinds_set_is_exactly_the_modules_own) ... ok
+test_mutant_format_types_unchecked_goes_red (__main__.TestFold5.test_mutant_format_types_unchecked_goes_red) ... ok
+test_mutant_rebind_rule_dropped_goes_red (__main__.TestFold5.test_mutant_rebind_rule_dropped_goes_red) ... ok
+test_mutant_rebinds_widened_goes_red (__main__.TestFold5.test_mutant_rebinds_widened_goes_red) ... ok
+test_a_chain_folder_moved_logs_per_path_events_and_no_fault (__main__.TestGaps.test_a_chain_folder_moved_logs_per_path_events_and_no_fault) ... ok
+test_a_folder_moved_onto_the_chain_logs_a_modify (__main__.TestGaps.test_a_folder_moved_onto_the_chain_logs_a_modify) ... ok
+test_a_missing_final_stop (__main__.TestGaps.test_a_missing_final_stop) ... ok
+test_a_missing_start_from_a_failed_rearm (__main__.TestGaps.test_a_missing_start_from_a_failed_rearm) ... ok
+test_a_queue_overflow (__main__.TestGaps.test_a_queue_overflow) ... ok
+test_a_self_exit_0_after_post_n_never_reads_clean (__main__.TestGaps.test_a_self_exit_0_after_post_n_never_reads_clean) ... ok
+test_a_self_exit_0_just_before_the_stop_request_never_reads_clean (__main__.TestGaps.test_a_self_exit_0_just_before_the_stop_request_never_reads_clean) ... ok
+test_a_stream_stamp_before_the_start_is_floored (__main__.TestGaps.test_a_stream_stamp_before_the_start_is_floored) ... ok
+test_a_stream_stamp_later_than_the_clock_is_capped (__main__.TestGaps.test_a_stream_stamp_later_than_the_clock_is_capped) ... ok
+test_a_watcher_that_dies_mid_turn (__main__.TestGaps.test_a_watcher_that_dies_mid_turn) ... ok
+test_an_event_that_maps_to_no_path_is_a_fault (__main__.TestGaps.test_an_event_that_maps_to_no_path_is_a_fault) ... ok
+test_an_rm_rf_of_a_chain_folder_logs_per_path_events_and_no_fault (__main__.TestGaps.test_an_rm_rf_of_a_chain_folder_logs_per_path_events_and_no_fault) ... ok
+test_finish_writes_the_final_stop (__main__.TestGaps.test_finish_writes_the_final_stop) ... ok
+test_mutant_a_death_recorded_clean_goes_red (__main__.TestGaps.test_mutant_a_death_recorded_clean_goes_red) ... ok
+test_mutant_a_moved_chain_folder_as_a_fault_goes_red (__main__.TestGaps.test_mutant_a_moved_chain_folder_as_a_fault_goes_red) ... ok
+test_mutant_a_moved_chain_folder_unlogged_goes_red (__main__.TestGaps.test_mutant_a_moved_chain_folder_unlogged_goes_red) ... ok
+test_mutant_a_second_stop_after_death_goes_red (__main__.TestGaps.test_mutant_a_second_stop_after_death_goes_red) ... ok
+test_mutant_an_exit_before_the_request_read_as_requested_goes_red (__main__.TestGaps.test_mutant_an_exit_before_the_request_read_as_requested_goes_red) ... ok
+test_mutant_an_rm_rf_as_a_fault_goes_red (__main__.TestGaps.test_mutant_an_rm_rf_as_a_fault_goes_red) ... ok
+test_mutant_an_uncapped_future_stamp_goes_red (__main__.TestGaps.test_mutant_an_uncapped_future_stamp_goes_red) ... ok
+test_mutant_an_unmapped_event_ignored_goes_red (__main__.TestGaps.test_mutant_an_unmapped_event_ignored_goes_red) ... ok
+test_mutant_overflow_dropped_goes_red (__main__.TestGaps.test_mutant_overflow_dropped_goes_red) ... ok
+test_mutant_self_exit_0_read_clean_goes_red (__main__.TestGaps.test_mutant_self_exit_0_read_clean_goes_red) ... ok
+test_the_plan_is_the_whole_tree_recursively (__main__.TestGaps.test_the_plan_is_the_whole_tree_recursively) ... ok
+test_the_module_is_this_rounds_file (__main__.TestGuard.test_the_module_is_this_rounds_file) ... ok
+test_the_process_guard_is_armed (__main__.TestGuard.test_the_process_guard_is_armed) ... ok
+test_create_on_a_fake_runtime (__main__.TestHostHalf.test_create_on_a_fake_runtime) ... ok
+test_create_refuses_bad_inputs (__main__.TestHostHalf.test_create_refuses_bad_inputs) ... ok
+test_endstate_binding (__main__.TestHostHalf.test_endstate_binding) ... ok
+test_expect_from_argv (__main__.TestHostHalf.test_expect_from_argv) ... ok
+test_mutant_create_argvs_go_red (__main__.TestHostHalf.test_mutant_create_argvs_go_red) ... ok
+test_mutant_label_rule_goes_red (__main__.TestHostHalf.test_mutant_label_rule_goes_red) ... ok
+test_parse_reply (__main__.TestHostHalf.test_parse_reply) ... ok
+test_start_ctl_rm (__main__.TestHostHalf.test_start_ctl_rm) ... ok
+test_the_default_user_and_the_shared_values (__main__.TestHostHalf.test_the_default_user_and_the_shared_values) ... ok
+test_mutant_rearm_stamped_at_the_pause_goes_red (__main__.TestPauseStamps.test_mutant_rearm_stamped_at_the_pause_goes_red) ... ok
+test_mutant_stop_stamped_after_taken_at_goes_red (__main__.TestPauseStamps.test_mutant_stop_stamped_after_taken_at_goes_red) ... ok
+test_mutant_watcher_left_running_through_a_snapshot_goes_red (__main__.TestPauseStamps.test_mutant_watcher_left_running_through_a_snapshot_goes_red) ... ok
+test_the_snapshots_own_opens_are_never_logged (__main__.TestPauseStamps.test_the_snapshots_own_opens_are_never_logged) ... ok
+test_the_stop_is_stamped_after_the_watcher_exits_and_equals_taken_at (__main__.TestPauseStamps.test_the_stop_is_stamped_after_the_watcher_exits_and_equals_taken_at) ... ok
+test_mutant_dropping_the_refusal_goes_red (__main__.TestPending.test_mutant_dropping_the_refusal_goes_red) ... ok
+test_no_parameter_overrides_a_pending_value (__main__.TestPending.test_no_parameter_overrides_a_pending_value) ... ok
+test_serve_refuses_while_pending (__main__.TestPending.test_serve_refuses_while_pending) ... ok
+test_the_candidate_values_are_exactly_the_measured_ones (__main__.TestPending.test_the_candidate_values_are_exactly_the_measured_ones) ... ok
+test_the_pending_set (__main__.TestPending.test_the_pending_set) ... ok
+test_the_ready_factory_reaches_the_guarded_process_start (__main__.TestPending.test_the_ready_factory_reaches_the_guarded_process_start) ... ok
+test_the_real_factory_refuses_while_pending (__main__.TestPending.test_the_real_factory_refuses_while_pending) ... ok
+test_both_modules_pass (__main__.TestProcessCheck.test_both_modules_pass) ... ok
+test_every_planted_form_is_refused (__main__.TestProcessCheck.test_every_planted_form_is_refused) ... ok
+test_mutants_go_red (__main__.TestProcessCheck.test_mutants_go_red) ... ok
+test_mutant_a_trailing_slash_kept_goes_red (__main__.TestRealParser.test_mutant_a_trailing_slash_kept_goes_red) ... ok
+test_paths_map_to_the_run_tree_or_to_none (__main__.TestRealParser.test_paths_map_to_the_run_tree_or_to_none) ... ok
+test_mutant_following_a_link_goes_red (__main__.TestRoundTrip.test_mutant_following_a_link_goes_red) ... ok
+test_round_trip_loads_clean (__main__.TestRoundTrip.test_round_trip_loads_clean) ... ok
+test_a_chmod_alone_is_invisible (__main__.TestS7Sidecar.test_a_chmod_alone_is_invisible) ... ok
+test_a_special_consequential_path_fails_begin (__main__.TestS7Sidecar.test_a_special_consequential_path_fails_begin) ... ok
+test_begin_writes_the_watched_list (__main__.TestS7Sidecar.test_begin_writes_the_watched_list) ... ok
+test_special_files_are_recorded_by_kind (__main__.TestS7Sidecar.test_special_files_are_recorded_by_kind) ... ok
+test_the_final_stop_at_post_n_reads_as_a_gap (__main__.TestS7Sidecar.test_the_final_stop_at_post_n_reads_as_a_gap) ... ok
+test_file_check (__main__.TestSource.test_file_check) ... ok
+test_mutants_go_red (__main__.TestSource.test_mutants_go_red) ... ok
+test_parses_at_311_and_imports_the_stdlib_only (__main__.TestSource.test_parses_at_311_and_imports_the_stdlib_only) ... ok
+test_a_fifo_is_never_opened (__main__.TestSpecialFilesAndOpens.test_a_fifo_is_never_opened) ... ok
+test_a_lstat_then_open_race_never_follows (__main__.TestSpecialFilesAndOpens.test_a_lstat_then_open_race_never_follows) ... ok
+test_a_race_onto_a_fifo_never_blocks (__main__.TestSpecialFilesAndOpens.test_a_race_onto_a_fifo_never_blocks) ... ok
+test_every_open_never_follows_and_never_blocks (__main__.TestSpecialFilesAndOpens.test_every_open_never_follows_and_never_blocks) ... ok
+test_mutant_a_fifo_opened_goes_red (__main__.TestSpecialFilesAndOpens.test_mutant_a_fifo_opened_goes_red) ... ok
+test_mutant_monotonic_clock_goes_red (__main__.TestSpecialFilesAndOpens.test_mutant_monotonic_clock_goes_red) ... ok
+test_mutant_no_nofollow_goes_red (__main__.TestSpecialFilesAndOpens.test_mutant_no_nofollow_goes_red) ... ok
+test_mutant_no_nonblock_goes_red (__main__.TestSpecialFilesAndOpens.test_mutant_no_nonblock_goes_red) ... ok
+test_no_temp_file_is_left_and_snapshots_never_overwrite (__main__.TestSpecialFilesAndOpens.test_no_temp_file_is_left_and_snapshots_never_overwrite) ... ok
+test_the_host_clock_never_the_monotonic_one (__main__.TestSpecialFilesAndOpens.test_the_host_clock_never_the_monotonic_one) ... ok
+test_a_background_writer_is_attributed_to_its_turn_and_marked_late (__main__.TestStubs.test_a_background_writer_is_attributed_to_its_turn_and_marked_late) ... ok
+test_a_take_that_reads_nothing_logs_zero_events (__main__.TestStubs.test_a_take_that_reads_nothing_logs_zero_events) ... ok
+test_a_take_that_reads_the_planted_file_logs_exactly_that_read (__main__.TestStubs.test_a_take_that_reads_the_planted_file_logs_exactly_that_read) ... ok
+test_mutant_skipping_the_empty_log_goes_red (__main__.TestStubs.test_mutant_skipping_the_empty_log_goes_red) ... ok
+test_a_path_created_mid_turn (__main__.TestWatchPlan.test_a_path_created_mid_turn) ... ok
+test_a_two_level_missing_chain (__main__.TestWatchPlan.test_a_two_level_missing_chain) ... ok
+test_mutant_non_recursive_watch_goes_red (__main__.TestWatchPlan.test_mutant_non_recursive_watch_goes_red) ... ok
+test_mutant_rename_away_missed_goes_red (__main__.TestWatchPlan.test_mutant_rename_away_missed_goes_red) ... ok
+test_mutant_rename_onto_missed_goes_red (__main__.TestWatchPlan.test_mutant_rename_onto_missed_goes_red) ... ok
+test_mutant_watcher_stopped_at_post_n_goes_red (__main__.TestWatchPlan.test_mutant_watcher_stopped_at_post_n_goes_red) ... ok
+test_no_snapshot_before_begin_or_after_finish (__main__.TestWatchPlan.test_no_snapshot_before_begin_or_after_finish) ... ok
+test_renames (__main__.TestWatchPlan.test_renames) ... ok
+test_snapshot_labels_follow_the_take (__main__.TestWatchPlan.test_snapshot_labels_follow_the_take) ... ok
+
+MUTANT finish leaving the sidecar's own temp behind: red 
+MUTANT the temp written to /tmp: red 
+MUTANT the temp in a private folder (the cross-mount rename fails): red 
+MUTANT a requested stop that ended on its own read as clean: red 
+MUTANT a clean deliberate stop recorded as 143: red 
+MUTANT an event name outside the table read as an op: red 
+MUTANT the control channel inside the evidence folder: red 
+MUTANT a watch path starting with - accepted: red 
+MUTANT a death while arming seen only at the timeout: red 
+MUTANT the stream logged on after a fault: red 
+MUTANT a moved consequential folder skips the paths beneath it: red 
+MUTANT a re-arm stamped before its snapshot accepted: red 
+MUTANT a non-object request reaching the handler (PID 1 dies): red 
+MUTANT stderr ignored after the watches are established: red 
+MUTANT any line before the marker accepted: red 
+MUTANT stderr not drained after the first read (a late line reads clean): red 
+MUTANT a deeply nested request kills PID 1: red 
+MUTANT a setup failure seen only at the timeout: red 
+MUTANT an exited watcher's unterminated stderr tail never counted: red 
+MUTANT an unnormalised control folder accepted: red 
+MUTANT the Popen keyword shape widened (cwd accepted): red 
+MUTANT the attribute vocabulary emptied (the real module refused): red 
+MUTANT the attribute vocabulary widened (os.popen through): red 
+MUTANT a watcher given up on while arming left running: red 
+MUTANT a filled format with setup_lines still PENDING read as ready: red 
+MUTANT a fault in the last drain after a self-exit dropped: red 
+MUTANT the free-name set emptied (the real module refused): red 
+MUTANT the free-name set widened (with the builtin denylist narrowed, eval through): red 
+MUTANT a format whose fields is the string PENDING read as ready: red 
+MUTANT a builtin binding exempting its reads (the module-wide exemption back): red 
+MUTANT the rebinds set widened (a builtin binding accepted): red 
+MUTANT a death recorded with exit code 0: red 
+MUTANT a moved chain folder read as a watcher fault: red 
+MUTANT a moved chain folder logs no per-path delete: red 
+MUTANT finish writes a second stop after a death: red 
+MUTANT a self-exit before the stop request read as a clean stop: red 
+MUTANT an rm -rf of a chain folder read as a watcher fault: red 
+MUTANT a stream stamp later than the clock kept: red 
+MUTANT an event mapped to no path read through: red 
+MUTANT the overflow event not written as queue-overflow: red 
+MUTANT a self-exit 0 after post-N recorded clean: red 
+MUTANT create argv: the run tree mounted read-write: red 
+MUTANT create argv: a network: red 
+MUTANT create argv: root watcher: red 
+MUTANT create argv: no cap drop: red 
+MUTANT create argv: a second capability: red 
+MUTANT create argv: no no-new-privileges: red 
+MUTANT create argv: a pulled image: red 
+MUTANT create argv: a shared pid namespace: red 
+MUTANT create argv: an environment variable: red 
+MUTANT create argv: privileged: red 
+MUTANT create argv: a device: red 
+MUTANT create argv: a published port: red 
+MUTANT create argv: a third mount: red 
+MUTANT create argv: evidence elsewhere: red 
+MUTANT create argv: an ipc namespace: red 
+MUTANT create argv: volumes-from: red 
+MUTANT create argv: another program: red 
+MUTANT the label regex admitting post-01: red 
+MUTANT pre-1 signalled as a snapshot: red 
+MUTANT the re-arm stamped at the pause's start (a false stamp): red 
+MUTANT the stop stamped after taken_at: red 
+MUTANT the watcher left running through a snapshot: red 
+MUTANT the real factory without its PENDING refusal: red 
+MUTANT a public function taking a PENDING value: red 
+MUTANT the Popen call moved out of the named factory: red 
+MUTANT a second subprocess call site: red 
+MUTANT scan_record importing subprocess: red 
+MUTANT an attribute allowlist widened (os.popen through): red 
+MUTANT the refused builtins dropped (eval through): red 
+MUTANT a folder event's trailing slash kept: red 
+MUTANT the snapshot follows a link: red 
+MUTANT a box/sidecar/__init__.py shadowing the module: red 
+MUTANT a 3.12 feature in the in-container code: red 
+MUTANT an in-container import outside the standard library: red 
+MUTANT a FIFO opened: red 
+MUTANT the monotonic clock: red 
+MUTANT no O_NOFOLLOW: red 
+MUTANT no O_NONBLOCK (a race onto a FIFO blocks): red 
+MUTANT access.jsonl not created at begin: red 
+MUTANT the missing chain watched non-recursively: red 
+MUTANT a rename away not read as a delete: red 
+MUTANT a rename-replace onto a consequential path missed: red 
+MUTANT the watcher stopped at post-N (a late writer never logged): red 
+mutants run red in this file (84):
+  finish leaving the sidecar's own temp behind
+  the temp written to /tmp
+  the temp in a private folder (the cross-mount rename fails)
+  a requested stop that ended on its own read as clean
+  a clean deliberate stop recorded as 143
+  an event name outside the table read as an op
+  the control channel inside the evidence folder
+  a watch path starting with - accepted
+  a death while arming seen only at the timeout
+  the stream logged on after a fault
+  a moved consequential folder skips the paths beneath it
+  a re-arm stamped before its snapshot accepted
+  a non-object request reaching the handler (PID 1 dies)
+  stderr ignored after the watches are established
+  any line before the marker accepted
+  stderr not drained after the first read (a late line reads clean)
+  a deeply nested request kills PID 1
+  a setup failure seen only at the timeout
+  an exited watcher's unterminated stderr tail never counted
+  an unnormalised control folder accepted
+  the Popen keyword shape widened (cwd accepted)
+  the attribute vocabulary emptied (the real module refused)
+  the attribute vocabulary widened (os.popen through)
+  a watcher given up on while arming left running
+  a filled format with setup_lines still PENDING read as ready
+  a fault in the last drain after a self-exit dropped
+  the free-name set emptied (the real module refused)
+  the free-name set widened (with the builtin denylist narrowed, eval through)
+  a format whose fields is the string PENDING read as ready
+  a builtin binding exempting its reads (the module-wide exemption back)
+  the rebinds set widened (a builtin binding accepted)
+  a death recorded with exit code 0
+  a moved chain folder read as a watcher fault
+  a moved chain folder logs no per-path delete
+  finish writes a second stop after a death
+  a self-exit before the stop request read as a clean stop
+  an rm -rf of a chain folder read as a watcher fault
+  a stream stamp later than the clock kept
+  an event mapped to no path read through
+  the overflow event not written as queue-overflow
+  a self-exit 0 after post-N recorded clean
+  create argv: the run tree mounted read-write
+  create argv: a network
+  create argv: root watcher
+  create argv: no cap drop
+  create argv: a second capability
+  create argv: no no-new-privileges
+  create argv: a pulled image
+  create argv: a shared pid namespace
+  create argv: an environment variable
+  create argv: privileged
+  create argv: a device
+  create argv: a published port
+  create argv: a third mount
+  create argv: evidence elsewhere
+  create argv: an ipc namespace
+  create argv: volumes-from
+  create argv: another program
+  the label regex admitting post-01
+  pre-1 signalled as a snapshot
+  the re-arm stamped at the pause's start (a false stamp)
+  the stop stamped after taken_at
+  the watcher left running through a snapshot
+  the real factory without its PENDING refusal
+  a public function taking a PENDING value
+  the Popen call moved out of the named factory
+  a second subprocess call site
+  scan_record importing subprocess
+  an attribute allowlist widened (os.popen through)
+  the refused builtins dropped (eval through)
+  a folder event's trailing slash kept
+  the snapshot follows a link
+  a box/sidecar/__init__.py shadowing the module
+  a 3.12 feature in the in-container code
+  an in-container import outside the standard library
+  a FIFO opened
+  the monotonic clock
+  no O_NOFOLLOW
+  no O_NONBLOCK (a race onto a FIFO blocks)
+  access.jsonl not created at begin
+  the missing chain watched non-recursively
+  a rename away not read as a delete
+  a rename-replace onto a consequential path missed
+  the watcher stopped at post-N (a late writer never logged)
+----------------------------------------------------------------------
+Ran 157 tests in 5.792s
+
+OK
+

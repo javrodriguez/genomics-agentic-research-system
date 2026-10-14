@@ -5,6 +5,7 @@ No Docker or model is run by this module. Live evidence is retained separately.
 import signal
 import sys
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -564,17 +565,51 @@ class MemoryCaps(unittest.TestCase):
     CAP = 512 * 1024 * 1024
 
     def test_the_caps(self):
-        self.assertEqual(sidecar.MEMORY_BYTES, self.CAP)
+        self.assertEqual(rt.SIDECAR_MEMORY_BYTES, self.CAP)
         self.assertEqual(rt.PROXY_MEMORY_BYTES, self.CAP)
 
     def test_the_sidecar_is_created_under_its_cap(self):
-        argv = sidecar.create_argv(image="sha256:" + "1" * 64, run_tree="/srv/w/t", evidence="/srv/w/e",
+        base = sidecar.create_argv(image="sha256:" + "1" * 64, run_tree="/srv/w/t", evidence="/srv/w/e",
                                    watch=["plan/approved.json"])
-        i = argv.index("--memory")
-        self.assertEqual(argv[i + 1], str(self.CAP))
-        self.assertEqual(argv.count("--memory"), 1)
-        self.assertLess(i, argv.index("sha256:" + "1" * 64))
-        sidecar.expect_from_argv(argv)          # the closed flag list admits it
+        launch = rt.SidecarLaunch(tuple(base), sidecar.start_argv, sidecar.ctl_argv, sidecar.rm_argv,
+                                  sidecar.expect_from_argv(base))
+        argv = rt.sidecar_create_argv(launch)
+        self.assertEqual(argv, base[:2] + ["--memory", str(self.CAP)] + base[2:])
+        for own in (["--memory", "1"], ["--memory=1"]):
+            bad = rt.SidecarLaunch(tuple(base[:2] + own + base[2:]), sidecar.start_argv, sidecar.ctl_argv,
+                                 sidecar.rm_argv, launch.expect)
+            with self.subTest(own=own), self.assertRaises(rt.Refused):
+                rt.sidecar_create_argv(bad)
+        # launch runs exactly that argv for the sidecar (the box's one launch road), on a fake runtime
+        d = tempfile.mkdtemp()
+        tree, ev, cfg, rec = (os.path.join(d, n) for n in ("t", "e", "c", "r"))
+        for p in (tree, ev, cfg, rec):
+            os.mkdir(p)
+        base = sidecar.create_argv(image="sha256:" + "1" * 64, run_tree=tree, evidence=ev, watch=["plan/approved.json"])
+        exp = dict(sidecar.expect_from_argv(base), cap_add=["CAP_DAC_READ_SEARCH"])
+        launch = rt.SidecarLaunch(tuple(base), sidecar.start_argv, sidecar.ctl_argv, sidecar.rm_argv, exp)
+        proxy = rt.ProxyLaunch(image="sha256:" + "5" * 64, conf_source="/srv/p.conf",
+                               conf_target="/etc/squid/squid.conf", command=("squid", "-N"), user="13:13",
+                               alias=rt.PROXY_ALIAS)
+        spec = rt.TakeSpec(image="sha256:" + "2" * 64, run_tree=tree, config_dir=cfg, network="0" * 64,
+                           memory_reservation=1 << 30, memory=3 << 30, cpus="2", pids_limit=64)
+
+        class Fake:
+            n = 0
+
+            def run(self, argv, **kw):
+                if argv[1:3] == ["network", "create"] or argv[1] == "create":
+                    Fake.n += 1
+                    return rt.Completed(0, f"{Fake.n:064x}\n", "")
+                if argv[1:3] == ["container", "inspect"]:
+                    return rt.Completed(0, json.dumps([{"Id": argv[3]}]), "")
+                return rt.Completed(0, "", "")
+        with mock.patch("box.preflight.inspect_mismatches", lambda *a, **k: []):
+            launched = rt.launch(Fake(), spec, sidecar=launch, proxy=proxy, record_dir=rec)
+        step = [x for x in launched.steps if x["step"] == "sidecar-create"][0]
+        self.assertEqual(step["argv"], base[:2] + ["--memory", str(self.CAP)] + base[2:])
+        import shutil
+        shutil.rmtree(d)
 
     def test_the_proxy_is_created_under_its_cap(self):
         proxy = rt.ProxyLaunch(image="sha256:" + "5" * 64, conf_source="/srv/p.conf", conf_target="/etc/squid/squid.conf",

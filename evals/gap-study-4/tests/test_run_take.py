@@ -921,7 +921,7 @@ class Launch:
             (["docker", "create", "--pull=never", "--network", ID["net"], "--network-alias", "proxy"], ok(ID["proxy"])),
             (["docker", "network", "connect", "bridge", ID["proxy"]], ok()),
             (["docker", "start", ID["proxy"]], ok()),
-            (["docker", "create", "--network", "none"], ok(ID["side"])),
+            (["docker", "create", "--memory", str(rt.SIDECAR_MEMORY_BYTES), "--network", "none"], ok(ID["side"])),
             (["docker", "container", "inspect", ID["side"]], ok(json.dumps(side_inspect(self.tree, self.ev)))),
             (["docker", "start", ID["side"]], ok()),
             (["docker", "create", "--pull=never", "--network", ID["net"], "--user", "10003:10003"], ok(ID["take"])),
