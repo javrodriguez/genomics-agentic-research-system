@@ -240,26 +240,29 @@ class SidecarContractRegression(unittest.TestCase):
             self.assertEqual(getattr(sidecar, name), getattr(c, name), name)
         import ast
         side = ast.parse((BOX / "sidecar.py").read_text(encoding="utf-8"))
-        # sidecar.py may only re-export each contract name as `NAME = _contract.NAME`, never define it.
-        for n in side.body:
-            if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id in CONTRACT_NAMES for t in n.targets):
-                name = n.targets[0].id
-                self.assertTrue(isinstance(n.value, ast.Attribute) and isinstance(n.value.value, ast.Name)
-                                and n.value.value.id == "_contract" and n.value.attr == name,
-                                f"sidecar.py defines {name} itself")
+        # sidecar.py carries each contract value literally (its own audit admits no import of another file); the
+        # equality above binds the two, and each must be a literal assignment, never derived elsewhere.
+        literal = {t.id for n in side.body if isinstance(n, ast.Assign) for t in n.targets
+                   if isinstance(t, ast.Name) and t.id in CONTRACT_NAMES}
+        self.assertEqual(sorted(literal), sorted(CONTRACT_NAMES))
         pre = ast.parse((BOX / "preflight.py").read_text(encoding="utf-8"))
         froms = [(n.module, a.name, a.asname) for n in ast.walk(pre) if isinstance(n, ast.ImportFrom)
                  for a in n.names]
         self.assertIn(("box", "sidecar_contract", None), froms)
         self.assertEqual([f for f in froms if f[1] == "sidecar"], [], "preflight imports the sidecar program")
 
-    def test_sidecar_image_carries_the_contract(self):
+    def test_sidecar_image_carries_the_program_alone(self):
         from box import image_lock as il
-        self.assertEqual(il.SIDECAR_COPIES, ("sidecar.py /opt/w/sidecar.py",
-                                             "sidecar_contract.py /opt/w/sidecar_contract.py"))
+        self.assertFalse(hasattr(il, "SIDECAR_COPIES"))
         lines = [ln.strip() for ln in (BOX / "sidecar" / "Dockerfile").read_text(encoding="utf-8").splitlines()]
-        self.assertEqual([ln for ln in lines if ln.startswith("COPY ")], ["COPY " + c for c in il.SIDECAR_COPIES])
+        self.assertEqual([ln for ln in lines if ln.startswith("COPY ")], ["COPY " + il.SIDECAR_COPY])
 
+    def test_a_drifted_sidecar_value_is_caught(self):
+        c = self.contract()
+        with mock.patch.object(sidecar, "BOOT_USER", "10002:10002"):
+            self.assertNotEqual(sidecar.BOOT_USER, c.BOOT_USER)
+            with self.assertRaises(AssertionError):
+                self.test_sidecar_and_preflight_read_the_contract()
 
 if __name__ == "__main__":
     unittest.main()

@@ -102,26 +102,22 @@ from dataclasses import dataclass
 # ------------------------------------------------------------------------------------------------- shared values
 DOCKER = "docker"
 EVIDENCE_MOUNT = "/srv/ev"
-def _load_contract():
-    """The fixed launch constants from sidecar_contract.py beside this file (in the repository, and at /opt/w in the
-    sidecar image): one source for this program, preflight and the image (glitch-06 ruling 1, 14 Oct 2026)."""
-    import importlib.util
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sidecar_contract.py")
-    spec = importlib.util.spec_from_file_location("sidecar_contract", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-_contract = _load_contract()
-PROGRAM = _contract.PROGRAM
-INTERPRETER = _contract.INTERPRETER
-WATCHER_USER = _contract.WATCHER_USER
-ADDED_CAPABILITY = _contract.ADDED_CAPABILITY
-BOOT_USER = _contract.BOOT_USER
-BOOT_CAPABILITIES = _contract.BOOT_CAPABILITIES
-BOOT_INSPECT_CAPABILITIES = _contract.BOOT_INSPECT_CAPABILITIES
-WATCHER_LAUNCHER = _contract.WATCHER_LAUNCHER
+# The fixed launch contract. box/sidecar_contract.py holds the same values for preflight to import plainly; this program
+# runs alone in its image and its own audit admits no import of another file, so the values are literal here and the
+# two are bound by tests/test_live_box.py (SidecarContractRegression; glitch-06 ruling 1, 14 Oct 2026).
+PROGRAM = "/opt/w/sidecar.py"
+INTERPRETER = ("python3", "-I", "-B")
+WATCHER_USER = "10002:10002"
+ADDED_CAPABILITY = "DAC_READ_SEARCH"
+# Boot-only capabilities: setpriv execs the watcher as PID 1 after discarding every other privilege.
+# Measured on Athena's pinned image; see live-box-evidence-2026-10-13/sidecar-setpriv-probe.json.
+BOOT_USER = "0:0"
+BOOT_CAPABILITIES = (ADDED_CAPABILITY, "SETUID", "SETGID", "SETPCAP")
+# Docker 29.8.1 inspect spelling/order, measured in sidecar-launch-inspect.json.
+BOOT_INSPECT_CAPABILITIES = ("CAP_DAC_READ_SEARCH", "CAP_SETGID", "CAP_SETPCAP", "CAP_SETUID")
+WATCHER_LAUNCHER = ("/usr/bin/setpriv", "--reuid=10002", "--regid=10002", "--clear-groups",
+                    "--inh-caps=-all,+dac_read_search", "--ambient-caps=-all,+dac_read_search",
+                    "--bounding-set=-all,+dac_read_search", "--no-new-privs", "--")
 CTL_DIR = "/tmp/w-ctl"         # under the sidecar container's own /tmp: never the evidence folder or a run tree
 CTL_SOCKET = CTL_DIR + "/sock"
 TEMP_PREFIX = ".tmp-"

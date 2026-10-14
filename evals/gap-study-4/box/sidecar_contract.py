@@ -1,8 +1,8 @@
 """The sidecar's fixed launch contract: constants only, no imports, no code.
 
-One source for the sidecar program (sidecar.py loads this file from its own folder, in the repository and at
-/opt/w in the sidecar image) and for preflight, which imports it plainly (`from box import sidecar_contract`) so the
-box audit can bind every name it reads (glitch-06 ruling 1, 14 Oct 2026; the run_take audit W4B3-3/W4B4-1).
+Preflight imports it plainly (`from box import sidecar_contract`) so the box audit can bind every name it reads
+(glitch-06 ruling 1, 14 Oct 2026; the run_take audit W4B3-3/W4B4-1). sidecar.py runs alone in its image and its own
+audit admits no import of another file, so it carries the same literal values; tests/test_live_box.py binds the two.
 """
 
 from __future__ import annotations
