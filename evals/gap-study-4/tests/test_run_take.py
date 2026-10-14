@@ -2151,8 +2151,12 @@ def codex_key_problems(m) -> list:
     first_if = next((i for i, st in enumerate(body) if isinstance(st, ast.If)), None)
     login_at = next((i for i, st in enumerate(body) if any(isinstance(c, ast.Call) and getattr(c.func, "id", "")
                                                             == "read_login" for c in ast.walk(st))), None)
-    refusal = first_if is not None and "CODEX" in ast.dump(body[first_if].test) \
-        and "CODEX_SUBSCRIPTION_NOT_READY" in ast.dump(body[first_if])
+    # O1-1 (review-box-o1.md): the first `if` is exactly `harness == CODEX`, its body exactly the one raise, and no
+    # else: a refusal a switch could bypass is not this refusal.
+    want_test = ast.dump(ast.parse("harness == CODEX", mode="eval").body)
+    want_body = [ast.dump(st) for st in ast.parse("raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)").body]
+    refusal = first_if is not None and ast.dump(body[first_if].test) == want_test \
+        and [ast.dump(st) for st in body[first_if].body] == want_body and not body[first_if].orelse
     if not refusal or login_at is None or first_if > login_at:
         out.append("exec_argv's first test is not the Codex refusal ahead of the login read")
     # 3. The rows: every vendor key a Codex or Gemini row names is the credential marker (never a value), the strip
@@ -2188,6 +2192,15 @@ class TestCodexKeyUnreachable(MutantCase):
             ("gemini-key-given-a-value", patched(rt, "TAKE_ENV", dict(rt.TAKE_ENV, **{
                 rt.GEMINI: dict(rt.TAKE_ENV[rt.GEMINI], GEMINI_API_KEY="fake-value")}))),
             ("strip-list-shortened", patched(rt, "VENDOR_KEY_VARIABLES", rt.VENDOR_KEY_VARIABLES[1:])),
+            # the reviewer's probes (review-box-o1.md, O1-1): A a second read_login caller, B a switch-gated refusal
+            ("probe-A-second-read-login-caller", lambda: mock.patch.object(sys.modules[__name__], "rt", variant(
+                src + "\n\ndef _peek(f):\n    return read_login(f, 'CODEX_API_KEY')\n"))),
+            ("probe-B-refusal-gated-by-a-switch", lambda: mock.patch.object(sys.modules[__name__], "rt", variant(
+                src.replace(_CODEX_REFUSAL, "    if harness == CODEX and not os.environ.get('GAP4_CODEX_API'):\n"
+                                            "        raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)\n")))),
+            ("refusal-body-gains-a-statement", lambda: mock.patch.object(sys.modules[__name__], "rt", variant(
+                src.replace(_CODEX_REFUSAL, "    if harness == CODEX:\n        pass\n"
+                                            "        raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)\n")))),
         ])
 
 
