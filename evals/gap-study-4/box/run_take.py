@@ -170,7 +170,18 @@ MODEL_PINS = {
 # the project root or home, then ~/.env; `.gemini/.env` is that loader's other name). Refused for every arm.
 ENV_FILE_NAMES = (".env", os.path.join(".gemini", ".env"))
 # Claude Code's refusal-fallback and model-fallback variables: {name: value} once confirmed at the pinned version.
-FALLBACK_ENV = PENDING
+# FILLED 14 Oct 2026 (glitch-06's ruling from the official docs, codex-0.162.1-rollout-audit.md Addendum D):
+# code.claude.com/docs/en/env-vars.md (sha256 a439ceb1...): "Set to `1` to turn off the automatic model switch when a
+# safety classifier flags a request"; the name is in the pinned 2.1.296 binary (stub-take-20261014/
+# claude-fallback-probe-20261014.json, claude-settings-names-probe-20261014.json). Only the documented, relevant one:
+# NO_MODEL_FALLBACK, REFUSAL_FALLBACK_CATCH_ALL and DISABLE_REFUSAL_RETRY are undocumented; LEGACY_MODEL_REMAP (Opus 4
+# and 4.1 pins), MODEL_ACCESS_FALLBACK (Bedrock and Agent Platform) and NONSTREAMING (transport) do not apply. The
+# per-take settings add switchModelsOnFlag false (take_config), and exec_argv refuses --fallback-model. Named residual:
+# the docs do not say whether the variable covers a subagent re-running a flagged request; routing's served-model check
+# (init and stats model against the pin) is the backstop.
+FALLBACK_ENV = {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}
+# Claude Code's availability-fallback flag (on only if configured: model-config.md, "Fallback model chains").
+FALLBACK_MODEL_FLAG = "--fallback-model"
 # Arms O and G's own billing-route variables (a Vertex switch for Gemini CLI, for example): a tuple of names each,
 # named from the harness's documentation at the pinned version. Until then the refused set is the closed list above,
 # and an exec of either harness is refused (NotReady): this lane's stricter reading.
@@ -617,6 +628,8 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     inner = _check_argv(inner)
     workdir = _abs_path(workdir, "workdir") if workdir != "/" else "/"
     check_model(harness, inner)
+    if harness == CLAUDE_CODE and [a for a in inner if a == FALLBACK_MODEL_FLAG or a.startswith(FALLBACK_MODEL_FLAG + "=")]:
+        raise Refused(f"{FALLBACK_MODEL_FLAG} would configure a model fallback chain: a take runs its pinned model only")
     values = exec_values(harness, run_tree)
     check_environment(harness, src, set(values))
     if login in values:

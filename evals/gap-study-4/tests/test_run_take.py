@@ -476,9 +476,9 @@ def plant_login(folder, name, value=FAKE_VALUE, mode=0o600, text=None):
 
 @contextlib.contextmanager
 def filled():
-    """Every PENDING value exec needs, filled in memory only (interface 15)."""
-    with mock.patch.object(rt, "FALLBACK_ENV", {"FAKE_FALLBACK_A": "1"}), \
-            mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: ()}):
+    """Every PENDING value exec needs, filled in memory only (interface 15). FALLBACK_ENV is FILLED (14 Oct 2026) and
+    is the committed value here."""
+    with mock.patch.object(rt, "VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: ()}):
         yield
 
 
@@ -623,8 +623,9 @@ class TestExecArgv(MutantCase):
         want = ["docker", "exec", "--user", "10001:10001", "--workdir", "/srv/w/t1/tree",
                 "-e", "CLAUDE_CODE_OAUTH_TOKEN", ID["take"], *rt.LAUNCHER, "CLAUDE_CODE_OAUTH_TOKEN", "13",
                 "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1",
+                "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK=1",
                 "CLAUDE_CONFIG_DIR=/opt/cfg", "DISABLE_AUTOUPDATER=1", "ENABLE_CLAUDEAI_MCP_SERVERS=false",
-                "FAKE_FALLBACK_A=1", "HOME=/opt/cfg", "HTTPS_PROXY=http://proxy:3128", "LANG=C.UTF-8",
+                "HOME=/opt/cfg", "HTTPS_PROXY=http://proxy:3128", "LANG=C.UTF-8",
                 f"PATH={rt.TAKE_PATH}", f"TEMP={t}", f"TMP={t}", f"TMPDIR={t}", "agent-cli", "-p", "x"]
         if argv != want:
             out.append(f"exec argv differs: {argv}")
@@ -633,7 +634,7 @@ class TestExecArgv(MutantCase):
         if env.get("CLAUDE_CODE_OAUTH_TOKEN") != FAKE_VALUE:
             out.append("the login value is not in the client env")
         extra = set(env) - set(rt.RUNTIME_ENV_NAMES) - set(rt.HARNESS_ENV[rt.CLAUDE_CODE]) - {
-            "TMPDIR", "TMP", "TEMP", "FAKE_FALLBACK_A", "CLAUDE_CODE_OAUTH_TOKEN"}
+            "TMPDIR", "TMP", "TEMP", "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK", "CLAUDE_CODE_OAUTH_TOKEN"}
         if extra:
             out.append(f"the client env carries {sorted(extra)}")
         if env.get("DOCKER_HOST") != CALLER["DOCKER_HOST"]:
@@ -647,11 +648,27 @@ class TestExecArgv(MutantCase):
             except rt.Refused:
                 pass
         try:
-            rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
-                         run_tree="/srv/w/t1/tree", login_file=self.login, caller_env=CALLER)
+            with mock.patch.object(rt, "FALLBACK_ENV", rt.PENDING):   # FILLED 14 Oct 2026; the clause stays tested
+                rt.exec_argv(ID["take"], ["x"], user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                             run_tree="/srv/w/t1/tree", login_file=self.login, caller_env=CALLER)
             out.append("an exec was built while FALLBACK_ENV is PENDING")
         except rt.NotReady:
             pass
+        # glitch-06's ruling from the docs (14 Oct 2026): exactly the documented refusal-fallback switch, set to 1.
+        if rt.FALLBACK_ENV != {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1"}:
+            out.append(f"FALLBACK_ENV is not the ruled value: {rt.FALLBACK_ENV!r}")
+        # No availability-fallback chain: --fallback-model in any spelling is refused before any login read.
+        for inner in (["claude", "-p", "x", "--fallback-model", "claude-sonnet-5-5"],
+                      ["claude", "--fallback-model=claude-sonnet-5-5", "-p", "x"]):
+            try:
+                with filled(), mock.patch.object(rt, "read_login", side_effect=AssertionError("login read")):
+                    rt.exec_argv(ID["take"], inner, user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
+                                 run_tree="/srv/w/t1/tree", login_file=self.login, caller_env=CALLER)
+                out.append(f"an exec with a fallback model was built: {inner}")
+            except rt.Refused:
+                pass
+            except AssertionError:
+                out.append("the login was read before the fallback-model refusal")
         for h in ("codex", "gemini"):
             inner = ["gemini", "-m", "gemini-3.8-flash"] if h == rt.GEMINI else ["x"]
             lf = plant_login(self.tmp, rt.LOGIN_VARIABLE[h])
@@ -692,6 +709,9 @@ class TestExecArgv(MutantCase):
             ("environ-copied", patched(rt, "runtime_env", lambda c=None: dict(c or os.environ))),
             ("no-user-check", patched(rt, "AGENT_USER", "0:0")),
             ("fallback-ignored", patched(rt, "exec_values", lambda h, r: dict(rt.HARNESS_ENV[h]))),
+            ("fallback-env-dropped", patched(rt, "FALLBACK_ENV", {})),
+            ("fallback-env-zero", patched(rt, "FALLBACK_ENV", {"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "0"})),
+            ("fallback-flag-admitted", patched(rt, "FALLBACK_MODEL_FLAG", "--no-such-flag")),
             ("tmp-variables-dropped", patched(rt, "RUN_TREE_TMPDIR_VARIABLES", ())),
         ])
 
@@ -1555,8 +1575,9 @@ ORIG_REMOVE = rt.remove_config_dir
 
 # ------------------------------------------------------------------------------- PENDING and neutral names
 class TestPendingAndNames(MutantCase):
-    # TOP_FORMAT and INSPECT_STATUS FILLED 14 Oct 2026 (stub-take review PASS); FALLBACK_ENV stays PENDING (MAJOR 1).
-    EXPECT = {"FALLBACK_ENV", "VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources"}
+    # TOP_FORMAT and INSPECT_STATUS FILLED 14 Oct 2026 (stub-take review PASS); FALLBACK_ENV FILLED the same day from
+    # the docs (glitch-06's ruling, Addendum D).
+    EXPECT = {"VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources"}
     FILLED_TOP = {"ps_options": ["-eo", "pid,uid,comm"], "pid_column": "PID", "uid_column": "UID",
                   "uid_namespace": "container"}
     CALLER_EXPECT = {"cgroup_dir", "uid_map", "XDG_RUNTIME_DIR in the take", "tree ownership"}
@@ -1581,7 +1602,7 @@ class TestPendingAndNames(MutantCase):
 
     def test_pending(self):
         self.assert_green_then_red(self.check_pending, [
-            ("fallback-filled", patched(rt, "FALLBACK_ENV", {})),
+            ("fallback-unfilled", patched(rt, "FALLBACK_ENV", rt.PENDING)),
             ("top-unfilled", patched(rt, "TOP_FORMAT", rt.PENDING)),
             ("top-host-namespace", patched(rt, "TOP_FORMAT", TOP)),
             ("inspect-unfilled", patched(rt, "INSPECT_STATUS", rt.PENDING)),
