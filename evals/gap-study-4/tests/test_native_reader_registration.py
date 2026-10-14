@@ -23,6 +23,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -278,6 +279,129 @@ class Registration(unittest.TestCase):
         self.assertEqual(prov["acceptance_commit"], git(root, "rev-parse", "HEAD"))
         self.assertEqual(prov["acceptance_author"], "test")
         self.assertEqual(prov["review_commit"], git(root, "rev-parse", "HEAD~1"))
+
+
+
+# UNMARKED on purpose (glitch-06's order after the fold): the synthetic-marker gate refuses every labelled fixture, so a
+# gate nothing can pass would prove nothing. This one fixture carries no marker word, only in a throwaway temp
+# repository with temp copies of the reader's sources; it never touches the study tree, and the record it commits
+# lives and dies with the temp folder. Its label says what it is without the marker word.
+UNMARKED = "TEST-ONLY FIXTURE in a temp repository (never acceptance evidence)"
+
+
+class PositiveRegistration(unittest.TestCase):
+    """The road registers a walk committed through the real WalkRepo, then unregisters on each single mutation."""
+
+    def setUp(self):
+        patch = mock.patch.dict(os.environ, ENV)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def walked(self):
+        import drive
+        import walk_register
+        m = nrr()
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name).resolve()
+        git(root, "init", "-q")
+        for k, v in (("maintenance.auto", "false"), ("gc.auto", "0"), ("commit.gpgsign", "false"),
+                     ("core.hooksPath", str(root / "no-hooks"))):
+            git(root, "config", k, v)
+        study = root / "study"
+        walks = study / "rehearsals"
+        walks.mkdir(parents=True)
+        for name in m.READER_SOURCES:
+            shutil.copyfile(HERE / name, study / name)
+        (walks / "README.md").write_text(UNMARKED + "\n")
+        (walks / "register.json").write_text('{\n  "schema": 1,\n  "walks": []\n}\n')
+        git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", "sources and an empty register")
+        entry = {"walk": "walk-g1", "task": "t", "half": "h", "wording": "w", "arm": "G", "model": MODEL,
+                 "reason": UNMARKED, "counted": False}
+        design = walk_register.design_in_force(HERE)
+        task = sorted(design["tasks"])[0]
+        entry.update(task=task, half=design["tasks"][task]["halves"][0], wording=design["tasks"][task]["wordings"][0])
+        folder = walks / entry["walk"]
+        (folder / "session").mkdir(parents=True)
+        snaps = []
+        for k in (1, 2):                            # one retained snapshot per turn: turn 2 resumed turn 1's session
+            native = synthetic_native(k, summary=UNMARKED)
+            (folder / "session" / f"native-turn-{k}.jsonl").write_bytes(native)
+            snaps.append({"file": f"native-turn-{k}.jsonl", "sha256": hashlib.sha256(native).hexdigest()})
+            (folder / f"turn-{k}.jsonl").write_text(synthetic_stream(k))
+        (folder / drive.LEDGER_FILE).write_text(json.dumps({
+            "kind": "take", "native_snapshots": snaps, "streams": ["turn-1.jsonl", "turn-2.jsonl"],
+            "native_history": {"status": "pending", "why": "no registered reader", "interactions": None,
+                               "basis": drive.NATIVE_HISTORY_BASIS}, "first_agent_turn": True}, indent=2) + "\n")
+        (folder / drive.WALK_CHECK).write_text("{}\n")
+        (folder / drive.WALK_GRADE).write_text("{}\n")
+        repo = drive.WalkRepo(runtime=types.SimpleNamespace(run=lambda *a, **k: None), secrets=lambda: [("token", "never-in-these-files-0000")],
+                              rules_scanner=lambda paths: [], root=study, repo=root, design=design)
+        repo.commit_walk(entry)                     # the real road: one commit, subject drive.WALK_SUBJECT
+        self.assertEqual(git(root, "log", "-1", "--format=%s"), drive.WALK_SUBJECT)
+        (study / m.READER_DIR).mkdir()
+        (study / m.READER_DIR / "review.md").write_text(f"# {UNMARKED}\nVerdict: PASS\n")
+        git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", "an independent review")
+        sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+        record = {"schema": 1, "harness": "gemini", "cli_version": m.PINNED_CLI,
+                  "reader_sources_sha256": m.reader_sources_sha256(study), "walk": entry["walk"],
+                  "native": {"file": "session/native-turn-2.jsonl", "sha256": snaps[-1]["sha256"]},
+                  "streams": [{"file": f"turn-{k}.jsonl", "sha256": sha(folder / f"turn-{k}.jsonl")} for k in (1, 2)],
+                  "join": {"status": "PASS", "interactions": 2},
+                  "review": {"verdict": "PASS", "file": "review.md", "sha256": sha(study / m.READER_DIR / "review.md"),
+                             "reviewer": "a-fresh-reviewer"},
+                  "accepted_by": "javier"}
+        self.commit(root, study, record)
+        return root, study, folder, record
+
+    def commit(self, root, study, record, msg="acceptance"):
+        (study / nrr().ACCEPTANCE_FILE).write_text(json.dumps(record))
+        git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", msg)
+
+    def test_it_registers_and_each_single_mutation_unregisters(self):
+        m = nrr()
+        root, study, folder, record = self.walked()
+        self.assertEqual(m.production_readers(study), {"gemini": m.gemini_reader})
+        prov = m.acceptance_provenance(study)
+        self.assertEqual((prov["acceptance_commit"], prov["review_commit"]),
+                         (git(root, "rev-parse", "HEAD"), git(root, "rev-parse", "HEAD~1")))
+
+        def drift(root, study, folder, record):
+            (folder / "turn-1.jsonl").write_text(synthetic_stream(1) + "\n")
+
+        def source_edit(root, study, folder, record):
+            with open(study / "gemini_projection.py", "a") as fh:
+                fh.write("# edited\n")
+            git(root, "commit", "-q", "-am", "edit a source")
+
+        def ledger_swap(root, study, folder, record):
+            first = (folder / "session" / "native-turn-1.jsonl").read_bytes()
+            record["native"] = {"file": "session/native-turn-1.jsonl", "sha256": hashlib.sha256(first).hexdigest()}
+            self.commit(root, study, record, "swap the native ref")
+
+        def acceptor(root, study, folder, record):
+            record["accepted_by"] = "glitch-06"
+            self.commit(root, study, record, "another acceptor")
+
+        def marker(root, study, folder, record):
+            review = study / m.READER_DIR / "review.md"
+            review.write_text(review.read_text() + "Fixture: synthetic.\n")
+            record["review"]["sha256"] = hashlib.sha256(review.read_bytes()).hexdigest()
+            self.commit(root, study, record, "mark it")
+
+        for why, mutate in (("differs from the committed tree", drift), ("reader's sources changed", source_edit),
+                            ("not the last one the walk's driver ledger names", ledger_swap), ("acceptor", acceptor),
+                            ("synthetic marker", marker)):
+            with self.subTest(why=why):
+                root, study, folder, record = self.walked()
+                self.assertEqual(set(m.production_readers(study)), {"gemini"})
+                mutate(root, study, folder, record)
+                with self.assertRaises(m.RegistrationRefused) as cm:
+                    m.production_readers(study)
+                self.assertIn(why, str(cm.exception))
 
 
 if __name__ == "__main__":
