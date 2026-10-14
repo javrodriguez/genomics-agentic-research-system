@@ -21,6 +21,7 @@ MUTANTS = [
  ("renamed copy admitted", '            if same:', '            if False:'),
  ("registered file not exempted by path", '        if rel == reg:\n            continue', '        if False:\n            continue'),
  ("the read not bound to the check", '    if (opened.st_dev, opened.st_ino, opened.st_nlink, opened.st_mode, opened.st_uid) != \\\n            (checked.st_dev, checked.st_ino, checked.st_nlink, checked.st_mode, checked.st_uid):', '    if False:'),
+ ("device and inode not compared", '    if (opened.st_dev, opened.st_ino, opened.st_nlink, opened.st_mode, opened.st_uid) != \\\n            (checked.st_dev, checked.st_ino, checked.st_nlink, checked.st_mode, checked.st_uid):', '    if (opened.st_nlink, opened.st_mode, opened.st_uid) != \\\n            (checked.st_nlink, checked.st_mode, checked.st_uid):'),
  ("registered unreadable raises", '            except OSError:\n                problems.append(f"{reg}: the registered credential is unreadable', '            except ZeroDivisionError:\n                problems.append(f"{reg}: the registered credential is unreadable'),
  ("absent credential admitted", '        problems.append(f"{reg}: absent; the lease home must hold exactly one registered credential file")', '        pass'),
 ]

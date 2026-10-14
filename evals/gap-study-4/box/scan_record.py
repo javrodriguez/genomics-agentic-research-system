@@ -276,18 +276,25 @@ def read_lease_tokens(path: str) -> list:
         raise LoginError("the lease file cannot be opened") from None
     try:
         data = os.read(fd, LEASE_MAX_BYTES + 1)
+    except OSError:
+        raise LoginError("the lease file cannot be read") from None
     finally:
         os.close(fd)
     if len(data) > LEASE_MAX_BYTES:
         raise LoginError(f"the lease file is at most {LEASE_MAX_BYTES} bytes")
+    # a nesting past the recursion limit refuses by rule (review of b9f876b5, MINOR 2): RecursionError is caught as
+    # its base RuntimeError, already in test_sidecar's closed name set for this module (that set is not widened)
     try:
         doc = json.loads(data.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
-        raise LoginError("the lease file is not JSON") from None
+        found_by_key = {}
+        for key in LEASE_TOKEN_KEYS:
+            found_by_key[key] = []
+            _lease_values(doc, key, found_by_key[key])
+    except (UnicodeDecodeError, ValueError, RuntimeError):
+        raise LoginError("the lease file is not JSON within the nesting the reader walks") from None
     values = []
     for key in LEASE_TOKEN_KEYS:
-        found = []
-        _lease_values(doc, key, found)
+        found = found_by_key[key]
         if not found:
             raise LoginError(f"the lease file holds no {key}")
         for v in found:

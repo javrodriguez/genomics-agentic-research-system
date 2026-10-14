@@ -818,7 +818,9 @@ class TestLeasePostflight(MutantCase):
         open (a FIFO, or another regular file with the same bytes) refuses, never hangs; and an unreadable registered
         file refuses, never raises."""
         out = []
-        for label, swap in (("a same-bytes file with a second link", "relink"), ("a FIFO", "fifo")):
+        for label, swap in (("a same-bytes file with a second link", "relink"), ("a FIFO", "fifo"),
+                            ("a fresh same-bytes file (one link, same mode and owner: only the inode differs)",
+                             "fresh")):
             d = self.home()
             reg = os.path.join(d, "auth.json")
             real_lstat, done, calls = os.lstat, [], []
@@ -830,6 +832,18 @@ class TestLeasePostflight(MutantCase):
                 # the first lstat of auth.json is lexists; the second is the check, whose result the read must match
                 if p == _reg and len(calls) == 2 and not done:
                     done.append(1)
+                    if _swap == "fresh":                 # made beside it, then renamed over: a new inode for sure
+                        tmp = os.path.join(_d, "fresh.tmp")
+                        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                        os.write(fd, self.FAKE_AUTH)
+                        os.close(fd)
+                        os.chmod(tmp, 0o600)
+                        os.replace(tmp, _reg)
+                        new = real_lstat(_reg)
+                        if (new.st_nlink, new.st_mode, new.st_uid) != (st.st_nlink, st.st_mode, st.st_uid) \
+                                or new.st_ino == st.st_ino:
+                            raise AssertionError("the fresh swap differs in more than the inode")
+                        return st
                     os.unlink(_reg)
                     if _swap == "fifo":
                         os.mkfifo(_reg, 0o600)

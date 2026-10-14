@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 sys.dont_write_bytecode = True
@@ -1057,6 +1058,21 @@ class TestLeaseTokens(unittest.TestCase):
         with mock.patch.object(sr, "_owned", lambda st: False):
             self.refused(real, "owned")
 
+    def test_refuses_deep_nesting_and_a_folder_swapped_in_never_crashing(self):
+        """The review of b9f876b5, MINOR 2: a JSON nesting past the recursion limit, and a folder swapped in after the
+        lstat (open succeeds on a folder, the read fails), each refuse by rule, never crash."""
+        d = self.folder()
+        deep = b"[" * 100000 + b"]" * 100000
+        self.refused(lease_auth(d, raw=deep[:sr.LEASE_MAX_BYTES]), "not JSON")
+        with mock.patch.object(sr, "_lease_values", side_effect=RecursionError("planted")):   # the walk's own limit
+            self.refused(lease_auth(d), "not JSON")
+        real = lease_auth(d)
+        folder = os.path.join(d, "swapped-in")
+        os.mkdir(folder, 0o700)
+        checked = os.lstat(real)                      # the check saw the regular file; a folder is what gets opened
+        with mock.patch.object(sr.os, "lstat", lambda p, _st=checked: _st):
+            self.refused(folder, "cannot be read")
+
     def test_lease_secrets_reads_at_take_start_and_keeps_every_value(self):
         d = self.folder()
         path = lease_auth(d)
@@ -1086,7 +1102,7 @@ class TestLeaseTokens(unittest.TestCase):
         rec = os.path.join(takef, drive.POSTFLIGHT_RECORD)
         with open(rec, "w", encoding="utf-8") as fh:
             json.dump(post, fh, indent=2, sort_keys=True)
-        before = open(rec, "rb").read()
+        before = Path(rec).read_bytes()
         kind = drive.record_kind([drive.POSTFLIGHT_RECORD])
         self.assertNotIn(kind, sr.MASKABLE)
         secrets = _walk_builders().lease_secrets(os.path.join(home, "auth.json"))
@@ -1094,7 +1110,7 @@ class TestLeaseTokens(unittest.TestCase):
         self.assertFalse(sr.passed(result))                       # the commit is refused
         self.assertEqual([(r["path"], r["kind"]) for r in result["refused"]], [(rec, "token")])
         self.assertNotIn(LEASE_ACCESS, json.dumps(result))
-        self.assertEqual(open(rec, "rb").read(), before)          # refused, never masked in a non-agent record
+        self.assertEqual(Path(rec).read_bytes(), before)          # refused, never masked in a non-agent record
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -18,6 +18,8 @@ MUTANTS = [
  ("sr", "any mode admitted", '        raise LoginError("the lease file\'s mode is not 600")', '        pass'),
  ("sr", "any owner admitted", '        raise LoginError("the lease file is not owned by its reader")', '        pass'),
  ("sr", "an oversize file admitted", '        raise LoginError(f"the lease file is at most {LEASE_MAX_BYTES} bytes")', '        pass'),
+ ("sr", "deep nesting crashes", '    except (UnicodeDecodeError, ValueError, RuntimeError):', '    except (UnicodeDecodeError, ValueError):'),
+ ("sr", "an unreadable open file crashes", '    except OSError:\n        raise LoginError("the lease file cannot be read") from None', '    except ZeroDivisionError:\n        raise LoginError("the lease file cannot be read") from None'),
  ("wb", "no read at take start", '    seen = list(scan_record.read_lease_tokens(auth_path))', '    seen = []'),
  ("wb", "the take-start values dropped at the scan", '        for v in scan_record.read_lease_tokens(auth_path):\n            if v not in seen:\n                seen.append(v)\n        return [("token", v) for v in seen]', '        return [("token", v) for v in scan_record.read_lease_tokens(auth_path)]'),
  ("kind", "postflight.json masked as agent text", None, None),
