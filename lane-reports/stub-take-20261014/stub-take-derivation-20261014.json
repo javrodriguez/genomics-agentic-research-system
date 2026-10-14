@@ -1,0 +1,729 @@
+{
+ "patch": {
+  "file": "lane-reports/stub-take-20261014/stub-take-candidates-20261014.patch",
+  "git_apply_check": 0,
+  "sha256": "0a807f546210af8357e61a8138ec6acb4cf8529be4630ee0d19877afdf3404f8",
+  "stderr": ""
+ },
+ "record_kind": "stub-take-derivation",
+ "replay": {
+  "lane-reports/stub-take-20261014/stub-take-run1.json": {
+   "checks": [
+    {
+     "detail": "uid 10001, no capability, no new privileges",
+     "id": "agent-non-root",
+     "ok": true
+    },
+    {
+     "detail": "the take's, the sidecar's and the egress proxy's images are their locks', by id and by platform manifest",
+     "id": "image-matches-lock",
+     "ok": true
+    },
+    {
+     "detail": "claude-code 2.1.296",
+     "id": "harness-version-matches-lock",
+     "ok": true
+    },
+    {
+     "detail": "exactly the two mounts, and every inspected fact equals the spec's",
+     "id": "take-inspect-matches-spec",
+     "ok": true
+    },
+    {
+     "detail": "cpu, memory and pids limits read back as set",
+     "id": "limits-apply",
+     "ok": true
+    },
+    {
+     "detail": "neither the sidecar mount nor the host path lists",
+     "id": "evidence-out-of-reach",
+     "ok": true
+    },
+    {
+     "detail": "only PID 1 (the keep-alive) is visible",
+     "id": "watcher-invisible",
+     "ok": true
+    },
+    {
+     "detail": "no network, its own process space, the run tree read-only, fixed boot-only capability set",
+     "id": "sidecar-isolated",
+     "ok": true
+    },
+    {
+     "detail": "the watcher's start record is the last health record",
+     "id": "watcher-started",
+     "ok": true
+    },
+    {
+     "detail": "the watcher holds exactly CAP_DAC_READ_SEARCH",
+     "id": "watcher-capability",
+     "ok": true
+    },
+    {
+     "detail": "every consequential path is readable",
+     "id": "consequential-paths-readable",
+     "ok": true
+    },
+    {
+     "detail": "no runtime socket, no DOCKER_HOST, no credential name at create",
+     "id": "no-container-socket",
+     "ok": true
+    },
+    {
+     "detail": "CONNECT api.anthropic.com:443 answered 200",
+     "id": "egress-allowed-host",
+     "ok": true
+    },
+    {
+     "detail": "CONNECT github.com:443 refused (403)",
+     "id": "egress-other-host-refused",
+     "ok": true
+    },
+    {
+     "detail": "no direct connection",
+     "id": "egress-direct-refused",
+     "ok": true
+    },
+    {
+     "detail": "none of ['github.com', 'huggingface.co', 'api.openai.com', 'generativelanguage.googleapis.com'] resolves",
+     "id": "names-do-not-resolve",
+     "ok": true
+    },
+    {
+     "detail": "the study folders' list is PENDING (CP5)",
+     "id": "study-folders-absent",
+     "ok": false
+    },
+    {
+     "detail": "the round's leak words are PENDING (CP5)",
+     "id": "run-tree-path-neutral",
+     "ok": false
+    }
+   ],
+   "ok": false,
+   "pending_preflight": [
+    "LEAK_WORDS",
+    "STUDY_PATHS"
+   ],
+   "pending_run_take": [
+    "TakeSpec.resources",
+    "VENDOR_BILLING_ROUTE_VARIABLES"
+   ]
+  },
+  "lane-reports/stub-take-20261014/stub-take-run2.json": {
+   "checks": [
+    {
+     "detail": "uid 10001, no capability, no new privileges",
+     "id": "agent-non-root",
+     "ok": true
+    },
+    {
+     "detail": "the take's, the sidecar's and the egress proxy's images are their locks', by id and by platform manifest",
+     "id": "image-matches-lock",
+     "ok": true
+    },
+    {
+     "detail": "claude-code 2.1.296",
+     "id": "harness-version-matches-lock",
+     "ok": true
+    },
+    {
+     "detail": "exactly the two mounts, and every inspected fact equals the spec's",
+     "id": "take-inspect-matches-spec",
+     "ok": true
+    },
+    {
+     "detail": "cpu, memory and pids limits read back as set",
+     "id": "limits-apply",
+     "ok": true
+    },
+    {
+     "detail": "neither the sidecar mount nor the host path lists",
+     "id": "evidence-out-of-reach",
+     "ok": true
+    },
+    {
+     "detail": "only PID 1 (the keep-alive) is visible",
+     "id": "watcher-invisible",
+     "ok": true
+    },
+    {
+     "detail": "no network, its own process space, the run tree read-only, fixed boot-only capability set",
+     "id": "sidecar-isolated",
+     "ok": true
+    },
+    {
+     "detail": "the watcher's start record is the last health record",
+     "id": "watcher-started",
+     "ok": true
+    },
+    {
+     "detail": "the watcher holds exactly CAP_DAC_READ_SEARCH",
+     "id": "watcher-capability",
+     "ok": true
+    },
+    {
+     "detail": "every consequential path is readable",
+     "id": "consequential-paths-readable",
+     "ok": true
+    },
+    {
+     "detail": "no runtime socket, no DOCKER_HOST, no credential name at create",
+     "id": "no-container-socket",
+     "ok": true
+    },
+    {
+     "detail": "CONNECT api.anthropic.com:443 answered 200",
+     "id": "egress-allowed-host",
+     "ok": true
+    },
+    {
+     "detail": "CONNECT github.com:443 refused (403)",
+     "id": "egress-other-host-refused",
+     "ok": true
+    },
+    {
+     "detail": "no direct connection",
+     "id": "egress-direct-refused",
+     "ok": true
+    },
+    {
+     "detail": "none of ['github.com', 'huggingface.co', 'api.openai.com', 'generativelanguage.googleapis.com'] resolves",
+     "id": "names-do-not-resolve",
+     "ok": true
+    },
+    {
+     "detail": "the study folders' list is PENDING (CP5)",
+     "id": "study-folders-absent",
+     "ok": false
+    },
+    {
+     "detail": "the round's leak words are PENDING (CP5)",
+     "id": "run-tree-path-neutral",
+     "ok": false
+    }
+   ],
+   "ok": false,
+   "pending_preflight": [
+    "LEAK_WORDS",
+    "STUDY_PATHS"
+   ],
+   "pending_run_take": [
+    "TakeSpec.resources",
+    "VENDOR_BILLING_ROUTE_VARIABLES"
+   ]
+  }
+ },
+ "rules": {
+  "FALLBACK_ENV": {
+   "basis": {
+    "found": [
+     "ATTR_ASPNETCORE_ROUTING_IS_FALLBACK",
+     "CLAUDE_CODE_DISABLE_MODEL_ACCESS_FALLBACK",
+     "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
+     "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK",
+     "CLAUDE_CODE_NO_MODEL_FALLBACK",
+     "CLAUDE_CODE_REFUSAL_FALLBACK_CATCH_ALL",
+     "DYLD_FALLBACK_FRAMEWORK_PATH",
+     "DYLD_FALLBACK_LIBRARY_PATH",
+     "INAPPROPRIATE_FALLBACK",
+     "RENDER_ENGINE_FALLBACK",
+     "TLSV1_ALERT_INAPPROPRIATE_FALLBACK"
+    ],
+    "not_picked": [
+     "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
+     "CLAUDE_CODE_REFUSAL_FALLBACK_CATCH_ALL"
+    ],
+    "picked": [
+     "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK",
+     "CLAUDE_CODE_NO_MODEL_FALLBACK",
+     "CLAUDE_CODE_DISABLE_MODEL_ACCESS_FALLBACK"
+    ],
+    "values": "INFERRED, not observed in behaviour",
+    "why_not_picked": {
+     "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK": "a transport fallback (streaming to non-streaming), not a model or refusal fallback",
+     "CLAUDE_CODE_REFUSAL_FALLBACK_CATCH_ALL": "its documented string reads it as a switch 'explicitly disabled'; its off value is not readable from the binary's strings"
+    }
+   },
+   "candidate": {
+    "CLAUDE_CODE_DISABLE_MODEL_ACCESS_FALLBACK": "1",
+    "CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK": "1",
+    "CLAUDE_CODE_NO_MODEL_FALLBACK": "1"
+   }
+  },
+  "INSPECT_STATUS": {
+   "candidate": {
+    "api_version": "1.56",
+    "confirmed_on": "2026-10-14",
+    "engine": "29.8.1",
+    "evidence": [
+     "lane-reports/stub-take-20261014/stub-take-run1.json sha256:67a0698a2e1037fdf5a1c02caea67a1281a5f31c4bc8629adfbb476f07dd83f4",
+     "lane-reports/stub-take-20261014/stub-take-run2.json sha256:8a72763f4d172ce22ecdd5779d1ffd89e60ff07abba2cf22b43a829bd6fd08bb"
+    ]
+   },
+   "observations": [
+    {
+     "inspect": "take",
+     "resolved": [
+      "cap_add",
+      "cap_drop",
+      "cmd",
+      "devices",
+      "entrypoint",
+      "env",
+      "exit_code",
+      "image",
+      "memory",
+      "memory_reservation",
+      "mounts",
+      "nano_cpus",
+      "network_mode",
+      "oom_killed",
+      "pid_mode",
+      "pids_limit",
+      "privileged",
+      "running",
+      "security_opt",
+      "user",
+      "working_dir"
+     ],
+     "run": "lane-reports/stub-take-20261014/stub-take-run1.json"
+    },
+    {
+     "inspect": "sidecar",
+     "resolved": [
+      "cap_add",
+      "cap_drop",
+      "cmd",
+      "devices",
+      "entrypoint",
+      "env",
+      "exit_code",
+      "image",
+      "memory",
+      "memory_reservation",
+      "mounts",
+      "nano_cpus",
+      "network_mode",
+      "oom_killed",
+      "pid_mode",
+      "pids_limit",
+      "privileged",
+      "running",
+      "security_opt",
+      "user",
+      "working_dir"
+     ],
+     "run": "lane-reports/stub-take-20261014/stub-take-run1.json"
+    },
+    {
+     "inspect": "proxy",
+     "resolved": [
+      "cap_add",
+      "cap_drop",
+      "cmd",
+      "devices",
+      "entrypoint",
+      "env",
+      "exit_code",
+      "image",
+      "memory",
+      "memory_reservation",
+      "mounts",
+      "nano_cpus",
+      "network_mode",
+      "oom_killed",
+      "pid_mode",
+      "pids_limit",
+      "privileged",
+      "running",
+      "security_opt",
+      "user",
+      "working_dir"
+     ],
+     "run": "lane-reports/stub-take-20261014/stub-take-run1.json"
+    },
+    {
+     "inspect": "take-running",
+     "resolved": [
+      "cap_add",
+      "cap_drop",
+      "cmd",
+      "devices",
+      "entrypoint",
+      "env",
+      "exit_code",
+      "image",
+      "memory",
+      "memory_reservation",
+      "mounts",
+      "nano_cpus",
+      "network_mode",
+      "oom_killed",
+      "pid_mode",
+      "pids_limit",
+      "privileged",
+      "running",
+      "security_opt",
+      "user",
+      "working_dir"
+     ],
+     "run": "lane-reports/stub-take-20261014/stub-take-run1.json"
+    },
+    {
+     "inspect": "take",
+     "resolved": [
+      "cap_add",
+      "cap_drop",
+      "cmd",
+      "devices",
+      "entrypoint",
+      "env",
+      "exit_code",
+      "image",
+      "memory",
+      "memory_reservation",
+      "mounts",
+      "nano_cpus",
+      "network_mode",
+      "oom_killed",
+      "pid_mode",
+      "pids_limit",
+      "privileged",
+      "running",
+      "security_opt",
+      "user",
+      "working_dir"
+     ],
+     "run": "lane-reports/stub-take-20261014/stub-take-run2.json"
+    },
+    {
+     "inspect": "sidecar",
+     "resolved": [
+      "cap_add",
+      "cap_drop",
+      "cmd",
+      "devices",
+      "entrypoint",
+      "env",
+      "exit_code",
+      "image",
+      "memory",
+      "memory_reservation",
+      "mounts",
+      "nano_cpus",
+      "network_mode",
+      "oom_killed",
+      "pid_mode",
+      "pids_limit",
+      "privileged",
+      "running",
+      "security_opt",
+      "user",
+      "working_dir"
+     ],
+     "run": "lane-reports/stub-take-20261014/stub-take-run2.json"
+    },
+    {
+     "inspect": "proxy",
+     "resolved": [
+      "cap_add",
+      "cap_drop",
+      "cmd",
+      "devices",
+      "entrypoint",
+      "env",
+      "exit_code",
+      "image",
+      "memory",
+      "memory_reservation",
+      "mounts",
+      "nano_cpus",
+      "network_mode",
+      "oom_killed",
+      "pid_mode",
+      "pids_limit",
+      "privileged",
+      "running",
+      "security_opt",
+      "user",
+      "working_dir"
+     ],
+     "run": "lane-reports/stub-take-20261014/stub-take-run2.json"
+    },
+    {
+     "inspect": "take-running",
+     "resolved": [
+      "cap_add",
+      "cap_drop",
+      "cmd",
+      "devices",
+      "entrypoint",
+      "env",
+      "exit_code",
+      "image",
+      "memory",
+      "memory_reservation",
+      "mounts",
+      "nano_cpus",
+      "network_mode",
+      "oom_killed",
+      "pid_mode",
+      "pids_limit",
+      "privileged",
+      "running",
+      "security_opt",
+      "user",
+      "working_dir"
+     ],
+     "run": "lane-reports/stub-take-20261014/stub-take-run2.json"
+    }
+   ]
+  },
+  "TOP_FORMAT": {
+   "candidate": {
+    "pid_column": "PID",
+    "ps_options": [
+     "-eo",
+     "pid,uid,comm"
+    ],
+    "uid_column": "UID",
+    "uid_namespace": "container"
+   },
+   "observations": [
+    {
+     "host_uid": 110002,
+     "namespace": "container",
+     "pid": 1527963,
+     "reading": "top_live",
+     "run": 1791978855.1015406,
+     "uid_column": 10003,
+     "uid_map_of_column": 110002
+    },
+    {
+     "host_uid": 110000,
+     "namespace": "container",
+     "pid": 1529070,
+     "reading": "top_live",
+     "run": 1791978855.1015406,
+     "uid_column": 10001,
+     "uid_map_of_column": 110000
+    },
+    {
+     "host_uid": 110002,
+     "namespace": "container",
+     "pid": 1527963,
+     "reading": "top_after_kill",
+     "run": 1791978855.1015406,
+     "uid_column": 10003,
+     "uid_map_of_column": 110002
+    },
+    {
+     "host_uid": 110002,
+     "namespace": "container",
+     "pid": 1532801,
+     "reading": "top_live",
+     "run": 1791978980.103837,
+     "uid_column": 10003,
+     "uid_map_of_column": 110002
+    },
+    {
+     "host_uid": 110000,
+     "namespace": "container",
+     "pid": 1533902,
+     "reading": "top_live",
+     "run": 1791978980.103837,
+     "uid_column": 10001,
+     "uid_map_of_column": 110000
+    },
+    {
+     "host_uid": 110002,
+     "namespace": "container",
+     "pid": 1532801,
+     "reading": "top_after_kill",
+     "run": 1791978980.103837,
+     "uid_column": 10003,
+     "uid_map_of_column": 110002
+    }
+   ]
+  },
+  "TakeSpec.resources": {
+   "basis": {
+    "C": 3,
+    "MemTotal_kB": 30490784,
+    "caveat": "the stub's peaks bound only the box's floor; a real harness turn's footprint is first read at the first walk (memory.peak, pids.peak and the oom/pids counters per turn)",
+    "limits_apply_run2": {
+     "detail": "cpu, memory and pids limits read back as set",
+     "id": "limits-apply",
+     "ok": true
+    },
+    "nproc": 32,
+    "stub_peaks": [
+     {
+      "counters": {
+       "after": {
+        "oom_kill": 0,
+        "pids_max": 0
+       },
+       "before": {
+        "oom_kill": 0,
+        "pids_max": 0
+       },
+       "delta": {
+        "oom_kill_delta": 0,
+        "pids_max_delta": 0
+       }
+      },
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "memory.peak": "9691136",
+      "pids.peak": "7",
+      "run": "lane-reports/stub-take-20261014/stub-take-run1.json"
+     },
+     {
+      "counters": {
+       "after": {
+        "oom_kill": 0,
+        "pids_max": 0
+       },
+       "before": {
+        "oom_kill": 0,
+        "pids_max": 0
+       },
+       "delta": {
+        "oom_kill_delta": 0,
+        "pids_max_delta": 0
+       }
+      },
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "memory.peak": "12505088",
+      "pids.peak": "8",
+      "run": "lane-reports/stub-take-20261014/stub-take-run2.json"
+     }
+    ],
+    "user_slice_pids_max": 78037
+   },
+   "candidate": {
+    "cpus": "8",
+    "memory": 6442450944,
+    "memory_reservation": 2147483648,
+    "pids_limit": 4096
+   },
+   "patch": "values only: TakeSpec's resources are the caller's (walk_builders.take_spec, the integration's consumer); run_take is not patched"
+  },
+  "VERSION_PATTERNS": {
+   "candidate": {
+    "claude-code": "([0-9]+(?:\\.[0-9]+){2})\\ \\(Claude\\ Code\\)",
+    "codex": "codex\\-cli\\ ([0-9]+(?:\\.[0-9]+){2})",
+    "gemini": "([0-9]+(?:\\.[0-9]+){2})"
+   },
+   "observations": [
+    {
+     "group": "2.1.296",
+     "harness": "claude-code",
+     "lock_version": "2.1.296",
+     "output": "2.1.296 (Claude Code)\n"
+    },
+    {
+     "group": "2.1.296",
+     "harness": "claude-code",
+     "lock_version": "2.1.296",
+     "output": "2.1.296 (Claude Code)\n"
+    },
+    {
+     "group": "2.1.296",
+     "harness": "claude-code",
+     "lock_version": "2.1.296",
+     "output": "2.1.296 (Claude Code)\n"
+    },
+    {
+     "group": "2.1.296",
+     "harness": "claude-code",
+     "lock_version": "2.1.296",
+     "output": "2.1.296 (Claude Code)\n"
+    },
+    {
+     "group": "0.162.1",
+     "harness": "codex",
+     "lock_version": "0.162.1",
+     "output": "codex-cli 0.162.1\n"
+    },
+    {
+     "group": "0.162.1",
+     "harness": "codex",
+     "lock_version": "0.162.1",
+     "output": "codex-cli 0.162.1\n"
+    },
+    {
+     "group": "0.64.0",
+     "harness": "gemini",
+     "lock_version": "0.64.0",
+     "output": "0.64.0\n"
+    },
+    {
+     "group": "0.64.0",
+     "harness": "gemini",
+     "lock_version": "0.64.0",
+     "output": "0.64.0\n"
+    }
+   ]
+  },
+  "rules_scanner": {
+   "adapter": "box/stub_take.py gitleaks_rules_scanner (gitleaks dir <file> --no-banner --redact --report-format json --report-path <r> --exit-code 0; StartLine, RuleID)",
+   "measured": {
+    "1791978855.1015406": {
+     "binary": "/home/javier/gap4-tools/gitleaks-8.30.1/gitleaks",
+     "sha256": "88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509",
+     "version": "8.30.1"
+    },
+    "1791978980.103837": {
+     "binary": "/home/javier/gap4-tools/gitleaks-8.30.1/gitleaks",
+     "sha256": "88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509",
+     "version": "8.30.1"
+    }
+   },
+   "patch": "none: scan_record holds no process code and real_rules_scanner returns the adapter itself, so where the adapter lives is an interface ruling; RULES_SCANNER stays PENDING",
+   "proof": {
+    "clean": [
+     {
+      "events": 1,
+      "holdout": "not-checked",
+      "refused": []
+     },
+     {
+      "events": 1,
+      "holdout": "not-checked",
+      "refused": []
+     }
+    ],
+    "rule_probe": [
+     [
+      {
+       "kind": "rule",
+       "line": 1,
+       "path": "/home/javier/gap4-stubtake-20261014-b515c8e3/scratch/st-97fz6nnh/r/turn-2.stub.jsonl",
+       "why": "the rules scanner's rule 'github-pat'"
+      }
+     ],
+     [
+      {
+       "kind": "rule",
+       "line": 1,
+       "path": "/home/javier/gap4-stubtake-20261014-b515c8e3/scratch/st-59xuetpj/r/turn-2.stub.jsonl",
+       "why": "the rules scanner's rule 'github-pat'"
+      }
+     ]
+    ]
+   }
+  }
+ },
+ "runs": [
+  {
+   "file": "lane-reports/stub-take-20261014/stub-take-run1.json",
+   "sha256": "67a0698a2e1037fdf5a1c02caea67a1281a5f31c4bc8629adfbb476f07dd83f4"
+  },
+  {
+   "file": "lane-reports/stub-take-20261014/stub-take-run2.json",
+   "sha256": "8a72763f4d172ce22ecdd5779d1ffd89e60ff07abba2cf22b43a829bd6fd08bb"
+  }
+ ]
+}
