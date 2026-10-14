@@ -564,7 +564,8 @@ class TestArmVariables(MutantCase):
         out = []
         closed = (set(rt.API_KEY_VARIABLES) | set(rt.BILLING_ROUTE_VARIABLES) | set(rt.SUBSCRIPTION_TOKEN_VARIABLES)
                   | {"CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"}
-                  | set(CODEX_ROUTE_NAMED) | set(CODEX_ROUTE_DOCS_READ))   # glitch-06's rulings: every arm
+                  | set(CODEX_ROUTE_NAMED) | set(CODEX_ROUTE_DOCS_READ)    # glitch-06's rulings: every arm
+                  | set(sweep_refused()))
         for arm in ARMS:
             got = rt.refused_variables(arm)
             expected = closed - {LOGINS[arm]}
@@ -2103,6 +2104,64 @@ CODEX_ROUTE_DOCS_READ = ("OPENAI_PROJECT", "OPENAI_BASE_URL", "CODEX_ACCESS_TOKE
                          "CODEX_APP_SERVER_LOGIN_ISSUER", "CODEX_APP_SERVER_LOGIN_ISSUERA")
 
 
+# The pinned Codex binary's environment-name sweep (glitch-06, 14 Oct 2026): its committed record and classification.
+_CLONE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+SWEEP_DIR = os.path.join(_CLONE, "lane-reports", "stub-take-20261014", "probes")
+
+
+def _sweep_files():
+    return (os.path.join(SWEEP_DIR, "codex-env-name-sweep-athena-20261014.json"),
+            os.path.join(SWEEP_DIR, "codex-env-name-classification-20261014.json"))
+
+
+def sweep_refused() -> tuple:
+    with open(_sweep_files()[1], encoding="utf-8") as fh:
+        return tuple(json.load(fh)["refuse_if_present"])
+
+
+class TestCodexBinarySweep(MutantCase):
+    """Every billing, route, credential or ambiguous name the pinned Codex binary carries (the committed sweep and its
+    deterministic classification) is refused if present for every arm; the classification is bound to the sweep by
+    its sha256 and by re-deriving the split names; no take row's own name is refused."""
+
+    def check(self):
+        out = []
+        sweep_path, class_path = _sweep_files()
+        with open(sweep_path, "rb") as fh:
+            sweep_raw = fh.read()
+        sweep = json.loads(sweep_raw)
+        with open(class_path, encoding="utf-8") as fh:
+            cls = json.load(fh)
+        if cls["sweep_sha256"] != hashlib.sha256(sweep_raw).hexdigest():
+            out.append("the classification does not bind the committed sweep's bytes")
+        if not str(sweep["binary_sha256"]).startswith("628e35487d888a28") or cls["binary_sha256"] != \
+                sweep["binary_sha256"]:
+            out.append("the sweep is not of the pinned binary (628e3548...)")
+        split = re.compile(r"(?=(?:CODEX|OPENAI|AWS|AZURE|ANTHROPIC|GOOGLE)_)")
+        name = re.compile(r"(CODEX|OPENAI|AWS|AZURE|ANTHROPIC|GOOGLE)_[A-Z0-9_]+")
+        derived = sorted({p for r in sweep["names"] for p in split.split(r) if name.fullmatch(p)})
+        if [r["match"] for r in cls["rows"]] != derived:
+            out.append("the classification does not place every name the sweep found")
+        refuse = set(cls["refuse_if_present"])
+        if refuse != {n for r in cls["rows"] if r["class"] in ("credential", "route", "ambiguous") for n in r["names"]}:
+            out.append("the refuse list is not every credential, route and ambiguous name")
+        if tuple(rt.CODEX_BINARY_SWEEP_REFUSED) != tuple(cls["refuse_if_present"]):
+            out.append("run_take's sweep tuple drifted from the committed classification")
+        for arm in (rt.CODEX, rt.CLAUDE_CODE, rt.GEMINI):
+            missing = sorted(refuse - set(rt.refused_variables(arm)))
+            if missing:
+                out.append(f"{arm}: the sweep's names not refused: {missing[:5]}")
+            in_row = sorted(set(rt.TAKE_ENV[arm]) & set(rt.refused_variables(arm)))
+            if in_row:
+                out.append(f"{arm}: its own row's names are refused: {in_row}")
+        if "CODEX_HOME" in rt.refused_variables(rt.CODEX):
+            out.append("CODEX_HOME, the Codex row's own config home, is refused")
+        return out
+
+    def test_the_binary_sweep_is_refused(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
 class TestCodexRow(MutantCase):
     """glitch-06's ruling 1 (14 Oct 2026): no API-key route for Codex, ever. TAKE_ENV[CODEX] carries no credential;
     LOGIN_VARIABLE[CODEX] is NO_LOGIN (the lease road); every road that expects an environment login refuses a Codex
@@ -2132,7 +2191,9 @@ class TestCodexRow(MutantCase):
                 except rt.Refused as e:
                     if name not in str(e) or "PLANTED" in str(e):
                         out.append(f"{name}: the refusal does not name it, or carries the value: {e}")
-        if tuple(rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.CODEX]) != CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ:
+        got_route = tuple(rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.CODEX])
+        if got_route[:len(CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ)] != CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ or \
+                set(got_route) != set(CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ) | set(sweep_refused()):
             out.append(f"VENDOR_BILLING_ROUTE_VARIABLES[codex] is {rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.CODEX]!r}")
         for name in CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ:     # refuse-if-present for every arm, like the others'
             if name not in rt.refused_variables(rt.CLAUDE_CODE):
