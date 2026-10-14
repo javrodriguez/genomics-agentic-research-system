@@ -1201,8 +1201,15 @@ ORIG_CHECK_CLAUDE_SETTINGS = rt.check_claude_settings
 
 def _print_check_dropped(inner):
     """A mutant of check_claude_settings with its -p/--print clause removed (the rest of the gate kept)."""
-    if len(inner) < 2 or inner[1] not in ("-p", "--print"):
+    if inner and (len(inner) < 2 or inner[1] not in ("-p", "--print")):
         inner = [inner[0], "-p", "", *inner[1:]]
+    ORIG_CHECK_CLAUDE_SETTINGS(inner)
+
+
+def _program_check_dropped(inner):
+    """A mutant of check_claude_settings with its program clause removed (the rest of the gate kept)."""
+    if inner and inner[0] != "claude":
+        inner = ["claude", *inner[1:]]
     ORIG_CHECK_CLAUDE_SETTINGS(inner)
 
 
@@ -1253,7 +1260,9 @@ class TestClaudeSettings(MutantCase):
                     pass
         good = [CLAUDE_INNER, ["claude", "-p", "--settings is just prompt text", "--model", CLAUDE_MODEL,
                                "--settings=" + want],
-                ["claude", "--print", "--bg is just prompt text", "--model", CLAUDE_MODEL, "--settings", want]]
+                ["claude", "--print", "--bg is just prompt text", "--model", CLAUDE_MODEL, "--settings", want],
+                ["claude", "-p", "--background is just prompt text", "--model", CLAUDE_MODEL, "--settings", want],
+                ["/usr/local/bin/claude"] + CLAUDE_INNER[1:]]
         for inner in good:
             try:
                 rt.check_claude_settings(inner)
@@ -1273,6 +1282,13 @@ class TestClaudeSettings(MutantCase):
                "print-not-first": ["claude", "--model", CLAUDE_MODEL, "-p", "x", "--settings", want],
                "background": CLAUDE_INNER + ["--bg"],
                "background-eq": CLAUDE_INNER + ["--bg=true"],
+               # review-bypass-skills B-1 and B-2: the long alias, and a program other than claude
+               "background-long": CLAUDE_INNER + ["--background"],
+               "background-long-eq": CLAUDE_INNER + ["--background=1"],
+               "bash-program": ["bash"] + CLAUDE_INNER[1:],
+               "abs-bash-program": ["/usr/bin/bash"] + CLAUDE_INNER[1:],
+               "claude-lookalike": ["/opt/claude/bin/claude-wrapper"] + CLAUDE_INNER[1:],
+               "empty": [],
                "with-bypass-key": ["claude", "-p", "x", "--model", CLAUDE_MODEL, "--settings",
                                    json.dumps(dict(json.loads(want), **{BYPASS: True}), sort_keys=True,
                                               separators=(",", ":"))]}
@@ -1294,7 +1310,7 @@ class TestClaudeSettings(MutantCase):
             out.append("the login was read before the settings refusal")
         # Every Claude turn reaching the box is a -p run: exec_argv refuses one without it, and builds one with it.
         with mock.patch.object(rt, "read_login", side_effect=AssertionError("login read")):
-            for name in ("no-print", "print-not-first", "background"):
+            for name in ("no-print", "print-not-first", "background", "background-long", "bash-program"):
                 try:
                     rt.exec_argv(ID["take"], bad[name], user=rt.AGENT_USER, workdir="/", harness=rt.CLAUDE_CODE,
                                  run_tree="/srv/w/t1/tree", login_file=login, caller_env=CALLER)
@@ -1327,7 +1343,9 @@ class TestClaudeSettings(MutantCase):
             ("bypass-still-pending", patched(rt, "CLAUDE_BYPASS_KEY", rt.PENDING)),
             # -p dropped from the gate, and --bg admitted
             ("print-check-dropped", patched(rt, "check_claude_settings", _print_check_dropped)),
-            ("background-admitted", patched(rt, "CLAUDE_BACKGROUND_FLAG", "--never-a-flag")),
+            ("background-admitted", patched(rt, "CLAUDE_BACKGROUND_FLAGS", ())),
+            ("background-long-admitted", patched(rt, "CLAUDE_BACKGROUND_FLAGS", ("--bg",))),
+            ("bash-program-admitted", patched(rt, "check_claude_settings", _program_check_dropped)),
             ("prompt-read-as-flag", patched(rt, "_flag_values", lambda inner, flag: [
                 inner[i + 1] if i + 1 < len(inner) else None for i, t in enumerate(inner) if t == flag])),
         ])

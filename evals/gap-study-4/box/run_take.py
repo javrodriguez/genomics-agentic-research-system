@@ -202,7 +202,7 @@ CLAUDE_SETTINGS_FLAG = "--settings"
 #   https://code.claude.com/docs/en/settings-reference.md (sha256 2db996847f31ad322a4eff57aa8a1e5ca4618701fd1caf2191327a3922be095c,
 #   lines 1733-1748): the key is `skipDangerousModePermissionPrompt`, valid only in "User, local, or managed" settings.
 # The ruling depends on every Claude Code turn being a -p (--print) run and never --bg: check_claude_settings refuses
-# a turn whose first argument is not -p or --print, and a turn carrying --bg. Unverified until the first walk: that
+# a turn that is not `claude` with -p or --print first, and a turn carrying --bg or --background. Unverified until the first walk: that
 # the pinned 2.1.296 binary behaves as the live docs say (the lane report's first-walk acceptance checks).
 # take_config.CLAUDE_BYPASS_KEY is the same value (a test binds them).
 CLAUDE_BYPASS_NOT_REQUIRED = "RULED: not required in -p"
@@ -220,7 +220,11 @@ CLAUDE_BYPASS_RULING = {
 # The documented key the study must never send (a test and check_claude_settings refuse it in the inline settings).
 CLAUDE_BYPASS_DOC_KEY = "skipDangerousModePermissionPrompt"
 CLAUDE_PRINT_FLAGS = ("-p", "--print")
-CLAUDE_BACKGROUND_FLAG = "--bg"
+# --bg and its long alias --background (review-bypass-skills B-1), each refused bare or as `flag=value`.
+CLAUDE_BACKGROUND_FLAGS = ("--bg", "--background")
+# The program a claude-code turn runs (review-bypass-skills B-2): `claude`, or an absolute path whose basename is
+# `claude`, as Gemini's client check does; so the -p rule binds the program as well as the position.
+CLAUDE_CLIENT = "claude"
 # Arms O and G's own billing-route variables (a Vertex switch for Gemini CLI, for example): a tuple of names each,
 # named from the harness's documentation at the pinned version. Until then the refused set is the closed list above,
 # and an exec of either harness is refused (NotReady): this lane's stricter reading.
@@ -611,12 +615,15 @@ def _flag_tokens(inner) -> list:
 def check_claude_settings(inner) -> None:
     """A Claude Code turn is a -p (--print) run, never --bg, names its model once and carries exactly the study's
     inline settings for that model. The bypass ruling (CLAUDE_BYPASS_RULING) depends on the -p and the no --bg."""
-    if not isinstance(inner, (list, tuple)) or len(inner) < 2 or inner[1] not in CLAUDE_PRINT_FLAGS:
+    if not isinstance(inner, (list, tuple)) or not inner or not isinstance(inner[0], str) or not (
+            inner[0] == CLAUDE_CLIENT or (os.path.isabs(inner[0]) and os.path.basename(inner[0]) == CLAUDE_CLIENT)):
+        raise Refused(f"a claude-code turn runs {CLAUDE_CLIENT} (or its absolute path), nothing else")
+    if len(inner) < 2 or inner[1] not in CLAUDE_PRINT_FLAGS:
         raise Refused("a claude-code turn is a non-interactive run: -p or --print comes first (the bypass ruling "
                       "depends on it)")
-    if [a for a in _flag_tokens(inner) if a == CLAUDE_BACKGROUND_FLAG or a.startswith(CLAUDE_BACKGROUND_FLAG + "=")]:
-        raise Refused(f"a claude-code turn never runs {CLAUDE_BACKGROUND_FLAG}: a background session needs the bypass "
-                      f"acceptance the study does not send")
+    if [a for a in _flag_tokens(inner) for f in CLAUDE_BACKGROUND_FLAGS if a == f or a.startswith(f + "=")]:
+        raise Refused(f"a claude-code turn never runs {' or '.join(CLAUDE_BACKGROUND_FLAGS)}: a background session "
+                      f"needs the bypass acceptance the study does not send")
     models = _flag_values(inner, "--model")
     if len(models) != 1 or not models[0]:
         raise Refused("a claude-code turn names its model exactly once by --model")
