@@ -222,10 +222,10 @@ def login_file() -> str:
     return str(path)
 
 
-def adapter(mod, runtime, *, mode=BYPASS, counters=None):
+def adapter(mod, runtime, *, mode=BYPASS, counters=None, model=MODEL):
     folder = Path(tempfile.mkdtemp(dir=SCRATCH))
     return mod.ClaudeCodeAdapter(runtime=runtime, take_id=TAKE, run_tree=str(SCRATCH / "tree"),
-                                 login_file=login_file(), session_id=SID, model=MODEL,
+                                 login_file=login_file(), session_id=SID, model=model,
                                  pin={"permission_mode": mode, "version": VERSION},
                                  stream_path_for=lambda n: str(folder / f"turn-{n}.jsonl"),
                                  counters_for=counters or Counters(), clock=Clock())
@@ -435,6 +435,38 @@ def a7_served(mod, p):
             out.append(f"{p}: {why} was read, not refused")
         except mod.StreamError:
             pass
+    # D-INT-2c (glitch-06, 14 Oct 2026, window 2): a side model off SIDE_MODELS stops the take (an executed turn's
+    # refusal: the driver's ledger, scan and ruling road) and its refusal reports the model and its tokens; a listed
+    # side model does not stop the take, and is recorded in side_calls.
+    def with_side(side, pin=MODEL):
+        return synthetic_turn(model=pin).replace(json.dumps({pin: {"costUSD": 0.01}})[1:-1], json.dumps(
+            {pin: {"costUSD": 0.01}, side: {"costUSD": 0.01, "inputTokens": 7, "outputTokens": 3}})[1:-1])
+    assert MODEL != "claude-sonnet-5-5"
+    a = adapter(mod, FakeRuntime([with_side("claude-sonnet-5-5")]))
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    try:
+        a.turn("one", first=True, budget_s=60)
+        out.append(f"{p}: a side model off the closed list did not stop the take")
+    except aa.ExecutedTurnRefused as e:
+        reason = str(e.executed.get("refused") or "")
+        for words in ("SideModelOffList", "'claude-sonnet-5-5'", "'inputTokens': 7", "'outputTokens': 3",
+                      "for a ruling"):
+            if words not in reason:
+                out.append(f"{p}: the side model's stop does not report {words!r}: {reason!r}")
+        if getattr(a, "executed_turns", None) != [e.executed] or a.turn_records:
+            out.append(f"{p}: the side model's stop does not keep the exec as an executed turn's refusal")
+    except Exception as e:  # noqa: BLE001
+        out.append(f"{p}: a side model off the list raised {type(e).__name__}, not an executed turn's refusal")
+    a = adapter(mod, FakeRuntime([with_side("claude-haiku-4-5-20251001", pin="claude-sonnet-5")]),
+                model="claude-sonnet-5")                 # the sonnet probe's shape: a sonnet pin, a haiku side call
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    try:
+        a.turn("one", first=True, budget_s=60)
+        got = a.turn_records[-1]["side_calls"]
+        if got != {"claude-haiku-4-5-20251001": {"inputTokens": 7, "outputTokens": 3}}:
+            out.append(f"{p}: a listed side model's call is recorded as {got}")
+    except Exception as e:  # noqa: BLE001
+        out.append(f"{p}: a listed side model stopped the take: {type(e).__name__}: {str(e)[:200]}")
     return out
 
 
@@ -629,6 +661,8 @@ WITNESSES.update({
     "read-unwrapped": ((("        except (StreamError, OSError) as e:\n            executed[\"refused\"] = f\"{type(e).__name__}: "
                          "{e}\"\n            raise ExecutedStreamRefused(str(e), executed=executed) from e\n",
                          "        except ZeroDivisionError as e:\n            raise\n"),), a7_served, "A7-served"),
+    "side-model-not-stopped": ((("            if side is not None:                       # D-INT-2c: stops the take, its tokens in the refusal",
+                                 "            if False:"),), a7_served, "A7-served"),
     "routed-init-unchanged": ((("        init = read[\"init\"] if off is None or read[\"init\"] is None else "
                                 "dict(read[\"init\"], model=off)", "        init = read[\"init\"]"),),
                               a7_served, "A7-served"),
@@ -684,6 +718,9 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_side_list_open(self):
         self.kill("side-list-open")
 
+    def test_witness_side_model_not_stopped(self):
+        self.kill("side-model-not-stopped")
+
     def test_witness_count_records(self):
         self.kill("count-records")
 
@@ -702,7 +739,7 @@ class TestWitnesses(unittest.TestCase):
                                                     "missing-class-as-zero", "zero-dollars-per-call",
                                                     "null-id-unreported", "served-unread", "model-usage-unread",
                                                     "modelless-accepted", "routed-init-unchanged",
-                                                    "read-unwrapped", "side-list-open"]))
+                                                    "read-unwrapped", "side-list-open", "side-model-not-stopped"]))
 
 
 if __name__ == "__main__":
