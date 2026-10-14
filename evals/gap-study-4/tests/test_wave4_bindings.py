@@ -527,7 +527,8 @@ class TestBinding8LockKeys(Binding):
                                memory_reservation=512, memory=1536, cpus="1", pids_limit=64)
             try:
                 rec = pf.evaluate({}, spec=spec, lock=got, sidecar_expect={}, harness=h, hosts=pc.HOSTS,
-                                  evidence_dir=EVIDENCE)
+                                  evidence_dir=EVIDENCE,
+                                  sidecar_lock={"image_id": IMAGE, "manifest_digest": "sha256:" + "5" * 64})
                 if rec["ok"] or [c["id"] for c in rec["checks"]] != list(pf.PREFLIGHT_CHECKS):
                     out.append(f"{h}: evaluate over no probes is not a full failing record")
             except Exception as e:
