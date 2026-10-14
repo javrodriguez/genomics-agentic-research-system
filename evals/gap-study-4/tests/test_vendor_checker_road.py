@@ -38,7 +38,7 @@ def tearDownModule():
 
 class PendingStops(unittest.TestCase):
     def test_a_pending_vendor_take_is_stopped_typed_and_never_graded(self):
-        for harness, native in (("gemini", True), ("codex", False)):
+        for harness, native in (("gemini", True), ("codex", True)):     # Codex slice 3: Codex retains its rollout
             with self.subTest(harness=harness):
                 rig, ledger, refused = tvr.drive_vendor(self, harness, native=native)
                 self.assertIsInstance(refused, getattr(tbi.drive, "NativeCrossCheckPending", ()),
@@ -59,8 +59,12 @@ class PendingStops(unittest.TestCase):
         self.addCleanup(root_cm.__exit__, None, None, None)
         rig = tbi.Rig(tbi.drive, root, turns=[{"text": "a"}])
         rig.driver.pin_for = lambda r: dict(tbi.PROFILE, model=r["model"], harness=r["agent"]["harness"])
-        rig.adapter_for = rig.driver.adapter_for = lambda r, take: rig.adapters.append(
-            type("Vendor", (tbi.FakeAdapter,), {"name": "codex"})(rig.box, take, rig.turns)) or rig.adapters[-1]
+        import tempfile
+        home = tempfile.TemporaryDirectory()
+        self.addCleanup(home.cleanup)
+        rig.adapter_for = rig.driver.adapter_for = lambda r, take: rig.adapters.append(       # Codex slice 3: native
+            type("Vendor", (tvr.VendorAdapter,), {"name": "codex"})(rig.box, take, rig.turns, home=home.name)) \
+            or rig.adapters[-1]
         table = tbi.table()
         table["pin_profiles"]["codex"] = {tbi.MODEL: dict(tbi.PROFILE)}
         b = batch.Batch(rig.driver, rig.repo, tbi.Window(), table=table, serial=True)

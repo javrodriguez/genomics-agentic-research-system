@@ -59,6 +59,7 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
+import codex_native as cn  # noqa: E402
 import gemini_projection as gp  # noqa: E402
 import gemini_session_replay as replay_mod  # noqa: E402
 import gemini_stream_join as gsj  # noqa: E402
@@ -152,14 +153,64 @@ def check_session(native: bytes, streams: list) -> dict:
     return join_session(native, streams, gemini_reader)
 
 
+# ---- Codex slice 3: the Codex reader and its one shared join -----------------------------------------------------
+
+CODEX_PINNED_CLI = cn.PINNED_CLI
+CODEX_ACCEPTANCE_FILE = f"{READER_DIR}/codex-acceptance.json"
+CODEX_SOURCES = ("codex_native.py", "native_reader_registration.py", "drive.py", "vendor_provenance.py",
+                 "native_snapshot.py")
+CODEX_FLOOR = {"interactions": 2, "command_round_trips": 1}
+CODEX_SHAPES = ("interactions", "command_round_trips", "reroutes", "marker_texts")
+
+
+def codex_reader(raw: bytes, ordinal: int) -> dict:
+    """The Codex candidate: one turn of a retained rollout, in vendor_provenance's fact schema (codex_native.project;
+    requested_model is the turn_context's REQUESTED model, never the served one)."""
+    try:
+        facts = cn.project(raw)
+    except cn.ReaderRefused as e:
+        raise vp.ProvenanceRefused(f"the Codex rollout reader refused the snapshot: {e}") from None
+    if ordinal > len(facts):
+        raise vp.ProvenanceRefused("snapshot lacks requested interaction")
+    return facts[ordinal - 1]
+
+
+def codex_join_session(raw: bytes, streams: list, exit_codes: list) -> dict:
+    """THE Codex cross-check, shared by acceptance and production (drive.codex_cross_check): PASS only when the rollout
+    holds exactly one turn per exec stream, each joins its stream (codex_native.join) and each is complete; otherwise
+    DISAGREE with the reason."""
+    if not streams or len(streams) != len(exit_codes):
+        return {"status": "DISAGREE", "why": "no exec streams, or not one exit code per stream"}
+    try:
+        got = cn.read_rollout(raw)
+    except cn.ReaderRefused as e:
+        return {"status": "DISAGREE", "why": f"native: {e}"}
+    turns = got["turns"]
+    if len(turns) != len(streams):
+        return {"status": "DISAGREE", "why": f"{len(turns)} native turns for {len(streams)} streams"}
+    joined = []
+    for n, (turn, text, code) in enumerate(zip(turns, streams, exit_codes), 1):
+        try:
+            j = cn.join(turn, text, exit_code=code, session_id=got["session_id"])
+        except cn.JoinRefused as e:
+            return {"status": "DISAGREE", "why": f"interaction {n}: {e}"}
+        if j["complete"] is not True:
+            return {"status": "DISAGREE", "why": f"interaction {n} is not complete (terminal {j['terminal']!r})"}
+        joined.append(j)
+    shapes = {"interactions": len(joined), "command_round_trips": sum(j["commands"] for j in joined),
+              "reroutes": sum(j["served_model"] is not None for j in joined),
+              "marker_texts": sum(bool(j["marker_text"]) for j in joined)}
+    return {"status": "PASS", "interactions": len(joined), "shapes": shapes}
+
+
 def coverage_line(shapes: dict) -> str:
     seen = [f"{k}={shapes[k]}" for k in SHAPES if shapes.get(k)]
     unseen = [f"{k} (0 seen)" for k in SHAPES if not shapes.get(k)] + list(NEVER_COUNTED)
     return f"exercised: {', '.join(seen) or 'none'}; unverified: {'; '.join(unseen)}"
 
 
-def floor_problem(shapes: dict):
-    for key, least in ACCEPTANCE_FLOOR.items():
+def floor_problem(shapes: dict, floor=None):
+    for key, least in (ACCEPTANCE_FLOOR if floor is None else floor).items():
         if shapes.get(key, 0) < least:
             return f"acceptance needs at least {least} {key.replace('_', ' ')}; the walk exercised {shapes.get(key, 0)}"
     return None
@@ -202,11 +253,11 @@ def _show(root: Path, rel: str) -> bytes:
     return _git(root, "show", f"HEAD:{rel}", binary=True)
 
 
-def reader_sources_sha256(study: Path = HERE, *, committed=None) -> str:
+def reader_sources_sha256(study: Path = HERE, *, committed=None, sources=None) -> str:
     """One hash over the reader's sources, each named and hashed, in a fixed order. `committed(name)` gives HEAD's
     bytes (the registration road); without it, the files as they stand (the check tool's report)."""
     lines = []
-    for name in READER_SOURCES:
+    for name in (READER_SOURCES if sources is None else sources):
         raw = committed(name) if committed else (Path(study) / name).read_bytes()
         lines.append(f"{name}\0{hashlib.sha256(raw).hexdigest()}\n")
     return hashlib.sha256("".join(lines).encode()).hexdigest()
@@ -290,15 +341,17 @@ def _walk_commit(root: Path, walk_rel: str, register_rel: str, entry: dict) -> s
     return commit
 
 
-def _ledger_problems(ledger, entry: dict, base: Path) -> None:
+def _ledger_problems(ledger, entry: dict, base: Path, harness: str = HARNESS) -> None:
     """The driver ledger's full take schema (drive's _take_records), for a Gemini walk whose cross-check is pending,
     with environment.json re-hashed."""
-    if not isinstance(ledger, dict) or set(ledger) != set(LEDGER_KEYS):
+    keys = set(PROFILES[harness]["ledger_keys"])
+    if not isinstance(ledger, dict) or set(ledger) != keys:
         raise RegistrationRefused(f"the driver ledger is not the take schema of a native-session vendor walk: "
-                                  f"{sorted(set(ledger) ^ set(LEDGER_KEYS)) if isinstance(ledger, dict) else ledger}")
+                                  f"{sorted(set(ledger) ^ keys) if isinstance(ledger, dict) else ledger}")
     for key, want in (("kind", "take"), ("task", entry["task"]), ("half", entry["half"]),
                       ("wording", entry["wording"]), ("arm", entry["arm"]), ("model_requested", entry["model"]),
-                      ("agent", {"harness": HARNESS, "version": PINNED_CLI}), ("row", None), ("row_commit", None),
+                      ("agent", {"harness": harness, "version": PROFILES[harness]["cli"]}), ("row", None),
+                      ("row_commit", None),
                       ("first_agent_turn", True), ("transcript", None), ("published", None), ("cross_check", None),
                       ("cost", None), ("native_snapshot_refusal", None)):
         if ledger[key] != want:
@@ -335,7 +388,7 @@ def _records_problems(base: Path, entry: dict, ledger: dict) -> None:
         raise RegistrationRefused("grade.json is not run.grade_walk's pending document")
 
 
-def _journal_problems(base: Path, entry: dict, ledger: dict) -> None:
+def _journal_problems(base: Path, entry: dict, ledger: dict, harness: str = HARNESS) -> None:
     """Each turn's launch journal, validated by vendor_provenance.launch_facts against the registered invocation:
     the take container from launch.json, model, mode and sent line from the ledger, the resumed session from turn 1's
     init. The working folder and the stream's host folder are the journals' own (one value across every turn); the
@@ -343,7 +396,7 @@ def _journal_problems(base: Path, entry: dict, ledger: dict) -> None:
     try:
         take_id = json.loads((base / LAUNCH_FILE).read_bytes())["take_id"]
         first = json.loads((base / "turn-1.jsonl").read_text(encoding="utf-8").splitlines()[0])
-        session = first["session_id"] if first.get("type") == "init" else None
+        session = PROFILES[harness]["session_of"](first)
     except (OSError, ValueError, KeyError, TypeError, IndexError) as e:
         raise RegistrationRefused(f"launch.json or turn 1's init cannot be read: {e}") from None
     cwds, dirs = set(), set()
@@ -358,7 +411,7 @@ def _journal_problems(base: Path, entry: dict, ledger: dict) -> None:
             raise RegistrationRefused(f"turn {k}'s launch journal names another stream")
         cwds.add(journal.get("cwd"))
         dirs.add(os.path.dirname(stream))
-        want = {"harness": HARNESS, "container_id": take_id, "model": entry["model"],
+        want = {"harness": harness, "container_id": take_id, "model": entry["model"],
                 "mode": ledger["permission_mode_passed"], "run_tree": journal.get("cwd"), "stream": stream,
                 "sent": ledger["turns"][k - 1]["sent"],
                 "vendor_session_id": "first-turn" if k == 1 else session, "ordinal": k}
@@ -370,7 +423,7 @@ def _journal_problems(base: Path, entry: dict, ledger: dict) -> None:
         raise RegistrationRefused("the launch journals do not share one working folder and one stream folder")
 
 
-def _regrade_problems(base: Path, walk: str, study: Path) -> None:
+def _regrade_problems(base: Path, walk: str, study: Path, harness: str = HARNESS) -> None:
     """Batch-8 review finding 4: a regrade.json the walk carries must re-derive (walk_regrade.regrade_doc from the
     committed bytes, through the candidate reader) to its exact bytes; anything else refuses."""
     import walk_regrade
@@ -378,15 +431,18 @@ def _regrade_problems(base: Path, walk: str, study: Path) -> None:
     if not path.is_file():
         return
     try:
-        again = walk_regrade.regrade_bytes(walk_regrade.regrade_doc(walk, study, readers={HARNESS: gemini_reader}))
+        again = walk_regrade.regrade_bytes(walk_regrade.regrade_doc(walk, study,
+                                                                    readers={harness: PROFILES[harness]["reader"]}))
     except walk_regrade.RegradeRefused as e:
         raise RegistrationRefused(f"the walk's regrade.json cannot be re-derived: {e}") from None
     if again != path.read_bytes():
         raise RegistrationRefused("the walk's regrade.json does not re-derive to its bytes")
 
 
-def acceptance_problems(record, study: Path = HERE) -> None:
-    """Raise RegistrationRefused unless `record` (read from HEAD) binds a committed recorded walk, as above."""
+def acceptance_problems(record, study: Path = HERE, harness: str = HARNESS) -> None:
+    """Raise RegistrationRefused unless `record` (read from HEAD) binds a committed recorded walk, as above, for the
+    harness's profile (PROFILES: Gemini, and Codex since Codex slice 3)."""
+    prof = PROFILES[harness]
     import drive                                    # lazily: drive imports this module
     study = Path(study)
     root, prefix = _repo(study)
@@ -398,8 +454,8 @@ def acceptance_problems(record, study: Path = HERE) -> None:
         raise RegistrationRefused("evidence_label is derived from the walk's bindings, never asserted by the record")
     if set(record) != set(ACCEPTANCE_KEYS) or record.get("schema") != 1:
         raise RegistrationRefused(f"an acceptance record holds exactly {list(ACCEPTANCE_KEYS)}, schema 1")
-    if record["harness"] != HARNESS or record["cli_version"] != PINNED_CLI:
-        raise RegistrationRefused(f"the record is for {HARNESS} {PINNED_CLI} only")
+    if record["harness"] != harness or record["cli_version"] != prof["cli"]:
+        raise RegistrationRefused(f"the record is for {harness} {prof['cli']} only")
     review = record["review"]
     if (not isinstance(review, dict) or set(review) != {"verdict", "file", "sha256", "reviewer"}
             or review["verdict"] != "PASS" or not (isinstance(review["reviewer"], str) and review["reviewer"].strip())):
@@ -413,18 +469,20 @@ def acceptance_problems(record, study: Path = HERE) -> None:
         raise RegistrationRefused(f"walk {walk!r} is not a walk id")
     walks = _rel(prefix, mode_binding.WALKS_DIR)
     register_rel, walk_rel = f"{walks}/{walk_register.REGISTER_NAME}", f"{walks}/{walk}"
-    review_ref = _ref({"file": review["file"], "sha256": review["sha256"]}, _REVIEW_FILE, "review")
+    review_ref = _ref({"file": review["file"], "sha256": review["sha256"]}, prof["review"], "review")
     review_rel = _rel(prefix, f"{READER_DIR}/{review_ref['file']}")
-    _clean(root, [register_rel, walk_rel, review_rel] + [_rel(prefix, n) for n in READER_SOURCES])
-    if record["reader_sources_sha256"] != reader_sources_sha256(committed=lambda n: _show(root, _rel(prefix, n))):
+    _clean(root, [register_rel, walk_rel, review_rel] + [_rel(prefix, n) for n in prof["sources"]])
+    if record["reader_sources_sha256"] != reader_sources_sha256(committed=lambda n: _show(root, _rel(prefix, n)),
+                                                                sources=prof["sources"]):
         raise RegistrationRefused("the reader's sources changed since the record: a new acceptance is needed")
     try:
         register = json.loads(_show(root, register_rel), object_pairs_hook=walk_register.no_duplicate_keys)
         entries = [e for e in register["walks"] if isinstance(e, dict) and e.get("walk") == walk]
     except (ValueError, KeyError, TypeError, walk_register.DuplicateKey) as e:
         raise RegistrationRefused(f"the committed rehearsals register cannot be read: {e}") from None
-    if len(entries) != 1 or entries[0].get("arm") != ARM:
-        raise RegistrationRefused(f"walk {walk!r} is not one committed arm-{ARM} walk of the rehearsals register")
+    if len(entries) != 1 or entries[0].get("arm") != prof["arm"]:
+        raise RegistrationRefused(f"walk {walk!r} is not one committed arm-{prof['arm']} walk of the rehearsals "
+                                  f"register")
     with tempfile.TemporaryDirectory() as tmp:
         base = Path(tmp) / walk
         _materialize(root, walk_rel, base)
@@ -437,10 +495,10 @@ def acceptance_problems(record, study: Path = HERE) -> None:
             ledger = json.loads((base / drive.LEDGER_FILE).read_bytes())
         except (OSError, ValueError) as e:
             raise RegistrationRefused(f"the walk's driver ledger cannot be read: {e}") from None
-        _ledger_problems(ledger, entries[0], base)
+        _ledger_problems(ledger, entries[0], base, harness)
         _records_problems(base, entries[0], ledger)
-        _journal_problems(base, entries[0], ledger)
-        _regrade_problems(base, walk, study)
+        _journal_problems(base, entries[0], ledger, harness)
+        _regrade_problems(base, walk, study, harness)
         snaps, ledger_streams = list(ledger["native_snapshots"]), list(ledger["streams"])
         native_ref = _ref(record["native"], _NATIVE_FILE, "native")
         native = _hashed((base / native_ref["file"]).read_bytes() if (base / native_ref["file"]).is_file() else b"",
@@ -458,24 +516,21 @@ def acceptance_problems(record, study: Path = HERE) -> None:
         for r in refs:
             path = base / r["file"]
             streams.append(_hashed(path.read_bytes() if path.is_file() else b"", r, "stream").decode("utf-8"))
-        got = check_session(native, streams)
+        got = prof["check"](native, streams, ledger)
         join = record["join"]
         if got["status"] != "PASS" or join != {"status": "PASS", "interactions": got["interactions"]}:
             raise RegistrationRefused(f"the join does not re-derive as recorded: {got.get('why') or got['interactions']}")
-        floor = floor_problem(got["shapes"])
+        floor = floor_problem(got["shapes"], prof["floor"])
         if floor:
             raise RegistrationRefused(floor)
         try:
-            vp.session_history_facts(HARNESS, base / "session", [dict(s) for s in snaps],
-                                     readers={HARNESS: gemini_reader})
+            vp.session_history_facts(harness, base / "session", [dict(s) for s in snaps],
+                                     readers={harness: prof["reader"]})
         except (vp.ProvenanceRefused, vp.ProvenancePending) as e:
             raise RegistrationRefused(f"the snapshot-history join over the ledger's snapshots refuses: {e}") from None
         if len(snaps) < 2:
             raise RegistrationRefused("the snapshot-history join needs a resume: at least 2 retained snapshots")
-        try:
-            metadata = replay_mod.replay(native)["metadata"]
-        except replay_mod.ReplayRefused as e:
-            raise RegistrationRefused(f"the native session metadata cannot be read: {e}") from None
+        metadata = prof["metadata"](native)
     review_text = _hashed(_show(root, review_rel), review_ref, "review")
     for what, text in (("the native session metadata", json.dumps(metadata, sort_keys=True)),
                        ("the register entry", json.dumps(entries[0], sort_keys=True)),
@@ -485,31 +540,71 @@ def acceptance_problems(record, study: Path = HERE) -> None:
             raise RegistrationRefused(f"{what} carries a synthetic marker: never acceptance evidence")
 
 
-def production_readers(study: Path = HERE) -> dict:
-    """The production native-reader registry: {} without an acceptance record in the working tree (no git is run, so
-    a take's driver pays nothing; a committed record deleted from disk also reads {}, which keeps every Gemini take
-    pending, the fail-closed side); {"gemini": gemini_reader} with a committed, clean one that holds;
-    RegistrationRefused otherwise."""
-    study = Path(study)
-    path = study / ACCEPTANCE_FILE
-    if not (path.exists() or path.is_symlink()):
-        return {}
-    root, prefix = _repo(study)
-    if root is None:
-        raise RegistrationRefused("an acceptance record outside a git repository is never read")
-    rel = _rel(prefix, ACCEPTANCE_FILE)
-    if not _in_head(root, rel):
-        raise RegistrationRefused("the acceptance record is uncommitted: only a committed record is read")
-    _clean(root, [rel])
+def _gemini_metadata(native: bytes):
     try:
-        record = json.loads(_show(root, rel))
-    except (ValueError, UnicodeError) as e:
-        raise RegistrationRefused(f"the acceptance record is not JSON: {e}") from None
-    acceptance_problems(record, study)
-    return {HARNESS: gemini_reader}
+        return replay_mod.replay(native)["metadata"]
+    except replay_mod.ReplayRefused as e:
+        raise RegistrationRefused(f"the native session metadata cannot be read: {e}") from None
 
 
-def acceptance_provenance(study: Path = HERE) -> dict:
+def _codex_metadata(native: bytes):
+    """The rollout's session_meta payload (its first line), scanned for a synthetic marker."""
+    try:
+        return json.loads(native.decode("utf-8").split("\n", 1)[0])["payload"]
+    except (ValueError, KeyError, TypeError, UnicodeError) as e:
+        raise RegistrationRefused(f"the rollout's session_meta cannot be read: {e}") from None
+
+
+def _codex_thread(first: dict):
+    return first.get("thread_id") if first.get("type") == "thread.started" else None
+
+
+PROFILES = {
+    "gemini": {"cli": PINNED_CLI, "arm": ARM, "acceptance": ACCEPTANCE_FILE, "review": _REVIEW_FILE,
+               "reader": gemini_reader, "sources": READER_SOURCES, "floor": ACCEPTANCE_FLOOR,
+               "check": lambda native, streams, ledger: check_session(native, streams),
+               "session_of": lambda first: first.get("session_id") if first.get("type") == "init" else None,
+               "ledger_keys": LEDGER_KEYS, "metadata": _gemini_metadata},
+    # Codex slice 3 (arm O, glitch-06's ruling): the rollout reader and its shared join; a Codex ledger also records
+    # each turn's served-model evidence (served_model, D-INT-2).
+    "codex": {"cli": CODEX_PINNED_CLI, "arm": "O", "acceptance": CODEX_ACCEPTANCE_FILE,
+              "review": re.compile(r"codex-review\.md"), "reader": codex_reader, "sources": CODEX_SOURCES,
+              "floor": CODEX_FLOOR,
+              "check": lambda native, streams, ledger: codex_join_session(native, streams,
+                                                                         [t.get("exit") for t in ledger["turns"]]),
+              "session_of": _codex_thread, "ledger_keys": LEDGER_KEYS + ("served_model",),
+              "metadata": _codex_metadata},
+}
+
+
+def production_readers(study: Path = HERE) -> dict:
+    """The production native-reader registry, per harness profile: {} without any acceptance record in the working
+    tree (no git is run, so a take's driver pays nothing; a committed record deleted from disk also reads absent, which
+    keeps that harness's takes pending, the fail-closed side); each harness whose committed, clean record holds maps to
+    its reader; any record that exists and does not hold raises RegistrationRefused."""
+    study = Path(study)
+    out = {}
+    for harness, prof in PROFILES.items():
+        path = study / prof["acceptance"]
+        if not (path.exists() or path.is_symlink()):
+            continue
+        root, prefix = _repo(study)
+        if root is None:
+            raise RegistrationRefused("an acceptance record outside a git repository is never read")
+        rel = _rel(prefix, prof["acceptance"])
+        if not _in_head(root, rel):
+            raise RegistrationRefused("the acceptance record is uncommitted: only a committed record is read")
+        _clean(root, [rel])
+        try:
+            record = json.loads(_show(root, rel))
+        except (ValueError, UnicodeError) as e:
+            raise RegistrationRefused(f"the acceptance record is not JSON: {e}") from None
+        acceptance_problems(record, study, harness)
+        out[harness] = prof["reader"]
+    return out
+
+
+def acceptance_provenance(study: Path = HERE, harness: str = HARNESS) -> dict:
     """Who committed the record and the review, and when HEAD stands: printed by `verify`, never a trust input."""
     study = Path(study)
     root, prefix = _repo(study)
@@ -520,11 +615,13 @@ def acceptance_provenance(study: Path = HERE) -> dict:
         line = _git(root, "log", "-1", "--format=%H%x00%an", "HEAD", "--", rel)
         return line.split("\0") if line else [None, None]
 
-    commit, author = last(_rel(prefix, ACCEPTANCE_FILE))
-    reviews = _git(root, "log", "--format=%H", "HEAD", "--", _rel(prefix, READER_DIR + "/*.md")).splitlines()
+    acceptance = PROFILES[harness]["acceptance"]
+    commit, author = last(_rel(prefix, acceptance))
+    reviews = _git(root, "log", "--format=%H", "HEAD", "--",
+                   _rel(prefix, f"{READER_DIR}/{harness}-review.md")).splitlines()
     walk = walk_author = walk_committer = None
     try:
-        walk = json.loads(_show(root, _rel(prefix, ACCEPTANCE_FILE))).get("walk")
+        walk = json.loads(_show(root, _rel(prefix, acceptance))).get("walk")
     except (RegistrationRefused, ValueError, AttributeError):
         walk = None
     if isinstance(walk, str) and walk_register.WALK_ID.fullmatch(walk):

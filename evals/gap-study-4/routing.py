@@ -154,16 +154,30 @@ RECORD_SCHEMA = {
 # entry per turn: None, or typed identity evidence (agent_adapter.identity_problems' shape). Records without it route
 # exactly as before.
 OPTIONAL_RECORDS = ("identity",)
-IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "submitted-argv", "unobserved")
+IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "submitted-argv", "stream-reroute", "unobserved")
 # Which source routing accepts as evidence for which pin field, keyed by the pin's harness (D8's per-harness table).
 # Gemini: requested model from init.model and every result.stats.models key, version from `gemini --version` in the
 # take container, mode from the turn's actual-submission journal argv (gemini_adapter.submitted_mode; unobserved when
 # no journal exists). Any other source, an unobserved field or a value off the pin is a mismatch, exactly as a
-# missing init event is. A harness with no entry (claude-code, whose mode must come from its init event; codex until
-# its sources are registered) carries no identity at all: shape_problems refuses it.
+# missing init event is. A harness with no entry (claude-code, whose mode must come from its init event) carries no
+# identity at all: shape_problems refuses it.
+# Codex slice 2 (glitch-06, 14 Oct 2026): codex's served model is observed only by an exec reroute item
+# (stream-reroute, codex_adapter.read_stream); the rollout's turn_context names the REQUESTED model and is never proof,
+# so without a reroute the model is unobserved, and the init-mismatch row then reads a Codex turn as a mismatch (a
+# consequence named for a ruling in lane-reports/codex-identity-table-2026-10-14.md). version: `codex --version` in the
+# take container; mode: the turn's launch journal checked by vendor_provenance.launch_facts.
 ACCEPTED_IDENTITY_SOURCES = {"gemini": {"model": ("stream-init", "stream-stats"), "version": ("version-exec",),
-                                        "permission_mode": ("submitted-argv",)}}
-OBSERVED_IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec")
+                                        "permission_mode": ("submitted-argv",)},
+                             "codex": {"model": ("stream-reroute",), "version": ("version-exec",),
+                                       "permission_mode": ("submitted-argv",)}}
+OBSERVED_IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "stream-reroute")
+# Departure D-INT-2 (ruled by glitch-06 under the standing delegation, 14 Oct 2026; flagged first for Javier's review
+# before the freeze): for arm O (codex) only, a served model that is unobserved (no reroute) is accepted by the
+# init-mismatch row, so the requested model is assumed; an observed reroute to another model is still a mismatch, two
+# reroutes still refuse (codex_adapter), and every other harness and field is unchanged. The study's limit, verbatim:
+UNOBSERVED_ACCEPTED = {"codex": ("model",)}
+SERVED_MODEL_LIMIT = ("for the OpenAI arm, the served model is verified only when the CLI reports a reroute; otherwise "
+                      "the requested model is assumed")
 
 # The fields of one API-error record (all three required; status int or None, type str or None, text
 # str or None: the harness-side error text, never the agent's reply). glitch-f3's ruling added text.
@@ -609,6 +623,8 @@ def _identity_differs(entry, pin, fields, *, present_only: bool) -> bool:
         if present_only:
             if e["source"] in OBSERVED_IDENTITY_SOURCES and e["value"] != pin[f]:
                 return True
+        elif e["source"] == "unobserved" and f in UNOBSERVED_ACCEPTED.get(pin.get("harness"), ()):
+            continue                           # D-INT-2: arm O's served model, unobserved without a reroute
         elif e["source"] not in accepted.get(f, ()) or e["value"] != pin[f]:
             return True
     return False

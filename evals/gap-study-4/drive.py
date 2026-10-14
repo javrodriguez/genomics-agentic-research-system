@@ -2229,8 +2229,10 @@ class TakeDriver:
         published, text, recorded = None, None, "unrecorded"
         history = (native_history_record(harness, Path(take.folder) / _native_snapshot.SESSION_DIR,
                                          take.native_snapshots) if take.native_hook else None)
-        cross = (gemini_cross_check(take.folder, take.native_snapshots, len(turns))
-                 if harness == "gemini" and history is not None and history["status"] == "joined" else None)
+        joined = history is not None and history["status"] == "joined"
+        cross = (gemini_cross_check(take.folder, take.native_snapshots, len(turns)) if harness == "gemini" and joined
+                 else codex_cross_check(take.folder, take.native_snapshots, [t.exit_code for t in turns])
+                 if harness == "codex" and joined else None)
         status = vendor_cross_check_status(harness, history, cross) if vendor else None
         if vendor:
             take.cross_check = ([status["why"]] if status["status"] == "refused"
@@ -2283,6 +2285,8 @@ class TakeDriver:
             ledger["native_snapshots"] = [dict(r) for r in take.native_snapshots]
             ledger["native_snapshot_refusal"] = take.native_snapshot_refusal
             ledger["native_history"] = history
+        if harness == "codex":                    # D-INT-2: each turn's served-model evidence, recorded per take
+            ledger["served_model"] = [None if t.identity is None else dict(t.identity["model"]) for t in turns]
         if vendor:                                # live harness integration: pending is recorded as pending
             ledger["cross_check_status"] = status
             take.cross_check_status = dict(status)
@@ -2630,8 +2634,6 @@ IDENTITY_KEYS = ("session_id", "row", "row_commit", "source", "fixture", "gars_t
 
 VENDOR_HARNESSES = ("codex", "gemini")
 NATIVE_HISTORY_BASIS = "unmasked retained originals, before the drive scan"   # batch-5 review nit 4
-CODEX_NATIVE_PENDING = ("no reviewed Codex native rollout reader: the rollout source audit has not landed, so the "
-                        "streams are not cross-checked against native evidence yet")
 
 
 def gemini_cross_check(take_folder, refs, n_turns: int, *, readers=None) -> dict:
@@ -2656,14 +2658,34 @@ def gemini_cross_check(take_folder, refs, n_turns: int, *, readers=None) -> dict
     return {"status": "agreed", "why": None}
 
 
+def codex_cross_check(take_folder, refs, exit_codes, *, readers=None) -> dict:
+    """Codex slice 3: D8's cross-check for a Codex take, through the ONE join the acceptance check also runs
+    (native_reader_registration.codex_join_session): each turn's exec stream joined to that turn of the take's last
+    retained rollout. `pending` without a registered Codex reader; `refused` on any disagreement, an extra or missing
+    turn, or an incomplete turn; `agreed` only when every turn joins complete."""
+    readers = _registration.production_readers() if readers is None else readers
+    if readers.get("codex") is None:
+        return {"status": "pending", "why": "no registered Codex native reader (no committed acceptance record)"}
+    folder = Path(take_folder)
+    try:
+        raw = _vendor_provenance.referenced_bytes(folder / _native_snapshot.SESSION_DIR, refs[-1])
+        streams = [(folder / f"turn-{n}.jsonl").read_text(encoding="utf-8") for n in range(1, len(exit_codes) + 1)]
+    except (IndexError, OSError, UnicodeError, _vendor_provenance.ProvenanceRefused) as e:
+        return {"status": "refused", "why": f"{type(e).__name__}: {e}"}
+    got = _registration.codex_join_session(raw, streams, list(exit_codes))
+    if got["status"] != "PASS":
+        return {"status": "refused", "why": got["why"]}
+    return {"status": "agreed", "why": None}
+
+
 def vendor_cross_check_status(harness: str, history, cross=None) -> dict:
     """Live harness integration: a non-Claude take's cross-check, from its own native evidence only. Gemini: its
     retained snapshots' history record (pending while no reviewed reader is registered; refused when the snapshots are
     missing, unreadable or inconsistent; a joined history still leaves the stream join pending, since the projection
-    and the stream join are unregistered). Codex: pending until the rollout source audit lands. Never a pass."""
-    if harness == "gemini":
+    and the stream join are unregistered). Codex the same way, from its retained rollouts (Codex slice 3). Never a pass."""
+    if harness in ("gemini", "codex"):        # Codex slice 3: Codex reads its own retained rollouts the same way
         if history is None:
-            return {"status": "refused", "why": "the Gemini adapter retained no native snapshot record"}
+            return {"status": "refused", "why": f"the {harness} adapter retained no native snapshot record"}
         if history["status"] == "refused":
             return {"status": "refused", "why": f"native snapshots: {history['why']}"}
         if history["status"] == "pending":
@@ -2671,8 +2693,6 @@ def vendor_cross_check_status(harness: str, history, cross=None) -> dict:
         if cross is None:
             return {"status": "pending", "why": "native snapshots join; the stream join to them is not registered yet"}
         return dict(cross)
-    if harness == "codex":
-        return {"status": "pending", "why": CODEX_NATIVE_PENDING}
     raise DriveRefused(f"no vendor cross-check road for harness {harness!r}")
 
 
@@ -2862,9 +2882,18 @@ def harness_adapter_for(*, runtime, login_file: str, counters_for, pin_for, cloc
                       stream_path_for=lambda n: stream_path(take, n),
                       counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env)
         if harness == "codex":
-            if not callable(rollout_for):
-                raise DriveRefused("Codex requires a retained native rollout reader")
-            return _codex.CodexAdapter(**common, rollout_for=lambda n: rollout_for(take, n))
+            if callable(rollout_for):
+                return _codex.CodexAdapter(**common, rollout_for=lambda n: rollout_for(take, n))
+            # Codex slice 3: by default the rollout is read where Codex writes it, in the take's config folder
+            # (CODEX_HOME, box run_take TAKE_ENV[CODEX]), located by the adapter's own thread id; a read that cannot
+            # locate exactly one rollout refuses the turn (an executed refusal), never a guess.
+            made = {}
+
+            def live_rollout(n):
+                with open(made["adapter"].native_session_path(take.config_dir), encoding="utf-8") as fh:
+                    return fh.read()
+            made["adapter"] = _codex.CodexAdapter(**common, rollout_for=live_rollout)
+            return made["adapter"]
         return _gemini.GeminiAdapter(**common)
     return make
 

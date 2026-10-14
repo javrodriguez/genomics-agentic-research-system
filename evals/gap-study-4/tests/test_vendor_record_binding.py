@@ -30,8 +30,21 @@ class BindingTests(unittest.TestCase):
                 self.assertEqual(adapter.rollout_for(1), "synthetic rollout")
         with self.assertRaises(drive.AdapterIdentityRefused):
             factory({"agent": {"harness": "unknown"}}, take)
-        with self.assertRaises(drive.DriveRefused):
-            drive.harness_adapter_for(**args)({"agent": {"harness": "codex"}, "model": "synthetic-model"}, take)
+        # Codex slice 3: without a rollout_for, the rollout is read where Codex writes it, in the take's config
+        # folder (CODEX_HOME), by the adapter's own thread id; none there refuses, never a guess.
+        import tempfile
+        import native_snapshot
+        with tempfile.TemporaryDirectory() as home:
+            take.config_dir = home
+            adapter = drive.harness_adapter_for(**args)({"agent": {"harness": "codex"}, "model": "synthetic-model"},
+                                                         take)
+            adapter.thread_id = "0000-thread-1"
+            folder = Path(home) / "sessions" / "2026" / "10" / "14"
+            folder.mkdir(parents=True)
+            with self.assertRaises(native_snapshot.SnapshotRefused):
+                adapter.rollout_for(1)
+            (folder / "rollout-2026-10-14T05-00-00-0000-thread-1.jsonl").write_text("the live rollout\n")
+            self.assertEqual(adapter.rollout_for(1), "the live rollout\n")
 
     def test_production_classes(self):
         import drive

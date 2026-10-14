@@ -78,6 +78,58 @@ def gemini_session_file(home, session_id) -> str:
     return str(hits[0])
 
 
+# Codex slice 3: the rollout of a resumed `codex exec` session, under CODEX_HOME, which the box sets to the take's
+# config mount (box/run_take.py TAKE_ENV[CODEX]: "CODEX_HOME": CONFIG_MOUNT), so the host reads it in the take's config
+# folder. From the retained pinned source (audit Addendum B; rollout_file_name.rs blob 61ad43cd): the path is
+# <home>/sessions/<year, unpadded>/<month, 2 digits>/<day, 2 digits>/rollout-<YYYY-MM-DDTHH-MM-SS>-<thread id>.jsonl
+# (recorder.rs:1740-1762, SESSIONS_SUBDIR at lib.rs:86, RolloutFileName::render at rollout_file_name.rs:62-74). The
+# folder date and the name's timestamp are LOCAL wall-clock time, so neither is compared with session_meta's UTC
+# timestamp, and no time is read from the name. A reverted thread's ..._<rollout id>.jsonl and a compressed .jsonl.zst
+# (written after 7 days; takes are retained per turn long before) are refused.
+_CODEX_THREAD = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
+_YEAR, _TWO = re.compile(r"[1-9]\d*"), re.compile(r"\d{2}")
+
+
+def codex_rollout_file(home, thread_id) -> str:
+    """The one rollout Codex writes for thread_id under CODEX_HOME `home`. A revert's renamed rollout, a compressed one
+    (.jsonl.zst, written for rollouts older than 7 days), none or more than one refuses (SnapshotRefused)."""
+    if not isinstance(thread_id, str) or not _CODEX_THREAD.fullmatch(thread_id):
+        raise SnapshotRefused("a rollout is located only by the thread id turn 1's stream named")
+    if not isinstance(home, str) or not home:
+        raise SnapshotRefused("the CODEX_HOME folder is not named")
+    base = Path(home) / "sessions"
+    for part in (Path(home), base):
+        _real_dir(part)
+    name = re.compile(rf"rollout-\d{{4,}}-\d{{2}}-\d{{2}}T\d{{2}}-\d{{2}}-\d{{2}}-{re.escape(thread_id)}\.jsonl")
+    other = re.compile(rf"rollout-.*{re.escape(thread_id)}(?:_[^/]*)?\.jsonl(?:\.zst)?")
+    hits = []
+    for year in sorted(os.listdir(base)):
+        if not _YEAR.fullmatch(year):
+            continue
+        _real_dir(base / year)
+        for month in sorted(os.listdir(base / year)):
+            if not _TWO.fullmatch(month):
+                continue
+            _real_dir(base / year / month)
+            for day in sorted(os.listdir(base / year / month)):
+                if not _TWO.fullmatch(day):
+                    continue
+                folder = base / year / month / day
+                _real_dir(folder)
+                for entry in sorted(os.listdir(folder)):
+                    if name.fullmatch(entry):
+                        if not entry.startswith(f"rollout-{year.zfill(4)}-{month}-{day}T"):   # one local instant
+                            raise SnapshotRefused(f"{entry} is not dated as its folder {year}/{month}/{day}")
+                        hits.append(folder / entry)
+                    elif other.fullmatch(entry):
+                        raise SnapshotRefused(f"{entry} is a reverted or compressed rollout of the thread: refused")
+    if len(hits) != 1:
+        raise SnapshotRefused(f"{len(hits)} rollout files carry the thread id {thread_id}")
+    if not stat.S_ISREG(os.lstat(hits[0]).st_mode):
+        raise SnapshotRefused(f"{hits[0].name} is not a regular file")
+    return str(hits[0])
+
+
 def retain(take_folder, n, source) -> dict:
     """Copy turn n's native snapshot into <take_folder>/session/native-turn-<n>.jsonl; its {file, sha256}."""
     if type(n) is not int or n < 1:

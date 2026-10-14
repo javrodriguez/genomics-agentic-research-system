@@ -100,8 +100,10 @@ class CodexKeepsTheExec(unittest.TestCase):
         with self.assertRaises(KeyboardInterrupt):
             a.turn("one", first=True, budget_s=60)
 
-    def test_a_codex_identity_stays_refused(self):
-        self.assertNotIn("codex", routing.ACCEPTED_IDENTITY_SOURCES)
+    def test_a_codex_identity_has_its_own_table(self):
+        """Codex slice 2 superseded this slice's "no Codex identity": the table accepts only a reroute for the model
+        (tests/test_codex_identity.py binds it)."""
+        self.assertEqual(routing.ACCEPTED_IDENTITY_SOURCES["codex"]["model"], ("stream-reroute",))
 
 
 if __name__ == "__main__":

@@ -341,7 +341,8 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
     for lane, e in entries:
         path, status, src, why = e["path"], e["status"], e.get("source"), e.get("reason")
         if status == READER_RECORDS_STATUS or path.startswith("native-readers/"):     # live harness, 14 Oct 2026
-            if path != READER_RECORDS or status != READER_RECORDS_STATUS or not (isinstance(why, str) and why.strip()):
+            if path != READER_RECORDS or status != READER_RECORDS_STATUS or src is not None or not (
+                    isinstance(why, str) and why.strip()):
                 out.append(f"{path} ({lane}): native-readers/ is claimed only by one {READER_RECORDS!r} entry of "
                            f"status {READER_RECORDS_STATUS!r} with a reason")
             elif READER_RECORDS in claimed:
@@ -463,7 +464,10 @@ def main() -> int:
         entries, _ = load_fragments()
         count = {s: sum(e["status"] == s for _, e in entries) for s in STATUSES}
         lanes = sorted({lane for lane, _ in entries})
-        print(f"ok: {len(entries)} files from {len(lanes)} fragment(s) ({', '.join(lanes)}): "
+        files = sum(e["status"] in STATUSES for _, e in entries)
+        readers = sorted(n for n in files_here() if READER_RECORD.fullmatch(n))
+        print(f"ok: {files} files from {len(lanes)} fragment(s) ({', '.join(lanes)}) and the {READER_RECORDS} "
+              f"pattern claiming {len(readers)} acceptance record(s) or review(s): "
               f"{count['identical']} identical and {count['edited']} edited (round 3 at {SOURCE_COMMIT[:8]}, "
               f"shared files at {SHARED_COMMIT[:8]}), "
               f"{count['new']} new; {len(UNEDITABLE)} fixture builders byte-identical; "

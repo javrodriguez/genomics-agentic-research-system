@@ -89,6 +89,12 @@ ROLLOUT_META, ROLLOUT_TURN = "session_meta", "turn_context"
 ROLLOUT_VERSION_KEY = "cli_version"
 ROLLOUT_INIT_KEYS = {"model": "model", "permission_mode": "approval_policy"}
 _THREAD_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
+# Codex slice 2: the one served-model evidence exec writes, an item.completed error item (exec/src/exec_events.rs:132,
+# 310-312) whose message is format!("model rerouted: {} -> {} ({:?})", from, to, reason)
+# (exec/src/event_processor_with_jsonl_output.rs:494-507). Only that exact shape is read; any other error item stays
+# off the tables and refuses the turn.
+REROUTE = re.compile(r"model rerouted: (\S+) -> (\S+) \(([A-Za-z0-9_]+)\)")
+LAUNCH_DISAGREES = "launch-differs-from-registered-invocation"
 
 
 class StreamError(ValueError):
@@ -117,6 +123,7 @@ def read_stream(text: str) -> dict:
                   JSON anywhere before it refuses (W11A-R1-10), and so does a decoded record off the tables
     """
     thread_ids, said, output, api, usage, completed, failed, tools, bad = [], [], False, [], None, 0, 0, [], 0
+    served = []
     lines = [raw.strip() for raw in text.splitlines() if raw.strip()]
     for n, raw in enumerate(lines, 1):
         try:
@@ -125,6 +132,10 @@ def read_stream(text: str) -> dict:
             if n != len(lines):
                 raise StreamError(f"line {n} of {len(lines)} is not JSON: only a cut stream's last line may be") from None
             bad = 1
+            continue
+        to_model = reroute_of(rec)
+        if to_model is not None:              # Codex slice 2: served-model evidence, never agent output or an error
+            served.append(to_model)
             continue
         try:
             t, it = tc.check_record(rec)
@@ -161,8 +172,58 @@ def read_stream(text: str) -> dict:
                 output = True
             if it in tc.TOOL_ITEM_TYPES:
                 tools.append(item["id"])
+    if len(set(served)) > 1:
+        raise StreamError("one exec's stream reroutes to two different models: the served model is not one")
     return {"thread_ids": thread_ids, "agent_text": "\n".join(said), "agent_output": output, "api_errors": api,
-            "usage": usage, "completed": completed, "failed": failed, "tool_ids": tools, "undecoded": bad}
+            "usage": usage, "completed": completed, "failed": failed, "tool_ids": tools, "undecoded": bad,
+            "served_model": served[0] if served else None}
+
+
+def reroute_of(rec):
+    """The served model a reroute item names (`to`), or None for any record that is not exactly one."""
+    if not (isinstance(rec, dict) and set(rec) == {"type", "item"} and rec["type"] == tc.ITEM_COMPLETED):
+        return None
+    item = rec["item"]
+    if not (isinstance(item, dict) and set(item) == {"id", "type", "message"} and item["type"] == "error"
+            and isinstance(item["id"], str) and isinstance(item["message"], str)):
+        return None
+    m = REROUTE.fullmatch(item["message"])
+    return m.group(2) if m else None
+
+
+def turn_identity(read: dict, *, version: str, mode: dict) -> dict:
+    """Codex slice 2: where each pin field of this turn came from. model: the reroute's `to` model (stream-reroute),
+    else unobserved; the requested model (the argv's -m, the rollout's turn_context) is never proof of the served one.
+    version: `codex --version` in the take container (version-exec). permission_mode: submitted_mode's reading."""
+    model = ({"value": read["served_model"], "source": "stream-reroute"} if read["served_model"] is not None
+             else {"value": None, "source": aa.UNOBSERVED})
+    return {"model": model, "permission_mode": dict(mode), "version": {"value": version, "source": "version-exec"}}
+
+
+def submitted_mode(journal_path: str, want: dict) -> dict:
+    """Codex slice 2: the turn's permission_mode entry, read from the box's launch journal (<stream>.launch.json),
+    never from the pin. No journal, a link, or bytes that are not one JSON object holding an argv list: unobserved.
+    Otherwise vendor_provenance.launch_facts checks the whole journal against the registered invocation (the argv
+    exactly, so no flag can be added or dropped): the pinned mode when it holds, else LAUNCH_DISAGREES, a value that is
+    never a mode. Unlike Gemini's reading, no other approval flag is enumerated: exec's shared option list is not in
+    the retained source, so exact argv equality is the only admission."""
+    try:
+        fd = os.open(journal_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError:
+        return {"value": None, "source": aa.UNOBSERVED}
+    try:
+        with os.fdopen(fd, "rb") as fh:
+            launch = json.loads(fh.read().decode("utf-8"))
+    except (ValueError, OSError):
+        return {"value": None, "source": aa.UNOBSERVED}
+    if not isinstance(launch, dict) or not isinstance(launch.get("argv"), list):
+        return {"value": None, "source": aa.UNOBSERVED}
+    import vendor_provenance as vp       # imported here: vendor_provenance imports this module
+    try:
+        vp.launch_facts(launch, want)
+    except vp.ProvenanceRefused:
+        return {"value": LAUNCH_DISAGREES, "source": "submitted-argv"}
+    return {"value": want["mode"], "source": "submitted-argv"}
 
 
 def _rollout_records(text: str) -> list:
@@ -303,6 +364,7 @@ class CodexAdapter(aa.AgentAdapter):
     def _turn(self, line: str, *, first: bool, budget_s: float) -> aa.TurnResult:
         n = self._turns + 1
         inner = argv(line, model=self.model, mode=self.mode, session_id=self.thread_id, first=first)
+        version = self.version()     # Codex slice 2: observed before the exec (cached; a failure here is pre-exec)
         before = self.counters_for()
         got = rt.run_turn(self.runtime, self.take_id, inner, harness=NAME, run_tree=self.run_tree,
                           login_file=self.login_file, stream_path=self.stream_path_for(n), budget_s=budget_s,
@@ -328,12 +390,28 @@ class CodexAdapter(aa.AgentAdapter):
             "n": n, "first": first, "exit_code": got["exit_code"], "timed_out": got["timed_out"],
             "thread_ids": read["thread_ids"], "usage": read["usage"], "tool_ids": read["tool_ids"],
             "completed": read["completed"], "failed": read["failed"], "undecoded": read["undecoded"],
-            "why_no_init": ro["why_no_init"], "shapes_source": SHAPES_SOURCE})
+            "why_no_init": ro["why_no_init"], "shapes_source": SHAPES_SOURCE,
+            "requested_context": init, "served_model": read["served_model"]})
+        # Codex slice 2: the rollout's turn_context names the REQUESTED model, never the served one, so it is kept in
+        # the turn record (requested_context) and never stands as init; identity carries what was observed.
         return aa.TurnResult(exit_code=got["exit_code"], text=read["agent_text"], stream_path=got["stream_path"],
-                             end_reason=end_reason(got["exit_code"], got["timed_out"], read), init=init,
+                             end_reason=end_reason(got["exit_code"], got["timed_out"], read), init=None,
                              api_errors=read["api_errors"], counters=counters,
                              started_at=got["started_at"], ended_at=got["ended_at"],
-                             agent_output=read["agent_output"])
+                             agent_output=read["agent_output"],
+                             identity=turn_identity(read, version=version, mode=submitted_mode(
+                                 got["stream_path"] + ".launch.json",
+                                 {"harness": NAME, "container_id": self.take_id, "model": self.model,
+                                  "mode": self.mode, "run_tree": self.run_tree, "stream": got["stream_path"],
+                                  "sent": line, "vendor_session_id": "first-turn" if first else self.thread_id,
+                                  "ordinal": n})))
+
+    def native_session_path(self, home: str) -> str:
+        """Codex slice 3: the rollout this take resumes, under CODEX_HOME `home` (the take's config folder, box
+        run_take TAKE_ENV[CODEX]), located by the thread id turn 1's stream named (native_snapshot.codex_rollout_file;
+        directory names only)."""
+        import native_snapshot
+        return native_snapshot.codex_rollout_file(home, self.thread_id)
 
     def _read_turn(self, got: dict, n: int, first: bool) -> tuple:
         """The turn's stream read, its resumed thread checked and its rollout read; raised from here, a refusal is an
