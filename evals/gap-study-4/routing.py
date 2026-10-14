@@ -154,16 +154,23 @@ RECORD_SCHEMA = {
 # entry per turn: None, or typed identity evidence (agent_adapter.identity_problems' shape). Records without it route
 # exactly as before.
 OPTIONAL_RECORDS = ("identity",)
-IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "submitted-argv", "unobserved")
+IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "submitted-argv", "stream-reroute", "unobserved")
 # Which source routing accepts as evidence for which pin field, keyed by the pin's harness (D8's per-harness table).
 # Gemini: requested model from init.model and every result.stats.models key, version from `gemini --version` in the
 # take container, mode from the turn's actual-submission journal argv (gemini_adapter.submitted_mode; unobserved when
 # no journal exists). Any other source, an unobserved field or a value off the pin is a mismatch, exactly as a
-# missing init event is. A harness with no entry (claude-code, whose mode must come from its init event; codex until
-# its sources are registered) carries no identity at all: shape_problems refuses it.
+# missing init event is. A harness with no entry (claude-code, whose mode must come from its init event) carries no
+# identity at all: shape_problems refuses it.
+# Codex slice 2 (glitch-06, 14 Oct 2026): codex's served model is observed only by an exec reroute item
+# (stream-reroute, codex_adapter.read_stream); the rollout's turn_context names the REQUESTED model and is never proof,
+# so without a reroute the model is unobserved, and the init-mismatch row then reads a Codex turn as a mismatch (a
+# consequence named for a ruling in lane-reports/codex-identity-table-2026-10-14.md). version: `codex --version` in the
+# take container; mode: the turn's launch journal checked by vendor_provenance.launch_facts.
 ACCEPTED_IDENTITY_SOURCES = {"gemini": {"model": ("stream-init", "stream-stats"), "version": ("version-exec",),
-                                        "permission_mode": ("submitted-argv",)}}
-OBSERVED_IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec")
+                                        "permission_mode": ("submitted-argv",)},
+                             "codex": {"model": ("stream-reroute",), "version": ("version-exec",),
+                                       "permission_mode": ("submitted-argv",)}}
+OBSERVED_IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "stream-reroute")
 
 # The fields of one API-error record (all three required; status int or None, type str or None, text
 # str or None: the harness-side error text, never the agent's reply). glitch-f3's ruling added text.

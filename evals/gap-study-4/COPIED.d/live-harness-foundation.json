@@ -79,7 +79,7 @@
     {
       "path": "tests/test_identity_mode_evidence.py",
       "status": "new",
-      "reason": "3b review fold: Gemini's mode comes only from the actual-submission journal's argv (absent, changed, doubled, launch-disagreeing or missing journal never read as the pin); identity accepted per harness, refused on claude-code and codex records."
+      "reason": "3b review fold: Gemini's mode comes only from the actual-submission journal's argv (absent, changed, doubled, launch-disagreeing or missing journal never read as the pin); identity accepted per harness, refused on claude-code and codex records. Codex slice 2: the table is keyed gemini and codex, each over the three pin fields."
     },
     {
       "path": "tests/test_nightly_stop.py",
@@ -99,7 +99,7 @@
     {
       "path": "tests/test_codex_executed_refusal.py",
       "status": "new",
-      "reason": "Live harness slice 6: a Codex turn refused after its exec keeps the exec and is typed ExecutedTurnRefused; a pre-exec refusal keeps nothing; no codex identity table."
+      "reason": "Live harness slice 6: a Codex turn refused after its exec keeps the exec and is typed ExecutedTurnRefused; a pre-exec refusal keeps nothing; no codex identity table. Codex slice 2: the 'no Codex identity' check is superseded by the Codex table (model stream-reroute only)."
     },
     {
       "path": "tests/test_night_ruling_history.py",
@@ -160,6 +160,11 @@
       "path": "native-readers/**",
       "status": "acceptance-records",
       "reason": "acceptance records and their reviews; written only by Javier's acceptance commit (glitch-06's ruling, 14 Oct 2026): copy_manifest claims only <harness>-acceptance.json and <harness>-review.md for gemini or codex under it, nothing else"
+    },
+    {
+      "path": "tests/test_codex_identity.py",
+      "status": "new",
+      "reason": "Codex slice 2: the Codex identity-source table as routing reads it: every field observed by its accepted source and on the pin passes; no reroute (model unobserved), a reroute elsewhere, the requested model as if observed, an unobserved or off-invocation mode and another version are init mismatches; the pin refusal reads only an observed difference."
     }
   ]
 }

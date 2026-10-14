@@ -146,15 +146,13 @@ class AcceptancePerHarness(unittest.TestCase):
         pin = dict(tie.PIN, harness="claude-code")
         recs = aa.harness_records([tie.turn(tie.ident())], pin=pin, box=tie.BOX)
         self.assertTrue(any("identity" in p for p in routing.shape_problems(recs, table)))
-        codex = aa.harness_records([tie.turn(tie.ident())], pin=dict(tie.PIN, harness="codex"), box=tie.BOX)
-        self.assertTrue(any("identity" in p for p in routing.shape_problems(codex, table)),
-                        "a harness with no registered source table carries no identity")
         gem = aa.harness_records([tie.turn(tie.ident())], pin=tie.PIN, box=tie.BOX)
         self.assertEqual(routing.shape_problems(gem, table), [])
 
     def test_the_table_is_keyed_by_harness(self):
-        self.assertEqual(set(routing.ACCEPTED_IDENTITY_SOURCES), {"gemini"})
-        self.assertEqual(set(routing.ACCEPTED_IDENTITY_SOURCES["gemini"]), set(routing.PLAN_PIN_FIELDS))
+        self.assertEqual(set(routing.ACCEPTED_IDENTITY_SOURCES), {"gemini", "codex"})     # Codex slice 2
+        for harness in ("gemini", "codex"):
+            self.assertEqual(set(routing.ACCEPTED_IDENTITY_SOURCES[harness]), set(routing.PLAN_PIN_FIELDS))
 
 
 if __name__ == "__main__":

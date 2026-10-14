@@ -38,9 +38,11 @@ transcript_codex.py compiled in memory (the registry pattern of lane w6j):
                These checks cover the adapter's stream and record road, which does not depend on the login route, so
                every turn here runs through stub_run_turn: an exec that never reads a login and carries no
                credential. Nothing here enables an API-key route.
-  A5-model     the init's model is the rollout's turn_context model (a served-other id reads as that id), and a
-               rollout with no turn_context for the turn gives init None, never the requested model.
-               Witness: model-defaulted.
+  A5-model     Codex slice 2 (14 Oct 2026): init is always None, since the rollout's turn_context names the REQUESTED
+               model (kept as the turn record's requested_context); identity's model is a reroute item's `to` model,
+               else unobserved; version is version-exec. Witnesses: model-defaulted, reroute-unread,
+               requested-model-as-served.
+  A8-journal   the mode from the turn's own launch journal through launch_facts (exact argv); unobserved without one.
   A6-turn      end reasons (end_turn, error on exit 1, error on exit 0 with turn.failed, timed-out), the counters'
                rise, and a later turn naming another thread refused. Witnesses: failed-as-end-turn,
                other-thread-resumed.
@@ -109,6 +111,7 @@ TID = "synthetic-thread-0001"
 TAKE = "cd" * 32
 MODEL = "gpt-6.1-sol"
 MODE = "bypass"
+MODE_FLAG_TEXT = "--dangerously-bypass-approvals-and-sandbox"   # spelled here (D8:110), never read from the module
 VERSION = "0.160.1"
 LOGIN = "CODEX_API_KEY"
 LOGIN_VALUE = "synthetic-login-value-" + "fedcba9876543210"     # a planted fake, never a real key
@@ -396,7 +399,8 @@ def a1_stream(mod, p):
     out = []
     r = mod.read_stream(fixture("turn1-tools.jsonl"))
     want = {"thread_ids": [TID], "agent_text": "Synthetic reply one.", "agent_output": True, "api_errors": [],
-            "usage": USAGE, "completed": 1, "failed": 0, "tool_ids": ["item_1", "item_2"], "undecoded": 0}
+            "usage": USAGE, "completed": 1, "failed": 0, "tool_ids": ["item_1", "item_2"], "undecoded": 0,
+            "served_model": None}
     if r != want:
         out.append(f"{p}: turn1-tools reads as {r}")
     if mod.read_stream(fixture("reasoning-only.jsonl"))["agent_output"] is not False:
@@ -482,27 +486,129 @@ def a4_argv(mod, p):
     return out
 
 
-@guarded("A5-model", CA_API)
+@guarded("A5-model", CA_API + ("turn_identity", "submitted_mode", "reroute_of"))
 def a5_model(mod, p):
+    """Codex slice 2: init is always None (the rollout's turn_context names the requested model, never the served one;
+    it is kept as the turn record's requested_context); identity's model is a reroute item's `to` model, else
+    unobserved; version is version-exec; the mode is the turn's journal read through launch_facts."""
     out = []
     box = FakeRuntime([fixture("turn1-tools.jsonl"), fixture("turn2-resume.jsonl")])
     a = adapter(mod, box, rollouts=[fixture("rollout-served-other.jsonl"), fixture("rollout-served-other.jsonl")])
     a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
     t1 = a.turn("one", first=True, budget_s=60)
-    t2 = a.turn("two", first=False, budget_s=60)
-    if t1.init != {"model": "gpt-5.6-luna", "permission_mode": "never", "version": VERSION}:
-        out.append(f"{p}: turn 1's init is {t1.init}, not the rollout's turn_context")
-    if t2.init is not None or not a.turn_records[1]["why_no_init"]:
-        out.append(f"{p}: a turn whose rollout gained no turn_context has init {t2.init}")
-    box = FakeRuntime([fixture("turn1-tools.jsonl")])
-    a = adapter(mod, box, rollouts=[fixture("rollout-no-context.jsonl")])
-    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
-    t = a.turn("one", first=True, budget_s=60)
-    if t.init is not None:
-        out.append(f"{p}: a rollout with no turn_context gives init {t.init}, never the requested model")
+    if t1.init is not None:
+        out.append(f"{p}: turn 1's init is {t1.init}, the requested model read as proof")
+    if a.turn_records[0]["requested_context"] != {"model": "gpt-5.6-luna", "permission_mode": "never",
+                                                  "version": VERSION}:
+        out.append(f"{p}: the requested context is not kept: {a.turn_records[0]['requested_context']}")
+    unobserved = {"value": None, "source": "unobserved"}
+    if t1.identity != {"model": unobserved, "permission_mode": unobserved,
+                       "version": {"value": VERSION, "source": "version-exec"}}:
+        out.append(f"{p}: turn 1's identity is {t1.identity}")
+    rerouted = "\n".join(lines("turn1-tools.jsonl")[:1] + [json.dumps({"type": "item.completed", "item": {
+        "id": "item_9", "type": "error", "message": f"model rerouted: {MODEL} -> gpt-6-sol (HighRiskCyber)"}})]
+        + lines("turn1-tools.jsonl")[1:]) + "\n"
+    try:
+        r = mod.read_stream(rerouted)
+    except mod.StreamError as e:
+        return out + [f"{p}: a reroute item is refused as off the tables: {e}"]
+    if r["served_model"] != "gpt-6-sol" or r["agent_output"] is not True or r["api_errors"]:
+        out.append(f"{p}: a reroute item reads as {r['served_model']!r} (output {r['agent_output']}, errors "
+                   f"{r['api_errors']})")
+    if mod.turn_identity(r, version="9.9.9", mode=unobserved)["model"] != {"value": "gpt-6-sol",
+                                                                            "source": "stream-reroute"}:
+        out.append(f"{p}: the reroute is not the identity's model")
+    for msg in ("model rerouted: a -> b", "Model rerouted: a -> b (X)", "model rerouted: a -> b (X) extra",
+                "a warning that is not a reroute"):
+        rec = {"type": "item.completed", "item": {"id": "i", "type": "error", "message": msg}}
+        if mod.reroute_of(rec) is not None:
+            out.append(f"{p}: {msg!r} read as a reroute")
+    for rec in ({"type": "item.started", "item": {"id": "i", "type": "error", "message": "model rerouted: a -> b (X)"}},
+                {"type": "item.completed", "item": {"id": "i", "type": "error", "message": "model rerouted: a -> b (X)",
+                                                    "extra": 1}},
+                {"type": "item.completed", "item": {"id": 7, "type": "error", "message": "model rerouted: a -> b (X)"}},
+                {"type": "item.completed", "item": {"id": "i", "type": "warning", "message": "model rerouted: a -> b (X)"}},
+                {"type": "item.completed", "item": {"id": "i", "type": "error", "message": 7}},
+                {"type": "item.completed", "item": ["id", "type", "message"]},
+                ["type", "item"]):
+        try:
+            got = mod.reroute_of(rec)
+        except Exception as e:  # noqa: BLE001 - a crash on a malformed record is a finding, never a kill by error
+            got = f"a crash: {type(e).__name__}"
+        if got is not None:
+            out.append(f"{p}: {rec} read as a reroute ({got})")
+    two = rerouted + json.dumps({"type": "item.completed", "item": {
+        "id": "item_10", "type": "error", "message": f"model rerouted: {MODEL} -> gpt-6-luna (Other)"}}) + "\n"
+    got = refusal(lambda: mod.read_stream(two), mod.StreamError)
+    if got:
+        out.append(f"{p}: two reroutes to different models {got}")
+    other = "\n".join(lines("turn1-tools.jsonl") + [json.dumps({"type": "item.completed", "item": {
+        "id": "item_9", "type": "error", "message": "a warning that is not a reroute"}})]) + "\n"
+    got = refusal(lambda: mod.read_stream(other), mod.StreamError)
+    if got:
+        out.append(f"{p}: any other error item {got}")
     r = mod.read_rollout(fixture("rollout-two-turns.jsonl"), seen=1)
     if r["init"] != {"model": MODEL, "permission_mode": "never", "version": VERSION} or r["turn_contexts"] != 2:
         out.append(f"{p}: the second turn's context reads {r}")
+    return out
+
+
+@guarded("A8-journal", CA_API + ("submitted_mode",))
+def a8_journal(mod, p):
+    """Codex slice 2: the mode from the turn's own journal, checked by launch_facts against the registered invocation
+    (the argv exactly); no journal, a link, bad bytes or no argv list are unobserved; anything off the invocation is
+    "launch-differs-from-registered-invocation". Spelled here, never read from the module."""
+    out = []
+    folder = Path(tempfile.mkdtemp(dir=SCRATCH))
+    stream, tree = str(folder / "turn-1.jsonl"), str(SCRATCH / "tree")
+    want = {"harness": "codex", "container_id": TAKE, "model": MODEL, "mode": MODE, "run_tree": tree,
+            "stream": stream, "sent": "hello", "vendor_session_id": "first-turn", "ordinal": 1}
+    registered = list(mod.argv("hello", model=MODEL, mode=MODE, session_id=None, first=True))
+
+    def journal(argv=None, raw=None, **over):
+        path = folder / f"j-{len(list(folder.iterdir()))}.launch.json"
+        doc = dict({"schema": 1, "harness": "codex", "container_id": TAKE,
+                    "argv": registered if argv is None else argv, "cwd": tree, "stream": stream,
+                    "started_at": 1.0}, **over)
+        path.write_bytes(raw if raw is not None else json.dumps(doc).encode())
+        return str(path)
+    unobserved = {"value": None, "source": "unobserved"}
+    link = folder / "link.launch.json"
+    os.symlink(journal(), link)
+    for why, path, expect in (
+            ("no journal", str(folder / "absent.launch.json"), unobserved),
+            ("a link", str(link), unobserved),
+            ("bytes that are not JSON", journal(raw=b"{not json"), unobserved),
+            ("bytes that are not UTF-8", journal(raw=b"\xff\xfe"), unobserved),
+            ("a JSON list", journal(raw=b"[]"), unobserved),
+            ("an argv that is not a list", journal(argv="codex exec"), unobserved),
+            ("the registered launch", journal(), {"value": MODE, "source": "submitted-argv"}),
+            ("an extra flag", journal(argv=registered[:-1] + ["--full-auto", registered[-1]]),
+             {"value": "launch-differs-from-registered-invocation", "source": "submitted-argv"}),
+            ("the mode's flag dropped", journal(argv=[a for a in registered if a != MODE_FLAG_TEXT]),
+             {"value": "launch-differs-from-registered-invocation", "source": "submitted-argv"}),
+            ("another folder", journal(cwd=str(SCRATCH / "elsewhere")),
+             {"value": "launch-differs-from-registered-invocation", "source": "submitted-argv"})):
+        got = mod.submitted_mode(path, dict(want))
+        if got != expect:
+            out.append(f"{p}: {why}: {got}, not {expect}")
+    box = FakeRuntime([fixture("turn1-tools.jsonl"), fixture("turn2-resume.jsonl")])
+    two = fixture("rollout-two-turns.jsonl")
+    a = mod.CodexAdapter(runtime=box, take_id=TAKE, run_tree=tree, login_file=login_file(), model=MODEL,
+                         pin={"permission_mode": MODE, "version": VERSION},
+                         stream_path_for=lambda n: str(folder / f"t-{n}.jsonl"), rollout_for=lambda n: two,
+                         counters_for=Counters(), clock=Clock())
+    a.start_take({"row_id": 1, "slot": "s1", "half_cell": "c1"})
+    for n, (line, session) in enumerate((("one", None), ("two", TID)), 1):
+        s = str(folder / f"t-{n}.jsonl")
+        Path(s + ".launch.json").write_text(json.dumps({
+            "schema": 1, "harness": "codex", "container_id": TAKE,
+            "argv": list(mod.argv(line, model=MODEL, mode=MODE, session_id=session, first=n == 1)),
+            "cwd": tree, "stream": s, "started_at": 1.0}))
+    for n, line in enumerate(("one", "two"), 1):
+        r = a.turn(line, first=n == 1, budget_s=60)
+        if r.identity["permission_mode"] != {"value": MODE, "source": "submitted-argv"}:
+            out.append(f"{p}: turn {n}'s mode from its journal is {r.identity['permission_mode']}")
     return out
 
 
@@ -942,10 +1048,13 @@ def b9_record(mod, p):
     t2 = a.turn("two", first=False, budget_s=60)
     want = [{"n": 1, "first": True, "exit_code": 0, "timed_out": False, "thread_ids": [TID], "usage": USAGE,
              "tool_ids": ["item_1", "item_2"], "completed": 1, "failed": 0, "undecoded": 0, "why_no_init": None,
-             "shapes_source": mod.SHAPES_SOURCE},
+             "shapes_source": mod.SHAPES_SOURCE,
+             "requested_context": {"model": MODEL, "permission_mode": "never", "version": VERSION},
+             "served_model": None},
             {"n": 2, "first": False, "exit_code": 1, "timed_out": False, "thread_ids": [TID], "usage": None,
              "tool_ids": [], "completed": 0, "failed": 1, "undecoded": 0,
-             "why_no_init": a.turn_records[1]["why_no_init"], "shapes_source": mod.SHAPES_SOURCE}]
+             "why_no_init": a.turn_records[1]["why_no_init"], "shapes_source": mod.SHAPES_SOURCE,
+             "requested_context": None, "served_model": None}]
     if a.turn_records != want or not a.turn_records[1]["why_no_init"]:
         out.append(f"{p}: the turn records read {a.turn_records}")
     if (t1.text, t1.exit_code, t1.started_at, t1.ended_at) != ("Synthetic reply one.", 0, 101.0, 102.0):
@@ -1071,8 +1180,11 @@ class TestTheAdapter(unittest.TestCase):
     def test_a4_the_turn_argv(self):
         self.assertEqual(a4_argv(ca), [])
 
-    def test_a5_the_model_is_the_rollouts(self):
+    def test_a5_the_served_model_is_only_a_reroutes(self):
         self.assertEqual(a5_model(ca), [])
+
+    def test_a8_the_mode_is_read_from_the_turns_journal(self):
+        self.assertEqual(a8_journal(ca), [])
 
     def test_a6_a_turn_on_the_fake_runtime(self):
         self.assertEqual(a6_turn(ca), [])
@@ -1186,9 +1298,15 @@ WITNESSES = {
     "model-first-only": ("ca", (("    out = [CLIENT, SUBCOMMAND, JSON_FLAG, MODEL_FLAG, model, *MODE_FLAGS[mode]]",
                                  "    out = [CLIENT, SUBCOMMAND, JSON_FLAG, *MODE_FLAGS[mode]] + "
                                  "([MODEL_FLAG, model] if first else [])"),), a4_argv, "A4-argv"),
-    "model-defaulted": ("ca", (("        init = ro[\"init\"]\n",
-                                "        init = ro[\"init\"] or {\"model\": self.model, \"permission_mode\": "
-                                "self.mode, \"version\": \"0.160.1\"}\n"),), a5_model, "A5-model"),
+    # Codex slice 2: the requested model standing as init (the rollout's turn_context read as proof)
+    "model-defaulted": ("ca", (("end_reason(got[\"exit_code\"], got[\"timed_out\"], read), init=None,",
+                                "end_reason(got[\"exit_code\"], got[\"timed_out\"], read), init=init,"),),
+                        a5_model, "A5-model"),
+    "reroute-unread": ("ca", (("        if to_model is not None:", "        if False:"),), a5_model, "A5-model"),
+    "requested-model-as-served": ("ca", (("    model = ({\"value\": read[\"served_model\"], \"source\": \"stream-reroute\"}"
+                                          " if read[\"served_model\"] is not None",
+                                          "    model = ({\"value\": read[\"served_model\"] or \"gpt-6-luna\", "
+                                          "\"source\": \"stream-reroute\"} if True"),), a5_model, "A5-model"),
     "failed-as-end-turn": ("ca", (("    if exit_code == 0 and read[\"completed\"] == 1 and read[\"failed\"] == 0:",
                                    "    if exit_code == 0:"),), a6_turn, "A6-turn"),
     "other-thread-resumed": ("ca", (("        elif read[\"thread_ids\"] and read[\"thread_ids\"] != [self.thread_id]:",
@@ -1246,6 +1364,12 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_model_defaulted(self):
         self.kill("model-defaulted")
 
+    def test_witness_reroute_unread(self):
+        self.kill("reroute-unread")
+
+    def test_witness_requested_model_as_served(self):
+        self.kill("requested-model-as-served")
+
     def test_witness_failed_as_end_turn(self):
         self.kill("failed-as-end-turn")
 
@@ -1256,7 +1380,7 @@ class TestWitnesses(unittest.TestCase):
         self.kill("shapes-recorded")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 13)
+        self.assertEqual(len(WITNESSES), 15)            # Codex slice 2 added reroute-unread and requested-model-as-served
         for name, (target, edits, _, _) in WITNESSES.items():
             path = Path(TARGETS[target]().__file__)
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")
@@ -1283,7 +1407,7 @@ class TestWitnesses(unittest.TestCase):
 NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.In: ast.NotIn, ast.NotIn: ast.In, ast.Is: ast.IsNot,
           ast.IsNot: ast.Is, ast.Lt: ast.GtE, ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt}
 TC_CHECKS = (s1_event, s2_item, s3_key, p1_view, b3_required, b8_types)
-CA_CHECKS = (a1_stream, a2_error, a3_usage, a4_argv, a5_model, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
+CA_CHECKS = (a1_stream, a2_error, a3_usage, a4_argv, a5_model, a8_journal, a6_turn, a7_source, b1_end, b2_thread, b3_stream,
              b4_rollout, b5_usage, b6_empty, b7_blank, b9_record, b10_cut, b11_version, b12_executed)
 
 _PREAMBLE = "the import preamble: this test puts the module folder on sys.path before it imports either module"

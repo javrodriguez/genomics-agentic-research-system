@@ -93,7 +93,7 @@ INIT_FIELDS = ("model", "permission_mode", "version")
 # three pin fields (Gemini: init names a model and a session id only, D8). Per INIT_FIELDS field: {"value", "source"},
 # the source one of IDENTITY_SOURCES; "unobserved" carries value None, every other source a nonempty string. Routing
 # decides which source it accepts for which field (routing.ACCEPTED_IDENTITY_SOURCES); nothing here enters `init`.
-IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "submitted-argv", "unobserved")
+IDENTITY_SOURCES = ("stream-init", "stream-stats", "version-exec", "submitted-argv", "stream-reroute", "unobserved")
 UNOBSERVED = "unobserved"
 
 
