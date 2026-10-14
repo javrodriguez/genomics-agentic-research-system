@@ -2592,6 +2592,9 @@ MODULE_ATTRS = {
                            "HARNESS_ENV",
                            "INSPECT_PATHS", "INSPECT_STATUS", "KEEPALIVE_COMMAND", "KEEPALIVE_USER", "LOGIN_VARIABLE",
                            "NotReady", "PENDING", "PENDING_WHY", "PROXY_ALIAS", "PROXY_URL", "RUNTIME_CLIENT",
+                           # glitch-06 (14 Oct 2026): preflight's create-time environment check reads it, so the
+                           # Codex CLI's per-variable broker-snapshot prefixes are refused at create time too
+                           "REFUSED_NAME_PREFIXES",
                            "Refused", "_abs_path", "_check_id", "_is_pending", "_known_harness", "_path_get",
                            "_write_json", "agent_exec_argv", "check_spec", "config_home_names",
                            "outside_every_repository", "refused_variables", "runtime_env"}),
