@@ -1,0 +1,14 @@
+.....................F........................
+======================================================================
+FAIL: test_committed_writer (test_build_draft.Readiness.test_committed_writer)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_build_draft.py", line 940, in test_committed_writer
+    self.assertEqual(path.read_bytes(),b.json_bytes(d))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'{\n[605298 chars]6": "0970bf678e251cd9b67c73f6b659fe170261e2c16[162055 chars]n}\n' != b'{\n[605298 chars]6": "b668a1263536730385cc0894b696473c51d1c2aa3[157871 chars]n}\n'
+
+----------------------------------------------------------------------
+Ran 46 tests in 37.491s
+
+FAILED (failures=1)

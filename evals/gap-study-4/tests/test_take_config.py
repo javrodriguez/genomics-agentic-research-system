@@ -101,8 +101,7 @@ FAKE_VALUE = "FAKEVALUE-0123456789abcdef-PLANTED"
 @contextlib.contextmanager
 def filled():
     """Every PENDING value, filled in memory only (interface 15), with test-only stand-ins."""
-    with mock.patch.object(tc, "CLAUDE_BYPASS_KEY", "skipDangerousModePermissionPrompt"), \
-            mock.patch.object(tc, "CODEX_REASONING_EFFORT", "medium"), \
+    with mock.patch.object(tc, "CODEX_REASONING_EFFORT", "medium"), \
             mock.patch.object(tc, "GEMINI_THINKING", {"path": "model.thinkingLevel", "value": "default"}), \
             mock.patch.object(tc, "GEMINI_AUTH_SETTING", {"path": "security.auth.selectedType",
                                                           "value": "api-key-stand-in"}), \
@@ -195,8 +194,8 @@ class TestContents(MutantCase):
         d, rec = written(tc.CLAUDE_CODE, None)
         with open(os.path.join(d, "settings.json")) as fh:
             doc = json.load(fh)
-        if doc != {"skipDangerousModePermissionPrompt": True}:
-            out.append(f"claude settings hold {doc}, not only the bypass acceptance")
+        if doc != {}:   # the bypass acceptance RULED not required in -p (glitch-06, 14 Oct 2026): nothing to carry
+            out.append(f"claude settings hold {doc}, not nothing")
         if rec["files"] != ["settings.json"] or len(rec["sha256"]) != 64:
             out.append("the write record is off")
         return out
@@ -248,13 +247,34 @@ def _leaves(doc):
 
 class TestPending(MutantCase):
     # GEMINI_SETTINGS_PATH is measured at the pinned 0.64.0 (Storage.getGlobalSettingsPath; the renderer fold).
-    EXPECT = {"CLAUDE_BYPASS_KEY", "CODEX_REASONING_EFFORT", "GEMINI_THINKING", "GEMINI_AUTH_SETTING"}
+    # CLAUDE_BYPASS_KEY RULED not required in -p (glitch-06, 14 Oct 2026): Claude Code's config is ready.
+    EXPECT = {"CODEX_REASONING_EFFORT", "GEMINI_THINKING", "GEMINI_AUTH_SETTING"}
 
     def check(self):
         out = []
         if set(tc.pending()) != self.EXPECT:
             out.append(f"pending() = {sorted(tc.pending())}")
-        for h, m in ((tc.CLAUDE_CODE, None), (tc.CODEX, "gpt-6-luna"), (tc.GEMINI, "gemini-3.5-flash-lite")):
+        if tc.CLAUDE_BYPASS_KEY != rt.CLAUDE_BYPASS_KEY or tc.CLAUDE_BYPASS_NOT_REQUIRED != rt.CLAUDE_BYPASS_NOT_REQUIRED:
+            out.append(f"take_config's bypass value is not run_take's ruled one: {tc.CLAUDE_BYPASS_KEY!r}")
+        d = tempfile.mkdtemp(prefix="w-")
+        rec = tc.write(d, tc.CLAUDE_CODE, model=None)
+        with open(os.path.join(d, "settings.json"), "rb") as fh:
+            if fh.read() != b"{}\n" or rec["files"] != ["settings.json"]:
+                out.append("claude-code's per-take settings are not the empty document")
+        for bad in ("skipDangerousModePermissionPrompt", "k"):
+            with mock.patch.object(tc, "CLAUDE_BYPASS_KEY", bad):
+                try:
+                    tc.files_for(tc.CLAUDE_CODE, model=None)
+                    out.append(f"claude-code config written with bypass value {bad!r}")
+                except tc.Refused:
+                    pass
+        with mock.patch.object(tc, "CLAUDE_BYPASS_KEY", tc.PENDING):
+            try:
+                tc.files_for(tc.CLAUDE_CODE, model=None)
+                out.append("claude-code config written while the bypass ruling is PENDING")
+            except tc.NotReady:
+                pass
+        for h, m in ((tc.CODEX, "gpt-6-luna"), (tc.GEMINI, "gemini-3.5-flash-lite")):
             d = tempfile.mkdtemp(prefix="w-")
             try:
                 tc.write(d, h, model=m)
@@ -269,7 +289,10 @@ class TestPending(MutantCase):
         self.assert_green_then_red(self.check, [
             ("no-ready-gate", patched(tc, "_ready", lambda h: None)),
             ("needs-dropped", patched(tc, "NEEDS", {tc.CLAUDE_CODE: (), tc.CODEX: (), tc.GEMINI: ()})),
-            ("bypass-filled", patched(tc, "CLAUDE_BYPASS_KEY", "k")),
+            ("bypass-key-re-added", patched(tc, "CLAUDE_BYPASS_KEY", "skipDangerousModePermissionPrompt")),
+            ("bypass-key-written", lambda: mock.patch.dict(tc.WRITERS, {tc.CLAUDE_CODE: lambda m: {
+                "settings.json": b'{"skipDangerousModePermissionPrompt": true}\n'}})),
+            ("bypass-unmirrored", patched(tc, "CLAUDE_BYPASS_KEY", "RULED: something else")),
         ])
 
     def test_no_parameter_overrides_a_pending_constant(self):

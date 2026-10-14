@@ -114,7 +114,7 @@ def setUpModule():
             _STACK.enter_context(mock.patch.object(os, name, _trip(f"os.{name}")))
     # Claude Code's fallback variables are PENDING until confirmed at the pinned version: none, for the fake only.
     _STACK.enter_context(mock.patch.object(rt, "FALLBACK_ENV", {}))
-    _STACK.enter_context(mock.patch.object(rt, "CLAUDE_BYPASS_KEY", "skipDangerousModePermissionPrompt"))  # stand-in
+    # The bypass acceptance is RULED not required in -p (glitch-06, 14 Oct 2026): no stand-in key.
 
 
 def tearDownModule():
@@ -298,6 +298,11 @@ def a3_argv(mod, p):
     turns = [c for c in box.calls if "-p" in c]
     for n, c in enumerate(turns, 1):
         inner = c[c.index(TAKE) + 1:]
+        client = inner[inner.index(mod.CLIENT):] if mod.CLIENT in inner else []
+        if client[:2] != [mod.CLIENT, "-p"]:   # the bypass ruling (not required in -p) depends on every turn's -p
+            out.append(f"{p}: turn {n} is not a -p run: {client[:2]}")
+        if "skipDangerousModePermissionPrompt" in " ".join(client):   # RULED not sent (not required in -p)
+            out.append(f"{p}: turn {n} carries the bypass acceptance key")
         if "--allowedTools" in inner:
             out.append(f"{p}: turn {n} passes --allowedTools")
         if inner[inner.index("--permission-mode") + 1] != BYPASS:

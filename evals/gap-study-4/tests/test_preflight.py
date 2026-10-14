@@ -766,7 +766,7 @@ class TestPending(MutantCase):
     # STUDY_PATHS and LEAK_WORDS are RULED (Javier, "CP5: all as recommended", 08:11 EDT 14 Oct 2026): TestCP5Values.
     # VERSION_PATTERNS, and run_take's TOP_FORMAT and INSPECT_STATUS, FILLED 14 Oct 2026 (stub-take review PASS).
     EXPECT = set()
-    EXPECT_RT = {"VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources", "CLAUDE_BYPASS_KEY"}   # FALLBACK_ENV FILLED
+    EXPECT_RT = {"VENDOR_BILLING_ROUTE_VARIABLES", "TakeSpec.resources"}   # FALLBACK_ENV FILLED; bypass RULED
     # With the two filled values put back to PENDING, exactly these checks fail (the gate stays non-vacuous).
     GATED = {"image-matches-lock", "harness-version-matches-lock", "take-inspect-matches-spec",
              "sidecar-isolated", "no-container-socket"}
