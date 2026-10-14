@@ -465,6 +465,12 @@ class MeasureAdmissionCheck(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             measure.check_admission(record, changed, changed_bytes)
 
+    def test_superseded_scan_exit_reads_a_manifest_without_a_scan(self):
+        # The 14 Oct re-export manifest carries "scan": null (no scan in the export script).
+        self.assertIsNone(measure.superseded_scan_exit(dict(self.manifest, scan=None)))
+        self.assertIsNone(measure.superseded_scan_exit({k: v for k, v in self.manifest.items() if k != "scan"}))
+        self.assertEqual(measure.superseded_scan_exit(self.manifest), 1)
+
     def test_source_with_git_or_control_file_refuses(self):
         for rel in (".git/HEAD", "x/.gitleaksignore", "x/.gitleaks.toml", ".GIT/HEAD", "x/.GitLeaksIgnore"):
             with tempfile.TemporaryDirectory() as d:

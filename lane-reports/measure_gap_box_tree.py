@@ -65,6 +65,12 @@ def check_admission(admission, manifest, manifest_bytes):
     return admission["raw_scan_exit"]
 
 
+def superseded_scan_exit(manifest):
+    """The export manifest's own scan exit, or None: the 14 Oct re-export manifest records no scan."""
+    scan = manifest.get("scan")
+    return scan.get("exit") if isinstance(scan, dict) else None
+
+
 def source_inventory(tree):
     files, directories = [], []
     for path in sorted(tree.rglob("*")):
@@ -119,7 +125,7 @@ def main():
     output = {"scope": "sanitized admitted-tree (no .git) watch measurement; no fixture or production admission",
               "source_pin": manifest["source_pin"], "source_manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
               "admitted_scan_exit": admitted_scan_exit,
-              "superseded_manifest_scan_exit": manifest.get("scan", {}).get("exit"),
+              "superseded_manifest_scan_exit": superseded_scan_exit(manifest),
               "byte_bound_admission_sha256": admission_hash, "tree_inventory_sha256": inventory_sha256(actual),
               "files_verified": len(actual["files"]), "directory_count": directories, "calls": proof.calls}
     try:
