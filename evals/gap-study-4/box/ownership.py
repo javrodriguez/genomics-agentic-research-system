@@ -44,12 +44,16 @@ STEP_TIMEOUT_S = 600
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")
 
 # measure_live.OWN (the reviewed walk), plus the link branch: a link is lchowned through its parent's descriptor and
-# never opened. Every other non-folder, non-file entry still refuses.
+# never opened. Every other non-folder, non-file entry still refuses. The STRICT block (review note 10, grant only):
+# a regular file with another hard link, or any entry on another device, refuses, so a grant never chowns an inode
+# that may also live outside the folder. A restore is not strict: links the agent made inside the tree are its own.
 OWN_PROGRAM = '''import os,stat,sys
 uid=int(sys.argv[1])
+strict=sys.argv[2]=="strict"
 def visit(fd):
  st=os.fstat(fd)
  if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError("nonregular refused")
+ if strict and (st.st_dev!=root_dev or (stat.S_ISREG(st.st_mode) and st.st_nlink!=1)):raise RuntimeError("hard link or foreign device refused")
  if stat.S_ISDIR(st.st_mode):
   for name in os.listdir(fd):
    lst=os.stat(name,dir_fd=fd,follow_symlinks=False)
@@ -61,6 +65,7 @@ def visit(fd):
    finally:os.close(child)
  os.fchown(fd,uid,uid)
 fd=os.open("/scratch",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+root_dev=os.fstat(fd).st_dev
 try:visit(fd)
 finally:os.close(fd)
 '''
@@ -97,8 +102,8 @@ def _image(image) -> str:
     return image
 
 
-def own_argv(image: str, path: str, uid: int) -> list:
-    """One one-shot root container that chowns the whole folder at `path` to container uid `uid`."""
+def own_argv(image: str, path: str, uid: int, *, strict: bool) -> list:
+    """One one-shot root container that chowns the whole folder at `path` to container uid `uid` (strict: grant)."""
     if uid not in (AGENT_UID, WATCHER_UID, HOST_UID):
         raise run_take.Refused(f"a folder is owned by the agent ({AGENT_UID}), the watcher ({WATCHER_UID}) or the host "
                                f"user ({HOST_UID}) only")
@@ -108,17 +113,51 @@ def own_argv(image: str, path: str, uid: int) -> list:
         argv += ["--cap-add", cap]
     argv += ["--security-opt", "no-new-privileges",
              "--mount", f"type=bind,source={run_take._abs_path(path, 'path')},target={MOUNT}",
-             _image(image), "/usr/bin/python3", "-I", "-S", "-c", OWN_PROGRAM, str(uid)]
+             _image(image), "/usr/bin/python3", "-I", "-S", "-c", OWN_PROGRAM, str(uid),
+             "strict" if strict is True else "loose"]
     return argv
 
 
 def _run(runtime, name: str, argv: list, env: dict) -> dict:
+    """One one-shot step, its container named by a cidfile (review minor 4): on a timeout it is removed by that id,
+    and after every step no container of that id may be left. A step whose container is left, or whose id cannot
+    be read, fails (returncode None)."""
+    import shutil
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="own-cid-")
+    cidfile = os.path.join(tmp, "cid")
+    argv = argv[:2] + ["--cidfile", cidfile] + argv[2:]
     try:
-        c = runtime.run(argv, env=env, timeout=STEP_TIMEOUT_S)
-    except TimeoutError:
-        return {"step": name, "returncode": None, "timed_out": True}
-    return {"step": name, "returncode": c.returncode, "stderr": c.stderr[-500:] if c.returncode else "",
-            "stdout": c.stdout if name.startswith("operator-") else ""}
+        try:
+            c = runtime.run(argv, env=env, timeout=STEP_TIMEOUT_S)
+            step = {"step": name, "returncode": c.returncode, "stderr": c.stderr[-500:] if c.returncode else "",
+                    "stdout": c.stdout if name.startswith("operator-") else ""}
+        except TimeoutError:
+            step = {"step": name, "returncode": None, "timed_out": True}
+        try:
+            with open(cidfile, encoding="ascii") as fh:
+                cid = fh.read().strip()
+            run_take._check_id(cid, "the step's container id")
+        except (OSError, UnicodeDecodeError, run_take.Refused):
+            cid = None
+        step["container_id"] = cid
+        if cid is None:
+            if step["returncode"] is None or step["returncode"] == 0:
+                step["returncode"] = None
+                step["left"] = "unknown: the step's container id could not be read"
+            return step
+        if step.get("timed_out"):
+            runtime.run([run_take.RUNTIME_CLIENT, "rm", "--force", cid], env=env, timeout=run_take.STEP_TIMEOUT_S)
+        try:
+            left = run_take.leaked(runtime, [cid], caller_env=env)
+        except run_take.Refused as e:
+            left = [f"unknown ({e})"]
+        if left:
+            step["returncode"] = None
+            step["left"] = left
+        return step
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def grant(runtime, *, image: str, run_tree: str, config_dir: str, evidence_dir: str, caller_env=None) -> dict:
@@ -129,7 +168,7 @@ def grant(runtime, *, image: str, run_tree: str, config_dir: str, evidence_dir: 
     env = run_take.runtime_env(caller_env)
     steps = []
     for name, path, uid in folders:
-        step = _run(runtime, f"grant-{name}", own_argv(image, path, uid), env)
+        step = _run(runtime, f"grant-{name}", own_argv(image, path, uid, strict=True), env)
         steps.append(step)
         if step["returncode"] != 0:
             raise OwnershipError(f"grant-{name} failed: the take is refused before launch",
@@ -160,17 +199,21 @@ def owner_problems(path: str, uid: int) -> list:
 
 
 def restore(runtime, *, image: str, run_tree: str, config_dir: str, evidence_dir: str, ids, caller_env=None) -> dict:
-    """The three folders back to the host user, after teardown. Every step runs; any failure raises with the record."""
-    folders = _folders(run_tree, config_dir, evidence_dir)
-    _image(image)
-    still = run_take.leaked(runtime, list(ids), caller_env=caller_env)
+    """The three folders back to the host user, after teardown. Every step runs; any failure raises with the record.
+    Every refusal is an OwnershipError (review minor 3), so the drive step routes one exception."""
+    try:
+        folders = _folders(run_tree, config_dir, evidence_dir)
+        _image(image)
+        still = run_take.leaked(runtime, list(ids), caller_env=caller_env)
+    except run_take.Refused as e:
+        raise OwnershipError(f"restore refused: {e}", {"ok": False, "steps": [], "refused": str(e)}) from None
     if still:
         raise OwnershipError("restore refused: a recorded container is still present",
                              {"ok": False, "steps": [], "present": still})
     env = run_take.runtime_env(caller_env)
     steps, problems = [], []
     for name, path, _uid in folders:
-        step = _run(runtime, f"restore-{name}", own_argv(image, path, HOST_UID), env)
+        step = _run(runtime, f"restore-{name}", own_argv(image, path, HOST_UID, strict=False), env)
         steps.append(step)
         if step["returncode"] != 0:
             problems.append(f"restore-{name} exited {step['returncode']}")

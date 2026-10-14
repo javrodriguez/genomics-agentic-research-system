@@ -98,14 +98,15 @@ TOP_FORMS = {"default": [], "eo-pid-uid-comm": ["-eo", "pid,uid,comm"], "o-pid-u
 CGROUP_FILES = ("cpu.max", "memory.max", "memory.low", "memory.min", "memory.high", "pids.max", "memory.current",
                 "memory.peak", "pids.current", "pids.peak", "memory.events", "pids.events", "cpu.stat")
 FALLBACK_PROGRAM = r'''import json,os,re,sys
-root=sys.argv[1]; names={}; files=0
+root=sys.argv[1]; names={}; files=0; skipped=[]
 pat=re.compile(rb"[A-Z][A-Z0-9_]*FALLBACK[A-Z0-9_]*")
 for base,dirs,fs in os.walk(root):
     dirs.sort()
     for f in sorted(fs):
         p=os.path.join(base,f)
         try:
-            if os.path.islink(p) or os.path.getsize(p)>200*1024*1024: continue
+            if os.path.islink(p): continue
+            if os.path.getsize(p)>200*1024*1024: skipped.append([os.path.relpath(p,root),os.path.getsize(p)]); continue
             data=open(p,"rb").read()
         except OSError: continue
         files+=1
@@ -118,7 +119,7 @@ for base,dirs,fs in os.walk(root):
             if len(e["contexts"])<3:
                 s=data[max(0,m.start()-120):m.end()+120].decode("latin-1")
                 e["contexts"].append("".join(c if 32<=ord(c)<127 else "." for c in s))
-print(json.dumps({"root":root,"files_read":files,"names":names},sort_keys=True))
+print(json.dumps({"root":root,"files_read":files,"skipped_over_200MiB":skipped,"names":names},sort_keys=True))
 '''
 CLAUDE_PACKAGE = "/usr/local/lib/node_modules/@anthropic-ai/claude-code"
 VERSION_HOME = "/tmp"

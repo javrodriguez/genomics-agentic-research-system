@@ -12,7 +12,7 @@ MUTANTS = [
  ("grant goes on after a failure", '            raise OwnershipError(f"grant-{name} failed', '            pass\n            if False: raise OwnershipError(f"grant-{name} failed'),
  ("restore ignores present containers", "    if still:\n        raise OwnershipError(\"restore refused", "    if False:\n        raise OwnershipError(\"restore refused"),
  ("restore not verified", "        problems += owner_problems(path, os.getuid())", "        pass"),
- ("restore to the agent", "own_argv(image, path, HOST_UID)", "own_argv(image, path, AGENT_UID)"),
+ ("restore to the agent", "own_argv(image, path, HOST_UID, strict=False)", "own_argv(image, path, AGENT_UID, strict=False)"),
  ("links followed", "    os.chown(name,uid,uid,dir_fd=fd,follow_symlinks=False)", "    os.chown(name,uid,uid,dir_fd=fd,follow_symlinks=True)"),
  ("specials admitted", 'raise RuntimeError("nonregular refused")', 'pass'),
  ("link check skipped", "        if os.path.islink(p) or not os.path.isdir(p):", "        if not os.path.isdir(p):"),
@@ -27,6 +27,24 @@ MUTANTS = [
  ("read follows a link", 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)', 'try:f=os.open(parts[-1],os.O_RDONLY|os.O_NONBLOCK,dir_fd=fd)'),
  ("read size unchecked", 'if st.st_size>limit:raise SystemExit("refused: larger than the limit")', 'pass'),
  ("operator runs as root", '"--network", "none", "--user", run_take.AGENT_USER,', '"--network", "none", "--user", "0:0",'),
+ # the reviewer's eleven (gap4-review-ownership-20261014/reviewer_mutants.py), anchors moved to the current source
+ ("rv: O_NOFOLLOW dropped on child open", "child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)", "child=os.open(name,os.O_RDONLY|os.O_NONBLOCK,dir_fd=fd)"),
+ ("rv: O_NONBLOCK dropped on child open", "child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)", "child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW,dir_fd=fd)"),
+ ("rv: verify follows links", "os.walk(path, onerror=onerror, followlinks=False)", "os.walk(path, onerror=onerror, followlinks=True)"),
+ ("rv: verify ignores unreadable subtrees", "        out.append(f\"{getattr(e, 'filename', path)}: unreadable ({type(e).__name__})\")", "        pass"),
+ ("rv: verify top-level owner skipped", "        if os.lstat(path).st_uid != uid:\n            out.append(f\"{path}: owner is not the host user\")", "        if False:\n            out.append(f\"{path}: owner is not the host user\")"),
+ ("rv: restore stops at first failed step", "            problems.append(f\"restore-{name} exited {step['returncode']}\")", "            problems.append(f\"restore-{name} exited {step['returncode']}\")\n            break"),
+ ("rv: timeout counted ok in restore", "        if step[\"returncode\"] != 0:\n            problems.append", "        if step[\"returncode\"] not in (0, None):\n            problems.append"),
+ ("rv: no-new-privileges dropped", '    argv += ["--security-opt", "no-new-privileges",\n             "--mount"', '    argv += [\n             "--mount"'),
+ ("rv: leaked checked with no ids", "        still = run_take.leaked(runtime, list(ids), caller_env=caller_env)", "        still = run_take.leaked(runtime, [], caller_env=caller_env)"),
+ ("rv: restore folders check skipped", "        folders = _folders(run_tree, config_dir, evidence_dir)\n        _image(image)\n        still", "        folders = [(n, p, 0) for n, p in ((\"run_tree\", run_tree), (\"config_dir\", config_dir), (\"evidence_dir\", evidence_dir))]\n        still"),
+ # minors 3, 4 and note 10
+ ("restore Refused not wrapped", "    except run_take.Refused as e:\n        raise OwnershipError(f\"restore refused: {e}\"", "    except KeyError as e:\n        raise OwnershipError(f\"restore refused: {e}\""),
+ ("timed-out container not removed", "        if step.get(\"timed_out\"):\n            runtime.run(", "        if False:\n            runtime.run("),
+ ("left container ignored", "        if left:\n            step[\"returncode\"] = None", "        if False:\n            step[\"returncode\"] = None"),
+ ("unreadable id ignored", "            if step[\"returncode\"] is None or step[\"returncode\"] == 0:\n                step[\"returncode\"] = None", "            if False:\n                step[\"returncode\"] = None"),
+ ("grant not strict", 'own_argv(image, path, uid, strict=True), env)', 'own_argv(image, path, uid, strict=False), env)'),
+ ("strict ignores hard links", 'and st.st_nlink!=1)', 'and st.st_nlink<1)'),
  ("operator path escapes", ' or ".." in rel_path.split("/") or rel_path == ".":', ' or rel_path == ".":'),
 ]
 def run(mod):
