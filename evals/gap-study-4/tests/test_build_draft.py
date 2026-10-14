@@ -96,7 +96,20 @@ def core_problems(d):
     need({item["path"] for item in locks} == {str(p.relative_to(HERE)) for p in (HERE / "box").rglob("image.lock")}
          and all(item["sha256"] == digest(HERE / item["path"]) and
                  item["lock"] == image_lock.load(str(HERE / item["path"])) for item in locks), "R6.locks")
-    need(all(r["agent"]["version"] is None for r in rows), "R6.unpinned")
+    # A row's agent version is set only once its pin and its image agree (the integration lane, 14 Oct 2026: on the
+    # merged head CP5 registered arm A's profiles, Javier's ruling in 3740f8f6, and the take-a lock holds the harness
+    # version, 6221c297). Derived here from routing.json and the lock files themselves, never from the draft: a pin
+    # with no PENDING and a non-PENDING lock version that equal each other give that version; anything else gives None.
+    profiles = json.loads((HERE / "routing.json").read_text())["pin_profiles"]
+    lock_version = {HARNESSES[a]: image_lock.load(str(HERE / "box" / dirname / "image.lock"))["harness"]["version"]
+                    for a, dirname in (("A", "."), ("O", "codex"), ("G", "gemini"))}
+
+    def pinned(r):
+        h, pin = r["agent"]["harness"], profiles.get(r["agent"]["harness"], {}).get(r["model"])
+        v = lock_version.get(h, "PENDING")         # an unknown harness is R11.agent's refusal
+        ok = isinstance(pin, dict) and "PENDING" not in pin.values() and v != "PENDING" and pin.get("version") == v
+        return v if ok else None
+    need(all(r["agent"]["version"] == pinned(r) for r in rows), "R6.unpinned")
     need(set(d["version_pins"]) == set(HARNESSES.values()) and all(set(d["version_pins"][h]) == set(MODELS[a])
          for a, h in HARNESSES.items()), "R14.pins")
     return bad

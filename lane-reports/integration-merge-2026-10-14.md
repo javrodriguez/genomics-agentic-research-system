@@ -20,6 +20,9 @@ Nothing was pushed.
 | `9588a563` | harness head `840048ab` (carries `a36a5743`, `19ec4c41` and the lint fix) | none: see the test_identity_mode_evidence line below |
 | `fe2f5bdf` | harness head `8a598b49` (carries `75a8074d`, D-INT-2: `served_model_rule.codex`) | none: see the draft-file lines below |
 | `c3a0cb77` | box head `ba2995ee` (the test_egress fix; its parent `2dd00dc7`, the egress pin at preflight, is under review) | none |
+| `9a92e4ce` | box head `1bbc2e77` (`e05805c1`, `1bbc2e77`: tests and evidence only) | none |
+| `34c5098f` | box head `6c775f67` (`ba1fcf42` CP5 STUDY_PATHS and LEAK_WORDS; `f5c17498` TOP_FORMAT, INSPECT_STATUS, VERSION_PATTERNS; `6c775f67` FALLBACK_ENV) | none |
+| `47632770` | harness head `3740f8f6` (CP5 arm A pin_profiles and status) | prereg-draft.json: see below |
 
 How "no conflict" was checked: `comm -12` of `git diff --name-only a12569a <box head>` and `git diff --name-only a12569a <harness head>` printed no path for the first merge, so no file was changed on both sides.
 For `0d2085ee` and `7b5a9dd4`, `comm -12` of the two heads' changed paths since `fa98717e` (`git diff --name-only HEAD...<head>`) printed no path, so again no file was changed on both sides.
@@ -34,6 +37,9 @@ Each later merge reported "Automatic merge went well" and left no unmerged path 
 - `9588a563`, `evals/gap-study-4/tests/test_identity_mode_evidence.py`: harness `a36a5743` changed `AcceptancePerHarness` (Codex now has an identity source table), and this lane's `fa98717e` changed the `Journal` fake. The lines do not overlap, so git merged them with no conflict marker and both are kept. The merged-head `Journal` that wraps the box's real `run_turn` stays, as glitch-06 ruled.
 - `9588a563`, `evals/gap-study-4/tests/test_gemini_adapter.py`: the harness branch did not change this file after `ce852b01`, so this lane's A11/A14 change carries through unchanged.
 - `fe2f5bdf`, `evals/gap-study-4/build_draft.py`, `prereg-draft.json` and `tests/test_build_draft.py`: the harness hunks (`served_model_rule.codex` from routing) and the box hunks (the new-folder residual) are on separate lines. Git merged them with no conflict marker, and both are kept.
+- `34c5098f`, `evals/gap-study-4/tests/test_env_allowlist.py`: the box hunks and this lane's `daf4311b` `EXEC_ARMS` hunks merged with no conflict marker; both are kept.
+- `47632770`, `evals/gap-study-4/tests/test_walk_builders.py` and `tests/test_walk_wiring.py`: the harness CP5 hunks (`EXPECTED_MISSING` without `pin_for`, `CP5_PROFILES`) and this lane's sidecar-fake hunks touch separate lines, so there was no conflict marker and both are kept.
+- `47632770`, `evals/gap-study-4/prereg-draft.json`: a real conflict between the two lanes' generated drafts. In the merge commit it is resolved with the harness lane's text as a placeholder only. `d1b018e5` then regenerates it with `build_draft.py`, as glitch-06 ruled.
 
 There were no conflict hunks in any of the three merges, so there are no resolution lines.
 
@@ -215,3 +221,85 @@ changed /version_pins/gemini/gemini-3.5-flash-lite/image_version | "PENDING" -> 
 changed /version_pins/gemini/gemini-3.8-flash/image_version | "PENDING" -> "0.64.0"
 TOTAL 118
 ```
+
+## The draft regenerated again for CP5 (`d1b018e5`)
+
+It was written on `47632770` by `build_draft.py` with no arguments: 1260 planned tries, 126 half-cells and 45 pending inputs.
+A second write from a different starting file gave byte-identical output.
+`build_draft.py --check` printed ok, and `batch.py --check` printed `batch: routing.json ready` (exit 0).
+
+Against the previous merged draft (the one from the `c3a0cb77` merge), there are 616 JSON-path entries, all arm A pins, what derives from them, and the status.
+- `routing/sha256` equals the hash of the committed `routing.json`, which carries the profiles and the status line "RULED by Javier 14 Oct: arm A profiles registered; O and G follow when their rate-limit and spend-cap rules are set".
+- `agent/version` is filled only for the 540 arm A rows, 54 predictions and 3 `version_pins` entries. The value is 2.1.296, the pin's version, which equals the take-a lock's harness version.
+- No box CP5 value moved the draft.
+
+```
+   1 changed /routing/sha256
+   1 changed /version_pins/claude-code/claude-haiku-4-5-20251001/permission_mode
+   1 changed /version_pins/claude-code/claude-haiku-4-5-20251001/version
+   1 changed /version_pins/claude-code/claude-opus-5-5/permission_mode
+   1 changed /version_pins/claude-code/claude-opus-5-5/version
+   1 changed /version_pins/claude-code/claude-sonnet-5-5/permission_mode
+   1 changed /version_pins/claude-code/claude-sonnet-5-5/version
+   6 list-removed /stats_design/PENDING
+   1 removed /pending//version_pins/claude-code/claude-haiku-4-5-20251001/permission_mode
+   1 removed /pending//version_pins/claude-code/claude-haiku-4-5-20251001/version
+   1 removed /pending//version_pins/claude-code/claude-opus-5-5/permission_mode
+   1 removed /pending//version_pins/claude-code/claude-opus-5-5/version
+   1 removed /pending//version_pins/claude-code/claude-sonnet-5-5/permission_mode
+   1 removed /pending//version_pins/claude-code/claude-sonnet-5-5/version
+  54 type /predictions/N/agent/version
+ 540 type /rows/N/agent/version
+   1 type /version_pins/claude-code/claude-haiku-4-5-20251001/agent_version
+   1 type /version_pins/claude-code/claude-opus-5-5/agent_version
+   1 type /version_pins/claude-code/claude-sonnet-5-5/agent_version
+```
+
+Against the harness placeholder in `47632770`, the families are these.
+The lock fields and the new-folder residual (`box_residuals` going from 3 to 4) were already in the merged draft before this round; the agent versions are the same ones as above.
+
+```
+   5 added /image_locks/N/lock/config_digest
+   5 added /image_locks/N/lock/manifest_digest
+   5 added /image_locks/N/lock/source_commit
+   5 changed /image_locks/N/lock/base
+   3 changed /image_locks/N/lock/harness/version
+   5 changed /image_locks/N/lock/image_id
+   4 changed /image_locks/N/lock/python
+   5 changed /image_locks/N/lock/schema
+   1 changed /image_locks/N/lock/squid
+   5 changed /image_locks/N/sha256
+   1 changed /version_pins/claude-code/claude-haiku-4-5-20251001/image_version
+   1 changed /version_pins/claude-code/claude-opus-5-5/image_version
+   1 changed /version_pins/claude-code/claude-sonnet-5-5/image_version
+   1 changed /version_pins/codex/gpt-6-luna/image_version
+   1 changed /version_pins/codex/gpt-6.1-sol/image_version
+   1 changed /version_pins/gemini/gemini-3.5-flash-lite/image_version
+   1 changed /version_pins/gemini/gemini-3.8-flash/image_version
+   1 len /box_residuals
+  25 list-removed /stats_design/PENDING
+   5 removed /image_locks/N/lock/pending/base
+   3 removed /image_locks/N/lock/pending/harness.version
+   5 removed /image_locks/N/lock/pending/image_id
+   4 removed /image_locks/N/lock/pending/python
+   1 removed /image_locks/N/lock/pending/squid
+   5 removed /pending//image_locks/N/lock/base
+   3 removed /pending//image_locks/N/lock/harness/version
+   5 removed /pending//image_locks/N/lock/image_id
+   4 removed /pending//image_locks/N/lock/python
+   1 removed /pending//image_locks/N/lock/squid
+   1 removed /pending//version_pins/claude-code/claude-haiku-4-5-20251001/image_version
+   1 removed /pending//version_pins/claude-code/claude-opus-5-5/image_version
+   1 removed /pending//version_pins/claude-code/claude-sonnet-5-5/image_version
+   1 removed /pending//version_pins/codex/gpt-6-luna/image_version
+   1 removed /pending//version_pins/codex/gpt-6.1-sol/image_version
+   1 removed /pending//version_pins/gemini/gemini-3.5-flash-lite/image_version
+   1 removed /pending//version_pins/gemini/gemini-3.8-flash/image_version
+  54 type /predictions/N/agent/version
+ 540 type /rows/N/agent/version
+   1 type /version_pins/claude-code/claude-haiku-4-5-20251001/agent_version
+   1 type /version_pins/claude-code/claude-opus-5-5/agent_version
+   1 type /version_pins/claude-code/claude-sonnet-5-5/agent_version
+```
+
+Each `image_locks` entry still equals its lock file's bytes.
