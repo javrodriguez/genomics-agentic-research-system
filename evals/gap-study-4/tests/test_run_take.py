@@ -564,7 +564,7 @@ class TestArmVariables(MutantCase):
         out = []
         closed = (set(rt.API_KEY_VARIABLES) | set(rt.BILLING_ROUTE_VARIABLES) | set(rt.SUBSCRIPTION_TOKEN_VARIABLES)
                   | {"CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY"}
-                  | set(CODEX_ROUTE_NAMED))                 # glitch-06's ruling 3: refused for every arm
+                  | set(CODEX_ROUTE_NAMED) | set(CODEX_ROUTE_DOCS_READ))   # glitch-06's rulings: every arm
         for arm in ARMS:
             got = rt.refused_variables(arm)
             expected = closed - {LOGINS[arm]}
@@ -2067,6 +2067,12 @@ class TestNoLoginLauncher(MutantCase):
 CODEX_ROUTE_NAMED = ("CODEX_AUTHAPI_BASE_URL", "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL",
                      "CODEX_AGENT_IDENTITY_JWKS_BASE_URL", "CODEX_REVOKE_TOKEN_URL_OVERRIDE", "CODEX_CONNECTORS_TOKEN",
                      "OPENAI_ORGANIZATION", "OPENAI_FEDERATION_RULE_ID", "OPENAI_IDENTITY_TOKEN_FILE")
+# glitch-06's ruling on the docs-read candidates (14 Oct 2026): the pinned Codex is 0.162.1 (box/codex/image.lock,
+# harness.version), the version test_env_allowlist's DOCS_READ_VARIABLES was read at (rust-v0.162.1), so its Codex names
+# not already above are refused if present too. Refusing more fails closed.
+CODEX_ROUTE_DOCS_READ = ("OPENAI_PROJECT", "OPENAI_BASE_URL", "CODEX_ACCESS_TOKEN", "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
+                         "CODEX_OSS_BASE_URL", "CODEX_OSS_PORT", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",
+                         "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE")
 
 
 class TestCodexRow(MutantCase):
@@ -2088,7 +2094,7 @@ class TestCodexRow(MutantCase):
                 rt.LOGIN_VARIABLE[rt.GEMINI] != "GEMINI_API_KEY":
             out.append("another arm's login variable moved")
         refused = rt.refused_variables(rt.CODEX)
-        for name in ("CODEX_API_KEY", "OPENAI_API_KEY") + CODEX_ROUTE_NAMED:
+        for name in ("CODEX_API_KEY", "OPENAI_API_KEY") + CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ:
             if name not in refused:
                 out.append(f"{name} is not refused for a Codex take")
             with mock.patch.dict(os.environ, {}, clear=True):
@@ -2098,9 +2104,9 @@ class TestCodexRow(MutantCase):
                 except rt.Refused as e:
                     if name not in str(e) or "PLANTED" in str(e):
                         out.append(f"{name}: the refusal does not name it, or carries the value: {e}")
-        if tuple(rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.CODEX]) != CODEX_ROUTE_NAMED:
+        if tuple(rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.CODEX]) != CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ:
             out.append(f"VENDOR_BILLING_ROUTE_VARIABLES[codex] is {rt.VENDOR_BILLING_ROUTE_VARIABLES[rt.CODEX]!r}")
-        for name in CODEX_ROUTE_NAMED:                 # refuse-if-present for every arm, like the other vendors'
+        for name in CODEX_ROUTE_NAMED + CODEX_ROUTE_DOCS_READ:     # refuse-if-present for every arm, like the others'
             if name not in rt.refused_variables(rt.CLAUDE_CODE):
                 out.append(f"{name} is not refused for a Claude Code take")
         # a road that expects an environment login refuses a Codex row explicitly, never by KeyError

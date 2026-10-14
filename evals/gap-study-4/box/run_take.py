@@ -268,7 +268,14 @@ VENDOR_BILLING_ROUTE_VARIABLES = {
             "CODEX_CONNECTORS_TOKEN",                  # matches[33]
             "OPENAI_ORGANIZATION",                     # matches[40]: beside the OpenAI-Organization header
             "OPENAI_FEDERATION_RULE_ID",               # matches[31]
-            "OPENAI_IDENTITY_TOKEN_FILE"),             # matches[31]
+            "OPENAI_IDENTITY_TOKEN_FILE",              # matches[31]
+            # glitch-06's ruling on the docs-read candidates (14 Oct 2026): the pinned Codex is 0.162.1
+            # (box/codex/image.lock line 7, harness.version), the version tests/test_env_allowlist.py's
+            # DOCS_READ_VARIABLES was read at ("Codex, read by the source at rust-v0.162.1" and "Codex, documented");
+            # its Codex names not named above, refused if present (refusing more fails closed).
+            "OPENAI_PROJECT", "OPENAI_BASE_URL", "CODEX_ACCESS_TOKEN", "OPENAI_WORKLOAD_IDENTITY_CONTEXT",
+            "CODEX_OSS_BASE_URL", "CODEX_OSS_PORT", "AWS_BEARER_TOKEN_BEDROCK", "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE"),
     GEMINI: PENDING}
 
 # What the runtime client itself needs from the caller's environment, and nothing else.
