@@ -983,7 +983,7 @@ class B8Present(Drafted):
             from box import rules_scanner
             with mock.patch.object(rules_scanner, "real_rules_scanner", lambda: scanner, create=True):
                 got = self.must("B8.present", wb().production_builders)
-        self.assertIs(got["rules_scanner"], scanner, "B8.present")
+        self.assertIs(got.get("rules_scanner"), scanner, "B8.present")   # an absent key fails by assertion
 
 
 # ------------------------------------------------------------------------------------------------- B9
@@ -1485,6 +1485,7 @@ class B10Resources(Case):
 # container id and /proc (the box lane measured, on athena: /sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/
 # user.slice/docker-<id>.scope and ((0,1000,1),(1,100000,65536))), never typed in; anything else refuses.
 CID = "c" * 64
+SCOPE = f"/user.slice/user-1000.slice/user@1000.service/user.slice/docker-{CID}.scope"
 
 
 class InspectBox:
@@ -1497,14 +1498,22 @@ class InspectBox:
 
 
 def fake_proc(tmp: Path, *, uid_map="         0       1000          1\n         1     100000      65536\n",
-              cgroup=None, make_dir=True) -> tuple:
+              cgroup=None, make_dir=True, extra=(), link=False) -> tuple:
+    """A fake /proc/4242 and cgroup root; `extra` folders made under the root too; `link`: the scope folder is a link
+    to an existing folder."""
     proc, root = tmp / "proc", tmp / "cgroup"
-    rel = f"/user.slice/user-1000.slice/user@1000.service/user.slice/docker-{CID}.scope"
+    rel = SCOPE
     (proc / "4242").mkdir(parents=True)
     (proc / "4242" / "uid_map").write_text(uid_map)
     (proc / "4242" / "cgroup").write_text(cgroup if cgroup is not None else f"0::{rel}\n")
-    if make_dir:
+    if link:
+        (root / rel.lstrip("/")).parent.mkdir(parents=True)
+        (tmp / "elsewhere").mkdir()
+        (root / rel.lstrip("/")).symlink_to(tmp / "elsewhere")
+    elif make_dir:
         (root / rel.lstrip("/")).mkdir(parents=True)
+    for e in extra:
+        (root / e.lstrip("/")).mkdir(parents=True, exist_ok=True)
     return proc, root, str(root / rel.lstrip("/"))
 
 
@@ -1538,6 +1547,22 @@ def b11_problems(mod) -> list:
             tmp, cgroup=f"0::/user.slice/docker-{'d' * 64}.scope\n"))[0]), root=str(f[1])),
         "scope folder missing": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
             tmp, make_dir=False))[0]), root=str(f[1])),
+        # each guard alone (the generated sweep, 14 Oct window 2): every case below passes the other guards
+        "inspect printed nothing (None)": lambda tmp: mod.container_pid(InspectBox(out=None), CID),
+        "uid map unreadable": lambda tmp: mod.uid_map_of_pid(4243, proc=str(fake_proc(tmp)[0])),
+        "cgroup unreadable": lambda tmp: mod.cgroup_dir_of_pid(4243, CID, proc=str((f := fake_proc(tmp))[0]),
+                                                               root=str(f[1])),
+        "two cgroup lines": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::{SCOPE}\n0::{SCOPE}\n"))[0]), root=str(f[1])),
+        "a cgroup line not 0::": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"1::{SCOPE}\n"))[0]), root=str(f[1])),
+        "another container's existing scope": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::/user.slice/docker-{'d' * 64}.scope\n", extra=(f"/user.slice/docker-{'d' * 64}.scope",)
+            ))[0]), root=str(f[1])),
+        "a .. in an existing scope's path": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, cgroup=f"0::/zz/..{SCOPE}\n", extra=("/zz",)))[0]), root=str(f[1])),
+        "the scope folder a link": lambda tmp: mod.cgroup_dir_of_pid(4242, CID, proc=str((f := fake_proc(
+            tmp, link=True))[0]), root=str(f[1])),
     }
     for why, fn in bad.items():
         with tempfile.TemporaryDirectory() as t:
@@ -1552,11 +1577,30 @@ def b11_problems(mod) -> list:
     for name in ("uid_map", "cgroup_dir_for"):
         if not callable(got[name]):
             out.append(f"B11.derived: production {name} is not a run-time reader: {got[name]!r}")
-    try:                                   # with no runtime yet, a reader refuses by name, never a silent default
-        got["uid_map"](types.SimpleNamespace(launched=types.SimpleNamespace(take_id=CID)))
-        out.append("B11.derived: the production uid map read with no runtime")
-    except mod.BuilderRefused:
-        pass
+    take = types.SimpleNamespace(launched=types.SimpleNamespace(take_id=CID))
+    for name in ("uid_map", "cgroup_dir_for"):
+        try:                               # with no runtime yet, a reader refuses by name, never a silent default
+            got[name](take)
+            out.append(f"B11.derived: the production {name} read with no runtime")
+        except mod.BuilderRefused:
+            pass
+    # the readers over a runtime given at call time: inspect for the take's own id, then its pid's map and scope
+    seen, box = [], [None]
+    with mock.patch.object(mod, "uid_map_of_pid", lambda pid: seen.append(("uid", pid)) or "the-map"), \
+            mock.patch.object(mod, "cgroup_dir_of_pid", lambda pid, cid: seen.append(("cg", pid, cid)) or "the-dir"):
+        uid_map, cgroup_dir_for = mod.run_time_readers(lambda: box[0])
+        box[0] = InspectBox()                      # the runtime exists only after the readers were made
+        got_map, got_dir = uid_map(take), cgroup_dir_for(take)
+        if (got_map, got_dir) != ("the-map", "the-dir") or seen != [("uid", 4242), ("cg", 4242, CID)]:
+            out.append(f"B11.derived: the readers gave {(got_map, got_dir)} over {seen}")
+        if [c[-1] for c in box[0].calls] != [CID, CID]:
+            out.append(f"B11.derived: inspect was not run for the take's own id: {box[0].calls}")
+        box[0] = object()                          # no run(): refused by name
+        try:
+            cgroup_dir_for(take)
+            out.append("B11.derived: a runtime with no run() was used")
+        except mod.BuilderRefused:
+            pass
     return out
 
 
@@ -1652,6 +1696,13 @@ def b12_problems(mod) -> list:
             got = mod.walk_rules_scanner(real, "rt", parent, real=True)
             if not isinstance(got, mod.BuiltRulesScan) or len(builds) != 1:
                 out.append(f"B12.scanner: a real walk did not take the pinned scanner's build: {got!r}")
+    import importlib.util
+    with pinned_class() as pinned:
+        if mod.pinned_scanner_class() is not pinned:
+            out.append("B12.scanner: the pinned class is not rules_scanner.RealRulesScanner")
+        with mock.patch.object(importlib.util, "find_spec", lambda name, *a: None):
+            if mod.pinned_scanner_class() is not None:       # absent by find_spec: None, never an import
+                out.append("B12.scanner: a tree without box/rules_scanner.py still gave a pinned class")
     try:
         mod.BuiltRulesScan(lambda paths: [], "/x", None, object())
         out.append("B12.scanner: a BuiltRulesScan was made outside walk_rules_scanner")

@@ -303,7 +303,7 @@ def walk_rules_scanner(scanner, runtime, report_parent, *, real: bool):
     import tempfile
     if real:
         pinned = pinned_scanner_class()
-        if pinned is None or type(scanner) is not pinned:
+        if type(scanner) is not pinned:              # type() is never None: no pinned class refuses every scanner
             raise BuilderRefused(f"a real walk scans only with the pinned scanner (rules_scanner.RealRulesScanner), "
                                  f"never {type(scanner).__module__}.{type(scanner).__name__}")
     elif callable(scanner):
@@ -405,8 +405,6 @@ def walk_row(walk: str, cell: dict, agent_version: str, rows: list) -> dict:
 def take_spec_builder(root=None):
     """(row, config_dir, run_tree) -> run_take.TakeSpec: the row's arm's take image by its lock's image id (a lock that
     is not ready refuses at call time, image_lock.NotReady) and TAKE_RESOURCES; the network a placeholder."""
-    from pathlib import Path
-
     from box import image_lock
     from box import run_take as rt
     base = Path(root) if root is not None else Path(__file__).resolve().parent
@@ -422,8 +420,6 @@ def take_spec_builder(root=None):
 def take_a_spec():
     """The production take spec: built once take-a's lock is ready (an arm A walk's image), else Missing naming what
     the lock still holds PENDING. TakeSpec.resources are wired (TAKE_RESOURCES)."""
-    from pathlib import Path
-
     from box import image_lock
     lock = image_lock.load(str(Path(__file__).resolve().parent / TAKE_LOCKS["A"]))
     held = image_lock.pending(lock)
@@ -442,7 +438,6 @@ def production_builders() -> dict:
     import routing
     import time
     import variants
-    from box import run_take as rt
     from box import scan_record
     box = "next-slices plan item 4, the real-box bring-up (Q-w7b-3)"
     out = {
