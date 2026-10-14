@@ -1,0 +1,62 @@
+RED   stopped at BuildLW2.test_L2_a_manifest_digest_edited_in_a_later_commit after 1 tests | pre-fold writer (0f7cdbfd): red-first
+RED   stopped at BuildLW2.test_a_metadata_file_or_log_not_committed (key='metadata_file') after 7 tests | committed check off
+RED   stopped at Refusals.test_a_commit_not_an_ancestor after 35 tests | ancestor check off
+RED   stopped at Refusals.test_each_row_condition (key='exit', value=1) after 40 tests | exit check off
+RED   stopped at Refusals.test_each_row_condition (key='label_problems', value=['x']) after 40 tests | label check off
+RED   stopped at Refusals.test_each_row_condition (key='manifest_digest', value='cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc') after 40 tests | digest check off
+RED   stopped at Refusals.test_a_filled_or_other_lock after 36 tests | one row not required
+RED   stopped at Refusals.test_an_unresolved_or_changed_input (pattern='does not resolve python') after 39 tests | unresolved input allowed
+RED   stopped at Refusals.test_an_unresolved_or_changed_input (pattern='users differs') after 39 tests | changed input allowed
+RED   stopped at Refusals.test_a_filled_or_other_lock after 36 tests | schema-1 lock not required
+RED   stopped at WriteLW6.test_a_lock_changed_after_reading_is_not_overwritten after 50 tests | changed-since-read not checked
+RED   stopped at Refusals.test_a_record_of_another_schema (schema=1) after 37 tests | record schema not checked
+RED   stopped at InputsLW1.test_L1_the_dockerfile_changed_after_the_build after 14 tests | LW-1 input shas not compared with HEAD
+RED   stopped at InputsLW1.test_a_copy_added_at_head after 17 tests | LW-1 recorded input set not compared
+RED   stopped at InputsLW1.test_L1_the_dockerfile_changed_after_the_build after 14 tests | LW-1 inputs check not called
+RED   stopped at InputsLW1.test_a_baked_sidecar_program_that_differs after 15 tests | LW-1 COPY sources not read
+RED   stopped at InputsLW1.test_a_context_read_the_writer_does_not_bind (line='ADD sidecar.py /opt/x\n') after 16 tests | LW-1 unbound context reads allowed
+RED   stopped at InputsLW1.test_no_inputs_recorded after 22 tests | LW-1 empty inputs allowed
+RED   stopped at InputsLW1.test_a_recorded_sha_that_is_not_hex after 19 tests | LW-1 sha shape not checked
+RED   stopped at InputsLW1.test_the_lock_inputs_file_changed after 24 tests | LW-1 lock-inputs file sha not compared
+RED   stopped at InputsLW1.test_no_lock_inputs_file after 23 tests | LW-1 lock-inputs source not required
+RED   stopped at InputsLW1.test_lock_inputs_not_the_files after 20 tests | LW-1 lock_inputs not the file's
+RED   stopped at InputsLW1.test_lock_inputs_sha_not_theirs after 21 tests | LW-1 lock_inputs sha not checked
+RED   stopped at InputsLW1.test_the_row_of_another_lock after 25 tests | LW-1 row lock path not checked
+RED   stopped at InputsLW1.test_a_baked_sidecar_program_that_differs after 15 tests | LW-3 baked sidecar not checked
+RED   stopped at BuildLW2.test_L2_a_manifest_digest_edited_in_a_later_commit after 1 tests | LW-2 build check not called
+RED   stopped at BuildLW2.test_an_image_id_that_is_not_the_metadata_index (label='digest') after 10 tests | LW-2 metadata index not compared
+RED   stopped at BuildLW2.test_an_image_id_that_is_not_the_metadata_index (label='descriptor') after 10 tests | LW-2 metadata descriptor not compared
+RED   stopped at BuildLW2.test_a_config_digest_edited_in_a_later_commit after 4 tests | LW-2 log config not compared
+RED   stopped at BuildLW2.test_L2_a_manifest_digest_edited_in_a_later_commit after 1 tests | LW-2 log manifest not compared
+RED   stopped at BuildLW2.test_a_metadata_file_or_log_not_committed (key='metadata_file') after 7 tests | LW-2 side files not committed
+RED   stopped at BuildLW2.test_a_side_file_not_named_for_the_image (key='metadata_file', name='../x.metadata.json') after 8 tests | LW-2 side file names not checked
+RED   stopped at BuildLW2.test_L3_an_argv_that_is_not_build_argv (label='other Dockerfile') after 2 tests | LW-2 argv not compared
+RED   stopped at BuildLW2.test_L3_an_argv_that_is_not_build_argv (label='other context') after 2 tests | LW-2 argv context not compared
+RED   stopped at BuildLW2.test_an_argv_whose_metadata_file_is_another after 9 tests | LW-2 metadata path not the committed file
+RED   stopped at BuildLW2.test_a_box_folder_that_is_not_the_checkouts after 3 tests | LW-2 box folder not the checkout's
+RED   stopped at CheckoutLW3StoreLW4.test_a_checkout_not_shown_clean_after (value=False) after 11 tests | LW-3 clean_after not required
+RED   stopped at CheckoutLW3StoreLW4.test_no_store_named (store=None) after 13 tests | LW-4 store not required
+RED   stopped at CheckoutLW3StoreLW4.test_a_manifest_digest_equal_to_the_config_digest after 12 tests | LW-4 manifest == config allowed
+RED   stopped at WriteLW6.test_another_writer_holding_the_folder_refuses after 51 tests | LW-6 no flock
+RED   stopped at Review2.test_R2_1_a_mode_only_change_after_the_build after 44 tests | R2-1 HEAD mode/blob not compared with the build commit's
+RED   stopped at Review2.test_R2_1_a_mode_only_change_after_the_build after 44 tests | R2-1 tree entry compares the blob only
+RED   stopped at Review2.test_R2_1_recorded_tree_entries_must_be_the_build_commits after 45 tests | R2-1 recorded tree entries not compared
+RED   stopped at Review2.test_R2_2_a_log_whose_manifest_list_is_not_the_image_id (lists=('sha256:9999999999999999999999999999999999999999999999999999999999999999',)) after 46 tests | R2-2 manifest list not compared
+RED   stopped at Review2.test_R2_2_a_provenance_of_another_revision_or_context (label='revision') after 47 tests | R2-2 provenance revision not compared
+RED   stopped at Review2.test_R2_2_a_provenance_of_another_revision_or_context (label='context') after 47 tests | R2-2 provenance context not compared
+RED   stopped at Review2.test_R2_3_a_record_with_problems after 48 tests | R2-3 problems not read
+RED   stopped at Rederive.test_an_unfilled_or_other_lock_refuses after 34 tests | rederive schema-2 not required
+RED   stopped at Rederive.test_a_rederived_plan_is_never_written after 32 tests | rederive plan written
+RED   stopped at Rederive.test_a_hand_edited_pin_differs after 31 tests | rederive keeps the committed digests
+RED   stopped at Review2.test_R2_4_a_tree_is_never_a_blob after 49 tests | R2-4 head_blob by git show
+ok    0 control: image_lock unmutated []
+RED   1 LW-5 pending() ignores base
+RED   1 LW-5 pending() ignores python
+RED   1 LW-5 pending() ignores harness.version
+RED   1 own, 0 errors | lw7-sidecar-manifest-not-compared
+RED   1 own, 0 errors | lw7-sidecar-readiness-omitted
+RED   8 own, 0 errors | lw7-sidecar-lock-not-loaded
+RED   1 own, 0 errors | o1-egress-manifest-not-compared
+RED   1 own, 0 errors | o1-egress-launch-image-not-compared
+RED   1 own, 0 errors | o1-egress-readiness-omitted
+ALIVE: none

@@ -112,6 +112,9 @@ ID = {k: (c * 64) for k, c in (("net", "a"), ("side", "c"), ("take", "d"))}
 IMAGE = "sha256:" + "f" * 64
 MANIFEST = "sha256:" + "c" * 64           # the take image's platform manifest (lock-writer ruling (a), 14 Oct)
 SIDE_MANIFEST = "sha256:" + "5" * 64      # the sidecar image's platform manifest (LW-7): never the take's
+EGRESS_IMAGE_ID = "sha256:" + "6" * 64    # the egress proxy's image (O-1): its own id, never the take's
+EGRESS_MANIFEST = "sha256:" + "7" * 64    # the egress image's platform manifest (O-1)
+PROXY_ID = "b" * 64
 ARMS = (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI)
 HOSTS = {rt.CLAUDE_CODE: "api.anthropic.com", rt.CODEX: "api.openai.com", rt.GEMINI: "generativelanguage.googleapis.com"}
 VERSION_OUT = {rt.CLAUDE_CODE: ("2.9.1 (Claude Code)\n", r"([0-9.]+) \(Claude Code\)", "2.9.1"),
@@ -186,6 +189,8 @@ class World:
         self.lock = {"image_id": IMAGE, "harness.version": VERSION_OUT[harness][2], "users.agent.uid": 10001,
                      "users.watcher.uid": 10002, "users.keepalive.uid": 10003, "manifest_digest": MANIFEST}
         self.sidecar_lock = {"image_id": IMAGE, "manifest_digest": SIDE_MANIFEST}
+        self.egress_lock = {"image_id": EGRESS_IMAGE_ID, "manifest_digest": EGRESS_MANIFEST}
+        self.proxy_image = EGRESS_IMAGE_ID
         self.sidecar_expect = {
             "user": "0:0", "network_mode": "none", "cap_drop": ["ALL"], "cap_add": list(CAP_ADD),
             "security_opt": ["no-new-privileges"], "privileged": False, "pid_mode": "",
@@ -226,6 +231,8 @@ class World:
                 "Mounts": [{"Type": "bind", "Source": self.tree, "Destination": self.tree, "RW": False},
                            {"Type": "bind", "Source": self.ev, "Destination": "/srv/ev", "RW": True}]}],
             "sidecar-image-manifest": json.dumps(SIDE_MANIFEST) + "\n",
+            "proxy-inspect": [{"Image": EGRESS_IMAGE_ID, "Config": {"Image": EGRESS_IMAGE_ID}}],
+            "egress-image-manifest": json.dumps(EGRESS_MANIFEST) + "\n",
             "watcher-caps": [{"pid": 1, "uid": 10002, "name": "python3", "cap_eff": 0},
                              {"pid": 9, "uid": 10002, "name": "inotifywait", "cap_eff": 4}],
             "sockets": {"present": [], "docker_host": False},
@@ -239,7 +246,8 @@ class World:
 
     def probes(self):
         return pf.probes(self.spec, take_id=ID["take"], sidecar_id=ID["side"], harness=self.harness, hosts=HOSTS,
-                         evidence_dir=self.ev, sidecar_image=self.sidecar_expect["image"])
+                         evidence_dir=self.ev, sidecar_image=self.sidecar_expect["image"], proxy_id=PROXY_ID,
+                         proxy_image=self.proxy_image)
 
     def script(self):
         out = []
@@ -259,7 +267,7 @@ class World:
 
     def evaluate(self, raw=None, **kw):
         args = dict(spec=self.spec, lock=self.lock, sidecar_expect=self.sidecar_expect, harness=self.harness,
-                    hosts=HOSTS, evidence_dir=self.ev, sidecar_lock=self.sidecar_lock)
+                    hosts=HOSTS, evidence_dir=self.ev, sidecar_lock=self.sidecar_lock, egress_lock=self.egress_lock)
         args.update(kw)
         return pf.evaluate(self.raw() if raw is None else raw, **args)
 
@@ -283,6 +291,12 @@ def edit_json(pid, fn):
 def edit_value(pid, fn):
     def apply(raw, w):
         fn(raw[pid]["value"])
+    return apply
+
+
+def set_value(pid, value):
+    def apply(raw, w):
+        raw[pid]["value"] = value
     return apply
 
 
@@ -324,6 +338,16 @@ BREAKS = {
         ("sidecar-lock-image-other", edit_world(lambda w: w.sidecar_lock.update(image_id="sha256:" + "1" * 64))),
         ("sidecar-lock-image-pending", edit_world(lambda w: w.sidecar_lock.update(image_id=pf.PENDING))),
         ("sidecar-running-image-other", edit_json("sidecar-inspect", lambda d: d[0].update(Image="sha256:" + "2" * 64))),
+        # O-1: the egress proxy's image, by its own lock's id (launch and running) and platform manifest
+        ("egress-manifest-other", lambda raw, w: raw["egress-image-manifest"].update(stdout=json.dumps(MANIFEST))),
+        ("egress-manifest-not-json", lambda raw, w: raw["egress-image-manifest"].update(stdout=EGRESS_MANIFEST)),
+        ("egress-manifest-failed", lambda raw, w: raw["egress-image-manifest"].update(returncode=1)),
+        ("egress-lock-manifest-other", edit_world(lambda w: w.egress_lock.update(manifest_digest=SIDE_MANIFEST))),
+        ("egress-lock-manifest-pending", edit_world(lambda w: w.egress_lock.update(manifest_digest=pf.PENDING))),
+        ("egress-lock-image-other", edit_world(lambda w: w.egress_lock.update(image_id="sha256:" + "3" * 64))),
+        ("egress-lock-image-pending", edit_world(lambda w: w.egress_lock.update(image_id=pf.PENDING))),
+        ("egress-launch-image-other", set_value("egress-launch", "sha256:" + "4" * 64)),
+        ("egress-running-image-other", edit_json("proxy-inspect", lambda d: d[0].update(Image="sha256:" + "4" * 64))),
     ],
     "harness-version-matches-lock": [
         ("other-version", lambda raw, w: raw["harness-version"].update(stdout="9.9.9 (Claude Code)\ncodex-cli 9.9.9\n")),
@@ -642,7 +666,7 @@ class TestEvaluate(MutantCase):
                 w.spec = rt.TakeSpec(**dict(w.spec.__dict__, run_tree=tree))
                 with filled():
                     rec = pf.evaluate(w.raw(), spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                      harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock)
+                                      harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock, egress_lock=w.egress_lock)
                 if "run-tree-path-neutral" not in failing(rec):
                     out.append(f"a run tree path carrying {word} passed")
             w = World()
@@ -794,7 +818,7 @@ class TestPrograms(MutantCase):
             if any(w.spec.run_tree in a for a in p.argv):
                 out.append(f"probe {p.id} names the run tree")
             if p.id != "watcher-caps":
-                image_read = p.id in ("take-image-manifest", "sidecar-image-manifest") and list(p.argv[1:5]) == [
+                image_read = p.id in ("take-image-manifest", "sidecar-image-manifest", "egress-image-manifest") and list(p.argv[1:5]) == [
                     "image", "inspect", "--platform", pf.IMAGE_PLATFORM]
                 if list(p.argv[:4]) != ["docker", "exec", "--user", rt.AGENT_USER] and p.argv[1] != "container" \
                         and not image_read:
@@ -1031,6 +1055,13 @@ def ready_sidecar_lock() -> dict:
     return lock
 
 
+def ready_egress_lock() -> dict:
+    """The committed egress lock, filled (schema 2) with the World's egress image and its own platform manifest."""
+    lock = ready_lock("egress")
+    lock.update(image_id=EGRESS_IMAGE_ID, manifest_digest=EGRESS_MANIFEST)
+    return lock
+
+
 def flat(lock: dict) -> dict:
     """The five values a ready nested lock projects to, by the schema paths typed here."""
     return {"image_id": lock["image_id"], "harness.version": lock["harness"]["version"],
@@ -1041,10 +1072,12 @@ def flat(lock: dict) -> dict:
 class LockBox:
     """A temporary stand-in for box/: each lock at its own relative path; image_lock.BOX_DIR is patched while active."""
 
-    def __init__(self, sidecar=True):
+    def __init__(self, sidecar=True, egress=True):
         self.root = tempfile.mkdtemp(prefix="w-")
         if sidecar:
             self.put("sidecar", ready_sidecar_lock())
+        if egress:
+            self.put("egress", ready_egress_lock())
 
     def path(self, image: str) -> str:
         return os.path.join(self.root, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
@@ -1063,7 +1096,10 @@ class LockBox:
 def launched_for(w, *, spec="launched", **edits):
     """The launch record run_take.launch returns, on the World's spec (its network is the one launch made)."""
     rec = rt.Launched(config_dir=w.cfg, spec=w.spec if spec == "launched" else spec, network_id=ID["net"],
-                      proxy_id="b" * 64, sidecar_id=ID["side"], take_id=ID["take"], ok=True)
+                      proxy_id=PROXY_ID, sidecar_id=ID["side"], take_id=ID["take"], ok=True,
+                      steps=[{"step": "proxy-create", "returncode": 0,
+                              "argv": ["docker", "create", "--network", ID["net"], "--network-alias", "proxy",
+                                       w.proxy_image, "squid", "-N"]}])
     for k, v in edits.items():
         setattr(rec, k, v)
     return rec
@@ -1155,11 +1191,11 @@ class LockSeam:
                 path = box.put(HARNESS_IMAGE[h], lock)
                 with box.active():
                     (kind, got), spies, fake = compose(m, w, path)
-                if [p for p, _ in spies["load"]] != [path, box.path("sidecar")]:
+                if [p for p, _ in spies["load"]] != [path, box.path("sidecar"), box.path("egress")]:
                     calls = [p for p, _ in spies["load"]]
                     out.append(f"C1-loader-spy {h}: image_lock.load calls {calls}, not [{path}, the sidecar lock]")
-                if len(spies["ready"]) != 2 or len(spies["load"]) != 2 \
-                        or [r is l for r, (_, l) in zip(spies["ready"], spies["load"])] != [True, True]:
+                if len(spies["ready"]) != 3 or len(spies["load"]) != 3 \
+                        or [r is l for r, (_, l) in zip(spies["ready"], spies["load"])] != [True, True, True]:
                     out.append(f"C1-ready-spy {h}: require_ready was not called once on each load's own result")
                 if kind != "record":
                     out.append(f"C1-values {h}: refused ({type(got).__name__}: {str(got)[:80]})")
@@ -1342,6 +1378,75 @@ class LockSeam:
         return out
 
     @staticmethod
+    def c8_egress(m) -> list:
+        """O-1: the egress lock is read through the loader (ready, its own image) before any runtime call; the
+        launch record's proxy image and the running proxy must be its id, and its manifest the probe's."""
+        out = []
+        h = rt.CLAUDE_CODE
+        take = ready_lock("take-a", VERSION_OUT[h][2])
+
+        def refused(label, edit, err, launched_edit=None):
+            def case():
+                w = World(h)
+                box = LockBox(egress=False)
+                eg = ready_egress_lock()
+                if edit == "absent":
+                    pass
+                elif isinstance(edit, str):
+                    box.put("egress", text=edit)
+                else:
+                    edit(eg)
+                    box.put("egress", eg)
+                path = box.put("take-a", take)
+                launched = launched_for(w, **(launched_edit or {}))
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path, launched=launched, script=False)
+                if kind != "refused" or not isinstance(got, err) or fake.calls or spies["probes"] or spies["evaluate"]:
+                    out.append(f"C8-egress {label}: {kind} ({type(got).__name__}), {len(fake.calls)} runtime calls")
+            run_case(out, "C8-egress", label, case)
+
+        def pend(lk):
+            for k in il.SCHEMA_2_KEYS:
+                del lk[k]
+            lk.update(schema=il.SCHEMA, image_id=il.PENDING, pending={"image_id": "a synthetic reason"})
+        refused("pending egress lock", pend, il.NotReady)
+        refused("absent egress lock", "absent", OSError)
+        refused("egress lock of another image", lambda lk: lk.update(image="take-a"), il.LockError)
+        refused("no proxy-create step in the launch record", lambda lk: None, rt.Refused,
+                {"steps": []})
+        refused("a proxy-create step naming no image", lambda lk: None, rt.Refused,
+                {"steps": [{"step": "proxy-create", "returncode": 0, "argv": ["docker", "create", "squid"]}]})
+
+        def recorded(label, lock_edit, want_ok, launch_image=None):
+            def case():
+                w = World(h)
+                if launch_image:
+                    w.proxy_image = launch_image
+                box = LockBox(egress=False)
+                eg = ready_egress_lock()
+                lock_edit(eg)
+                box.put("egress", eg)
+                path = box.put("take-a", take)
+                with box.active():
+                    (kind, got), spies, fake = compose(m, w, path)
+                if kind != "record":
+                    out.append(f"C8-egress {label}: refused ({type(got).__name__}: {str(got)[:80]})")
+                    return
+                if [e.get("egress_lock") for e in spies["evaluate"]] != [
+                        {"image_id": eg["image_id"], "manifest_digest": eg["manifest_digest"]}]:
+                    out.append(f"C8-egress {label}: evaluate received {[e.get('egress_lock') for e in spies['evaluate']]}")
+                if [p.get("proxy_image") for p in spies["probes"]] != [w.proxy_image]:
+                    out.append(f"C8-egress {label}: the probes read {[p.get('proxy_image') for p in spies['probes']]}")
+                if got["ok"] != want_ok or (not want_ok and "image-matches-lock" not in failing(got)):
+                    out.append(f"C8-egress {label}: ok={got['ok']}, failing {failing(got)}")
+            run_case(out, "C8-egress", label, case)
+        recorded("matching egress lock", lambda lk: None, True)
+        recorded("egress lock of other content", lambda lk: lk.update(manifest_digest=MANIFEST), False)
+        recorded("egress lock of another build", lambda lk: lk.update(image_id="sha256:" + "3" * 64), False)
+        recorded("a launch image that is not the lock's", lambda lk: None, False, launch_image="sha256:" + "4" * 64)
+        return out
+
+    @staticmethod
     def c3_cross(m) -> list:
         """Criterion 3: a valid, ready lock of another take image refuses; each intended pair is accepted."""
         out = []
@@ -1398,7 +1503,7 @@ class LockSeam:
             w = World()
             with filled(mod=m):
                 rec = m.evaluate(w.raw(), spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                 harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock)
+                                 harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock, egress_lock=w.egress_lock)
             if failing(rec) or not rec["ok"]:
                 out.append(f"C4-mount baseline: a world at A fails {failing(rec)}")
         run_case(out, "C4-mount", "baseline", case_baseline)
@@ -1409,7 +1514,7 @@ class LockSeam:
                 at_b(w, raw, where)
                 with filled(mod=m):
                     rec = m.evaluate(raw, spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                     harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock)
+                                     harness=w.harness, hosts=HOSTS, evidence_dir=w.ev, sidecar_lock=w.sidecar_lock, egress_lock=w.egress_lock)
                 if "sidecar-isolated" not in failing(rec) or rec["ok"]:
                     out.append(f"C4-mount {where} at B, probes at A: sidecar-isolated passed ({failing(rec)})")
             run_case(out, "C4-mount", where, case)
@@ -1420,7 +1525,7 @@ class LockSeam:
             b = at_b(w, raw, "both")
             with filled(mod=m):
                 rec = m.evaluate(raw, spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect,
-                                 harness=w.harness, hosts=HOSTS, evidence_dir=b, sidecar_lock=w.sidecar_lock)
+                                 harness=w.harness, hosts=HOSTS, evidence_dir=b, sidecar_lock=w.sidecar_lock, egress_lock=w.egress_lock)
             if "evidence-out-of-reach" not in failing(rec) or rec["ok"]:
                 out.append(f"C4-probes mount at B, probes at A, judged as B: passed ({failing(rec)})")
         run_case(out, "C4-probes", "judged-b", case_judged_b)
@@ -1433,7 +1538,7 @@ class LockSeam:
         w = World()
         raw = w.raw()
         base = dict(spec=w.spec, lock=w.lock, sidecar_expect=w.sidecar_expect, harness=w.harness, hosts=HOSTS,
-                    sidecar_lock=w.sidecar_lock)
+                    sidecar_lock=w.sidecar_lock, egress_lock=w.egress_lock)
         for label, value in (("None", None), ("empty", ""), ("relative", "rec/ev"), ("dotted", w.ev + "/../ev"),
                              ("root", "/")):
             def case(label=label, value=value):
@@ -1562,6 +1667,14 @@ class TestLockSeam(unittest.TestCase):
 
     def test_c7_sidecar_lock_and_manifest(self):
         self.assertEqual(LockSeam.c7_sidecar(pf), [])
+
+    def test_c8_egress_lock_and_manifest(self):
+        self.assertEqual(LockSeam.c8_egress(pf), [])
+
+    def test_o1_spelled_names_are_image_locks(self):
+        """O-1: the egress names preflight spells are w4a's."""
+        self.assertEqual(pf.EGRESS_LOCK_IMAGE, il.EGRESS_IMAGE)
+        self.assertEqual(pf.EGRESS_LOCK_PATH, os.path.dirname(il.DOCKERFILES[il.EGRESS_IMAGE]) + "/image.lock")
 
     def test_lw7_spelled_names_are_image_locks(self):
         """LW-7: the names preflight spells (it reads image_lock only through load and require_ready) are w4a's."""
@@ -1711,6 +1824,17 @@ WITNESSES = {
                                     LockSeam.c7_sidecar, "C7-sidecar", {"SIDE": SIDE_MANIFEST}),
 }
 LW7_WITNESSES = ("lw7-sidecar-manifest-not-compared", "lw7-sidecar-readiness-omitted", "lw7-sidecar-lock-not-loaded")
+# O-1 (glitch-06, 14 Oct 2026): the egress proxy's image, as LW-7 did the sidecar's.
+WITNESSES.update({
+    "o1-egress-manifest-not-compared": ((("    _need(egress == egress_want, ", "    _need(True or egress == egress_want, "),),
+                                        LockSeam.c8_egress, "C8-egress", None),
+    "o1-egress-launch-image-not-compared": ((("    _need(_value(raw, \"egress-launch\") == egress_id, ",
+                                              "    _need(True or _value(raw, \"egress-launch\") == egress_id, "),),
+                                            LockSeam.c8_egress, "C8-egress", None),
+    "o1-egress-readiness-omitted": ((("    image_lock.require_ready(egress_lock)\n", ""),),
+                                    LockSeam.c8_egress, "C8-egress", None),
+})
+O1_WITNESSES = ("o1-egress-manifest-not-compared", "o1-egress-launch-image-not-compared", "o1-egress-readiness-omitted")
 WITNESS_LOG: list = []
 
 
@@ -1764,16 +1888,26 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_lw7_sidecar_lock_not_loaded(self):
         self.kill("lw7-sidecar-lock-not-loaded")
 
+    def test_witness_o1_egress_manifest_not_compared(self):
+        self.kill("o1-egress-manifest-not-compared")
+
+    def test_witness_o1_egress_launch_image_not_compared(self):
+        self.kill("o1-egress-launch-image-not-compared")
+
+    def test_witness_o1_egress_readiness_omitted(self):
+        self.kill("o1-egress-readiness-omitted")
+
     def test_the_witnesses_are_named(self):
         """The readiness note's six, plus W6A-R1-1's absolute-path witness, each bound to its own check; plus the
         three LW-7 witnesses, all bound to the sidecar-lock check c7_sidecar."""
         self.assertEqual(sorted(WITNESSES), sorted(["omit-load", "omit-readiness", "omit-harness-image-binding",
                                                     "drop-mount-source-comparison",
                                                     "probes-at-another-evidence-path", "pre-launch-spec",
-                                                    "omit-absolute-path-rule", *LW7_WITNESSES]))
-        bound = {n: w[1].__name__ for n, w in WITNESSES.items() if n not in LW7_WITNESSES}
+                                                    "omit-absolute-path-rule", *LW7_WITNESSES, *O1_WITNESSES]))
+        bound = {n: w[1].__name__ for n, w in WITNESSES.items() if n not in LW7_WITNESSES + O1_WITNESSES}
         self.assertEqual(len(set(bound.values())), 7, bound)
         self.assertEqual({WITNESSES[n][1].__name__ for n in LW7_WITNESSES}, {"c7_sidecar"})
+        self.assertEqual({WITNESSES[n][1].__name__ for n in O1_WITNESSES}, {"c8_egress"})
 
 
 # Taken last, after every import-time statement of this module: must be empty (setUpModule arms the guard).

@@ -70,6 +70,12 @@ SIDECAR_LOCK_IMAGE = "sidecar"
 SIDECAR_LOCK_PATH = "sidecar/image.lock"
 TAKE_LOCK_DIRS = {"take-a": "", "take-o": "codex", "take-g": "gemini"}
 IMAGE_ID_SHAPE = re.compile(r"sha256:[0-9a-f]{64}")
+# The egress proxy's own lock (O-1, glitch-06, 14 Oct 2026), as LW-7 did the sidecar's: the launch record's proxy
+# image and the running proxy must be its image id, and the probe of that image's platform manifest its digest.
+EGRESS_LOCK_KEYS = ("image_id", "manifest_digest")
+EGRESS_LOCK_IMAGE = "egress"
+EGRESS_LOCK_PATH = "egress/image.lock"
+PROXY_CREATE_STEP = "proxy-create"
 # Each harness's own take image (image_lock.TAKE_IMAGES; arms A and C share take-a). Merge binding 8 binds it.
 TAKE_IMAGE = {run_take.CLAUDE_CODE: "take-a", run_take.CODEX: "take-o", run_take.GEMINI: "take-g"}
 SIDECAR_EXPECT_KEYS = ("user", "network_mode", "cap_drop", "cap_add", "security_opt", "privileged", "pid_mode",
@@ -379,7 +385,8 @@ class Probe:
 
 
 PROBE_IDS = ("identity", "take-inspect", "take-image-manifest", "harness-version", "cgroup", "listing", "processes", "sidecar-inspect",
-             "sidecar-image-manifest", "health", "watcher-caps", "sockets", "egress", "study-folders")
+             "sidecar-image-manifest", "proxy-inspect", "egress-image-manifest", "egress-launch", "health",
+             "watcher-caps", "sockets", "egress", "study-folders")
 PROBE_TIMEOUT_S = 60
 
 
@@ -413,8 +420,9 @@ def _study_folders(run_tree: str):
 
 
 def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, evidence_dir: str,
-           sidecar_image: str) -> tuple:
-    """Every probe, in PROBE_IDS order. `sidecar_image` is the image the sidecar launch expects (its manifest is read)."""
+           sidecar_image: str, proxy_id: str, proxy_image: str) -> tuple:
+    """Every probe, in PROBE_IDS order. `sidecar_image` is the image the sidecar launch expects (its manifest is read);
+    `proxy_id` is the egress proxy container and `proxy_image` the image the launch record created it from (O-1)."""
     run_take.check_spec(spec)
     run_take._known_harness(harness)
     _check_hosts(hosts)
@@ -422,6 +430,9 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
     run_take._check_id(sidecar_id, "sidecar id")
     if not isinstance(sidecar_image, str) or not IMAGE_ID_SHAPE.fullmatch(sidecar_image):
         raise run_take.Refused("the sidecar image must be a sha256 image id")
+    run_take._check_id(proxy_id, "proxy id")
+    if not isinstance(proxy_image, str) or not IMAGE_ID_SHAPE.fullmatch(proxy_image):
+        raise run_take.Refused("the proxy image must be a sha256 image id")
     evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
     agent = lambda inner, home=None: tuple(run_take.agent_exec_argv(take_id, inner, workdir="/",  # noqa: E731
                                                                      config_home=home))
@@ -439,6 +450,10 @@ def probes(spec, *, take_id: str, sidecar_id: str, harness: str, hosts: dict, ev
         Probe("sidecar-inspect", inspect(sidecar_id)),
         Probe("sidecar-image-manifest", (run_take.RUNTIME_CLIENT, "image", "inspect", "--platform", IMAGE_PLATFORM,
                                          "--format", "{{json .Id}}", sidecar_image)),
+        Probe("proxy-inspect", inspect(proxy_id)),
+        Probe("egress-image-manifest", (run_take.RUNTIME_CLIENT, "image", "inspect", "--platform", IMAGE_PLATFORM,
+                                        "--format", "{{json .Id}}", proxy_image)),
+        Probe("egress-launch", read=lambda: proxy_image),
         Probe("health", read=lambda: _read_health(os.path.join(evidence_dir, HEALTH))),
         Probe("watcher-caps", (run_take.RUNTIME_CLIENT, "exec", "--user", sidecar_contract.WATCHER_USER,
                                sidecar_id, *_py(PROCESSES_PROGRAM))),
@@ -542,7 +557,7 @@ def _manifest(raw, pid: str) -> str:
     return manifest
 
 
-def _check_image(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, sidecar_lock, *_):
+def _check_image(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, sidecar_lock, egress_lock, *_):
     obj = _inspect_obj(raw, "take-inspect")
     if _is_pending(run_take.INSPECT_STATUS):
         raise _Fail("the inspect spellings are PENDING")
@@ -561,7 +576,14 @@ def _check_image(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, 
           f"the running sidecar's image is not the sidecar lock's {side_id}")
     side = _manifest(raw, "sidecar-image-manifest")
     _need(side == side_want, f"the sidecar image's {IMAGE_PLATFORM} manifest {side} is not its lock's {side_want}")
-    return "the take's and the sidecar's images are their locks', by id and by platform manifest"
+    # O-1: the egress proxy's image, by its own lock's id (launched and running) and platform manifest.
+    egress_id, egress_want = _lock(egress_lock, "image_id"), _lock(egress_lock, "manifest_digest")
+    _need(_value(raw, "egress-launch") == egress_id, f"the proxy was not launched from the egress lock's {egress_id}")
+    _need(_inspect_obj(raw, "proxy-inspect").get("Image") == egress_id,
+          f"the running proxy's image is not the egress lock's {egress_id}")
+    egress = _manifest(raw, "egress-image-manifest")
+    _need(egress == egress_want, f"the egress image's {IMAGE_PLATFORM} manifest {egress} is not its lock's {egress_want}")
+    return "the take's, the sidecar's and the egress proxy's images are their locks', by id and by platform manifest"
 
 
 def _check_version(raw, spec, lock, harness, *_):
@@ -796,7 +818,7 @@ UNREADABLE_CONSEQUENTIAL_ROW = "unreadable-consequential-path"
 
 
 def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str, hosts: dict,
-             evidence_dir: str, sidecar_lock: dict) -> dict:
+             evidence_dir: str, sidecar_lock: dict, egress_lock: dict) -> dict:
     """The preflight record, pure: every check of PREFLIGHT_CHECKS in order, `ok` only when every one passed.
 
     `evidence_dir` is required and has no default (CP2-preflight-3): the folder the probes read, which the sidecar's
@@ -805,6 +827,8 @@ def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str,
         raise ValueError(f"lock must hold exactly {list(LOCK_KEYS)}")
     if not isinstance(sidecar_lock, dict) or set(sidecar_lock) != set(SIDECAR_LOCK_KEYS):
         raise ValueError(f"sidecar_lock must hold exactly {list(SIDECAR_LOCK_KEYS)}")
+    if not isinstance(egress_lock, dict) or set(egress_lock) != set(EGRESS_LOCK_KEYS):
+        raise ValueError(f"egress_lock must hold exactly {list(EGRESS_LOCK_KEYS)}")
     run_take._known_harness(harness)
     evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
     checks = []
@@ -813,7 +837,8 @@ def evaluate(raw: dict, *, spec, lock: dict, sidecar_expect: dict, harness: str,
         try:
             if fn is None:
                 raise _Fail("no check is defined")
-            detail, passed = fn(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, sidecar_lock), True
+            detail, passed = fn(raw, spec, lock, harness, hosts, sidecar_expect, evidence_dir, sidecar_lock,
+                                egress_lock), True
         except _Fail as e:
             detail, passed = str(e), False
         except Exception as e:  # a check that cannot read its records fails, never passes
@@ -878,6 +903,36 @@ def load_sidecar_lock(take_lock_path: str, *, harness: str) -> dict:
     return {k: side[k] if k in side else PENDING for k in SIDECAR_LOCK_KEYS}
 
 
+def load_egress_lock(take_lock_path: str, *, harness: str) -> dict:
+    """The egress lock's EGRESS_LOCK_KEYS (O-1), read only through w4a's loader from the take lock's box folder, as
+    load_sidecar_lock reads the sidecar's: image_lock.load, the egress image's own lock, require_ready, projection."""
+    run_take._known_harness(harness)
+    box = os.path.dirname(run_take._abs_path(take_lock_path, "lock_path"))
+    for part in reversed([p for p in TAKE_LOCK_DIRS[TAKE_IMAGE[harness]].split("/") if p]):
+        if os.path.basename(box) != part:
+            raise run_take.Refused(f"the take lock is not in its {part}/ folder")
+        box = os.path.dirname(box)
+    egress_lock = image_lock.load(os.path.join(box, EGRESS_LOCK_PATH))
+    if egress_lock["image"] != EGRESS_LOCK_IMAGE:
+        raise run_take.Refused(f"the egress lock is the {egress_lock['image']} image's")
+    image_lock.require_ready(egress_lock)
+    return {k: egress_lock[k] if k in egress_lock else PENDING for k in EGRESS_LOCK_KEYS}
+
+
+def _proxy_launch_image(launched) -> str:
+    """The image the launch record's one proxy-create step created the proxy from (its one sha256 image id)."""
+    try:
+        steps = [s for s in launched.steps if isinstance(s, dict) and s.get("step") == PROXY_CREATE_STEP]
+    except (AttributeError, TypeError):
+        raise run_take.Refused("the launch record carries no steps") from None
+    if len(steps) != 1 or not isinstance(steps[0].get("argv"), list):
+        raise run_take.Refused(f"the launch record holds {len(steps)} {PROXY_CREATE_STEP} steps, not one")
+    ids = [a for a in steps[0]["argv"] if isinstance(a, str) and IMAGE_ID_SHAPE.fullmatch(a)]
+    if len(ids) != 1:
+        raise run_take.Refused(f"the {PROXY_CREATE_STEP} step names {len(ids)} image ids, not one")
+    return ids[0]
+
+
 def _launched_parts(launched) -> tuple:
     """(spec, take id, sidecar id) from a successful launch record, or a refusal before any runtime call."""
     try:
@@ -905,6 +960,7 @@ def collect_and_evaluate(runtime, *, launched, sidecar, lock_path: str, harness:
     container, runs no turn, reads no login, writes no record and tears nothing down (the drive step's lifecycle)."""
     lock = load_take_lock(lock_path, harness=harness)
     sidecar_lock = load_sidecar_lock(lock_path, harness=harness)
+    egress_lock = load_egress_lock(lock_path, harness=harness)
     evidence_dir = run_take._abs_path(evidence_dir, "evidence_dir")
     spec, take_id, sidecar_id = _launched_parts(launched)
     try:
@@ -912,11 +968,12 @@ def collect_and_evaluate(runtime, *, launched, sidecar, lock_path: str, harness:
     except AttributeError:
         raise run_take.Refused("sidecar must be the SidecarLaunch the launch used") from None
     sidecar_image = expect.get("image") if isinstance(expect, dict) else None
+    proxy_image = _proxy_launch_image(launched)
     probe_list = probes(spec, take_id=take_id, sidecar_id=sidecar_id, sidecar_image=sidecar_image, harness=harness,
-                        hosts=hosts, evidence_dir=evidence_dir)
+                        hosts=hosts, proxy_id=launched.proxy_id, proxy_image=proxy_image, evidence_dir=evidence_dir)
     raw = run(runtime, probe_list, begin_reply=begin_reply, caller_env=caller_env)
     return evaluate(raw, spec=spec, lock=lock, sidecar_expect=expect, harness=harness, hosts=hosts,
-                    evidence_dir=evidence_dir, sidecar_lock=sidecar_lock)
+                    evidence_dir=evidence_dir, sidecar_lock=sidecar_lock, egress_lock=egress_lock)
 
 
 # ------------------------------------------------------------------------------------------------ the record

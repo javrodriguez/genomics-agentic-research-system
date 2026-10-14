@@ -123,8 +123,11 @@ def rederived(image: str):
     path = os.path.join(il.BOX_DIR, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
     try:
         return w.rederive(il, repo, record, path, image)
-    except (w.Refused, il.LockError, ValueError) as e:
-        return f"refused: {e}"
+    except (w.Refused, il.LockError, ValueError, OSError, __import__("subprocess").TimeoutExpired) as e:
+        return f"refused: {type(e).__name__}: {e}"
+
+
+RECORD_SHA256 = "c55c75cc7bffea5c202a19bc25e1a9f8490e4c22975e6248486008b96bd65914"   # the reviewed build record
 
 
 def lock_bytes(image: str) -> bytes:
@@ -552,6 +555,13 @@ class TestBinding8LockKeys(Binding):
             if il.HARNESS_PACKAGES.get(image, "").split("/")[-1] not in (h, h + "-cli"):
                 out.append(f"{h}: {image}'s package {il.HARNESS_PACKAGES.get(image)} is not that harness")
         loaded = locks()
+        # Closure C-1: the record the pins re-derive from is the reviewed one, so this module holds on its own.
+        import hashlib
+        repo = os.path.dirname(os.path.dirname(STUDY))
+        record = os.path.join(repo, "lane-reports", "build-20261014c", "athena-out-20261014", "build-record.json")
+        with open(record, "rb") as fh:
+            if hashlib.sha256(fh.read()).hexdigest() != RECORD_SHA256:
+                out.append("the committed build record is not the reviewed one (sha256 c55c75cc...)")
         for h, image in sorted(pf.TAKE_IMAGE.items()):
             path = os.path.join(il.BOX_DIR, os.path.dirname(il.DOCKERFILES[image]), "image.lock")
             # The committed lock is the reviewed pin: schema 2, byte-equal to the lock writer's re-derivation from
@@ -589,7 +599,8 @@ class TestBinding8LockKeys(Binding):
             try:
                 rec = pf.evaluate({}, spec=spec, lock=got, sidecar_expect={}, harness=h, hosts=pc.HOSTS,
                                   evidence_dir=EVIDENCE,
-                                  sidecar_lock={"image_id": IMAGE, "manifest_digest": "sha256:" + "5" * 64})
+                                  sidecar_lock={"image_id": IMAGE, "manifest_digest": "sha256:" + "5" * 64},
+                                  egress_lock={"image_id": IMAGE, "manifest_digest": "sha256:" + "7" * 64})
                 if rec["ok"] or [c["id"] for c in rec["checks"]] != list(pf.PREFLIGHT_CHECKS):
                     out.append(f"{h}: evaluate over no probes is not a full failing record")
             except Exception as e:
@@ -633,6 +644,8 @@ class TestBinding8LockKeys(Binding):
                            ("a lock from a different record row", _another_row),
                            ("a schema-1 PENDING lock where a filled one is required", _unfilled)):
             self.green_then_red(f"binding 8: {name}", mock.patch(__name__ + ".lock_bytes", fake))
+        self.green_then_red("binding 8: a record other than the reviewed one",
+                            mock.patch(__name__ + ".RECORD_SHA256", "0" * 64))
 
 
 # Lane w6a, criterion 7: every test of this module at the base 89b54db4 (Ran 10, OK) still exists and runs.
