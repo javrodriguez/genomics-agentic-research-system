@@ -166,14 +166,14 @@ def mutants() -> dict:
         "identity-any-walk": ("B1.identity", "walk_builders", "        if walk not in prepared:",
                               "        if False:"),
         "scanner-real-unchecked": ("B12.scanner", "walk_builders",
-                                   "        if pinned is None or type(scanner) is not pinned:", "        if False:"),
+                                   "        if type(scanner) is not pinned:", "        if False:"),     # 0f1aa5ea's line
         "scanner-raw-to-driver": ("B12.scanner", "walk_builders",
                                   'identity_for=identity_for({row["walk"]: ident}), secrets=secrets, rules_scanner=rules,',
                                   'identity_for=identity_for({row["walk"]: ident}), secrets=secrets, '
                                   'rules_scanner=builders["rules_scanner"],'),
         "scanner-class-by-name": ("B12.scanner", "walk_builders",
-                                  "        if pinned is None or type(scanner) is not pinned:",
-                                  "        if pinned is None or type(scanner).__name__ != pinned.__name__:"),
+                                  "        if type(scanner) is not pinned:",       # 0f1aa5ea's line (athena, 14 Oct)
+                                  "        if type(scanner).__name__ != getattr(pinned, '__name__', None):"),
         "report-dir-shared": ("B12.scanner", "walk_builders",
                               '    report_dir = tempfile.mkdtemp(prefix="walk-scan-", dir=report_parent)',
                               '    report_dir = report_parent'),
@@ -205,9 +205,9 @@ def mutants() -> dict:
         "kept-tree-unnamed": ("B9.cli", "walk_builders",
                               '        print(f"kept run tree: {tree} (run_walks raised; left for a human)", '
                               'file=sys.stderr)', "        pass"),
-        "secrets-read-early": ("B2.login", "walk_builders", "    name = login_name(harness)\n\n    def secrets():",
-                               "    name = login_name(harness)\n    scan_record.read_login(login_file, name, "
-                               "allowed=tuple(rt.LOGIN_VARIABLE.values()))\n\n    def secrets():"),
+        "secrets-read-early": ("B2.login", "walk_builders", '        _no_login_file("login_secrets")\n\n    def secrets():',
+                               '        _no_login_file("login_secrets")\n    scan_record.read_login(login_file, name, '
+                               'allowed=tuple(rt.LOGIN_VARIABLE.values()))\n\n    def secrets():'),
         "counters-folder-unchecked": ("B3.counters", "walk_builders",
                                       "        if not isinstance(folder, str) or not os.path.isabs(folder) or not "
                                       "os.path.isdir(folder):", "        if False:"),

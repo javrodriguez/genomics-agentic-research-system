@@ -1141,6 +1141,22 @@ def b12_executed(mod, p):
             out.append(f"{p}: the defect is kept as {rec}")
     return out
 
+
+def box_view(home: Path):
+    """A faithful stand-in for TakeDriver.config_view over a scratch config folder: operator_list one level as
+    (name, kind), a link listed as one (never followed), None for a folder that is absent; operator_read bytes or None."""
+    def lister(rel):
+        d = home / rel
+        if not d.is_dir():
+            return None
+        return [(e.name, "link" if e.is_symlink() else "dir" if e.is_dir() else "file") for e in d.iterdir()]
+
+    def reader(rel):
+        f = home / rel
+        return f.read_bytes() if f.is_file() and not f.is_symlink() else None
+    return lister, reader
+
+
 @guarded("B13-native", CA_API + ("ExecutedStreamRefused",))
 def b13_native(mod, p):
     """Codex slice 3: the rollout this take resumes is the one under CODEX_HOME named by turn 1's thread id."""
@@ -1151,10 +1167,19 @@ def b13_native(mod, p):
     folder = home / "sessions" / "2026" / "10" / "14"
     folder.mkdir(parents=True)
     want = folder / f"rollout-2026-10-14T05-00-00-{TID}.jsonl"
-    want.write_text("{}\n")
+    want.write_text('{"this": "take"}\n')
     (folder / "rollout-2026-10-14T05-00-00-another-thread.jsonl").write_text("{}\n")
     if a.native_session_path(str(home)) != str(want):
         out.append(f"{p}: the rollout located is not {want.name}")
+    # Drive-wiring review MAJOR 1's road (athena sweep, 14 Oct: native_session_rel's import and return deleted
+    # survived): the same rollout through the box's listing, as the path relative to CODEX_HOME, and that path read
+    # through the box gives this take's rollout.
+    lister, reader = box_view(home)
+    rel = a.native_session_rel(lister)
+    if rel != f"sessions/2026/10/14/{want.name}":
+        out.append(f"{p}: the rollout located through the box's listing is {rel!r}")
+    elif reader(rel) != want.read_bytes():
+        out.append(f"{p}: the located rollout does not read as this take's")
     return out
 
 # ------------------------------------------------------------------------------------------------ the tests
