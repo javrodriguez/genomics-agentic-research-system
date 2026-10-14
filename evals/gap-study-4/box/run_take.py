@@ -828,15 +828,25 @@ def _own_environment():
     return os.environ
 
 
+# glitch-06's ruling on the Codex sweep's residual (14 Oct 2026): two of the binary's names are prefixes the CLI extends
+# per variable, so every name starting with either is refused for every arm (refusing more fails closed).
+REFUSED_NAME_PREFIXES = ("CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_", "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_")
+
+
+def _refused_name(name, refused) -> bool:
+    return name in refused or (isinstance(name, str) and name.startswith(REFUSED_NAME_PREFIXES))
+
+
 def check_environment(harness: str, caller_env=None, requested=()) -> None:
-    """Refuse the take when any refused name is set in this process's own environment, in the caller_env given (the
-    client env's seam, never a switch for this refusal) or requested for the exec. Names only; values never read."""
+    """Refuse the take when any refused name, or a name with a REFUSED_NAME_PREFIXES prefix, is set in this process's
+    own environment, in the caller_env given (the client env's seam, never a switch for this refusal) or requested for
+    the exec. Names only; values never read."""
     refused = refused_variables(harness)
     names = set(_own_environment()) | (set(caller_env) if caller_env is not None else set())
-    in_caller = sorted(n for n in names if n in refused)
+    in_caller = sorted(n for n in names if _refused_name(n, refused))
     if in_caller:
         raise Refused(f"refused variable(s) set in the caller's environment for a {harness} take: {', '.join(in_caller)}")
-    asked = sorted(n for n in requested if n in refused)
+    asked = sorted(n for n in requested if _refused_name(n, refused))
     if asked:
         raise Refused(f"refused variable(s) requested for a {harness} exec: {', '.join(asked)}")
 

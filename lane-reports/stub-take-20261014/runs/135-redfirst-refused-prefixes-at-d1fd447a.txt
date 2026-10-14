@@ -1,0 +1,5 @@
+== test_run_take -k TestRefusedPrefixes against d1fd447a's run_take.py
+FAIL: test_refused_prefixes (test_run_take.TestRefusedPrefixes.test_refused_prefixes)
+AssertionError: Lists differ: ["raised AttributeError: module 'box.run_t[42 chars]ES'"] != []
+Ran 1 test in 0.002s
+FAILED (failures=1)

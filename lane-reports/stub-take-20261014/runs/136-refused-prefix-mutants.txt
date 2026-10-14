@@ -1,0 +1,6 @@
+control 0 of 1
+RED   1/1 no prefix check
+RED   1/1 the caller's names by membership only
+RED   1/1 the requested names by membership only
+RED   1/1 the VALUE_ prefix dropped
+ALIVE: none

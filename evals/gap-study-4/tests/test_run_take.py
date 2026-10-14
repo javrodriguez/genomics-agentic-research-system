@@ -2162,6 +2162,40 @@ class TestCodexBinarySweep(MutantCase):
         self.assertEqual(problems_of(self.check), [])
 
 
+class TestRefusedPrefixes(MutantCase):
+    """glitch-06's ruling on the sweep's residual (14 Oct 2026): any environment name starting with
+    CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_ or CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_ is refused for every
+    arm, in this process's own environment, the caller's and an exec's request, by name only."""
+
+    PREFIXES = ("CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_", "CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_VALUE_")
+
+    def check(self):
+        out = []
+        if tuple(rt.REFUSED_NAME_PREFIXES) != self.PREFIXES:
+            out.append(f"REFUSED_NAME_PREFIXES is {rt.REFUSED_NAME_PREFIXES!r}")
+        for arm in (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI):
+            for prefix in self.PREFIXES:
+                for name in (prefix + "HTTPS_PROXY", prefix + "X", prefix):
+                    for where in ("caller", "own", "requested"):
+                        try:
+                            with mock.patch.dict(os.environ, {name: FAKE_VALUE} if where == "own" else {},
+                                                 clear=True):
+                                rt.check_environment(arm, {"PATH": "/bin", name: FAKE_VALUE} if where == "caller"
+                                                     else {"PATH": "/bin"},
+                                                     requested=(name,) if where == "requested" else ())
+                            out.append(f"{arm}: {name} ({where}) admitted")
+                        except rt.Refused as e:
+                            if name not in str(e) or FAKE_VALUE in str(e):
+                                out.append(f"{arm}: {name} ({where}) refused without its name, or with its value")
+            bad = sorted(n for n in rt.TAKE_ENV[arm] if n.startswith(self.PREFIXES))
+            if bad:
+                out.append(f"{arm}: its row names a refused prefix: {bad}")
+        return out
+
+    def test_refused_prefixes(self):
+        self.assertEqual(problems_of(self.check), [])
+
+
 class TestCodexRow(MutantCase):
     """glitch-06's ruling 1 (14 Oct 2026): no API-key route for Codex, ever. TAKE_ENV[CODEX] carries no credential;
     LOGIN_VARIABLE[CODEX] is NO_LOGIN (the lease road); every road that expects an environment login refuses a Codex
