@@ -201,6 +201,13 @@ def require_evidence_identity(row: dict, evidence) -> None:
         raise ValueError("the evidence names another model or agent")
 
 
+def transcript_lines(path) -> list:
+    """The transcript as the graders' contract takes it: its lines, read here (item E, glitch-6b 15 Oct 2026: CP6 walk
+    w020's commit failed because a path reached plan_gate.take_events, whose guard refuses one; a grader opens no
+    file)."""
+    return Path(path).read_text(encoding="utf-8").splitlines()
+
+
 def grade_committed(row: dict, outcome: dict) -> dict:
     """The real callback: bound take artifacts and specs, with the same pure grader path."""
     from graders import endstate
@@ -225,7 +232,8 @@ def grade_committed(row: dict, outcome: dict) -> dict:
     evidence = endstate.Evidence.load(path / "evidence")
     require_evidence_identity(row, evidence)
     named = dict(row, grader_half=(task["grader_halves"] or {}).get(row["half"]))
-    got, module = regrade(variants.grader_name(task), named, spec, path / "transcript.jsonl", evidence)
+    got, module = regrade(variants.grader_name(task), named, spec, transcript_lines(path / "transcript.jsonl"),
+                          evidence)
     return dict(got, graded_by=module)
 
 
@@ -268,7 +276,8 @@ def grade_walk_folder(row: dict, folder: Path) -> dict:
     evidence = endstate.Evidence.load(folder / "evidence")
     require_evidence_identity(row, evidence)
     named = dict(row, grader_half=(task["grader_halves"] or {}).get(row["half"]))
-    got, module = regrade(variants.grader_name(task), named, spec, folder / "transcript.jsonl", evidence)
+    got, module = regrade(variants.grader_name(task), named, spec, transcript_lines(folder / "transcript.jsonl"),
+                          evidence)
     return dict(got, graded_by=Path(module).resolve().relative_to(HERE.resolve()).as_posix())
 
 

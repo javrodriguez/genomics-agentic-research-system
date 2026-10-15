@@ -23,3 +23,4 @@ python3 -B -W ignore evals/gap-study-4/tests/test_pending_codex_walk.py
 python3 -B -W ignore evals/gap-study-4/tests/test_scheduled_wakeup.py
 python3 -B -W ignore evals/gap-study-4/tests/test_walk_recheck.py
 python3 -B -W ignore evals/gap-study-4/tests/test_drive_box_seams.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_grade_seam.py
