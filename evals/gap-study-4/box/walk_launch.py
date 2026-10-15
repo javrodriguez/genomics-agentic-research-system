@@ -120,8 +120,12 @@ SUITE_KIND = "gars"
 # blob in the walk's new commits ships only as a gzip stream under rehearsals/<walk>/evidence/blobs/<sha256>, decoded
 # within these bounds and scanned decompressed with no allowance; anything else refuses.
 EVIDENCE_BLOB = re.compile(r"evals/gap-study-4/rehearsals/[A-Za-z0-9][A-Za-z0-9._-]*/evidence/blobs/[0-9a-f]{64}")
-BLOB_MAX_BYTES = 16 * 1024 * 1024        # decompressed, per blob
+BLOB_MAX_BYTES = 16 * 1024 * 1024        # decompressed, per blob (and the stored size of one blob)
 BLOB_MAX_RATIO = 256                      # decompressed : compressed, against bombs (text compresses far less)
+BLOB_TOTAL_MAX = 64 * 1024 * 1024        # decompressed, all of a walk's evidence blobs together (review MAJOR 2)
+BLOB_MAX_COUNT = 256                      # evidence blobs one walk may bring (review MAJOR 2)
+GZ_FHCRC, GZ_FEXTRA, GZ_FNAME, GZ_FCOMMENT, GZ_RESERVED = 0x02, 0x04, 0x08, 0x10, 0xE0
+CHUNK = 1 << 20
 
 
 class LaunchRefused(RuntimeError):
@@ -176,27 +180,74 @@ def hold_id(walk: str) -> str:
 
 
 # ------------------------------------------------------------------------------------------------ ship
-def gunzip_bounded(data: bytes) -> bytes:
-    """One gzip member, decoded within BLOB_MAX_BYTES and BLOB_MAX_RATIO; no trailing bytes; never a binary result
-    (the decompressed scan reads text). Refuses (LaunchRefused) otherwise, naming the rule, never the bytes."""
+def gzip_header(data: bytes) -> tuple:
+    """(payload offset, [(field, bytes)]) of one RFC 1952 member header, parsed here because zlib discards FEXTRA,
+    FNAME and FCOMMENT (the review of b1f5c952, MAJOR 1: a token there was fetched). Refuses: no 1f 8b magic, a method
+    other than deflate, any reserved FLG bit, a header cut short, an FHCRC that does not validate."""
     import zlib
-    if not isinstance(data, bytes) or data[:2] != b"\x1f\x8b":
+    if not isinstance(data, bytes) or len(data) < 10 or data[:2] != b"\x1f\x8b":
         raise LaunchRefused("not a gzip stream (no 1f 8b magic)")
-    limit = min(BLOB_MAX_BYTES, len(data) * BLOB_MAX_RATIO)
-    d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    if data[2] != 8:
+        raise LaunchRefused("the gzip method is not deflate")
+    flg = data[3]
+    if flg & GZ_RESERVED:
+        raise LaunchRefused("the gzip header sets a reserved flag bit")
+    i, fields = 10, []
+    if flg & GZ_FEXTRA:
+        if len(data) < i + 2:
+            raise LaunchRefused("the gzip header is cut short (FEXTRA)")
+        xlen = int.from_bytes(data[i:i + 2], "little")
+        if len(data) < i + 2 + xlen:
+            raise LaunchRefused("the gzip header is cut short (FEXTRA)")
+        fields.append(("FEXTRA", data[i + 2:i + 2 + xlen]))
+        i += 2 + xlen
+    for bit, name in ((GZ_FNAME, "FNAME"), (GZ_FCOMMENT, "FCOMMENT")):
+        if flg & bit:
+            j = data.find(b"\0", i)
+            if j < 0:
+                raise LaunchRefused(f"the gzip header is cut short ({name})")
+            fields.append((name, data[i:j]))
+            i = j + 1
+    if flg & GZ_FHCRC:
+        if len(data) < i + 2 or int.from_bytes(data[i:i + 2], "little") != zlib.crc32(data[:i]) & 0xFFFF:
+            raise LaunchRefused("the gzip header's FHCRC does not validate")
+        i += 2
+    return i, fields
+
+
+def gunzip_to(data: bytes, out, limit: int) -> tuple:
+    """Decode one gzip member into the binary file object `out`, streamed in CHUNK pieces: (bytes written, header
+    fields). Refuses past `limit` bytes, a decode error, truncation, trailing bytes, a CRC32 or ISIZE that does not
+    match, and a payload that is itself binary (a NUL in its first 8000 bytes: the text scan could not read it)."""
+    import zlib
+    off, fields = gzip_header(data)
+    d = zlib.decompressobj(-zlib.MAX_WBITS)
+    buf, n, crc, first = data[off:], 0, 0, b""
     try:
-        out = d.decompress(data, limit + 1)
+        while not d.eof:
+            piece = d.decompress(buf, CHUNK)
+            buf = d.unconsumed_tail
+            if not piece and not buf:
+                break
+            n += len(piece)
+            if n > limit:
+                raise LaunchRefused(f"the gzip stream decompresses past its bound ({limit} bytes)")
+            crc = zlib.crc32(piece, crc)
+            if len(first) < 8000:
+                first += piece[:8000 - len(first)]
+            out.write(piece)
     except zlib.error:
         raise LaunchRefused("the gzip stream does not decode") from None
-    if len(out) > limit or d.unconsumed_tail:
-        raise LaunchRefused(f"the gzip stream decompresses past its bound ({limit} bytes)")
     if not d.eof:
         raise LaunchRefused("the gzip stream is truncated")
-    if d.unused_data:
-        raise LaunchRefused("the gzip stream carries trailing bytes")
-    if b"\0" in out[:8000]:
+    trailer = d.unused_data
+    if len(trailer) != 8:
+        raise LaunchRefused("the gzip stream carries trailing bytes or a cut trailer")
+    if int.from_bytes(trailer[:4], "little") != crc or int.from_bytes(trailer[4:], "little") != n & 0xFFFFFFFF:
+        raise LaunchRefused("the gzip trailer's CRC32 or ISIZE does not match")
+    if b"\0" in first:
         raise LaunchRefused("the decompressed blob is itself binary, which the scan cannot read")
-    return out
+    return n, fields
 
 
 def _git_out(repo: str, *args: str, binary: bool = False):
@@ -206,14 +257,9 @@ def _git_out(repo: str, *args: str, binary: bool = False):
     return p.stdout if binary else p.stdout.decode("utf-8", "replace")
 
 
-def evidence_blobs(suite_mod, repo: str, head: str, tip: str) -> dict:
-    """{blob id: decompressed bytes} for every binary blob the walk's new commits (head..tip) bring, each admitted only
-    as a gzip stream under evidence/blobs/ at EVERY path it appears at in those commits, absent from the shipped
-    head's history, and decoded within bounds. Any other binary refuses."""
-    binaries = suite_mod.binary_blobs_hashed(repo, tip, [head])
-    if not binaries:
-        return {}
-    in_head = set(_git_out(repo, "rev-list", "--objects", head).split())
+def evidence_candidates(repo: str, head: str, tip: str) -> dict:
+    """{blob id: set of paths} for every blob in the walk's new commits (head..tip) that git would read as binary (a
+    NUL in its first 8000 bytes) OR that starts with 1f 8b, text to git or not (the review's MINOR 5)."""
     paths = {}
     for commit in _git_out(repo, "rev-list", f"{head}..{tip}").split():
         for line in _git_out(repo, "ls-tree", "-r", commit).splitlines():
@@ -221,35 +267,67 @@ def evidence_blobs(suite_mod, repo: str, head: str, tip: str) -> dict:
             parts = meta.split()
             if len(parts) == 3 and parts[1] == "blob":
                 paths.setdefault(parts[2], set()).add(path)
+    new = set(_git_out(repo, "rev-list", "--objects", tip, "--not", head).split())
     out = {}
-    for _path, oid, _digest in binaries:
-        if oid in in_head:
-            raise LaunchRefused(f"binary blob {oid} is in the shipped head's history, not only the walk's commits")
-        where = paths.get(oid) or set()
-        if not where or not all(EVIDENCE_BLOB.fullmatch(p) for p in where):
-            raise LaunchRefused(f"binary blob {oid} sits outside rehearsals/<walk>/evidence/blobs/")
-        try:
-            out[oid] = gunzip_bounded(_git_out(repo, "cat-file", "blob", oid, binary=True))
-        except LaunchRefused as e:
-            raise LaunchRefused(f"evidence blob {oid}: {e}") from None
+    for oid, where in paths.items():
+        if oid not in new:
+            continue
+        head_bytes = _git_out(repo, "cat-file", "blob", oid, binary=True)[:8000]
+        if head_bytes[:2] == b"\x1f\x8b" or b"\0" in head_bytes:
+            out[oid] = where
     return out
 
 
-def scan_decompressed(gitleaks: str, blobs: dict, work: str) -> list:
-    """gitleaks over the decompressed blobs in a private folder, no allowance: --ignore-gitleaks-allow, an empty
-    ignore file, redacted. Returns the blob ids with a finding; never prints or returns content. The folder is
-    removed however the scan ends."""
+def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks: str, work: str) -> tuple:
+    """The blob ids scan_unpublished may allow (glitch-6b's ruling (b), with the review of b1f5c952 folded): every
+    candidate blob (evidence_candidates, plus athena_suite's own binary list) must be absent from the shipped head's
+    history, sit at every path under rehearsals/<walk>/evidence/blobs/<sha256 of its stored bytes>, and decode as one
+    gzip member within its bounds and the walk's totals; each payload streams into its own 0600 file, and its header
+    fields (FEXTRA, FNAME, FCOMMENT) into a sibling 0600 file, in a private folder that gitleaks then scans with no
+    allowance. Refuses on anything else; reports counts and blob ids only, never content."""
     import shutil
     import tempfile
+    cands = evidence_candidates(repo, head, tip)
+    for _path, oid, _digest in suite_mod.binary_blobs_hashed(repo, tip, [head]):
+        if oid not in cands:
+            raise LaunchRefused(f"binary blob {oid} is not among the walk's new commits' blobs")
+    if not cands:
+        return ()
+    if len(cands) > BLOB_MAX_COUNT:
+        raise LaunchRefused(f"{len(cands)} evidence blobs, past the walk's cap of {BLOB_MAX_COUNT}")
+    in_head = set(_git_out(repo, "rev-list", "--objects", head).split())
     os.makedirs(work, exist_ok=True)
     tmp = tempfile.mkdtemp(prefix="blobs-", dir=work)            # mode 0700
     try:
         src = os.path.join(tmp, "src")
         os.mkdir(src, 0o700)
-        for oid, data in blobs.items():
+        total = 0
+        for oid in sorted(cands):
+            if oid in in_head:
+                raise LaunchRefused(f"blob {oid} is in the shipped head's history, not only the walk's commits")
+            if int(_git_out(repo, "cat-file", "-s", oid).strip() or 0) > BLOB_MAX_BYTES:
+                raise LaunchRefused(f"blob {oid} is stored larger than {BLOB_MAX_BYTES} bytes")
+            data = _git_out(repo, "cat-file", "blob", oid, binary=True)
+            name = hashlib.sha256(data).hexdigest()
+            where = cands[oid]
+            if not all(EVIDENCE_BLOB.fullmatch(p) and p.rsplit("/", 1)[1] == name for p in where):
+                raise LaunchRefused(f"blob {oid} sits outside rehearsals/<walk>/evidence/blobs/<sha256 of its bytes>")
+            limit = min(BLOB_MAX_BYTES, len(data) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - total)
             fd = os.open(os.path.join(src, oid), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            with os.fdopen(fd, "wb") as fh:
-                fh.write(data)
+            try:
+                with os.fdopen(fd, "wb") as fh:
+                    n, fields = gunzip_to(data, fh, limit)
+            except LaunchRefused as e:
+                raise LaunchRefused(f"evidence blob {oid}: {e}") from None
+            total += n
+            del data
+            if fields:
+                if any(b"\0" in v for _k, v in fields):
+                    raise LaunchRefused(f"evidence blob {oid}: a gzip header field is binary")
+                fd = os.open(os.path.join(src, oid + ".header"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(fd, "wb") as fh:
+                    for k, v in fields:
+                        fh.write(k.encode() + b": " + v + b"\n")
         ignore = os.path.join(tmp, "empty.gitleaksignore")
         open(ignore, "w").close()
         report = os.path.join(tmp, "report.json")
@@ -266,21 +344,12 @@ def scan_decompressed(gitleaks: str, blobs: dict, work: str) -> list:
                 from None
         if p.returncode != 0:
             raise LaunchRefused(f"the decompressed-blob scan failed (exit {p.returncode})")
-        return sorted({os.path.basename(str(f.get("File", ""))) for f in found})
+        hits = sorted({os.path.basename(str(f.get("File", ""))).split(".")[0] for f in found})
+        if hits:
+            raise LaunchRefused(f"gitleaks found items in {len(hits)} decompressed evidence blob(s): {', '.join(hits)}")
+        return tuple(sorted(cands))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-
-
-def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks: str, work: str) -> tuple:
-    """The blob ids scan_unpublished may allow: every binary blob of the walk's commits, admitted and scanned clean
-    decompressed. Refuses on anything else; reports counts and ids only."""
-    blobs = evidence_blobs(suite_mod, repo, head, tip)
-    if not blobs:
-        return ()
-    hits = scan_decompressed(gitleaks, blobs, work)
-    if hits:
-        raise LaunchRefused(f"gitleaks found items in {len(hits)} decompressed evidence blob(s): {', '.join(hits)}")
-    return tuple(sorted(blobs))
 
 
 def load_suite(suite: str):

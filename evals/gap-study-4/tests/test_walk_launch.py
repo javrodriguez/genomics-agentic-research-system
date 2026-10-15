@@ -601,8 +601,10 @@ def nul_blobs(repo, sha, present):
 FAKE_GITLEAKS = """import json, os, sys
 a = sys.argv
 src, report = a[-1], a[a.index("--report-path") + 1]
+honour_allow = "--ignore-gitleaks-allow" not in a          # gitleaks' own rule: an allow comment hides its line
 found = [{"File": os.path.join(src, n), "RuleID": "x"} for n in sorted(os.listdir(src))
-         if b"PLANTED" in open(os.path.join(src, n), "rb").read()]
+         if any(b"PLANTED" in line and not (honour_allow and b"gitleaks:allow" in line)
+                for line in open(os.path.join(src, n), "rb").read().splitlines())]
 json.dump(found, open(report, "w"))
 """
 
@@ -623,25 +625,73 @@ def blob_rig(t, files):
     return repo, head, git("-C", repo, "rev-parse", "HEAD").strip()
 
 
+def make_gz(payload: bytes, *, extra=None, name=None, comment=None, fhcrc=False, reserved=0,
+            mtime=b"\x00\x00\x00\x00", level=6) -> bytes:
+    """One RFC 1952 member built by hand, so the header fields a test needs can be set."""
+    import zlib
+    flg = reserved | (0x04 if extra is not None else 0) | (0x08 if name is not None else 0) \
+        | (0x10 if comment is not None else 0) | (0x02 if fhcrc else 0)
+    head = b"\x1f\x8b\x08" + bytes([flg]) + mtime + b"\x00\xff"
+    if extra is not None:
+        head += len(extra).to_bytes(2, "little") + extra
+    if name is not None:
+        head += name + b"\x00"
+    if comment is not None:
+        head += comment + b"\x00"
+    if fhcrc:
+        head += (zlib.crc32(head) & 0xFFFF).to_bytes(2, "little")
+    c = zlib.compressobj(level, zlib.DEFLATED, -zlib.MAX_WBITS)
+    body = c.compress(payload) + c.flush()
+    return head + body + (zlib.crc32(payload) & 0xFFFFFFFF).to_bytes(4, "little") \
+        + (len(payload) & 0xFFFFFFFF).to_bytes(4, "little")
+
+
+_BOMB = []
+
+
+def _absolute_cap_bomb() -> bytes:
+    """MINOR 3's bomb, made once per process: ~17.3 MiB of base64 text (no NUL), gzip level 1 (~1.3:1, far under
+    256:1), so only the 16 MiB absolute cap refuses it."""
+    if not _BOMB:
+        import base64
+        import gzip
+        _BOMB.append(gzip.compress(base64.b64encode(os.urandom(13 * 1024 * 1024)), 1))
+    return _BOMB[0]
+
+
 def l8(mod) -> list:
-    """glitch-6b's ruling (b): the watcher's gzip evidence blobs ship only decoded within bounds and scanned clean."""
+    """glitch-6b's ruling (b) with the review of b1f5c952 folded: the watcher's gzip evidence blobs ship only parsed,
+    decoded within the per-blob and per-walk bounds, and scanned clean, payload and header fields alike."""
     import gzip
+    import io
     out = []
-    clean = gzip.compress(json.dumps({"path": "plan/approved.json", "text": "ok"}).encode())
-    planted = gzip.compress(b"PLANTED synthetic marker")
-    bomb = gzip.compress(b"\0" * (20 * 1024 * 1024))          # 20 MiB of zeros: past both bounds
-    ratio = gzip.compress(b"a" * (300 * 1024))                  # 300 KiB of one letter: past the ratio bound
-    # the pure decoder
+    text = json.dumps({"path": "plan/approved.json", "text": "ok"}).encode()
+    clean = gzip.compress(text)
+
+    def decode(data, limit=None):
+        buf = io.BytesIO()
+        limit = min(mod.BLOB_MAX_BYTES, len(data) * mod.BLOB_MAX_RATIO) if limit is None else limit
+        return mod.gunzip_to(data, buf, limit), buf.getvalue()
     try:
-        if mod.gunzip_bounded(clean) != json.dumps({"path": "plan/approved.json", "text": "ok"}).encode():
+        (n, fields), got = decode(clean)
+        if got != text or n != len(text) or fields:
             out.append("L8-blobs: a clean gzip does not decode to its bytes")
+        (_, fields), got = decode(make_gz(text, name=b"n.json", comment=b"c", extra=b"xx", fhcrc=True))
+        if got != text or [k for k, _v in fields] != ["FEXTRA", "FNAME", "FCOMMENT"]:
+            out.append("L8-blobs: the header fields are not returned for the scan")
     except mod.LaunchRefused as e:
         out.append(f"L8-blobs: a clean gzip is refused: {e}")
-    for why, data in (("a non-gzip binary", b"\x00\x01binary"), ("a gzip bomb", bomb), ("a ratio bomb", ratio),
+    big_gz = _absolute_cap_bomb()
+    for why, data in (("a non-gzip binary", b"\x00\x01binary"), ("a 20 MiB zero bomb", gzip.compress(b"\0" * (20 << 20))),
+                      ("a ratio bomb", gzip.compress(b"a" * (300 * 1024))),
+                      ("an absolute-cap bomb (no NUL, under 256:1, over 16 MiB)", big_gz),
                       ("trailing bytes", clean + b"x"), ("a truncated stream", clean[:-6]),
-                      ("a binary payload", gzip.compress(b"\x00\x00bin"))):
+                      ("a binary payload", gzip.compress(b"\x00\x00bin")),
+                      ("a reserved flag bit", make_gz(text, reserved=0x20)),
+                      ("a bad FHCRC", (lambda g: g[:10] + bytes([g[10] ^ 0xFF, g[11]]) + g[12:])(make_gz(text, fhcrc=True))),
+                      ("a bad CRC32", clean[:-8] + b"\x00\x00\x00\x00" + clean[-4:])):
         try:
-            mod.gunzip_bounded(data)
+            decode(data)
             out.append(f"L8-blobs: {why} decodes")
         except mod.LaunchRefused:
             pass
@@ -650,20 +700,32 @@ def l8(mod) -> list:
         Path(fake).write_text("#!" + sys.executable + "\n" + FAKE_GITLEAKS)
         os.chmod(fake, 0o755)
         suite = FakeSuite([])
+        planted = gzip.compress(b"PLANTED synthetic marker")
+        textlike = b"\x1f\x8b\x08\x01" + b"A" * 60                     # git reads it as text: no NUL
+        second = gzip.compress(b"another clean record\n")
         cases = {
             "clean": ({evidence_path("w001", clean): clean}, True),
-            "planted": ({evidence_path("w001", planted): planted}, False),
+            "planted payload": ({evidence_path("w001", planted): planted}, False),
+            "planted allow line": ((lambda g: {evidence_path("w001", g): g})(
+                gzip.compress(b"PLANTED synthetic  # gitleaks:allow\n")), False),
+            "planted FNAME": ((lambda g: {evidence_path("w001", g): g})(make_gz(text, name=b"PLANTED")), False),
+            "planted FCOMMENT": ((lambda g: {evidence_path("w001", g): g})(make_gz(text, comment=b"PLANTED")), False),
+            "planted FEXTRA": ((lambda g: {evidence_path("w001", g): g})(make_gz(text, extra=b"PLANTED")), False),
             "non-gzip": ({evidence_path("w001", b"\x00raw"): b"\x00raw"}, False),
-            "bomb": ({evidence_path("w001", bomb): bomb}, False),
+            "bomb": ((lambda g: {evidence_path("w001", g): g})(gzip.compress(b"a" * (20 << 20))), False),
+            "absolute-cap bomb": ({evidence_path("w001", big_gz): big_gz}, False),
             "outside": ({"evals/gap-study-4/rehearsals/w001/rec.json.gz": clean}, False),
             "also outside": ({evidence_path("w001", clean): clean,
                               "evals/gap-study-4/rehearsals/w001/copy.gz": clean}, False),
+            "misnamed": ({"evals/gap-study-4/rehearsals/w001/evidence/blobs/" + "0" * 64: clean}, False),
+            "text-looking gzip": ({"evals/gap-study-4/rehearsals/w001/notes.txt": textlike}, False),
         }
         for name, (files, ok) in cases.items():
-            os.mkdir(os.path.join(t, name))
-            repo, head, tip = blob_rig(os.path.join(t, name), files)
+            d = os.path.join(t, name.replace(" ", "-"))
+            os.mkdir(d)
+            repo, head, tip = blob_rig(d, files)
             try:
-                got = mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(t, name, "w"))
+                got = mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
                 if not ok:
                     out.append(f"L8-blobs: the {name} case is admitted")
                 elif len(got) != 1:
@@ -673,25 +735,38 @@ def l8(mod) -> list:
                     out.append(f"L8-blobs: the clean case is refused: {e}")
                 elif "PLANTED" in str(e) or "synthetic" in str(e):
                     out.append("L8-blobs: a refusal prints decompressed content")
-            if os.path.exists(os.path.join(t, name, "w")) and any(
-                    n.startswith("blobs-") for n in os.listdir(os.path.join(t, name, "w"))):
+            if os.path.exists(os.path.join(d, "w")) and any(n.startswith("blobs-") for n in os.listdir(os.path.join(d, "w"))):
                 out.append(f"L8-blobs: the {name} case left its decompressed folder")
-        # a binary blob already in the shipped head's history
-        os.mkdir(os.path.join(t, "inhead"))
-        repo, _, _ = make_repo(os.path.join(t, "inhead"))
-        p = evidence_path("w001", clean)
-        Path(repo, p).parent.mkdir(parents=True)
-        Path(repo, p).write_bytes(clean)
-        git("-C", repo, "add", p)
+        # MAJOR 2: the per-walk total and count caps
+        two = {evidence_path("w001", clean): clean, evidence_path("w001", second): second}
+        for why, patch in (("the total cap", ("BLOB_TOTAL_MAX", len(text) + 5)), ("the count cap", ("BLOB_MAX_COUNT", 1))):
+            d = os.path.join(t, why.replace(" ", "-"))
+            os.mkdir(d)
+            repo, head, tip = blob_rig(d, two)
+            with mock.patch.object(mod, patch[0], patch[1]):
+                try:
+                    mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                    out.append(f"L8-blobs: {why} is not enforced")
+                except mod.LaunchRefused:
+                    pass
+        # a blob already in the shipped head's history
+        d = os.path.join(t, "inhead")
+        os.mkdir(d)
+        repo, _, _ = make_repo(d)
+        pth = evidence_path("w001", clean)
+        Path(repo, pth).parent.mkdir(parents=True)
+        Path(repo, pth).write_bytes(clean)
+        git("-C", repo, "add", pth)
         git("-C", repo, "commit", "-q", "-m", "in head")
         head = git("-C", repo, "rev-parse", "HEAD").strip()
         Path(repo, "n.txt").write_text("n\n")
         git("-C", repo, "add", "n.txt")
         git("-C", repo, "commit", "-q", "-m", "walk")
         tip = git("-C", repo, "rev-parse", "HEAD").strip()
-        with mock.patch.object(suite, "binary_blobs_hashed", lambda r, s, pr: nul_blobs(r, s, ()) ):
+        with mock.patch.object(mod, "evidence_candidates", lambda r, h, tp: {
+                git("-C", repo, "rev-parse", f"HEAD~1:{pth}").strip(): {pth}}):
             try:
-                mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(t, "inhead", "w"))
+                mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
                 out.append("L8-blobs: a blob from the shipped head's history is admitted")
             except mod.LaunchRefused:
                 pass
@@ -775,16 +850,30 @@ WITNESSES = {
     "config-parent-dropped": (((" {machine_gate.ENV_SLOTS}={machine_gate.SLOTS} {CONFIG_PARENT_ENV}={CONFIG_PARENT}",
                                 " {machine_gate.ENV_SLOTS}={machine_gate.SLOTS}"),), "L7-env"),
     "identity-dropped": ((("    walk_env = f\"{env} {COMMIT_IDENTITY}\"", "    walk_env = env"),), "L7-env"),
-    # Named equivalent, no witness: the 1f 8b magic check. zlib's gzip mode (wbits 16+) refuses a stream without the
-    # gzip header itself, so dropping the check changes only the refusal's words (L8 stays green with it dropped).
-    "blob-bound-dropped": ((("    limit = min(BLOB_MAX_BYTES, len(data) * BLOB_MAX_RATIO)", "    limit = 1 << 40"),), "L8-blobs"),
-    "blob-path-unchecked": ((("        if not where or not all(EVIDENCE_BLOB.fullmatch(p) for p in where):",
-                               "        if False:"),), "L8-blobs"),
-    "blob-head-history-unchecked": ((("        if oid in in_head:", "        if False:"),), "L8-blobs"),
-    "decompressed-findings-ignored": ((("    if hits:\n        raise LaunchRefused(f\"gitleaks found items in",
-                                         "    if False:\n        raise LaunchRefused(f\"gitleaks found items in"),),
+    "blob-bound-dropped": ((("            limit = min(BLOB_MAX_BYTES, len(data) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - total)",
+                             "            limit = 1 << 40"),), "L8-blobs"),
+    "absolute-cap-dropped": ((("            limit = min(BLOB_MAX_BYTES, len(data) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - total)",
+                               "            limit = min(len(data) * BLOB_MAX_RATIO, BLOB_TOTAL_MAX - total)"),), "L8-blobs"),
+    "count-cap-dropped": ((("    if len(cands) > BLOB_MAX_COUNT:", "    if False:"),), "L8-blobs"),
+    "blob-path-unchecked": ((("            if not all(EVIDENCE_BLOB.fullmatch(p) and p.rsplit(\"/\", 1)[1] == name for p in where):",
+                              "            if False:"),), "L8-blobs"),
+    "blob-name-unbound": ((("EVIDENCE_BLOB.fullmatch(p) and p.rsplit(\"/\", 1)[1] == name for p in where",
+                            "EVIDENCE_BLOB.fullmatch(p) for p in where"),), "L8-blobs"),
+    "blob-head-history-unchecked": ((("            if oid in in_head:", "            if False:"),), "L8-blobs"),
+    "decompressed-findings-ignored": ((("        if hits:\n            raise LaunchRefused(f\"gitleaks found items in",
+                                         "        if False:\n            raise LaunchRefused(f\"gitleaks found items in"),),
                                        "L8-blobs"),
-    "trailing-bytes-admitted": ((("    if d.unused_data:", "    if False:"),), "L8-blobs"),
+    "header-fields-unscanned": ((("            if fields:\n                if any(", "            if False:\n                if any("),),
+                                 "L8-blobs"),
+    "reserved-bits-admitted": ((("    if flg & GZ_RESERVED:", "    if False:"),), "L8-blobs"),
+    "fhcrc-unchecked": ((("        if len(data) < i + 2 or int.from_bytes(data[i:i + 2], \"little\") != zlib.crc32(data[:i]) & 0xFFFF:",
+                          "        if len(data) < i + 2:"),), "L8-blobs"),
+    "trailer-unchecked": ((("    if int.from_bytes(trailer[:4], \"little\") != crc or", "    if False and int.from_bytes(trailer[:4], \"little\") != crc or"),), "L8-blobs"),
+    "text-gzip-skipped": ((("        if head_bytes[:2] == b\"\\x1f\\x8b\" or b\"\\0\" in head_bytes:", "        if b\"\\0\" in head_bytes:"),), "L8-blobs"),
+    "allow-comments-honoured": ((("\"--exit-code\", \"0\", \"--ignore-gitleaks-allow\",\n                            \"--gitleaks-ignore-path\", ignore",
+                                   "\"--exit-code\", \"0\",\n                            \"--gitleaks-ignore-path\", ignore"),), "L8-blobs"),
+    # Named equivalent, no witness: the 1f 8b magic check in gzip_header is the only gate before parsing; dropping it
+    # leaves the method byte and zlib's raw inflate to refuse a non-gzip, so only the refusal's words change.
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
                         "L3-fetch"),
 }
@@ -928,6 +1017,36 @@ class TestRealReturnScan(unittest.TestCase):
         import gzip
         data = gzip.compress(b"\0" * (20 * 1024 * 1024))
         got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def header_case(self, **field):
+        data = make_gz(json.dumps({"op": "open"}).encode(), **{k: f"token = {_fake_token()}".encode() for k in field})
+        got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertIn("decompressed evidence blob", str(got))
+        self.assertEqual(branches, "")
+
+    def test_token_in_gzip_fextra_refuses(self):
+        self.header_case(extra=True)
+
+    def test_token_in_gzip_fname_refuses(self):
+        self.header_case(name=True)
+
+    def test_token_in_gzip_fcomment_refuses(self):
+        self.header_case(comment=True)
+
+    def test_allow_line_inside_evidence_gzip_refuses(self):
+        import gzip
+        data = gzip.compress(f"token = {_fake_token()}  # gitleaks:allow\n".encode())
+        got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertIn("decompressed evidence blob", str(got))
+        self.assertEqual(branches, "")
+
+    def test_text_looking_gzip_is_not_skipped(self):
+        data = b"\x1f\x8b\x08\x01" + b"A" * 60
+        got, branches = self.case(self.evidence_commit({"evals/gap-study-4/rehearsals/w001/notes.txt": data}))
         self.assertIsInstance(got, wl.LaunchRefused)
         self.assertEqual(branches, "")
 
