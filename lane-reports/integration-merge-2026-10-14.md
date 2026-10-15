@@ -517,3 +517,15 @@ Written by a fresh integration window, under glitch-06.
 - **Merge clone:** merged code head `0cd9b1be` (box `58013b43` + harness `89525f03`); log commits follow it. Nothing pushed.
 - **Running:** `gap4-merge-interim2-0cd9b1b-0cd9b1b-20261015T053025Z`. Do not cancel it.
 - **Next:** fetch it with `--wait`, derive the verdict on the Mac, classify any red by owner, record it, report to glitch-6b.
+
+## Interim-2 battery on 0cd9b1be (15 Oct, read 02:09 EDT)
+
+- `gap4-merge-interim2-0cd9b1b-0cd9b1b-20261015T053025Z`, `--kind gars-gap4 --jobs 24 --solo`, slots 1-4, solo 1, commit `0cd9b1beaa4a434115b9e1ddc82dec2fe575f5c9`.
+- Verdict, derived on the Mac: **PASS** ("every check holds"). Step 1 `Ran 1303`, OK (skipped=82). `run_checks: 272 of 272 commands passed`. Account processes 0 at start; the account sweep at end stopped 0 processes.
+- Log sha256 `b8c0a17cfb12e85d4824e18adcab6df9279528faefa5f8d9c2099ff38867d7c4` (the Mac's hash of the fetched log equals the summary's).
+- Reds: none.
+
+## RESUME HERE (15 Oct, after the interim-2 battery)
+
+- **Merge clone:** merged code head `0cd9b1be` (box `58013b43` + harness `89525f03`), battery PASS 272 of 272, solo. Log commits follow it. Nothing pushed.
+- **Next:** wait for glitch-6b's heads for the admission battery (harness G1, G2, B3 walk builders; the checker constants on the bootstrap branch; the box's gate and launch road).
