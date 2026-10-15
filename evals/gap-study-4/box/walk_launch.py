@@ -17,11 +17,21 @@ the Claude1 file already on athena (run_take.WALK_LOGIN_FILES), read there by th
     python3 .../walk_launch.py run --child <athena child> --head <sha> --walk <id> --task <t> --half <h>
                                    --wording <w> --arm <a> --model <m> --reason <why>
         On athena, under umask 0022 (the box lane's run 7 finding: the evidence folder must stay host-readable):
-        the athena gate (machine_gate athena-check, the reservation absent: a hold would overwrite another), then
+        the reservation CLAIMED with O_EXCL under this walk's hold id (one already there refuses), the athena gate
+        (machine_gate athena-check; a closed gate removes the claim), then
         `nohup python3 <child>/athena-reserve hold --by <hold id> -- env GAP4_SUITE_ACCOUNT=athena-suite
         GAP4_RESERVATION=<reserved.json> GAP4_OWN_HOLD=<hold id> python3 -B <repo>/evals/gap-study-4/walk_runner.py
         ...`, so every athena suite launched during the walk is refused `reserved` and the walk's own gate admits its
         own hold only. Prints the pid.
+        THE HOLD'S LIMITS (named, the review's NIT 7):
+          - race: the O_EXCL claim refuses a reservation that is already there, but `athena-reserve set` and
+            `hold` write unconditionally, so a second writer arriving after the claim overwrites it unseen; the
+            athena gate's suite checks still read the machine at each take launch;
+          - SIGHUP: the walk runs under `nohup sh -c`, so a dropped ssh session reaches neither the hold nor the walk;
+          - lease lapse: `hold` writes a 29-minute lease and rewrites it every 10 minutes; if the hold process is
+            killed outright (SIGKILL, an OOM), the lease is not renewed, the reservation reads free once its `until`
+            passes, and the walk keeps running unreserved. athena_suite would then admit a suite beside it. The walk
+            itself is stopped by hold only on a normal exit or SIGTERM/SIGHUP. No guard closes this; it is a residual.
 
     python3 .../walk_launch.py status --child <athena child>
         `running` while the recorded pid lives, else the walk's exit code from its exit file.
@@ -226,7 +236,14 @@ def run_command(*, child: str, walk: str, cell: dict, reason: str) -> str:
             + " ".join(shlex.quote(a) for a in walk_argv))
     # The exit file is written by the shell around the hold, so a walk that died still leaves its code.
     body = f"{held}; echo $? > {child}/walk.exit"
-    return (f"umask {UMASK}; set -e; test ! -e {RESERVATION}; {gate} > {child}/gate.out 2>&1; "
+    # The claim (the review's NIT 7): the reservation is created with O_EXCL, carrying this walk's own hold id, so a
+    # reservation already there refuses the start and nothing that arrives later is overwritten unseen by this
+    # step; `hold` then rewrites it with the same id and removes it when the walk ends. A closed gate removes the claim.
+    claim = ("import datetime as d, json, os, sys; fd = os.open(sys.argv[1], os.O_WRONLY | os.O_CREAT | os.O_EXCL, "
+             "0o644); os.write(fd, json.dumps({'by': sys.argv[2], 'until': (d.datetime.now().astimezone() + "
+             "d.timedelta(minutes=29)).isoformat(timespec='seconds')}).encode()); os.close(fd)")
+    return (f"umask {UMASK}; set -e; python3 -I -c {shlex.quote(claim)} {RESERVATION} {hid}; "
+            f"{gate} > {child}/gate.out 2>&1 || {{ rm -f {RESERVATION}; exit 1; }}; "
             f"nohup sh -c {shlex.quote(body)} > {child}/walk.log 2>&1 < /dev/null & echo $! > {child}/walk.pid; "
             f"cat {child}/walk.pid")
 

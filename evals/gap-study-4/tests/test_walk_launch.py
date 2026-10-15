@@ -20,7 +20,8 @@ by its shape; gitleaks is a fake that writes the report it is told to. No ssh, n
 
 Witnesses (each red by its own clause): scan-skipped, public-error-swallowed, public-subtraction-dropped,
 no-umask, hold-dropped,
-reservation-not-checked, back-range-whole-history, back-scan-allowance.
+claim-dropped, claim-not-exclusive, claim-left-on-closed-gate, back-range-whole-history, back-scan-allowance,
+back-scan-plain, and one per unexercised guard (MINOR 5).
 """
 
 from __future__ import annotations
@@ -79,6 +80,7 @@ class FakeRunner(wl.Runner):
         self.files = {}
         self.sha_override = {}          # a path whose sha256 athena misreports (the read-back guards)
         self.ancestor_rc = 0            # merge-base --is-ancestor's exit on athena
+        self.listheads_override = None  # what `git bundle list-heads` prints, when set
 
     def local(self, argv, *, timeout=3600):
         argv = list(argv)
@@ -89,6 +91,8 @@ class FakeRunner(wl.Runner):
             Path(report).write_text(json.dumps([{"Fingerprint": f, "RuleID": "x"} for f in found]))
             return (1 if found else 0), "", ""
         if argv[0] == "git":
+            if argv[1:3] == ["bundle", "list-heads"] and self.listheads_override is not None:
+                return 0, self.listheads_override, ""
             p = subprocess.run(argv, env=GIT_ENV, capture_output=True, text=True)
             return p.returncode, p.stdout, p.stderr
         return 0, "", ""
@@ -280,11 +284,28 @@ def l2(mod) -> list:
     cmd = mod.run_command(child=CHILD, walk="w-0001", cell=cell, reason="the first walk")
     if not cmd.startswith("umask 0022;"):
         out.append("L2-run: the remote command does not open with umask 0022")
-    i_test = cmd.find(f"test ! -e {mod.RESERVATION}")
+    i_test = cmd.find("os.O_EXCL")
     i_gate = cmd.find("machine_gate.py athena-check")
     i_hold = cmd.find("athena-reserve hold --by gap4-walk-w-0001")
     if min(i_test, i_gate, i_hold) < 0 or not i_test < i_gate < i_hold:
-        out.append("L2-run: the reservation check and the athena gate do not both come before the hold")
+        out.append("L2-run: the O_EXCL claim and the athena gate do not both come before the hold")
+    if f"{mod.RESERVATION} gap4-walk-w-0001;" not in cmd[i_test:i_gate]:
+        out.append("L2-run: the claim is not of the reservation under this walk's hold id")
+    if f"|| {{ rm -f {mod.RESERVATION}; exit 1; }}" not in cmd[i_gate:i_hold]:
+        out.append("L2-run: a closed gate leaves the claim behind")
+    # The claim's own program, run here on a temporary path: a second claim refuses (O_EXCL), the first carries the id.
+    toks = shlex.split(cmd[:i_gate])
+    prog = toks[toks.index("-c") + 1] if "-c" in toks else ""
+    with tempfile.TemporaryDirectory() as t:
+        res = os.path.join(t, "reserved.json")
+        first = subprocess.run([sys.executable, "-I", "-c", prog, res, "gap4-walk-w-0001"], capture_output=True)
+        second = subprocess.run([sys.executable, "-I", "-c", prog, res, "gap4-walk-w-0001"], capture_output=True)
+        try:
+            by = json.loads(Path(res).read_text()).get("by")
+        except (OSError, ValueError):
+            by = None
+        if first.returncode != 0 or by != "gap4-walk-w-0001" or second.returncode == 0:
+            out.append("L2-run: the claim is not an O_EXCL create carrying the hold id")
     held = cmd[i_hold:]
     for name, value in ((mod.machine_gate.ENV_ACCOUNT, "athena-suite"),
                         (mod.machine_gate.ENV_RESERVATION, mod.RESERVATION),
@@ -293,7 +314,8 @@ def l2(mod) -> list:
         if f"{name}={value}" not in held or f"{name}={value}" not in cmd[i_test:i_gate]:
             out.append(f"L2-run: {name} is not {value} for both the gate and the walk")
     toks = shlex.split(cmd)
-    body = shlex.split(toks[toks.index("-c") + 1]) if "-c" in toks else []
+    at = next((i for i in range(len(toks) - 2) if toks[i] == "sh" and toks[i + 1] == "-c"), None)
+    body = shlex.split(toks[at + 2]) if at is not None else []
     want = ["walk_runner.py", "--walk", "w-0001", "--task", "plan-gate", "--half", "positive", "--wording", "w1",
             "--arm", "A", "--model", "claude-x", "--reason", "the first walk;"]
     tail = [os.path.basename(x) if x.endswith("walk_runner.py") else x for x in body]
@@ -394,6 +416,55 @@ def l3(mod) -> list:
     return out
 
 
+def l5(mod) -> list:
+    """MINOR 5: each guard the review found unexercised refuses by its own message."""
+    out = []
+
+    def ship_case(t, want, *, runner_set=None, pinned=True, reserve_pin=True):
+        repo, root, head = make_repo(t)
+        runner = FakeRunner(athena_head=head)
+        if runner_set:
+            runner_set(runner, head)
+        reserve = reserve_file(t)
+        pin = hashlib.sha256(Path(reserve).read_bytes()).hexdigest() if reserve_pin else mod.RESERVE_SHA256
+        with mock.patch.object(mod, "PINNED_TREE", root if pinned else "1" * 40), \
+                mock.patch.object(mod, "RESERVE_SHA256", pin):
+            try:
+                mod.ship(runner, repo=repo, ref="main", suite="/x", reserve=reserve, gitleaks="gitleaks",
+                         work=os.path.join(t, "w"), precheck=lambda s: [], suite_module=FakeSuite([]))
+                return f"shipped (wanted a refusal naming {want!r})"
+            except mod.LaunchRefused as e:
+                return None if want in str(e) else f"refused for another reason: {e}"
+
+    cases = (
+        ("the local athena-reserve pin", "athena-reserve is not the runbook's pinned bytes",
+         {"reserve_pin": False}),
+        ("list-heads", "the bundle's heads are not exactly the ref",
+         {"runner_set": lambda r, h: setattr(r, "listheads_override", "0" * 40 + " refs/heads/main\n")}),
+        ("the outward sha read-back", "walk-out.bundle's sha256 on athena is not the Mac's",
+         {"runner_set": lambda r, h: r.sha_override.update({f"{CHILD}/walk-out.bundle": "0" * 64})}),
+    )
+    for name, want, kw in cases:
+        with tempfile.TemporaryDirectory() as t:
+            got = ship_case(t, want, **kw)
+            if got:
+                out.append(f"L5-guards: {name}: {got}")
+    for name, want, runner_kw, after in (
+            ("merge-base head..tip", "athena's tip does not descend from the shipped head", None,
+             lambda r, tip: setattr(r, "ancestor_rc", 1)),
+            ("the back bundle sha", "the back bundle's sha256 on the Mac is not athena's", None,
+             lambda r, tip: r.sha_override.update({f"{CHILD}/walk-back.bundle": "0" * 64})),
+            ("got != tip", "the back bundle's tip is not athena's", None,
+             lambda r, tip: setattr(r, "athena_tip", "f" * 40))):
+        with tempfile.TemporaryDirectory() as t:
+            _, got, repo, _, _ = fetch_rig(mod, t, runner_kw=runner_kw, after_runner=after)
+            if not isinstance(got, mod.LaunchRefused) or want not in str(got):
+                out.append(f"L5-guards: {name}: {got}")
+            elif walk_branches(repo):
+                out.append(f"L5-guards: {name}: a walk branch was left")
+    return out
+
+
 def l4(mod) -> list:
     out = []
     with tempfile.TemporaryDirectory() as t:
@@ -416,7 +487,7 @@ def l4(mod) -> list:
     return out
 
 
-CHECKS = {"L1-ship": l1, "L2-run": l2, "L3-fetch": l3, "L4-bounds": l4}
+CHECKS = {"L1-ship": l1, "L2-run": l2, "L3-fetch": l3, "L4-bounds": l4, "L5-guards": l5}
 
 
 def witness(edits) -> types.ModuleType:
@@ -443,13 +514,22 @@ WITNESSES = {
     "no-umask": ((("    return (f\"umask {UMASK}; set -e;", "    return (f\"set -e;"),), "L2-run"),
     "hold-dropped": ((("    held = (f\"python3 {child}/athena-reserve hold --by {hid} -- {env} \"",
                        "    held = (f\"{env} \""),), "L2-run"),
-    "reservation-not-checked": ((("set -e; test ! -e {RESERVATION}; {gate}", "set -e; {gate}"),), "L2-run"),
+    "claim-dropped": ((("python3 -I -c {shlex.quote(claim)} {RESERVATION} {hid}; ", ""),), "L2-run"),
+    "claim-not-exclusive": ((("os.O_WRONLY | os.O_CREAT | os.O_EXCL, ", "os.O_WRONLY | os.O_CREAT, "),), "L2-run"),
+    "claim-left-on-closed-gate": ((("|| {{ rm -f {RESERVATION}; exit 1; }}", "|| exit 1"),), "L2-run"),
     "back-range-whole-history": ((("bundle create {child}/walk-back.bundle {head}..{shlex.quote(ref)}",
                                    "bundle create {child}/walk-back.bundle {shlex.quote(ref)}"),), "L3-fetch"),
     "back-scan-allowance": ((("        n = suite_mod.scan_unpublished(scratch, tip, os.path.join(work, \"back-scan-work\"), "
                               "gitleaks, [head], None,",
                               "        n = suite_mod.scan_unpublished(scratch, tip, os.path.join(work, \"back-scan-work\"), "
                               "gitleaks, [head], suite_mod.rulings_file(records),"),), "L3-fetch"),
+    "reserve-pin-unchecked": ((("    if _sha256(reserve) != RESERVE_SHA256:", "    if False:"),), "L5-guards"),
+    "list-heads-unchecked": ((("    if heads != [head, f\"refs/heads/{ref}\"]:", "    if False:"),), "L5-guards"),
+    "outward-sha-unchecked": ((("        if got != [want]:", "        if False:"),), "L5-guards"),
+    "back-ancestry-unchecked": ((("    if runner.remote(f\"git -C {child}/repo merge-base --is-ancestor {head} {tip}\")[0] != 0:",
+                                  "    if False:"),), "L5-guards"),
+    "back-sha-unchecked": ((("    if [_sha256(local)] != digest:", "    if False:"),), "L5-guards"),
+    "back-tip-unchecked": ((("    if got != tip:", "    if False:"),), "L5-guards"),
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
                         "L3-fetch"),
 }
@@ -467,6 +547,9 @@ class TestTheRoad(unittest.TestCase):
 
     def test_l4_bounds(self):
         self.assertEqual(l4(wl), [])
+
+    def test_l5_guards(self):
+        self.assertEqual(l5(wl), [])
 
     def test_pinned_tree_is_variants(self):
         import variants
