@@ -523,6 +523,63 @@ def l6(mod) -> list:
     return out
 
 
+def l7(mod) -> list:
+    """The walk's environment is complete (glitch-6b, 15 Oct 2026, after the box lane found GAP4_CONFIG_PARENT
+    missing at 26dd61be): every GAP4_* name a study module reads reaches both the gate and the walk; the commit
+    identity takes.require_commit_identity needs reaches the walk; each deliberately absent name is absent."""
+    import takes
+    out = []
+    cell = {"task": "approval-scope", "half": "trap", "wording": "w1", "arm": "A", "model": "claude-haiku-4-5-20251001"}
+    cmd = mod.run_command(child=CHILD, walk="w-0001", cell=cell, reason="r")
+    i_gate, i_hold = cmd.find("machine_gate.py athena-check"), cmd.find("athena-reserve hold")
+    gate_part, hold_part = cmd[:i_gate], cmd[i_hold:]
+    read = set()
+    for path in HERE.rglob("*.py"):
+        if "tests" in path.relative_to(HERE).parts or "__pycache__" in path.parts:
+            continue
+        read |= set(re.findall(r'"(GAP4_[A-Z0-9_]+)"', path.read_text(encoding="utf-8", errors="replace")))
+    read -= set(mod.RUN_ENV_ABSENT)
+    if not read >= {"GAP4_CONFIG_PARENT", "GAP4_SUITE_ACCOUNT", "GAP4_RESERVATION", "GAP4_OWN_HOLD",
+                    "GAP4_SUITE_SLOTS"}:
+        out.append(f"L7-env: the tree's GAP4 names read {sorted(read)}: the scan found too few")
+    for name in sorted(read):
+        if f"{name}=" not in hold_part:
+            out.append(f"L7-env: {name}, read by the tree, does not reach the walk")
+        if name.startswith(("GAP4_SUITE", "GAP4_RESERVATION", "GAP4_OWN_HOLD")) and f"{name}=" not in gate_part:
+            out.append(f"L7-env: {name}, read by the gate, does not reach the gate")
+    if f"GAP4_CONFIG_PARENT={mod.CONFIG_PARENT}" not in hold_part or mod.CONFIG_PARENT != "/home/javier/gap4-walk-config":
+        out.append("L7-env: the walk's config parent is not /home/javier/gap4-walk-config")
+    for name in mod.RUN_ENV_ABSENT:
+        if f"{name}=" in cmd:
+            out.append(f"L7-env: {name}, deliberately absent, is passed")
+    # The commit identity: athena's javier has no global git identity (read 05:23 EDT, 15 Oct 2026), and the walk's
+    # clone has no local one, so WalkRepo's require_commit_identity reads it from the environment the walk gets.
+    outer = shlex.split(cmd)
+    at = next((i for i in range(len(outer) - 2) if outer[i] == "sh" and outer[i + 1] == "-c"), None)
+    body = outer[at + 2] if at is not None else ""
+    toks = shlex.split(body.split(" -- ", 1)[1].split(";", 1)[0]) if " -- " in body else []
+    env = dict(tok.split("=", 1) for tok in toks[1:] if "=" in tok and re.fullmatch(r"[A-Z0-9_]+=.*", tok))
+    with tempfile.TemporaryDirectory() as t:
+        repo = os.path.join(t, "r")
+        git("init", "-q", repo)
+        clean = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        with mock.patch.dict(os.environ, clean, clear=True):
+            try:
+                takes.require_commit_identity(Path(repo))
+                return out + ["L7-env: the test's own environment already carries an identity"]
+            except ValueError:
+                pass
+        with mock.patch.dict(os.environ, {**clean, **env}, clear=True):
+            try:
+                takes.require_commit_identity(Path(repo))
+            except ValueError as e:
+                out.append(f"L7-env: the walk's environment carries no commit identity: {e}")
+    if env.get("GIT_AUTHOR_EMAIL") != "28984720+javrodriguez@users.noreply.github.com" \
+            or env.get("GIT_COMMITTER_EMAIL") != env.get("GIT_AUTHOR_EMAIL"):
+        out.append("L7-env: the walk's commit identity is not the noreply one the box commits use")
+    return out
+
+
 def l4(mod) -> list:
     out = []
     with tempfile.TemporaryDirectory() as t:
@@ -545,7 +602,8 @@ def l4(mod) -> list:
     return out
 
 
-CHECKS = {"L1-ship": l1, "L2-run": l2, "L3-fetch": l3, "L4-bounds": l4, "L5-guards": l5, "L6-start": l6}
+CHECKS = {"L1-ship": l1, "L2-run": l2, "L3-fetch": l3, "L4-bounds": l4, "L5-guards": l5, "L6-start": l6,
+          "L7-env": l7}
 
 
 def witness(edits) -> types.ModuleType:
@@ -570,8 +628,8 @@ WITNESSES = {
     "public-subtraction-dropped": ((("return suite_mod.scan_unpublished(check, head, work, gitleaks, public,",
                                      "return suite_mod.scan_unpublished(check, head, work, gitleaks, (),"),), "L1-ship"),
     "no-umask": ((("    return (f\"umask {UMASK}; set -e;", "    return (f\"set -e;"),), "L2-run"),
-    "hold-dropped": ((("    held = (f\"python3 {child}/athena-reserve hold --by {hid} -- {env} \"",
-                       "    held = (f\"{env} \""),), "L2-run"),
+    "hold-dropped": ((("    held = (f\"python3 {child}/athena-reserve hold --by {hid} -- {walk_env} \"",
+                       "    held = (f\"{walk_env} \""),), "L2-run"),
     "claim-dropped": ((("python3 -I -c {shlex.quote(claim)} {RESERVATION} {hid}; ", ""),), "L2-run"),
     "claim-not-exclusive": ((("os.O_WRONLY | os.O_CREAT | os.O_EXCL, ", "os.O_WRONLY | os.O_CREAT, "),), "L2-run"),
     "claim-left-on-closed-gate": ((("|| {{ rm -f {RESERVATION}; exit 1; }}", "|| exit 1"),), "L2-run"),
@@ -595,6 +653,9 @@ WITNESSES = {
                               "L2-run"),
     "dead-hold-claim-kept": ((("then rm -f {RESERVATION}; \"\n             f\"tail -5", "then \"\n             f\"tail -5"),),
                              "L6-start"),
+    "config-parent-dropped": (((" {machine_gate.ENV_SLOTS}={machine_gate.SLOTS} {CONFIG_PARENT_ENV}={CONFIG_PARENT}",
+                                " {machine_gate.ENV_SLOTS}={machine_gate.SLOTS}"),), "L7-env"),
+    "identity-dropped": ((("    walk_env = f\"{env} {COMMIT_IDENTITY}\"", "    walk_env = env"),), "L7-env"),
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
                         "L3-fetch"),
 }
@@ -618,6 +679,9 @@ class TestTheRoad(unittest.TestCase):
 
     def test_l6_start(self):
         self.assertEqual(l6(wl), [])
+
+    def test_l7_env(self):
+        self.assertEqual(l7(wl), [])
 
     def test_pinned_tree_is_variants(self):
         import variants
