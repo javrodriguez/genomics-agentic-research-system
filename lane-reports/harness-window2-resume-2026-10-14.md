@@ -120,3 +120,12 @@ The review of 83b83ea1..d78c8791 passed (0 MAJOR, 0 MINOR). Its NIT 1 is folded 
 - Red: on the merged scratch with both readers hidden, the old test passes and the new one fails.
 - Green: test_walk_builders runs 62 OK on the merged scratch and 62 OK on this branch.
 bdb77d7a goes into the next battery, before production admission; it is not in the battery running now. Queue empty.
+
+## RESUME HERE (15 Oct 01:24 EDT): G1, G2 and B3 for the first Claude walk
+
+HEAD: the commit that adds this block (parent da73335f).
+- da73335f builds runtime, hosts, lock_path, config_parent (GAP4_CONFIG_PARENT), the proxy (ProxyRoad), agent_version, budgets and run_tree_exclude. Red: 16 run, 15 failures. Green: test_walk_builders 73 OK on both trees.
+- sidecar_for stays Missing: there is no registered per-task watch list. It needs a ruling.
+- Merged scratch: /Users/javrodher/aegis-builds/gap4-harness-scratch-383e5c2f (383e5c2f, with bdb77d7a and da73335f applied as patches, uncommitted; its walk_builders lacks only da73335f's docstring edit).
+- Running: the single-function generated mutants of the eight new or changed functions (223 ids) on that scratch. Log: the session's scratchpad batch6.log. walk_driver_for and production_builders go to the next athena battery.
+Next: read the mutant result and bind any survivor. Then report to glitch-6b.
