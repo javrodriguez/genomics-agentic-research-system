@@ -239,7 +239,8 @@ def read_register(base: Path, design: dict) -> list:
                 (scratch / walk / STAND_IN).write_text("a stand-in; coverage never reads a walk folder\n")
             except OSError:
                 pass
-        problems, _ = walk_register.check(scratch, design["register"])
+        # the recheck-coverage ruling (15 Oct 2026): entries checked here, each file bound by coverage itself
+        problems, _ = walk_register.check(scratch, design["register"], recheck_files=False)
         if problems:
             raise RegisterUnreadable(f"walk_register's check refuses {path}: " + "; ".join(problems[:5]) +
                                      (f"; and {len(problems) - 5} more" if len(problems) > 5 else ""))

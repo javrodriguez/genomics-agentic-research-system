@@ -54,6 +54,15 @@ this repository's.
 WHAT THIS DOES NOT CHECK (open questions in rehearsals/README.md): whether the walks cover what CP6 asks for (every
 wording on the smallest model, every task and half on each model), and whether the walks are published at CP8.
 
+RECHECKS (glitch-6b's ruling on recheck coverage, 15 Oct 2026; the harness lane). A walk re-checked under the
+constants in force (walk_regrade.py --recheck) gets a recheck-<n>.json in its folder and, in the same commit, an
+append-only entry in the register: schema 2 adds the top-level key `rechecks`, a list of exactly {walk, file, n,
+checker_constants_sha256, sha256}. Schema 1 (no `rechecks`) stays valid; the first recheck bumps the register to 2.
+--check binds each entry to its file (named recheck-<n>.json, n running 1..k per walk, the file's sha256) and every
+recheck file to an entry. In the history, a walk folder is written by its one walk commit and then only by recheck
+commits (RECHECK_SUBJECT, one parent, adding exactly one recheck-<n>.json beside the register); every file the walk
+commit wrote stays as it wrote it, and the rechecks list is append-only over the history.
+
 No model, no network, stdlib only. Read-only.
 """
 from __future__ import annotations
@@ -78,6 +87,73 @@ TOP_FILES = ("README.md", REGISTER_NAME)
 IGNORED_NAMES = (".DS_Store",)
 SCHEMA = 1
 TOP_KEYS = ("schema", "walks")
+SCHEMA_RECHECKS = 2                                   # the recheck-coverage ruling: schema 2 adds `rechecks`
+TOP_KEYS_RECHECKS = ("schema", "walks", "rechecks")
+RECHECK_FIELDS = ("walk", "file", "n", "checker_constants_sha256", "sha256")
+RECHECK_SUBJECT = "Recheck one walk under the checker constants in force; never counted"
+RECHECK_FILE = re.compile(r"recheck-([1-9][0-9]*)\.json")
+HEX64 = re.compile(r"[0-9a-f]{64}")
+
+
+def top_keys(schema) -> tuple:
+    """The register's top-level keys for its schema (1: schema, walks; 2: and rechecks); () for any other."""
+    return {SCHEMA: TOP_KEYS, SCHEMA_RECHECKS: TOP_KEYS_RECHECKS}.get(schema, ()) \
+        if type(schema) is int else ()
+
+
+def rechecks_of(doc) -> list:
+    """The register's recheck entries ([] for schema 1)."""
+    got = doc.get("rechecks", []) if isinstance(doc, dict) else []
+    return got if isinstance(got, list) else []
+
+
+def recheck_problems(base: Path, rechecks, walks, *, files: bool = True) -> list[str]:
+    """Each recheck entry: exactly RECHECK_FIELDS, a registered walk, n running 1..k per walk in list order, and (with
+    `files`) its file recheck-<n>.json present in the walk's folder with that sha256, and every recheck file in a
+    registered walk's folder has its entry. walk_plan validates a register over stand-in folders, so it checks the
+    entries without `files`; coverage binds each file by its sha256 itself (pending_walk.latest_recheck)."""
+    import hashlib
+    out, seen = [], {}
+    if not isinstance(rechecks, list):
+        return [f"rehearsals/{REGISTER_NAME}: rechecks is not a list"]
+    for i, e in enumerate(rechecks):
+        where = f"recheck entry {i}"
+        if not isinstance(e, dict) or set(e) != set(RECHECK_FIELDS):
+            out.append(f"{where} does not hold exactly {list(RECHECK_FIELDS)}")
+            continue
+        if e["walk"] not in walks:
+            out.append(f"{where}: walk {e['walk']!r} is not registered")
+            continue
+        want = seen.get(e["walk"], 0) + 1
+        if type(e["n"]) is not int or e["n"] != want:
+            out.append(f"{where}: n is {e['n']!r}, not {want}; a walk's rechecks run 1..k in order")
+            continue
+        seen[e["walk"]] = want
+        if e["file"] != f"recheck-{want}.json":
+            out.append(f"{where}: file {e['file']!r} is not recheck-{want}.json")
+            continue
+        if not (isinstance(e["checker_constants_sha256"], str) and HEX64.fullmatch(e["checker_constants_sha256"])
+                and isinstance(e["sha256"], str) and HEX64.fullmatch(e["sha256"])):
+            out.append(f"{where}: its digests are not 64 lowercase hex")
+            continue
+        if not files:
+            continue
+        f = Path(base) / e["walk"] / e["file"]
+        if f.is_symlink() or not f.is_file():
+            out.append(f"{where}: rehearsals/{e['walk']}/{e['file']} is not there")
+        elif hashlib.sha256(f.read_bytes()).hexdigest() != e["sha256"]:
+            out.append(f"{where}: rehearsals/{e['walk']}/{e['file']} is not the bytes its entry names (sha256)")
+    for walk in walks if files else ():
+        folder = Path(base) / walk
+        try:
+            listed = sorted(folder.iterdir()) if folder.is_dir() and not folder.is_symlink() else []
+        except OSError:                    # an id that cannot be a folder here: check() reports its folder missing
+            listed = []
+        for f in listed:
+            m = RECHECK_FILE.fullmatch(f.name)
+            if m and int(m.group(1)) > seen.get(walk, 0):
+                out.append(f"rehearsals/{walk}/{f.name} has no recheck entry in {REGISTER_NAME}")
+    return out
 FIELDS = ("walk", "task", "half", "wording", "arm", "model", "reason", "counted")
 STRING_FIELDS = ("walk", "task", "half", "wording", "arm", "model", "reason")
 WALK_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -186,8 +262,9 @@ def content_problems(base: Path, walks) -> list[str]:
     return out
 
 
-def check(base: Path = REHEARSALS, design: dict | None = None) -> tuple[list[str], int]:
-    """(problems, number of registered walks)."""
+def check(base: Path = REHEARSALS, design: dict | None = None, *, recheck_files: bool = True) -> tuple[list[str], int]:
+    """(problems, number of registered walks). recheck_files=False checks the recheck entries without their files
+    (walk_plan's stand-in folders)."""
     design = design_in_force() if design is None else design
     problems: list[str] = []
     reg = base / REGISTER_NAME
@@ -208,10 +285,12 @@ def check(base: Path = REHEARSALS, design: dict | None = None) -> tuple[list[str
         return [f"rehearsals/{REGISTER_NAME} has a duplicate key {exc.args[0]!r}; each key is written once"], 0
     except ValueError as exc:
         return [f"rehearsals/{REGISTER_NAME} is not JSON: {exc}"], 0
-    if not isinstance(doc, dict) or set(doc) != set(TOP_KEYS):
-        return [f"rehearsals/{REGISTER_NAME}: the top-level keys are exactly {list(TOP_KEYS)}"], 0
-    if type(doc["schema"]) is not int or doc["schema"] != SCHEMA:
-        problems.append(f"rehearsals/{REGISTER_NAME}: schema is {doc['schema']!r}, not {SCHEMA}")
+    if not isinstance(doc, dict) or set(doc) not in (set(TOP_KEYS), set(TOP_KEYS_RECHECKS)):
+        return [f"rehearsals/{REGISTER_NAME}: the top-level keys are exactly {list(TOP_KEYS)} (schema {SCHEMA}) or "
+                f"{list(TOP_KEYS_RECHECKS)} (schema {SCHEMA_RECHECKS})"], 0
+    if set(doc) != set(top_keys(doc["schema"])):
+        problems.append(f"rehearsals/{REGISTER_NAME}: schema is {doc['schema']!r}, and its keys are those of schema "
+                        f"{SCHEMA_RECHECKS if 'rechecks' in doc else SCHEMA}")
     walks = doc["walks"]
     if not isinstance(walks, list):
         return problems + [f"rehearsals/{REGISTER_NAME}: walks is not a list"], 0
@@ -251,6 +330,7 @@ def check(base: Path = REHEARSALS, design: dict | None = None) -> tuple[list[str
         elif name not in TOP_FILES:
             problems.append(f"rehearsals/{name} is a file beside the register, not a walk folder; only "
                             f"{list(TOP_FILES)} sit there")
+    problems += recheck_problems(base, rechecks_of(doc), set(registered), files=recheck_files)
     return problems, len(walks)
 
 
@@ -324,9 +404,12 @@ def history_problems(base: Path, walks, repo: Path) -> list[str]:
             out.append(f"{where}: its history cannot be read ({log.stderr.strip()[:200]})")
             continue
         commits = [line.split("\x1f", 2) for line in log.stdout.splitlines() if line]
-        if len(commits) != 1:
-            out.append(f"{where} is touched by {len(commits)} commits; a walk folder is written once, by its walk "
-                       f"commit, and no later commit rewrites it")
+        later, commits = commits[:-1], commits[-1:]          # newest first: the oldest is the walk commit
+        bad_later = [c for c in later if not _recheck_commit(git, c, rel, reg_rel)]
+        if not commits or bad_later:
+            out.append(f"{where} is touched by {len(later) + len(commits)} commits; a walk folder is written once, by "
+                       f"its walk commit, and then only by recheck commits ({RECHECK_SUBJECT!r}, each adding one "
+                       f"recheck-<n>.json beside the register)")
             continue
         sha, parents, subject = commits[0]
         if subject != drive.WALK_SUBJECT:
@@ -349,15 +432,61 @@ def history_problems(base: Path, walks, repo: Path) -> list[str]:
         if walk not in listed:
             out.append(f"{where}: its commit {sha[:12]} does not register the walk in {REGISTER_NAME}")
             continue
-        at_head = git("rev-parse", "--verify", "-q", f"HEAD:{rel}").stdout.strip()
-        at_walk = git("rev-parse", "--verify", "-q", f"{sha}:{rel}").stdout.strip()
-        if at_head != at_walk:
+        at_head = _tree_without_rechecks(git, "HEAD", rel)
+        at_walk = _tree_without_rechecks(git, sha, rel)
+        if at_head is None or at_head != at_walk:
             out.append(f"{where} at HEAD is not the tree its walk commit {sha[:12]} wrote; a walk's records are "
                        f"never rewritten, by a commit or a merge")
             continue
         dirty = git("status", "--porcelain", "--untracked-files=all", "--", rel + "/").stdout.strip()
         if dirty:
             out.append(f"{where} on disk differs from HEAD: {dirty.splitlines()[0]}")
+    out += rechecks_append_only_problems(git, reg_rel)
+    return out
+
+
+def _recheck_commit(git, commit, rel: str, reg_rel: str) -> bool:
+    """A later commit touching a walk folder is admitted only as a recheck commit: its subject, one parent, and it
+    changes exactly the register and one recheck-<n>.json of that folder, which it adds."""
+    sha, parents, subject = commit
+    if subject != RECHECK_SUBJECT or len(parents.split()) != 1:
+        return False
+    changed = git("diff-tree", "-r", "--no-renames", "--no-commit-id", "--name-status", sha)
+    rows = [ln.split("\t", 1) for ln in changed.stdout.splitlines() if ln]
+    files = [p for st, p in rows if p != reg_rel]
+    return (changed.returncode == 0 and reg_rel in [p for _, p in rows] and len(files) == 1
+            and files[0].startswith(rel + "/") and RECHECK_FILE.fullmatch(files[0][len(rel) + 1:]) is not None
+            and dict((p, st) for st, p in rows)[files[0]] == "A")
+
+
+def _tree_without_rechecks(git, rev: str, rel: str):
+    """The folder's (mode, kind, sha, path) entries at `rev`, recheck files left out; None when unreadable."""
+    got = git("ls-tree", "-r", rev, "--", rel + "/")
+    if got.returncode != 0:
+        return None
+    rows = [ln for ln in got.stdout.splitlines() if ln]
+    return sorted(r for r in rows if not RECHECK_FILE.fullmatch(r.split("\t", 1)[1].rsplit("/", 1)[-1]))
+
+
+def rechecks_append_only_problems(git, reg_rel: str) -> list[str]:
+    """The rechecks list at HEAD starts with the rechecks list of every recheck commit in the history."""
+    def rechecks_at(rev):
+        shown = git("show", f"{rev}:{reg_rel}")
+        try:
+            return rechecks_of(json.loads(shown.stdout, object_pairs_hook=no_duplicate_keys)) \
+                if shown.returncode == 0 else []
+        except (ValueError, DuplicateKey):
+            return []
+    head = rechecks_at("HEAD")
+    log = git("log", "--full-history", "--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)
+    out = []
+    for line in log.stdout.splitlines():
+        sha, _, subject = line.partition("\x1f")
+        if subject == RECHECK_SUBJECT:
+            then = rechecks_at(sha)
+            if head[:len(then)] != then:
+                out.append(f"the rechecks the recheck commit {sha[:12]} registered are not the start of HEAD's: the "
+                           f"rechecks list is append-only")
     return out
 
 

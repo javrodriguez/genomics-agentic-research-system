@@ -3700,8 +3700,9 @@ class WalkRepo(TakeRepo):
                              object_pairs_hook=_walk_register.no_duplicate_keys)
         except ValueError as e:
             raise CommitRefused(f"{reg_rel} at HEAD is not a register: {e}") from None
-        if not isinstance(doc, dict) or set(doc) != set(_walk_register.TOP_KEYS) or not isinstance(doc["walks"], list):
-            raise CommitRefused(f"{reg_rel} at HEAD is not {{schema, walks: [...]}}")
+        if not isinstance(doc, dict) or set(doc) != set(_walk_register.top_keys(doc.get("schema"))) \
+                or not isinstance(doc["walks"], list):      # schema 2 (the recheck-coverage ruling) adds rechecks
+            raise CommitRefused(f"{reg_rel} at HEAD is not {{schema, walks: [...]}} (and rechecks, at schema 2)")
         if any(isinstance(e, dict) and isinstance(e.get("walk"), str)
                and e["walk"].casefold() == entry["walk"].casefold() for e in doc["walks"]):
             raise CommitRefused(f"walk {entry['walk']!r} is already registered; a retry is a new walk id")
@@ -3711,8 +3712,8 @@ class WalkRepo(TakeRepo):
         except DriveRefused as e:
             raise CommitRefused(f"the walk folder is refused: {e}") from None
         takes_mod.require_commit_identity(self.repo)
-        register.write_text(json.dumps({"schema": doc["schema"], "walks": doc["walks"] + [entry]}, indent=2) + "\n",
-                            encoding="utf-8")
+        register.write_text(json.dumps(dict(doc, walks=doc["walks"] + [entry]), indent=2) + "\n",
+                            encoding="utf-8")                # every other key (schema, rechecks) as HEAD has it
         # The register and the folder, as they will be committed, must pass the register's own check, content rule
         # included: a commit the gate would refuse is never made.
         problems, _ = _walk_register.check(register.parent, design)

@@ -48,9 +48,10 @@ checker's events are not recorded (review F: check.json's outside_reach adds the
 depend on the machine's home and checkout, which are named, not bound to a recorded fact); the checker's interpreter prefixes and checkout_roots' `~` spellings are the RECHECKING machine's, so
 a recheck run anywhere but the walk's machine is read for any reason change before it is accepted.
 recheck_state(base, walk) gives the latest committed recheck only when it re-derives to its exact bytes. Coverage
-(pending_walk.checker_standing, read by walk_plan's register-only road, which starts no process and opens only the
-register, grade.json and check.json) does not read rechecks: a rechecked walk still reads stale there until a ruling
-says how a recheck enters coverage (athena battery on b7aca72a, test_walk_plan P6/P7). --check
+(glitch-6b's recheck-coverage ruling, 15 Oct 2026): write_recheck also appends a register entry {walk, file, n,
+checker_constants_sha256, sha256} (register schema 2), committed with the file by commit_recheck; and
+pending_walk.checker_standing reads the walk's latest entry and its file, no git and no process (walk_plan's road),
+never re-deriving it: that proof is this --check, in checks.d. --check
 re-derives only each walk's LATEST recheck (review F: an earlier one was made under earlier constants and would never
 re-derive again); every earlier one is checked for its shape and its place in the supersedes chain.
 """
@@ -77,7 +78,7 @@ REGRADE_FILE = "regrade.json"
 REGRADE_SUBJECT = "Regrade one pending walk; never counted"
 REGRADE_HARNESSES = ("gemini", "codex")      # Codex since Codex slice 3
 RECHECK_PREFIX = "recheck-"
-RECHECK_SUBJECT = "Recheck one walk under the checker constants in force; never counted"
+RECHECK_SUBJECT = walk_register.RECHECK_SUBJECT     # one spelling: walk_register's history check admits it
 RECHECK_HARNESSES = ("claude-code",)        # check_take.HARNESSES_WITH_READERS
 MACHINE_KEYS = ("checkout", "home", "temp_root")
 
@@ -182,7 +183,9 @@ def commit_regrade(walk: str, study: Path = HERE, *, secrets, rules_scanner, hol
                        holdout_matcher=holdout_matcher)
 
 
-def _commit_one(walk: str, name: str, subject: str, study: Path, *, secrets, rules_scanner, holdout_matcher) -> str:
+def _commit_one(walk: str, name: str, subject: str, study: Path, *, secrets, rules_scanner, holdout_matcher,
+                with_register: bool = False) -> str:
+    """Scan and commit exactly the walk's new `name` (and, for a recheck, the register beside it), under `subject`."""
     import takes as takes_mod
     from box import scan_record
     study = Path(study)
@@ -196,17 +199,20 @@ def _commit_one(walk: str, name: str, subject: str, study: Path, *, secrets, rul
     if nrr._git(root, "diff", "--cached", "--name-only"):
         raise RegradeRefused("the index already holds staged changes; a regrade is committed alone")
     takes_mod.require_commit_identity(root)
-    scan = scan_record.scan([(str(path), "ledger")], list(secrets()), rules_scanner=rules_scanner,
+    rels = [rel] + ([nrr._rel(prefix, f"{mode_binding.WALKS_DIR}/{walk_register.REGISTER_NAME}")]
+                    if with_register else [])
+    scan = scan_record.scan([(str(root / r), "ledger") for r in rels], list(secrets()), rules_scanner=rules_scanner,
                             holdout_matcher=holdout_matcher)
     if not scan_record.passed(scan):
         raise RegradeRefused("the commit scan refused the regrade: " + "; ".join(r["why"] for r in scan["refused"]))
-    nrr._git(root, "add", "--", rel)
+    nrr._git(root, "add", "--", *rels)
     staged = nrr._git(root, "diff", "--cached", "--name-only").splitlines()
-    blob = nrr._git(root, "show", f":{rel}", binary=True)
     after = {r["path"]: r["sha256_after"] for r in scan["files"]}
-    if staged != [rel] or after.get(str(path)) != hashlib.sha256(blob).hexdigest():
-        nrr._git(root, "reset", "-q", "--", rel)
-        raise RegradeRefused(f"the staged regrade is not exactly the scanned {rel}: {staged}")
+    if sorted(staged) != sorted(rels) or any(
+            after.get(str(root / r)) != hashlib.sha256(nrr._git(root, "show", f":{r}", binary=True)).hexdigest()
+            for r in rels):
+        nrr._git(root, "reset", "-q", "--", *rels)
+        raise RegradeRefused(f"the staged files are not exactly the scanned {rels}: {staged}")
     with tempfile.NamedTemporaryFile("w", suffix=".msg", delete=False) as fh:
         fh.write(subject + "\n")
         msg = fh.name
@@ -244,6 +250,29 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
             by_walk.setdefault(parts[0], []).append(parts[1])
     for walk, names in sorted(by_walk.items()):
         out += recheck_chain_problems(root, prefix, walk, names, study)
+    out += register_recheck_problems(root, prefix, by_walk)
+    return out
+
+
+def register_recheck_problems(root, prefix, by_walk: dict) -> list:
+    """The register at HEAD names every committed recheck, each with its file's sha256 at HEAD, and nothing else."""
+    reg_rel = nrr._rel(prefix, f"{mode_binding.WALKS_DIR}/{walk_register.REGISTER_NAME}")
+    try:
+        reg = json.loads(nrr._show(root, reg_rel), object_pairs_hook=walk_register.no_duplicate_keys)
+    except (ValueError, nrr.RegistrationRefused, walk_register.DuplicateKey) as e:
+        return [f"the register cannot be read at HEAD: {e}"] if by_walk else []
+    named = {(e.get("walk"), e.get("file")): e for e in walk_register.rechecks_of(reg) if isinstance(e, dict)}
+    out = []
+    for walk, names in sorted(by_walk.items()):
+        for name in names:
+            e = named.pop((walk, name), None)
+            if e is None:
+                out.append(f"walk {walk!r}: {name} has no recheck entry in the register")
+                continue
+            got = hashlib.sha256(nrr._show(root, f"{_walk_rel(prefix, walk)}/{name}")).hexdigest()
+            if e.get("sha256") != got:
+                out.append(f"walk {walk!r}: {name} is not the bytes its register entry names")
+    out += [f"walk {w!r}: the register names {f}, which HEAD does not hold" for (w, f) in sorted(named)]
     return out
 
 
@@ -453,16 +482,32 @@ def write_recheck(walk: str, study: Path = HERE, **kw) -> Path:
     loose = [x for x in loose if not nrr._in_head(root, f"{_walk_rel(prefix, walk)}/{x}")]
     if loose:
         raise RegradeRefused(f"uncommitted recheck(s) {loose} in the walk folder; commit or remove them first")
-    data = regrade_bytes(recheck_doc(walk, n, study, **kw))
+    doc = recheck_doc(walk, n, study, **kw)
+    data = regrade_bytes(doc)
     path = folder / recheck_name(n)
+    register = Path(study) / mode_binding.WALKS_DIR / walk_register.REGISTER_NAME
+    reg_rel = nrr._rel(prefix, f"{mode_binding.WALKS_DIR}/{walk_register.REGISTER_NAME}")
+    head_bytes = nrr._show(root, reg_rel)
+    if register.read_bytes() != head_bytes:
+        raise RegradeRefused(f"{walk_register.REGISTER_NAME} on disk is not HEAD's; a recheck appends to HEAD's")
+    reg = json.loads(head_bytes, object_pairs_hook=walk_register.no_duplicate_keys)
+    if set(reg) != set(walk_register.top_keys(reg.get("schema"))):
+        raise RegradeRefused(f"{walk_register.REGISTER_NAME} at HEAD is not a register of schema 1 or 2")
+    entry = {"walk": walk, "file": recheck_name(n), "n": n, "checker_constants_sha256": doc["checker_constants_sha256"],
+             "sha256": hashlib.sha256(data).hexdigest()}
+    # The recheck-coverage ruling: the first recheck bumps the register to schema 2, which adds `rechecks`.
+    reg = {"schema": walk_register.SCHEMA_RECHECKS, "walks": reg["walks"],
+           "rechecks": walk_register.rechecks_of(reg) + [entry]}
     with open(path, "xb") as fh:
         fh.write(data)
+    register.write_text(json.dumps(reg, indent=2) + "\n", encoding="utf-8")
     return path
 
 
 def commit_recheck(walk: str, n: int, study: Path = HERE, *, secrets, rules_scanner, holdout_matcher=None) -> str:
+    """Scan and commit the walk's recheck-<n>.json and the register's new entry, together, under RECHECK_SUBJECT."""
     return _commit_one(walk, recheck_name(n), RECHECK_SUBJECT, study, secrets=secrets, rules_scanner=rules_scanner,
-                       holdout_matcher=holdout_matcher)
+                       holdout_matcher=holdout_matcher, with_register=True)
 
 
 def committed_rechecks(walk: str, study: Path) -> int:

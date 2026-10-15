@@ -116,9 +116,16 @@ def checker_standing(base, walk: str):
     if not (isinstance(events, dict) and set(events) == {"outside_reach"} and type(events["outside_reach"]) is int
             and events["outside_reach"] >= 0):
         return "check unreadable"
+    latest = latest_recheck(base, walk)      # the recheck-coverage ruling (glitch-6b, 15 Oct 2026)
+    if isinstance(latest, str):
+        return latest
+    if latest is not None:
+        check = dict(check, checker_reasons=latest["checker_reasons"],
+                     checker_constants_sha256=latest["checker_constants_sha256"])
     import routing                        # review MINOR 2: every reason a str of the pre-registered vocabulary
     vocabulary = routing.load_table()["operator_reasons"]
-    if not all(isinstance(r, str) and r in vocabulary for r in check["checker_reasons"]):
+    if not isinstance(check["checker_reasons"], list) or \
+            not all(isinstance(r, str) and r in vocabulary for r in check["checker_reasons"]):
         return "check unreadable"
     bound = [r for r in check["checker_reasons"] if r in check_take.CONSTANT_BOUND_REASONS]
     if bound:
@@ -130,6 +137,46 @@ def checker_standing(base, walk: str):
     if check.get("checker_constants_sha256") != now:
         return "stale: checked under other checker constants; regrade it"
     return None
+
+
+def latest_recheck(base, walk: str):
+    """The recheck-coverage ruling (glitch-6b, 15 Oct 2026): the walk's LATEST recheck entry in the register, read with
+    no git and no process (walk_plan's register-only road, P7), only the register and the recheck file opened. None
+    when the register names none; the recheck file's {checker_reasons, checker_constants_sha256} when the file is
+    there, is the bytes the entry names (sha256) and carries the entry's digest; else why the walk counts nothing
+    (a str). Whether the recheck matches a fresh checker run on committed bytes is walk_regrade.py --check's, in
+    checks.d, never run here."""
+    import hashlib
+    import json
+    from pathlib import Path
+    import walk_register
+    try:
+        reg = json.loads((Path(base) / walk_register.REGISTER_NAME).read_bytes(),
+                         object_pairs_hook=walk_register.no_duplicate_keys)
+    except FileNotFoundError:
+        return None                       # no register here (a bare folder of walk records): nothing supersedes
+    except (OSError, ValueError, walk_register.DuplicateKey):
+        return "register unreadable"
+    entries = [e for e in walk_register.rechecks_of(reg) if isinstance(e, dict) and e.get("walk") == walk]
+    if not entries:
+        return None
+    e = entries[-1]
+    if not isinstance(e.get("file"), str) or walk_register.RECHECK_FILE.fullmatch(e["file"]) is None:
+        return "recheck entry unreadable"
+    try:
+        raw = (Path(base) / walk / e["file"]).read_bytes()
+    except OSError:
+        return f"recheck file missing: {e['file']}"
+    if hashlib.sha256(raw).hexdigest() != e.get("sha256"):
+        return f"recheck file differs from its register entry: {e['file']}"
+    try:
+        doc = json.loads(raw)
+    except ValueError:
+        return "recheck unreadable"
+    if not isinstance(doc, dict) or doc.get("checker_constants_sha256") != e.get("checker_constants_sha256") \
+            or doc.get("walk") != walk or doc.get("n") != e.get("n"):
+        return f"recheck file does not carry its register entry's walk, ordinal and digest: {e['file']}"
+    return {"checker_reasons": doc.get("checker_reasons"), "checker_constants_sha256": doc["checker_constants_sha256"]}
 
 
 def uncounted_walks(base, walks) -> dict:

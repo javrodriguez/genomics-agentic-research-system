@@ -26,3 +26,4 @@ python3 -B -W ignore evals/gap-study-4/tests/test_drive_box_seams.py
 python3 -B -W ignore evals/gap-study-4/tests/test_walk_grade_seam.py
 python3 -B -W ignore evals/gap-study-4/tests/test_awareness_furniture.py
 python3 -B -W ignore evals/gap-study-4/tests/test_auto_mode.py
+python3 -B -W ignore evals/gap-study-4/tests/test_recheck_coverage.py

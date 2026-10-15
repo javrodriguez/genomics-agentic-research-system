@@ -17,7 +17,7 @@ real walk record is read.
                 and the reasons added and removed.
   RC-machine    the walk's machine is named exactly {checkout, home, temp_root}, absolute; anything else refuses.
   RC-state      walk_regrade.recheck_state: the latest committed recheck, verified by re-deriving it; an edited one
-                refuses. Coverage (pending_walk.checker_standing) still reads check.json alone (left for a ruling).
+                refuses. Coverage (pending_walk.checker_standing) reads the register's latest recheck entry.
   RC-check      walk_regrade's --check road (regrade_problems) re-derives every committed recheck, and names an edited
                 one.
 """
@@ -57,6 +57,11 @@ def git(root, *args):
     out = subprocess.run(["git", "-C", str(root), *args], capture_output=True)
     assert out.returncode == 0, out.stderr.decode()
     return out.stdout.decode()
+
+
+def twr_mb():
+    import mode_binding
+    return mode_binding
 
 
 def folder_bytes(root: Path, walk: str) -> dict:
@@ -126,12 +131,21 @@ class TheRecheck(twr.Case):
             with self.assertRaises(wr.RegradeRefused):            # the next one is refused while one is loose
                 p = wr.write_recheck(WALK, w.root, machine=r.machine, design_for=r.design_for())
                 wr.write_recheck(WALK, w.root, machine=r.machine, design_for=r.design_for())
-            p.unlink()
+            p.unlink()                                             # and the register goes back to HEAD's
+            git(w.root, "checkout", "--", f"{twr_mb().WALKS_DIR}/register.json")
             self.must("RC-files", r.write_and_commit)
             after = folder_bytes(w.root, WALK)
             for name, got in before.items():
                 self.assertEqual(after[name], got, f"RC-files: {name} changed")
             self.assertEqual(sorted(set(after) - set(before)), ["recheck-1.json", "recheck-2.json"])
+            import walk_register
+            reg = json.loads((w.root / twr_mb().WALKS_DIR / walk_register.REGISTER_NAME).read_text())
+            self.assertEqual((reg["schema"], [(e["walk"], e["n"], e["file"]) for e in reg["rechecks"]]),
+                             (2, [(WALK, 1, "recheck-1.json"), (WALK, 2, "recheck-2.json")]))
+            base = w.root / twr_mb().WALKS_DIR
+            self.assertEqual(walk_register.check(base, walk_register.design_in_force(w.root))[0], [])
+            self.assertEqual(walk_register.history_problems(base, [WALK], w.root), [],
+                             "RC-files: the register's history check admits the recheck commits")
             two = json.loads(after["recheck-2.json"][0])
             self.assertEqual((two["n"], two["supersedes"], two["was"]["file"]), (2, "recheck-1.json", "recheck-1.json"))
             log = git(w.root, "log", "--format=%s", "-2").splitlines()
@@ -192,9 +206,8 @@ class TheRecheck(twr.Case):
                     wr.recheck_doc(WALK, 1, w.root, machine=bad, design_for=r.design_for())
 
     def test_rc_state_reads_only_a_verified_recheck(self):
-        """recheck_state verifies the latest committed recheck by re-deriving it. Coverage (pending_walk.checker_standing,
-        read by walk_plan's register-only, no-process road) still reads check.json alone, so a recheck does not yet
-        lift a stale walk there: how it should is left for a ruling (the battery's test_walk_plan P7 binds that road)."""
+        """recheck_state verifies the latest committed recheck by re-deriving it; coverage
+        (pending_walk.checker_standing) reads the register's latest recheck entry and its file, never git."""
         import mode_binding as mb
         import pending_walk
         with twr.study() as w:
@@ -208,8 +221,10 @@ class TheRecheck(twr.Case):
                 self.must("RC-state", r.write_and_commit, design_for=real)
                 rec = wr.recheck_state(base, WALK)
                 self.assertEqual(rec["checker_constants_sha256"], r.ct.checker_constants_sha256())
-                stale = pending_walk.checker_standing(base, WALK)
-                self.assertTrue(stale and stale.startswith("stale"), f"RC-state: coverage reads {stale!r}")
+                got = pending_walk.checker_standing(base, WALK)          # the register's latest recheck counts
+                bound = [x for x in rec["checker_reasons"] if x in r.ct.CONSTANT_BOUND_REASONS]
+                self.assertEqual(got, f"constant-bound checker reason: {', '.join(bound)}" if bound else None,
+                                 "RC-state: the recheck under the constants in force sets the standing")
                 p = base / WALK / "recheck-1.json"               # an edited recheck (committed) is refused
                 p.write_bytes(p.read_bytes().replace(b'"n": 1', b'"n": 1 ', 1))
                 git(w.root, "commit", "-q", "-am", "an edited recheck")
@@ -217,6 +232,9 @@ class TheRecheck(twr.Case):
                     wr.recheck_state(base, WALK)
                 self.assertTrue(any("recheck-1.json" in x for x in wr.regrade_problems(w.root)),
                                 "RC-check: --check did not name the edited recheck")
+                import walk_register
+                self.assertTrue(walk_register.history_problems(base, [WALK], w.root),
+                                "RC-state: a later commit editing a recheck passes the register's history check")
 
     def test_rc_check_re_derives_every_committed_recheck(self):
         with twr.study() as w:
