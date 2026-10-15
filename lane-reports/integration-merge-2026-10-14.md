@@ -416,3 +416,23 @@ Written by a fresh integration window, under glitch-06.
   - **Harness-owned, known (3 lines):** test_walk_builders (the 5 reds above, routed by glitch-06); `--witnesses` (the stale `scanner-class-by-name` anchor); generated shard 14/16, "LISTED BUT KILLED: walk_builders.remove_run_tree:delete:L6:C4:e3e767f5", which passes at `1f032586` alone, so the merged tree kills a mutant listed as equivalent.
   - **Harness-owned, open since `c2d03086` (4 lines):** test_codex_adapter generated mutants (`native_session_rel`, 2 survivors), and test_gemini_adapter generated mutants shards 1, 2 and 16 (`gemini_session_rel`).
 - `gap4-merge-40acb6d-20261014T194627Z` was lost to the athena reboot; it has no verdict.
+
+## Re-merge onto box 14670435 and harness 27ade10a (14 Oct, 21:40-21:52 EDT, coordinator glitch-5a)
+
+- `f1f9b6eb`: box `14670435` (`06775d56..14670435`, the Codex exec branch behind the closed gate and its folds, reviewed). No conflict hunk.
+- `5e722095`: harness `27ade10a` (`86c60dba..27ade10a`, reviewed PASS). The harness branch tip had moved to `be4bbdca`, but `27ade10a` is the head glitch-5a named. Three conflict hunks, resolved as the harness lane rehearsed and glitch-5a ruled:
+  - `walk_builders.py` `login_name`: the ruling's `NO_LOGIN` for a Codex row (harness), not box's `CODEX_SUBSCRIPTION_NOT_READY` refusal.
+  - `walk_builders.py`, after `login_secrets`: both kept, box `lease_secrets` and then harness `CodexLeaseRoad`, which calls it.
+  - `tests/test_walk_builders.py`, the B2.login Codex case: the harness expectation ("its login is the lease"), which follows from `NO_LOGIN`.
+  - Check: the merged `walk_builders.py` differs from `27ade10a` only by box `lease_secrets`. The box side's other change since the base (`rules_scanner`) was already resolved in `de6616a3`.
+- On `5e722095`:
+  - `build_draft --check` ok; `copy_manifest --check` ok, 414 files; `freeze --check` ok, 415 paths; `batch --check` ready.
+  - T52: 12 secret-shaped paths, all exempt at aegis `136190c`, none new.
+- Mac (light-ok before each), all OK: test_walk_builders 56, test_vendor_take_records 4, test_vendor_checker_road 5, test_codex_identity 5, test_pending_codex_walk 10, test_codex_adapter 48, test_gemini_adapter 143, test_claude_code_adapter 27, test_env_allowlist 29, test_run_take 58, test_preflight 59, test_scan_record 80, test_build_draft 48, test_routing 282.
+- Harness integration contract, proved with the real box symbols against the harness's B13 boundary fakes. A scratch probe drove the fakes' contract with their synthetic lease values; 14 checks, all PASS:
+  - The gate: `CODEX_SUBSCRIPTION_READY` is `False`. `run_take.NO_LOGIN == walk_builders.NO_LOGIN == "-"`, and `LOGIN_VARIABLE[CODEX]` is `NO_LOGIN`. `login_name(CODEX)` is `NO_LOGIN`. `preflight.LEASE_CREDENTIAL[CODEX]` is `auth.json`.
+  - The real `place_lease`: it refuses `NotReady` while the gate is closed. With the gate open it returns `<cfg>/auth.json` as a regular file, mode 600, with the same bytes, and it never writes over an existing lease (`LoginRefused`).
+  - The real `lease_secrets`: it reads access and refresh at take start, keeps them and adds a refreshed value, and refuses a missing file (`LoginError`).
+  - `CodexLeaseRoad` works over the real pair, and `codex_gate_problem` reads the real closed gate.
+- Known and not fought, on glitch-5a's word: the harness passes `login_file` `"-"` where the box exec needs the placed lease path. It fails closed, and the harness fold is queued.
+- Battery: `gap4-merge-5e72209-20261015T015202Z`, solo.
