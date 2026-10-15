@@ -38,8 +38,11 @@ DockerRuntime and every other value only the real box can tell (next-slices plan
 checker's PENDING constants, the turn budgets, the run tree's exclusions in run_location). Nothing here fills any of
 them: a value is either measured and recorded where it lives, or the command line refuses.
 
-Claude walks only: walk_driver admits only the production ClaudeCodeAdapter (drive A1), so a row of another harness
-is refused before anything is built. No model, no network and no spend here; the walk itself is walk_runner's.
+Claude Code and, on the lease road, Codex: a Codex row has no login file (login_name gives run_take.NO_LOGIN); prepare
+refuses it while run_take.CODEX_SUBSCRIPTION_READY is closed or its lease source is missing, and its walk places the
+lease (run_take.place_lease) and reads it (lease_secrets) through CodexLeaseRoad, whose secrets() the walk's driver
+and its WalkRepo both get. A Gemini row is refused before anything is built. No model, no network and no spend here;
+the walk itself is walk_runner's.
 """
 from __future__ import annotations
 
@@ -61,6 +64,9 @@ NAMES = ("runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_
          "cgroup_dir_for", "rules_scanner", "login_path", "agent_version", "table", "pin_for", "design_for",
          "budgets", "run_tree_origin", "run_tree_exclude", "clock", "sleep", "ownership", "settings_guard",
          "machine_gate")
+# Values only a row of one harness needs (the Codex lease road, glitch-06, 14 Oct 2026): known to the command line, so a
+# set may hold them, but never a reason to refuse every walk; prepare refuses a Codex row while its value is missing.
+ROW_NAMES = ("lease_path",)
 CELL = ("task", "half", "wording", "arm", "model")
 # TakeSpec.resources: the take container's capacity POLICY, never a measurement (box lane report live-box-2026-10-13.md,
 # "TakeSpec.resources: values only, for walk_builders' take_spec", rule R-RES from athena's capacity and three
@@ -116,13 +122,27 @@ def identity_for(prepared: dict):
 
 
 # ------------------------------------------------------------------------------------------------ the login file
+# run_take.NO_LOGIN (box 41428177, 9d4bfd40): a Codex row has no environment login; its login is the lease, placed in
+# the take's config folder by run_take.place_lease and read for the scans by lease_secrets (the Codex lease road).
+NO_LOGIN = "-"
+
+
 def login_name(harness) -> str:
+    """The harness's login variable; NO_LOGIN for a Codex row (the lease road), which no login-file reader takes."""
     from box import run_take as rt
     if harness == rt.CODEX:
-        raise BuilderRefused(rt.CODEX_SUBSCRIPTION_NOT_READY)
+        return NO_LOGIN
     if harness not in rt.LOGIN_VARIABLE:
         raise BuilderRefused(f"harness {harness!r} has no login variable in run_take.LOGIN_VARIABLE")
-    return rt.LOGIN_VARIABLE[harness]
+    name = rt.LOGIN_VARIABLE[harness]
+    if name == NO_LOGIN:
+        raise BuilderRefused(f"harness {harness!r}: only a Codex row has no environment login")
+    return name
+
+
+def _no_login_file(what: str):
+    raise BuilderRefused(f"a Codex row has no login file ({what}): its login is the lease (run_take.place_lease, "
+                         f"walk_builders.lease_secrets)")
 
 
 def login_file_by_name(path, harness) -> str:
@@ -132,6 +152,8 @@ def login_file_by_name(path, harness) -> str:
     descriptor's device, inode and mode must be the checked path's (W12B-R1-1)."""
     from box import run_take as rt
     name = login_name(harness)
+    if name == NO_LOGIN or path == NO_LOGIN:
+        _no_login_file("login_file_by_name")
     if not isinstance(path, str) or not os.path.isabs(path):
         raise BuilderRefused("the login file is named by an absolute path")
     try:
@@ -188,6 +210,8 @@ def login_secrets(login_file: str, harness):
     from box import run_take as rt
     from box import scan_record
     name = login_name(harness)
+    if name == NO_LOGIN or login_file == NO_LOGIN:
+        _no_login_file("login_secrets")
 
     def secrets():
         return [("token", scan_record.read_login(login_file, name, allowed=tuple(rt.LOGIN_VARIABLE.values())))]
@@ -211,6 +235,60 @@ def lease_secrets(auth_path: str):
                 seen.append(v)
         return [("token", v) for v in seen]
     return secrets
+
+# ------------------------------------------------------------------------------------------------ the Codex lease
+# glitch-06's queue (14 Oct 2026, window 2), the box contract of live-box-2026-10-13.md ("For the harness lane: the
+# run_take contract to call"): after make_config_dir and before launch, dst = run_take.place_lease(lease, cfg), then
+# secrets = lease_secrets(dst), the take-start read (no lease file, no take); that one secrets() goes to both the
+# walk's driver and its WalkRepo. While run_take.CODEX_SUBSCRIPTION_READY is False a Codex row stops before anything
+# is written. The refresh rule (ruled): the token-refresh endpoint is never in a take's egress; a refresh happens on the
+# host, between turns, and is followed by a secrets() call (CodexLeaseRoad.refreshed) that adds the refreshed values.
+def codex_gate_problem():
+    """None while run_take's Codex lease gate is open; else why a Codex row stops (closed, or absent from this tree)."""
+    from box import run_take as rt
+    ready = getattr(rt, "CODEX_SUBSCRIPTION_READY", None)
+    if ready is True:
+        return None
+    if ready is None:
+        return "the box's Codex lease gate (run_take.CODEX_SUBSCRIPTION_READY) is not on this tree"
+    return f"the Codex lease gate is closed: {getattr(rt, 'CODEX_SUBSCRIPTION_NOT_READY', 'not ready')}"
+
+
+class CodexLeaseRoad:
+    """One Codex take's lease: placed into the take's config folder by run_take.place_lease (place, the driver's
+    spec_for hook, after make_config_dir and before the settings baseline, the grant and the launch), then read at
+    once by lease_secrets. secrets() is that read's secrets(), handed to the driver and to WalkRepo alike; before a
+    lease is placed it refuses, so no scan ever runs without the lease's values."""
+
+    def __init__(self, lease_src):
+        if not isinstance(lease_src, str) or not os.path.isabs(lease_src):
+            raise BuilderRefused(f"the Codex lease source is not an absolute path: {lease_src!r}")
+        self.lease_src, self.placed, self._secrets = lease_src, None, None
+
+    def place(self, config_dir: str) -> str:
+        from box import run_take as rt
+        place = getattr(rt, "place_lease", None)
+        read = globals().get("lease_secrets")          # the box lane's take-start reader (b9f876b5), this module's
+        if not callable(place) or not callable(read):
+            raise BuilderRefused("the box's lease road (run_take.place_lease, walk_builders.lease_secrets) is not on "
+                                 "this tree")
+        if self.placed is not None:
+            raise BuilderRefused(f"a lease is already placed for this walk: {self.placed}")
+        dst = place(self.lease_src, config_dir)
+        self._secrets = read(dst)                       # the take-start read: no lease file, no take
+        self.placed = dst
+        return dst
+
+    def secrets(self) -> list:
+        if self._secrets is None:
+            raise BuilderRefused("no lease placed: a Codex take's secrets exist only after run_take.place_lease")
+        return self._secrets()
+
+    def refreshed(self) -> list:
+        """After a host-side refresh, between turns (the refresh rule): the take's secrets, the refreshed values
+        added (lease_secrets re-reads auth.json and keeps every value it has read)."""
+        return self.secrets()
+
 
 # ------------------------------------------------------------------------------------------------ the counters
 # glitch-06's queue item 2 (14 Oct 2026): the take container's cgroup folder and the runtime's uid map are read at run
@@ -470,6 +548,8 @@ def production_builders() -> dict:
         "lock_path": Missing(f"the take lock (box/image.lock, pinned at the bring-up): {box}"),
         "hosts": Missing(f"preflight's hosts mapping: {box}"),
         "login_path": walk_login_path(),
+        "lease_path": Missing("the Codex lease source: Javier's Codex2 login, registered by the box lane; until then "
+                              "run_take.CODEX_SUBSCRIPTION_READY stays closed (a Codex row only)"),
         "agent_version": Missing("the Claude Code version the walk runs: prereg-draft.json's version_pins are "
                                  "PENDING until a walk measures them"),
         "budgets": Missing("the turn budget (check_take.CHECKER_CONSTANTS budgets.turn_timeout_s), the quiescence cap "
@@ -512,7 +592,7 @@ def missing(builders: dict) -> list[tuple[str, str]]:
     out = [(n, "absent from the builder set") for n in NAMES if n not in builders]
     out += [(n, builders[n].why) for n in NAMES if isinstance(builders.get(n), Missing)]
     out += [(n, "present but None") for n in NAMES if n in builders and builders[n] is None]   # W12B-R1-2
-    out += [(n, "not a builder the command line knows") for n in sorted(set(builders) - set(NAMES))]
+    out += [(n, "not a builder the command line knows") for n in sorted(set(builders) - set(NAMES) - set(ROW_NAMES))]
     order = {n: i for i, n in enumerate(NAMES)}
     return sorted(out, key=lambda nw: order.get(nw[0], len(NAMES)))
 
@@ -538,10 +618,20 @@ def prepare(builders: dict, args) -> tuple[dict, str, Path]:
     cell = {k: getattr(args, k) for k in CELL}
     row = walk_row(args.walk, cell, builders["agent_version"], prereg.load()["rows"])
     harness = row["agent"]["harness"]
-    if harness != rt.CLAUDE_CODE:
-        raise BuilderRefused(f"harness {harness!r}: the walk driver admits only Claude Code (drive A1); arms O and "
-                             f"G wait for their adapters' admission")
-    login = login_file_by_name(builders["login_path"], harness)
+    if harness == rt.CODEX:                     # the lease road: never a login file, never login_file_by_name
+        gate = codex_gate_problem()
+        if gate:
+            raise BuilderRefused(f"harness {harness!r}: {gate}")
+        lease = builders.get("lease_path")
+        if isinstance(lease, Missing) or not isinstance(lease, str) or not os.path.isabs(lease):
+            why = lease.why if isinstance(lease, Missing) else f"not an absolute path: {lease!r}"
+            raise BuilderRefused(f"harness {harness!r}: the Codex lease source is missing: {why}")
+        login = NO_LOGIN
+    elif harness != rt.CLAUDE_CODE:
+        raise BuilderRefused(f"harness {harness!r}: the walk driver admits Claude Code and, on the lease road, "
+                             f"Codex; arm G waits for its adapter's admission")
+    else:
+        login = login_file_by_name(builders["login_path"], harness)
     repo, commit = builders["run_tree_origin"]
     return row, login, build_run_tree(args.walk, repo=repo, commit=commit, exclude=builders["run_tree_exclude"])
 
@@ -557,11 +647,23 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: 
     record, source = build_walk_fixture(row, tree, project)
     ident = walk_identity(row["walk"], source=source, fixture=record, gars_tree_sha=check_take.GARS_TREE_SHA)
     root = Path(drive._mode_binding.HERE)
-    secrets = login_secrets(login, row["agent"]["harness"])
+    from box import run_take as rt
+    if row["agent"]["harness"] == rt.CODEX:         # the lease road: placed after make_config_dir, before launch
+        lease = CodexLeaseRoad(builders["lease_path"])
+        secrets = lease.secrets
+
+        def spec_for(r, cfg):
+            lease.place(cfg)
+            return builders["take_spec"](r, cfg, str(tree))
+    else:
+        secrets = login_secrets(login, row["agent"]["harness"])
+
+        def spec_for(r, cfg):
+            return builders["take_spec"](r, cfg, str(tree))
     budget_s, finalize_wait_s, poll_s = builders["budgets"]
     driver = drive.walk_driver(
         runtime=builders["runtime"], root=str(root), config_parent=builders["config_parent"],
-        spec_for=lambda r, cfg: builders["take_spec"](r, cfg, str(tree)),
+        spec_for=spec_for,
         sidecar_for=lambda r, ev: builders["sidecar_for"](r, ev, str(tree)), proxy=builders["proxy"],
         lock_path=builders["lock_path"], hosts=builders["hosts"], login_file=login,
         counters_for=counters_reader(builders["cgroup_dir_for"]), pin_for=builders["pin_for"],

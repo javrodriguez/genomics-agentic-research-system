@@ -1123,6 +1123,21 @@ def a12_executed(mod, p):
     return out
 
 
+def box_view(home: Path):
+    """A faithful stand-in for TakeDriver.config_view over a scratch config folder: operator_list one level as
+    (name, kind), a link listed as one (never followed), None for a folder that is absent; operator_read bytes or None."""
+    def lister(rel):
+        d = home / rel
+        if not d.is_dir():
+            return None
+        return [(e.name, "link" if e.is_symlink() else "dir" if e.is_dir() else "file") for e in d.iterdir()]
+
+    def reader(rel):
+        f = home / rel
+        return f.read_bytes() if f.is_file() and not f.is_symlink() else None
+    return lister, reader
+
+
 @guarded("A13-native", GA_API)
 def a13_native(mod, p):
     """Live harness 3c: the native session file is the one under GEMINI_CLI_HOME named by turn 1's session id."""
@@ -1134,9 +1149,17 @@ def a13_native(mod, p):
     chats.mkdir(parents=True)
     sid = json.loads(fixture("turn1-tools.jsonl").splitlines()[0])["session_id"]
     want = chats / f"session-2026-10-14T05-00-{sid[:8]}.jsonl"
-    want.write_text("{}\n")
+    want.write_text('{"this": "take"}\n')
     if a.native_session_path(str(home)) != str(want):
         out.append(f"{p}: the native session located is not {want.name}")
+    # Drive-wiring review MAJOR 1's road (athena sweep, 14 Oct: native_session_rel's return deleted or None survived):
+    # the same file through the box's listing, as the path relative to GEMINI_CLI_HOME, read back as this take's.
+    lister, reader = box_view(home)
+    rel = a.native_session_rel(lister)
+    if rel != f".gemini/tmp/project-1/chats/{want.name}":
+        out.append(f"{p}: the native session located through the box's listing is {rel!r}")
+    elif reader(rel) != want.read_bytes():
+        out.append(f"{p}: the located native session does not read as this take's")
     return out
 
 

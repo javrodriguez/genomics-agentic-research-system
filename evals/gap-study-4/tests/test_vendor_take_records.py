@@ -12,6 +12,7 @@ Claude takes are unchanged. Fakes and synthetic strings only.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -39,6 +40,35 @@ class VendorAdapter(tns.NativeAdapter):
     """NativeAdapter under a vendor harness name (the driver checks the adapter's name against the row's harness)."""
 
 
+# The box's Codex lease postflight (box 34b1a3d2, glitch-06's ruling) refuses a lease home without exactly one registered
+# auth.json, so a Codex stub take models the real road: a synthetic registered lease file planted in the take's config
+# folder before the grant (mode 600, the reading user's, JSON with synthetic access and refresh tokens of 20+
+# characters and no vendor prefix), its values in the take's secrets as lease_secrets puts them. On a tree without that
+# postflight (no preflight.LEASE_CREDENTIAL) an auth.json is a credential-file refusal, so nothing is planted there.
+LEASE_ACCESS = "synthetic-stub-lease-one-" + "a" * 12
+LEASE_REFRESH = "synthetic-stub-lease-two-" + "b" * 12
+
+
+def plant_lease(rig) -> bool:
+    """Wrap the rig's driver so a Codex take's config folder holds the synthetic registered lease; True when planted."""
+    from box import preflight
+    if not hasattr(preflight, "LEASE_CREDENTIAL"):
+        return False
+    spec_for, secrets = rig.driver.spec_for, rig.driver.secrets
+
+    def spec(row, cfg):
+        if row["agent"]["harness"] == tbi.rt.CODEX:
+            fd = os.open(os.path.join(cfg, preflight.LEASE_CREDENTIAL[tbi.rt.CODEX]),
+                         os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, "w") as fh:
+                json.dump({"tokens": {"access_token": LEASE_ACCESS, "refresh_token": LEASE_REFRESH}}, fh)
+        return spec_for(row, cfg)
+    rig.driver.spec_for = spec
+    rig.driver.secrets = rig.repo.secrets = lambda: list(secrets()) + [("token", LEASE_ACCESS),
+                                                                        ("token", LEASE_REFRESH)]
+    return True
+
+
 def drive_vendor(test, harness, *, native=True, fail_at=None):
     tbi.need(test, "TakeDriver", "TakeRepo", "DriveRefused", "sidecar_health")
     root_cm = tbi.scratch_repo()
@@ -59,6 +89,7 @@ def drive_vendor(test, harness, *, native=True, fail_at=None):
         rig.adapters.append(cls(rig.box, take, rig.turns, **kw))
         return rig.adapters[-1]
     rig.adapter_for = rig.driver.adapter_for = make
+    plant_lease(rig)
     row = tbi.row(1, agent={"harness": harness, "version": tbi.PROFILE["version"]})
     with tbi.spying(rig.spy):
         cid = rig.driver.launch(row)

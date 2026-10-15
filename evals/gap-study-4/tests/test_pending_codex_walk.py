@@ -148,6 +148,62 @@ class CodexPendingWalk(unittest.TestCase):
         self.assertEqual(tpw.git(road.root, "log", "-1", "--format=%s"), road.drive.WALK_SUBJECT)
 
 
+class TokenNamedBox(CodexBox):
+    """CodexBox whose agent also makes, in its own config folder (the lease home), a folder named with the lease's
+    synthetic access token: a name postflight's credential rule cannot see, carried by postflight.json's listing."""
+
+    def run(self, argv, env=None, timeout=None):
+        a = list(argv)
+        if a[:2] == ["docker", "exec"] and "codex" in a and a[-1] != "--version":
+            import test_walk_builders as twb
+            take = [x for x in a if self.containers.get(x, {}).get("kind") == "take"][0]
+            cfg = [m for m in self.specs[take] if m.startswith("type=bind,source=")
+                   and m.endswith("target=" + rt.CONFIG_MOUNT)][0]
+            cfg = cfg[len("type=bind,source="):-len(",target=" + rt.CONFIG_MOUNT)]
+            with tbi.FakeBox.as_container(cfg):
+                (Path(cfg) / twb.ACCESS).mkdir(exist_ok=True)
+        return super().run(argv, env=env, timeout=timeout)
+
+
+class CodexLeaseCommitScan(unittest.TestCase):
+    def test_a_token_named_file_in_the_lease_home_refuses_the_commit(self):
+        """NIT 5 (the box review of b9f876b5): a Codex walk on the lease road (walk_builders.CodexLeaseRoad: the lease
+        placed in the driver's spec_for, its values in the driver's and WalkRepo's secrets) whose lease home holds a
+        folder named with the access token: drive's own scan holds the walk for postflight.json (an exact-value token
+        hit in a record that is never masked), nothing is committed, and postflight.json is left as written. The box's
+        place_lease and lease_secrets are faked at the boundary only where this tree lacks them (tpw.Road._lease_road);
+        where its preflight lacks the box's LEASE_CREDENTIAL, postflight is wrapped to admit exactly auth.json, as the
+        box's lease postflight does (2fd8215a)."""
+        import contextlib
+        import test_codex_adapter as tca
+        import test_walk_builders as twb
+        from box import preflight
+        road = tpw.Road(self, harness="codex", box=TokenNamedBox(), run_turn=tca.stub_run_turn, lease=True,
+                        row={"arm": "O", "model": MODEL, "agent": {"harness": "codex", "version": CLI}})
+        with contextlib.ExitStack() as stack:
+            if not hasattr(preflight, "LEASE_CREDENTIAL"):
+                real = preflight.postflight
+
+                def postflight(config_dir, harness):
+                    post = real(config_dir, harness)
+                    hits = [p for p in post["recorded"]["listing"] if p != "auth.json"
+                            and (Path(p).name == "auth.json" or preflight.CREDENTIAL_LIKE.search(Path(p).name))]
+                    ok = not hits
+                    detail = "no credential file" if ok else f"credential-like files present: {hits}"
+                    return dict(post, ok=ok, checks=[dict(post["checks"][0], ok=ok, detail=detail)])
+                stack.enter_context(mock.patch.object(preflight, "postflight", postflight))
+            head = tpw.git(road.root, "rev-parse", "HEAD")
+            got = road.walk()
+        self.assertIsNotNone(road.lease.placed, "the lease was never placed")
+        self.assertEqual(got[0]["state"], "held", got)
+        self.assertRegex(got[0]["why"], r"the drive scan refused the take: \S*/postflight\.json:\d+ \(token\): a token "
+                                        r"value in a preflight file, which cannot be masked", got)
+        self.assertEqual(tpw.git(road.root, "rev-parse", "HEAD"), head, "a walk carrying the token was committed")
+        self.assertNotIn(twb.ACCESS, json.dumps(got, default=str), "the token reached the result")
+        self.assertIn(twb.ACCESS.encode(), (road.folder / "postflight.json").read_bytes(),
+                      "postflight.json was masked or rewritten")
+
+
 class CodexRegistration(unittest.TestCase):
     def test_it_registers_and_each_single_mutation_unregisters(self):
         road = codex_road(self)

@@ -251,8 +251,14 @@ FIRST_WALK_ACCEPTANCE = ("a turn that uses the Agent tool shows its subagent's a
 def side_calls(read: dict, model: str) -> dict:
     """{side model: {inputTokens, outputTokens}} for the result's modelUsage keys beside the pin's (as printed)."""
     usage = (read.get("result") or {}).get("modelUsage") or {}
-    return {k: {t: v.get(t) for t in ("inputTokens", "outputTokens")} for k, v in usage.items()
+    return {k: {t: _count(v.get(t)) for t in ("inputTokens", "outputTokens")} for k, v in usage.items()
             if k != model and isinstance(v, dict)}
+
+
+def _count(v):
+    """A token count as printed, kept only when it is an int (never a bool); anything else, stream text included, is
+    None (review MINOR 2: no stream text rides a refusal or a record through a count)."""
+    return v if isinstance(v, int) and not isinstance(v, bool) else None
 
 
 def served_model_off(read: dict, model: str):
@@ -268,7 +274,9 @@ def served_model_off(read: dict, model: str):
     for m in read["served_models"]:
         if m != model:
             return m
-    if read["model_usage"] is not None and read["served_models"] and model not in read["model_usage"]:
+    usage = read["model_usage"]
+    # review MINOR 1: a modelUsage that omits the pin's model is a switch whether or not the turn has assistant records
+    if usage is not None and ((read["served_models"] and model not in usage) or (usage and model not in usage)):
         others = [k for k in read["model_usage"] if k != model]
         return others[0] if others else "<modelUsage names no model>"
     for k in read["model_usage"] or ():
@@ -283,12 +291,16 @@ def unlisted_side_model(read: dict, model: str):
     all the pin's and whose modelUsage names the pin's (when it served any): a side model, not a switch. A switch (an
     assistant record on another model, or a modelUsage without the pin's) is None here: the init-mismatch route."""
     usage = read["model_usage"] or ()
-    if any(m != model for m in read["served_models"]) or (read["served_models"] and model not in usage):
+    if any(m != model for m in read["served_models"]) or (read["served_models"] and model not in usage) or \
+            (usage and model not in usage):            # review MINOR 1: a modelUsage without the pin's is a switch
         return None
     for k in usage:
         if k != model and k not in SIDE_MODELS:
             return k
     return None
+
+
+SIDE_KEY_REPR_MAX = 120     # review MINOR 2: a side key is stream text; its repr in a refusal is capped
 
 
 class SideModelOffList(RuntimeError):
@@ -392,8 +404,9 @@ class ClaudeCodeAdapter(aa.AgentAdapter):
             off = served_model_off(read, self.model)
             side = unlisted_side_model(read, self.model)
             if side is not None:                       # D-INT-2c: stops the take, its tokens in the refusal
-                raise SideModelOffList(f"turn {n} called side model {side!r}, not on SIDE_MODELS "
-                                       f"{list(SIDE_MODELS)}; its tokens {side_calls(read, self.model).get(side)}: "
+                raise SideModelOffList(f"turn {n} called side model {repr(side)[:SIDE_KEY_REPR_MAX]}, not on "
+                                       f"SIDE_MODELS {list(SIDE_MODELS)}; "
+                                       f"its tokens {side_calls(read, self.model).get(side)}: "
                                        f"the take stops for a ruling (glitch-06, 14 Oct 2026)")
         except (StreamError, OSError) as e:
             executed["refused"] = f"{type(e).__name__}: {e}"

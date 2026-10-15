@@ -2888,13 +2888,16 @@ class TestCP5ArmAProfiles(unittest.TestCase):
     def test_the_real_lock_binds_the_version(self):
         lock = take_a_version()
         if lock == image_lock.PENDING:
-            self.skipTest("the take-a lock is PENDING on this branch; the box lane's committed lock (6221c297, "
-                          f"{CP5_VERSION}) binds the profiles where it is merged")
+            # test_round4 allows no skip (SKIP_ALLOWED is empty; athena run of 1f032586): with the lock PENDING the
+            # profiles hold the ruled version, the one the box lane's committed lock (6221c297) carries where merged.
+            lock = CP5_VERSION
         self.assertEqual({p["version"] for p in REAL["pin_profiles"][CP5_HARNESS].values()}, {lock})
 
     def test_the_committed_lock_value_binds(self):
         """The binding as it runs on the merged head, where take-a's lock holds the committed version."""
         self.assertEqual(cp5_problems(REAL, CP5_VERSION), [])
+        # and a lock holding another version is caught, on every tree (the skip-free form of the binding)
+        self.assertTrue(cp5_problems(REAL, "7.7.7"), "a take-a version the profiles do not carry passed")
 
     def test_o_and_g_takes_are_still_refused(self):
         for harness, model in (("codex", "gpt-6.1-sol"), ("gemini", "gemini-3.8-flash")):

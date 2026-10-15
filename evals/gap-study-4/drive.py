@@ -2444,7 +2444,12 @@ class TakeDriver:
         per-turn credential source. Written again with every turn's source once the take is done."""
         harness = row["agent"]["harness"]
         child = dict(_run_take.exec_values(harness, take.launched.spec.run_tree))
-        child[_run_take.LOGIN_VARIABLE[harness]] = "set"          # read and checked by run_take at exec time
+        if harness == _run_take.CODEX:
+            # The Codex lease road (glitch-06, 14 Oct 2026): a Codex row has no environment login (run_take.NO_LOGIN);
+            # its login is the lease file run_take.place_lease put in the config folder, never a child variable.
+            pass
+        else:
+            child[_run_take.LOGIN_VARIABLE[harness]] = "set"      # read and checked by run_take at exec time
         ident = take.identity
         take.environment = environment_record(child, os.environ, session_id=ident["session_id"], row=ident["row"],
                                               row_commit=ident["row_commit"], task=row["task"], half=row["half"],

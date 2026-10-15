@@ -566,10 +566,39 @@ class TakeALock(unittest.TestCase):
         d = b.build()
         take_a = next(i["lock"] for i in d["image_locks"] if i["lock"]["image"] == "take-a")["harness"]["version"]
         if take_a == image_lock.PENDING:
-            self.skipTest("the take-a lock is PENDING on this branch; the box lane's committed lock (6221c297, "
-                          "2.1.296) binds arm A's row versions where it is merged")
+            # test_round4 allows no skip (SKIP_ALLOWED is empty; athena run of 1f032586): with the lock PENDING no row
+            # carries a version yet. The box lane's committed lock (6221c297, 2.1.296) binds arm A where it is merged.
+            self.assertEqual({r["agent"]["version"] for r in d["rows"]}, {None},
+                             "a row carries a version while take-a's lock is PENDING")
+            return
         self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == "A"}, {take_a})
         self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] != "A"}, {None})
+
+
+    def test_arm_a_follows_take_a_lock_both_ways(self):
+        """The binding on every tree, whatever its lock holds: take-a's lock read through image_lock.load with only its
+        harness.version changed (the version routing.json's arm A profiles carry, then PENDING); arm A's rows carry
+        exactly that version, every other row None, and with PENDING no row carries one. A version the profiles do not
+        carry is refused by build itself."""
+        import routing
+        real = image_lock.load
+        carried = {p["version"] for p in routing.load_table()["pin_profiles"]["claude-code"].values()}
+        self.assertEqual(len(carried), 1, f"arm A's profiles carry {carried}")
+
+        def with_version(version):
+            def load(path):
+                lock = real(path)
+                return lock if lock["image"] != "take-a" else dict(lock, harness=dict(lock["harness"], version=version))
+            return load
+        with mock.patch.object(image_lock, "load", with_version("7.7.7")), \
+                self.assertRaisesRegex(ValueError, "routing and image versions disagree"):
+            b.build()
+        for version in (*carried, image_lock.PENDING):
+            with self.subTest(version=version), mock.patch.object(image_lock, "load", with_version(version)):
+                d = b.build()
+                want = None if version == image_lock.PENDING else version
+                self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] == "A"}, {want})
+                self.assertEqual({r["agent"]["version"] for r in d["rows"] if r["arm"] != "A"}, {None})
 
 
 class Description(unittest.TestCase):

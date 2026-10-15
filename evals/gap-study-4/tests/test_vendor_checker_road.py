@@ -65,6 +65,7 @@ class PendingStops(unittest.TestCase):
         rig.adapter_for = rig.driver.adapter_for = lambda r, take: rig.adapters.append(       # Codex slice 3: native
             type("Vendor", (tvr.VendorAdapter,), {"name": "codex"})(rig.box, take, rig.turns, home=take.config_dir)) \
             or rig.adapters[-1]
+        tvr.plant_lease(rig)                          # the box's lease postflight: the lease home holds one auth.json
         table = tbi.table()
         table["pin_profiles"]["codex"] = {tbi.MODEL: dict(tbi.PROFILE)}
         b = batch.Batch(rig.driver, rig.repo, tbi.Window(), table=table, serial=True)
