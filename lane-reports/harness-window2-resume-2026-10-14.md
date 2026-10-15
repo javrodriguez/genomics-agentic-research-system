@@ -113,3 +113,10 @@ test_walk_builders: the module, the witnesses and all 16 generated shards (634 m
 test_round4 (box test_live_box at 3f3beb21), test_pending_codex_walk and test_codex_adapter (its generated sweep included) all pass there.
 Note: the block above says 23:53 and the clock read 23:52 (a one-minute slip, kept).
 Next: this lane's queue is empty, pending glitch-6b's merge of 9442333a..HEAD.
+
+### Addendum, 15 Oct 00:41 EDT: review NIT 1 folded
+
+The review of 83b83ea1..d78c8791 passed (0 MAJOR, 0 MINOR). Its NIT 1 is folded in bdb77d7a: wherever the box's lease road is on the tree, the real lease reader must be there too.
+- Red: on the merged scratch with both readers hidden, the old test passes and the new one fails.
+- Green: test_walk_builders runs 62 OK on the merged scratch and 62 OK on this branch.
+bdb77d7a goes into the next battery, before production admission; it is not in the battery running now. Queue empty.
