@@ -56,10 +56,23 @@ def _jsonl_lines(text):
 
 
 def bound_items(harness, path):
-    """Read only an on-disk envelope alongside its ledger and native streams."""
+    """Read only an on-disk envelope alongside its ledger and native streams. `path` is the transcript's path, or a
+    transcript_view.BoundTranscript, bound by its .path, whose carried lines must be the file's lines now (item E's
+    review: one value never carries two transcripts)."""
+    bound = tv.BoundTranscript.of(path)            # the transcript itself, or a grader's whole, ordered copy of it
+    carried = bound.lines if bound is not None else None
+    if bound is not None:
+        path = bound.path
     if harness not in HARNESSES or not isinstance(path, (str, Path)):
         raise tv.ViewError("vendor events require a bound transcript path")
     path = Path(path)
+    if carried is not None:
+        try:
+            now = tuple(_regular_bytes(path).decode("utf-8").splitlines())
+        except (OSError, UnicodeError) as exc:
+            raise tv.ViewError(f"missing bound record: {exc}") from None
+        if now != carried:
+            raise tv.ViewError("the bound transcript's lines are not its file's lines")
     ledger_path = path.parent / "driver-ledger.json"
     try:
         ledger = _json(_regular_bytes(ledger_path).decode("utf-8"))

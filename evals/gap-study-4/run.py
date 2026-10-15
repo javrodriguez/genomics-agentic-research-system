@@ -201,11 +201,12 @@ def require_evidence_identity(row: dict, evidence) -> None:
         raise ValueError("the evidence names another model or agent")
 
 
-def transcript_lines(path) -> list:
+def transcript_lines(path) -> "transcript_view.BoundTranscript":
     """The transcript as the graders' contract takes it: its lines, read here (item E, glitch-6b 15 Oct 2026: CP6 walk
     w020's commit failed because a path reached plan_gate.take_events, whose guard refuses one; a grader opens no
-    file)."""
-    return Path(path).read_text(encoding="utf-8").splitlines()
+    file), bound to its path (the review of E: the vendor binding reads the envelope's streams beside it), as one
+    transcript_view.BoundTranscript, never a bare path."""
+    return transcript_view.BoundTranscript(path)
 
 
 def grade_committed(row: dict, outcome: dict) -> dict:

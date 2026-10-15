@@ -121,6 +121,52 @@ class BindingTests(unittest.TestCase):
                     with self.assertRaises(tv.ViewError):
                         tv.events(harness, path)
 
+    def test_a_bound_transcript_binds_by_its_path_and_its_lines(self):
+        """Item E's review (glitch-6b, 15 Oct 2026): run hands the graders a transcript_view.BoundTranscript, the
+        file's lines carrying its path; the binding reads it by its path and refuses when the file's lines are no
+        longer the carried ones; it is never a str, bytes or path, so a grader's bare-path guard still refuses one."""
+        import os
+        for harness in ("codex", "gemini"):
+            with self.subTest(harness=harness), tempfile.TemporaryDirectory() as tmp:
+                path, envelope = self.record(Path(tmp), harness)
+                bound = tv.BoundTranscript(path)
+                self.assertEqual(list(bound), path.read_text().splitlines())
+                self.assertEqual(tv.events(harness, bound), tv.events(harness, path))
+                self.assertFalse(isinstance(bound, (str, bytes, os.PathLike)))
+                with self.assertRaises(AttributeError):
+                    bound.x = 1
+                self.assertEqual(tv.events(harness, list(bound)), tv.events(harness, path))   # a grader's copy
+                with self.assertRaises(tv.ViewError):              # a plain list of the same lines is unbound
+                    tv.events(harness, [str(x) for x in bound])
+                with self.assertRaises(tv.ViewError):              # so is a part of the copy
+                    tv.events(harness, list(bound)[:-1] or [str(bound[0])])
+                path.write_text(path.read_text() + json.dumps(dict(envelope, n=2)) + "\n")
+                with self.assertRaisesRegex(tv.ViewError, "lines are not its file's lines"):
+                    tv.events(harness, bound)                       # one value never carries two transcripts
+
+    def test_only_the_whole_ordered_copy_is_bound(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / "t.jsonl"
+            f.write_text('{"a": 1}\n{"b": 2}\n{"c": 3}\n')
+            b = tv.BoundTranscript(f)
+            other = tv.BoundTranscript(f)                          # the same bytes, another value
+            self.assertIs(tv.BoundTranscript.of(b), b)
+            self.assertIs(tv.BoundTranscript.of(list(b)), b)
+            self.assertIs(tv.BoundTranscript.of(tuple(b)), b)
+            for bad in (list(b)[:2], list(b)[1:], list(b)[::-1], [str(x) for x in b], list(b)[:2] + [other[2]],
+                        [], f, str(f), "".join(b)):
+                with self.subTest(bad=type(bad).__name__):
+                    self.assertIsNone(tv.BoundTranscript.of(bad))
+
+    def test_the_grader_guard_still_refuses_a_bare_path(self):
+        from graders import endstate, plan_gate
+        with tempfile.TemporaryDirectory() as tmp:
+            path, _ = self.record(Path(tmp), "codex")
+            ev = object.__new__(endstate.Evidence)
+            for bare in (path, str(path)):
+                with self.assertRaises(TypeError):
+                    plan_gate.take_events(bare, ev)
+
     def test_native_stream_requires_envelope(self):
         with tempfile.TemporaryDirectory() as tmp:
             path, _ = self.record(Path(tmp), "codex")

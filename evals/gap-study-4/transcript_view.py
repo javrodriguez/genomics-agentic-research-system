@@ -118,6 +118,7 @@ No model is called anywhere in this module. Standard library only.
 
 from __future__ import annotations
 
+import collections.abc
 import contextvars
 import json
 from dataclasses import dataclass
@@ -502,6 +503,72 @@ ROUND3_HARNESS = "claude-code"
 
 # Interface 8's manifest keys: `model`, and `agent` = {"harness": ..., "version": ...} beside it (W2B1-7).
 MANIFEST_KEYS = ("model", "agent", "harness", "version")
+
+
+# ---- the bound transcript (the review of item E, MAJOR; glitch-6b's ruling, 15 Oct 2026) ----------------
+
+class BoundLine(str):
+    """One line of a BoundTranscript: the line's own text (a str, equal to it in every way a grader reads), which also
+    names the transcript it was read from. A grader that copies the lines (plan_gate's take_events hands the view
+    list(transcript); its code is pinned to its base) still hands the view lines that say where they came from."""
+
+    def __new__(cls, text, owner):
+        line = super().__new__(cls, text)
+        line.__dict__["owner"] = owner
+        return line
+
+    def __setattr__(self, name, value):
+        raise AttributeError("a BoundLine is immutable")
+
+
+class BoundTranscript(collections.abc.Sequence):
+    """One take's transcript as BOTH contracts take it: an immutable sequence of the file's lines (read_text(utf-8)
+    .splitlines(), the bytes the graders were always handed) that also carries its `.path`, which the vendor binding
+    (vendor_record_binding.bound_items) needs to read the envelope's ledger and native streams beside it. It is not a
+    str, bytes or os.PathLike, so a grader's guard against a bare path still refuses one; bound_items re-reads `.path`
+    and refuses when its lines are not the carried ones, so one value never carries two transcripts. Each line is a
+    BoundLine naming this transcript, so a copy of the whole sequence, in order, binds the same way (of())."""
+
+    __slots__ = ("_path", "_lines")
+
+    def __init__(self, path):
+        p = Path(path)
+        object.__setattr__(self, "_path", p)
+        object.__setattr__(self, "_lines", tuple(BoundLine(x, self)
+                                                 for x in p.read_text(encoding="utf-8").splitlines()))
+
+    @classmethod
+    def of(cls, value):
+        """The BoundTranscript `value` is, or whose every line, all of them, in order and by identity, `value` holds
+        (a grader's copy); None for anything else (a plain list of strings is never bound)."""
+        if isinstance(value, cls):
+            return value
+        if not isinstance(value, (list, tuple)) or not value or not isinstance(value[0], BoundLine):
+            return None
+        owner = value[0].owner
+        if len(value) != len(owner._lines) or any(a is not b for a, b in zip(value, owner._lines)):
+            return None
+        return owner
+
+    def __setattr__(self, name, value):
+        raise AttributeError("a BoundTranscript is immutable")
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    @property
+    def lines(self) -> tuple:
+        return self._lines
+
+    def __getitem__(self, i):
+        return self._lines[i]
+
+    def __len__(self) -> int:
+        return len(self._lines)
+
+    def __repr__(self) -> str:
+        return f"BoundTranscript({len(self._lines)} lines)"
 
 
 # ---- the view ------------------------------------------------------------------------------------

@@ -14,12 +14,17 @@ drove the production caller into the real grader.
            TypeError, AttributeError, KeyError, IndexError or NameError, which are the caller and the grader
            disagreeing about the contract.
   E-take   the take road's caller (run.grade_committed) hands the grader the same: lines, never a path.
+  E-vendor (review of E, MAJOR, glitch-6b 15 Oct 2026) the same entry on a Codex and a Gemini walk for every task: the
+           transcript is a bound envelope (vendor_record_binding), so the graders must be handed a value that is both
+           the file's lines and bound to its path (transcript_view.BoundTranscript); each vendor cell reaches its real
+           grader or refuses for a designed reason, never "vendor events require a bound transcript path".
 
 Every fixture is synthetic: no walk's transcript is read.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import tempfile
@@ -35,6 +40,9 @@ run = variants = None
 UNDESIGNED = (TypeError, AttributeError, KeyError, IndexError, NameError)
 MODEL = "claude-haiku-4-5-20251001"
 AGENT = {"harness": "claude-code", "version": "2.1.296"}
+VENDOR = {"codex": ("synthetic-codex-model", {"harness": "codex", "version": "0.162.1"}, "O"),
+          "gemini": ("synthetic-gemini-model", {"harness": "gemini", "version": "0.64.0"}, "G")}
+SESSION, VENDOR_ID = "study-walk-1", "vendor-1"
 PROJECT = "run-0a1b2c3d"
 
 
@@ -61,16 +69,45 @@ def lines_of(task: str, cell: dict) -> list:
     return out
 
 
-def walk_folder(root: Path, task: str, cell: dict) -> tuple[dict, Path]:
+def vendor_records(folder: Path, harness: str, sent: list) -> dict:
+    """The smallest honest bound vendor record (as tests/test_vendor_record_binding.py builds it): one native stream
+    per turn, an envelope line per turn in transcript.jsonl, bound by sha256 to its stream and to the ledger's turns."""
+    envelopes, streams = [], []
+    for k, line in enumerate(sent, 1):
+        native = ([{"type": "thread.started", "thread_id": VENDOR_ID},
+                   {"type": "item.completed", "item": {"id": f"a{k}", "type": "agent_message",
+                                                       "text": f"Synthetic reply {k}."}}]
+                  if harness == "codex" else
+                  [{"type": "init", "session_id": VENDOR_ID, "model": VENDOR[harness][0]},
+                   {"type": "message", "role": "user", "content": line},
+                   {"type": "message", "role": "assistant", "content": f"Synthetic reply {k}."}])
+        raw = ("\n".join(json.dumps(r) for r in native) + "\n").encode()
+        name = f"turn-{k}.jsonl"
+        (folder / name).write_bytes(raw)
+        streams.append(name)
+        envelopes.append({"type": "harness-turn", "harness": harness, "session_id": SESSION,
+                          "vendor_session_id": VENDOR_ID, "n": k, "sent": line, "stream": name,
+                          "sha256": hashlib.sha256(raw).hexdigest()})
+    (folder / "transcript.jsonl").write_text("".join(json.dumps(e) + "\n" for e in envelopes))
+    return {"session_id": SESSION, "turns": [{"n": k, "sent": line} for k, line in enumerate(sent, 1)],
+            "streams": streams}
+
+
+def walk_folder(root: Path, task: str, cell: dict, harness: str = "claude-code") -> tuple[dict, Path]:
     """A committed-walk-shaped folder for one cell of `task`: driver ledger, transcript and evidence."""
-    folder = root / task
+    model, agent, arm = (MODEL, AGENT, "A") if harness == "claude-code" else VENDOR[harness]
+    folder = root / f"{task}-{harness}"
     ev = folder / "evidence"
     (ev / "snapshots").mkdir(parents=True)
     (ev / "blobs").mkdir()
     lines = lines_of(task, cell)
     n = len(lines) // 2
-    (folder / "transcript.jsonl").write_text("\n".join(lines) + "\n")
-    ledger = [{"kind": "take", "model": MODEL, "agent": AGENT, "run_tree": "", "home": None}]
+    extra = {}
+    if harness == "claude-code":
+        (folder / "transcript.jsonl").write_text("\n".join(lines) + "\n")
+    else:
+        extra = vendor_records(folder, harness, [json.loads(x)["message"]["content"] for x in lines[::2]])
+    ledger = [{"kind": "take", "model": model, "agent": agent, "run_tree": "", "home": None}]
     t = 1000.0
     health = [{"kind": "watcher-start", "at": t - 1}]        # a clean watcher: paused at each snapshot, re-armed after
     for k in range(1, n + 1):
@@ -86,22 +123,22 @@ def walk_folder(root: Path, task: str, cell: dict) -> tuple[dict, Path]:
     health.append({"kind": "watcher-stop", "at": t, "exit_code": 0, "ignored_newline_paths": 0})        # the final stop, after post-N
     (ev / "health.jsonl").write_text("".join(json.dumps(r) + "\n" for r in health))
     (ev / "watched.json").write_text(json.dumps({"paths": ["synthetic/consequential.txt"]}))
-    (folder / "driver-ledger.json").write_text(json.dumps({
+    (folder / "driver-ledger.json").write_text(json.dumps(dict({
         "kind": "take", "task": task, "half": cell["half"], "wording": cell["wording"], "pressure": cell["pressure"],
-        "repeat": cell["repeat"], "arm": "A", "model_requested": MODEL, "agent": AGENT, "project": PROJECT,
-        "first_agent_turn": True, "outcome": "complete"}))
-    entry = {"walk": f"w-{task}", "task": task, "half": cell["half"], "wording": cell["wording"], "arm": "A",
-             "model": MODEL}
+        "repeat": cell["repeat"], "arm": arm, "model_requested": model, "agent": agent, "project": PROJECT,
+        "first_agent_turn": True, "outcome": "complete"}, **extra)))
+    entry = {"walk": f"w-{task}", "task": task, "half": cell["half"], "wording": cell["wording"], "arm": arm,
+             "model": model}
     return entry, folder
 
 
-def seam(task: str, root: Path, run_mod=None) -> tuple[str, str]:
+def seam(task: str, root: Path, run_mod=None, harness: str = "claude-code") -> tuple[str, str]:
     """(outcome, detail) of the production grading entry on one task's synthetic walk: "graded", "refused" (a
     designed refusal inside the grader), "UNDESIGNED", or "NOT REACHED" (refused before the task's grader was entered:
     the seam would be vacuous)."""
     run_mod = run if run_mod is None else run_mod
     cell = variants.cells(task)[0]
-    entry, folder = walk_folder(root, task, cell)
+    entry, folder = walk_folder(root, task, cell, harness)
     reached = []
     real = run_mod.grader_for
 
@@ -125,14 +162,15 @@ def seam(task: str, root: Path, run_mod=None) -> tuple[str, str]:
     return ("graded" if doc.get("graded") is True else "refused"), str(doc.get("grade", doc.get("why")))[:120]
 
 
-def seam_problems(run_mod=None) -> tuple[list, dict]:
+def seam_problems(run_mod=None, harnesses=("claude-code",)) -> tuple[list, dict]:
     out, seen = [], {}
     with tempfile.TemporaryDirectory() as tmp:
-        for task in tasks():
-            got = seam(task, Path(tmp), run_mod)
-            seen[task] = got
-            if got[0] in ("UNDESIGNED", "NOT REACHED"):
-                out.append(f"E-seam {task}: {got[0]}: {got[1]}")
+        for harness in harnesses:
+            for task in tasks():
+                got = seam(task, Path(tmp), run_mod, harness)
+                seen[(harness, task)] = got
+                if got[0] in ("UNDESIGNED", "NOT REACHED") or "require a bound transcript path" in got[1]:
+                    out.append(f"E-seam {harness} {task}: {got[0]}: {got[1]}")
     return out, seen
 
 
@@ -140,8 +178,21 @@ class TheGradingSeam(unittest.TestCase):
     def test_e_seam_every_task_grades_or_refuses_by_design(self):
         self.assertEqual(len(tasks()), 9, f"E-seam: the tasks are {tasks()}")
         problems, seen = seam_problems()
-        for task, (outcome, detail) in seen.items():
+        for (_, task), (outcome, detail) in seen.items():
             print(f"\nSEAM {task}: {outcome} ({detail})", end=" ", file=sys.stderr, flush=True)
+        self.assertEqual(problems, [])
+
+    def test_e_vendor_every_task_reaches_its_grader_on_a_bound_transcript(self):
+        # TEST DATA: harness_bookkeeping.TABLE holds claude-code only on this tree, so production Evidence.load refuses
+        # every vendor take before any grader ("has no bookkeeping entry"; named in the item-E fold's report). These
+        # synthetic entries let the seam reach the graders; they are not the vendors' bookkeeping.
+        import harness_bookkeeping as hb
+        fake = {h: hb.Entry(home_paths=(f"synthetic-{h}-home/*",), run_tree_paths=(), grounds=("TEST DATA",),
+                            not_excluded=()) for h in VENDOR}
+        with mock.patch.dict(hb.TABLE, fake):
+            problems, seen = seam_problems(harnesses=("codex", "gemini"))
+        for (harness, task), (outcome, detail) in seen.items():
+            print(f"\nSEAM {harness} {task}: {outcome} ({detail})", end=" ", file=sys.stderr, flush=True)
         self.assertEqual(problems, [])
 
     def test_e_take_the_take_road_hands_lines(self):
@@ -169,7 +220,8 @@ class TheGradingSeam(unittest.TestCase):
                     pass
         del takes_root
         self.assertTrue(handed, "E-take: grade_committed never reached the grader")
-        self.assertTrue(all(isinstance(t, list) and all(isinstance(x, str) for x in t) for t in handed),
+        import transcript_view as tv
+        self.assertTrue(all(isinstance(t, tv.BoundTranscript) and all(isinstance(x, str) for x in t) for t in handed),
                         f"E-take: the take road handed {[type(t).__name__ for t in handed]}")
 
 
