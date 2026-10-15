@@ -7,15 +7,20 @@ ce818d85, green once drive.py takes the box's reviewed O-3 signature. Run in tes
 takes another tree's evals/gap-study-4 folder as its first argument.
 
   S1  drive's own TakeDriver._operator_read reaches the REAL box/ownership.operator_read (fake runtime) and returns
-      the box's None for an absent file, never a refusal
-  S2  drive's own TakeDriver.config_view reader and lister reach the REAL operator_read and operator_list
+      the box's None for an absent file, never a refusal; and (review of D, MINOR) on a runtime that answers from the
+      folder it was handed, it reads the RUN TREE's file, never the config folder's file of the same name
+  S2  drive's own TakeDriver.config_view reader and lister reach the REAL operator_read and operator_list, and read
+      and list the CONFIG folder, never the run tree
   S3  drive.ownership_problems over the REAL box module (every step) is empty; drive.settings_guard_problems over the
       REAL box/settings_guard is empty
   S4  every drive.py call of a box function by name (_ownership, _settings_guard, _preflight, _sidecar, _run_take,
       self.ownership, self.settings_guard) binds to the real signature (ast + inspect.signature().bind)
 """
 import ast
+import base64
+import hashlib
 import inspect
+import json
 import os
 import sys
 import tempfile
@@ -33,6 +38,46 @@ from test_ownership import Fake  # noqa: E402   the box's own fake runtime
 IMAGE = "sha256:" + "a" * 64
 
 
+class RootedFake(Fake):
+    """The box's fake runtime, answering an operator read or listing from the ONE folder the step mounted, as the
+    container would: so a read sent to the wrong root reads the wrong folder's bytes (review of item D)."""
+
+    def run(self, argv, *, env=None, timeout=None):
+        src = [a for a in argv if a.startswith("type=bind,source=")]
+        root = src[0].split("=")[2].split(",")[0] if src else None
+        if root is not None and ownership.READ_PROGRAM in argv:
+            f = os.path.join(root, argv[-2])
+            data = open(f, "rb").read() if os.path.isfile(f) else None
+            self.reply = json.dumps({"exists": False} if data is None else {
+                "exists": True, "b64": base64.b64encode(data).decode("ascii"),
+                "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)})
+        elif root is not None and ownership.LIST_PROGRAM in argv:
+            d = root if argv[-2] == "." else os.path.join(root, argv[-2])
+            out = sorted((os.fsencode(n), "dir" if os.path.isdir(os.path.join(d, n)) else "file")
+                         for n in os.listdir(d)) if os.path.isdir(d) else None
+            if out is None:
+                self.reply = json.dumps({"exists": False})
+            else:
+                out = [[base64.b64encode(r).decode("ascii"), k] for r, k in out]
+                canon = json.dumps(out, separators=(",", ":"))
+                self.reply = json.dumps({"exists": True, "entries": out,
+                                         "sha256": hashlib.sha256(canon.encode("ascii")).hexdigest()})
+        return super().run(argv, env=env, timeout=timeout)
+
+
+def rooted(t):
+    """A take whose run tree and config folder each hold a file the other lacks, and one name with other bytes."""
+    me, take = stub(t)
+    me.runtime = RootedFake()
+    for root, who in ((take.spec.run_tree, b"run-tree"), (take.config_dir, b"config")):
+        os.makedirs(os.path.join(root, "plan"))
+        with open(os.path.join(root, "plan", "same.json"), "wb") as fh:
+            fh.write(who)
+        with open(os.path.join(root, f"only-{who.decode()}.txt"), "wb") as fh:
+            fh.write(who)
+    return me, take
+
+
 def stub(t):
     run_tree, cfg = os.path.join(t, "tree"), os.path.join(t, "cfg")
     os.mkdir(run_tree)
@@ -48,6 +93,22 @@ class TestSeams(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             me, take = stub(t)
             self.assertIsNone(drive.TakeDriver._operator_read(me, take, "op", "plan/approved.json"))
+
+    def test_s1_operator_read_reads_the_run_tree(self):
+        with tempfile.TemporaryDirectory() as t:
+            me, take = rooted(t)
+            self.assertEqual(drive.TakeDriver._operator_read(me, take, "op", "plan/same.json"), b"run-tree")
+            self.assertEqual(drive.TakeDriver._operator_read(me, take, "op", "only-run-tree.txt"), b"run-tree")
+            self.assertIsNone(drive.TakeDriver._operator_read(me, take, "op", "only-config.txt"))
+
+    def test_s2_config_view_reads_and_lists_the_config_folder(self):
+        with tempfile.TemporaryDirectory() as t:
+            me, take = rooted(t)
+            lister, reader = drive.TakeDriver.config_view(me, take)
+            self.assertEqual(reader("plan/same.json"), b"config")
+            self.assertEqual(reader("only-config.txt"), b"config")
+            self.assertIsNone(reader("only-run-tree.txt"))
+            self.assertEqual(sorted(n for n, _ in lister(".")), ["only-config.txt", "plan"])
 
     def test_s2_config_view_from_drive(self):
         with tempfile.TemporaryDirectory() as t:
