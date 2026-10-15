@@ -254,6 +254,9 @@ class CodexLeaseRoad:
 
     def place(self, config_dir: str) -> str:
         from box import run_take as rt
+        gate = codex_gate_problem()                     # review NIT 4: the gate first, before place_lease
+        if gate:
+            raise BuilderRefused(f"the Codex lease is not placed: {gate}")
         place = getattr(rt, "place_lease", None)
         read = globals().get("lease_secrets")          # the box lane's take-start reader (b9f876b5), this module's
         if not callable(place) or not callable(read):
@@ -265,6 +268,13 @@ class CodexLeaseRoad:
         self._secrets = read(dst)                       # the take-start read: no lease file, no take
         self.placed = dst
         return dst
+
+    def login_file_for(self, take) -> str:
+        """The take's login file for the Codex exec (box 1e10e320's exec branch reads the placed cfg/auth.json): the
+        lease placed for this walk, refused before placement (review MINOR 1 of 1f032586..27ade10a)."""
+        if self.placed is None:
+            raise BuilderRefused("no lease placed: a Codex take's login file exists only after run_take.place_lease")
+        return self.placed
 
     def secrets(self) -> list:
         if self._secrets is None:
@@ -643,7 +653,7 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: 
     from box import run_take as rt
     if row["agent"]["harness"] == rt.CODEX:         # the lease road: placed after make_config_dir, before launch
         lease = CodexLeaseRoad(builders["lease_path"])
-        secrets = lease.secrets
+        secrets, login = lease.secrets, lease.login_file_for       # the take's placed cfg/auth.json, never "-"
 
         def spec_for(r, cfg):
             lease.place(cfg)

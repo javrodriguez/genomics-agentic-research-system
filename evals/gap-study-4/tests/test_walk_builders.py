@@ -165,6 +165,13 @@ def mutants() -> dict:
                                       "os.path.normpath(source) != source:", "    if False:"),
         "identity-any-walk": ("B1.identity", "walk_builders", "        if walk not in prepared:",
                               "        if False:"),
+        "lease-login-before-place": ("B13.secrets", "walk_builders",
+                                     "        if self.placed is None:\n            raise BuilderRefused(\"no lease placed: a "
+                                     "Codex take's login file", "        if False:\n            raise BuilderRefused(\"no "
+                                     "lease placed: a Codex take's login file"),
+        "lease-gate-unchecked": ("B13.secrets", "walk_builders",
+                                 "        if gate:\n            raise BuilderRefused(f\"the Codex lease is not placed",
+                                 "        if False:\n            raise BuilderRefused(f\"the Codex lease is not placed"),
         "scanner-real-unchecked": ("B12.scanner", "walk_builders",
                                    "        if type(scanner) is not pinned:", "        if False:"),     # 0f1aa5ea's line
         "scanner-raw-to-driver": ("B12.scanner", "walk_builders",
@@ -296,6 +303,8 @@ METHOD = {
     "scanner-raw-to-driver": "B12Scanner.test_a_pinned_scanner_is_built_once_for_a_walk",
     "report-dir-shared": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
     "scanner-class-by-name": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
+    "lease-login-before-place": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
+    "lease-gate-unchecked": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
@@ -1968,14 +1977,18 @@ def b13_secrets_problems(mod, tmp: Path) -> list:
         road = getattr(s_driver, "__self__", None)
         if s_driver is not s_repo or not isinstance(road, mod.CodexLeaseRoad):
             out.append(f"B13.secrets: the driver got {s_driver!r} and WalkRepo {s_repo!r}, not one lease road's")
-        if got["driver"]["login_file"] != "-":
-            out.append(f"B13.secrets: the driver's login_file is {got['driver']['login_file']!r}")
-        try:
-            s_driver()
-            out.append("B13.secrets: the secrets read before any lease was placed")
-        except mod.BuilderRefused:
-            pass
+        login_for = got["driver"]["login_file"]       # review MINOR 1: the take's placed lease, never "-"
+        if not callable(login_for) or getattr(login_for, "__self__", None) is not road:
+            out.append(f"B13.secrets: the driver's login_file is {login_for!r}, not the lease road's per-take path")
+        for what, fn in (("the secrets", s_driver), ("the login file", lambda: login_for(None))):
+            try:
+                fn()
+                out.append(f"B13.secrets: {what} read before any lease was placed")
+            except mod.BuilderRefused:
+                pass
         spec = got["driver"]["spec_for"](row, str(cfg))
+        if callable(login_for) and login_for(None) != str(cfg / "auth.json"):
+            out.append(f"B13.secrets: the driver's login file after placement is {login_for(None)!r}")
         if spec != "spec" or specs != [("O", str(cfg), str(tmp / "tree"))]:
             out.append(f"B13.secrets: spec_for gave {spec!r} over {specs}")
         if placed != [(src, str(cfg), str(cfg / "auth.json"))] or reads != [str(cfg / "auth.json")]:
@@ -1987,6 +2000,14 @@ def b13_secrets_problems(mod, tmp: Path) -> list:
             out.append("B13.secrets: a second lease was placed for one walk")
         except mod.BuilderRefused:
             pass
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):     # review NIT 4: the gate first
+            again = mod.CodexLeaseRoad(src)
+            try:
+                again.place(str(tmp))
+                out.append("B13.secrets: a closed gate placed a lease")
+            except mod.BuilderRefused as e:
+                if "gate is closed" not in str(e) or len(placed) != 1 or again.placed is not None:
+                    out.append(f"B13.secrets: a closed gate reached place_lease or refused for another reason: {e}")
         os.chmod(cfg / "auth.json", 0o600)          # the refresh rule: the host rewrites auth.json between turns
         (cfg / "auth.json").write_text(json.dumps({"tokens": {"access_token": REFRESHED, "refresh_token": REFRESH}}))
         if road.refreshed() != [("token", ACCESS), ("token", REFRESH), ("token", REFRESHED)]:
@@ -2005,6 +2026,34 @@ def b13_secrets_problems(mod, tmp: Path) -> list:
         got["driver"]["spec_for"](claude, str(tmp / "cfg2"))
         if got["driver"]["secrets"] is not marker or got["repo"]["secrets"] is not marker or placed:
             out.append("B13.secrets: a Claude walk's secrets are not its login file's, or it placed a lease")
+    return out
+
+
+@problems_by_assertion("B13.adapter")
+def b13_adapter_problems(mod) -> list:
+    """drive.harness_adapter_for resolves a callable login_file per take (review MINOR 1: the box's Codex exec reads
+    the take's placed cfg/auth.json), and still passes a plain path as given."""
+    out = []
+    drive = MODS["drive"]
+    take = types.SimpleNamespace(launched=types.SimpleNamespace(take_id="c" * 64, spec=types.SimpleNamespace(
+        run_tree="/synthetic/tree")), config_dir="/synthetic/cfg",
+        identity={"session_id": "00000000-0000-4000-8000-000000000001"})
+    seen = []
+    for harness, mode, login in ((rt.CODEX, "bypass", lambda t: seen.append(t) or t.config_dir + "/auth.json"),
+                                 (rt.CLAUDE_CODE, "bypassPermissions", "/synthetic/login")):
+        make = drive.harness_adapter_for(runtime=None, login_file=login, counters_for=lambda t: {},
+                                         pin_for=lambda r, m=mode: {"permission_mode": m, "version": "1.2.3"},
+                                         clock=lambda: 0, config_view=lambda t: (None, None))
+        try:
+            a = make({"agent": {"harness": harness}, "model": "synthetic-model"}, take)
+        except Exception as e:  # noqa: BLE001
+            out.append(f"B13.adapter: {harness} adapter not built: {type(e).__name__}: {e}")
+            continue
+        want = "/synthetic/cfg/auth.json" if callable(login) else login
+        if a.login_file != want:
+            out.append(f"B13.adapter: the {harness} adapter's login file is {a.login_file!r}, not {want!r}")
+    if seen != [take]:
+        out.append(f"B13.adapter: the login file was not resolved once for the take: {seen}")
     return out
 
 
@@ -2045,6 +2094,9 @@ class B13Lease(Drafted):
     def test_the_driver_and_walkrepo_get_the_lease_secrets(self):
         with tempfile.TemporaryDirectory() as t:
             self.assertEqual(b13_secrets_problems(wb(), Path(t)), [])
+
+    def test_the_adapter_gets_the_takes_own_login_file(self):
+        self.assertEqual(b13_adapter_problems(wb()), [])
 
     def test_the_environment_record_sets_no_codex_login(self):
         self.assertEqual(b13_environment_problems(wb()), [])
