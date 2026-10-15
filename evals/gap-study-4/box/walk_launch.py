@@ -80,6 +80,30 @@ SUITE_ACCOUNT = machine_gate.SUITE_ACCOUNT
 RESERVATION = machine_gate.RESERVATION
 # athena-reserve as the runbook pins it (FOREMAN-RUNBOOK section 13, `efeecb3a…`; aegis ops/node1/athena-reserve).
 RESERVE_SHA256 = "efeecb3a606d6bb9a23c77b850b8ef1f61cb9aed0f4bcdb53c3ff3b9b039062e"
+# THE WALK'S ENVIRONMENT (glitch-6b, 15 Oct 2026, after the box lane found GAP4_CONFIG_PARENT missing at 26dd61be):
+# every name a study module reads at walk time is passed here or deliberately absent below, and test_walk_launch's
+# L7-env binds that against every "GAP4_*" literal in the study's own modules.
+#   GAP4_CONFIG_PARENT  walk_builders.config_parent_from_env: per-walk config folders and the walk's proxy
+#                       configuration are made in it; an owned folder outside every repository, mode 0700 (created on
+#                       athena by the box lane 15 Oct 2026, 05:23 EDT).
+#   GAP4_SUITE_ACCOUNT, GAP4_RESERVATION, GAP4_OWN_HOLD, GAP4_SUITE_SLOTS  machine_gate.gate_from_env (both the
+#                       pre-hold gate and the drive's own check before each take launch).
+#   GIT_{AUTHOR,COMMITTER}_{NAME,EMAIL}  takes.require_commit_identity, called by WalkRepo.commit_walk: javier on athena
+#                       has no global git identity and the walk's clone has no local one (read 05:23 EDT, 15 Oct 2026);
+#                       the identity the box lane's commits carry (GitHub's noreply address, never the gmail one).
+CONFIG_PARENT_ENV = "GAP4_CONFIG_PARENT"
+CONFIG_PARENT = "/home/javier/gap4-walk-config"
+COMMIT_IDENTITY = ("GIT_AUTHOR_NAME=javrodriguez GIT_AUTHOR_EMAIL=28984720+javrodriguez@users.noreply.github.com "
+                   "GIT_COMMITTER_NAME=javrodriguez GIT_COMMITTER_EMAIL=28984720+javrodriguez@users.noreply.github.com")
+RUN_ENV_ABSENT = {
+    "DOCKER_HOST": "preflight records whether it is set and the box's runs (stub takes 1-8) ran with it unset: the "
+                   "Docker client reaches javier's rootless daemon through its own context and XDG_RUNTIME_DIR",
+    "CLAUDE_CONFIG_DIR": "drive.session_file (round 3's host road) reads it; a box walk reads the take's own config "
+                         "folder (drive.take_session_file), so nothing on the walk path does",
+    "GAP4_ATHENA_SUITE": "the first machine gate's (harness 9425bf62); no module reads it since the box lane's fa0838ec",
+    "GAP4_MACHINE_BOOKING": "the first machine gate's; no module reads it since fa0838ec",
+    "GAP4_ATHENA_SUITE_PY": "read only by test_walk_launch's real-scanner proof on the Mac, never at walk time",
+}
 HEX40 = re.compile(r"[0-9a-f]{40}")
 WALK_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 CELL = ("task", "half", "wording", "arm", "model")
@@ -230,13 +254,14 @@ def run_command(*, child: str, walk: str, cell: dict, reason: str) -> str:
         raise LaunchRefused("a walk is run for a reason")
     repo = f"{child}/repo"
     env = (f"env {machine_gate.ENV_ACCOUNT}={SUITE_ACCOUNT} {machine_gate.ENV_RESERVATION}={RESERVATION} "
-           f"{machine_gate.ENV_HOLD}={hid} {machine_gate.ENV_SLOTS}={machine_gate.SLOTS}")
+           f"{machine_gate.ENV_HOLD}={hid} {machine_gate.ENV_SLOTS}={machine_gate.SLOTS} {CONFIG_PARENT_ENV}={CONFIG_PARENT}")
+    walk_env = f"{env} {COMMIT_IDENTITY}"
     walk_argv = ["python3", "-B", f"{repo}/evals/gap-study-4/walk_runner.py", "--walk", walk]
     for k in CELL:
         walk_argv += [f"--{k}", cell[k]]
     walk_argv += ["--reason", reason]
     gate = f"{env} python3 -B {repo}/evals/gap-study-4/machine_gate.py athena-check"
-    held = (f"python3 {child}/athena-reserve hold --by {hid} -- {env} "
+    held = (f"python3 {child}/athena-reserve hold --by {hid} -- {walk_env} "
             + " ".join(shlex.quote(a) for a in walk_argv))
     # The exit file is written by the shell around the hold, so a walk that died still leaves its code.
     body = f"{held}; echo $? > {child}/walk.exit"
