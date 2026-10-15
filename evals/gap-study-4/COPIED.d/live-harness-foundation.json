@@ -179,12 +179,12 @@
     {
       "path": "machine_gate.py",
       "status": "new",
-      "reason": "P-2 (glitch-06, 14 Oct 2026): no take starts while athena_suite list shows a run in progress or .machine-reserved is booked; the gate the take driver checks before each launch, built from the operator's own paths."
+      "reason": "P-2 (glitch-06, 14 Oct 2026; redesigned by the box lane under glitch-6b's ruling of 15 Oct 2026, fa0838ec): the athena gate the take driver checks before each launch admits a take only when no process runs under the suite account and athena's reservation is absent or held by this walk's own hold (built from GAP4_SUITE_ACCOUNT, GAP4_RESERVATION and GAP4_OWN_HOLD; every unreadable input refuses); the Mac pre-check reads athena_suite list, where busy and refused never ran and a started run without a verdict is read by athena_suite status, fail closed."
     },
     {
       "path": "tests/test_machine_gate.py",
       "status": "new",
-      "reason": "machine_gate's list parsing, booking, failure and environment checks on fakes, four witnesses."
+      "reason": "machine_gate's athena gate (suite-account processes, the reservation and its own hold, unreadable inputs) and its Mac pre-check (list lines, busy and refused, status of a started run), and its environment build, on fakes and a masked replay of the real 15 Oct list, with its witnesses."
     }
   ]
 }
