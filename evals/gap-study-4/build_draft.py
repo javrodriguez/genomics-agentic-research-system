@@ -1296,7 +1296,8 @@ HARNESS_FURNITURE_RULING = {
          "mode is active and a steer to do work through the Bash tool. The transcript view reads it as harness "
          "furniture, its rendered text the event's text, so the awareness furniture check counts it. It changes what "
          "the agent is told, and only for the models its gate selects. RULED 15 Oct (glitch-6b): disabled for all "
-         "claude-code takes via CLAUDE_CODE_THRIFTY_SONIC; the record is admitted for audit only; a live take "
+         "claude-code takes via CLAUDE_CODE_THRIFTY_SONIC, set to the value the binary's parser reads as false (box "
+         "lane parser proof); the record is admitted for audit only; a live take "
          "carrying it refuses (harness-condition-violated, box lane)."}],
 }
 

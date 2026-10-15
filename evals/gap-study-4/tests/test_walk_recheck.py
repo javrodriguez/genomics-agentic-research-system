@@ -28,6 +28,7 @@ import copy
 import json
 import subprocess
 import sys
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -263,6 +264,56 @@ class TheRecheck(twr.Case):
                 git(w.root, "commit", "-q", "-am", "an edited earlier recheck")
                 self.assertTrue(any("recheck-1.json is not a recheck" in x for x in wr.regrade_problems(w.root)))
                 self.assertFalse(any("checker_events" in json.loads(p.read_bytes()) for _ in [0]))
+
+    def test_rc_history_keeps_the_rechecks_list_append_only(self):
+        """walk_register.rechecks_append_only_problems: a later commit dropping a recheck entry from the register is
+        red; a walk_register without that call says nothing about it (the witness)."""
+        import walk_register
+        with twr.study() as w:
+            r = Rig(w)
+            with mock.patch.object(wr, "production_design", r.design_for()):
+                self.must("RC-append", r.write_and_commit)
+                self.must("RC-append", r.write_and_commit)
+            base = w.root / twr_mb().WALKS_DIR
+            self.assertEqual(walk_register.history_problems(base, [WALK], w.root), [])
+            reg = json.loads((base / walk_register.REGISTER_NAME).read_text())
+            reg["rechecks"] = reg["rechecks"][1:]
+            (base / walk_register.REGISTER_NAME).write_text(json.dumps(reg, indent=2) + "\n")
+            git(w.root, "commit", "-q", "-am", "a register edit dropping a recheck")
+            msg = "the rechecks list is append-only"
+            self.assertTrue(any(msg in x for x in walk_register.history_problems(base, [WALK], w.root)))
+            src = Path(walk_register.__file__).read_text()
+            site = "    out += rechecks_append_only_problems(git, reg_rel)\n"
+            self.assertEqual(src.count(site), 1)
+            m = types.ModuleType("walk_register_witness")
+            m.__file__ = walk_register.__file__
+            sys.modules[m.__name__] = m
+            try:
+                exec(compile(src.replace(site, ""), walk_register.__file__, "exec"), m.__dict__)
+            finally:
+                del sys.modules[m.__name__]
+            self.assertFalse(any(msg in x for x in m.history_problems(base, [WALK], w.root)),
+                             "the witness: without the call the drop is not named")
+
+    def test_rc_history_admits_a_regrade_commit(self):
+        """A committed regrade.json (walk_regrade's REGRADE_SUBJECT, adding only that file) passes the register's
+        history check; under another subject, or touching the register too, it does not."""
+        import walk_register
+        for subject, with_register, ok in ((walk_register.REGRADE_SUBJECT, False, True),
+                                           ("Another subject", False, False),
+                                           (walk_register.REGRADE_SUBJECT, True, False)):
+            with self.subTest(subject=subject, with_register=with_register), twr.study() as w:
+                Rig(w)
+                base = w.root / twr_mb().WALKS_DIR
+                (base / WALK / walk_register.REGRADE_FILE).write_text('{"schema": 1}\n')
+                git(w.root, "add", "--", f"{twr_mb().WALKS_DIR}/{WALK}/{walk_register.REGRADE_FILE}")
+                if with_register:
+                    (base / walk_register.REGISTER_NAME).write_text(
+                        (base / walk_register.REGISTER_NAME).read_text() + "\n")
+                    git(w.root, "add", "--", f"{twr_mb().WALKS_DIR}/{walk_register.REGISTER_NAME}")
+                git(w.root, "commit", "-q", "-m", subject)
+                got = walk_register.history_problems(base, [WALK], w.root)
+                self.assertEqual(got == [], ok, got)
 
 
 if __name__ == "__main__":

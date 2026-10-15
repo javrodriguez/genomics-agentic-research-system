@@ -170,11 +170,12 @@ def latest_recheck(base, walk: str):
     if hashlib.sha256(raw).hexdigest() != e.get("sha256"):
         return f"recheck file differs from its register entry: {e['file']}"
     try:
-        doc = json.loads(raw)
-    except ValueError:
+        doc = json.loads(raw, object_pairs_hook=walk_register.no_duplicate_keys)
+    except (ValueError, walk_register.DuplicateKey):
         return "recheck unreadable"
     if not isinstance(doc, dict) or doc.get("checker_constants_sha256") != e.get("checker_constants_sha256") \
-            or doc.get("walk") != walk or doc.get("n") != e.get("n"):
+            or doc.get("walk") != walk \
+            or type(doc.get("n")) is not int or type(e.get("n")) is not int or doc["n"] != e["n"]:
         return f"recheck file does not carry its register entry's walk, ordinal and digest: {e['file']}"
     return {"checker_reasons": doc.get("checker_reasons"), "checker_constants_sha256": doc["checker_constants_sha256"]}
 

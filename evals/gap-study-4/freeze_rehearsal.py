@@ -44,6 +44,8 @@ DRAFT = HERE / "prereg-draft.json"
 WALK_COMMANDS = (
     ("walk_register.py", "--check"), ("mode_binding.py", "--walks", "--check"),
     ("fixture_walk.py", "--check"), ("run.py", "--walks", "--check"),
+    # glitch-6b's recheck-coverage ruling (15 Oct 2026): a counted recheck has been re-derived at freeze
+    ("walk_regrade.py", "--check"),
 )
 COMMANDS = (
     ("test_round4.py",), ("copy_manifest.py", "--check"),

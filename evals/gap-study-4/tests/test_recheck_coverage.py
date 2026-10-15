@@ -12,7 +12,8 @@ entries and files both ways. Re-derivation is walk_regrade.py --check's (checks.
   C-sha       a file whose sha256 is not its entry's refuses (standing and walk_register).
   C-stale     an entry under an old digest is stale.
   C-latest    two entries: the latest wins, either way round.
-  C-carry     a file carrying another digest, walk or ordinal than its entry refuses.
+  C-carry     a file carrying another digest, walk or ordinal than its entry refuses (C-walk, C-n; an ordinal that
+              is not an int, True or 1.0, refuses; a file with a duplicated key refuses).
   C-register  walk_register: a recheck file with no entry, an entry out of order, a misnamed file, extra fields.
   C-witness   each check dropped in an in-memory mutant turns its case red.
 Pure filesystem fixtures; no git.
@@ -137,6 +138,25 @@ def cases(pmod=None, rmod=None) -> list:
         e[0]["sha256"] = hashlib.sha256(raw).hexdigest()
         w.write_register(e)
     case("C-carry", [(1, now(), [])], starts("recheck file does not carry"), after=carry)
+
+    def swap(raw):                     # the file becomes `raw`; its entry names raw's sha256 (so only the carry differs)
+        def go(w):
+            (w.base / "w-0001" / "recheck-1.json").write_bytes(raw)
+            e = json.loads((w.base / "register.json").read_text())["rechecks"]
+            e[0]["sha256"] = hashlib.sha256(raw).hexdigest()
+            w.write_register(e)
+        return go
+    case("C-walk", [(1, now(), [])], starts("recheck file does not carry"),
+         after=lambda w: swap(recheck_doc(1, now(), [], walk="w-0002"))(w))
+    case("C-n", [(1, now(), [])], starts("recheck file does not carry"),
+         after=lambda w: swap(recheck_doc(2, now(), []))(w))
+    case("C-n-bool", [(1, now(), [])], starts("recheck file does not carry"),
+         after=lambda w: swap(recheck_doc(True, now(), []))(w))
+    case("C-n-float", [(1, now(), [])], starts("recheck file does not carry"),
+         after=lambda w: swap(recheck_doc(1.0, now(), []))(w))
+    dup = ('{"checker_constants_sha256": "%s", "checker_reasons": ["readers-disagree"], "checker_reasons": [], '
+           '"n": 1, "walk": "w-0001"}\n' % now()).encode()
+    case("C-dupkey", [(1, now(), [])], starts("recheck unreadable"), after=lambda w: swap(dup)(w))
     return out
 
 
@@ -185,6 +205,12 @@ PW_MUTANTS = (
     ("no-sha-check", "    if hashlib.sha256(raw).hexdigest() != e.get(\"sha256\"):", "    if False:"),
     ("no-missing-check", "    except OSError:\n        return f\"recheck file missing", "    except KeyError:\n        return f\"recheck file missing"),
     ("no-carry-check", "doc.get(\"checker_constants_sha256\") != e.get(\"checker_constants_sha256\") \\", "False \\"),
+    ("no-walk-clause", "            or doc.get(\"walk\") != walk \\\n", "            or False \\\n"),
+    ("no-n-clause", "or type(doc.get(\"n\")) is not int or type(e.get(\"n\")) is not int or doc[\"n\"] != e[\"n\"]:",
+     "or False:"),
+    ("no-n-int-clause", "type(doc.get(\"n\")) is not int or type(e.get(\"n\")) is not int or doc[\"n\"]",
+     "doc.get(\"n\")"),
+    ("no-duplicate-key-hook", "json.loads(raw, object_pairs_hook=walk_register.no_duplicate_keys)", "json.loads(raw)"),
 )
 WR_MUTANTS = (
     ("register-no-sha", "        elif hashlib.sha256(f.read_bytes()).hexdigest() != e[\"sha256\"]:", "        elif False:"),
@@ -215,6 +241,12 @@ class TheRecheckCoverage(unittest.TestCase):
                 walk_plan.read_register(w.base, design)
         finally:
             w.close()
+
+    def test_freeze_rehearsal_re_derives_rechecks(self):
+        """The ruling's item 2: a counted recheck has been re-derived at freeze (walk_regrade.py --check)."""
+        import freeze_rehearsal
+        self.assertIn(("walk_regrade.py", "--check"), freeze_rehearsal.WALK_COMMANDS)
+        self.assertIn(("walk_regrade.py", "--check"), freeze_rehearsal.COMMANDS)
 
     def test_coverage_opens_no_process(self):
         import subprocess

@@ -74,8 +74,8 @@ import native_reader_registration as nrr  # noqa: E402
 import pending_walk  # noqa: E402
 import walk_register  # noqa: E402
 
-REGRADE_FILE = "regrade.json"
-REGRADE_SUBJECT = "Regrade one pending walk; never counted"
+REGRADE_FILE = walk_register.REGRADE_FILE
+REGRADE_SUBJECT = walk_register.REGRADE_SUBJECT     # one spelling: walk_register's history check admits it
 REGRADE_HARNESSES = ("gemini", "codex")      # Codex since Codex slice 3
 RECHECK_PREFIX = "recheck-"
 RECHECK_SUBJECT = walk_register.RECHECK_SUBJECT     # one spelling: walk_register's history check admits it

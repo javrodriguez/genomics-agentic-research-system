@@ -91,6 +91,8 @@ SCHEMA_RECHECKS = 2                                   # the recheck-coverage rul
 TOP_KEYS_RECHECKS = ("schema", "walks", "rechecks")
 RECHECK_FIELDS = ("walk", "file", "n", "checker_constants_sha256", "sha256")
 RECHECK_SUBJECT = "Recheck one walk under the checker constants in force; never counted"
+REGRADE_SUBJECT = "Regrade one pending walk; never counted"     # walk_regrade's regrade.json commit (one spelling)
+REGRADE_FILE = "regrade.json"
 RECHECK_FILE = re.compile(r"recheck-([1-9][0-9]*)\.json")
 HEX64 = re.compile(r"[0-9a-f]{64}")
 
@@ -446,26 +448,34 @@ def history_problems(base: Path, walks, repo: Path) -> list[str]:
 
 
 def _recheck_commit(git, commit, rel: str, reg_rel: str) -> bool:
-    """A later commit touching a walk folder is admitted only as a recheck commit: its subject, one parent, and it
-    changes exactly the register and one recheck-<n>.json of that folder, which it adds."""
+    """A later commit touching a walk folder is admitted only as a recheck commit (its subject, one parent, changing
+    exactly the register and one recheck-<n>.json of that folder, which it adds) or as a regrade commit
+    (REGRADE_SUBJECT, one parent, adding exactly that folder's regrade.json and nothing else, the register untouched)."""
     sha, parents, subject = commit
-    if subject != RECHECK_SUBJECT or len(parents.split()) != 1:
+    if subject not in (RECHECK_SUBJECT, REGRADE_SUBJECT) or len(parents.split()) != 1:
         return False
     changed = git("diff-tree", "-r", "--no-renames", "--no-commit-id", "--name-status", sha)
     rows = [ln.split("\t", 1) for ln in changed.stdout.splitlines() if ln]
-    files = [p for st, p in rows if p != reg_rel]
-    return (changed.returncode == 0 and reg_rel in [p for _, p in rows] and len(files) == 1
+    status = dict((p, st) for st, p in rows)
+    if changed.returncode != 0:
+        return False
+    if subject == REGRADE_SUBJECT:
+        return list(status) == [f"{rel}/{REGRADE_FILE}"] and status[f"{rel}/{REGRADE_FILE}"] == "A"
+    files = [p for p in status if p != reg_rel]
+    return (reg_rel in status and len(files) == 1
             and files[0].startswith(rel + "/") and RECHECK_FILE.fullmatch(files[0][len(rel) + 1:]) is not None
-            and dict((p, st) for st, p in rows)[files[0]] == "A")
+            and status[files[0]] == "A")
 
 
 def _tree_without_rechecks(git, rev: str, rel: str):
-    """The folder's (mode, kind, sha, path) entries at `rev`, recheck files left out; None when unreadable."""
+    """The folder's (mode, kind, sha, path) entries at `rev`, recheck files and regrade.json left out (each added later
+    by its own admitted commit); None when unreadable."""
     got = git("ls-tree", "-r", rev, "--", rel + "/")
     if got.returncode != 0:
         return None
     rows = [ln for ln in got.stdout.splitlines() if ln]
-    return sorted(r for r in rows if not RECHECK_FILE.fullmatch(r.split("\t", 1)[1].rsplit("/", 1)[-1]))
+    return sorted(r for r in rows if not RECHECK_FILE.fullmatch(r.split("\t", 1)[1].rsplit("/", 1)[-1])
+                  and r.split("\t", 1)[1] != f"{rel}/{REGRADE_FILE}")
 
 
 def rechecks_append_only_problems(git, reg_rel: str) -> list[str]:
