@@ -153,3 +153,13 @@ Since then (Mac proof only, light-ok, not yet in a battery):
 - d6ad30c2: the review fold (MINOR 1-3, NIT 1-2, the evidence-folder comment). test_walk_builders 76 OK on both trees; witnesses 41/41.
 
 Owed: a battery on scratch 355d615c (0cd9b1be + 89525f03..d6ad30c2), or the admission merge's own battery. sidecar_for stays Missing pending a ruling on the watch list.
+
+### Addendum, 15 Oct 04:41 EDT: S1-S3, the sidecar watch list
+
+184f05b3 builds watch_list and sidecar_road under Addendum 2 of the bootstrap ruling (rule W1).
+- Red on a merged scratch of bd9d05a7: 12 run, 11 failures, 3 errors.
+- Green: 83 OK on both trees; witnesses 41/41; test_stub_take 19 OK.
+- Merged scratch: /Users/javrodher/aegis-builds/gap4-harness-scratch-bd9d05a7 (committed there as a scratch commit).
+
+S4's draft text went to glitch-6b, since build_draft is not this lane's file. On the merged tree every production builder is now built except config_parent and proxy (until GAP4_CONFIG_PARENT is set) and machine_gate.
+Owed: a battery that includes 184f05b3.
