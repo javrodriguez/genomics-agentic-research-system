@@ -503,3 +503,17 @@ Written by a fresh integration window, under glitch-06.
 
 - **Merge clone:** branch `gap4/live-merge-20261014`. Merged code head `383e5c2f` (box `3f3beb21` + harness `d78c8791`), whose battery `gap4-merge-final-383e5c2-383e5c2-20261015T043059Z` is PASS, 272 of 272, solo. Log commits follow it. Nothing pushed.
 - **Next:** nothing owed by this lane until glitch-6b names a next step (a push or the hand-off of `383e5c2f` is not this lane's).
+
+## Interim 2: harness 89525f03 and box 58013b43 onto 383e5c2f (15 Oct, 01:2x-01:30 EDT, coordinator glitch-6b)
+
+- `f5496d2d`: harness `89525f03` (`bdb77d7a`, review NIT 1, a test-only lease-reader presence guard in `tests/test_walk_builders.py`; RESUME addendum). No conflict hunk.
+- `0cd9b1be`: box `58013b43` (`98d45802` G14 stub take runs 7 and 8 and the G7 walk launch road write-up; `ba6d7f14` the Claude Code 2.1.296 static-read evidence; RESUME block). 18 files, all under `lane-reports/`. No conflict hunk.
+- The lane tips had moved past the named heads (harness `2e84ca1f`, box `988f24ee`); only the named heads were merged.
+- Checks on `0cd9b1be`: `build_draft --check` ok; `copy_manifest --check` ok, 414 files; `freeze --check` ok, 415 paths; `batch --check` ready. T52 with the committed allowlist (list sha256 `b878a17a…7b9202`): 12 secret-shaped paths, 12 exempt, 0 new. The new `lane-reports/stub-take-20261015/` files add no secret-shaped name.
+- Battery launched 01:30:24 EDT: `gap4-merge-interim2-0cd9b1b-0cd9b1b-20261015T053025Z`, `--kind gars-gap4 --jobs 24 --solo`, head `0cd9b1be`.
+
+## RESUME HERE (15 Oct, after the interim-2 launch)
+
+- **Merge clone:** merged code head `0cd9b1be` (box `58013b43` + harness `89525f03`); log commits follow it. Nothing pushed.
+- **Running:** `gap4-merge-interim2-0cd9b1b-0cd9b1b-20261015T053025Z`. Do not cancel it.
+- **Next:** fetch it with `--wait`, derive the verdict on the Mac, classify any red by owner, record it, report to glitch-6b.
