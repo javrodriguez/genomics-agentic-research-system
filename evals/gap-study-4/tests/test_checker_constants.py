@@ -475,6 +475,16 @@ class TestTheLedgerRecordsTheCapAndThePoll(unittest.TestCase):
                 got = ct.ledger_budget_problems(led, pre)
                 self.assertTrue(got and all(x.startswith("[constant-binding] ") for x in got), got)
 
+    def test_a_design_without_a_whole_budget_is_named_as_such(self):
+        """Sweep fold: a design with no budgets block, no key, or a boolean value refuses as carrying none, even where
+        the ledger's value would compare equal (True == 1)."""
+        for name, pre, led in (("no-budgets", {}, ledger()), ("budgets-none", {"budgets": None}, ledger()),
+                               ("no-key", {"budgets": {"poll_s": 3}}, ledger()),
+                               ("bool", {"budgets": {"finalize_wait_s": 180, "poll_s": True}}, ledger(poll_s=1))):
+            with self.subTest(case=name):
+                got = ct.ledger_budget_problems(led, pre)
+                self.assertTrue(any("carries no budgets." in x for x in got), got)
+
     def test_the_driver_ledger_writes_both_beside_the_turn_budget(self):
         """drive.py's ledger literal carries finalize_wait_s and poll_s from the driver's own values (the rig tests,
         test_walk_wiring E1, read them back from a driven take)."""
@@ -536,7 +546,7 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
                 self.assertRegex(pending_walk.coverage_status(self.base, self.WALK) or "", r"^stale")
 
     def test_an_unreadable_check_is_never_counted(self):
-        for name, raw in (("missing", None), ("not-json", "{"), ("no-reasons", '{"walk": "w"}'),
+        for name, raw in (("missing", None), ("not-json", "{"), ("no-reasons", '{"walk": "w"}'), ("a-list", "[]"),
                           ("reasons-not-a-list", '{"checker_reasons": "constant-binding"}')):
             with self.subTest(check=name):
                 p = self.base / self.WALK / "check.json"
@@ -561,6 +571,16 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
         doc = walk_runner.check_record(self.WALK, {"checker_reasons": [], "events": {}}, {}, lambda r, t: {"route": "x"},
                                        checked=True)
         self.assertEqual(doc["checker_constants_sha256"], ct.checker_constants_sha256())
+
+
+class TestTheStripRuleReadsTheRecordVocabulary(unittest.TestCase):
+    def test_a_2_1_296_listed_name_is_never_stripped(self):
+        """drive.never_stripped_problems reads the RECORD_ lists: a 2.1.296 credential matched by no harness pattern
+        (only the generic one) is still never stripped, because it is listed."""
+        self.assertEqual(drive.matched_by("CLAUDE_CODE_GATEWAY_TOKEN"), "generic")
+        got = drive.never_stripped_problems(["CLAUDE_CODE_GATEWAY_TOKEN", "CLAUDECODE"])
+        self.assertEqual(len(got), 1, got)
+        self.assertIn("listed credential or billing list", got[0])
 
 
 class TestTheDraftNamesTheRuling(unittest.TestCase):
