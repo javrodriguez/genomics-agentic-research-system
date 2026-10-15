@@ -2108,7 +2108,6 @@ def _lease_reader_on_tree() -> bool:
     return callable(getattr(scan_record, "read_lease_tokens", None))
 
 
-LEASE_READER_ON_TREE = _lease_reader_on_tree()
 REFRESHED_TWO = "synthetic-lease-four-" + "d" * 12
 REFRESHED_THREE = "synthetic-lease-five-" + "e" * 12
 
@@ -2159,10 +2158,16 @@ class B13Lease(Drafted):
         """R1: the real lease_secrets where the tree carries it (synthetic lease files, mode 600, read by the real
         scan_record.read_lease_tokens), and B13's fake on every tree."""
         mod = wb()
-        from box import scan_record
-        self.assertEqual(callable(getattr(mod, "lease_secrets", None)), LEASE_READER_ON_TREE,
+        from box import preflight, scan_record
+        reader = _lease_reader_on_tree()               # read now, not at import: a later merge cannot hide it
+        self.assertEqual(callable(getattr(mod, "lease_secrets", None)), reader,
                          "B13.lease_secrets: walk_builders.lease_secrets and scan_record.read_lease_tokens disagree")
-        if LEASE_READER_ON_TREE:
+        # review of 83b83ea1..d78c8791, NIT 1: where the box's lease road is on the tree, the real half must run; a merge
+        # that dropped both readers would otherwise fall back to the fake alone and still pass
+        if "LEASE_CREDENTIAL" in vars(preflight) or callable(getattr(rt, "place_lease", None)):
+            self.assertTrue(reader, "B13.lease_secrets: the box's lease road is on this tree but its lease reader "
+                                    "(scan_record.read_lease_tokens, walk_builders.lease_secrets) is not")
+        if reader:
             with tempfile.TemporaryDirectory() as t:
                 self.assertEqual(lease_secrets_contract_problems(mod.lease_secrets, Path(t), scan_record.LoginError),
                                  [])
