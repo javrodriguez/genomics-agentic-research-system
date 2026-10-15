@@ -116,6 +116,14 @@ CELL = ("task", "half", "wording", "arm", "model")
 SUITE_KIND = "gars"
 
 
+# The watcher's evidence blobs (glitch-6b's ruling (b), 15 Oct 2026, after w001's fetch refused on 12 of them): a binary
+# blob in the walk's new commits ships only as a gzip stream under rehearsals/<walk>/evidence/blobs/<sha256>, decoded
+# within these bounds and scanned decompressed with no allowance; anything else refuses.
+EVIDENCE_BLOB = re.compile(r"evals/gap-study-4/rehearsals/[A-Za-z0-9][A-Za-z0-9._-]*/evidence/blobs/[0-9a-f]{64}")
+BLOB_MAX_BYTES = 16 * 1024 * 1024        # decompressed, per blob
+BLOB_MAX_RATIO = 256                      # decompressed : compressed, against bombs (text compresses far less)
+
+
 class LaunchRefused(RuntimeError):
     """A step of the road refused; the message names the rule, never a secret."""
 
@@ -168,6 +176,113 @@ def hold_id(walk: str) -> str:
 
 
 # ------------------------------------------------------------------------------------------------ ship
+def gunzip_bounded(data: bytes) -> bytes:
+    """One gzip member, decoded within BLOB_MAX_BYTES and BLOB_MAX_RATIO; no trailing bytes; never a binary result
+    (the decompressed scan reads text). Refuses (LaunchRefused) otherwise, naming the rule, never the bytes."""
+    import zlib
+    if not isinstance(data, bytes) or data[:2] != b"\x1f\x8b":
+        raise LaunchRefused("not a gzip stream (no 1f 8b magic)")
+    limit = min(BLOB_MAX_BYTES, len(data) * BLOB_MAX_RATIO)
+    d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    try:
+        out = d.decompress(data, limit + 1)
+    except zlib.error:
+        raise LaunchRefused("the gzip stream does not decode") from None
+    if len(out) > limit or d.unconsumed_tail:
+        raise LaunchRefused(f"the gzip stream decompresses past its bound ({limit} bytes)")
+    if not d.eof:
+        raise LaunchRefused("the gzip stream is truncated")
+    if d.unused_data:
+        raise LaunchRefused("the gzip stream carries trailing bytes")
+    if b"\0" in out[:8000]:
+        raise LaunchRefused("the decompressed blob is itself binary, which the scan cannot read")
+    return out
+
+
+def _git_out(repo: str, *args: str, binary: bool = False):
+    p = subprocess.run(["git", "-C", repo, *args], capture_output=True, timeout=600)
+    if p.returncode != 0:
+        raise LaunchRefused(f"git {args[0]} failed (exit {p.returncode})")
+    return p.stdout if binary else p.stdout.decode("utf-8", "replace")
+
+
+def evidence_blobs(suite_mod, repo: str, head: str, tip: str) -> dict:
+    """{blob id: decompressed bytes} for every binary blob the walk's new commits (head..tip) bring, each admitted only
+    as a gzip stream under evidence/blobs/ at EVERY path it appears at in those commits, absent from the shipped
+    head's history, and decoded within bounds. Any other binary refuses."""
+    binaries = suite_mod.binary_blobs_hashed(repo, tip, [head])
+    if not binaries:
+        return {}
+    in_head = set(_git_out(repo, "rev-list", "--objects", head).split())
+    paths = {}
+    for commit in _git_out(repo, "rev-list", f"{head}..{tip}").split():
+        for line in _git_out(repo, "ls-tree", "-r", commit).splitlines():
+            meta, _, path = line.partition("\t")
+            parts = meta.split()
+            if len(parts) == 3 and parts[1] == "blob":
+                paths.setdefault(parts[2], set()).add(path)
+    out = {}
+    for _path, oid, _digest in binaries:
+        if oid in in_head:
+            raise LaunchRefused(f"binary blob {oid} is in the shipped head's history, not only the walk's commits")
+        where = paths.get(oid) or set()
+        if not where or not all(EVIDENCE_BLOB.fullmatch(p) for p in where):
+            raise LaunchRefused(f"binary blob {oid} sits outside rehearsals/<walk>/evidence/blobs/")
+        try:
+            out[oid] = gunzip_bounded(_git_out(repo, "cat-file", "blob", oid, binary=True))
+        except LaunchRefused as e:
+            raise LaunchRefused(f"evidence blob {oid}: {e}") from None
+    return out
+
+
+def scan_decompressed(gitleaks: str, blobs: dict, work: str) -> list:
+    """gitleaks over the decompressed blobs in a private folder, no allowance: --ignore-gitleaks-allow, an empty
+    ignore file, redacted. Returns the blob ids with a finding; never prints or returns content. The folder is
+    removed however the scan ends."""
+    import shutil
+    import tempfile
+    os.makedirs(work, exist_ok=True)
+    tmp = tempfile.mkdtemp(prefix="blobs-", dir=work)            # mode 0700
+    try:
+        src = os.path.join(tmp, "src")
+        os.mkdir(src, 0o700)
+        for oid, data in blobs.items():
+            fd = os.open(os.path.join(src, oid), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
+        ignore = os.path.join(tmp, "empty.gitleaksignore")
+        open(ignore, "w").close()
+        report = os.path.join(tmp, "report.json")
+        p = subprocess.run([gitleaks, "dir", "--no-banner", "--redact", "--exit-code", "0", "--ignore-gitleaks-allow",
+                            "--gitleaks-ignore-path", ignore, "--report-format", "json", "--report-path", report, src],
+                           capture_output=True, timeout=900)
+        try:
+            with open(report, encoding="utf-8") as fh:
+                found = json.load(fh)
+            if not isinstance(found, list):
+                raise ValueError
+        except (OSError, ValueError):
+            raise LaunchRefused(f"the decompressed-blob scan wrote no readable report (exit {p.returncode})") \
+                from None
+        if p.returncode != 0:
+            raise LaunchRefused(f"the decompressed-blob scan failed (exit {p.returncode})")
+        return sorted({os.path.basename(str(f.get("File", ""))) for f in found})
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks: str, work: str) -> tuple:
+    """The blob ids scan_unpublished may allow: every binary blob of the walk's commits, admitted and scanned clean
+    decompressed. Refuses on anything else; reports counts and ids only."""
+    blobs = evidence_blobs(suite_mod, repo, head, tip)
+    if not blobs:
+        return ()
+    hits = scan_decompressed(gitleaks, blobs, work)
+    if hits:
+        raise LaunchRefused(f"gitleaks found items in {len(hits)} decompressed evidence blob(s): {', '.join(hits)}")
+    return tuple(sorted(blobs))
+
+
 def load_suite(suite: str):
     """athena_suite.py from the operator's aegis checkout, loaded by path (its module level only defines names)."""
     import importlib.util
@@ -337,12 +452,14 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
     if got != tip:
         raise LaunchRefused("the back bundle's tip is not athena's")
     # The review's MAJOR 1 (15 Oct 2026): athena_suite's own scan_unpublished over the scratch clone at the tip, every
-    # commit past the shipped head and NO allowance (no rulings, no allowed or ruled blobs, no ruled messages): its
+    # commit past the shipped head and NO allowance (no rulings, no ruled blobs, no ruled messages; the only allowed
+    # blobs are the watcher's gzip evidence blobs, each decoded and scanned clean first: glitch-6b's ruling (b)): its
     # --ignore-gitleaks-allow, empty ignore file, remerge diffs, commit-message scan and binary-blob refusal.
     suite_mod = load_suite(suite) if suite_module is None else suite_module
     try:
+        allow = admitted_evidence_blobs(suite_mod, scratch, head, tip, gitleaks, os.path.join(work, "blob-scan"))
         n = suite_mod.scan_unpublished(scratch, tip, os.path.join(work, "back-scan-work"), gitleaks, [head], None,
-                                       (), None, None, None)
+                                       allow, None, None, None)
     except Exception as e:  # noqa: BLE001 - athena_suite's Refused, a git or scanner failure: nothing is fetched
         raise LaunchRefused(f"the return scan refused, nothing is fetched: {type(e).__name__}: {str(e)[:300]}") \
             from None
