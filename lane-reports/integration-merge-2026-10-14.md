@@ -529,3 +529,26 @@ Written by a fresh integration window, under glitch-06.
 
 - **Merge clone:** merged code head `0cd9b1be` (box `58013b43` + harness `89525f03`), battery PASS 272 of 272, solo. Log commits follow it. Nothing pushed.
 - **Next:** wait for glitch-6b's heads for the admission battery (harness G1, G2, B3 walk builders; the checker constants on the bootstrap branch; the box's gate and launch road).
+
+## Admission merge: box edd65756, harness d6ad30c2, bootstrap 6f2a6390 onto 0cd9b1be (15 Oct, 04:14-04:4x EDT, coordinator glitch-6b)
+
+- `be0c2be6`: box `edd65756` (machine_gate athena-side `fa0838ec`; walk_launch.py `0db7d615`, `a112030a`; the Claude refusals `116d83e8`, `7d515916`; review folds `6a8aff48`, `7dbcdad8`, `0a318f4a`, `edd65756`; the box merge of `383e5c2f`, `988f24ee`). No conflict hunk. The merged `evals/` equals `edd65756` except harness `bdb77d7a` in `tests/test_walk_builders.py`.
+- `1c87b7c7`: harness `d6ad30c2` (`da73335f` G1/G2/B3, `32c6085a`, `96d1a60a`, `5bae9e01`, `6fe573d5`, `3943d61c`, `d6ad30c2`, RESUME commits). No conflict hunk. Against `d6ad30c2`, the merged walk_builders.py and its tests differ only by the box side already carried (`lease_secrets`, B7's `take_spec` clause, the accepted sidecar launch).
+- `bd9d05a7`: bootstrap `6f2a6390` (fetched from `/Users/javrodher/aegis-builds/gap4-bootstrap-20261015`, branch `gap4/bootstrap-constants-20261015`). No conflict marker. The expected overlap merged hunk by hunk, both sides kept:
+  - `tests/test_walk_builders.py`: the harness EXPECTED_MISSING removals (runtime, hosts, lock_path, agent_version, budgets, run_tree_exclude), `B7Production(Drafted)` with its setUp, B15, B8 and B11; and the bootstrap's `_constants_held()` and `expected_missing()` with both B7 asserts reading it. No duplicate class or function name.
+  - `drive.py`: the bootstrap's `finalize_wait_s`/`poll_s` record fields, `TakeDriver.checker_constants_sha256`, `take_checker`'s digest line, and the appended `RECORD_` 2.1.296 block; the harness's lines kept.
+  - `prereg-draft.json`: git's merge is byte-identical to `build_draft.py`'s output on the merged tree (written twice, `cmp` equal both times), so it is not hand-edited and no regeneration changed it.
+- Checks on `bd9d05a7`: `build_draft --check` ok; `copy_manifest --check` ok, 420 files from 58 fragments (adds `bootstrap-constants`); `freeze --check` ok, 421 paths; `batch --check` ready. T52 (allowlist sha256 `b878a17a…7b9202`): 12 secret-shaped paths, 12 exempt, 0 new; the new box evidence adds no secret-shaped name.
+- Mac, light-ok exiting 0 before each, `env -u CLAUDE_CODE_MESSAGING_TOKEN` throughout: test_walk_builders 76, test_checker_constants 25, test_walk_runner 83, test_machine_gate 9, test_walk_launch 15, test_run_take 60, test_drive_commit 31, all OK. The w6e byte check (round 3's driver unchanged above the round-4 banner) exits 0, run with absolute paths and `git -C` in place of the line's repo-root relative paths.
+- `walk_runner.py` dry, every `GAP4_*` unset (none was set), `--walk w-0001 --task scope-read --half trap --wording w3 --arm A --model claude-opus-5-5`: exit 2, four refusals:
+  - `config_parent`: GAP4_CONFIG_PARENT (walk-time env).
+  - `proxy`: its configuration goes under the config parent, which is missing (follows from config_parent).
+  - `machine_gate`: GAP4_SUITE_ACCOUNT does not name the athena suite account (the gate).
+  - **`sidecar_for`: not env.** "sidecar.create_argv needs the take's pre-registered consequential paths (its watch list), and no registered per-task list is on the tree; variants.graded_paths names none for number-fidelity." The harness test carries it as intended Missing ("sidecar_for stays Missing (no registered watch list)"), but it is a builder refusal, so the dry run does not yet refuse only on the gate and the env.
+- No battery launched (glitch-6b: wait for the go).
+
+## RESUME HERE (15 Oct, after the admission merge)
+
+- **Merge clone:** merged code head `bd9d05a7` (box `edd65756` + harness `d6ad30c2` + bootstrap `6f2a6390`); log commits follow it. Nothing pushed.
+- **Waiting on:** the bootstrap's NIT A/NIT B commit on top of `6f2a6390` (merge it as the same branch's newer head), then glitch-6b's go for the battery (`--kind gars-gap4 --jobs 24 --solo`).
+- **Open:** `sidecar_for` is the one builder walk_runner still refuses on (no registered per-task watch list).
