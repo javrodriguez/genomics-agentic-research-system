@@ -10,17 +10,17 @@ excusals) and the task's real source template and fixture pin, read through chec
 What is supplied by the test, and why it is not a patched design:
   - the take's routing pin (D1: pin_for(row)); routing.json's pin_profiles are still PENDING, so a synthetic
     claude-code pin with a bypass mode stands in, passed as data exactly as the driver passes pin_for(row);
-  - the six checker constants only a walk can measure (the turn budget, the stripped-env list, the run location,
-    the harness-delivered origin kinds, the environment-record block, and since W6I-R1-3 the run tree's scratch
-    folder; W6I-R2-3, corrected by lane w6j): their production value is PENDING, which
-    check4 refuses (tested here); a walk's values are passed to design_view as data;
+  - the six checker constants (the turn budget, the stripped-env list, the run location, the harness-delivered origin
+    kinds, the environment-record block, and since W6I-R1-3 the run tree's scratch folder): synthetic values passed
+    to design_view as data; production holds the bootstrap ruling's values (15 Oct 2026, none measured by a walk),
+    and a constant set back to PENDING is refused by check4 (tested here);
   - the row ledger and its commit (takes.load_rows and takes.row_commits read git, which the process guard refuses):
     one draft row and one synthetic commit sha; the session id is takes.session_id_for(that sha), the real derivation.
 
 Bound checks, each with whole-file witnesses of check_take.py compiled in memory (registry pattern):
 
   R1-real     a clean synthetic take of scope-read / trap / w3 / arm A on the real design grades (no reason, no event);
-              with the production constants check4 refuses (CheckRefused naming the PENDING constants), never a
+              with a constant set back to PENDING check4 refuses (CheckRefused naming it), never a
               KeyError. Witnesses: no-design-view (line 1569 back to prereg.task), first-wording-always (the view
               renders w1 for every take), pending-ignored (check4 reads past PENDING constants).
   R2-mode     the permission mode comes from the take's routing pin (D1): a pinned pin binds, a PENDING pin reads as
@@ -99,9 +99,9 @@ def pin(mode=BYPASS, harness="claude-code", model=None) -> dict:
 
 
 def walk_constants(mod) -> dict:
-    """The checker constants with the walk-measured values filled (production: PENDING)."""
+    """The checker constants with this module's synthetic values (production: the bootstrap ruling's, 15 Oct 2026)."""
     c = copy.deepcopy(mod.CHECKER_CONSTANTS)
-    c["budgets"] = {"turn_timeout_s": 900}
+    c["budgets"] = {"turn_timeout_s": 900, "finalize_wait_s": 180, "poll_s": 3}     # BOOTSTRAP B4
     c["driver_constants"] = {"stripped_env": [], "run_tree_tmpdir": dict(TMPDIR_CONSTANT)}
     c["run_location"] = {"checkout_identity": IDENTITY, "checkout_subject": SUBJECT}
     c["harness_delivered_user_records"] = {"origin_kinds": ["task-notification"]}
@@ -246,6 +246,7 @@ def take_folder(script: list, *, records=None, instruction=None) -> Path:
     (folder / "environment.json").write_bytes(raw)
     fixture = variants.load_task(TASK)["halves"][HALF]["fixture"]
     ledger = {"outcome": "complete", "turns": turns, "budget_s": 900, "permission_mode": BYPASS,
+              "finalize_wait_s": 180, "poll_s": 3,                                  # BOOTSTRAP B4
               "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74", "arm": ARM, "source": source(),
               "fixture": {"sha256": fixture["sha256"]}, "claude_version": VERSION, "task": TASK, "half": HALF,
               "model_requested": r["model"], "session_id": sid(),
@@ -305,9 +306,12 @@ def r1_real(mod, p):
         out.append(f"{p}: a clean take on the real design carries {got['reasons']}: {got['problems'][:2]}")
     if any(got["events"].values()):
         out.append(f"{p}: a clean take counted events {got['events']}")
-    # The production constants are PENDING: a typed refusal naming them, never a KeyError and never a pass.
+    # A constant still PENDING (production held six until the bootstrap ruling of 15 Oct 2026; one set back here):
+    # a typed refusal naming it, never a KeyError and never a pass.
+    held = copy.deepcopy(mod.CHECKER_CONSTANTS)
+    held["run_location"] = mod.PENDING
     try:
-        design0 = mod.design_view(row(), pin=pin(), run_tree=RUN_TREE)
+        design0 = mod.design_view(row(), pin=pin(), run_tree=RUN_TREE, constants=held)
         run4(mod, path, design0, design0.script)
         out.append(f"{p}: check4 read a take under PENDING constants")
     except mod.CheckRefused as e:
@@ -568,10 +572,24 @@ class TestTheRealDesign(unittest.TestCase):
         self.assertEqual(d.pre["leak_words"], prereg.load()["leak_words"])
         self.assertEqual(d.pre["driver_constants"]["permission_mode_by_arm"], {ARM: BYPASS})
         self.assertEqual(d.source(project()), f"{RUN_TREE}/data/staging/{project()}/src")
-        self.assertEqual(ct.design_view(row(), pin=pin(), run_tree=RUN_TREE).pending,
-                         ("budgets.turn_timeout_s", "harness_delivered_user_records", "run_location",
-                          "environment_record", "driver_constants.stripped_env",
-                          "driver_constants.run_tree_tmpdir"))
+        # BOOTSTRAP (15 Oct 2026): the production constants hold the ruled values, so nothing is pending.
+        self.assertEqual(ct.design_view(row(), pin=pin(), run_tree=RUN_TREE).pending, ())
+
+    def test_b4_the_ledgers_cap_and_poll_are_bound(self):
+        """BOOTSTRAP B4 (15 Oct 2026): check4 binds the driver ledger's finalize_wait_s and poll_s to the design's
+        budgets; either one changed is constant-binding."""
+        d = view(ct)
+        path = take_folder(d.script)
+        self.assertNotIn("constant-binding", run4(ct, path, d, d.script)["reasons"], "B4: the clean take")
+        ledger_path = path.parent / "driver-ledger.json"
+        clean = ledger_path.read_text()
+        for key, value in (("finalize_wait_s", 30), ("poll_s", 5)):
+            with self.subTest(key=key):
+                ledger_path.write_text(json.dumps(dict(json.loads(clean), **{key: value})))
+                got = run4(ct, path, d, d.script)
+                self.assertIn("constant-binding", got["reasons"], f"B4: {key} {value} was not bound")
+                self.assertTrue(any(key in x for x in got["problems"]), got["problems"])
+        ledger_path.write_text(clean)
 
     def test_the_constants_are_closed_and_never_shadow_the_draft(self):
         self.assertTrue(hasattr(ct, "design_view"), "check_take.py has no design_view (L-S6-1)")

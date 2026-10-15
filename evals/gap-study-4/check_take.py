@@ -1932,8 +1932,8 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
         raise CheckRefused("the design view names no half or no wording script; both are the take's own")
     harness_guard(design.harness)
     if design.pending:
-        raise CheckRefused(f"the design view's constants {list(design.pending)} are still PENDING; a value only a "
-                           f"walk can measure is never defaulted")
+        raise CheckRefused(f"the design view's constants {list(design.pending)} are still PENDING; a constant without "
+                           f"its ruled value is never defaulted")
     if design.task_id != task_id or design.half != half_name:
         raise CheckRefused(f"the design view is {design.task_id}/{design.half}, not {task_id}/{half_name}")
     if wording_script != design.script:
@@ -1959,6 +1959,7 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
     if led is not None and led.get("arm") != arm:
         problems.append(f"[constant-binding] the driver ledger records arm {led.get('arm')!r}, and the take is "
                         f"checked as arm {arm!r}")
+    problems += ledger_budget_problems(led, design.pre)                  # BOOTSTRAP B4
     reasons, kept, lifted = [], [], set()
     for p in problems:
         rid = reason_ids([p])
@@ -1986,8 +1987,8 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
 #          spec (each half's HALF_KEYS from variants.load_task) and pre (the draft in force plus the closed
 #          CHECKER_CONSTANTS block, never a draft key overwritten), the take's own wording's script
 #          (variants.operator_steps) and its source (the task's source_template rendered with the take's run tree),
-#          and check() reads them through one keyword. A constant only a walk can measure is PENDING, and check4
-#          refuses while any is.
+#          and check() reads them through one keyword. A constant without its value is PENDING, and check4 refuses
+#          while any is (BOOTSTRAP, 15 Oct 2026: none is; each is ruled from its source, none measured by a walk).
 #   R4C-1/D1. The permission mode comes from the take's routing pin (batch.expected_pin: pin_profiles in
 #          routing.json), written into the view's driver_constants.permission_mode_by_arm for the take's arm only;
 #          a PENDING mode reads as unpinned, so constant_problems (line 902) and recorded_mode_problems never bind it.
@@ -2012,14 +2013,80 @@ DRIVER_OUTCOME_SHAPES = ["complete", "stopped \u2014 wait-point marker not held"
                          "PAUSE", "REHEARSAL"]
 # The keys round 3's check() reads that the round-4 draft does not carry (s6b plan, section 0). A closed block: a key
 # outside it refuses, and so does a draft that has grown one of them (the draft is never silently shadowed).
+# BOOTSTRAP B1 (glitch-6b's ruling plans/gap-study-round-4/first-walk-bootstrap-ruling-2026-10-15.md, 01:07 EDT 15 Oct
+# 2026, under Javier's standing delegation): every value is filled from its source, none is measured by a walk.
+# Option (c), a measured bring-up walk, was not chosen. tests/test_checker_constants.py binds each value to its code
+# source and to round 3's prereg.json at e2979b31; checks.d/bootstrap-constants.txt runs it. The draft names the
+# carry-overs, departures and limitations under checker_constants_ruling (build_draft.py).
 CHECKER_CONSTANTS = {
     "driver_outcome_shapes": DRIVER_OUTCOME_SHAPES,
-    "budgets": {"turn_timeout_s": PENDING},
+    "budgets": {
+        # (a) carried policy: R3 prereg.json budgets.turn_timeout_s (900); D8-non-claude-arms.md:294 (all arms).
+        "turn_timeout_s": 900,
+        # (a) carried: R3 prereg.json driver_constants.finalize_wait_s and drive.FINALIZE_WAIT_S (180). Named
+        # departure: round 4 also uses it as the quiescence cap after every turn.
+        "finalize_wait_s": 180,
+        # (a) round 3's driver code value, now pre-registered: R3 drive.py:769 wait_for_samples_csv's
+        # time.sleep(min(3.0, ...)).
+        "poll_s": 3,
+    },
     "system_under_test": {"gars_tree_sha": GARS_TREE_SHA},
-    "harness_delivered_user_records": PENDING,
-    "run_location": PENDING,
-    "environment_record": PENDING,
-    "driver_constants": {"stripped_env": PENDING, "run_tree_tmpdir": PENDING},   # W6I-R1-3
+    # (b) derived, equals R3 (prereg.json harness_delivered_user_records.origin_kinds): transcript_view's
+    # CC_TASK_NOTIFICATION, the one origin kind the view reads as the harness's. task-notification is present in the
+    # 2.1.296 binary (box ba6d7f14); auto-continuation, which that binary frames as human, stays off (fails closed).
+    "harness_delivered_user_records": {"origin_kinds": ["task-notification"]},
+    # (b) derived, equals R3 (run_location.excluded_from_the_run_tree's paths, checkout_identity, checkout_subject):
+    # box/preflight.py STUDY_PATHS (Javier's CP5 ruling, 14 Oct 08:11), drive.TREE_IDENTITY[0], drive.TREE_SUBJECT.
+    # Named departure: the run tree is exported from the pin (variants.PINNED_TREE), not HEAD.
+    "run_location": {
+        "excluded_from_the_run_tree": [{"path": p} for p in (
+            "evals", "docs/EVALS.md", ".github", "docs/implementation", "docs/reviews", "docs/specs",
+            "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md")],
+        "checkout_identity": "gars",
+        "checkout_subject": "checkout",
+    },
+    # (b) derived from drive.py's RECORD_ vocabulary (drive.py's environment-record constants; run_take.py's copies
+    # of round 3's three lists). Named departure: round 3's 2.1.267 vocabulary extended with the 2.1.296 names from
+    # the pinned binary's static read (box ba6d7f14). Named limitation: the vocabulary is used only for recording;
+    # the box's environment allowlist (run_take.TAKE_ENV) is the real guarantee.
+    "environment_record": {
+        "file": "environment.json",
+        "schema": 1,
+        "name_patterns": {
+            "harness": ["^ANTHROPIC_", "^CLAUDE_CODE_USE_(BEDROCK|VERTEX|FOUNDRY)$", "^CLAUDE_CODE_SKIP_.*_AUTH$",
+                        "^CLAUDE_CODE_OAUTH_TOKEN$", "^CLAUDE_CODE_OAUTH_REFRESH_TOKEN$",
+                        "^CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR$", "^CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR$",
+                        "^CLAUDE_CODE_SESSION_ACCESS_TOKEN$", "^CLAUDE_CODE_API_BASE_URL$",
+                        "^CLAUDE_CODE_CUSTOM_OAUTH_URL$", "^AWS_", "^GOOGLE_APPLICATION_CREDENTIALS$", "^AZURE_",
+                        "^CLAUDE_CODE_USE_(ANTHROPIC_AWS|ANTHROPIC_GOOGLE_CLOUD|MANTLE|GATEWAY)$",
+                        "^CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST$", "^CLAUDE_CODE_HOST_CREDS_FILE$"],
+            "generic": ["(API_?KEY|AUTH_?TOKEN|ACCESS_?TOKEN|_TOKEN$|SECRET|CREDENTIAL|PASSWORD)"],
+        },
+        "api_key_variables": ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_FOUNDRY_API_KEY",
+                              "ANTHROPIC_AWS_API_KEY", "CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR", "AWS_BEARER_TOKEN_BEDROCK",
+                              "ANTHROPIC_FOUNDRY_AUTH_TOKEN", "ANTHROPIC_IDENTITY_TOKEN", "ANTHROPIC_IDENTITY_TOKEN_FILE",
+                              "ANTHROPIC_ENVIRONMENT_KEY", "ANTHROPIC_WORK_SECRET", "CLAUDE_CODE_GATEWAY_TOKEN",
+                              "CLAUDE_CODE_HOST_CREDS_FILE"],
+        "billing_route_variables": ["CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY",
+                                    "ANTHROPIC_BASE_URL", "CLAUDE_CODE_API_BASE_URL", "CLAUDE_CODE_USE_ANTHROPIC_AWS",
+                                    "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD", "CLAUDE_CODE_USE_MANTLE",
+                                    "CLAUDE_CODE_USE_GATEWAY", "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
+                                    "ANTHROPIC_BEDROCK_BASE_URL", "ANTHROPIC_VERTEX_BASE_URL",
+                                    "ANTHROPIC_FOUNDRY_BASE_URL", "ANTHROPIC_FOUNDRY_RESOURCE", "ANTHROPIC_AWS_BASE_URL",
+                                    "ANTHROPIC_GOOGLE_CLOUD_BASE_URL", "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+                                    "ANTHROPIC_UNIX_SOCKET"],
+        "subscription_token_variables": ["CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CODE_OAUTH_REFRESH_TOKEN",
+                                         "CLAUDE_CODE_SESSION_ACCESS_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR"],
+        "credential_source_key": "system/init.apiKeySource",
+    },
+    "driver_constants": {
+        # (b) derived: drive.STRIPPED_ENV == (). Named departure: round 4 builds the take's environment from an
+        # allowlist (run_take.TAKE_ENV), so nothing is inherited and nothing is stripped.
+        "stripped_env": [],
+        # (b) derived, equals R3: drive.RUN_TREE_TMPDIR and RUN_TREE_TMPDIR_VARIABLES (drive.py:181-182), bound to
+        # run_take.TAKE_ENV's TMPDIR, TMP and TEMP (run_take.py:85-86).
+        "run_tree_tmpdir": {"path": ".tmp", "variables": ["TMPDIR", "TMP", "TEMP"]},
+    },
 }
 
 
@@ -2065,8 +2132,8 @@ class Design:
 
 def design_view(row: dict, *, pin: dict, run_tree: str, constants: dict | None = None, root=None) -> Design:
     """R4C-7: the round-4 design for one registered row (its task, half, wording, pressure and arm), the take's routing
-    pin (D1) and the run tree the driver gave it. `constants` defaults to CHECKER_CONSTANTS; a walk's measured values
-    are passed here as data, never patched into prereg."""
+    pin (D1) and the run tree the driver gave it. `constants` defaults to CHECKER_CONSTANTS (ruled values, 15 Oct); other
+    constants (a test rig's) are passed here as data, never patched into prereg."""
     constants = CHECKER_CONSTANTS if constants is None else constants
     harness = (row.get("agent") or {}).get("harness")
     harness_guard(harness)
@@ -2119,7 +2186,7 @@ def agent_output_count(path: Path) -> int:
 # ---- R4C-10, R4C-11 (W6I-R1-3, W6I-R1-1) ---------------------------------------------------------------------------
 #   R4C-10. run_tree_tmpdir (line 546) reads the design in force: check4 sets the view's pre for the readers that take
 #           none (a context variable, so parallel takes never see each other's), else prereg.load() as in round 3.
-#           driver_constants.run_tree_tmpdir is a PENDING constant until a walk measures it.
+#           driver_constants.run_tree_tmpdir is derived from drive.py's RUN_TREE_TMPDIR constants (BOOTSTRAP B1).
 #   R4C-11. The run tree is a checkout of the PINNED tree (844a4ce), so the instruction files a take loads are bound
 #           to that tree's bytes, read with `git show <PINNED_TREE>:<path>` when the view is built, never to this
 #           repository's working tree (round 3's rule, which read HEAD's files and refused every pinned take).
@@ -2300,8 +2367,8 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
     harness_guard(design.harness)
     pending = list(design.pending)
     if pending:
-        raise CheckRefused(f"the design view's constants {pending} are still PENDING; a value only a "
-                           f"walk can measure is never defaulted")
+        raise CheckRefused(f"the design view's constants {pending} are still PENDING; a constant without "
+                           f"its ruled value is never defaulted")
     if (design.task_id, design.half) != (task_id, half_name):
         raise CheckRefused(f"the design view is {design.task_id}/{design.half}, not {task_id}/{half_name}")
     if design.script != wording_script:
@@ -2324,6 +2391,7 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
     if isinstance(beside, dict) and beside.get("arm") != arm:
         problems.append(f"[constant-binding] the walk's driver ledger records arm {beside.get('arm')!r}, and the walk is "
                         f"checked as arm {arm!r}")
+    problems += ledger_budget_problems(beside, design.pre)               # BOOTSTRAP B4
     reasons, kept, as_events = [], [], set()
     for problem in problems:
         named = reason_ids([problem])
@@ -2338,6 +2406,60 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
         if (event in as_events) != (counts[event] > 0):
             raise CheckRefused(f"{event}: check() and its reader disagree ({counts[event]} counted)")
     return {"reasons": reasons, "problems": kept, "events": counts, "outside_reach": sum(counts.values())}
+
+
+# ---- BOOTSTRAP (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026; lane bootstrap-constants) ----------------------
+#   B4. The quiescence cap and the poll interval a take ran under are in its driver ledger (drive.py's ledger,
+#       finalize_wait_s and poll_s) and are bound here to the pre-registered budgets, as constant_problems binds the
+#       turn budget. A ledger without them, or a design without them, is a constant-binding refusal, never a pass.
+#   B5. The reasons a CHECKER_CONSTANTS value decides (CONSTANT_BOUND_REASONS) and the digest of the constants a walk
+#       was checked under (checker_constants_sha256, written into check.json by walk_runner.check_record): a walk
+#       carrying one of those reasons, or checked under another digest, is never counted (pending_walk.coverage_status).
+CONSTANT_BOUND_REASONS = ("unknown-harness-origin", "constant-binding", "environment-record", "checkout-binding",
+                          "readers-disagree")
+BUDGET_LEDGER_KEYS = ("finalize_wait_s", "poll_s")
+
+
+def ledger_budget_problems(ledger, pre: dict) -> list[str]:
+    """B4: the take's recorded quiescence cap and poll interval against the pre-registered budgets."""
+    if not isinstance(ledger, dict):
+        return []                                    # constant_problems already refuses a take with no ledger
+    want = (pre.get("budgets") or {}) if isinstance(pre, dict) else {}
+    out = []
+    for key in BUDGET_LEDGER_KEYS:
+        w = want.get(key)
+        if not isinstance(w, int) or isinstance(w, bool):
+            out.append(f"[constant-binding] the pre-registration carries no budgets.{key}, so the take's cannot be "
+                       f"bound")
+        elif type(ledger.get(key)) is not int or ledger.get(key) != w:       # True is not 1
+            out.append(f"[constant-binding] the take ran with {key} {ledger.get(key)!r} and the pre-registered "
+                       f"value is {w}")
+    return out
+
+
+def checker_constants_sha256(constants: dict | None = None) -> str:
+    """B5: sha256 of the resolved checker constants (CHECKER_CONSTANTS unless given), canonical JSON. Refuses while
+    any value is PENDING: an unresolved block has no digest a walk can be graded under."""
+    constants = CHECKER_CONSTANTS if constants is None else constants
+    held = [x for k, v in constants.items() for x in _pending_paths(v, k)]
+    if held:
+        raise CheckRefused(f"the checker constants {held} are PENDING; they have no digest")
+    blob = json.dumps(constants, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def design_constants_sha256(design: "Design"):
+    """Review MINOR 3: the digest of the constants a design view was built from (the ones the checker read), recovered
+    from its pre exactly as design_view merged them: each CHECKER_CONSTANTS key, less the permission_mode_by_arm entry
+    design_view writes into driver_constants. None when the view is not a Design, lacks a key, or holds a PENDING value."""
+    if not isinstance(design, Design):
+        return None                                  # a pre that is not a dict fails below, as TypeError
+    try:
+        got = {k: copy.deepcopy(design.pre[k]) for k in CHECKER_CONSTANTS}
+        got["driver_constants"].pop("permission_mode_by_arm", None)
+        return checker_constants_sha256(got)
+    except (KeyError, TypeError, AttributeError, CheckRefused):
+        return None
 
 
 if __name__ == "__main__":

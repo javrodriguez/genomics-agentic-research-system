@@ -80,15 +80,18 @@ def walk_entry(row: dict, reason: str) -> dict:
     return dict({k: row.get(k) for k in ENTRY_FROM_ROW}, reason=reason, counted=False)
 
 
-def check_record(walk: str, records, table, route_fn, *, checked: bool) -> dict:
+def check_record(walk: str, records, table, route_fn, *, checked: bool, constants_sha256=None) -> dict:
     """check.json: whether the checker ran (W10 review note: it runs only when a turn ran, and its reading is then
     the driver ledger's companion; otherwise the driver hands an empty reading, which this file must not pass off
     as a clean one), the checker's reasons and events as the drive returned them, and the route routing gives the
-    records (or why it refused). Read, never counted."""
+    records (or why it refused), and (BOOTSTRAP B5, review MINOR 3) the digest of the constants the checker read
+    (constants_sha256: the driver's checker_constants_sha256(row)), null when it did not run, which
+    pending_walk.coverage_status compares with the constants in force. Read, never counted."""
     if not isinstance(records, dict):
         raise TypeError("the drive returned no records")
     doc = {"walk": walk, "checked": checked is True, "checker_reasons": list(records.get("checker_reasons") or []),
-           "events": records.get("events"), "route": None, "route_refused": None}
+           "events": records.get("events"), "route": None, "route_refused": None,
+           "checker_constants_sha256": constants_sha256 if checked is True else None}
     try:
         doc["route"] = route_fn(records, table)["route"]
     except Exception as e:  # noqa: BLE001 - routing must never sink a walk; its refusal is the walk's record
@@ -197,7 +200,9 @@ def _run_one(driver, repo, row, reason, walk, folder, reached, *, table, route_f
     if ns["WALK_CHECK"] != CHECK_FILE:
         raise RuntimeError(f"the driver's walk check file is {ns['WALK_CHECK']!r}, not {CHECK_FILE!r}")
     checked = (folder / LEDGER_FILE).is_file()     # the checker ran exactly when the driver wrote its ledger
-    write_check(folder, check_record(walk, records, table, route_fn, checked=checked))
+    read = getattr(driver, "checker_constants_sha256", None)       # BOOTSTRAP: the constants the checker read
+    write_check(folder, check_record(walk, records, table, route_fn, checked=checked,
+                                     constants_sha256=read(row) if callable(read) else None))
     try:
         run_mod.write_walk_grade(entry, folder, grade=grade)
         got = repo.commit_walk(entry)

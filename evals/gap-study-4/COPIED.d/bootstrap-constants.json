@@ -1,0 +1,20 @@
+{
+  "lane": "bootstrap-constants",
+  "files": [
+    {
+      "path": "tests/test_checker_constants.py",
+      "status": "new",
+      "reason": "Lane bootstrap-constants (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026, and its 2.1.296 addition): K-closed and the nine bindings of check_take.CHECKER_CONSTANTS to their code sources (drive.py, transcript_view.py, box/preflight.py, box/run_take.py) and to round 3's prereg.json and drive.py at e2979b31, the D8 per-arm turn-budget row quoted, the 2.1.296 additions bound to the box lane's classified lists (ba6d7f14), one witness per binding; K-sweep (the pinned tree exported the driver's way has TREE_SWEEP hits in README.md and docs/RESULTS.md only); K-ledger (B4); K-cover (B5: pending_walk.coverage_status never counts a graded walk whose check.json names a constant-bound reason or another constants digest); K-draft (B6)."
+    },
+    {
+      "path": "checks.d/bootstrap-constants.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): tests/test_checker_constants.py and build_draft.py --check."
+    },
+    {
+      "path": "COPIED.d/bootstrap-constants.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Edits without transfer, named here: check_take.py (CHECKER_CONSTANTS filled from their sources; the R4C-7 and R4C-10 comments and check4's PENDING refusal no longer say a walk measures them; ledger_budget_problems called from check4 and check4_walk; CONSTANT_BOUND_REASONS and checker_constants_sha256 appended), drive.py (the RECORD_ environment-record vocabulary, round 3's extended with the 2.1.296 names, a named departure; finalize_wait_s and poll_s in the take and walk ledger; two docstrings), native_reader_registration.py (LEDGER_KEYS carries the two new ledger keys), walk_runner.py (check_record writes checker_constants_sha256), pending_walk.py (checker_standing in coverage_status), build_draft.py and prereg-draft.json (checker_constants_ruling), and the tests that held the constants PENDING or the rig's budgets: tests/test_walk_wiring.py (W6-pending superseded: none is PENDING; the rig's cap and poll in its constants and read back from the driven ledger; the RECORD_ vocabulary), tests/test_checker_body.py (the PENDING refusal driven by a constant set back to PENDING; the cap and poll in the synthetic constants and ledger), tests/test_walk_builders.py (design_for is no longer missing where no constant is PENDING), tests/test_drive_loop.py (D8-checker's PENDING refusal driven by a constant set back to PENDING), tests/test_pending_walk.py (the fixture_walk coverage control carries a checked check.json under the constants in force), tests/test_walk_runner.py (R5's base-prefix rule superseded for exactly the five ruled check_take.py spans, BOOTSTRAP_SPANS); and (second commit) tests/test_walk_plan.py (its graded fixtures carry a checked check.json under the constants in force; P7 admits that file), tests/test_checker_body.py test_b4_the_ledgers_cap_and_poll_are_bound and tests/test_walk_runner.py R8 test_the_cap_and_the_poll (check4 and check4_walk bind the ledger's cap and poll). Review fold (glitch-6b's review of af1e7fc6, CHANGES): tests/test_walk_runner.py BOOTSTRAP_SPANS now six regions, each pinned by sha256 (the constants region parsed to exactly one CHECKER_CONSTANTS assignment), with R5Bootstrap's witnesses and R8's digest test; pending_walk.checker_standing reads only walk_runner's exact check.json, checked, unrefused, every reason in routing.json's operator_reasons; check_take.design_constants_sha256, drive.take_checker recording it on the take and TakeDriver.checker_constants_sha256(row), and walk_runner writing that digest (the constants the checker read, never the module's); check_take.design_view's docstring corrected. HANDED OFF to the harness lane by glitch-6b (not edited here): walk_builders.py lines 36-38 and 552-556, which still say the constants are measured by walks or PENDING."
+    }
+  ]
+}
