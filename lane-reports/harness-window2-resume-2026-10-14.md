@@ -183,3 +183,21 @@ Commits since 664a24e7, each red-first and through the gitleaks staged gate (0 f
 2. RULED (glitch-6b, 15 Oct): rechecks run ON ATHENA, the walks' own machine, with --home, --temp-root and --checkout named from that machine's records; glitch-6b reads any reason change before a recheck is accepted. After review, glitch-6b runs `walk_regrade.py --recheck <walk> --home H --temp-root T --checkout C` there.
 3. Done as item G (be74a97f, ruled by glitch-6b): awareness_furniture reads each transcript in one pass, so a wakeup line resolves against its earlier call; red before, witness red, round 3's output byte-identical.
 4. The athena gars-gap4 battery runs on b7aca72a (glitch-6b's); an independent review of D, E and F runs from a scratch copy; G sits on top.
+
+## RESUME HERE (15 Oct ~17:00 EDT; supersedes the blocks above for what follows 2cab338a)
+
+Writer: the harness lane, for glitch-6b. Nothing pushed. Commits since 2cab338a, each red-first through the gitleaks staged gate:
+- 38d45af9 E (review MAJOR): run.transcript_lines hands a transcript_view.BoundTranscript (lines that carry their path, each a BoundLine naming it); vendor_record_binding binds it by path or by a grader's whole ordered copy.
+- 7d7d0264 D (review MINOR): RootedFake binds each drive-to-box read to its root.
+- b6da219d review NITs: wakeups arm only on a genuine result record; G's test names what binds it.
+- 28c353d4 the b7aca72a battery reds this lane caused (walk_plan/test_round4, walk_runner generated survivors, w6j line 10).
+- 2c3784e6, a5bb4c3e H: the auto_mode attachment read as harness furniture for audit; RULED (glitch-6b, 15 Oct): disabled for all claude-code takes via CLAUDE_CODE_THRIFTY_SONIC (box lane: allowlist value, parser proof, harness-condition-violated refusal).
+- 4e0d64ac recheck coverage: register schema 2 `rechecks`, coverage from the latest register entry with no git (ruled by glitch-6b).
+
+## Standing facts for whoever resumes
+- VENDOR BOOKKEEPING IS NOT PRODUCTION: harness_bookkeeping.TABLE holds claude-code only, so production Evidence.load refuses every Codex and Gemini take before any grader. This is the known "native-session readers pending" gate; production vendor admission stays closed until they are registered. The codex and gemini bookkeeping entries in tests/test_walk_grade_seam.py are TEST DATA only.
+- Rechecks run ON ATHENA with --home, --temp-root and --checkout from that machine's records; glitch-6b reads any reason change before a recheck is accepted.
+- Open (not built): commit_regrade's regrade.json commit is a second commit touching a walk folder, which walk_register's history check does not admit (it admits walk and recheck commits only). No regrade has been committed yet.
+
+## Exact next step
+glitch-6b launches the athena battery on this head plus the box lane's env commit.
