@@ -105,3 +105,11 @@ athena:
 Mac, item 1 (light-ok gate), this branch: test_build_draft 47 OK, test_drive_loop 27 OK, test_walk_wiring 20 OK, test_drive_ownership 43 OK. Merged scratch: test_build_draft 48 OK, with TakeALock 2 OK (review NIT 2).
 
 Next: read every red line of ad9ee13's run. R3 means the prepare L16 mutants are killed there; also check walk_driver_for:delete:L38. Fix any red that is this lane's. Then send the final report to glitch-6b. Next gars-gap4 launches use --jobs 24.
+
+### Addendum, 15 Oct 00:3x EDT: the merged battery
+
+gap4-harness-r123-merged-ad9ee13-20261015T034740Z (gars-gap4, jobs 12, head ad9ee13f): **PASS**. Step 1 ran 1303, OK (82 skipped). `run_checks: 272 of 272 commands passed`. Log sha256 c9ca543e5a1ac83beb9f202f8f59f6b50011cd4e9d6699155fcc4715098b058b.
+test_walk_builders: the module, the witnesses and all 16 generated shards (634 mutants) exit 0. run_generated exits 0 only when no mutant survives unlisted, none listed is killed and none is inconclusive. So the 12 lease_secrets mutants (R1), the 6 production_builders L34-35 mutants (R2), the 5 prepare L16 mutants (R3) and walk_driver_for:delete:L38 (item 2) are all settled on the merged tree. A PASS shard does not log per-mutant lines, so this is read from the exit rule.
+test_round4 (box test_live_box at 3f3beb21), test_pending_codex_walk and test_codex_adapter (its generated sweep included) all pass there.
+Note: the block above says 23:53 and the clock read 23:52 (a one-minute slip, kept).
+Next: this lane's queue is empty, pending glitch-6b's merge of 9442333a..HEAD.
