@@ -223,7 +223,11 @@ CLAUDE_SETTINGS_FLAG = "--settings"
 # setup-token>`, the variable Claude Code reads in a -p run (code.claude.com/docs/en/authentication, "Generate a
 # long-lived token" and "Authentication precedence" item 5; env-vars.md). Prepared and verified by
 # lane-reports/walk-login/prepare_walk_login.py and verify_walk_login.py; the value is never read by any session.
-WALK_LOGIN_FILES = {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token"}
+# The Gemini key road (glitch-06, 14 Oct 2026), the same road: account alias r4-g (Javier's Google project label from the
+# plan), one line `GEMINI_API_KEY=<the study key>`, the variable the Gemini arm's row names; prepared and verified by
+# the same two scripts.
+WALK_LOGIN_FILES = {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token",
+                    "r4-g": "/home/javier/gap4-secrets/r4-g/gemini-walk-login"}
 
 # The bypass acceptance: RULED not required in -p (glitch-06, 14 Oct 2026, on the docs read in Addendum E of
 # gap4-codex-rollout-audit-20261014/codex-0.162.1-rollout-audit.md). The study sends NO bypass acceptance key.

@@ -836,7 +836,8 @@ class TestWalkLoginPlace(MutantCase):
     def check(self):
         out = []
         w = rt.WALK_LOGIN_FILES
-        if w != {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token"}:
+        if w != {"claude1": "/home/javier/gap4-secrets/claude1/claude-walk-token",
+                 "r4-g": "/home/javier/gap4-secrets/r4-g/gemini-walk-login"}:      # the Gemini key road, 14 Oct
             out.append(f"WALK_LOGIN_FILES = {w}")
         _d, _sub, good = self.place()
         try:

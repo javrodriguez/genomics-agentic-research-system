@@ -107,5 +107,59 @@ class WalkToken(unittest.TestCase):
         self.assertEqual(run("prepare_walk_login.py", repo_home, "claude1").returncode, 1)
 
 
+class GeminiKey(unittest.TestCase):
+    """The Gemini key road (glitch-06, 14 Oct 2026), the walk-token road's mirror: account r4-g, file gemini-walk-login,
+    one line GEMINI_API_KEY=<key>. The verify script also refuses quotes and names a stray non-ASCII character by its
+    Unicode name only (a Mac's Option key types them: U+2248 from Option-X). Planted values are fakes."""
+    FAKE_G = "AIzaFAKE-gemini-0123456789abcdef-PLANTED"
+
+    def setUp(self):
+        self.home = tempfile.mkdtemp(prefix="gk-")
+        self.path = os.path.join(self.home, "gap4-secrets", "r4-g", "gemini-walk-login")
+
+    def verify(self):
+        return run("verify_walk_login.py", self.home, "r4-g")
+
+    def test_prepare_then_paste_then_verify(self):
+        p = run("prepare_walk_login.py", self.home, "r4-g")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual([e["mode"] for e in json.loads(p.stdout)["entries"]], ["0o700", "0o700", "0o600"])
+        self.assertEqual(Path(self.path).read_bytes(), b"GEMINI_API_KEY=")
+        v = self.verify()
+        self.assertEqual(v.returncode, 1)
+        self.assertIn("length: empty", v.stdout)
+        with open(self.path, "a") as fh:
+            fh.write(self.FAKE_G + "\n")
+        v = self.verify()
+        self.assertEqual(v.returncode, 0, v.stdout)
+        self.assertIn("RESULT: OK", v.stdout)
+        self.assertIn("stray non-ASCII character: none", v.stdout)
+        self.assertNotIn(self.FAKE_G, v.stdout + v.stderr)
+        self.assertNotIn(self.FAKE_G[:8], v.stdout + v.stderr)
+        from box import run_take as rt
+        self.assertEqual(rt.read_login(self.path, "GEMINI_API_KEY"), self.FAKE_G)
+        rt.check_login_place(self.path, "/srv/w/t1/tree")
+        self.assertEqual(rt.WALK_LOGIN_FILES["r4-g"], "/home/javier/gap4-secrets/r4-g/gemini-walk-login")
+
+    def test_verify_refuses_each_wrong_shape(self):
+        run("prepare_walk_login.py", self.home, "r4-g")
+        for text, line in (("GEMINI_API_KEY=" + self.FAKE_G + "\u2248\n", "stray non-ASCII character: ALMOST EQUAL TO"),
+                           ("GEMINI_API_KEY=" + self.FAKE_G + "'\n", "quote in the value: YES"),
+                           ("GEMINI_API_KEY='" + self.FAKE_G + "'\n", "quote in the value: YES"),
+                           ("GEMINI_API_KEY=" + self.FAKE_G + " x\n", "format ok"),
+                           ("GEMINI_API_KEY=" + self.FAKE_G + self.FAKE_G + "\n", "value pasted twice: YES"),
+                           ("GEMINI_API_KEY=GEMINI_API_KEY" + self.FAKE_G + "\n",
+                            "value starts with the variable name: YES"),
+                           ("CLAUDE_CODE_OAUTH_TOKEN=" + self.FAKE_G + "\n", "format ok")):
+            Path(self.path).write_text(text, encoding="utf-8")
+            v = self.verify()
+            with self.subTest(line):
+                self.assertEqual(v.returncode, 1, v.stdout)
+                self.assertIn(line, v.stdout)
+                self.assertNotIn(self.FAKE_G, v.stdout + v.stderr)
+        self.assertEqual(run("verify_walk_login.py", self.home, "r4-x").returncode, 1)   # no such account
+        self.assertEqual(run("prepare_walk_login.py", self.home, "r4-x").returncode, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
