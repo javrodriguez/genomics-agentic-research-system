@@ -96,7 +96,9 @@ def mutants():
                                       "    if reg.is_symlink():", "    if False:"),
         # W7D-R1-3: duplicate keys read as the last one
         "duplicate-keys-admitted": ("R7.dupkey", "walk_register.py",
-                                    "object_pairs_hook=no_duplicate_keys", "object_pairs_hook=dict"),
+                                    # the register read (4e0d64ac added a second hook, on the rechecks history read)
+                                    "doc = json.loads(text, object_pairs_hook=no_duplicate_keys)",
+                                    "doc = json.loads(text, object_pairs_hook=dict)"),
         # W7D-R1-4: one id registered twice admitted
         "duplicate-id-admitted": ("R3.malformed", "walk_register.py",
                                   "problems.append(f\"walk entry {i}: walk {walk!r} is registered twice",
@@ -106,7 +108,8 @@ def mutants():
                               "    if not WALK_ID.fullmatch(entry[\"walk\"]):", "    if False:"),
         # W7D-R1-6: schema compared by value, so true and 1.0 pass
         "schema-by-value": ("R8.nits", "walk_register.py",
-                            "type(doc[\"schema\"]) is not int or doc[\"schema\"] != SCHEMA", "doc[\"schema\"] != SCHEMA"),
+                            # 4e0d64ac: the int-type clause moved into top_keys (schema 1 or 2)
+                            "        if type(schema) is int else ()", "        if True else ()"),
         # W7D-R1-6: a reason of format characters only admitted
         "reason-format-admitted": ("R8.nits", "walk_register.py",
                                    "unicodedata.category(c) == \"Cf\"", "False"),

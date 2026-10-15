@@ -1625,7 +1625,9 @@ class FreezeCoverage(unittest.TestCase):
                     ("review_kit/rounds.py", "--check"),
                     # W8A (ruling W8-layout-1): the four walk checks
                     ("walk_register.py", "--check"), ("mode_binding.py", "--walks", "--check"),
-                    ("fixture_walk.py", "--check"), ("run.py", "--walks", "--check"))
+                    ("fixture_walk.py", "--check"), ("run.py", "--walks", "--check"),
+                    # glitch-6b's recheck-coverage ruling (15 Oct 2026): a counted recheck is re-derived at freeze
+                    ("walk_regrade.py", "--check"))
         self.assertEqual(freeze_rehearsal.COMMANDS, expected)
         with mock.patch.object(freeze_rehearsal, "COMMANDS", ()):
             self.assertNotEqual(freeze_rehearsal.COMMANDS, expected)

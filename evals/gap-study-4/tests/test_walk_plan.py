@@ -253,8 +253,14 @@ def setUpModule():
             text = text.replace(old, new)
             MODS["walk_plan"] = load_walk_plan(text, "witness")
         else:
+            # a walk_plan another module imported earlier in the battery (test_recheck_coverage) is bound to the
+            # walk_register of that moment, which a later module's tearDown may have dropped: load it afresh
+            sys.modules.pop("walk_plan", None)
             import walk_plan
             MODS["walk_plan"] = walk_plan
+        # the tests patch MODS["walk_register"]; walk_plan must read that very module, or a patch silently misses
+        assert MODS["walk_plan"].walk_register is MODS["walk_register"], \
+            "walk_plan reads another walk_register than the one these tests patch"
     except (Exception, SystemExit) as exc:     # a module that does not load (or exits on import) fails by P0.module
         MODS["walk_plan"] = None
         MODS["load_error"] = repr(exc)

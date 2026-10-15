@@ -82,11 +82,13 @@ def mutants():
         "history-unchecked": ("H1.walk-history", "walk_register",
                               "            problems = history_problems(base, walks, repo)   # W8A-R2-2\n", ""),
         "walk-commits-uncounted": ("H1.walk-history", "walk_register",
-                                   "        if len(commits) != 1:", "        if False:"),
+                                   # 4e0d64ac: a later commit is admitted only as a recheck or regrade commit
+                                   "        if not commits or bad_later:", "        if False:"),
         "walk-subject-unchecked": ("H1.walk-history", "walk_register",
                                    "        if subject != drive.WALK_SUBJECT:", "        if False:"),
         "head-tree-uncompared": ("H1.walk-history", "walk_register",
-                                 "        if at_head != at_walk:", "        if False:"),
+                                 # 4e0d64ac: the trees are compared without the walk's recheck files
+                                 "        if at_head is None or at_head != at_walk:", "        if False:"),
         "disk-unchecked": ("H1.walk-history", "walk_register",
                            "        if dirty:", "        if False:"),
         "entry-uncompared": ("H1.walk-history", "walk_register",
@@ -94,8 +96,11 @@ def mutants():
         "walk-dropped-admitted": ("H1.walk-history", "walk_register",
                                   "            if now is None:", "            if False:"),
         "register-log-simplified": ("H1.walk-history", "walk_register",
-                                    '"log", "--full-history", "--no-merges", "--format=%H%x1f%s"',
-                                    '"log", "--no-merges", "--format=%H%x1f%s"'),
+                                    # the register entries' log (4e0d64ac's rechecks log spells the same call)
+                                    '"--full-history", "--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)\n'
+                                    '    if log.returncode != 0:',
+                                    '"--no-merges", "--format=%H%x1f%s", "HEAD", "--", reg_rel)\n'
+                                    '    if log.returncode != 0:'),
         "register-disk-unchecked": ("H1.walk-history", "walk_register",
                                     "    if reg_dirty:", "    if False:"),
         # Re-anchored after c35fc915 (one table, PRODUCTION_ADAPTERS, for the three harnesses): the equivalent sites
@@ -255,6 +260,17 @@ class H1WalkHistory(Case):
             ledger.write_text(ledger.read_text().replace('"complete"', '"refused before turn 1"'))
             s.git("commit", "-q", "-am", "Tidy a ledger")
             self.refused(s, "a later ordinary commit that rewrote the walk's ledger")
+        # a later ordinary commit edits the ledger and the next one reverts it: HEAD's tree is the walk's again,
+        # so only the history (one walk commit, then recheck or regrade commits only) refuses it
+        with contextlib.ExitStack() as stack:
+            s = Study(stack)
+            ledger = s.walks / "w-0001" / "driver-ledger.json"
+            original = ledger.read_text()
+            ledger.write_text(original.replace('"complete"', '"refused before turn 1"'))
+            s.git("commit", "-q", "-am", "Tidy a ledger")
+            ledger.write_text(original)
+            s.git("commit", "-q", "-am", "Untidy a ledger")
+            self.refused(s, "a later ordinary commit that rewrote the walk's ledger, then a revert")
         # a later commit forged with the walk subject, touching the folder and the register as a walk commit does
         with contextlib.ExitStack() as stack:
             s = Study(stack)
