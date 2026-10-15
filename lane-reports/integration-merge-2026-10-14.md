@@ -402,3 +402,17 @@ Written by a fresh integration window, under glitch-06.
     - B10Resources, 1 failure: the fixture sets `image_id` to PENDING on the real schema-2 take-a lock without a `pending` reason. `image_lock` raises `LockError` ("schema 2 holds no PENDING value and no pending reason") before `require_ready` can raise `NotReady`, so review nit 7's assertion fails. Reproduced directly.
     - Both are harness-owned test expectations. Neither is fixed here.
 - **athena name scan:** `athena_suite.name_hits` on `2d6983e9` finds five NEW token-name paths from the box lane's lease work (`b9f876b5` range): `mutants/lease_tokens_mutants.py`, plus `runs/100-…`, `101-…`, `105-…` and `106-…lease-tokens…` under `lane-reports/stub-take-20261014/`. The seven earlier ones are covered by aegis `6cb2063`. Under the T52 method, this lane does not read them and does not pass `--allow-path`. The version hashes were sent to glitch-06 for a reviewed exemption.
+
+## Battery on the merged head (14 Oct, 19:35-20:13 EDT)
+
+- **Exemptions:** aegis `136190c` lists the five lease-token files; `name_hits` on `66bacade` then had no unexempted path.
+- **Harness alone, `gap4-harness-alone-1f03258-1f03258-20261014T225556Z`** (fetched, verdict on the Mac):
+  - FAIL; step 1 `Ran 1303`, OK (skipped=82); `run_checks: 265 of 271 commands passed`; log sha256 `fa1e3dfc…b24b60b`.
+  - Reds: test_round4 (its two skips, `test_build_draft.py:559` and `test_routing.py:2891`, "take-a lock PENDING on this branch", are not in `SKIP_ALLOWED`, an artifact of a harness-alone tree); test_codex_adapter generated mutants (2 survivors, `CodexAdapter.native_session_rel`); test_walk_builders `--witnesses` (the `scanner-class-by-name` anchor occurs 0 times since `0f1aa5ea` removed `pinned is None or`); test_gemini_adapter generated mutants shards 1, 2 and 16 (`gemini_session_rel`, L418-419).
+- **Merged, solo, `gap4-merge-66bacad-20261014T233549Z`** (head `66bacade`):
+  - FAIL; step 1 `Ran 1303`, OK (skipped=82); `run_checks: 254 of 272 commands passed`; log sha256 `ffa7c69c6682e6e2271786f4875a44e959100273d61fefd8e747cc87e5f31b4f`; account processes 0 at start and end.
+  - **Cross-lane, new (5 lines):** test_vendor_take_records, test_vendor_checker_road, test_codex_identity and test_pending_codex_walk. A driven Codex stub take now meets box `34b1a3d2`'s postflight, which refuses with "auth.json: absent; the lease home must hold exactly one registered credential file", so no driver ledger is written and walks go `held`. All four passed at harness `1f032586` alone. The fifth line is test_round4, whose 15 failures and 4 errors are exactly these plus test_walk_builders' 5.
+  - **Box-owned (6 lines):** test_env_allowlist generated mutants, shards 1, 3, 4, 5, 7 and 8: 12 unlisted survivors in `run_take.launcher_argv`, added by the no-login launcher variant `41428177` and folded in `41fccf4c`.
+  - **Harness-owned, known (3 lines):** test_walk_builders (the 5 reds above, routed by glitch-06); `--witnesses` (the stale `scanner-class-by-name` anchor); generated shard 14/16, "LISTED BUT KILLED: walk_builders.remove_run_tree:delete:L6:C4:e3e767f5", which passes at `1f032586` alone, so the merged tree kills a mutant listed as equivalent.
+  - **Harness-owned, open since `c2d03086` (4 lines):** test_codex_adapter generated mutants (`native_session_rel`, 2 survivors), and test_gemini_adapter generated mutants shards 1, 2 and 16 (`gemini_session_rel`).
+- `gap4-merge-40acb6d-20261014T194627Z` was lost to the athena reboot; it has no verdict.
