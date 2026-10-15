@@ -477,3 +477,17 @@ Written by a fresh integration window, under glitch-06.
 - **Battery:** none with a verdict on this head. The last Gap Study verdict on a merged head is still `gap4-merge-5e72209-20261015T015202Z` (FAIL, 256 of 272).
 - **Expected at the final:** the box red (test_live_box `NO_LOGIN`) should be gone with `22f80269`; the harness's 16 test_walk_builders mutant survivors depend on the harness head glitch-6b sends.
 - **Next:** on glitch-6b's go, merge the harness's new head (and any newer box head), rerun the four checks and T52, then one `--kind gars-gap4` battery on athena, which runs alone there by construction, then fetch, the verdict on the Mac, and every red by owner.
+
+## Final re-merge onto harness d78c8791 (15 Oct, 00:2x-00:31 EDT, coordinator glitch-6b)
+
+- `383e5c2f`: harness `d78c8791` (`83b83ea1..d78c8791`: test-only `1b0fce97` R1 and R2, `fdf3297b` NIT 1, `9442333a` the postflight stand-in, and two RESUME commits) onto `5110eae5`. Box stays at `3f3beb21`. No conflict hunk.
+- Tree proof: `git diff ad9ee13f 383e5c2f -- evals/` is empty (0 lines). `ad9ee13f` is the harness lane's merged candidate (fetched from `/Users/javrodher/aegis-builds/gap4-harness-scratch-merge-20261014b`), whose battery glitch-6b reports as PASS 272 of 272. The whole-tree difference is only `lane-reports/` (this file and the harness resume file).
+- Checks on `383e5c2f`: `build_draft --check` ok; `copy_manifest --check` ok, 414 files; `freeze --check` ok, 415 paths; `batch --check` ready. T52: 12 secret-shaped paths, 12 exempt, 0 new.
+- No `gfb-` gap-filler was listed on athena at launch, so nothing was cancelled.
+- Final battery launched 00:30:59 EDT: `gap4-merge-final-383e5c2-383e5c2-20261015T043059Z`, `--kind gars-gap4 --jobs 24 --solo`, head `383e5c2f`.
+
+## RESUME HERE (15 Oct, after the final launch)
+
+- **Merge clone:** branch `gap4/live-merge-20261014`. Merged code head `383e5c2f` (box `3f3beb21` + harness `d78c8791`); log commits follow it. Nothing pushed.
+- **Running:** `gap4-merge-final-383e5c2-383e5c2-20261015T043059Z` (solo, the citable final). Do not cancel it.
+- **Next:** `athena_suite.py fetch gap4-merge-final-383e5c2-383e5c2-20261015T043059Z --wait`, derive the verdict on the Mac, list every red by owner, record it here, report to glitch-6b.
