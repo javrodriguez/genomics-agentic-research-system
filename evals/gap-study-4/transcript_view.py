@@ -282,8 +282,9 @@ def _genuine_agent_record(rec) -> bool:
     return isinstance(msg, dict) and msg.get("model") != CC_SYNTHETIC_MODEL
 
 
-def wakeup_prompts(rec) -> list:
-    """The `prompt` inputs of the ScheduleWakeup calls in one genuine agent record, in order (strings only)."""
+def wakeup_calls(rec) -> list:
+    """(tool_use id, prompt) of the ScheduleWakeup calls in one genuine agent record, in order (string ids and
+    prompts only)."""
     out = []
     if not _genuine_agent_record(rec):
         return out
@@ -291,9 +292,17 @@ def wakeup_prompts(rec) -> list:
     for b in content if isinstance(content, list) else []:
         if isinstance(b, dict) and b.get("type") == "tool_use" and b.get("name") == CC_WAKEUP_TOOL:
             prompt = b.get("input").get("prompt") if isinstance(b.get("input"), dict) else None
-            if isinstance(prompt, str):
-                out.append(prompt)
+            if isinstance(prompt, str) and isinstance(b.get("id"), str):
+                out.append((b["id"], prompt))
     return out
+
+
+def tool_results(rec) -> list:
+    """(tool_use_id, is_error) of the tool_result blocks of one user record, in order."""
+    msg = rec.get("message") if isinstance(rec, dict) and rec.get("type") == "user" else None
+    content = msg.get("content") if isinstance(msg, dict) else None
+    return [(b.get("tool_use_id"), b.get("is_error") is True) for b in content if isinstance(b, dict)
+            and b.get("type") == "tool_result"] if isinstance(content, list) else []
 
 
 def is_scheduled_wakeup(rec, armed) -> bool:
@@ -326,15 +335,28 @@ _PASS_WAKEUPS = contextvars.ContextVar("_PASS_WAKEUPS", default=None)
 
 
 class ScheduledWakeups:
-    """One reading pass's armed prompts. note(rec) arms every ScheduleWakeup prompt of a genuine agent record;
-    admit(rec) is is_scheduled_wakeup, and when it holds the record consumes the earliest armed equal prompt, so one
-    call admits at most one wakeup (two calls with one prompt admit two). Both readers make one per pass."""
+    """One reading pass's armed prompts. note(rec) reads every record that is not an admitted wakeup: a genuine agent
+    record's ScheduleWakeup call waits for its result; a non-error tool_result for that call's id arms its prompt
+    (review F, 15 Oct 2026: an errored call scheduled nothing). Each tool_use id arms at most once, so a record a
+    --resume transcript repeats with the same id arms nothing more. admit(rec) is is_scheduled_wakeup, and when it
+    holds the record consumes the earliest armed equal prompt, so one call admits at most one wakeup (two calls with
+    one prompt admit two). Both readers make one per pass."""
 
     def __init__(self):
         self.armed: list = []
+        self.waiting: dict = {}             # tool_use id -> prompt, the call's result not yet read
+        self.done: set = set()              # ids whose result was read (armed, or errored)
 
     def note(self, rec) -> None:
-        self.armed.extend(wakeup_prompts(rec))
+        for ref, prompt in wakeup_calls(rec):
+            if ref not in self.done and ref not in self.waiting:
+                self.waiting[ref] = prompt
+        for ref, errored in tool_results(rec):
+            if ref in self.waiting:
+                prompt = self.waiting.pop(ref)
+                self.done.add(ref)
+                if not errored:
+                    self.armed.append(prompt)
 
     def admit(self, rec) -> bool:
         if not is_scheduled_wakeup(rec, self.armed):
@@ -372,7 +394,10 @@ class ClaudeCodeSessionParser:
         for flag in flagged:
             raise ViewError(f"a record carrying {flag}: the harness wrote it itself, refused")
         if t == "user":
-            return self._user(r)
+            got = self._user(r)
+            if wakeups is not None:
+                wakeups.note(r)
+            return got
         if t == "assistant":
             got = self._assistant(r)
             if wakeups is not None:

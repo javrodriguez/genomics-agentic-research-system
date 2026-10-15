@@ -73,9 +73,9 @@ def call(prompt=PROMPT, ref="toolu_w1", **flags):
          "input": {"delaySeconds": 10, "reason": "wait for the job", "prompt": prompt}}]}}, **flags)
 
 
-def result(ref="toolu_w1"):
-    return {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": ref,
-                                                      "content": "Wakeup scheduled."}]}}
+def result(ref="toolu_w1", **extra):
+    return {"type": "user", "message": {"content": [dict({"type": "tool_result", "tool_use_id": ref,
+                                                           "content": "Wakeup scheduled."}, **extra)]}}
 
 
 def wakeup(content=PROMPT, **change):
@@ -127,17 +127,25 @@ NEAR = {
     "a sidechain record": take(wakeup(isSidechain=True)),
     "a record whose type is not user": take(wakeup(type="assistant")),
     "the caveat record": take({"type": "user", "isMeta": True, "message": {"content": "Caveat: the messages"}}),
+    # review F (15 Oct 2026): an errored call scheduled nothing; a --resume repeat of one call arms it once
+    "the call's result is an error": [op(OP1), call(), result(is_error=True), wakeup(), op(OP2)],
+    "a call with no result yet": [op(OP1), call(), wakeup(), result(), op(OP2)],
+    "a resumed transcript repeats the call and its result": [op(OP1), call(), result(), call(), result(), wakeup(),
+                                                             wakeup(), op(OP2)],
 }
+ALLOWED = {"a second record re-using one consumed prompt": 1,
+           "a resumed transcript repeats the call and its result": 1}
 # The prompt must be armed by a genuine main-thread agent call: these arm nothing (check_take only; the view refuses
 # the arming record itself).
 NOT_ARMED = {
-    "armed by a sidechain call": [op(OP1), call(isSidechain=True), wakeup(), op(OP2)],
-    "armed by an API-error record": [op(OP1), call(isApiErrorMessage=True), wakeup(), op(OP2)],
-    "armed by a meta record": [op(OP1), call(isMeta=True), wakeup(), op(OP2)],
+    "armed by a sidechain call": [op(OP1), call(isSidechain=True), result(), wakeup(), op(OP2)],
+    "armed by an API-error record": [op(OP1), call(isApiErrorMessage=True), result(), wakeup(), op(OP2)],
+    "armed by a meta record": [op(OP1), call(isMeta=True), result(), wakeup(), op(OP2)],
     "armed by a synthetic record": [op(OP1), dict(call(), message=dict(call()["message"], model="<synthetic>")),
-                                    wakeup(), op(OP2)],
+                                    result(), wakeup(), op(OP2)],
     "armed by another tool's prompt": [op(OP1), {"type": "assistant", "message": {"content": [
-        {"type": "tool_use", "id": "toolu_t", "name": "Task", "input": {"prompt": PROMPT}}]}}, wakeup(), op(OP2)],
+        {"type": "tool_use", "id": "toolu_t", "name": "Task", "input": {"prompt": PROMPT}}]}}, result("toolu_t"),
+        wakeup(), op(OP2)],
 }
 
 
@@ -218,7 +226,7 @@ def refuse_problems(view=tv, mod=None) -> list[str]:
     ones the case allows (one, for the second record re-using a consumed prompt; none otherwise)."""
     out = []
     for name, recs in list(NEAR.items()) + list(NOT_ARMED.items()):
-        allowed = 1 if name == "a second record re-using one consumed prompt" else 0
+        allowed = ALLOWED.get(name, 0)
         if name in NEAR and view_admits(recs, view):
             out.append(f"W-refuse: the view admitted: {name}")
         before = record_reader(recs, meta=False, mod=mod)[0]
@@ -301,6 +309,9 @@ VIEW_MUTANTS = (
     ("content-str", "not isinstance(content, str)", "False"),
     ("armed", "return content in armed", "return True"),
     ("consumed", "self.armed.remove(rec[\"message\"][\"content\"])", "pass"),
+    ("needs-result", "self.waiting[ref] = prompt", "self.armed.append(prompt)"),
+    ("result-not-error", "if not errored:", "if True:"),
+    ("once-per-id", "if ref not in self.done and ref not in self.waiting:", "if True:"),
     ("arm-by-name", 'b.get("name") == CC_WAKEUP_TOOL', "True"),
     ("arm-genuine", "if not _genuine_agent_record(rec):", "if False:"),
 )

@@ -225,6 +225,27 @@ class TheRecheck(twr.Case):
                 self.must("RC-check", r.write_and_commit)
                 self.assertEqual(wr.regrade_problems(w.root), [])
 
+    def test_rc_check_reads_only_the_latest_after_a_constants_change(self):
+        """Review F: --check re-derives each walk's latest recheck only; an earlier one, made under earlier constants,
+        is checked for its shape and its supersedes link, so a constants change is cleared by the next recheck."""
+        import mode_binding as mb
+        with twr.study() as w:
+            r = Rig(w)
+            with mock.patch.object(wr, "production_design", r.design_for()):
+                self.must("RC-check", r.write_and_commit)
+            moved = copy.deepcopy(w.constants)
+            moved["budgets"]["poll_s"] = moved["budgets"]["poll_s"] + 1
+            with mock.patch.object(wr, "production_design", r.design_for(moved)):
+                red = wr.regrade_problems(w.root)
+                self.assertTrue(any("recheck-1.json differs" in x for x in red), f"RC-check: before recheck-2: {red}")
+                self.must("RC-check", r.write_and_commit, design_for=r.design_for(moved))
+                self.assertEqual(wr.regrade_problems(w.root), [], "RC-check: recheck-2 does not clear the change")
+                p = w.root / mb.WALKS_DIR / WALK / "recheck-1.json"       # an earlier link broken is still red
+                p.write_bytes(p.read_bytes().replace(b'"supersedes": "check.json"', b'"supersedes": "grade.json"', 1))
+                git(w.root, "commit", "-q", "-am", "an edited earlier recheck")
+                self.assertTrue(any("recheck-1.json is not a recheck" in x for x in wr.regrade_problems(w.root)))
+                self.assertFalse(any("checker_events" in json.loads(p.read_bytes()) for _ in [0]))
+
 
 if __name__ == "__main__":
     unittest.main()

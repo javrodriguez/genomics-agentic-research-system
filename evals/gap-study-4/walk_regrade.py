@@ -40,14 +40,16 @@ and the walk's run tree). The machine the walk ran on is named, never guessed: `
 temp_root, checkout}, the checker's CHECK_HOME, CHECK_TEMP and CHECKOUT_REPO while it reads, and the run tree is
 temp_root/neutral_name(walk_session_id(walk)), as drive.run_tree_path builds it on that machine. The document
 {"schema": 1, "walk", "n", "walk_commit", "supersedes" (check.json, or recheck-<n-1>.json), "machine", "run_tree",
-"checker_constants_sha256", "checker_reasons", "checker_events", "was" (the superseded file's digest and reasons),
+"checker_constants_sha256", "checker_reasons", "was" (the superseded file's digest and reasons),
 "change" (digest from and to, reasons added and removed), "route": null} never edits the old check.json or an
 earlier recheck: each is a new file, append-only by its ordinal. Limits, named: the route is not re-derived (the
-routing records the driver folds from the live turns and the box are not committed), so `route` is null; check.json's
-outside_reach adds the commit scan's count, so the recheck reports the checker's own events by id and names no
-outside_reach; the checker's interpreter prefixes and checkout_roots' `~` spellings are the RECHECKING machine's, so
+routing records the driver folds from the live turns and the box are not committed), so `route` is null; the
+checker's events are not recorded (review F: check.json's outside_reach adds the commit scan's count, and the events
+depend on the machine's home and checkout, which are named, not bound to a recorded fact); the checker's interpreter prefixes and checkout_roots' `~` spellings are the RECHECKING machine's, so
 a recheck run anywhere but the walk's machine is read for any reason change before it is accepted.
-pending_walk.checker_standing reads the latest recheck only when it re-derives to its exact bytes.
+pending_walk.checker_standing reads the latest recheck only when it re-derives to its exact bytes. --check
+re-derives only each walk's LATEST recheck (review F: an earlier one was made under earlier constants and would never
+re-derive again); every earlier one is checked for its shape and its place in the supersedes chain.
 """
 from __future__ import annotations
 
@@ -232,20 +234,45 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None) -> list:
             continue
         if again != nrr._show(root, rel):
             out.append(f"walk {parts[0]!r}: {REGRADE_FILE} differs from re-deriving it")
-    for rel in listed:                                   # every committed recheck re-derives to its exact bytes
+    by_walk: dict = {}
+    for rel in listed:
         parts = rel[len(walks) + 1:].split("/")
-        if len(parts) != 2 or not parts[1].startswith(RECHECK_PREFIX):
-            continue
+        if len(parts) == 2 and parts[1].startswith(RECHECK_PREFIX):
+            by_walk.setdefault(parts[0], []).append(parts[1])
+    for walk, names in sorted(by_walk.items()):
+        out += recheck_chain_problems(root, prefix, walk, names, study)
+    return out
+
+
+def recheck_chain_problems(root, prefix, walk: str, names, study) -> list:
+    """One walk's rechecks: named 1..k; each earlier one's shape and supersedes link (its walk, its ordinal, the file
+    before it); the latest re-derived to its exact bytes under the constants in force."""
+    try:
+        have = _committed_rechecks(names)
+    except RegradeRefused as e:
+        return [f"walk {walk!r}: {e}"]
+    out = []
+    for n in have:
+        rel = f"{_walk_rel(prefix, walk)}/{recheck_name(n)}"
         try:
             raw = nrr._show(root, rel)
-            n = int(parts[1][len(RECHECK_PREFIX):-len(".json")])
-            again = regrade_bytes(recheck_doc(parts[0], n, study, machine=json.loads(raw)["machine"]))
-        except (RegradeRefused, ValueError, KeyError, TypeError, nrr.RegistrationRefused) as e:
-            out.append(f"walk {parts[0]!r}: {parts[1]} cannot be re-derived: {e}")
-            continue
-        if again != raw:
-            out.append(f"walk {parts[0]!r}: {parts[1]} differs from re-deriving it")
+            doc = json.loads(raw)
+            want = "check.json" if n == 1 else recheck_name(n - 1)
+            if not isinstance(doc, dict) or set(doc) != set(RECHECK_KEYS) or (doc["walk"], doc["n"], doc["supersedes"],
+                                                                              doc["was"].get("file")) != (walk, n, want, want):
+                out.append(f"walk {walk!r}: {recheck_name(n)} is not a recheck of ordinal {n} superseding {want}")
+                continue
+            if n == have[-1]:
+                again = regrade_bytes(recheck_doc(walk, n, study, machine=doc["machine"]))
+                if again != raw:
+                    out.append(f"walk {walk!r}: {recheck_name(n)} differs from re-deriving it")
+        except (RegradeRefused, ValueError, KeyError, TypeError, AttributeError, nrr.RegistrationRefused) as e:
+            out.append(f"walk {walk!r}: {recheck_name(n)} cannot be read or re-derived: {e}")
     return out
+
+
+RECHECK_KEYS = ("schema", "walk", "n", "walk_commit", "supersedes", "machine", "run_tree", "checker_constants_sha256",
+                "checker_reasons", "route", "was", "change")
 
 
 # ---- the recheck (glitch-6b's scheduled-wakeup ruling, 15 Oct 2026) -------------------------------------------------
@@ -398,7 +425,7 @@ def recheck_doc(walk: str, n: int, study: Path = HERE, *, machine, design_for=No
     reasons = list(got["checker_reasons"])
     return {"schema": 1, "walk": walk, "n": n, "walk_commit": commit, "supersedes": prev_name, "machine": machine,
             "run_tree": design.run_tree, "checker_constants_sha256": digest, "checker_reasons": reasons,
-            "checker_events": dict(got["checker_events"]), "route": None,
+            "route": None,
             "was": prev,
             "change": {"checker_constants_sha256": [prev["checker_constants_sha256"], digest],
                        "reasons_added": sorted(set(reasons) - set(prev["checker_reasons"])),

@@ -2488,17 +2488,15 @@ class _Wakeups:
         self.admit, self.seen = admit, transcript_view.ScheduledWakeups()
 
     def read(self, rec, harness: list) -> bool:
-        """Arm on an assistant record; True (the record is read here) when a user record is an admitted wakeup, its
-        text then added to `harness`."""
+        """True (the record is read here) when the record is an admitted wakeup, its text then added to `harness`;
+        otherwise the record is noted (a ScheduleWakeup call, or its result arming the prompt)."""
         if not isinstance(rec, dict):
-            return False
-        if rec.get("type") == "assistant":
-            self.seen.note(rec)
             return False
         if self.admit and self.seen.admit(rec):
             if rec["message"]["content"].strip():
                 harness.append(rec["message"]["content"])
             return True
+        self.seen.note(rec)                 # a call waits for its result; a non-error result arms its prompt
         return False
 
 
