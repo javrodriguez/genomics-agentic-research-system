@@ -180,5 +180,6 @@ Commits since 664a24e7, each red-first and through the gitleaks staged gate (0 f
 
 ## Exact next step
 1. glitch-6b merges this head into the ship head and runs the athena battery (test_build_draft, a heavy module, did not get a Mac slot here: thermal holds).
-2. After review, glitch-6b runs `walk_regrade.py --recheck <walk> --home H --temp-root T --checkout C` on the fetched real walks, naming athena's own home, temp root and checkout.
-3. Open for a ruling: awareness_furniture reads harness_types one line at a time, so a take carrying a wakeup line would be refused by that check (the line alone has no earlier call).
+2. RULED (glitch-6b, 15 Oct): rechecks run ON ATHENA, the walks' own machine, with --home, --temp-root and --checkout named from that machine's records; glitch-6b reads any reason change before a recheck is accepted. After review, glitch-6b runs `walk_regrade.py --recheck <walk> --home H --temp-root T --checkout C` there.
+3. Done as item G (be74a97f, ruled by glitch-6b): awareness_furniture reads each transcript in one pass, so a wakeup line resolves against its earlier call; red before, witness red, round 3's output byte-identical.
+4. The athena gars-gap4 battery runs on b7aca72a (glitch-6b's); an independent review of D, E and F runs from a scratch copy; G sits on top.
