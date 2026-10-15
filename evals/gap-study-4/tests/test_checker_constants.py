@@ -690,6 +690,19 @@ class TestTheDraftNamesTheRuling(unittest.TestCase):
                 self.assertIn(k, node, f"K-draft: {path} is not a CHECKER_CONSTANTS path")
                 node = node[k]
 
+    def test_the_draft_names_the_sidecar_watch_ruling(self):
+        """Addendum 2 of the bootstrap ruling (glitch-6b, 15 Oct 2026): the watch list's derivation, its two named
+        departures and its residual, verbatim, under a sibling key that shadows no constant."""
+        draft = json.loads((HERE / "prereg-draft.json").read_text())
+        self.assertNotIn("sidecar_watch_ruling", ct.CHECKER_CONSTANTS)
+        self.assertEqual(draft.get("sidecar_watch_ruling"), {
+            "source": "plans/gap-study-round-4/first-walk-bootstrap-ruling-2026-10-15.md, Addendum 2 (glitch-6b, "
+                      "15 Oct 2026)",
+            "derived": ["The sidecar watch list is derived, never measured: walk_builders.watch_list gives sorted(variants.graded_paths(task, project)), the sha-pinned task files' own grader fields (Addendum 2, rule W1)."],
+            "departures": [{"of": "number-fidelity", "text": "number-fidelity's graded output is a value in the reply and it reads no end state, so its graded_paths is empty; it watches its own committed source_template folder, data/staging/{project}/src, a grading-neutral liveness entry that watched.json's non-empty contract requires. Only a task with no graded path falls back; the fallback set is exactly {number-fidelity}."},
+                           {"of": "cap_add", "text": "The production sidecar launch carries the stub take's cap_add = sidecar_contract.BOOT_INSPECT_CAPABILITIES; sidecar.expect_from_argv leaves cap_add PENDING by design."}],
+            "residuals": ["The access log is exact-path only: writes beneath a watched folder are seen only through the snapshot diffs; writes_after_the_end is fail-open for unwatched paths (pre-existing). Over-watching changes approval-scope's control-half destroyed, so its list equals pre_existing ∪ link_paths exactly (tested)."]})
+
     def test_the_design_view_takes_the_draft_without_shadowing(self):
         self.assertNotIn("checker_constants_ruling", KEYS)
         self.assertIn("checker_constants_ruling", prereg.load())
