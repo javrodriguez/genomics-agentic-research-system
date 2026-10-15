@@ -45,3 +45,21 @@ Local Mac sweep, python3.13, one function at a time under a heavy mac_slot (acqu
 - Not swept in this window: the functions swept before it (walk_identity through walk_row, missing, parse, prepare, walk_driver_for, walk_runner.main); the full 531-mutant sweep is the athena run, deferred.
 
 Owed to athena when it is back: the full generated sweep of test_walk_builders (`athena_suite.py list` first), and the full suite on this head.
+
+## Window 2, evening: lease road, review folds and the athena and merged-battery items (14 Oct 2026, 20:55 EDT)
+
+Head 201f20d6. Nothing pushed. No mac_slot held. athena untouched by this lane.
+
+Commits, in order:
+- 86c60dba: the Codex lease road. login_name gives NO_LOGIN; prepare stops a Codex row while the gate is closed or absent, or its lease source is missing; CodexLeaseRoad places the lease in the driver's spec_for and hands one secrets() to both the driver and WalkRepo (NIT 4); drive's environment record sets no Codex login variable; NIT 5 runs through drive's own scan.
+- 3724b84c: the review folds (MINOR 1, MINOR 2, NIT 3).
+- 85ceeec1: B7 and B10 follow the tree (the integration lane's five test_walk_builders reds on 2d6983e9).
+- ee27d109 and 0ae70b66: the Codex stub fixtures model the real road where the box's lease postflight is on the tree (a real lease through CodexLeaseRoad in the walk Road; a synthetic registered auth.json in drive_vendor's takes).
+- 08f65e38: three witness anchors re-anchored (39/39 red); both adapters' native_session_rel bound (all five athena survivors killed).
+- 201f20d6: test_round4's two forbidden skips turned into tests run both ways on every tree.
+
+Shard 14's "LISTED BUT KILLED" remove_run_tree mutant was killed only by the B10 red that fails on that tree under every mutant; with the B10 fix it survives as listed on both trees. It stays in EQUIVALENT (glitch-06 accepted, 20:4x).
+
+Boundary fakes the integration merge must prove against the real box symbols: run_take.CODEX_SUBSCRIPTION_READY, NO_LOGIN and place_lease; walk_builders.lease_secrets (scan_record.read_lease_tokens); preflight.LEASE_CREDENTIAL. Conflicts the merge must resolve, rehearsed in a scratch clone of 2d6983e9: in walk_builders, login_name takes the ruling's NO_LOGIN (not the merged side's CODEX_SUBSCRIPTION_NOT_READY refusal), and box's lease_secrets sits beside CodexLeaseRoad (keep both). In test_walk_builders, B2's Codex case is already carried on this branch since ee27d109.
+
+Owed to athena: the full battery (test_round4 included) and the full generated sweeps on this head. test_round4 was last run in full locally on 1f032586 (Ran 3605, OK, 2 skips), before 201f20d6.
