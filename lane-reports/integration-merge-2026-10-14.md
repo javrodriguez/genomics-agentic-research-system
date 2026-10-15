@@ -442,3 +442,13 @@ Written by a fresh integration window, under glitch-06.
     - 3 in `production_builders` L34-35, the `rules_scanner` pending branch. On the merged tree `scan_record.pending()` has no `rules_scanner`, so the Missing branch never runs.
     - 1 in `prepare` L16 (`builders.get("lease_path")`, drop-0), past the closed Codex gate.
   - **test_round4, failures=2; box's test_live_box:** `SubscriptionTransitionRegression.test_walk_login_and_scanner_refuse_before_open` still expects "subscription binding not ready" from `walk_builders.login_secrets`, and per the test's source also from `login_file_by_name`. Under the ruled `NO_LOGIN`, the harness refuses with "a Codex row has no login file (…): its login is the lease". The log shows the `login_secrets` subtest; the second failure is cut by the log's tail, so it is inferred from the source. No Mac rerun: light-ok held at load1 165.
+
+## RESUME HERE (handover, 14 Oct 22:3x EDT)
+
+- **Merge clone:** `/Users/javrodher/aegis-builds/gap4-live-merge-20261014`, branch `gap4/live-merge-20261014`. The merged code head is `5e722095` (box `14670435` + harness `27ade10a`); log commits follow it. Nothing was pushed.
+- **Battery:** `gap4-merge-5e72209-20261015T015202Z` (solo, head `5e722095`) was fetched; its verdict, derived on the Mac, is FAIL with 256 of 272 commands passing; log sha256 `2c0633a9…2a07b18`.
+- **Reds by owner (16):**
+  - **Harness, 15 lines:** test_walk_builders generated mutants, shards 1-5 and 7-16. There are 16 unlisted survivors: 12 in `lease_secrets` (the real function is never driven because B13 fakes it), 3 in `production_builders`' `rules_scanner` pending branch (dead on the merged tree), and 1 in `prepare` L16 (`lease_path`, behind the closed gate).
+  - **Box, 1 line:** test_round4, from test_live_box `SubscriptionTransitionRegression.test_walk_login_and_scanner_refuse_before_open`. It expects "subscription binding not ready" where the ruled `NO_LOGIN` now refuses with "its login is the lease"; 2 subtests.
+- **Known, not a red here:** the harness passes `login_file` `"-"` where the box exec needs the placed lease path. It fails closed, and the harness fold is queued.
+- **Next:** the two owner fixes, then a re-merge of the newer heads (the harness tip was already `be4bbdca`) and a solo battery, with light-ok exiting 0 first (the Mac was at load1 165 at handover).
