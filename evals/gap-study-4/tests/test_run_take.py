@@ -2292,6 +2292,16 @@ def _claude_refused() -> tuple:
         return tuple(json.load(fh)["refuse_if_present"])
 
 
+def _exempting(loads, name):
+    """json.loads that adds `name` to a classification's exempt map (the NIT B mutant: an exemption added)."""
+    def wrapped(raw, *a, **k):
+        doc = loads(raw, *a, **k)
+        if isinstance(doc, dict) and isinstance(doc.get("exempt"), dict):
+            doc["exempt"] = dict(doc["exempt"], **{name: "the operator session's own token"})
+        return doc
+    return wrapped
+
+
 def run_claude_classifier() -> bytes:
     """classify_claude_env_names.py's stdout for the committed records, run in this process (runpy)."""
     import io
@@ -2353,6 +2363,8 @@ class TestClaudeBinarySweep(MutantCase):
             swept |= set(json.load(fh)["names"])
         rows = set().union(*(set(v) for v in rt.TAKE_ENV.values()))
         exempt = {n for n, why in cls.get("exempt", {}).items() if isinstance(why, str) and why.strip()}
+        if set(cls.get("exempt", {})) != {"CLAUDE_CODE_OAUTH_TOKEN"}:      # closure review NIT B: pinned exactly
+            out.append(f"the exemption set is {sorted(cls.get('exempt', {}))}, not exactly the Claude login")
         loose = sorted(n for n in swept if n not in claude_refused and n not in rows and n not in exempt)
         if loose:
             out.append(f"{len(loose)} swept name(s) neither refused, in a take row nor exempt with a reason: {loose[:6]}")
@@ -2389,6 +2401,8 @@ class TestClaudeBinarySweep(MutantCase):
                 (rt, "VENDOR_BILLING_ROUTE_VARIABLES", dict(
                     rt.VENDOR_BILLING_ROUTE_VARIABLES,
                     **{rt.CLAUDE_CODE: tuple(n for n in refuse if n != "CLAUDE_CODE_GATEWAY_TOKEN")})))),
+            ("the session token exempted", lambda: mock.patch.object(
+                json, "loads", _exempting(json.loads, "CLAUDE_CODE_MESSAGING_TOKEN"))),
             ("a pattern-matched name dropped", lambda: _patches(
                 (rt, "VENDOR_BILLING_ROUTE_VARIABLES", dict(
                     rt.VENDOR_BILLING_ROUTE_VARIABLES,

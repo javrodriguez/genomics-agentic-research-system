@@ -194,6 +194,9 @@ def a3(mod) -> list:
                 out.append("A3-gate: a held slot lock opens the gate")
         finally:
             os.close(fd)
+        with mock.patch("fcntl.flock", side_effect=OSError(9, "synthetic EBADF")):
+            if mod.held_slot_locks(slots) is not None:
+                out.append("A3-gate: a flock error other than EWOULDBLOCK reads as a known slot state")
         if mod.held_slot_locks(os.path.join(t, "no-slots")) is not None:
             out.append("A3-gate: an unreadable slots folder reads as nothing held")
         with mock.patch.object(mod, "suite_account_pids", side_effect=RuntimeError("synthetic")):
@@ -383,6 +386,9 @@ WITNESSES = {
                                    "ended between the listing and the read\n        except OSError:\n            return None",
                                    "        except OSError:\n            continue"),), "A3-gate"),
     "visibility-unchecked": ((("            visible = processes_visible(proc)", "            visible = True"),), "A3-gate"),
+    "flock-error-free": ((("            except OSError:\n                return None\n            fcntl.flock(fd, fcntl.LOCK_UN)",
+                           "            except OSError:\n                continue\n            fcntl.flock(fd, fcntl.LOCK_UN)"),),
+                         "A3-gate"),
     "old-env-builds": ((("    if not account:\n        return None, f\"{ENV_ACCOUNT} does not name the athena suite "
                          "account\"",
                          "    if not account:\n        return (lambda: []), None"),), "A4-env"),

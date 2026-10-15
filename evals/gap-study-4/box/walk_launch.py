@@ -32,6 +32,10 @@ the Claude1 file already on athena (run_take.WALK_LOGIN_FILES), read there by th
             killed outright (SIGKILL, an OOM), the lease is not renewed, the reservation reads free once its `until`
             passes, and the walk keeps running unreserved. athena_suite would then admit a suite beside it. The walk
             itself is stopped by hold only on a normal exit or SIGTERM/SIGHUP. No guard closes this; it is a residual.
+          - a failed start: the start checks athena-reserve is in the child before the claim, and 3 s after the
+            nohup that the hold still runs and the reservation is still this walk's; otherwise it removes the claim
+            and exits non-zero. Recovery after any start that crashed between the claim and that check:
+            `athena-reserve clear` (as javier on athena).
 
     python3 .../walk_launch.py status --child <athena child>
         `running` while the recorded pid lives, else the walk's exit code from its exit file.
@@ -242,10 +246,20 @@ def run_command(*, child: str, walk: str, cell: dict, reason: str) -> str:
     claim = ("import datetime as d, json, os, sys; fd = os.open(sys.argv[1], os.O_WRONLY | os.O_CREAT | os.O_EXCL, "
              "0o644); os.write(fd, json.dumps({'by': sys.argv[2], 'until': (d.datetime.now().astimezone() + "
              "d.timedelta(minutes=29)).isoformat(timespec='seconds')}).encode()); os.close(fd)")
-    return (f"umask {UMASK}; set -e; python3 -I -c {shlex.quote(claim)} {RESERVATION} {hid}; "
+    # After the start (closure review NIT C): the hold must still be running a moment later with the reservation
+    # still this walk's; a hold that exited (athena-reserve refused, the walk ended at once) removes the claim and the
+    # start exits non-zero with the log's tail, never printing a pid for a dead walk. Recovery after any failed start:
+    # `athena-reserve clear` (run as javier on athena) removes a reservation a crashed start left behind.
+    held_check = "import json, sys; sys.exit(json.load(open(sys.argv[1])).get('by') != sys.argv[2])"
+    alive = (f"sleep 3; if ! kill -0 $(cat {child}/walk.pid) 2>/dev/null; then rm -f {RESERVATION}; "
+             f"tail -5 {child}/walk.log >&2; exit 1; fi; "
+             f"python3 -I -c {shlex.quote(held_check)} {RESERVATION} {hid} || "
+             f"{{ echo 'the hold holds no reservation' >&2; exit 1; }}; ")
+    return (f"umask {UMASK}; set -e; test -f {child}/athena-reserve || exit 1; "
+            f"python3 -I -c {shlex.quote(claim)} {RESERVATION} {hid}; "
             f"{gate} > {child}/gate.out 2>&1 || {{ rm -f {RESERVATION}; exit 1; }}; "
             f"nohup sh -c {shlex.quote(body)} > {child}/walk.log 2>&1 < /dev/null & echo $! > {child}/walk.pid; "
-            f"cat {child}/walk.pid")
+            f"{alive}cat {child}/walk.pid")
 
 
 def run(runner: Runner, *, child: str, walk: str, cell: dict, reason: str) -> int:

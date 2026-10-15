@@ -34,6 +34,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import textwrap
 import types
 import unittest
 from pathlib import Path
@@ -120,7 +121,7 @@ class FakeRunner(wl.Runner):
             return 0, "", ""
         if cmd.startswith("if kill -0"):
             return 0, self.walk_state + "\n", ""
-        if "walk.pid; cat " in cmd:
+        if cmd.rstrip().endswith("/walk.pid") and "nohup sh -c" in cmd:
             return 0, "4242\n", ""
         return 0, "", ""
 
@@ -146,9 +147,9 @@ class FakeSuite:
     ALLOWLIST = "/fake/athena_suite_allowlist.json"
     PUBLIC_REFERENCE = {"gars": "https://example.invalid/gars.git"}
 
-    def __init__(self, log, *, public=("a" * 40,), public_error=False, nonpublic_finding=False, hits=()):
+    def __init__(self, log, *, public=("a" * 40,), public_error=False, nonpublic_finding=False, hits=(), scanned=3):
         self.log, self.public, self.public_error = log, list(public), public_error
-        self.scans = []
+        self.scans, self.scanned = [], scanned
         self.nonpublic_finding, self.hits = nonpublic_finding, list(hits)
 
     def committed_allowlist(self, path):
@@ -187,7 +188,7 @@ class FakeSuite:
                            "allow_blobs": allow_blobs, "ruled": ruled, "ruled_messages": ruled_messages})
         if self.nonpublic_finding:
             raise RuntimeError("gitleaks found 1 item(s) in commits that are not public: x.txt:generic-api-key:1")
-        return 3
+        return self.scanned
 
 
 def ship_rig(mod, t, suite_kw=None, **kw):
@@ -323,6 +324,16 @@ def l2(mod) -> list:
         out.append("L2-run: the walk's argv is not the cell's")
     if "nohup sh -c" not in cmd or "walk.pid" not in cmd or "walk.exit" not in cmd:
         out.append("L2-run: the walk is not detached with its pid and exit recorded")
+    i_reserve = cmd.find(f"test -f {CHILD}/athena-reserve")
+    if i_reserve < 0 or not i_reserve < i_test:
+        out.append("L2-run: athena-reserve's presence is not checked before the claim")
+    i_nohup = cmd.find("nohup sh -c")
+    tail = cmd[i_nohup:]
+    i_alive = tail.find(f"kill -0 $(cat {CHILD}/walk.pid)")
+    i_pid = tail.rfind(f"cat {CHILD}/walk.pid")
+    if i_alive < 0 or not i_alive < i_pid or f"rm -f {mod.RESERVATION}" not in tail[i_alive:i_pid] \
+            or "exit 1" not in tail[i_alive:i_pid]:
+        out.append("L2-run: a hold that exits before the walk starts can still print a pid")
     runner = FakeRunner()
     try:
         if mod.run(runner, child=CHILD, walk="w-0001", cell=cell, reason="r") != 4242:
@@ -449,6 +460,10 @@ def l5(mod) -> list:
             got = ship_case(t, want, **kw)
             if got:
                 out.append(f"L5-guards: {name}: {got}")
+    with tempfile.TemporaryDirectory() as t:
+        _, got, repo, _, _ = fetch_rig(mod, t, suite_kw={"scanned": 0})
+        if not isinstance(got, mod.LaunchRefused) or "scanned no commit" not in str(got) or walk_branches(repo):
+            out.append(f"L5-guards: a return scan of no commit: {got}")
     for name, want, runner_kw, after in (
             ("merge-base head..tip", "athena's tip does not descend from the shipped head", None,
              lambda r, tip: setattr(r, "ancestor_rc", 1)),
@@ -462,6 +477,49 @@ def l5(mod) -> list:
                 out.append(f"L5-guards: {name}: {got}")
             elif walk_branches(repo):
                 out.append(f"L5-guards: {name}: a walk branch was left")
+    return out
+
+
+FAKE_RESERVE = {
+    # exits at once, as athena-reserve does on a refusal: no walk ever starts
+    "dead": "import sys\nsys.exit(3)\n",
+    # holds: rewrites the reservation under its --by id, then stays up as the walk would
+    "alive": ("import json, sys, time\nby = sys.argv[sys.argv.index('--by') + 1]\n"
+              "open(sys.argv[-1], 'w').write(json.dumps({'by': by}))\ntime.sleep(8)\n"),
+}
+
+
+def l6(mod) -> list:
+    """NIT C, driven for real with sh on this machine: the start's own command, its athena paths moved into a
+    temporary folder, the athena gate replaced by `true`, and athena-reserve by a fake that dies at once or holds."""
+    import signal
+    out = []
+    cell = {"task": "t", "half": "h", "wording": "w", "arm": "A", "model": "m"}
+    for case in ("missing", "dead", "alive"):
+        with tempfile.TemporaryDirectory() as t:
+            child, res = os.path.join(t, "child"), os.path.join(t, "reserved.json")
+            os.mkdir(child)
+            if case != "missing":
+                Path(child, "athena-reserve").write_text(FAKE_RESERVE[case])
+            cmd = mod.run_command(child=CHILD, walk="w-0001", cell=cell, reason="r")
+            gate = cmd[cmd.index("env GAP4_SUITE_ACCOUNT"):cmd.index(" > " + CHILD + "/gate.out")]
+            cmd = cmd.replace(gate, "true", 1).replace(CHILD, child).replace(mod.RESERVATION, res)
+            # the fake hold is told the reservation's path as its last argument
+            cmd = cmd.replace("--reason r;", f"--reason r {res};")
+            p = subprocess.run(["sh", "-c", cmd], capture_output=True, text=True, timeout=60)
+            pid_file = Path(child, "walk.pid")
+            if case == "alive":
+                if p.returncode != 0 or not p.stdout.strip().isdigit():
+                    out.append(f"L6-start: a live hold did not print its pid (exit {p.returncode}: {p.stderr[-120:]})")
+                try:
+                    os.kill(int(pid_file.read_text().strip()), signal.SIGTERM)   # by the recorded pid
+                except (OSError, ValueError):
+                    pass
+            else:
+                if p.returncode == 0 or p.stdout.strip().isdigit():
+                    out.append(f"L6-start: the {case} hold's start printed a pid or exited 0")
+                if os.path.exists(res):
+                    out.append(f"L6-start: the {case} hold's start left the claim behind")
     return out
 
 
@@ -487,7 +545,7 @@ def l4(mod) -> list:
     return out
 
 
-CHECKS = {"L1-ship": l1, "L2-run": l2, "L3-fetch": l3, "L4-bounds": l4, "L5-guards": l5}
+CHECKS = {"L1-ship": l1, "L2-run": l2, "L3-fetch": l3, "L4-bounds": l4, "L5-guards": l5, "L6-start": l6}
 
 
 def witness(edits) -> types.ModuleType:
@@ -530,6 +588,13 @@ WITNESSES = {
                                   "    if False:"),), "L5-guards"),
     "back-sha-unchecked": ((("    if [_sha256(local)] != digest:", "    if False:"),), "L5-guards"),
     "back-tip-unchecked": ((("    if got != tip:", "    if False:"),), "L5-guards"),
+    "back-scan-empty-admitted": ((("    if not isinstance(n, int) or n < 1:", "    if not isinstance(n, int):"),),
+                                 "L5-guards"),
+    "reserve-presence-unchecked": ((("test -f {child}/athena-reserve || exit 1; ", ""),), "L2-run"),
+    "dead-hold-pid-printed": ((("if ! kill -0 $(cat {child}/walk.pid) 2>/dev/null; then ", "if false; then "),),
+                              "L2-run"),
+    "dead-hold-claim-kept": ((("then rm -f {RESERVATION}; \"\n             f\"tail -5", "then \"\n             f\"tail -5"),),
+                             "L6-start"),
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
                         "L3-fetch"),
 }
@@ -551,6 +616,9 @@ class TestTheRoad(unittest.TestCase):
     def test_l5_guards(self):
         self.assertEqual(l5(wl), [])
 
+    def test_l6_start(self):
+        self.assertEqual(l6(wl), [])
+
     def test_pinned_tree_is_variants(self):
         import variants
         self.assertEqual(wl.PINNED_TREE, variants.PINNED_TREE)
@@ -560,6 +628,11 @@ class TestTheRoad(unittest.TestCase):
 
 
 ATHENA_SUITE_PY = os.environ.get("GAP4_ATHENA_SUITE_PY", "/Users/javrodher/glitch/workspaces/aegis/ops/athena_suite.py")
+# The one skip the battery allows (glitch-6b's ruling, closure review MINOR A; test_round4.SKIP_ALLOWED holds this exact
+# text): fired ONLY when athena_suite.py (GAP4_ATHENA_SUITE_PY, else the operator's checkout path) or gitleaks is absent.
+REAL_SCAN_SKIP = ("REAL RETURN SCAN NOT RUN: athena_suite.py (GAP4_ATHENA_SUITE_PY) or gitleaks is absent on this "
+                  "machine; the real-scanner proof is the Mac run in the box lane report, the faked back-scan "
+                  "witnesses run everywhere, and the first real walk's fetch is live proof")
 
 
 def _real_gitleaks():
@@ -585,11 +658,9 @@ class TestRealReturnScan(unittest.TestCase):
     checkout), the class is skipped BY NAME, never passed: the lane report carries this machine's run."""
 
     def setUp(self):
-        if not os.path.isfile(ATHENA_SUITE_PY):
-            self.skipTest(f"REAL RETURN SCAN NOT RUN: no athena_suite.py at {ATHENA_SUITE_PY}")
         self.gitleaks = _real_gitleaks()
-        if self.gitleaks is None:
-            self.skipTest("REAL RETURN SCAN NOT RUN: no gitleaks binary on this machine")
+        if not os.path.isfile(ATHENA_SUITE_PY) or self.gitleaks is None:
+            self.skipTest(REAL_SCAN_SKIP)
         self.suite = wl.load_suite(ATHENA_SUITE_PY)
 
     def case(self, make_commit):
@@ -630,6 +701,46 @@ class TestRealReturnScan(unittest.TestCase):
         got, branches = self.case(None)
         self.assertIsInstance(got, dict, got)
         self.assertIn("refs/heads/walk/w-AbCd1234", branches)
+
+
+class TestSkipRule(unittest.TestCase):
+    """The battery allows exactly REAL_SCAN_SKIP, and any other skip reason still fails it (closure review MINOR A)."""
+
+    def test_only_the_real_scan_skip_is_allowed(self):
+        import test_round4
+        self.assertEqual(test_round4.SKIP_ALLOWED, (REAL_SCAN_SKIP,))
+
+    def run_battery(self, body):
+        import contextlib
+        import io
+        import test_round4
+        with tempfile.TemporaryDirectory() as t:
+            Path(t, "test_skipping.py").write_text(textwrap.dedent(body))
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                rc = test_round4.main(Path(t))
+            sys.modules.pop("test_skipping", None)
+            return rc, out.getvalue()
+
+    def test_the_allowed_skip_passes_and_another_is_banned(self):
+        allowed = f"""
+            import unittest
+            class T(unittest.TestCase):
+                def test_runs(self):
+                    pass
+                def test_allowed(self):
+                    self.skipTest({REAL_SCAN_SKIP!r})
+            """
+        rc, out = self.run_battery(allowed)
+        self.assertEqual(rc, 0, out)
+        other = allowed + """
+                def test_other(self):
+                    self.skipTest("REAL RETURN SCAN NOT RUN: for another reason")
+            """
+        rc, out = self.run_battery(other)
+        self.assertEqual(rc, 1, out)
+        self.assertIn("skipped, and its reason is not in SKIP_ALLOWED", out)
+        self.assertIn("for another reason", out)
 
 
 class TestWitnesses(unittest.TestCase):
