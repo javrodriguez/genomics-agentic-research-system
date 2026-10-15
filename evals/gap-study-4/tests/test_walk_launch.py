@@ -814,6 +814,25 @@ def l8(mod) -> list:
             except mod.LaunchRefused as e:
                 if ok:
                     out.append(f"L8-blobs: {why} is refused: {e}")
+        # MAJOR E and F: a planted path, a planted author
+        for why, kind in (("a planted path", "path"), ("a planted author", "author")):
+            d = os.path.join(t, why.replace(" ", "-"))
+            os.mkdir(d)
+            repo, _, head = make_repo(d)
+            fname = "evals/gap-study-4/rehearsals/w001/PLANTED-synthetic.txt" if kind == "path" else "w.txt"
+            Path(repo, fname).parent.mkdir(parents=True, exist_ok=True)
+            Path(repo, fname).write_text("w\n")
+            git("-C", repo, "add", fname)
+            if kind == "author":
+                git("-C", repo, "commit", "-q", "--author", "PLANTED synthetic <a@invalid>", "-m", "w")
+            else:
+                git("-C", repo, "commit", "-q", "-m", "w")
+            tip = git("-C", repo, "rev-parse", "HEAD").strip()
+            try:
+                mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                out.append(f"L8-blobs: {why} passes the walk's commit scan")
+            except mod.LaunchRefused:
+                pass
     return out
 
 
@@ -915,6 +934,14 @@ WITNESSES = {
     "text-gzip-skipped": ((("        if head_bytes[:2] == b\"\\x1f\\x8b\" or b\"\\0\" in head_bytes:", "        if b\"\\0\" in head_bytes:"),), "L8-blobs"),
     "allow-comments-honoured": ((("\"--exit-code\", \"0\", \"--ignore-gitleaks-allow\",", "\"--exit-code\", \"0\","),),
                                 "L8-blobs"),
+    "canary-missing-ignored": ((("        if canaries.get(name, 0) != 1:", "        if False:"),), "L8-blobs"),
+    "field-cap-dropped": ((("            if j - i > GZ_FIELD_MAX:", "            if False:"),), "L8-blobs"),
+    "commit-object-unscanned": ((("_git_out(repo, \"cat-file\", \"commit\", commit,", "_git_out(repo, \"log\", \"-1\", \"--format=%B\", commit,"),),
+                                "L8-blobs"),
+    "commit-scan-dropped": ((("            _write_private(os.path.join(src, f\"commit-{commit}\"), ",
+                              "            None and _write_private(os.path.join(src, f\"commit-{commit}\"), "),), "L8-blobs"),
+    "paths-unscanned": ((("            _write_private(os.path.join(src, f\"paths-{commit}\"), _git_out(",
+                          "            None and _write_private(os.path.join(src, f\"paths-{commit}\"), _git_out("),), "L8-blobs"),
     # Named equivalent, no witness: the 1f 8b magic check in gzip_header is the only gate before parsing; dropping it
     # leaves the method byte and zlib's raw inflate to refuse a non-gzip, so only the refusal's words change.
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
@@ -1135,6 +1162,30 @@ class TestRealReturnScan(unittest.TestCase):
         # athena_suite's stdin stream is `%H%n%B`: 41 bytes (the id and its newline) come first, so ustar at 216 of
         # the message sits at 257 of that stream, where gitleaks skips it (the closure review's MAJOR B reproduction)
         self.message_case(257 - 41)
+
+    def test_token_in_a_path_refuses(self):
+        tok = _fake_token()
+
+        def commit(a):
+            path = f"evals/gap-study-4/rehearsals/w001/{tok}.txt"
+            Path(a, path).parent.mkdir(parents=True, exist_ok=True)
+            Path(a, path).write_text("w\n")
+            git("-C", a, "add", path)
+            git("-C", a, "commit", "-q", "-m", "walk")
+        got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_token_in_the_author_refuses(self):
+        tok = _fake_token()
+
+        def commit(a):
+            Path(a, "w.txt").write_text("w\n")
+            git("-C", a, "add", "w.txt")
+            git("-C", a, "commit", "-q", "--author", f"{tok} <a@invalid>", "-m", "walk")
+        got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
 
     def test_clean_commit_is_fetched(self):
         got, branches = self.case(None)

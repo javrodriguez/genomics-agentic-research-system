@@ -354,8 +354,9 @@ def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks:
     binary list) must be absent from the shipped head's history, sit at every path under
     rehearsals/<walk>/evidence/blobs/<sha256 of its stored bytes>, and decode as one gzip member within its bounds and
     the walk's totals; each payload streams into its own 0600 file, its header (MTIME, XFL, OS and any FEXTRA, FNAME,
-    FCOMMENT, each at most 4 KiB) into a sibling 0600 file, and every new commit's message into its own 0600 file
-    (MAJOR B: the message scan's own blind spot, closed on the walk road). The canary proof then scans them all.
+    FCOMMENT, each at most 4 KiB) into a sibling 0600 file, and every new commit's raw object (headers and message) and
+    the paths it changes into their own 0600 files (MAJOR B, E and F: the message scan's blind spot and the fields and
+    paths no patch scan reads, closed on the walk road). The canary proof then scans them all.
     Refuses on anything else; reports counts and ids only, never content."""
     import shutil
     import tempfile
@@ -372,8 +373,12 @@ def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks:
         src = os.path.join(tmp, "src")
         os.mkdir(src, 0o700)
         for commit in _git_out(repo, "rev-list", f"{head}..{tip}").split():
-            _write_private(os.path.join(src, f"msg-{commit}"), _git_out(repo, "log", "-1", "--format=%B", commit,
-                                                                        binary=True))
+            # The closure review of d9c14755: MAJOR F, the raw commit object (author, committer, gpgsig, mergetag,
+            # encoding and the message), not only %B; MAJOR E, the paths the commit changes, which no patch scan reads.
+            _write_private(os.path.join(src, f"commit-{commit}"), _git_out(repo, "cat-file", "commit", commit,
+                                                                           binary=True))
+            _write_private(os.path.join(src, f"paths-{commit}"), _git_out(
+                repo, "diff-tree", "-r", "--root", "--name-only", "--no-commit-id", commit, binary=True))
         total = 0
         for oid in sorted(cands):
             if oid in in_head:
