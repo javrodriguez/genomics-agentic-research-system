@@ -2584,6 +2584,7 @@ class TakeDriver:
                   "row": ident["row"], "row_commit": ident["row_commit"],
                   "permission_mode": recorded, "permission_mode_passed": pin.get("permission_mode"),
                   "permission_mode_recorded": recorded, "budget_s": self.budget_s,
+                  "finalize_wait_s": self.finalize_wait_s, "poll_s": self.poll_s,     # BOOTSTRAP B4: the cap, the poll
                   "gars_tree_sha": ident["gars_tree_sha"], "fixture": ident["fixture"], "claude_version": version,
                   "turns": [dict(r) for r in rows], "outcome": outcome,
                   # live harness 3a: an executed turn whose record was refused leaves agent output unknown
@@ -2872,6 +2873,13 @@ class TakeDriver:
         if take is not None and self._unrestored(take):     # the ownership road: never read, scanned or committed
             raise DriveRefused(f"{self._unrestored(take)}: the take's folders are kept for a human ruling")
         return [] if take is None else self.take_files(take)
+
+    def checker_constants_sha256(self, row: dict):
+        """BOOTSTRAP (review MINOR 3): the digest of the constants the checker read for the slot's take (take_checker
+        records it from the design view), or None when no checker read it; read by walk_runner before published()."""
+        with self._lock:
+            take = self._by_slot.get(row.get("slot")) if isinstance(row, dict) else None
+        return getattr(take, "checker_constants_sha256", None)
 
     def published(self, row: dict, attempt: int) -> None:
         """TakeRepo's on_published (R4-11): the take's records are committed, so its config folder is deleted (by
@@ -3270,8 +3278,8 @@ READERS_DISAGREE = "readers-disagree"
 
 def take_checker(*, design_for, records="takes"):
     """TakeDriver's checker in production (S6c): check4 on the take's published transcript against its design view
-    (design_for(row, take): check_take.design_view with the routing pin and the take's run tree; its PENDING
-    constants refuse until a walk measures them). The streams and the session file disagreeing (C6), or no session
+    (design_for(row, take): check_take.design_view with the routing pin and the take's run tree; a constant still
+    PENDING refuses: check_take.CHECKER_CONSTANTS carries ruled, sourced values since 15 Oct 2026, never a walk's). The streams and the session file disagreeing (C6), or no session
     file at all, adds round 3's readers-disagree: the two readers of one take do not agree, a rehearsal before the
     first agent turn and harness-error after it."""
     def checker(row, take, turns):
@@ -3283,6 +3291,7 @@ def take_checker(*, design_for, records="takes"):
         if not path.is_file():
             return {"checker_reasons": [READERS_DISAGREE], "checker_events": dict.fromkeys(ids, 0)}
         design = design_for(row, take)
+        take.checker_constants_sha256 = _ct.design_constants_sha256(design)   # BOOTSTRAP: the constants it read
         if records == "walks":                    # D1: the round-4 walk road
             got = _ct.check4_walk(path, row["task"], row["half"], row["walk"], wording_script=design.script,
                                   arm=row["arm"], design=design)
@@ -3456,8 +3465,9 @@ def walk_driver(*, runtime, root, config_parent, spec_for, sidecar_for, proxy, l
     records     W8A: "takes" (the default: takes/<slot>/<k>, take_folder_in) or "walks" (rehearsals/<walk>/,
                 walk_folder_in, the row's `walk` id); any other value refuses (record_folder_in)
     rollout_for Codex's native rollout retrieval (harness_adapter_for): None refuses a Codex walk before a turn
-    Everything else is TakeDriver's (its docstring) or harness_adapter_for's. The constants only a walk can
-    measure stay the caller's: design_for hands them to design_view, and check4 refuses while any is PENDING."""
+    Everything else is TakeDriver's (its docstring) or harness_adapter_for's. The checker constants stay the
+    caller's: design_for hands them to design_view (check_take.CHECKER_CONSTANTS, ruled from their sources on 15 Oct
+    2026, not measured by a walk), and check4 refuses while any is PENDING."""
     if not callable(design_for):
         raise TypeError("design_for must be callable")
     if Path(root).resolve() != Path(_mode_binding.HERE).resolve():    # W7B-R1-2: the root the gate reads
@@ -3930,6 +3940,47 @@ def walk_identity_problems(driver, row: dict) -> None:
         got = ident if not isinstance(ident, dict) else {k: ident.get(k) for k in ("session_id", "row", "row_commit")}
         raise LaunchRefused(f"the walk's identity is not its own (ruling D2): {got!r}; a walk has no ledger row or row "
                             f"commit, and its session id is {want} (uuid5 of 'walk/{row['walk']}')")
+
+
+# ROUND 4, BOOTSTRAP LANE: THE ENVIRONMENT RECORD'S VOCABULARY. Appended here, never above, so no line round 4's
+# tests and notes cite by number moves; matched_by, never_stripped_problems and environment_record read these names.
+# (glitch-6b's checker-constants ruling of 15 Oct 2026 and its addition of the same morning).
+# NAMED DEPARTURE from round 3: the vocabulary above is round 3's, read from the 2.1.267 binary, and the record is
+# EXTENDED WITH THE 2.1.296 NAMES FROM THE PINNED BINARY'S STATIC READ (box lane ba6d7f14, lane-reports/stub-take-
+# 20261015/claude-2.1.296-env-classification-20261015.json, sha256 4e4c81bf...0fcbd; binary sha256 24972e3b...). All
+# fourteen of round 3's listed names are still in 2.1.296; the read found six billing switches outside every pattern
+# (HARNESS_NAME_PATTERNS, about line 205) and inference credentials on no list. The four flag lists of that file are added here exactly, and nothing
+# else: billing_route_outside_every_pattern and billing_route_in_patterns_not_listed to the billing routes,
+# credential_in_patterns_not_listed (less the subscription token by file descriptor, which joins the subscription
+# tokens) and credential_outside_every_pattern to the API keys. Three patterns make the names outside every pattern
+# recorded. Round 3's tuples stay as they are (run_take.py's copies are bound to them, and run_take's refuse-if-present
+# stop list is the box lane's); the environment record and the money line read the RECORD_ vocabulary below.
+# tests/test_checker_constants.py binds round 3's names as a subset and the additions to the classified lists.
+HARNESS_NAME_PATTERNS_2_1_296 = ("^CLAUDE_CODE_USE_(ANTHROPIC_AWS|ANTHROPIC_GOOGLE_CLOUD|MANTLE|GATEWAY)$",
+                                 "^CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST$", "^CLAUDE_CODE_HOST_CREDS_FILE$")
+API_KEY_VARIABLES_2_1_296 = ("ANTHROPIC_FOUNDRY_AUTH_TOKEN", "ANTHROPIC_IDENTITY_TOKEN", "ANTHROPIC_IDENTITY_TOKEN_FILE",
+                             "ANTHROPIC_ENVIRONMENT_KEY", "ANTHROPIC_WORK_SECRET", "CLAUDE_CODE_GATEWAY_TOKEN",
+                             "CLAUDE_CODE_HOST_CREDS_FILE")
+BILLING_ROUTE_VARIABLES_2_1_296 = ("CLAUDE_CODE_USE_ANTHROPIC_AWS", "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD",
+                                   "CLAUDE_CODE_USE_MANTLE", "CLAUDE_CODE_USE_GATEWAY",
+                                   "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST", "ANTHROPIC_BEDROCK_BASE_URL",
+                                   "ANTHROPIC_VERTEX_BASE_URL", "ANTHROPIC_FOUNDRY_BASE_URL", "ANTHROPIC_FOUNDRY_RESOURCE",
+                                   "ANTHROPIC_AWS_BASE_URL", "ANTHROPIC_GOOGLE_CLOUD_BASE_URL",
+                                   "ANTHROPIC_BEDROCK_MANTLE_BASE_URL", "ANTHROPIC_UNIX_SOCKET")
+SUBSCRIPTION_TOKEN_VARIABLES_2_1_296 = ("CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",)
+RECORD_HARNESS_NAME_PATTERNS = HARNESS_NAME_PATTERNS + HARNESS_NAME_PATTERNS_2_1_296
+RECORD_API_KEY_VARIABLES = API_KEY_VARIABLES + API_KEY_VARIABLES_2_1_296
+RECORD_BILLING_ROUTE_VARIABLES = BILLING_ROUTE_VARIABLES + BILLING_ROUTE_VARIABLES_2_1_296
+RECORD_SUBSCRIPTION_TOKEN_VARIABLES = SUBSCRIPTION_TOKEN_VARIABLES + SUBSCRIPTION_TOKEN_VARIABLES_2_1_296
+# Round 3's matched_by, never_stripped_problems and environment_record (and the money line through the record) read
+# these four module names when called, and stay byte for byte round 3's (checks.d/w6e-drive-commit.txt:6), so the names
+# are REBOUND here to the record vocabulary: from here on drive.HARNESS_NAME_PATTERNS and the three lists are round 3's
+# extended with 2.1.296's. Round 3's literal assignments above are what run_take's copies are bound to (test_run_take
+# reads them with ast); tests/test_checker_constants.py asserts each name IS its RECORD_ tuple and binds both halves.
+HARNESS_NAME_PATTERNS = RECORD_HARNESS_NAME_PATTERNS
+API_KEY_VARIABLES = RECORD_API_KEY_VARIABLES
+BILLING_ROUTE_VARIABLES = RECORD_BILLING_ROUTE_VARIABLES
+SUBSCRIPTION_TOKEN_VARIABLES = RECORD_SUBSCRIPTION_TOKEN_VARIABLES
 
 
 if __name__ == "__main__":

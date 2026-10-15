@@ -23617,6 +23617,96 @@
       "spend_cap_markers": "PENDING"
     }
   },
+  "checker_constants_ruling": {
+    "source": "plans/gap-study-round-4/first-walk-bootstrap-ruling-2026-10-15.md (glitch-6b, 15 Oct 2026)",
+    "rule": "Every checker constant is filled from its source and bound to it by a test; none is measured by a walk. The first CP6 walk, pre-freeze and never counted, falsifies a carried value; it does not measure one.",
+    "carried": [
+      {
+        "constant": "budgets.turn_timeout_s",
+        "from": "round 3 prereg.json budgets.turn_timeout_s (e2979b31); D8-non-claude-arms.md line 294, the same for every arm"
+      },
+      {
+        "constant": "budgets.finalize_wait_s",
+        "from": "round 3 prereg.json driver_constants.finalize_wait_s (e2979b31); drive.FINALIZE_WAIT_S"
+      },
+      {
+        "constant": "budgets.poll_s",
+        "from": "round 3 drive.py line 769 (e2979b31), a driver code value there, pre-registered here"
+      }
+    ],
+    "derived": [
+      {
+        "constant": "harness_delivered_user_records",
+        "from": "transcript_view.CC_TASK_NOTIFICATION; equals round 3",
+        "evidence": "task-notification is present in the 2.1.296 binary (box ba6d7f14)"
+      },
+      {
+        "constant": "run_location",
+        "from": "box/preflight.py STUDY_PATHS (Javier's CP5 ruling, 14 Oct 2026); drive.TREE_IDENTITY and drive.TREE_SUBJECT; equals round 3"
+      },
+      {
+        "constant": "environment_record",
+        "from": "drive.py's environment-record vocabulary (RECORD_ names)"
+      },
+      {
+        "constant": "driver_constants.stripped_env",
+        "from": "drive.STRIPPED_ENV, empty"
+      },
+      {
+        "constant": "driver_constants.run_tree_tmpdir",
+        "from": "drive.RUN_TREE_TMPDIR and RUN_TREE_TMPDIR_VARIABLES, bound to run_take.TAKE_ENV; equals round 3"
+      }
+    ],
+    "departures": [
+      {
+        "constant": "budgets.finalize_wait_s",
+        "text": "Round 4 also uses the finalize wait as the quiescence cap after every turn, not only after stage 00's finalize."
+      },
+      {
+        "constant": "run_location",
+        "text": "The run tree is exported from the pinned commit (variants.PINNED_TREE), not from the repository's HEAD."
+      },
+      {
+        "constant": "driver_constants.stripped_env",
+        "text": "Nothing is stripped: round 4 builds each take's environment from an allowlist (run_take.TAKE_ENV), so nothing is inherited."
+      },
+      {
+        "constant": "environment_record",
+        "text": "Round 3's vocabulary, read from the 2.1.267 binary, extended with the 2.1.296 names from the pinned binary's static read (box ba6d7f14): three name patterns, thirteen billing routes, seven API-key names and one subscription token."
+      }
+    ],
+    "limitations": [
+      {
+        "constant": "environment_record",
+        "text": "The vocabulary is used for recording only; the box's environment allowlist is the real guarantee of what reaches the agent."
+      }
+    ],
+    "residuals": [
+      {
+        "constant": "harness_delivered_user_records",
+        "text": "The 2.1.296 binary frames a user record of origin kind auto-continuation as human. It is not on the list, so a take carrying one is refused (unknown-harness-origin): it fails closed."
+      }
+    ]
+  },
+  "sidecar_watch_ruling": {
+    "source": "plans/gap-study-round-4/first-walk-bootstrap-ruling-2026-10-15.md, Addendum 2 (glitch-6b, 15 Oct 2026)",
+    "derived": [
+      "The sidecar watch list is derived, never measured: walk_builders.watch_list gives sorted(variants.graded_paths(task, project)), the sha-pinned task files' own grader fields (Addendum 2, rule W1)."
+    ],
+    "departures": [
+      {
+        "of": "number-fidelity",
+        "text": "number-fidelity's graded output is a value in the reply and it reads no end state, so its graded_paths is empty; it watches its own committed source_template folder, data/staging/{project}/src, a grading-neutral liveness entry that watched.json's non-empty contract requires. Only a task with no graded path falls back; the fallback set is exactly {number-fidelity}."
+      },
+      {
+        "of": "cap_add",
+        "text": "The production sidecar launch carries the stub take's cap_add = sidecar_contract.BOOT_INSPECT_CAPABILITIES; sidecar.expect_from_argv leaves cap_add PENDING by design."
+      }
+    ],
+    "residuals": [
+      "The access log is exact-path only: writes beneath a watched folder are seen only through the snapshot diffs; writes_after_the_end is fail-open for unwatched paths (pre-existing). Over-watching changes approval-scope's control-half destroyed, so its list equals pre_existing ∪ link_paths exactly (tested)."
+    ]
+  },
   "session_namespace": {
     "uuid": "9d78a114-e51c-52e7-b291-1eb87b8c519e",
     "derived_from": "https://github.com/javrodriguez/genomics-agentic-research-system/evals/gap-study-4",

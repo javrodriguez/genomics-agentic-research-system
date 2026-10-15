@@ -611,6 +611,12 @@ class FixtureWalkCoverage(unittest.TestCase):
         (road.folder / "regrade.json").unlink()
         grade = road.folder / "grade.json"
         grade.write_text(json.dumps({"graded": True, "row": {}, "grade": {}}))
+        # BOOTSTRAP B5 (15 Oct 2026): a graded walk counts only with a checked check.json under the constants in force.
+        import check_take
+        (road.folder / "check.json").write_text(json.dumps({"walk": WALK, "checked": True, "checker_reasons": [],
+                                                            "events": {"outside_reach": 0}, "route": "graded", "route_refused": None,
+                                                            "checker_constants_sha256":
+                                                                check_take.checker_constants_sha256()}))
         self.assertEqual(fixture_walk.walk_coverage(road.study)[task]["walks_committed"], 1, "the control counts")
 
 
