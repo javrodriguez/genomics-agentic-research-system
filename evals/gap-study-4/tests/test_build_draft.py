@@ -575,10 +575,28 @@ class TakeALock(unittest.TestCase):
         carried = {p["version"] for p in routing.load_table()["pin_profiles"]["claude-code"].values()}
         self.assertEqual(len(carried), 1, f"arm A's profiles carry {carried}")
 
+        def take_a_with(lock, version):
+            """take-a's lock with harness.version set, still a lock image_lock accepts (review MINOR 2 of
+            1f032586..27ade10a): a PENDING version carries its pending reason and, where the lock is the filled
+            schema 2 (which holds no PENDING value), becomes the unfilled schema-1 lock (image_id PENDING with its
+            reason, the schema-2 keys gone); a filled version drops the reason."""
+            lock = json.loads(json.dumps(lock))
+            pending = dict(lock.get("pending") or {})
+            if version == image_lock.PENDING:
+                if lock["schema"] != image_lock.SCHEMA:
+                    lock = {k: v for k, v in lock.items() if k not in getattr(image_lock, "SCHEMA_2_KEYS", ())}
+                    lock.update(schema=image_lock.SCHEMA, image_id=image_lock.PENDING)
+                    pending["image_id"] = "synthetic: only a built image has an id"
+                pending["harness.version"] = "synthetic: walked before it is pinned"
+            else:
+                pending.pop("harness.version", None)
+            lock.update(harness=dict(lock["harness"], version=version), pending=pending)
+            return image_lock.validate(lock)
+
         def with_version(version):
             def load(path):
                 lock = real(path)
-                return lock if lock["image"] != "take-a" else dict(lock, harness=dict(lock["harness"], version=version))
+                return lock if lock["image"] != "take-a" else take_a_with(lock, version)
             return load
         with mock.patch.object(image_lock, "load", with_version("7.7.7")), \
                 self.assertRaisesRegex(ValueError, "routing and image versions disagree"):
