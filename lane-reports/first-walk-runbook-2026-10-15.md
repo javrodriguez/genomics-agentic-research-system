@@ -166,3 +166,9 @@ PY=/usr/local/bin/python3.13
 2. **The record set** a committed walk carries. `watched.json` does not exist on `26dd61be`; the watch is `evidence-ledger-copy.json`. Confirm on the first walk's commit.
 3. **`run`, `status` and `fetch` against the real athena** have run only on fakes and the dry ship. The first walk is their first real use.
 4. **The athena child folders:** the walk's child holds the athena repository and its log. It is kept until glitch-6b rules after reading the records.
+
+## 7. Usage readings (recorded here and in the lane report's w001 section)
+
+- **Before w001**, typed by Javier in glitch-6b's window, relayed verbatim at 09:36 EDT on 15 Oct 2026:
+  > Claude1 before w001: session 0% used, weekly 0% used, resets Thurs 9 am
+- **After w001:** pending. glitch-6b asks Javier for it once the walk ends.
