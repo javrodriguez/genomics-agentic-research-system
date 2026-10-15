@@ -118,14 +118,31 @@ class SubscriptionTransitionRegression(unittest.TestCase):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
         try:
             import walk_builders
+            from box import scan_record  # noqa: F401  imported here, so no import runs under the patches below
         finally:
             sys.path.pop(0)
-        with mock.patch("os.open") as opened:
-            for entry in (walk_builders.login_file_by_name, walk_builders.login_secrets):
-                with self.subTest(entry=entry.__name__), self.assertRaisesRegex(
-                        walk_builders.BuilderRefused, "subscription binding not ready"):
+        # glitch-6b's ruling (14 Oct 2026, under Javier's delegation) on glitch-5a's ruled NO_LOGIN for a Codex row:
+        # a tree whose walk_builders carries NO_LOGIN (the harness's lease road) refuses a Codex row's login file with
+        # "its login is the lease"; a box-alone tree keeps the closed subscription binding's refusal. Either way the
+        # refusal comes before anything is looked up, opened or read.
+        if hasattr(walk_builders, "NO_LOGIN"):
+            self.assertEqual(walk_builders.NO_LOGIN, rt.NO_LOGIN)
+            self.assertEqual(walk_builders.login_name(rt.CODEX), rt.NO_LOGIN)
+
+            def expected(name):
+                return rf"a Codex row has no login file \({name}\): its login is the lease"
+        else:
+            def expected(name):
+                return "subscription binding not ready"
+        for entry in (walk_builders.login_file_by_name, walk_builders.login_secrets):
+            with self.subTest(entry=entry.__name__), \
+                    mock.patch("os.open") as opened, mock.patch("os.lstat") as looked, \
+                    mock.patch("builtins.open") as read_open:
+                with self.assertRaisesRegex(walk_builders.BuilderRefused, expected(entry.__name__)):
                     entry("/must-not-read", rt.CODEX)
-            opened.assert_not_called()
+                opened.assert_not_called()
+                looked.assert_not_called()
+                read_open.assert_not_called()
 
 
 class PublicConfigRegression(unittest.TestCase):
