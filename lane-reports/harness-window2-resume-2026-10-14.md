@@ -143,3 +143,25 @@ Stopped on glitch-6b's word: the athena battery's sweep covers every function.
 
 Next: launch the next battery on scratch f05ad45f (/Users/javrodher/aegis-builds/gap4-harness-scratch-0cd9b1be; gars-gap4, jobs 24, --solo) once athena is free after the bootstrap battery (glitch-6b's word). Then report.
 sidecar_for stays Missing and needs a ruling: there is no registered watch list.
+
+### Addendum, 15 Oct 04:26 EDT
+
+Battery gap4-harness-g123b-merged-56a1780-20261015T074328Z (head 56a17802 = 0cd9b1be + 89525f03..6fe573d5): **PASS**, 272/272, step 1 1303 OK. Log sha256 c41636a9e3df126bd4d64bd1d5dbde0986896db4c56ad0d075d609c048b81dda. All 18 w12b lines pass (module, witnesses, 16 generated shards).
+
+Since then (Mac proof only, light-ok, not yet in a battery):
+- 3943d61c: design_for's pending list test (the bootstrap battery's survivor; red on a b1f4df1c scratch).
+- d6ad30c2: the review fold (MINOR 1-3, NIT 1-2, the evidence-folder comment). test_walk_builders 76 OK on both trees; witnesses 41/41.
+
+Owed: a battery on scratch 355d615c (0cd9b1be + 89525f03..d6ad30c2), or the admission merge's own battery. sidecar_for stays Missing pending a ruling on the watch list.
+
+### Addendum, 15 Oct 04:41 EDT: S1-S3, the sidecar watch list
+
+184f05b3 builds watch_list and sidecar_road under Addendum 2 of the bootstrap ruling (rule W1).
+- Red on a merged scratch of bd9d05a7: 12 run, 11 failures, 3 errors.
+- Green: 83 OK on both trees; witnesses 41/41; test_stub_take 19 OK.
+- Merged scratch: /Users/javrodher/aegis-builds/gap4-harness-scratch-bd9d05a7 (committed there as a scratch commit).
+
+S4's draft text went to glitch-6b, since build_draft is not this lane's file. On the merged tree every production builder is now built except config_parent and proxy (until GAP4_CONFIG_PARENT is set) and machine_gate.
+Correction (15 Oct 04:55, review NIT 1): with GAP4_CONFIG_PARENT unset, production also lacks lease_path (the Codex lease) and agent_version for codex and gemini (per-harness Missing inside the PerHarness); neither matters for a Claude walk.
+- 184f05b3's review MINOR 2 is folded in the next commit: WATCH_FALLBACK_TASKS binds the fallback in code.
+Owed: a battery that includes 184f05b3.
