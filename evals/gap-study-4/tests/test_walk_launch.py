@@ -3,8 +3,11 @@
 for real on temporary repositories; athena is a fake that keeps what was copied to it and answers each remote command
 by its shape; gitleaks is a fake that writes the report it is told to. No ssh, no scp, no suite, no model.
 
-  L1-ship     the Mac pre-check first, then the pinned history, the bundle, its verify and its clone, the scan, and only
-              then anything on athena; a finding outside the known public history keeps the bundle on the Mac; the
+  L1-ship     the Mac pre-check first, then the pinned history, the bundle and its verify, then athena_suite's own
+              outward rule (scan_unpublished over every commit the public GARS remote does not serve, after its
+              public fetch, with the push door's rulings and the committed allowlist), and only then anything on
+              athena; a finding in a non-public commit, an unreadable or empty public-ref list and a secret-shaped
+              file each keep the bundle on the Mac; the
               athena copy and athena-reserve are each read back by sha256; athena's clone must sit at the head
   L2-run      the one remote command: umask 0022 first; the reservation must be absent and the athena gate open before
               the hold; the walk runs under `athena-reserve hold --by gap4-walk-<id>` with exactly the gate's three
@@ -13,9 +16,10 @@ by its shape; gitleaks is a fake that writes the report it is told to. No ssh, n
               (<head>..<ref>), read back by sha256, scanned with no allowance over exactly <head>..<tip>, then fetched
               into the records clone as walk/<child>; a finding fetches nothing
   L4-bounds   no argv anywhere carries push, a credential file or the walk's login file; the child is a neutral
-              /home/javier/w-XXXXXXXX folder; KNOWN_HISTORY_FINDINGS' commits are in this repository's history
+              /home/javier/w-XXXXXXXX folder
 
-Witnesses (each red by its own clause): scan-skipped, unknown-finding-admitted, no-umask, hold-dropped,
+Witnesses (each red by its own clause): scan-skipped, public-error-swallowed, public-subtraction-dropped,
+no-umask, hold-dropped,
 reservation-not-checked, back-range-whole-history, back-scan-allowance.
 """
 
@@ -129,60 +133,118 @@ def reserve_file(t):
     return p
 
 
-def ship_rig(mod, t, **kw):
+class FakeSuite:
+    """athena_suite's functions as outward_scan calls them, logging into the runner's call list."""
+    ALLOWLIST = "/fake/athena_suite_allowlist.json"
+    PUBLIC_REFERENCE = {"gars": "https://example.invalid/gars.git"}
+
+    def __init__(self, log, *, public=("a" * 40,), public_error=False, nonpublic_finding=False, hits=()):
+        self.log, self.public, self.public_error = log, list(public), public_error
+        self.nonpublic_finding, self.hits = nonpublic_finding, list(hits)
+
+    def committed_allowlist(self, path):
+        self.log.append(("suite", ["committed_allowlist", path]))
+        return {"v": 1}, "f" * 64
+
+    def validate_allowlist(self, doc, kind):
+        self.log.append(("suite", ["validate_allowlist", kind]))
+        return (), {"r": 1}, {"m": 1}
+
+    def scratch_clone(self, bundle, dest, workdir):
+        self.log.append(("suite", ["scratch_clone", bundle, dest]))
+
+    def name_hits(self, repo, sha, allow):
+        return list(self.hits)
+
+    def exempt_reviewed(self, repo, sha, hits, reviewed):
+        return list(hits), []
+
+    def ignore_hits(self, repo, sha, workdir):
+        return []
+
+    def fetch_public_refs(self, repo, url, workdir):
+        self.log.append(("suite", ["fetch_public_refs", url]))
+        if self.public_error:
+            raise RuntimeError("the public reference could not be read anonymously; nothing ships")
+        return list(self.public)
+
+    def rulings_file(self, repo):
+        return os.path.join(repo, ".git", "hooks", "glitch-gitleaksignore")
+
+    def scan_unpublished(self, repo, sha, workdir, gitleaks, public_shas, rulings, allow_blobs, ruled, ruled_used,
+                         ruled_messages):
+        self.log.append(("suite", ["scan_unpublished", sha, list(public_shas), rulings, ruled, ruled_messages]))
+        if self.nonpublic_finding:
+            raise RuntimeError("gitleaks found 1 item(s) in commits that are not public: x.txt:generic-api-key:1")
+        return 3
+
+
+def ship_rig(mod, t, suite_kw=None, **kw):
     repo, root, head = make_repo(t)
     runner = FakeRunner(athena_head=head, **kw)
+    suite = FakeSuite(runner.calls, **(suite_kw or {}))
     reserve = reserve_file(t)
     with mock.patch.object(mod, "PINNED_TREE", root), \
             mock.patch.object(mod, "RESERVE_SHA256", hashlib.sha256(Path(reserve).read_bytes()).hexdigest()):
         try:
             out = mod.ship(runner, repo=repo, ref="main", suite="/x/athena_suite.py", reserve=reserve,
-                           gitleaks="gitleaks", work=os.path.join(t, "work"), precheck=lambda s: [])
+                           gitleaks="gitleaks", work=os.path.join(t, "work"), precheck=lambda s: [],
+                           suite_module=suite)
         except mod.LaunchRefused as e:
             out = e
-    return runner, out, head
+    return runner, out, head, repo
 
 
 def l1(mod) -> list:
     out = []
     with tempfile.TemporaryDirectory() as t:
-        runner, got, head = ship_rig(mod, t)
+        runner, got, head, repo = ship_rig(mod, t)
         if not isinstance(got, dict) or got.get("child") != CHILD or got.get("head") != head:
             return [f"L1-ship: a clean ship did not complete: {got}"]
-        first_remote = next(i for i, c in enumerate(runner.calls) if c[0] != "local")
-        scan = next((i for i, c in enumerate(runner.calls) if c[0] == "local" and c[1][0] == "gitleaks"), None)
-        if scan is None or scan > first_remote:
-            out.append("L1-ship: athena is touched before the bundle is scanned")
+        first_remote = next(i for i, c in enumerate(runner.calls) if c[0] in ("remote", "copy_to"))
+        scans = [(i, c[1]) for i, c in enumerate(runner.calls) if c[0] == "suite" and c[1][0] == "scan_unpublished"]
+        fetches = [i for i, c in enumerate(runner.calls) if c[0] == "suite" and c[1][0] == "fetch_public_refs"]
+        if len(scans) != 1 or not fetches or not fetches[0] < scans[0][0] < first_remote:
+            out.append("L1-ship: athena is touched before athena_suite's public fetch and outward scan")
+        elif scans[0][1][1:] != [head, ["a" * 40], os.path.join(repo, ".git", "hooks", "glitch-gitleaksignore"),
+                                 {"r": 1}, {"m": 1}]:
+            out.append("L1-ship: the outward scan is not scan_unpublished(head, the public tips, the push door's "
+                       "rulings, the committed allowlist)")
+        if ["validate_allowlist", "gars"] not in [c[1] for c in runner.calls if c[0] == "suite"]:
+            out.append("L1-ship: the committed allowlist is not read for the gars kind")
         locals_ = [c[1] for c in runner.calls if c[0] == "local"]
         if not any(a[3:5] == ["bundle", "verify"] for a in locals_):
             out.append("L1-ship: the bundle is not verified")
         reads = [c[1] for c in runner.calls if c[0] == "remote" and c[1].startswith("sha256sum ")]
         if reads != [f"sha256sum {CHILD}/walk-out.bundle", f"sha256sum {CHILD}/athena-reserve"]:
             out.append("L1-ship: the athena copies are not each read back by sha256")
-    with tempfile.TemporaryDirectory() as t:
-        _, got, _ = ship_rig(mod, t, findings=["deadbeef:x.txt:generic-api-key:1"])
-        if not isinstance(got, mod.LaunchRefused):
-            out.append("L1-ship: a finding outside the known public history ships")
-    with tempfile.TemporaryDirectory() as t:
-        known = sorted(mod.KNOWN_HISTORY_FINDINGS)[:2]
-        runner, got, _ = ship_rig(mod, t, findings=known)
-        if not isinstance(got, dict):
-            out.append(f"L1-ship: a known public finding refuses the bundle: {got}")
+    for why, suite_kw in (("a finding in a commit the public remote does not serve", {"nonpublic_finding": True}),
+                          ("an unreadable public-ref list", {"public_error": True}),
+                          ("a public remote advertising nothing", {"public": ()}),
+                          ("a secret-shaped file", {"hits": [("x.pem", "pem")]})):
+        with tempfile.TemporaryDirectory() as t:
+            runner, got, _, _ = ship_rig(mod, t, suite_kw=suite_kw)
+            if not isinstance(got, mod.LaunchRefused):
+                out.append(f"L1-ship: {why} ships")
+            elif any(c[0] in ("remote", "copy_to") for c in runner.calls):
+                out.append(f"L1-ship: {why} refused only after athena was touched")
     with tempfile.TemporaryDirectory() as t:
         runner2 = FakeRunner(athena_head="0" * 40)
+        quiet = FakeSuite([])
         repo, root, head = make_repo(t)
         reserve = reserve_file(t)
         with mock.patch.object(mod, "PINNED_TREE", root), \
                 mock.patch.object(mod, "RESERVE_SHA256", hashlib.sha256(Path(reserve).read_bytes()).hexdigest()):
             try:
                 mod.ship(runner2, repo=repo, ref="main", suite="/x", reserve=reserve, gitleaks="gitleaks",
-                         work=os.path.join(t, "w2"), precheck=lambda s: [])
+                         work=os.path.join(t, "w2"), precheck=lambda s: [], suite_module=quiet)
                 out.append("L1-ship: an athena clone off the head is admitted")
             except mod.LaunchRefused:
                 pass
             try:
                 mod.ship(FakeRunner(athena_head=head), repo=repo, ref="main", suite="/x", reserve=reserve,
-                         gitleaks="gitleaks", work=os.path.join(t, "w3"), precheck=lambda s: ["a suite runs"])
+                         gitleaks="gitleaks", work=os.path.join(t, "w3"), precheck=lambda s: ["a suite runs"],
+                         suite_module=quiet)
                 out.append("L1-ship: a closed Mac pre-check ships")
             except mod.LaunchRefused:
                 pass
@@ -191,14 +253,14 @@ def l1(mod) -> list:
             r4 = FakeRunner(athena_head=head)
             try:
                 mod.ship(r4, repo=repo, ref="main", suite="/x", reserve=reserve, gitleaks="gitleaks",
-                         work=os.path.join(t, "w4"), precheck=lambda s: [])
+                         work=os.path.join(t, "w4"), precheck=lambda s: [], suite_module=quiet)
                 out.append("L1-ship: a head without the pinned tree's history ships")
             except mod.LaunchRefused:
                 if any(c[0] != "local" for c in r4.calls):
                     out.append("L1-ship: athena is touched before the pinned-history check")
         try:
             mod.ship(FakeRunner(athena_head=head), repo=repo, ref="main", suite="/x", reserve=reserve,
-                     gitleaks="gitleaks", work=os.path.join(t, "w5"), precheck=lambda s: [])
+                     gitleaks="gitleaks", work=os.path.join(t, "w5"), precheck=lambda s: [], suite_module=quiet)
             out.append("L1-ship: athena-reserve bytes off the runbook's pin ship")
         except mod.LaunchRefused:
             pass
@@ -287,7 +349,7 @@ def l3(mod) -> list:
         if not i_scan < i_rec:
             out.append("L3-fetch: the records clone is fetched before the scan")
     with tempfile.TemporaryDirectory() as t:
-        _, got, repo, _, _ = fetch_rig(mod, t, back_findings=[sorted(mod.KNOWN_HISTORY_FINDINGS)[0]])
+        _, got, repo, _, _ = fetch_rig(mod, t, back_findings=["c" * 40 + ":docs/environment.md:generic-api-key:156"])
         if not isinstance(got, mod.LaunchRefused):
             out.append("L3-fetch: a finding in the walk's commits is fetched (no allowance comes back)")
         elif git("-C", repo, "for-each-ref", "refs/heads/walk/").strip():
@@ -306,7 +368,7 @@ def l3(mod) -> list:
 def l4(mod) -> list:
     out = []
     with tempfile.TemporaryDirectory() as t:
-        r1, _, _ = ship_rig(mod, t)
+        r1, _, _, _ = ship_rig(mod, t)
     with tempfile.TemporaryDirectory() as t:
         r2, _, _, _, _ = fetch_rig(mod, t)
     cell = {"task": "t", "half": "h", "wording": "w", "arm": "A", "model": "m"}
@@ -322,12 +384,6 @@ def l4(mod) -> list:
             out.append(f"L4-bounds: {bad!r} is admitted as a child")
         except mod.LaunchRefused:
             pass
-    repo = HERE.parent.parent
-    for fp in mod.KNOWN_HISTORY_FINDINGS:
-        commit = fp.split(":")[0]
-        p = subprocess.run(["git", "-C", str(repo), "cat-file", "-t", commit], capture_output=True, text=True)
-        if p.returncode != 0 or p.stdout.strip() != "commit":
-            out.append(f"L4-bounds: known finding commit {commit[:12]} is not in this repository's history")
     return out
 
 
@@ -347,11 +403,14 @@ def witness(edits) -> types.ModuleType:
 
 
 WITNESSES = {
-    "scan-skipped": ((("    unknown = sorted(set(scan_findings(runner, gitleaks, scan_clone, os.path.join(work, "
-                       "\"out-scan.json\")))\n                     - KNOWN_HISTORY_FINDINGS)",
-                       "    unknown = []"),), "L1-ship"),
-    "unknown-finding-admitted": ((("    if unknown:\n        raise LaunchRefused(f\"gitleaks found",
-                                   "    if False:\n        raise LaunchRefused(f\"gitleaks found"),), "L1-ship"),
+    "scan-skipped": ((("    suite_mod = load_suite(suite) if suite_module is None else suite_module\n    try:\n"
+                       "        scanned = outward_scan(", "    suite_mod = None\n    try:\n        scanned = 0 and outward_scan("),),
+                     "L1-ship"),
+    "public-error-swallowed": ((("    public = suite_mod.fetch_public_refs(check, suite_mod.PUBLIC_REFERENCE[SUITE_KIND], work)",
+                                 "    try:\n        public = suite_mod.fetch_public_refs(check, suite_mod.PUBLIC_REFERENCE[SUITE_KIND], "
+                                 "work)\n    except Exception:\n        public = ['x']"),), "L1-ship"),
+    "public-subtraction-dropped": ((("return suite_mod.scan_unpublished(check, head, work, gitleaks, public,",
+                                     "return suite_mod.scan_unpublished(check, head, work, gitleaks, (),"),), "L1-ship"),
     "no-umask": ((("    return (f\"umask {UMASK}; set -e;", "    return (f\"set -e;"),), "L2-run"),
     "hold-dropped": ((("    held = (f\"python3 {child}/athena-reserve hold --by {hid} -- {env} \"",
                        "    held = (f\"{env} \""),), "L2-run"),
@@ -360,7 +419,7 @@ WITNESSES = {
                                    "bundle create {child}/walk-back.bundle {shlex.quote(ref)}"),), "L3-fetch"),
     "back-scan-allowance": ((("    if found:\n        raise LaunchRefused(f\"gitleaks found {len(found)} finding(s) in "
                               "the walk's",
-                              "    if set(found) - KNOWN_HISTORY_FINDINGS:\n        raise LaunchRefused(f\"gitleaks "
+                              "    if [f for f in found if not f.endswith(':156')]:\n        raise LaunchRefused(f\"gitleaks "
                               "found {len(found)} finding(s) in the walk's"),), "L3-fetch"),
 }
 

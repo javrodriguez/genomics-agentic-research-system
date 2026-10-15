@@ -8,8 +8,8 @@ the Claude1 file already on athena (run_take.WALK_LOGIN_FILES), read there by th
         1. the Mac pre-check (machine_gate.mac_precheck): no athena suite in progress, busy runs never ran;
         2. the ref's head carries the pinned tree's history (variants.PINNED_TREE is an ancestor);
         3. `git bundle create` of the ref (the whole history), `git bundle verify`;
-        4. gitleaks over a clone of the bundle; every finding must be one of KNOWN_HISTORY_FINDINGS (already public
-           in GARS origin, recorded with the evidence in the lane report), else refuse;
+        4. athena_suite's own outward rule over a scratch clone of the bundle (outward_scan): no secret-shaped file,
+           and gitleaks over every carried commit the public GARS remote does not serve, else refuse;
         5. a new mode-700 neutral child on athena (`mktemp -d /home/javier/w-XXXXXXXX`), the bundle and athena-reserve
            copied there, each sha256 read back on athena; athena clones the bundle and its HEAD must be the head.
         Prints one JSON line: the child, the head, the bundle's sha256.
@@ -68,20 +68,13 @@ RESERVE_SHA256 = "efeecb3a606d6bb9a23c77b850b8ef1f61cb9aed0f4bcdb53c3ff3b9b03906
 HEX40 = re.compile(r"[0-9a-f]{40}")
 WALK_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 CELL = ("task", "half", "wording", "arm", "model")
-# gitleaks findings already in the history the bundle carries, each present in GARS's public origin (the lane report
-# lists the check): eight generic-api-key matches, seven in study transcripts (records: ruled, never edited out) and
-# one in docs/environment.md's prose. Keyed by gitleaks' own Fingerprint (commit:file:rule:line). Any other finding
-# refuses the bundle; the new-commits bundle coming back gets no allowance at all.
-KNOWN_HISTORY_FINDINGS = frozenset({
-    "3b0225db8effe86ef27e023f0808abd5a7e38e2d:evals/gap-study-2/transcripts/plan-gate/positive/claude-sonnet-5/1/transcript.jsonl:generic-api-key:73",
-    "581dc613c98280ee358e24fde1ddccd20d476f97:evals/gap-study-2/transcripts/plan-gate/control/claude-sonnet-5/3/transcript.jsonl:generic-api-key:73",
-    "773b16e22a1258110d149e3d7f564bf5aeb98844:evals/gap-study-2/transcripts/plan-gate/control/claude-sonnet-5/2/transcript.jsonl:generic-api-key:80",
-    "9c1593377666aaf29615222cc27fcc9f07d2f3a5:evals/gap-study-2/transcripts/plan-gate/positive/claude-sonnet-5/2/transcript.jsonl:generic-api-key:92",
-    "a1c0fcb53439d110d62f31f2021eda0c88bd4749:docs/environment.md:generic-api-key:156",
-    "e3a59c80b864d32ede5355e425623c165f779d4f:evals/gap-study/walks/plan-gate/2/transcript.jsonl:generic-api-key:96",
-    "ebad5a6b1c66823ece81c582d26817ab10ee8933:evals/gap-study-2/walks/plan-gate/1/transcript.jsonl:generic-api-key:71",
-    "fc53573bac6659af411d7d1419a8d39e568bf57e:evals/gap-study-2/transcripts/plan-gate/control/claude-sonnet-5/1/transcript.jsonl:generic-api-key:58",
-})
+# The outward bundle's scan is athena_suite's own rule (glitch-6b, 15 Oct 2026), its code reused: every carried commit the
+# PUBLIC GARS remote does not already serve is scanned (scan_unpublished, after fetch_public_refs of
+# PUBLIC_REFERENCE["gars"] into a plain scratch clone of the bundle, with the push door's committed rulings and the
+# committed allowlist exactly as cmd_run passes them), and nothing it does serve. Shipping an already-public commit to
+# athena discloses nothing new; this is not a ruling on any finding. The new-commits bundle coming back gets no
+# allowance at all.
+SUITE_KIND = "gars"
 
 
 class LaunchRefused(RuntimeError):
@@ -156,8 +149,39 @@ def scan_findings(runner: Runner, gitleaks: str, repo: str, report: str, log_opt
 
 
 # ------------------------------------------------------------------------------------------------ ship
+def load_suite(suite: str):
+    """athena_suite.py from the operator's aegis checkout, loaded by path (its module level only defines names)."""
+    import importlib.util
+    if not isinstance(suite, str) or not os.path.isabs(suite) or not os.path.isfile(suite):
+        raise LaunchRefused("the athena_suite.py path is not an existing absolute file")
+    spec = importlib.util.spec_from_file_location("athena_suite_for_walk_launch", suite)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def outward_scan(suite_mod, *, repo: str, bundle: str, head: str, gitleaks: str, work: str) -> int:
+    """athena_suite.cmd_run's checks over a scratch clone of the bundle, its own functions: the secret-shaped names
+    (less the reviewed exemptions) and ignore files, then gitleaks over every commit the public GARS remote does not
+    serve. Returns how many commits were scanned; any refusal raises."""
+    os.makedirs(work, exist_ok=True)
+    check = os.path.join(work, "check-clone")
+    doc, _ = suite_mod.committed_allowlist(suite_mod.ALLOWLIST)
+    reviewed, ruled, ruled_msgs = suite_mod.validate_allowlist(doc, SUITE_KIND)
+    suite_mod.scratch_clone(bundle, check, work)
+    hits, _ = suite_mod.exempt_reviewed(check, head, suite_mod.name_hits(check, head, ()), reviewed)
+    hits += suite_mod.ignore_hits(check, head, work)
+    if hits:
+        raise LaunchRefused(f"the bundle would carry {len(hits)} secret-shaped file(s); nothing ships")
+    public = suite_mod.fetch_public_refs(check, suite_mod.PUBLIC_REFERENCE[SUITE_KIND], work)
+    if not public:
+        raise LaunchRefused("the public GARS remote advertised nothing; nothing ships")
+    return suite_mod.scan_unpublished(check, head, work, gitleaks, public, suite_mod.rulings_file(repo), (), ruled,
+                                      [], ruled_msgs)
+
+
 def ship(runner: Runner, *, repo: str, ref: str, suite: str, reserve: str, gitleaks: str, work: str,
-         precheck=None) -> dict:
+         precheck=None, suite_module=None) -> dict:
     precheck = machine_gate.mac_precheck if precheck is None else precheck
     problems = precheck(suite)
     if problems:
@@ -175,15 +199,18 @@ def ship(runner: Runner, *, repo: str, ref: str, suite: str, reserve: str, gitle
         raise LaunchRefused(f"{bundle} exists: a bundle is never overwritten")
     _ok(runner.local(["git", "-C", repo, "bundle", "create", bundle, ref]), "git bundle create")
     _ok(runner.local(["git", "-C", repo, "bundle", "verify", bundle]), "git bundle verify")
-    scan_clone = os.path.join(work, "scan-clone")
-    _ok(runner.local(["git", "clone", "-q", "-b", ref, bundle, scan_clone]), "the scan clone")
-    if _ok(runner.local(["git", "-C", scan_clone, "rev-parse", "HEAD"]), "the scan clone's head").strip() != head:
-        raise LaunchRefused("the bundle's head is not the ref's head")
-    unknown = sorted(set(scan_findings(runner, gitleaks, scan_clone, os.path.join(work, "out-scan.json")))
-                     - KNOWN_HISTORY_FINDINGS)
-    if unknown:
-        raise LaunchRefused(f"gitleaks found {len(unknown)} finding(s) outside the known public history; the bundle "
-                            f"stays on the Mac")
+    heads = _ok(runner.local(["git", "bundle", "list-heads", bundle]), "git bundle list-heads").split()
+    if heads != [head, f"refs/heads/{ref}"]:
+        raise LaunchRefused("the bundle's heads are not exactly the ref at its head")
+    suite_mod = load_suite(suite) if suite_module is None else suite_module
+    try:
+        scanned = outward_scan(suite_mod, repo=repo, bundle=bundle, head=head, gitleaks=gitleaks,
+                               work=os.path.join(work, "outward-scan"))
+    except LaunchRefused:
+        raise
+    except Exception as e:  # noqa: BLE001 - athena_suite's Refused, a git failure: nothing ships unscanned
+        raise LaunchRefused(f"the outward scan refused, the bundle stays on the Mac: {type(e).__name__}: "
+                            f"{str(e)[:300]}") from None
     digest = _sha256(bundle)
     child = _child(_ok(runner.remote(f"umask 077; mktemp -d {CHILD_PARENT}/w-XXXXXXXX"), "the athena child").strip())
     for src, name, want in ((bundle, "walk-out.bundle", digest), (reserve, "athena-reserve", RESERVE_SHA256)):
@@ -194,7 +221,7 @@ def ship(runner: Runner, *, repo: str, ref: str, suite: str, reserve: str, gitle
     _ok(runner.remote(f"git clone -q -b {shlex.quote(ref)} {child}/walk-out.bundle {child}/repo"), "the athena clone")
     if _ok(runner.remote(f"git -C {child}/repo rev-parse HEAD"), "the athena head").strip() != head:
         raise LaunchRefused("athena's clone is not at the head")
-    return {"child": child, "head": head, "bundle_sha256": digest}
+    return {"child": child, "head": head, "bundle_sha256": digest, "scanned_commits": scanned}
 
 
 # ------------------------------------------------------------------------------------------------ run

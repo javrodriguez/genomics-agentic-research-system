@@ -94,12 +94,12 @@
     {
       "path": "box/walk_launch.py",
       "status": "new",
-      "reason": "Lane live-box (glitch-6b's ruling of 15 Oct 2026, item 3): the CP6 walk's launch road, a git bundle out and back. ship (Mac pre-check, pinned history, bundle, verify, gitleaks with only the known public history findings allowed, a neutral athena child, sha256 read back, athena clone at the head), run (umask 0022, reservation absent and the athena gate open before `athena-reserve hold`, the walk under the hold with the gate's three variables, nohup with pid and exit), status, fetch (new commits only, sha256, gitleaks with no allowance, then the Mac records clone). Pushes nothing; places no login."
+      "reason": "Lane live-box (glitch-6b's ruling of 15 Oct 2026, item 3): the CP6 walk's launch road, a git bundle out and back. ship (Mac pre-check, pinned history, bundle, verify, athena_suite's own outward rule reused (its secret-shaped-name check, then scan_unpublished over every commit the public GARS remote does not serve, after its public fetch, with the push door's rulings and the committed allowlist), a neutral athena child, sha256 read back, athena clone at the head), run (umask 0022, reservation absent and the athena gate open before `athena-reserve hold`, the walk under the hold with the gate's three variables, nohup with pid and exit), status, fetch (new commits only, sha256, gitleaks with no allowance, then the Mac records clone). Pushes nothing; places no login."
     },
     {
       "path": "tests/test_walk_launch.py",
       "status": "new",
-      "reason": "Lane live-box: the launch road on fakes (real local git on temporary repositories, a fake athena, a fake gitleaks): L1 ship, L2 run, L3 fetch, L4 bounds (no push, no login path, neutral child, the known findings' commits in this history), seven witnesses."
+      "reason": "Lane live-box: the launch road on fakes (real local git on temporary repositories, a fake athena, a fake gitleaks, a fake athena_suite): L1 ship (a finding in a non-public commit, an unreadable or empty public-ref list and a secret-shaped file each refuse before athena is touched), L2 run, L3 fetch, L4 bounds (no push, no login path, neutral child, nine witnesses."
     }
   ]
 }
