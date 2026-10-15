@@ -57,18 +57,26 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent.parent
 REPO = HERE.parent.parent
 _STACK = contextlib.ExitStack()
-_STACK.callback(sys.path.__setitem__, slice(None), list(sys.path))
-if str(HERE) not in sys.path:
-    sys.path.insert(0, str(HERE))
+# The study's modules, imported in setUpModule, never at import (athena battery gap4-boot-merged-b1f4df1: a sys.path
+# snapshot taken at discovery and restored at teardown put evals/ back after an earlier module had removed it, and
+# test_confounded_design's contract-drift test saw it). check_take.py puts evals/ and the study folder on sys.path when
+# imported, so setUpModule records sys.path first and tearDownModule restores exactly that, in place.
+ct = drive = pending_walk = prereg = smoke_run_tree = transcript_view = variants = preflight = rt = None
 
-import check_take as ct  # noqa: E402
-import drive  # noqa: E402
-import pending_walk  # noqa: E402
-import prereg  # noqa: E402
-import smoke_run_tree  # noqa: E402
-import transcript_view  # noqa: E402
-import variants  # noqa: E402
-from box import preflight, run_take as rt  # noqa: E402
+
+def setUpModule():
+    global ct, drive, pending_walk, prereg, smoke_run_tree, transcript_view, variants, preflight, rt
+    _STACK.callback(sys.path.__setitem__, slice(None), list(sys.path))
+    if str(HERE) not in sys.path:
+        sys.path.insert(0, str(HERE))
+    import check_take as ct
+    import drive
+    import pending_walk
+    import prereg
+    import smoke_run_tree
+    import transcript_view
+    import variants
+    from box import preflight, run_take as rt
 
 R3_COMMIT = "e2979b3143081824aadea73523ec41af30c1ddb1"
 D8_SOURCE = "plans/gap-study-round-4/D8-non-claude-arms.md:294"
@@ -365,7 +373,7 @@ WITNESSES = (
     ("stripped-one", "driver_constants.stripped_env", ["CLAUDECODE"], k_stripped),
     ("tmpdir-path", "driver_constants.run_tree_tmpdir.path", ".scratch", k_tmpdir),
     ("tmpdir-variable", "driver_constants.run_tree_tmpdir.variables", ["TMPDIR", "TMP"], k_tmpdir),
-    ("pending-back", "run_location", ct.PENDING, k_closed),
+    ("pending-back", "run_location", lambda v: ct.PENDING, k_closed),
 )
 
 
@@ -476,7 +484,8 @@ def ledger(**kw) -> dict:
 
 
 class TestTheLedgerRecordsTheCapAndThePoll(unittest.TestCase):
-    PRE = {"budgets": copy.deepcopy(ct.CHECKER_CONSTANTS["budgets"])}
+    def setUp(self):
+        self.PRE = {"budgets": copy.deepcopy(ct.CHECKER_CONSTANTS["budgets"])}
 
     def test_the_pre_registered_values_pass(self):
         self.assertEqual(ct.ledger_budget_problems(ledger(), self.PRE), [])

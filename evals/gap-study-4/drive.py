@@ -611,7 +611,7 @@ def matched_by(name: str) -> str | None:
 
     re.search on the name, case-sensitive, harness patterns tried first.
     """
-    if any(re.search(p, name) for p in RECORD_HARNESS_NAME_PATTERNS):        # BOOTSTRAP: round 3's + 2.1.296's
+    if any(re.search(p, name) for p in HARNESS_NAME_PATTERNS):
         return "harness"
     if any(re.search(p, name) for p in GENERIC_NAME_PATTERNS):
         return "generic"
@@ -625,7 +625,7 @@ def never_stripped_problems(stripped) -> list[str]:
     line. The generic shape is not in this rule: it is a recording catch-all, and one of the twelve inherited
     session names (CLAUDE_CODE_MESSAGING_TOKEN) has its shape.
     """
-    listed = set(RECORD_API_KEY_VARIABLES) | set(RECORD_BILLING_ROUTE_VARIABLES) | set(RECORD_SUBSCRIPTION_TOKEN_VARIABLES)
+    listed = set(API_KEY_VARIABLES) | set(BILLING_ROUTE_VARIABLES) | set(SUBSCRIPTION_TOKEN_VARIABLES)
     return [f"{n} is in driver_constants.stripped_env and "
             + ("is on a listed credential or billing list" if n in listed else "matches a harness name pattern")
             for n in stripped if n in listed or matched_by(n) == "harness"]
@@ -639,8 +639,8 @@ def _presence(env, names) -> dict:
 def environment_record(child, parent, *, session_id: str, row: int | None, row_commit: str | None, task: str,
                        half: str, model: str, claude_version: str) -> dict:
     """environment.json, schema 1, before its first turn: per_turn empty and nothing reported yet."""
-    api = _presence(child, RECORD_API_KEY_VARIABLES)                 # BOOTSTRAP: round 3's + 2.1.296's
-    route = _presence(child, RECORD_BILLING_ROUTE_VARIABLES)
+    api = _presence(child, API_KEY_VARIABLES)
+    route = _presence(child, BILLING_ROUTE_VARIABLES)
     return {
         "record": ENVIRONMENT_RECORD_SENTENCE,
         "schema": ENVIRONMENT_SCHEMA,
@@ -652,14 +652,14 @@ def environment_record(child, parent, *, session_id: str, row: int | None, row_c
         "model_requested": model,
         "claude_version": claude_version,
         "written_before_first_turn": True,
-        "name_patterns": {"harness": list(RECORD_HARNESS_NAME_PATTERNS), "generic": list(GENERIC_NAME_PATTERNS)},
+        "name_patterns": {"harness": list(HARNESS_NAME_PATTERNS), "generic": list(GENERIC_NAME_PATTERNS)},
         "names_present": [{"name": n, "matched_by": matched_by(n)} for n in sorted(child) if matched_by(n)],
         "stripped_names": sorted(n for n in parent if n in STRIPPED_ENV and n not in child),
         "api_key_variables": api,
         "api_key_set": any(v == "set" for v in api.values()),
         "billing_route_variables": route,
         "billing_route_set": any(v == "set" for v in route.values()),
-        "subscription_token_variables": _presence(child, RECORD_SUBSCRIPTION_TOKEN_VARIABLES),
+        "subscription_token_variables": _presence(child, SUBSCRIPTION_TOKEN_VARIABLES),
         "credential_source": {"key": CREDENTIAL_SOURCE_KEY, "per_turn": [], "reported": None},
     }
 
@@ -3969,6 +3969,15 @@ RECORD_HARNESS_NAME_PATTERNS = HARNESS_NAME_PATTERNS + HARNESS_NAME_PATTERNS_2_1
 RECORD_API_KEY_VARIABLES = API_KEY_VARIABLES + API_KEY_VARIABLES_2_1_296
 RECORD_BILLING_ROUTE_VARIABLES = BILLING_ROUTE_VARIABLES + BILLING_ROUTE_VARIABLES_2_1_296
 RECORD_SUBSCRIPTION_TOKEN_VARIABLES = SUBSCRIPTION_TOKEN_VARIABLES + SUBSCRIPTION_TOKEN_VARIABLES_2_1_296
+# Round 3's matched_by, never_stripped_problems and environment_record (and the money line through the record) read
+# these four module names when called, and stay byte for byte round 3's (checks.d/w6e-drive-commit.txt:6), so the names
+# are REBOUND here to the record vocabulary: from here on drive.HARNESS_NAME_PATTERNS and the three lists are round 3's
+# extended with 2.1.296's. Round 3's literal assignments above are what run_take's copies are bound to (test_run_take
+# reads them with ast), and tests/test_checker_constants.py binds both halves.
+HARNESS_NAME_PATTERNS = RECORD_HARNESS_NAME_PATTERNS
+API_KEY_VARIABLES = RECORD_API_KEY_VARIABLES
+BILLING_ROUTE_VARIABLES = RECORD_BILLING_ROUTE_VARIABLES
+SUBSCRIPTION_TOKEN_VARIABLES = RECORD_SUBSCRIPTION_TOKEN_VARIABLES
 
 
 if __name__ == "__main__":
