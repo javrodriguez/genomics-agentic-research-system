@@ -60,6 +60,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -131,6 +132,71 @@ EXPECTED_MISSING += [] if OWNERSHIP_ON_TREE else ["ownership"]
 SETTINGS_GUARD_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "settings_guard.py").is_file()
 EXPECTED_MISSING += [] if SETTINGS_GUARD_ON_TREE else ["settings_guard"]
 EXPECTED_MISSING += ["machine_gate"]       # P-2: until the operator's runner names its paths (machine_gate's env)
+# The real-box bring-up (glitch-6b, 15 Oct 2026): runtime (run_take.DockerRuntime) and hosts (proxy_conf.HOSTS) are
+# built on every tree; lock_path wherever preflight's own loader accepts a harness's take lock (the box's readers, read
+# here, never the module under test); agent_version wherever prereg's version_pins and routing's pin_profiles pin one
+# version for a harness (read here from the draft and the table). config_parent and the proxy only when the operator
+# names GAP4_CONFIG_PARENT (never in these tests, B7 clears it); sidecar_for stays Missing (no registered watch list).
+EXPECTED_MISSING.remove("runtime")
+EXPECTED_MISSING.remove("hosts")
+
+
+def _locks_on_tree() -> dict:
+    from box import preflight
+    dirs = getattr(preflight, "TAKE_LOCK_DIRS", None)
+    out = {}
+    if not isinstance(dirs, dict):
+        return out
+    box = Path(__file__).resolve().parents[1] / "box"
+    for h in (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI):
+        d = dirs[preflight.TAKE_IMAGE[h]]
+        path = str(box / d / "image.lock") if d else str(box / "image.lock")
+        try:
+            preflight.load_take_lock(path, harness=h)
+        except Exception:  # noqa: BLE001 - not ready on this tree
+            continue
+        out[h] = path
+    return out
+
+
+def _versions_on_tree() -> dict:
+    import routing
+    pins = tww.REAL_LOAD().get("version_pins") or {}
+    profiles = routing.load_table().get("pin_profiles") or {}
+    out = {}
+    for h in (rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI):
+        draft = {m: p.get("version") for m, p in (pins.get(h) or {}).items()}
+        table = {m: p.get("version") for m, p in (profiles.get(h) or {}).items()}
+        got = set(draft.values())
+        if draft and draft == table and len(got) == 1 and next(iter(got)) not in (None, "", "PENDING"):
+            out[h] = next(iter(got))
+    return out
+
+
+LOCKS_ON_TREE = _locks_on_tree()
+if LOCKS_ON_TREE:
+    EXPECTED_MISSING.remove("lock_path")
+VERSIONS_ON_TREE = _versions_on_tree()
+if VERSIONS_ON_TREE:
+    EXPECTED_MISSING.remove("agent_version")
+# B3 (the first-walk bootstrap ruling, 15 Oct 2026): budgets and run_tree_exclude are built once check_take's
+# CHECKER_CONSTANTS holds them filled (the bootstrap builder's B1), read here from that one home.
+def _checker_filled() -> tuple:
+    import check_take
+    c = check_take.CHECKER_CONSTANTS
+    b = c.get("budgets")
+    budgets = isinstance(b, dict) and all(k in b and b[k] != check_take.PENDING
+                                          for k in ("turn_timeout_s", "finalize_wait_s", "poll_s"))
+    rl = c.get("run_location")
+    exclude = isinstance(rl, dict) and rl.get("excluded_from_the_run_tree", check_take.PENDING) != check_take.PENDING
+    return budgets, exclude
+
+
+BUDGETS_ON_TREE, EXCLUDE_ON_TREE = _checker_filled()
+if BUDGETS_ON_TREE:
+    EXPECTED_MISSING.remove("budgets")
+if EXCLUDE_ON_TREE:
+    EXPECTED_MISSING.remove("run_tree_exclude")
 
 
 def road() -> dict:
@@ -826,17 +892,21 @@ ARGV = ["--walk", "w-0001", "--task", "scope-read", "--half", "trap", "--wording
         "claude-opus-5-5", "--reason", "synthetic: a CLI walk of the tests"]
 
 
-class B7Production(Case):
+class B7Production(Drafted):
+    def setUp(self):
+        super().setUp()                    # the real draft (agent_version reads version_pins), no operator folder
+        self.enterContext(mock.patch.dict(os.environ))
+        os.environ.pop("GAP4_CONFIG_PARENT", None)
+
     def test_production_leaves_exactly_these_missing(self):
         got = self.must("B7.production", wb().production_builders)
         gaps = self.must("B7.production", wb().missing, got)
         self.assertEqual([n for n, _ in gaps], EXPECTED_MISSING, "B7.production: not exactly the missing values")
         self.assertTrue(all(isinstance(why, str) and len(why) > 20 for _, why in gaps), "B7.production")
         why = dict(gaps)
-        for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"),
-                            ("login_path", "WALK_LOGIN_FILES['claude1']"),
+        for name, words in (("login_path", "WALK_LOGIN_FILES['claude1']"),
                             ("design_for", "PENDING"), ("run_tree_exclude", "run_location"),
-                            ("agent_version", "version_pins"), ("rules_scanner", "gitleaks")):
+                            ("agent_version", "pin"), ("rules_scanner", "gitleaks")):
             if name in why:
                 self.assertIn(words, why[name], f"B7.production: {name} does not say why")
         if WALK_LOGIN_ON_TREE:
@@ -864,6 +934,7 @@ class B7Production(Case):
             self.assertIn("box/settings_guard.py", why["settings_guard"], "B7.production: the guard does not say why")
         self.assertEqual(sorted(got), sorted(wb().NAMES + wb().ROW_NAMES), "B7.production: the set is not NAMES")
         self.assertIsInstance(got["lease_path"], wb().Missing, "B7.production: a Codex lease source is filled")
+        self.assertEqual(b7_bringup_problems(wb(), got), [])
         self.assertIn("CODEX_SUBSCRIPTION_READY", got["lease_path"].why, "B7.production: lease_path does not say why")
         if WALK_GEMINI_ON_TREE:
             self.assertEqual(got["gemini_login_path"], rt.WALK_LOGIN_FILES["r4-g"], "B7.production: not the r4-g record")
@@ -1331,8 +1402,8 @@ class TestSysPath(unittest.TestCase):
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
 GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived", "B10Resources", "B7Production",
-                   "B8Present", "B13Lease", "B14Gemini", "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli",
-                   "TestSysPath")
+                   "B8Present", "B13Lease", "B14Gemini", "B15Bringup", "B5Fixture", "B4RunTree", "G1Generated",
+                   "B12Scanner", "B9Cli", "TestSysPath")
 
 
 def run_witnesses(names) -> int:
@@ -1633,15 +1704,25 @@ def b11_problems(mod) -> list:
                 pass
             except Exception as e:  # noqa: BLE001
                 out.append(f"B11.derived: {why} raised {type(e).__name__}, not BuilderRefused")
-    got = mod.production_builders()
-    for name in ("uid_map", "cgroup_dir_for"):
-        if not callable(got[name]):
-            out.append(f"B11.derived: production {name} is not a run-time reader: {got[name]!r}")
-    take = types.SimpleNamespace(launched=types.SimpleNamespace(take_id=CID))
-    for name in ("uid_map", "cgroup_dir_for"):
+    # production's readers read through production's own runtime (a DockerRuntime since the bring-up, glitch-6b
+    # 15 Oct 2026; stood in here by an InspectBox, so no process is started)
+    prod_box = InspectBox()
+    with mock.patch.object(rt, "DockerRuntime", lambda: prod_box), \
+            mock.patch.object(mod, "uid_map_of_pid", lambda pid: ("uid", pid)), \
+            mock.patch.object(mod, "cgroup_dir_of_pid", lambda pid, cid: ("cg", pid, cid)):
+        got = mod.production_builders()
+        take = types.SimpleNamespace(launched=types.SimpleNamespace(take_id=CID))
+        if got["runtime"] is not prod_box:
+            out.append(f"B11.derived: production's runtime is {got['runtime']!r}")
+        for name, want in (("uid_map", ("uid", 4242)), ("cgroup_dir_for", ("cg", 4242, CID))):
+            if not callable(got[name]) or got[name](take) != want:
+                out.append(f"B11.derived: production {name} does not read through production's runtime")
+        if [c[-1] for c in prod_box.calls] != [CID, CID]:
+            out.append(f"B11.derived: production's readers did not inspect the take: {prod_box.calls}")
+    for name, reader in zip(("uid_map", "cgroup_dir_for"), mod.run_time_readers(lambda: mod.Missing("synthetic"))):
         try:                               # with no runtime yet, a reader refuses by name, never a silent default
-            got[name](take)
-            out.append(f"B11.derived: the production {name} read with no runtime")
+            reader(take)
+            out.append(f"B11.derived: the {name} reader read with no runtime")
         except mod.BuilderRefused:
             pass
     # the readers over a runtime given at call time: inspect for the take's own id, then its pid's map and scope
@@ -2311,6 +2392,407 @@ class B14Gemini(Drafted):
     def test_the_driver_and_walkrepo_get_the_key_secrets(self):
         with tempfile.TemporaryDirectory() as t:
             self.assertEqual(b14_secrets_problems(wb(), Path(t)), [])
+
+
+# ------------------------------------------------------------------------------------------------- B15
+# The real-box bring-up (glitch-6b, 15 Oct 2026): runtime, hosts, lock_path, config_parent and the proxy from the box
+# functions the stub take drives and the box lane's measured records; agent_version from the pin (prereg's version_pins
+# and routing's pin_profiles). sidecar_for stays Missing: no registered per-task watch list is on the tree.
+@problems_by_assertion("B15.production")
+def b7_bringup_problems(mod, got) -> list:
+    """What production_builders gives for the bring-up, both ways: present where the tree carries its source (B7's
+    LOCKS_ON_TREE and VERSIONS_ON_TREE, read from the box's loader and the two pin files), Missing by name where not."""
+    from box.egress import proxy_conf
+    out = []
+    if type(got["runtime"]) is not rt.DockerRuntime:
+        out.append(f"B15.production: the runtime is {got['runtime']!r}, not a run_take.DockerRuntime")
+    if got["hosts"] != dict(proxy_conf.HOSTS) or got["hosts"] is proxy_conf.HOSTS:
+        out.append(f"B15.production: hosts is {got['hosts']!r}, not a copy of proxy_conf.HOSTS")
+    for name, want in (("lock_path", LOCKS_ON_TREE), ("agent_version", VERSIONS_ON_TREE)):
+        v = got[name]
+        if not want:
+            if not isinstance(v, mod.Missing):
+                out.append(f"B15.production: {name} is {v!r} on a tree without its source")
+            continue
+        if not isinstance(v, mod.PerHarness):
+            out.append(f"B15.production: {name} is {v!r}, not a PerHarness")
+            continue
+        given = {h: x for h, x in v.values.items() if not isinstance(x, mod.Missing)}
+        if given != want or set(v.values) != {rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI}:
+            out.append(f"B15.production: {name} gives {given}, not {want}")
+    for name, words in (("config_parent", "GAP4_CONFIG_PARENT"), ("proxy", "config parent"),
+                        ("sidecar_for", "watch list")):
+        if not isinstance(got[name], mod.Missing) or words not in got[name].why:
+            out.append(f"B15.production: {name} is {got[name]!r}, not Missing naming {words!r}")
+    return out
+
+
+def owned_folder() -> Path:
+    path = Path(tempfile.mkdtemp(prefix="cfgparent-")).resolve()    # outside every repository (the system temp)
+    return path
+
+
+def raising_is_a_failure(cls):
+    """Every test_ method of `cls` fails by assertion when its body raises anything else (the generated sweep counts a
+    failure as a kill and an error as nothing)."""
+    def wrap(fn):
+        def test(self):
+            try:
+                return fn(self)
+            except AssertionError:
+                raise
+            except Exception as e:  # noqa: BLE001
+                self.fail(f"{fn.__name__}: raised {type(e).__name__}: {str(e)[:300]}")
+        test.__name__, test.__doc__ = fn.__name__, fn.__doc__
+        return test
+    for name in [n for n in vars(cls) if n.startswith("test_")]:
+        setattr(cls, name, wrap(vars(cls)[name]))
+    return cls
+
+
+@raising_is_a_failure
+class B15Bringup(Drafted):
+    def test_per_harness_resolves_or_refuses_by_name(self):
+        mod = wb()
+        v = mod.PerHarness("the synthetic value", {rt.CLAUDE_CODE: "a", rt.CODEX: mod.Missing("synthetic: not yet"),
+                                                   rt.GEMINI: None})
+        self.assertEqual(v.for_harness(rt.CLAUDE_CODE), "a", "B15.per_harness")
+        self.refuses("B15.per_harness", "synthetic: not yet", v.for_harness, rt.CODEX)
+        self.refuses("B15.per_harness", "is missing: None", v.for_harness, rt.GEMINI)
+        self.refuses("B15.per_harness", "no value for harness 'other'", v.for_harness, "other")
+        for what, values in (("", {"x": 1}), ("w", {}), (None, {"x": 1}), ("w", None)):
+            with self.assertRaises(TypeError, msg="B15.per_harness: an empty or unnamed PerHarness"):
+                mod.PerHarness(what, values)
+        self.assertIn("the synthetic value", repr(v), "B15.per_harness")
+        self.assertEqual(mod.for_row(v, rt.CLAUDE_CODE), "a", "B15.for_row")
+        self.assertEqual(mod.for_row("plain", rt.CODEX), "plain", "B15.for_row")
+        road = mod.ProxyRoad("/synthetic", "sha256:" + "1" * 64)
+        with mock.patch.object(mod.ProxyRoad, "for_harness", lambda self, h: ("launch", h)):
+            self.assertEqual(mod.for_row(road, rt.GEMINI), ("launch", rt.GEMINI), "B15.for_row")
+
+    def test_the_config_parent_is_the_operator_s_owned_folder(self):
+        mod = wb()
+        got = mod.config_parent_from_env({})
+        self.assertIsInstance(got, mod.Missing, "B15.config_parent")
+        self.assertIn("GAP4_CONFIG_PARENT", got.why, "B15.config_parent")
+        self.assertIsInstance(mod.config_parent_from_env({"GAP4_CONFIG_PARENT": ""}), mod.Missing,
+                              "B15.config_parent")
+        good = owned_folder()
+        self.assertEqual(mod.config_parent_from_env({"GAP4_CONFIG_PARENT": str(good)}), str(good),
+                         "B15.config_parent")
+        with mock.patch.dict(os.environ, {"GAP4_CONFIG_PARENT": str(good)}):
+            self.assertEqual(mod.config_parent_from_env(), str(good), "B15.config_parent: the process environment")
+        afile = good / "a-file"
+        afile.write_text("x")
+        link = good / "a-link"
+        os.symlink(str(good), link)
+        for label, value, words in (("relative", "relative/folder", "normalised absolute"),
+                                    ("not normalised", str(good) + "/./", "normalised absolute"),
+                                    ("a file", str(afile), "not a folder"), ("a link", str(link), "not a folder"),
+                                    ("absent", str(good / "absent"), "not a folder"),
+                                    ("inside a repository", str(HERE), "inside a repository")):
+            with self.subTest(label=label):
+                self.refuses("B15.config_parent", words, mod.config_parent_from_env, {"GAP4_CONFIG_PARENT": value})
+        real_stat = os.stat
+
+        def stat_of_another(p, *a, **k):
+            r = real_stat(p, *a, **k)
+            if p != str(good):
+                return r
+            return os.stat_result((r.st_mode, r.st_ino, r.st_dev, r.st_nlink, r.st_uid + 1, r.st_gid, r.st_size,
+                                   int(r.st_atime), int(r.st_mtime), int(r.st_ctime)))
+        with mock.patch.object(os, "stat", stat_of_another):
+            self.refuses("B15.config_parent", "not owned by the caller", mod.config_parent_from_env,
+                         {"GAP4_CONFIG_PARENT": str(good)})
+
+    def test_take_locks_through_preflight_s_loader(self):
+        mod = wb()
+        from box import preflight
+        dirs = {"take-a": "", "take-o": "codex", "take-g": "gemini"}
+        images = {rt.CLAUDE_CODE: "take-a", rt.CODEX: "take-o", rt.GEMINI: "take-g"}
+        seen = []
+
+        def loader(path, *, harness):
+            seen.append((path, harness))
+            if harness == rt.GEMINI:
+                raise rt.NotReady("synthetic: the gemini lock is PENDING")
+            return {}
+        with mock.patch.object(preflight, "TAKE_LOCK_DIRS", dirs, create=True), \
+                mock.patch.object(preflight, "TAKE_IMAGE", images, create=True), \
+                mock.patch.object(preflight, "load_take_lock", loader):
+            got = mod.take_lock_paths("/synthetic/box")
+        self.assertEqual(seen, [("/synthetic/box/image.lock", rt.CLAUDE_CODE),
+                                ("/synthetic/box/codex/image.lock", rt.CODEX),
+                                ("/synthetic/box/gemini/image.lock", rt.GEMINI)], "B15.locks: not the loader's paths")
+        self.assertEqual(got.values[rt.CLAUDE_CODE], "/synthetic/box/image.lock", "B15.locks")
+        self.assertEqual(got.values[rt.CODEX], "/synthetic/box/codex/image.lock", "B15.locks")
+        self.assertIsInstance(got.values[rt.GEMINI], mod.Missing, "B15.locks: a refused lock was given")
+        self.assertIn("synthetic: the gemini lock is PENDING", got.values[rt.GEMINI].why, "B15.locks")
+        self.assertIn("gemini/image.lock", got.values[rt.GEMINI].why, "B15.locks")
+        with mock.patch.object(preflight, "TAKE_LOCK_DIRS", None, create=True):
+            absent = mod.take_lock_paths("/synthetic/box")
+        self.assertTrue(all(isinstance(v, mod.Missing) and "not on this tree" in v.why for v in absent.values.values())
+                        and len(absent.values) == 3, f"B15.locks: no TAKE_LOCK_DIRS gives {absent!r}")
+        real = mod.take_lock_paths()                  # the tree's own box folder, its own loader
+        self.assertEqual({h: v for h, v in real.values.items() if not isinstance(v, mod.Missing)}, LOCKS_ON_TREE,
+                         "B15.locks: the tree's ready locks")
+
+    def test_the_proxy_road_writes_the_walk_s_checked_configuration(self):
+        mod = wb()
+        from box.egress import proxy_conf
+        parent = owned_folder()
+        image = "sha256:" + "7" * 64
+        road = mod.ProxyRoad(str(parent), image)
+        a = road.for_harness(rt.CLAUDE_CODE)
+        b = road.for_harness(rt.GEMINI)
+        self.assertIsInstance(a, rt.ProxyLaunch, "B15.proxy")
+        self.assertEqual((a.image, a.conf_target, a.command, a.user, a.alias),
+                         (image, proxy_conf.CONF_PATH, tuple(proxy_conf.COMMAND), proxy_conf.USER, rt.PROXY_ALIAS),
+                         "B15.proxy: not the stub take's ProxyLaunch")
+        for launch, harness in ((a, rt.CLAUDE_CODE), (b, rt.GEMINI)):
+            path = Path(launch.conf_source)
+            self.assertEqual(path.parent, parent, "B15.proxy: the configuration is not under the config parent")
+            self.assertEqual(path.read_text(), proxy_conf.render(harness), "B15.proxy: not the harness's rendering")
+            self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), 0o644, "B15.proxy: mode")
+            self.assertTrue(path.name.startswith(f"proxy-{harness}-"), "B15.proxy: the file's name")
+        self.assertNotEqual(a.conf_source, b.conf_source, "B15.proxy")
+        self.assertEqual(sorted(p.name for p in parent.iterdir()),
+                         sorted([Path(a.conf_source).name, Path(b.conf_source).name]), "B15.proxy: other files")
+        if not rt._is_pending(proxy_conf.USER):
+            self.must("B15.proxy", rt._check_proxy, a)      # run_take's own check admits it where USER is measured
+        with mock.patch.object(proxy_conf, "check", lambda text, harness: ["synthetic: two hosts"]):
+            self.refuses("B15.proxy", "synthetic: two hosts", road.for_harness, rt.CLAUDE_CODE)
+        self.assertEqual(len(list(parent.iterdir())), 2, "B15.proxy: a refused configuration was written")
+        import secrets as stdlib_secrets
+        with mock.patch.object(stdlib_secrets, "token_hex", lambda n: "0" * 16):
+            road.for_harness(rt.CODEX)
+            with self.assertRaises(FileExistsError, msg="B15.proxy: a configuration was written over"):
+                road.for_harness(rt.CODEX)
+
+    def test_the_proxy_road_needs_its_folder_its_user_and_its_lock(self):
+        mod = wb()
+        from box import preflight
+        from box.egress import proxy_conf
+        locks = mod.PerHarness("the take lock", {rt.CLAUDE_CODE: "/synthetic/box/image.lock",
+                                                 rt.CODEX: mod.Missing("x"), rt.GEMINI: mod.Missing("y")})
+        egress = "sha256:" + "6" * 64
+        calls = []
+
+        def loader(path, *, harness):
+            calls.append((path, harness))
+            return {"image_id": egress}
+        got = mod.proxy_road(mod.Missing("synthetic: no folder named"), locks)
+        self.assertIsInstance(got, mod.Missing, "B15.proxy_road")
+        self.assertIn("synthetic: no folder named", got.why, "B15.proxy_road")
+        with mock.patch.object(proxy_conf, "USER", "13:13"), \
+                mock.patch.object(preflight, "load_egress_lock", loader, create=True):
+            got = mod.proxy_road("/synthetic/parent", locks)
+            self.assertIsInstance(got, mod.ProxyRoad, "B15.proxy_road")
+            self.assertEqual((got.config_parent, got.image), ("/synthetic/parent", egress), "B15.proxy_road")
+            self.assertEqual(calls, [("/synthetic/box/image.lock", rt.CLAUDE_CODE)], "B15.proxy_road: the lock")
+            none = mod.PerHarness("the take lock", {rt.CLAUDE_CODE: mod.Missing("synthetic: claude lock PENDING")})
+            got = mod.proxy_road("/synthetic/parent", none)
+            self.assertIsInstance(got, mod.Missing, "B15.proxy_road")
+            self.assertIn("synthetic: claude lock PENDING", got.why, "B15.proxy_road")
+        with mock.patch.object(proxy_conf, "USER", "PENDING"), \
+                mock.patch.object(preflight, "load_egress_lock", loader, create=True):
+            got = mod.proxy_road("/synthetic/parent", locks)
+            self.assertIsInstance(got, mod.Missing, "B15.proxy_road: a PENDING squid user")
+            self.assertIn("proxy_conf.USER", got.why, "B15.proxy_road")
+
+        def refusing(path, *, harness):
+            raise rt.NotReady("synthetic: the egress lock is PENDING")
+        with mock.patch.object(proxy_conf, "USER", "13:13"), \
+                mock.patch.object(preflight, "load_egress_lock", refusing, create=True):
+            got = mod.proxy_road("/synthetic/parent", locks)
+            self.assertIsInstance(got, mod.Missing, "B15.proxy_road")
+            self.assertIn("synthetic: the egress lock is PENDING", got.why, "B15.proxy_road")
+        with mock.patch.object(preflight, "load_egress_lock", None, create=True):
+            got = mod.proxy_road("/synthetic/parent", locks)
+            self.assertIsInstance(got, mod.Missing, "B15.proxy_road")
+            self.assertIn("not on this tree", got.why, "B15.proxy_road")
+
+    def test_production_builds_the_proxy_once_the_folder_is_named(self):
+        mod = wb()
+        parent = owned_folder()
+        with mock.patch.dict(os.environ, {"GAP4_CONFIG_PARENT": str(parent)}):
+            got = self.must("B15.production", mod.production_builders)
+        self.assertEqual(got["config_parent"], str(parent), "B15.production: the operator's folder")
+        from box import preflight
+        from box.egress import proxy_conf
+        if LOCKS_ON_TREE.get(rt.CLAUDE_CODE) and callable(getattr(preflight, "load_egress_lock", None)) \
+                and not rt._is_pending(proxy_conf.USER):
+            self.assertIsInstance(got["proxy"], mod.ProxyRoad, "B15.production: the proxy road")
+            want = preflight.load_egress_lock(LOCKS_ON_TREE[rt.CLAUDE_CODE], harness=rt.CLAUDE_CODE)["image_id"]
+            self.assertEqual((got["proxy"].config_parent, got["proxy"].image), (str(parent), want), "B15.production")
+        else:
+            self.assertIsInstance(got["proxy"], mod.Missing, "B15.production: a proxy without its egress lock")
+
+    def test_agent_versions_come_from_both_pins(self):
+        mod = wb()
+        import prereg
+        import routing
+        real = mod.agent_versions()
+        self.assertEqual({h: v for h, v in real.values.items() if not isinstance(v, mod.Missing)}, VERSIONS_ON_TREE,
+                         "B15.version: the tree's pins")
+
+        def pins(draft, table):
+            return (mock.patch.object(prereg, "load", lambda: {"version_pins": draft}),
+                    mock.patch.object(routing, "load_table", lambda: {"pin_profiles": table}))
+        same = {"m1": {"version": "1.2.3"}, "m2": {"version": "1.2.3"}}
+        cases = (("one version in both", {rt.CLAUDE_CODE: same}, {rt.CLAUDE_CODE: same}, "1.2.3"),
+                 ("routing differs", {rt.CLAUDE_CODE: same},
+                  {rt.CLAUDE_CODE: {"m1": {"version": "1.2.3"}, "m2": {"version": "1.2.4"}}}, "differ"),
+                 ("a model only in the draft", {rt.CLAUDE_CODE: same},
+                  {rt.CLAUDE_CODE: {"m1": {"version": "1.2.3"}}}, "differ"),
+                 ("two versions in both", {rt.CLAUDE_CODE: {"m1": {"version": "1"}, "m2": {"version": "2"}}},
+                  {rt.CLAUDE_CODE: {"m1": {"version": "1"}, "m2": {"version": "2"}}}, "not one measured version"),
+                 ("PENDING in both", {rt.CLAUDE_CODE: {"m1": {"version": "PENDING"}}},
+                  {rt.CLAUDE_CODE: {"m1": {"version": "PENDING"}}}, "not one measured version"),
+                 ("None in both", {rt.CLAUDE_CODE: {"m1": {"version": None}}},
+                  {rt.CLAUDE_CODE: {"m1": {"version": None}}}, "not one measured version"),
+                 ("empty in both", {rt.CLAUDE_CODE: {"m1": {"version": ""}}},
+                  {rt.CLAUDE_CODE: {"m1": {"version": ""}}}, "not one measured version"),
+                 ("absent from routing", {rt.CLAUDE_CODE: same}, {}, "both must pin it"),
+                 ("absent from the draft", {}, {rt.CLAUDE_CODE: same}, "both must pin it"))
+        for label, draft, table, want in cases:
+            a, b = pins(draft, table)
+            with self.subTest(label=label), a, b:
+                got = mod.agent_versions().values[rt.CLAUDE_CODE]
+                if want == "1.2.3":
+                    self.assertEqual(got, "1.2.3", "B15.version")
+                else:
+                    self.assertIsInstance(got, mod.Missing, f"B15.version: {label} gave {got!r}")
+                    self.assertIn(want, got.why, f"B15.version: {label}")
+        a, b = pins({}, {})
+        with a, b:
+            got = mod.agent_versions()
+        self.assertEqual(set(got.values), {rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI}, "B15.version: the harnesses")
+
+    def test_walk_row_takes_the_row_s_own_harness_version(self):
+        mod = wb()
+        rows = [{"task": "t", "half": "trap", "wording": "w1", "arm": arm, "model": "m",
+                 "agent": {"harness": h, "version": None}} for arm, h in (("A", rt.CLAUDE_CODE), ("G", rt.GEMINI))]
+        cell = {"task": "t", "half": "trap", "wording": "w1", "model": "m"}
+        v = mod.PerHarness("the agent version", {rt.CLAUDE_CODE: "2.0.0", rt.GEMINI: mod.Missing("synthetic: PENDING")})
+        got = self.must("B15.walk_row", mod.walk_row, "w-1", dict(cell, arm="A"), v, rows)
+        self.assertEqual(got["agent"], {"harness": rt.CLAUDE_CODE, "version": "2.0.0"}, "B15.walk_row")
+        self.refuses("B15.walk_row", "synthetic: PENDING", mod.walk_row, "w-1", dict(cell, arm="G"), v, rows)
+        self.refuses("B15.walk_row", "not a row of the design", mod.walk_row, "w-1", dict(cell, arm="Z"), v, rows)
+
+    def test_budgets_come_from_the_checker_constants_both_ways(self):
+        """B3: PENDING (or not there yet) gives Missing; filled gives the tuple, equal, in drive's order."""
+        mod = wb()
+        import check_take
+        P = check_take.PENDING
+        filled = {"turn_timeout_s": 900, "finalize_wait_s": 180, "poll_s": 3}
+        self.assertEqual(mod.checker_budgets({"budgets": filled}), (900, 180, 3), "B3.budgets: filled")
+        self.assertEqual(mod.checker_budgets({"budgets": dict(filled, poll_s=0.5)}), (900, 180, 0.5), "B3.budgets")
+        for label, c, words in (("the block PENDING", {"budgets": P}, "['budgets']"),
+                                ("no block", {}, "['budgets']"),
+                                ("turn PENDING", {"budgets": dict(filled, turn_timeout_s=P)}, "budgets.turn_timeout_s"),
+                                ("cap PENDING", {"budgets": dict(filled, finalize_wait_s=P)}, "budgets.finalize_wait_s"),
+                                ("poll PENDING", {"budgets": dict(filled, poll_s=P)}, "budgets.poll_s"),
+                                ("today's tree", {"budgets": {"turn_timeout_s": P}}, "budgets.poll_s"),
+                                ("the cap absent", {"budgets": {"turn_timeout_s": 900, "poll_s": 3}},
+                                 "budgets.finalize_wait_s")):
+            with self.subTest(label=label):
+                got = mod.checker_budgets(c)
+                self.assertIsInstance(got, mod.Missing, f"B3.budgets: {label} gave {got!r}")
+                self.assertIn(words, got.why, f"B3.budgets: {label}")
+                self.assertIn("CHECKER_CONSTANTS", got.why, f"B3.budgets: {label}")
+        for label, b in (("zero", dict(filled, poll_s=0)), ("negative", dict(filled, turn_timeout_s=-1)),
+                         ("a bool", dict(filled, poll_s=True)), ("a string", dict(filled, finalize_wait_s="180")),
+                         ("not a mapping", [900, 180, 3])):
+            with self.subTest(label=label):
+                self.refuses("B3.budgets", "budgets", mod.checker_budgets, {"budgets": b})
+        with mock.patch.object(check_take, "CHECKER_CONSTANTS", dict(check_take.CHECKER_CONSTANTS, budgets=filled)):
+            self.assertEqual(mod.checker_budgets(), (900, 180, 3), "B3.budgets: the module's own constants")
+            self.assertEqual(self.must("B3.budgets", mod.production_builders)["budgets"], (900, 180, 3),
+                             "B3.budgets: production")
+        got = mod.checker_budgets()
+        self.assertEqual(not isinstance(got, mod.Missing), BUDGETS_ON_TREE, f"B3.budgets: this tree gives {got!r}")
+
+    def test_run_tree_exclude_comes_from_run_location_both_ways(self):
+        mod = wb()
+        import check_take
+        P = check_take.PENDING
+        paths = ["evals", "docs/private", ".github"]
+        rl = {"excluded_from_the_run_tree": paths, "checkout_identity": "gars"}
+        got = mod.checker_run_tree_exclude({"run_location": rl})
+        self.assertEqual(got, paths, "B3.exclude: filled")
+        self.assertIsNot(got, paths, "B3.exclude: not a copy")
+        for label, c in (("run_location PENDING", {"run_location": P}), ("no run_location", {}),
+                         ("the list PENDING", {"run_location": dict(rl, excluded_from_the_run_tree=P)}),
+                         ("the list absent", {"run_location": {"checkout_identity": "gars"}}),
+                         ("a PENDING inside", {"run_location": dict(rl, excluded_from_the_run_tree={"a": P})})):
+            with self.subTest(label=label):
+                got = mod.checker_run_tree_exclude(c)
+                self.assertIsInstance(got, mod.Missing, f"B3.exclude: {label} gave {got!r}")
+                self.assertIn("run_location.excluded_from_the_run_tree", got.why, f"B3.exclude: {label}")
+        for label, v in (("empty", []), ("absolute", ["/etc"]), ("dot-dot", ["a/../b"]), ("repeated", ["a", "a"]),
+                         ("not strings", [3]), ("an empty path", [""]), ("a string", "evals"),
+                         ("a mapping", {"a": "b"})):
+            with self.subTest(label=label):
+                self.refuses("B3.exclude", "excluded_from_the_run_tree", mod.checker_run_tree_exclude,
+                             {"run_location": dict(rl, excluded_from_the_run_tree=v)})
+        with mock.patch.object(check_take, "CHECKER_CONSTANTS", dict(check_take.CHECKER_CONSTANTS, run_location=rl)):
+            self.assertEqual(mod.checker_run_tree_exclude(), paths, "B3.exclude: the module's own constants")
+            self.assertEqual(self.must("B3.exclude", mod.production_builders)["run_tree_exclude"], paths,
+                             "B3.exclude: production")
+        got = mod.checker_run_tree_exclude()
+        self.assertEqual(not isinstance(got, mod.Missing), EXCLUDE_ON_TREE, f"B3.exclude: this tree gives {got!r}")
+
+    def test_walk_driver_for_resolves_the_row_s_lock_and_proxy(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b15_driver_problems(wb(), Path(t)), [])
+
+
+@problems_by_assertion("B15.driver")
+def b15_driver_problems(mod, tmp: Path) -> list:
+    """walk_driver_for hands drive.walk_driver the row's own harness's lock path and its ProxyRoad's launch, and refuses
+    a row whose harness has no lock before anything is built (no fixture, no proxy configuration written)."""
+    out = []
+    drive = MODS["drive"]
+    got, built, made = {}, [], []
+    proxy = "the-proxy-launch"
+
+    class Road(mod.ProxyRoad):
+        def for_harness(self, harness):
+            made.append(harness)
+            return proxy
+    locks = mod.PerHarness("the take lock", {rt.CLAUDE_CODE: "/synthetic/box/image.lock",
+                                             rt.GEMINI: mod.Missing("synthetic: the gemini lock is PENDING")})
+    builders = {"rules_scanner": lambda paths: [], "runtime": "rt", "config_parent": str(tmp), "budgets": (600, 5, 1),
+                "take_spec": lambda r, c, t: "spec", "sidecar_for": None, "proxy": Road(str(tmp), "sha256:" + "1" * 64),
+                "lock_path": locks, "hosts": {"h": "x"}, "cgroup_dir_for": lambda t: "", "pin_for": None,
+                "design_for": None, "uid_map": None, "clock": None, "sleep": None, "ownership": None,
+                "settings_guard": None, "machine_gate": None}
+    with mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
+            mock.patch.object(drive, "WalkRepo", lambda **kw: got.setdefault("repo", kw) and "repo"), \
+            mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+            mock.patch.object(mod, "build_walk_fixture",
+                              lambda r, t, p: built.append(r["walk"]) or ({"sha256": "0" * 64}, "/synthetic/src")), \
+            mock.patch.object(mod, "walk_identity", lambda *a, **k: {"walk": "w-0001"}), \
+            mock.patch.object(mod, "login_secrets", lambda login, harness: (lambda: [])):
+        claude = {"walk": "w-0001", "arm": "A", "agent": {"harness": rt.CLAUDE_CODE, "version": "2.1.296"}}
+        mod.walk_driver_for(builders, claude, "/synthetic/login", tmp / "tree")
+        kw = got.get("driver", {})
+        if (kw.get("lock_path"), kw.get("proxy"), kw.get("hosts")) != ("/synthetic/box/image.lock", proxy, {"h": "x"}):
+            out.append(f"B15.driver: the driver got lock {kw.get('lock_path')!r}, proxy {kw.get('proxy')!r}")
+        if made != [rt.CLAUDE_CODE] or built != ["w-0001"]:
+            out.append(f"B15.driver: the proxy was made for {made}, the fixture built {built}")
+        got.clear()
+        gemini = {"walk": "w-0002", "arm": "G", "agent": {"harness": rt.GEMINI, "version": "0.64.0"}}
+        try:
+            mod.walk_driver_for(builders, gemini, "/synthetic/login", tmp / "tree")
+            out.append("B15.driver: a row whose harness has no lock was driven")
+        except mod.BuilderRefused as e:
+            if "synthetic: the gemini lock is PENDING" not in str(e):
+                out.append(f"B15.driver: refused for another reason: {e}")
+        if built != ["w-0001"] or made != [rt.CLAUDE_CODE] or got:
+            out.append(f"B15.driver: a refused row built {built} or made a proxy {made}")
+    return out
 
 
 if __name__ == "__main__":
