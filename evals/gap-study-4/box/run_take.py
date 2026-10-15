@@ -384,6 +384,27 @@ GEMINI_PACKAGE_SWEEP_REFUSED = (
     "VERTEX_AI_SHARED_REQUEST_TYPE_HEADER", "VERTEX_AI_US_REP_ENDPOINT", "WEB_HOST", "gcloud_project",
     "google_application_credentials", "google_cloud_project", "grpc_proxy", "http_proxy", "https_proxy",
     "no_grpc_proxy", "no_proxy",)
+# The pinned Claude Code binary (glitch-6b's ruling 4(i), 15 Oct 2026). Its sha256 sits here, beside the take lock: the
+# image it was swept in is box/image.lock's image_id, so a changed binary is a changed image, which preflight's
+# image-matches-lock refuses, and test_run_take refuses this record for any image but the lock's.
+CLAUDE_BINARY = {"image_id": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+                 "path": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+                 "sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de"}
+# Its provider and gateway switches and the inference credentials no list held (the six switches outside every
+# drive.py pattern, the provider endpoints and socket the patterns record but no list stopped, and seven credentials),
+# refused if present for every arm. Source: lane-reports/stub-take-20261015/claude-2.1.296-env-refusal-20261015.json
+# (classify_claude_env_names.py over the committed sweep records of box ba6d7f14: the binary sweep sha256 ea41aeb1...,
+# the route names f7b7c024...); test_run_take re-runs the classifier and binds this tuple to its output byte for byte.
+# Recorded there and NOT refused: nine product-feature tokens (bridge, trusted device, messaging, memory, artifacts,
+# HFI, Slack, MCP serve), no inference route on the static read.
+CLAUDE_BINARY_SWEEP_REFUSED = (
+    "ANTHROPIC_AWS_BASE_URL", "ANTHROPIC_BEDROCK_BASE_URL", "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+    "ANTHROPIC_ENVIRONMENT_KEY", "ANTHROPIC_FOUNDRY_AUTH_TOKEN", "ANTHROPIC_FOUNDRY_BASE_URL",
+    "ANTHROPIC_FOUNDRY_RESOURCE", "ANTHROPIC_GOOGLE_CLOUD_BASE_URL", "ANTHROPIC_IDENTITY_TOKEN",
+    "ANTHROPIC_IDENTITY_TOKEN_FILE", "ANTHROPIC_UNIX_SOCKET", "ANTHROPIC_VERTEX_BASE_URL", "ANTHROPIC_WORK_SECRET",
+    "CLAUDE_CODE_GATEWAY_TOKEN", "CLAUDE_CODE_HOST_CREDS_FILE", "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+    "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST", "CLAUDE_CODE_USE_ANTHROPIC_AWS",
+    "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD", "CLAUDE_CODE_USE_GATEWAY", "CLAUDE_CODE_USE_MANTLE",)
 VENDOR_BILLING_ROUTE_VARIABLES = {
     CODEX: ("CODEX_AUTHAPI_BASE_URL",                  # matches[46], [50]: before https://auth.openai.com/api/accounts
             "CODEX_AGENT_IDENTITY_AUTHAPI_BASE_URL",   # matches[68]
@@ -403,7 +424,8 @@ VENDOR_BILLING_ROUTE_VARIABLES = {
             # the review's NIT 7: matches[2] reads CODEX_APP_SERVER_LOGIN_ISSUERAmazon Bed..., an ambiguous end; both
             # spellings are refused (refusing more fails closed)
             "CODEX_APP_SERVER_LOGIN_ISSUER", "CODEX_APP_SERVER_LOGIN_ISSUERA"),
-    GEMINI: GEMINI_PACKAGE_SWEEP_REFUSED}    # FILLED 14 Oct 2026 (glitch-06): the Gemini package sweep
+    GEMINI: GEMINI_PACKAGE_SWEEP_REFUSED,    # FILLED 14 Oct 2026 (glitch-06): the Gemini package sweep
+    CLAUDE_CODE: CLAUDE_BINARY_SWEEP_REFUSED}    # FILLED 15 Oct 2026 (glitch-6b's ruling 4(i)): the Claude binary sweep
 # The sweep's names not named above join the Codex entry, in the sweep's order (glitch-06, 14 Oct 2026).
 VENDOR_BILLING_ROUTE_VARIABLES[CODEX] = VENDOR_BILLING_ROUTE_VARIABLES[CODEX] + tuple(
     n for n in CODEX_BINARY_SWEEP_REFUSED if n not in VENDOR_BILLING_ROUTE_VARIABLES[CODEX])
