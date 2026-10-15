@@ -6,13 +6,14 @@ Ruling built: `plans/gap-study-round-4/first-walk-bootstrap-ruling-2026-10-15.md
 
 ## RESUME HERE
 
-- 03:01 EDT: commits 93a98927 (build), 14f17457 (B4 on the check roads, walk_plan fixtures), aed13f75 (sweep fold); nothing pushed.
-- Branch: every touched or constant-reading module green, one at a time after light-ok (logs in ~/aegis-builds/gap4-bootstrap-tools/logs-b1..b4).
-- Merged scratch ~/aegis-builds/gap4-bootstrap-scratch = 383e5c2f + the three commits as patches (applied cleanly; build_draft rebuilt the draft byte-identical): 18 modules green (logs-s1), test_checker_constants green after patch 3; there box/preflight.STUDY_PATHS is filled and equals run_location's paths.
-- Constants digest (both trees): 8fd8c39b2baf1050d9fbe6253dbfab2e3c93030f93da8059730be45ce4f37d7e.
-- Sweeps under one heavy slot (bootstrap-6b, 02:36-03:00, released): every changed function or changed line; after the fold the only survivors are checker_standing's final `return None` (equivalent: the function ends there) and two mutants of environment_record's pre-existing stripped_names line (equivalent while drive.STRIPPED_ENV is empty; not this lane's line).
-- Owed to athena: test_round4.py on the branch head and on the scratch; the unrestricted generated sweeps of check4, check4_walk and environment_record (this lane swept only its changed lines there).
-- Next: glitch-6b's fresh opus-medium review (the ruling's threat model), then the integration lane merges this branch with the harness lane's.
+- 04:09 EDT: head d7b27cda; nothing pushed. After af1e7fc6: 9229d10b (review fold: MAJOR 1, MINOR 2-5), b2946723 (second sweep fold), d7b27cda (athena merged-battery fold: sys.path leak, w6e-drive-commit.txt:6).
+- MAJOR 1: R5's six bootstrap regions pinned by sha256, the constants region parsed to exactly one CHECKER_CONSTANTS assignment; the reviewer's inserted lambda passed the old R5 and is red now (gap4-bootstrap-tools/probe_r5.py).
+- sys.path: the module imports the study in setUpModule; the stale-snapshot reproduction (gap4-bootstrap-tools/stale_snapshot.py) was red, is green; full discovery then this module and test_confounded_design in one process: green, evals off sys.path.
+- w6e line 6: red at b2946723, green at d7b27cda (round 3's three functions byte-identical again; the appended block rebinds the four vocabulary names).
+- Branch and merged scratch (383e5c2f + every commit as patches, a517c427): the touched and reading modules green, one at a time.
+- Owed to athena: test_round4.py and every checks.d line on the head and on the merged tree; the unrestricted sweeps of check4, check4_walk and environment_record.
+- Handed to the harness lane by glitch-6b: walk_builders.py 36-38 and 552-556.
+- Next: the same reviewer checks closure; then the admission merge.
 
 ## What was built
 
