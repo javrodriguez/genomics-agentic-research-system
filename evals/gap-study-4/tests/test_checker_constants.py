@@ -532,7 +532,8 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
         self.base = Path(tempfile.mkdtemp(prefix="bootstrap-cover-")) / "rehearsals"
         (self.base / self.WALK).mkdir(parents=True)
         self.write(grade={"graded": True, "row": {}, "grade": {}},
-                   check={"walk": self.WALK, "checked": True, "checker_reasons": [], "events": {}, "route": "graded",
+                   check={"walk": self.WALK, "checked": True, "checker_reasons": [], "events": {"outside_reach": 0},
+                          "route": "graded",
                           "route_refused": None, "checker_constants_sha256": ct.checker_constants_sha256()})
 
     def tearDown(self):
@@ -634,6 +635,11 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
             "route-not-a-string": dict(good, route=None),
             "not-checked": dict(good, checked=False),
             "checked-truthy": dict(good, checked=1),
+            "events-forged": dict(good, events={"constant-binding": 1}),
+            "events-extra": dict(good, events={"outside_reach": 0, "constant-binding": 1}),
+            "events-negative": dict(good, events={"outside_reach": -1}),
+            "events-bool": dict(good, events={"outside_reach": True}),
+            "events-none": dict(good, events=None),
             "routed-and-refused": dict(good, route="harness-error", route_refused="RoutingError: x"),
             "reasons-a-string": dict(good, checker_reasons=""),
         }
@@ -649,6 +655,13 @@ class TestTheStripRuleReadsTheRecordVocabulary(unittest.TestCase):
         """drive.never_stripped_problems reads the RECORD_ lists: a 2.1.296 credential matched by no harness pattern
         (only the generic one) is still never stripped, because it is listed."""
         self.assertEqual(drive.matched_by("CLAUDE_CODE_GATEWAY_TOKEN"), "generic")
+
+    def test_the_four_names_are_rebound_to_the_record_vocabulary(self):
+        """Review NIT A: round 3's functions read these four module names at call time; each is the RECORD_ tuple."""
+        for name in ("HARNESS_NAME_PATTERNS", "API_KEY_VARIABLES", "BILLING_ROUTE_VARIABLES",
+                     "SUBSCRIPTION_TOKEN_VARIABLES"):
+            with self.subTest(name=name):
+                self.assertIs(getattr(drive, name), getattr(drive, "RECORD_" + name))
         got = drive.never_stripped_problems(["CLAUDE_CODE_GATEWAY_TOKEN", "CLAUDECODE"])
         self.assertEqual(len(got), 1, got)
         self.assertIn("listed credential or billing list", got[0])

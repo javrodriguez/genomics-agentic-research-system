@@ -3973,7 +3973,7 @@ RECORD_SUBSCRIPTION_TOKEN_VARIABLES = SUBSCRIPTION_TOKEN_VARIABLES + SUBSCRIPTIO
 # these four module names when called, and stay byte for byte round 3's (checks.d/w6e-drive-commit.txt:6), so the names
 # are REBOUND here to the record vocabulary: from here on drive.HARNESS_NAME_PATTERNS and the three lists are round 3's
 # extended with 2.1.296's. Round 3's literal assignments above are what run_take's copies are bound to (test_run_take
-# reads them with ast), and tests/test_checker_constants.py binds both halves.
+# reads them with ast); tests/test_checker_constants.py asserts each name IS its RECORD_ tuple and binds both halves.
 HARNESS_NAME_PATTERNS = RECORD_HARNESS_NAME_PATTERNS
 API_KEY_VARIABLES = RECORD_API_KEY_VARIABLES
 BILLING_ROUTE_VARIABLES = RECORD_BILLING_ROUTE_VARIABLES
