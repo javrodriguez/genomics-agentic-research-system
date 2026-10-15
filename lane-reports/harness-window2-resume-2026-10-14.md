@@ -63,3 +63,24 @@ Shard 14's "LISTED BUT KILLED" remove_run_tree mutant was killed only by the B10
 Boundary fakes the integration merge must prove against the real box symbols: run_take.CODEX_SUBSCRIPTION_READY, NO_LOGIN and place_lease; walk_builders.lease_secrets (scan_record.read_lease_tokens); preflight.LEASE_CREDENTIAL. Conflicts the merge must resolve, rehearsed in a scratch clone of 2d6983e9: in walk_builders, login_name takes the ruling's NO_LOGIN (not the merged side's CODEX_SUBSCRIPTION_NOT_READY refusal), and box's lease_secrets sits beside CodexLeaseRoad (keep both). In test_walk_builders, B2's Codex case is already carried on this branch since ee27d109.
 
 Owed to athena: the full battery (test_round4 included) and the full generated sweeps on this head. test_round4 was last run in full locally on 1f032586 (Ran 3605, OK, 2 skips), before 201f20d6.
+
+## RESUME HERE (handover 14 Oct 22:4x)
+
+Written 14 Oct 2026 22:41 EDT (clock read first), at glitch-5a's handover call. Branch codex/gap4-live-harness-20261013.
+HEAD: the commit that adds this block (its parent is 2c8b0d26). Nothing pushed. No mac_slot held. No process of this lane running.
+Uncommitted: nothing of this lane's (lane-reports/live-harness-provenance-2026-10-13.md is modified in the tree and is not this lane's; leave it).
+
+Done since 27ade10a (each through the gitleaks staged gate):
+- 0095f47a: the Gemini walk wiring (r4-g key file by name; the same login_secrets to driver and WalkRepo; the exact-value mask proven on the real Gemini road: stream and session masked, ledger refused). Generated: walk_login_path 19/19, production_builders 47/47, prepare 57/57.
+- be4bbdca: codex_adapter.argv refuses a first line that is a codex exec subcommand (resume, fork, review, help); bound to run_take.CODEX_HELP_COMMANDS where on the tree. argv mutants 44/46 killed, 2 listed equivalents; witnesses 16/16.
+- 77418a8e: review MINOR 1 (the Codex adapter gets the take's placed cfg/auth.json via drive.login_file_of and CodexLeaseRoad.login_file_for) and NIT 4 (the lease gate checked before place_lease). Witnesses 41/41.
+- 0ba98258: review MINOR 2 (the take-a lock fake builds locks image_lock accepts).
+- 2c8b0d26: review NIT 3 (the lease postflight stand-in keeps every other problem).
+- athena's prepare survivor (prepare:drop-0, the lease Missing clause) was closed in 0095f47a: the clause was redundant and is removed; prepare 57/57 killed.
+
+Owed, in order (the light gate held at load ~159 at the handover, so nothing more ran):
+1. Rerun on the Mac when light-ok passes: test_walk_builders (full; last full run 60 OK before NIT 4), test_pending_codex_walk, test_drive_loop, test_walk_wiring, test_pending_walk, test_build_draft, test_drive_ownership.
+2. Rerun one inconclusive generated mutant (a timeout under load ~30): `python3 evals/gap-study-4/tests/test_walk_builders.py --generated-mutants --only walk_builders.walk_driver_for:delete:L38:C4:a20d0dfd --timeout 600`, under a heavy slot.
+3. Re-prove 0095f47a's last edit (the unknown-harness case, the redundant term) and 77418a8e..2c8b0d26 on a scratch `git clone --shared` of the merge clone with the box head (1e10e320 or later) applied; the scratch proof so far covered 0095f47a's earlier draft.
+4. The integration merge's list: the boundary fakes (CODEX_SUBSCRIPTION_READY, NO_LOGIN, place_lease, lease_secrets / read_lease_tokens, LEASE_CREDENTIAL, CODEX_HELP_COMMANDS); walk_builders' two conflicts (login_name takes NO_LOGIN; keep box's lease_secrets beside CodexLeaseRoad); the Codex exec reads login_file = the take's placed cfg/auth.json (77418a8e).
+5. athena: the full battery and generated sweeps on this head.
