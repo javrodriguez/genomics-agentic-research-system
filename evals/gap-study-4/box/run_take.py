@@ -123,7 +123,8 @@ TAKE_ENV = {
 BASE_NAMES = ("PATH", "HOME", "LANG")
 # Codex has no environment login (glitch-06's ruling 1, 14 Oct 2026): its login is the lease file in CODEX_HOME
 # (place_lease), and LOGIN_VARIABLE[CODEX] is the launcher's reserved NO_LOGIN, set below where it is defined. Every
-# road that expects an environment login refuses it explicitly (read_login; exec_argv refuses Codex outright).
+# road that expects an environment login refuses it explicitly (read_login; exec_argv hands Codex to
+# _codex_exec_argv behind codex_lease_gate).
 LOGIN_VARIABLE = {h: next(k for k, v in row.items() if v == CREDENTIAL) for h, row in TAKE_ENV.items()
                   if CREDENTIAL in row.values()}
 # Owner amendment, 13 Oct 2026: Codex must use an isolated ChatGPT subscription.
@@ -992,6 +993,10 @@ CODEX_MODELS = ("gpt-6.1-sol", "gpt-6-luna")
 # --color, -o, --last, --all) and every other subcommand (fork, review, help) is refused.
 CODEX_CLIENT = "codex"
 CODEX_SUBCOMMAND = "exec"
+# The pinned help's "Commands:" list for `codex exec` (codex-exec-help.json): a one-word prompt equal to one of them
+# would be run as that subcommand (`codex exec [OPTIONS] <COMMAND> [ARGS]`), so it is refused as a prompt (the review
+# of 1e10e320, MAJOR). Hidden aliases and subcommands the help does not list are a named residual.
+CODEX_HELP_COMMANDS = ("resume", "fork", "review", "help")
 CODEX_RESUME = "resume"
 CODEX_JSON_FLAG = "--json"
 CODEX_MODEL_FLAGS = ("-m", "--model")
@@ -1044,6 +1049,9 @@ def check_codex_turn(inner) -> str:
         if len(rest) != 1:
             raise Refused("a Codex turn ends with exactly one prompt (or `resume <session id> <prompt>`)")
         prompt = rest[0]
+        if prompt in CODEX_HELP_COMMANDS:
+            raise Refused(f"a one-word prompt {prompt!r} is a `codex exec` subcommand name: it would run as that "
+                          f"subcommand, not as the prompt")
     if not prompt or prompt.startswith("-"):
         raise Refused("a Codex turn's prompt never starts with '-' (it would read as a flag, or `-` as stdin)")
     return model

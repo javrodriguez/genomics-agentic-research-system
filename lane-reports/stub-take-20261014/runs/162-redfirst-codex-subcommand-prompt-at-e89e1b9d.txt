@@ -1,0 +1,9 @@
+== test_run_take -k TestCodexExec against e89e1b9d's run_take.py
+FAIL: test_codex_exec (test_run_take.TestCodexExec.test_codex_exec)
+AssertionError: Lists differ: ["raised AttributeError: module 'box.run_t[40 chars]DS'"] != []
+Ran 1 test in 0.003s
+FAILED (failures=1)
+== the same test, with only the new constant set on e89e1b9d's run_take (the behaviour's red):
+  - `review` as the only prompt: admitted
+  - `help` as the only prompt: admitted
+  - `fork` as the only prompt: admitted

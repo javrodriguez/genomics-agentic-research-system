@@ -2363,6 +2363,14 @@ class TestCodexExec(MutantCase):
         out = []
         if tuple(rt.CODEX_MODELS) != ("gpt-6.1-sol", "gpt-6-luna"):
             out.append(f"CODEX_MODELS is {rt.CODEX_MODELS!r}")
+        if tuple(rt.CODEX_HELP_COMMANDS) != ("resume", "fork", "review", "help"):
+            out.append(f"CODEX_HELP_COMMANDS is {rt.CODEX_HELP_COMMANDS!r}")
+        # the review of 1e10e320, MINOR 3 and NIT 5: the box's turn rules and the adapter's argv agree
+        import codex_adapter
+        if rt._CODEX_SESSION.pattern != codex_adapter._THREAD_ID.pattern:
+            out.append("run_take's session-id form is not codex_adapter's thread-id form")
+        if (rt.CODEX_BYPASS_FLAG,) != tuple(codex_adapter.MODE_FLAGS["bypass"]):
+            out.append("run_take's bypass flag is not codex_adapter's bypass mode flags")
         with open(os.path.join(HERE, "prereg-draft.json"), encoding="utf-8") as fh:
             if tuple(json.load(fh)["models"]["O"]) != tuple(rt.CODEX_MODELS):
                 out.append("CODEX_MODELS is not prereg-draft.json's arm O models")
@@ -2439,6 +2447,13 @@ class TestCodexExec(MutantCase):
                     ("fork", B + ["--json", "-m", self.MODEL, self.BYPASS, "fork", "abc-1", "x"], None),
                     ("-m with no model", B + ["--json", self.BYPASS, "x", "-m"], None),
                     ("-m before the prompt with no model", B + ["--json", self.BYPASS, "-m"], "takes the model"),
+                    # the review of 1e10e320, MAJOR: a one-word prompt that is one of the pinned help's subcommands
+                    # would be run as that subcommand (`codex exec [OPTIONS] <COMMAND> [ARGS]`)
+                    ("`review` as the only prompt", B + ["--json", "-m", self.MODEL, self.BYPASS, "review"],
+                     "subcommand"),
+                    ("`help` as the only prompt", B + ["--json", "-m", self.MODEL, self.BYPASS, "help"], "subcommand"),
+                    ("`fork` as the only prompt", B + ["--json", "-m", self.MODEL, self.BYPASS, "fork"], "subcommand"),
+                    ("`resume` as the only prompt", B + ["--json", "-m", self.MODEL, self.BYPASS, "resume"], None),
                     ("-m taking the next flag as its model", B + ["-m", "--json", self.BYPASS, "x"],
                      "takes the model"),
                     ("a resumed prompt that reads as a flag",

@@ -1,0 +1,33 @@
+control 0 of 1
+RED   1/1 no gate
+RED   1/1 any user
+RED   1/1 no id check
+RED   1/1 no argv check
+RED   1/1 any workdir
+RED   1/1 no turn check
+RED   1/1 no environment check
+RED   1/1 no lease check
+RED   1/1 a named login
+RED   1/1 another client
+RED   1/1 another subcommand
+RED   1/1 any option admitted
+RED   1/1 -m with no value
+RED   1/1 --json not counted
+RED   1/1 model not counted
+RED   1/1 bypass not counted
+RED   1/1 any model
+RED   1/1 resume of any length
+RED   1/1 any session id
+RED   1/1 any number of prompts
+RED   1/1 the session form drifts from the adapter's
+RED   1/1 the bypass flag drifts from the adapter's
+RED   1/1 a subcommand name as the prompt
+RED   1/1 help dropped from the commands
+RED   1/1 a prompt that reads as a flag
+RED   1/1 a lease of any name
+RED   1/1 no place check
+RED   1/1 any lease mode
+RED   1/1 a lease in a repository
+RED   1/1 another pinned model
+EQUIVALENT (named, no mutant): the lease's regular-file and owner checks - check_login_place already refuses a link (its one-link rule reads the link itself; a link is never auth.json's own file) and a folder not owned by the reader; a file inside that folder owned by another uid cannot be planted without root. Each is kept as a second line, named here, not mutated.
+ALIVE: none
