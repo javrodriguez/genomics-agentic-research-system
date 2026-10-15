@@ -37,10 +37,12 @@ is each harness's take lock once preflight's own loader accepts it; config_paren
 names in GAP4_CONFIG_PARENT; the proxy (ProxyRoad) writes the walk's proxy_conf.render under it and launches the egress
 lock's image as squid's measured user; agent_version is each harness's pin where prereg's version_pins and routing's
 pin_profiles agree on one version; budgets and run_tree_exclude are read from check_take.CHECKER_CONSTANTS (the
-first-walk bootstrap ruling's B3). A per-harness value is resolved for the row (walk_row, walk_driver_for).
+first-walk bootstrap ruling's B3); sidecar_for is the stub take's sidecar launch over the sidecar lock's image and the
+row's watch_list (the ruling's Addendum 2, rule W1). A per-harness value is resolved for the row (walk_row,
+walk_driver_for).
 
 WHAT STAYS MISSING (production_builders: each a Missing with its reason, so walk_runner.main refuses by name): every
-value with no measured, registered or derived source on the tree. sidecar_for has no registered per-task watch list.
+value with no measured, registered or derived source on the tree.
 The checker's constants are not measured by a walk: the first-walk bootstrap ruling (15 Oct 2026) sources, carries
 and derives them in check_take.CHECKER_CONSTANTS, and design_for, budgets and run_tree_exclude stay Missing only
 while a tree still holds them PENDING. The walk token's login file and the P-2 gate stay Missing until the box and the
@@ -658,6 +660,66 @@ class ProxyRoad:
             shutil.rmtree(folder, ignore_errors=True)
 
 
+# The sidecar's watch list (glitch-6b's ruling, Addendum 2 of first-walk-bootstrap-ruling-2026-10-15.md, rule W1): the
+# take's consequential paths are derived from the sha-pinned task files' own grader fields, variants.graded_paths. A task
+# whose graded_paths is empty (number-fidelity: its graded output is a value in the reply) watches its own committed
+# source folder instead: a NAMED DEPARTURE, a grading-neutral liveness entry that watched.json's non-empty contract
+# requires, never taken by a task with a graded path. Named residual: the access log is exact-path, so a write beneath a
+# watched folder is seen only through the snapshot diffs.
+def watch_list(row: dict, project: str, run_tree: str) -> list:
+    """The run-tree-relative paths the walk's sidecar watches: sorted(variants.graded_paths(task, project)), or, only
+    when that is empty, the task's source_template folder rendered for the walk. Refused (BuilderRefused) when a path
+    fails sidecar.watch_path_ok, a path repeats, or the list is empty."""
+    import variants
+    from box import sidecar
+    task_id = row["task"]
+    watch = sorted(variants.graded_paths(task_id, project=project))
+    if not watch:                                    # the named departure: no graded path, the source folder
+        template = variants.load_task(task_id).get("source_template")
+        watch = [os.path.relpath(variants.render_source(template, run_tree, project), run_tree)] if template else []
+    if not watch:
+        raise BuilderRefused(f"task {task_id!r}: the watch list is empty (no graded path and no source folder)")
+    bad = [w for w in watch if not sidecar.watch_path_ok(w)]
+    if bad:
+        raise BuilderRefused(f"task {task_id!r}: watch paths off sidecar.watch_path_ok: {bad}")
+    if len(set(watch)) != len(watch):
+        raise BuilderRefused(f"task {task_id!r}: a watch path repeats: {watch}")
+    return watch
+
+
+def sidecar_road(box_dir=None):
+    """The production sidecar_for(row, evidence, run_tree, project) -> run_take.SidecarLaunch, as the stub take builds
+    it (the stub take's sidecar_launch): sidecar.create_argv over the sidecar lock's image id (preflight's loader,
+    box/sidecar/image.lock beside take-a's lock) and watch_list, sidecar.expect_from_argv, then cap_add set to
+    sidecar_contract.BOOT_INSPECT_CAPABILITIES (a NAMED DEPARTURE, the stub take's, named again for production:
+    expect_from_argv leaves cap_add PENDING by design). Missing when the box's sidecar contract or lock is not ready."""
+    from box import preflight
+    from box import run_take as rt
+    base = Path(box_dir) if box_dir is not None else BOX_DIR
+    import importlib
+    from box import sidecar
+    try:
+        sidecar_contract = importlib.import_module("box.sidecar_contract")
+    except ImportError:
+        return Missing("the sidecar launch: box/sidecar_contract.py (the box lane's) is not on this tree")
+    if not callable(getattr(preflight, "load_sidecar_lock", None)):
+        return Missing("the sidecar launch: preflight.load_sidecar_lock (the box lane's sidecar lock) is not on this "
+                       "tree")
+    try:
+        image = preflight.load_sidecar_lock(str(base / "image.lock"), harness=rt.CLAUDE_CODE)["image_id"]
+    except Exception as e:  # noqa: BLE001 - the loader's refusal is the reason
+        return Missing(f"the sidecar launch: the sidecar lock is not ready: {type(e).__name__}: {str(e)[:200]}")
+
+    def sidecar_for(row, evidence, run_tree, project):
+        argv = sidecar.create_argv(image=image, run_tree=run_tree, evidence=evidence,
+                                   watch=watch_list(row, project, run_tree))
+        expect = sidecar.expect_from_argv(argv)
+        expect["cap_add"] = list(sidecar_contract.BOOT_INSPECT_CAPABILITIES)    # the named departure
+        return rt.SidecarLaunch(create_argv=tuple(argv), start_argv_for=sidecar.start_argv,
+                                ctl_argv_for=sidecar.ctl_argv, rm_argv_for=sidecar.rm_argv, expect=expect)
+    return sidecar_for
+
+
 def check_row_values(builders: dict, harness: str) -> None:
     """Refuse (BuilderRefused) when the row's harness has no lock_path or its proxy cannot render, without writing
     anything: prepare calls it before the run tree is built."""
@@ -815,9 +877,7 @@ def production_builders() -> dict:
         "runtime": rt.DockerRuntime(),
         "config_parent": config_parent,
         "take_spec": take_a_spec(),
-        "sidecar_for": Missing(f"the sidecar launch: sidecar.create_argv needs the take's pre-registered consequential "
-                               f"paths (its watch list), and no registered per-task list is on the tree; "
-                               f"variants.graded_paths names none for number-fidelity"),
+        "sidecar_for": sidecar_road(),
         "proxy": proxy_road(config_parent, locks),
         "lock_path": locks if any(not isinstance(v, Missing) for v in locks.values.values()) else
         Missing("the take lock: no harness's take lock is ready: " +
@@ -951,7 +1011,7 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: 
         driver = drive.walk_driver(
             runtime=builders["runtime"], root=str(root), config_parent=builders["config_parent"],
             spec_for=spec_for,
-            sidecar_for=lambda r, ev: builders["sidecar_for"](r, ev, str(tree)), proxy=proxy,
+            sidecar_for=lambda r, ev: builders["sidecar_for"](r, ev, str(tree), project), proxy=proxy,
             lock_path=lock_path, hosts=builders["hosts"], login_file=login,
             counters_for=counters_reader(builders["cgroup_dir_for"]), pin_for=builders["pin_for"],
             design_for=builders["design_for"], project_for=lambda r: project,

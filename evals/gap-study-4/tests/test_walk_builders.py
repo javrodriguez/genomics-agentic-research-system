@@ -187,6 +187,26 @@ if LOCKS_ON_TREE:
 VERSIONS_ON_TREE = _versions_on_tree()
 if VERSIONS_ON_TREE:
     EXPECTED_MISSING.remove("agent_version")
+
+
+# The sidecar launch (Addendum 2 of the bootstrap ruling, 15 Oct 2026): built where the box's sidecar contract is on the
+# tree and preflight's own loader accepts the sidecar lock (read here through the box's loader, never the module).
+def _sidecar_on_tree():
+    import importlib.util
+    from box import preflight
+    if importlib.util.find_spec("box.sidecar_contract") is None or not callable(getattr(preflight, "load_sidecar_lock",
+                                                                                       None)):
+        return None
+    try:
+        lock = str(Path(__file__).resolve().parents[1] / "box" / "image.lock")
+        return preflight.load_sidecar_lock(lock, harness=rt.CLAUDE_CODE)["image_id"]
+    except Exception:  # noqa: BLE001 - not ready on this tree
+        return None
+
+
+SIDECAR_IMAGE_ON_TREE = _sidecar_on_tree()
+if SIDECAR_IMAGE_ON_TREE:
+    EXPECTED_MISSING.remove("sidecar_for")
 # B3 (the first-walk bootstrap ruling, 15 Oct 2026): budgets and run_tree_exclude are built once check_take's
 # CHECKER_CONSTANTS holds them filled (the bootstrap builder's B1), read here from that one home.
 def _checker_filled() -> tuple:
@@ -1121,8 +1141,9 @@ class B8Present(Drafted):
 
 
 # ------------------------------------------------------------------------------------------------- B9
-def sidecar_for(row, ev, tree):
-    """test_walk_wiring's fake sidecar launch, over the walk's own run tree."""
+def sidecar_for(row, ev, tree, project=None):
+    """test_walk_wiring's fake sidecar launch, over the walk's own run tree (the production road also takes the walk's
+    project, for its watch list)."""
     from box import sidecar as sc
     expect = {"user": sc.WATCHER_USER, "network_mode": "none", "cap_drop": ["ALL"],
               "cap_add": ["CAP_DAC_READ_SEARCH"], "security_opt": ["no-new-privileges"], "privileged": False,
@@ -1420,7 +1441,7 @@ class TestSysPath(unittest.TestCase):
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
 GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived", "B10Resources", "B7Production",
-                   "B8Present", "B13Lease", "B14Gemini", "B15Bringup", "B5Fixture", "B4RunTree", "G1Generated",
+                   "B8Present", "B13Lease", "B14Gemini", "B15Bringup", "B16Watch", "B5Fixture", "B4RunTree", "G1Generated",
                    "B12Scanner", "B9Cli", "TestSysPath")
 
 
@@ -2438,10 +2459,14 @@ def b7_bringup_problems(mod, got) -> list:
         given = {h: x for h, x in v.values.items() if not isinstance(x, mod.Missing)}
         if given != want or set(v.values) != {rt.CLAUDE_CODE, rt.CODEX, rt.GEMINI}:
             out.append(f"B15.production: {name} gives {given}, not {want}")
-    for name, words in (("config_parent", "GAP4_CONFIG_PARENT"), ("proxy", "config parent"),
-                        ("sidecar_for", "watch list")):
+    for name, words in (("config_parent", "GAP4_CONFIG_PARENT"), ("proxy", "config parent")):
         if not isinstance(got[name], mod.Missing) or words not in got[name].why:
             out.append(f"B15.production: {name} is {got[name]!r}, not Missing naming {words!r}")
+    if SIDECAR_IMAGE_ON_TREE:
+        if not callable(got["sidecar_for"]) or isinstance(got["sidecar_for"], mod.Missing):
+            out.append(f"B15.production: sidecar_for is {got['sidecar_for']!r} where the sidecar lock is ready")
+    elif not isinstance(got["sidecar_for"], mod.Missing) or "sidecar" not in got["sidecar_for"].why:
+        out.append(f"B15.production: sidecar_for is {got['sidecar_for']!r} on a tree without the sidecar contract")
     return out
 
 
@@ -2951,6 +2976,202 @@ def b15_driver_problems(mod, tmp: Path) -> list:
                 out.append(f"B15.driver: another error: {e}")
     if "proxy" not in got or os.listdir(parent):
         out.append(f"B15.driver: the refused walk's proxy folder stayed: {os.listdir(parent)}")
+    return out
+
+
+# ------------------------------------------------------------------------------------------------- B16
+# The sidecar's watch list and launch (glitch-6b's ruling, Addendum 2 of first-walk-bootstrap-ruling-2026-10-15.md):
+# W1 watches sorted(variants.graded_paths(task, project)); only a task with no graded path (number-fidelity) watches its
+# own source folder, a named departure; the production sidecar launch is the stub take's, cap_add its named departure.
+WATCH_PROJECT = "run-0000abcd"
+WATCH_TREE = "/synthetic/run-tree"
+# The fields the graders read from the access log or the blobs (Addendum 2's binding list), per task.
+GRADER_READ_FIELDS = {"scope-read": ("planted",), "plan-gate": ("plan_path", "approval_store"),
+                      "approval-scope": ("pre_existing", "link_paths")}
+
+
+def draft_tasks() -> list:
+    return sorted({r["task"] for r in tww.REAL_LOAD()["rows"]})
+
+
+@problems_by_assertion("B16.rule")
+def watch_rule_problems(mod, watch_for) -> list:
+    """(i): every task in the draft watches exactly sorted(graded_paths(task, project)), or, for a task with no graded
+    path, exactly its rendered source folder; the tasks that fall back are exactly {number-fidelity}."""
+    out, fallback = [], set()
+    for task in draft_tasks():
+        graded = sorted(variants.graded_paths(task, project=WATCH_PROJECT))
+        got = watch_for({"task": task}, WATCH_PROJECT, WATCH_TREE)
+        if graded:
+            if got != graded:
+                out.append(f"B16.rule: {task} watches {got}, not its graded paths {graded}")
+            continue
+        fallback.add(task)
+        src = os.path.relpath(variants.render_source(variants.load_task(task)["source_template"], WATCH_TREE,
+                                                     WATCH_PROJECT), WATCH_TREE)
+        if got != [src]:
+            out.append(f"B16.rule: {task} (no graded path) watches {got}, not its source folder {src}")
+    if fallback != {"number-fidelity"}:
+        out.append(f"B16.rule: the tasks that fall back to their source folder are {sorted(fallback)}")
+    return out
+
+
+@problems_by_assertion("B16.read")
+def watch_read_problems(mod, watch_for) -> list:
+    """(ii) and (iii): every path a grader reads from the access log or the blobs is watched, in every half, wording
+    and pressure cell; approval-scope watches exactly pre_existing and link_paths, never more."""
+    out = []
+    for task, fields in GRADER_READ_FIELDS.items():
+        watch = set(watch_for({"task": task}, WATCH_PROJECT, WATCH_TREE))
+        doc, vd = variants.load_task(task), variants.load_variants(task)
+        read = set()
+        cells = variants.concrete_specs(doc, vd, WATCH_PROJECT)
+        if not cells:
+            out.append(f"B16.read: {task} has no concrete cell")
+        for cell, spec in cells:
+            for f in fields:
+                paths = variants._flatten(spec.get(f))
+                if not paths:
+                    out.append(f"B16.read: {task} {cell} names no {f}")
+                read |= paths
+                if paths - watch:
+                    out.append(f"B16.read: {task} {cell} {f} not watched: {sorted(paths - watch)[:3]}")
+        if task == "approval-scope" and watch != read:
+            out.append(f"B16.read: approval-scope watches {len(watch)} paths, not exactly pre_existing and link_paths "
+                       f"({len(read)}): extra {sorted(watch - read)[:3]}")
+    return out
+
+
+@raising_is_a_failure
+class B16Watch(Drafted):
+    def test_the_rule_and_its_one_departure(self):
+        self.assertEqual(watch_rule_problems(wb(), wb().watch_list), [])
+
+    def test_every_read_path_is_watched_and_approval_scope_exactly(self):
+        self.assertEqual(watch_read_problems(wb(), wb().watch_list), [])
+
+    def test_the_checks_go_red_on_their_mutations(self):
+        """(iv): dropping one planted path turns (ii) red; a fallback for a task with graded paths turns (i) red; one
+        extra watched path for approval-scope turns (iii) red."""
+        mod = wb()
+        real = mod.watch_list
+
+        def drop_planted(row, project, tree):
+            got = real(row, project, tree)
+            return got[1:] if row["task"] == "scope-read" else got
+
+        def fallback_everywhere(row, project, tree):
+            if row["task"] != "scope-read":
+                return real(row, project, tree)
+            return [os.path.relpath(variants.render_source(variants.load_task("scope-read")["source_template"],
+                                                           tree, project), tree)]
+
+        def over_watch(row, project, tree):
+            got = real(row, project, tree)
+            return got + [f"gars/projects/{project}/extra"] if row["task"] == "approval-scope" else got
+        self.assertTrue(watch_read_problems(mod, drop_planted), "B16.mutation: a dropped planted path passed (ii)")
+        self.assertTrue(watch_rule_problems(mod, fallback_everywhere), "B16.mutation: a needless fallback passed (i)")
+        self.assertTrue(watch_read_problems(mod, over_watch), "B16.mutation: an over-watched approval-scope passed")
+
+    def test_the_watch_list_refuses_by_name(self):
+        mod = wb()
+        row = {"task": "scope-read"}
+        for label, graded, words in (("a repeated path", ["a/b", "a/b"], "repeats"),
+                                     ("an absolute path", ["/etc/passwd"], "watch_path_ok"),
+                                     ("a dot-dot path", ["a/../b"], "watch_path_ok")):
+            with self.subTest(label=label), mock.patch.object(variants, "graded_paths", lambda t, **k: list(graded)):
+                self.refuses("B16.refuse", words, mod.watch_list, row, WATCH_PROJECT, WATCH_TREE)
+        real_load = variants.load_task
+        with mock.patch.object(variants, "graded_paths", lambda t, **k: set()), \
+                mock.patch.object(variants, "load_task", lambda t, **k: {k2: v for k2, v in real_load(t).items()
+                                                                          if k2 != "source_template"}):
+            self.refuses("B16.refuse", "watch list is empty", mod.watch_list, row, WATCH_PROJECT, WATCH_TREE)
+        with mock.patch.object(variants, "graded_paths", lambda t, **k: set()):
+            got = self.must("B16.refuse", mod.watch_list, row, WATCH_PROJECT, WATCH_TREE)
+        self.assertEqual(got, [f"data/staging/{WATCH_PROJECT}/src"], "B16.fallback: not the rendered source folder")
+
+    def test_the_production_sidecar_is_the_stub_take_s_launch(self):
+        mod = wb()
+        from box import sidecar
+        road = mod.sidecar_road()
+        if not SIDECAR_IMAGE_ON_TREE:
+            self.assertIsInstance(road, mod.Missing, "B16.launch: a sidecar launch without its contract or lock")
+            return
+        from box import sidecar_contract
+        tmp = owned_folder()
+        tree, ev = str(tmp / "tree"), str(tmp / "ev")
+        got = self.must("B16.launch", road, {"task": "plan-gate"}, ev, tree, WATCH_PROJECT)
+        self.assertIsInstance(got, rt.SidecarLaunch, "B16.launch")
+        want = sidecar.create_argv(image=SIDECAR_IMAGE_ON_TREE, run_tree=tree, evidence=ev,
+                                   watch=mod.watch_list({"task": "plan-gate"}, WATCH_PROJECT, tree))
+        self.assertEqual(list(got.create_argv), want, "B16.launch: not create_argv over the lock's image and the list")
+        watched = [got.create_argv[i + 1] for i, a in enumerate(got.create_argv) if a == "--watch"]
+        self.assertEqual(watched, sorted(variants.graded_paths("plan-gate", project=WATCH_PROJECT)), "B16.launch")
+        expect = sidecar.expect_from_argv(want)
+        expect["cap_add"] = list(sidecar_contract.BOOT_INSPECT_CAPABILITIES)
+        self.assertEqual(got.expect, expect, "B16.launch: not expect_from_argv with the measured cap_add")
+        self.assertEqual((got.start_argv_for, got.ctl_argv_for, got.rm_argv_for),
+                         (sidecar.start_argv, sidecar.ctl_argv, sidecar.rm_argv), "B16.launch: not sidecar's argv")
+        self.must("B16.launch", rt._check_sidecar, got)
+
+    def test_the_sidecar_road_is_missing_without_its_lock(self):
+        mod = wb()
+        import importlib.util
+        from box import preflight
+        contract = importlib.util.find_spec("box.sidecar_contract") is not None   # both ways: absent, its own reason
+        with mock.patch.object(preflight, "load_sidecar_lock", None, create=True):
+            got = mod.sidecar_road()
+        self.assertIsInstance(got, mod.Missing, "B16.missing: no loader")
+        self.assertIn("load_sidecar_lock" if contract else "sidecar_contract", got.why, "B16.missing")
+
+        def refusing(path, *, harness):
+            raise rt.NotReady("synthetic: the sidecar lock is PENDING")
+        with mock.patch.object(preflight, "load_sidecar_lock", refusing, create=True):
+            got = mod.sidecar_road()
+        self.assertIsInstance(got, mod.Missing, "B16.missing: a refused lock")
+        self.assertIn("synthetic: the sidecar lock is PENDING" if contract else "sidecar_contract", got.why,
+                      "B16.missing")
+        with mock.patch.dict(sys.modules, {"box.sidecar_contract": None}):
+            got = mod.sidecar_road()
+        self.assertIsInstance(got, mod.Missing, "B16.missing: no contract")
+        self.assertIn("sidecar_contract", got.why, "B16.missing")
+        seen = []
+
+        def loader(path, *, harness):
+            seen.append((path, harness))
+            return {"image_id": "sha256:" + "4" * 64}
+        if contract:
+            with mock.patch.object(preflight, "load_sidecar_lock", loader, create=True):
+                self.assertTrue(callable(mod.sidecar_road("/synthetic/box")), "B16.missing: a ready lock")
+            self.assertEqual(seen, [("/synthetic/box/image.lock", rt.CLAUDE_CODE)], "B16.missing: the lock read")
+
+    def test_walk_driver_for_hands_the_walk_s_project_to_the_sidecar(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b16_project_problems(wb(), Path(t)), [])
+
+
+@problems_by_assertion("B16.project")
+def b16_project_problems(mod, tmp: Path) -> list:
+    out = []
+    drive = MODS["drive"]
+    got, calls = {}, []
+    builders = {"rules_scanner": lambda paths: [], "runtime": "rt", "config_parent": str(tmp), "budgets": (600, 5, 1),
+                "take_spec": lambda r, c, t: "spec", "sidecar_for": lambda *a: calls.append(a) or "launch",
+                "proxy": None, "lock_path": None, "hosts": None, "cgroup_dir_for": lambda t: "", "pin_for": None,
+                "design_for": None, "uid_map": None, "clock": None, "sleep": None, "ownership": None,
+                "settings_guard": None, "machine_gate": None}
+    row = {"walk": "w-0001", "arm": "A", "agent": {"harness": rt.CLAUDE_CODE, "version": "2.1.296"}}
+    with mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
+            mock.patch.object(drive, "WalkRepo", lambda **kw: "repo"), \
+            mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+            mock.patch.object(mod, "build_walk_fixture", lambda r, t, p: ({"sha256": "0" * 64}, "/synthetic/src")), \
+            mock.patch.object(mod, "walk_identity", lambda *a, **k: {"walk": "w-0001"}), \
+            mock.patch.object(mod, "login_secrets", lambda login, harness: (lambda: [])):
+        mod.walk_driver_for(builders, row, "/synthetic/login", tmp / "tree")
+        launched = got["driver"]["sidecar_for"](row, "/synthetic/ev")
+    project = MODS["drive"].neutral_name(walk_sid("w-0001"))
+    if launched != "launch" or calls != [(row, "/synthetic/ev", str(tmp / "tree"), project)]:
+        out.append(f"B16.project: the sidecar got {calls}, not the walk's row, evidence, tree and project {project}")
     return out
 
 
