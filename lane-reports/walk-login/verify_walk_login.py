@@ -11,7 +11,8 @@ by its Unicode name only (a Mac's Option key types them: U+2248 ALMOST EQUAL TO 
 of it, or a hash of it. Exits 0 when every check passes, else 1. The rules are box/run_take.read_login's and
 check_login_place's: a regular file (never a link) with one link, mode 600, owned by you, in a folder of its own that
 is mode 700 and owned by you; exactly one newline-terminated line `<VARIABLE>=<value>` (ACCOUNTS), the value at
-least 20 characters, ASCII, with no whitespace and no quote.
+least 20 characters, ASCII, with no whitespace and no double quote. The single-quote refusal is this script's own,
+stricter than read_login, which refuses only `"`; so are the paste checks and the stray-character check.
 """
 import os
 import re

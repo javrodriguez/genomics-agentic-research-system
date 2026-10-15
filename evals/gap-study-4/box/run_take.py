@@ -942,7 +942,8 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     TAKE_ENV row and the credential; the client environment is the runtime's needs and the credential alone."""
     harness = _known_harness(harness)
     if harness == CODEX:
-        raise NotReady(CODEX_SUBSCRIPTION_NOT_READY)
+        return _codex_exec_argv(container_id, inner, user=user, workdir=workdir, run_tree=run_tree,
+                                login_file=login_file, caller_env=caller_env)
     src = os.environ if caller_env is None else caller_env
     login = LOGIN_VARIABLE[harness]
     # Refused names first, from the table alone (so a cross-arm refusal never waits on a PENDING value).
@@ -968,6 +969,126 @@ def exec_argv(container_id: str, inner, *, user: str, workdir: str, harness: str
     env = runtime_env(src)
     env[login] = value
     return argv, env
+
+
+# ------------------------------------------------------------------------------- the Codex turn (glitch-06, 14 Oct 2026)
+# Behind the closed lease gate. The arm's pinned models: prereg-draft.json "models"["O"] (test_run_take binds them).
+CODEX_MODELS = ("gpt-6.1-sol", "gpt-6-luna")
+# The turn shapes are only what the pinned 0.162.1 help shows and the study uses
+# (lane-reports/live-box-evidence-2026-10-13/codex-exec-help.json, sha256 a90c28e8..., and codex-resume-help.json,
+# sha256 f145e5b7..., both `docker run ... <the take-o image> codex exec [resume] --help`):
+#   `codex exec [OPTIONS] [PROMPT]` and `codex exec [OPTIONS] <COMMAND> [ARGS]` with COMMAND `resume`, whose own usage
+#   is `codex exec resume [OPTIONS] [SESSION_ID] [PROMPT]`; the options are exec's, given before `resume`.
+#   --json                                      "Print events to stdout as JSONL"
+#   -m, --model <MODEL>                         "Model the agent should use"
+#   --dangerously-bypass-approvals-and-sandbox  "Skip all confirmation prompts and execute commands without sandboxing.
+#                                               ... Intended solely for running in environments that are externally
+#                                               sandboxed" (the box is that sandbox; codex_adapter.MODE_FLAGS["bypass"])
+#   [PROMPT]  "If not provided as an argument (or if `-` is used), instructions are read from stdin": refused, so a
+#             prompt never starts with "-". [SESSION_ID] "Conversation/session id (UUID) or thread name".
+# Every other option the help lists (-c, --enable, --disable, --strict-config, -i, --oss, --local-provider, -p, -s,
+# --approve-for-me, --dangerously-bypass-hook-trust, -C, --worktree, --add-dir, --thread-source,
+# --cyber-access-program, --skip-git-repo-check, --ephemeral, --ignore-user-config, --ignore-rules, --output-schema,
+# --color, -o, --last, --all) and every other subcommand (fork, review, help) is refused.
+CODEX_CLIENT = "codex"
+CODEX_SUBCOMMAND = "exec"
+CODEX_RESUME = "resume"
+CODEX_JSON_FLAG = "--json"
+CODEX_MODEL_FLAGS = ("-m", "--model")
+CODEX_BYPASS_FLAG = "--dangerously-bypass-approvals-and-sandbox"
+_CODEX_SESSION = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,127}")
+
+
+def check_codex_turn(inner) -> str:
+    """The Codex turn's argv held to the shapes above; its model, or Refused naming the rule."""
+    inner = list(inner)
+    if not inner or inner[0] != CODEX_CLIENT:
+        raise Refused(f"a Codex turn runs `{CODEX_CLIENT}`, the pinned image's client, by name")
+    if len(inner) < 2 or inner[1] != CODEX_SUBCOMMAND:
+        raise Refused(f"a Codex turn is `{CODEX_CLIENT} {CODEX_SUBCOMMAND}`")
+    counts, model, i = {"json": 0, "model": 0, "bypass": 0}, None, 2
+    while i < len(inner) and inner[i].startswith("-"):
+        tok = inner[i]
+        if tok == CODEX_JSON_FLAG:
+            counts["json"] += 1
+            i += 1
+        elif tok == CODEX_BYPASS_FLAG:
+            counts["bypass"] += 1
+            i += 1
+        elif tok in CODEX_MODEL_FLAGS:
+            value = inner[i + 1] if i + 1 < len(inner) else None
+            if value is None or value.startswith("-"):
+                raise Refused(f"{tok} takes the model as its next argument")
+            counts["model"] += 1
+            model = value
+            i += 2
+        else:
+            raise Refused(f"unsupported Codex turn argument {tok!r}: a turn uses --json, -m/--model and "
+                          f"{CODEX_BYPASS_FLAG}, nothing else")
+    if counts["json"] != 1:
+        raise Refused(f"a Codex turn passes {CODEX_JSON_FLAG} exactly once")
+    if counts["model"] != 1:
+        raise Refused("a Codex turn names its model exactly once by -m, never the default")
+    if counts["bypass"] != 1:
+        raise Refused(f"a Codex turn passes {CODEX_BYPASS_FLAG} exactly once (the box is the sandbox)")
+    if model not in CODEX_MODELS:
+        raise Refused(f"model {model!r} is not one of the arm's pinned ids: {', '.join(CODEX_MODELS)}")
+    rest = inner[i:]
+    if rest[:1] == [CODEX_RESUME]:
+        if len(rest) != 3:
+            raise Refused("`resume` takes exactly a session id and a prompt")
+        if not _CODEX_SESSION.fullmatch(rest[1]):
+            raise Refused("the resumed session id is not a session id's form")
+        prompt = rest[2]
+    else:
+        if len(rest) != 1:
+            raise Refused("a Codex turn ends with exactly one prompt (or `resume <session id> <prompt>`)")
+        prompt = rest[0]
+    if not prompt or prompt.startswith("-"):
+        raise Refused("a Codex turn's prompt never starts with '-' (it would read as a flag, or `-` as stdin)")
+    return model
+
+
+def check_codex_lease_place(path: str, run_tree: str) -> None:
+    """A Codex turn's login file is the lease place_lease put in the per-take config folder: named LEASE_FILE, a
+    regular file (never a link) with one link, mode 600, owned by the reading user, in that user's own mode-700 folder
+    (never a link), outside the run tree and every repository. Checked in place; its bytes are never read here."""
+    if not isinstance(path, str) or not os.path.isabs(path):
+        raise LoginRefused("the lease file is named by an absolute path")
+    if os.path.basename(path) != LEASE_FILE:
+        raise LoginRefused(f"{path}: a Codex turn's login is the placed lease, {LEASE_FILE}")
+    check_login_place(path, run_tree)
+    st = os.lstat(path)
+    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+        raise LoginRefused(f"{path}: the lease must be a regular file, never a link")
+    if stat.S_IMODE(st.st_mode) != 0o600:
+        raise LoginRefused(f"{path}: the lease's mode must be 600")
+    if st.st_uid != os.getuid():
+        raise LoginRefused(f"{path}: the lease must be owned by the reading user")
+    if not outside_every_repository(path):
+        raise LoginRefused(f"{path}: the lease must sit outside every repository")
+
+
+def _codex_exec_argv(container_id: str, inner, *, user: str, workdir: str, run_tree: str, login_file: str,
+                     caller_env=None) -> tuple:
+    """exec_argv for a Codex row (glitch-06, 14 Oct 2026). The closed lease gate first (NotReady before anything is
+    checked or read); then the user, the ids, the turn's shape and model, the refused names over the row's values and
+    this process's and the caller's environments, and the placed lease. The turn runs under the no-login launcher over exactly the Codex row (CODEX_HOME the config mount,
+    which holds the placed auth.json); no credential rides in argv or in the client environment."""
+    codex_lease_gate()
+    src = os.environ if caller_env is None else caller_env
+    if user != AGENT_USER:
+        raise Refused(f"every exec into the take container runs as the agent, {AGENT_USER}")
+    _check_id(container_id, "container id")
+    inner = _check_argv(inner)
+    workdir = _abs_path(workdir, "workdir") if workdir != "/" else "/"
+    check_codex_turn(inner)
+    values = exec_values(CODEX, run_tree)
+    check_environment(CODEX, src, set(values))
+    check_codex_lease_place(login_file, run_tree)
+    argv = [RUNTIME_CLIENT, "exec", "--user", AGENT_USER, "--workdir", workdir, container_id,
+            *launcher_argv(NO_LOGIN, values, inner, harness=CODEX)]
+    return argv, runtime_env(src)
 
 
 def config_home_names() -> frozenset:
