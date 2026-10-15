@@ -288,6 +288,48 @@ def evidence_candidates(repo: str, head: str, tip: str) -> dict:
     return out
 
 
+def _tree_entries(repo: str, commit: str) -> list:
+    """Every entry of the commit's whole tree, subtrees included: `<mode> <type> <id>\\t<path>` bytes, from
+    `git ls-tree -r -t -z --full-tree` (NUL-framed)."""
+    raw = _git_out(repo, "ls-tree", "-r", "-t", "-z", "--full-tree", commit, binary=True)
+    entries = [e for e in raw.split(b"\0") if e]
+    # The sibling review of athena_suite (15 Oct 2026): ls-tree prints an entry's type from its MODE, so a blob-mode
+    # entry pointing at a TREE object (written with hash-object --literally) is printed as a blob and never opened.
+    # Every blob or tree record's real type is read back (cat-file --batch-check); a mismatch refuses.
+    declared = {}
+    for e in entries:
+        meta = e.split(b"\t", 1)[0].split()
+        if len(meta) == 3 and meta[1] in (b"blob", b"tree"):
+            declared.setdefault(meta[2].decode(), set()).add(meta[1].decode())
+    if declared:
+        p = subprocess.run(["git", "-C", repo, "cat-file", "--batch-check=%(objectname) %(objecttype)"],
+                           input=("\n".join(declared) + "\n").encode(), capture_output=True, timeout=600)
+        if p.returncode != 0:
+            raise LaunchRefused(f"git cat-file --batch-check failed (exit {p.returncode})")
+        real = dict(line.split()[:2] for line in p.stdout.decode().splitlines() if len(line.split()) >= 2)
+        for oid, kinds in declared.items():
+            if kinds != {real.get(oid)}:
+                raise LaunchRefused(f"tree entry {oid} is recorded as {sorted(kinds)} but the object is "
+                                    f"{real.get(oid)!r}")
+    return entries
+
+
+def _fsck_problems(repo: str) -> list:
+    """`git fsck --strict --no-dangling` over the scratch (the sibling review's first layer, as athena_suite): every
+    output line when it fails or prints anything at all (a warning too); [] when the repository is clean."""
+    p = subprocess.run(["git", "-C", repo, "fsck", "--strict", "--no-dangling", "--no-progress"],
+                       capture_output=True, timeout=1800)
+    lines = [x for x in (p.stdout + p.stderr).decode("utf-8", "replace").splitlines() if x.strip()]
+    if p.returncode != 0 or lines:                 # a clean repository prints nothing: any line refuses
+        return lines or [f"git fsck exited {p.returncode}"]
+    return []
+
+
+def _all_objects(repo: str) -> set:
+    """Every object id the repository can read, its alternates included."""
+    return set(_git_out(repo, "cat-file", "--batch-all-objects", "--batch-check=%(objectname)").split())
+
+
 def _canary() -> bytes:
     import secrets
     import string
@@ -360,6 +402,10 @@ def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks:
     Refuses on anything else; reports counts and ids only, never content."""
     import shutil
     import tempfile
+    fsck = _fsck_problems(repo)
+    if fsck:
+        raise LaunchRefused(f"git fsck --strict refuses the scratch repository ({len(fsck)} line(s)); nothing is "
+                            f"scanned or fetched")
     cands = evidence_candidates(repo, head, tip)
     for _path, oid, _digest in suite_mod.binary_blobs_hashed(repo, tip, [head]):
         if oid not in cands:
@@ -377,12 +423,20 @@ def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks:
             # encoding and the message), not only %B; MAJOR E, the paths the commit changes, which no patch scan reads.
             _write_private(os.path.join(src, f"commit-{commit}"), _git_out(repo, "cat-file", "commit", commit,
                                                                            binary=True))
-            # MAJOR G (closure of 78ee31e7): -m, or a merge commit lists no path at all; -z, split on NUL, one path
-            # per line in the scanned file (a path holding a newline still lands whole in the file).
-            changed = _git_out(repo, "diff-tree", "-m", "-z", "-r", "--root", "--name-only", "--no-commit-id", commit,
-                               binary=True)
+            # MAJOR H (closure of 76707728; athena_suite's fix for the same hole): the commit's paths unit is every
+            # tree entry (-t: empty subtrees included) the commit holds and none of its parents holds (all of them
+            # for a root commit), which covers a merge (MAJOR G) and every entry a diff omits. -z only frames the
+            # listing: it plays no security role (a path's bytes land whole in the scanned file either way).
+            parents = _git_out(repo, "rev-list", "--parents", "-n", "1", commit).split()[1:]
+            if len(parents) >= 3:
+                raise LaunchRefused(f"commit {commit} has {len(parents)} parents: a walk commit has at most two "
+                                    f"(an octopus is refused by construction)")
+            seen = set()
+            for parent in parents:
+                seen |= set(_tree_entries(repo, parent))
+            fresh = [e for e in _tree_entries(repo, commit) if e not in seen]
             _write_private(os.path.join(src, f"paths-{commit}"),
-                           b"".join(p + b"\n" for p in changed.split(b"\0") if p))
+                           b"".join(e.split(b"\t", 1)[1] + b"\n" for e in fresh))
         total = 0
         for oid in sorted(cands):
             if oid in in_head:
@@ -589,11 +643,22 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
     if [_sha256(local)] != digest:
         raise LaunchRefused("the back bundle's sha256 on the Mac is not athena's")
     scratch = os.path.join(work, "back-scan")
+    # MAJOR I (closure of 76707728): the bundle names exactly one ref, the walk's tip; the scratch takes no tags; and
+    # everything the scratch gains is exactly the objects reachable from the tip and not from the head (an extra
+    # blob or tag riding in the pack refuses), so the scan's scope is everything that can reach the records.
+    heads = _ok(runner.local(["git", "bundle", "list-heads", local]), "the back bundle's heads").split()
+    if heads != [tip, f"refs/heads/{ref}"]:
+        raise LaunchRefused("the back bundle's heads are not exactly the walk's tip at its ref")
     _ok(runner.local(["git", "clone", "-q", "--shared", "--no-checkout", records, scratch]), "the scan clone")
-    _ok(runner.local(["git", "-C", scratch, "fetch", "-q", local, f"{ref}:refs/walk/back"]), "the scan fetch")
+    _ok(runner.local(["git", "-C", scratch, "fetch", "-q", "--no-tags", local, f"{ref}:refs/walk/back"]),
+        "the scan fetch")
     got = _ok(runner.local(["git", "-C", scratch, "rev-parse", "refs/walk/back"]), "the fetched tip").strip()
     if got != tip:
         raise LaunchRefused("the back bundle's tip is not athena's")
+    expected = set(_git_out(scratch, "rev-list", "--objects", "--no-object-names", tip, "--not", head).split())
+    before = _all_objects(records)
+    if _all_objects(scratch) - before != expected - before:
+        raise LaunchRefused("the back bundle carries objects the walk's commits do not reach; nothing is fetched")
     # The review's MAJOR 1 (15 Oct 2026): athena_suite's own scan_unpublished over the scratch clone at the tip, every
     # commit past the shipped head and NO allowance (no rulings, no ruled blobs, no ruled messages; the only allowed
     # blobs are the watcher's gzip evidence blobs, each decoded and scanned clean first: glitch-6b's ruling (b)): its
@@ -609,8 +674,11 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
     if not isinstance(n, int) or n < 1:
         raise LaunchRefused("the return scan scanned no commit past the head; nothing is fetched")
     name = os.path.basename(child)
-    _ok(runner.local(["git", "-C", records, "fetch", "-q", local, f"{ref}:refs/heads/walk/{name}"]),
-        "the records fetch")
+    _ok(runner.local(["git", "-C", records, "fetch", "-q", "--no-tags", scratch, f"refs/walk/back:refs/heads/walk/{name}"]),
+        "the records fetch")                                     # from the scanned scratch only, never the bundle
+    if _all_objects(records) - before != expected - before:
+        raise LaunchRefused(f"the records clone gained objects beyond the walk's commits (branch walk/{name} is "
+                            f"left for a human)")
     return {"state": st, "fetched": tip, "branch": f"walk/{name}", "bundle_sha256": digest[0]}
 
 

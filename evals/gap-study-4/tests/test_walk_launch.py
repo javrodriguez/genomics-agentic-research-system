@@ -26,6 +26,7 @@ back-scan-plain, and one per unexercised guard (MINOR 5).
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -356,7 +357,7 @@ def l2(mod) -> list:
 
 
 def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, suite_kw=None, suite=None, gitleaks=None,
-              make_commit=None, runner_kw=None, after_runner=None):
+              make_commit=None, runner_kw=None, after_runner=None, make_bundle=None):
     """A Mac records clone at `head`, an athena clone with one walk commit (or make_commit(athena)), the real
     `<head>..main` bundle; fetch through the fake athena with a fake athena_suite (or the real one, `suite`)."""
     if gitleaks is None:
@@ -374,7 +375,10 @@ def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, suite_kw=No
     tip = git("-C", athena, "rev-parse", "HEAD").strip()
     back = os.path.join(t, "athena-back.bundle")
     if commit_on_athena:
-        git("-C", athena, "bundle", "create", back, f"{head}..main")
+        if make_bundle is None:
+            git("-C", athena, "bundle", "create", back, f"{head}..main")
+        else:
+            make_bundle(athena, head, back)
     runner = FakeRunner(athena_tip=tip, walk_state=walk_state, back_bundle=back, **(runner_kw or {}))
     if after_runner is not None:
         after_runner(runner, tip)
@@ -426,12 +430,28 @@ def l3(mod) -> list:
                      and "fetch" in c[1])
         if i_scan is None or not i_scan < i_rec:
             out.append("L3-fetch: the records clone is fetched before the scan")
+        rec_fetch = runner.calls[i_rec][1]
+        if "--no-tags" not in rec_fetch or rec_fetch[-1] != "refs/walk/back:refs/heads/walk/w-AbCd1234" \
+                or any(str(a).endswith(".bundle") for a in rec_fetch):
+            out.append("L3-fetch: the records clone is not filled from the scanned scratch's refs/walk/back alone")
     with tempfile.TemporaryDirectory() as t:
         _, got, repo, _, _ = fetch_rig(mod, t, suite_kw={"nonpublic_finding": True})
         if not isinstance(got, mod.LaunchRefused):
             out.append("L3-fetch: a finding in the walk's commits is fetched (no allowance comes back)")
         elif walk_branches(repo):
             out.append("L3-fetch: a refused fetch left a walk branch")
+    # MAJOR I: an extra blob riding in the pack, an annotated tag riding with the ref: refused, records untouched
+    for why, maker in (("an extra unreachable blob", bundle_with_extra_blob(b"PLANTED synthetic extra\n")),
+                       ("an annotated tag ref", bundle_with_tag)):
+        with tempfile.TemporaryDirectory() as t:
+            runner, got, repo, _, _ = fetch_rig(mod, t, make_bundle=maker)
+            if not isinstance(got, mod.LaunchRefused):
+                out.append(f"L3-fetch: a back bundle with {why} is fetched")
+            if walk_branches(repo) or git("-C", repo, "for-each-ref", "refs/tags/").strip():
+                out.append(f"L3-fetch: a back bundle with {why} left a ref in the records clone")
+            if any(c[0] == "local" and c[1][:3] == ["git", "-C", repo] and "fetch" in c[1] and
+                   any(str(a).endswith(".bundle") for a in c[1]) for c in runner.calls):
+                out.append("L3-fetch: the records clone is fetched from the bundle, not the scanned scratch")
     with tempfile.TemporaryDirectory() as t:
         _, got, _, _, _ = fetch_rig(mod, t, walk_state="running")
         if not isinstance(got, mod.LaunchRefused):
@@ -504,7 +524,8 @@ def l5(mod) -> list:
              lambda r, tip: setattr(r, "ancestor_rc", 1)),
             ("the back bundle sha", "the back bundle's sha256 on the Mac is not athena's", None,
              lambda r, tip: r.sha_override.update({f"{CHILD}/walk-back.bundle": "0" * 64})),
-            ("got != tip", "the back bundle's tip is not athena's", None,
+            ("the back bundle's heads (MAJOR I; it now also stands in front of got != tip)",
+             "the back bundle's heads are not exactly the walk's tip at its ref", None,
              lambda r, tip: setattr(r, "athena_tip", "f" * 40))):
         with tempfile.TemporaryDirectory() as t:
             _, got, repo, _, _ = fetch_rig(mod, t, runner_kw=runner_kw, after_runner=after)
@@ -650,6 +671,84 @@ for n in sorted(os.listdir(src)):
             found.append({"File": os.path.join(src, n), "RuleID": "github-pat", "StartLine": i})
 json.dump(found, open(report, "w"))
 """
+
+
+def empty_subtree_commit(repo, name):
+    """A commit whose tree adds one EMPTY subtree entry `name` (no file under it): diff-tree -r never lists it."""
+    empty = subprocess.run(["git", "-C", repo, "hash-object", "-t", "tree", "-w", "--stdin"], input=b"",
+                           capture_output=True, env=GIT_ENV, check=True).stdout.decode().strip()
+    listing = git("-C", repo, "ls-tree", "HEAD")
+    tree = subprocess.run(["git", "-C", repo, "mktree"], input=(listing + f"040000 tree {empty}\t{name}\n").encode(),
+                          capture_output=True, env=GIT_ENV, check=True).stdout.decode().strip()
+    c = git("-C", repo, "commit-tree", tree, "-p", "HEAD", "-m", "walk").strip()
+    git("-C", repo, "update-ref", "refs/heads/main", c)
+    git("-C", repo, "reset", "-q", "--hard", "main")
+
+
+def _hash_tree(repo, raw: bytes, literally=False) -> str:
+    argv = ["git", "-C", repo, "hash-object", "-t", "tree", "-w", "--stdin"] + (["--literally"] if literally else [])
+    return subprocess.run(argv, input=raw, capture_output=True, env=GIT_ENV, check=True).stdout.decode().strip()
+
+
+def _raw_root(repo) -> bytes:
+    return subprocess.run(["git", "-C", repo, "cat-file", "tree", "HEAD^{tree}"], capture_output=True, env=GIT_ENV,
+                          check=True).stdout
+
+
+def _commit_tree(repo, tree):
+    c = git("-C", repo, "commit-tree", tree, "-p", "HEAD", "-m", "walk").strip()
+    git("-C", repo, "update-ref", "refs/heads/main", c)
+
+
+def disguised_tree_commit(repo, inner_name):
+    """A commit whose root carries `100644 innocent <TREE id>`: a blob-mode entry pointing at a tree object (written
+    with hash-object --literally) whose inner tree holds an empty folder named `inner_name`."""
+    empty = _hash_tree(repo, b"")
+    inner = _hash_tree(repo, f"40000 {inner_name}".encode() + b"\0" + bytes.fromhex(empty))
+    outer = _hash_tree(repo, _raw_root(repo) + b"100644 innocent\0" + bytes.fromhex(inner), literally=True)
+    _commit_tree(repo, outer)
+
+
+def zero_padded_mode_commit(repo):
+    """A commit whose root adds `040000 zdir <empty tree>`: a zero-padded file mode, which every reader accepts and
+    only fsck --strict reports."""
+    empty = _hash_tree(repo, b"")
+    outer = _hash_tree(repo, _raw_root(repo) + b"040000 zdir\0" + bytes.fromhex(empty), literally=True)
+    _commit_tree(repo, outer)
+
+
+def octopus_commit(repo):
+    """A clean three-parent merge: two side commits and HEAD, the tree HEAD's."""
+    sides = []
+    for n in (1, 2):
+        Path(repo, f"side{n}.txt").write_text(f"{n}\n")
+        git("-C", repo, "add", f"side{n}.txt")
+        tree = git("-C", repo, "write-tree").strip()
+        sides.append(git("-C", repo, "commit-tree", tree, "-p", "HEAD", "-m", f"side {n}").strip())
+        git("-C", repo, "reset", "-q", "--hard", "HEAD")
+    c = git("-C", repo, "commit-tree", git("-C", repo, "rev-parse", "HEAD^{tree}").strip(), "-p", "HEAD",
+            "-p", sides[0], "-p", sides[1], "-m", "octopus").strip()
+    git("-C", repo, "update-ref", "refs/heads/main", c)
+    git("-C", repo, "reset", "-q", "--hard", "main")
+
+
+def bundle_with_extra_blob(content: bytes):
+    """A make_bundle for fetch_rig: the walk's objects plus one blob no commit reaches, packed by pack-objects."""
+    def make(athena, head, back):
+        tip = git("-C", athena, "rev-parse", "main").strip()
+        extra = subprocess.run(["git", "-C", athena, "hash-object", "-w", "--stdin"], input=content,
+                               capture_output=True, env=GIT_ENV, check=True).stdout.decode().strip()
+        objs = git("-C", athena, "rev-list", "--objects", "--no-object-names", tip, "--not", head).split() + [extra]
+        pack = subprocess.run(["git", "-C", athena, "pack-objects", "--stdout"], input="\n".join(objs).encode(),
+                              capture_output=True, env=GIT_ENV, check=True).stdout
+        Path(back).write_bytes(f"# v2 git bundle\n-{head} head\n{tip} refs/heads/main\n\n".encode() + pack)
+    return make
+
+
+def bundle_with_tag(athena, head, back):
+    """A make_bundle for fetch_rig: the walk's range plus an annotated tag, refs/tags/evil, on the tip."""
+    git("-C", athena, "tag", "-a", "evil", "-m", "PLANTED synthetic tag", "main")
+    git("-C", athena, "bundle", "create", back, f"{head}..main", "evil")
 
 
 def merge_commit(repo, added_path):
@@ -861,6 +960,50 @@ def l8(mod) -> list:
             out.append("L8-blobs: a planted path added by a merge commit passes the walk's commit scan")
         except mod.LaunchRefused:
             pass
+        # MAJOR H: an empty subtree named with a planted marker; a clean octopus (refused by construction)
+        for why, make in (("an empty planted subtree", lambda r: empty_subtree_commit(r, "PLANTED-synthetic")),
+                          ("a clean octopus", octopus_commit)):
+            d = os.path.join(t, why.replace(" ", "-"))
+            os.mkdir(d)
+            repo, _, head = make_repo(d)
+            make(repo)
+            tip = git("-C", repo, "rev-parse", "HEAD").strip()
+            try:
+                mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                out.append(f"L8-blobs: {why} passes the walk's commit scan")
+            except mod.LaunchRefused as e:
+                if why == "a clean octopus" and "parents" not in str(e):
+                    out.append(f"L8-blobs: the octopus refused for another reason: {e}")
+        # The sibling review: a blob-mode entry pointing at a tree (both layers; then each layer alone), and a
+        # zero-padded mode only fsck --strict sees
+        for why, make, iso in (("a disguised tree", lambda r: disguised_tree_commit(r, "PLANTED-synthetic"), None),
+                               ("a disguised tree, fsck aside", lambda r: disguised_tree_commit(r, "PLANTED-synthetic"),
+                                ("_fsck_problems", lambda r: [])),
+                               ("a zero-padded mode", zero_padded_mode_commit, None)):
+            d = os.path.join(t, why.replace(" ", "-").replace(",", ""))
+            os.mkdir(d)
+            repo, _, head = make_repo(d)
+            make(repo)
+            tip = git("-C", repo, "rev-parse", "main").strip()
+            ctx = mock.patch.object(mod, iso[0], iso[1], create=True) if iso else contextlib.nullcontext()
+            with ctx:
+                try:
+                    mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                    out.append(f"L8-blobs: {why} passes the walk's commit scan")
+                except mod.LaunchRefused:
+                    pass
+        # The type layer on its own: the tree listing itself refuses a blob-mode entry naming a tree (the later
+        # cat-file of the candidates would also fail, so only this direct reading isolates the layer)
+        d = os.path.join(t, "disguised-listing")
+        os.mkdir(d)
+        repo, _, _ = make_repo(d)
+        disguised_tree_commit(repo, "PLANTED-synthetic")
+        try:
+            mod._tree_entries(repo, git("-C", repo, "rev-parse", "main").strip())
+            out.append("L8-blobs: a blob-mode entry naming a tree is listed without refusal")
+        except (mod.LaunchRefused, AttributeError) as e:
+            if isinstance(e, AttributeError):
+                out.append("L8-blobs: no tree-entry listing to check")
         # MAJOR E and F: a planted path, a planted author
         for why, kind in (("a planted path", "path"), ("a planted author", "author")):
             d = os.path.join(t, why.replace(" ", "-"))
@@ -949,7 +1092,10 @@ WITNESSES = {
     "back-ancestry-unchecked": ((("    if runner.remote(f\"git -C {child}/repo merge-base --is-ancestor {head} {tip}\")[0] != 0:",
                                   "    if False:"),), "L5-guards"),
     "back-sha-unchecked": ((("    if [_sha256(local)] != digest:", "    if False:"),), "L5-guards"),
-    "back-tip-unchecked": ((("    if got != tip:", "    if False:"),), "L5-guards"),
+    # Named equivalent, no witness: fetch's `got != tip`. The back bundle's single head must already be athena's tip
+    # (list-heads, MAJOR I), and a fetch of that bundle's one ref lands exactly that head.
+    "back-heads-unchecked": ((("    if heads != [tip, f\"refs/heads/{ref}\"]:\n        raise LaunchRefused(\"the back bundle's heads",
+                               "    if False:\n        raise LaunchRefused(\"the back bundle's heads"),), "L5-guards"),
     "back-scan-empty-admitted": ((("    if not isinstance(n, int) or n < 1:", "    if not isinstance(n, int):"),),
                                  "L5-guards"),
     "reserve-presence-unchecked": ((("test -f {child}/athena-reserve || exit 1; ", ""),), "L2-run"),
@@ -989,11 +1135,19 @@ WITNESSES = {
                               "            None and _write_private(os.path.join(src, f\"commit-{commit}\"), "),), "L8-blobs"),
     "paths-unscanned": ((("            _write_private(os.path.join(src, f\"paths-{commit}\"),",
                           "            None and _write_private(os.path.join(src, f\"paths-{commit}\"),"),), "L8-blobs"),
-    "merge-paths-dropped": ((("_git_out(repo, \"diff-tree\", \"-m\", \"-z\",", "_git_out(repo, \"diff-tree\", \"-z\","),), "L8-blobs"),
+    "empty-subtrees-dropped": ((("    raw = _git_out(repo, \"ls-tree\", \"-r\", \"-t\", \"-z\", \"--full-tree\", commit, binary=True)",
+                                 "    raw = _git_out(repo, \"ls-tree\", \"-r\", \"-z\", \"--full-tree\", commit, binary=True)"),),
+                               "L8-blobs"),
+    "octopus-admitted": ((("            if len(parents) >= 3:", "            if False:"),), "L8-blobs"),
+    "extra-objects-admitted": ((("    if _all_objects(scratch) - before != expected - before:", "    if False:"),), "L3-fetch"),
+    "records-from-the-bundle": ((("\"--no-tags\", scratch, f\"refs/walk/back:refs/heads/walk/{name}\"",
+                                  "\"--no-tags\", local, f\"{ref}:refs/heads/walk/{name}\""),), "L3-fetch"),
     "tag-ref-admitted": ((("    if _ok(runner.local([\"git\", \"-C\", repo, \"cat-file\", \"-t\", ref]), \"cat-file -t\").strip() != \"commit\":",
                            "    if False:"),), "L5-guards"),
     "athena-tag-ref-admitted": ((("    if _ok(runner.remote(f\"git -C {child}/repo cat-file -t {shlex.quote(ref)}\"), \"the athena ref's type\").strip() \\\n            != \"commit\":",
                                   "    if False:"),), "L5-guards"),
+    "fsck-dropped": ((("    fsck = _fsck_problems(repo)\n    if fsck:", "    fsck = _fsck_problems(repo)\n    if False:"),), "L8-blobs"),
+    "entry-types-unchecked": ((("            if kinds != {real.get(oid)}:", "            if False:"),), "L8-blobs"),
     # Named equivalent, no witness: the 1f 8b magic check in gzip_header is the only gate before parsing; dropping it
     # leaves the method byte and zlib's raw inflate to refuse a non-gzip, so only the refusal's words change.
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
@@ -1242,6 +1396,18 @@ class TestRealReturnScan(unittest.TestCase):
     def test_token_named_file_added_by_a_merge_refuses(self):
         tok = _fake_token()
         got, branches = self.case(lambda a: merge_commit(a, f"evals/gap-study-4/rehearsals/w001/{tok}.txt"))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_token_named_empty_subtree_refuses(self):
+        tok = _fake_token()
+        got, branches = self.case(lambda a: empty_subtree_commit(a, tok))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_token_folder_inside_a_disguised_tree_refuses(self):
+        tok = _fake_token()
+        got, branches = self.case(lambda a: disguised_tree_commit(a, tok))
         self.assertIsInstance(got, wl.LaunchRefused)
         self.assertEqual(branches, "")
 
