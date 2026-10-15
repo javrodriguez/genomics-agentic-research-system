@@ -8,8 +8,12 @@ Every fact is marked as read (with its source) or as **OPEN**.
 ## 0. What must be true before anything starts
 
 - **The head.** The final pre-walk merge must carry box `fb0c5d98`: the walk's GAP4_CONFIG_PARENT and commit identity.
-  Without it, the walk refuses (see section 2). Final head to ship: **`<FINAL_HEAD>` (OPEN, filled once the integration lane's re-merge and its battery are known)**.
-- **The battery.** The integration lane's battery on that exact head is PASS.
+  Without it, the walk refuses (see section 2).
+  **The ship head is `ce818d85f4bd988deb87ff7dfa7abd32a46a9f40`** (glitch-6b, 06:20): box `fb0c5d98` + harness `664a24e7` + bootstrap `253fb094`, on the integration clone's `gap4/live-merge-20261014`.
+  - It carries `fb0c5d98` (`merge-base --is-ancestor`).
+  - Its `walk_launch.py` and `machine_gate.py` are byte-equal to `fb0c5d98`'s.
+  - Its three image locks equal `1cde8066`'s, the stub takes' (`git diff --quiet`, read 06:20).
+- **The battery.** The integration lane's solo battery on that exact head, `gap4-merge-prewalk-ce818d8`, PASSED 274/274 (log sha256 `9626ac17…3e24`, as glitch-6b relayed).
 
 ## 1. The walk spec
 
@@ -69,12 +73,17 @@ All of it is set by `walk_launch.run_command` (box `fb0c5d98`); nothing is expor
 
 Use plain Terminal or this session, with full paths throughout. `PY=/usr/local/bin/python3.13`. `WL` is the walk_launch.py of the records clone.
 
-**Prepare the records clone, once:** a shared clone of the integration clone, at the final head, on its own branch. The walk's commits come back onto this branch, and the clone is also fetch's records target.
+**Prepare the records clone at `ce818d85`, once, before the ship.** It is a shared clone of the integration clone, on its own branch at the ship head. The walk's commits come back onto this branch, and the clone is also fetch's records target. It must not exist beforehand: a new folder, never reused.
 
 ```
+test ! -e /Users/javrodher/aegis-builds/gap4-walk-records-20261015
 git clone -q --shared /Users/javrodher/aegis-builds/gap4-live-merge-20261014 /Users/javrodher/aegis-builds/gap4-walk-records-20261015
-git -C /Users/javrodher/aegis-builds/gap4-walk-records-20261015 checkout -q -b walk/first-20261015 <FINAL_HEAD>
 git -C /Users/javrodher/aegis-builds/gap4-walk-records-20261015 config maintenance.auto false
+git -C /Users/javrodher/aegis-builds/gap4-walk-records-20261015 checkout -q -b walk/first-20261015 ce818d85f4bd988deb87ff7dfa7abd32a46a9f40
+git -C /Users/javrodher/aegis-builds/gap4-walk-records-20261015 rev-parse HEAD     # must print ce818d85f4bd988deb87ff7dfa7abd32a46a9f40
+git -C /Users/javrodher/aegis-builds/gap4-walk-records-20261015 status --short       # must print nothing
+WL=/Users/javrodher/aegis-builds/gap4-walk-records-20261015/evals/gap-study-4/box/walk_launch.py
+PY=/usr/local/bin/python3.13
 ```
 
 1. **Ship** (Mac pre-check, outward scan, child, sha256 read-back, athena clone). This prints `{"child": "/home/javier/w-XXXXXXXX", "head": ..., "bundle_sha256": ..., "scanned_commits": ...}`.
@@ -94,7 +103,7 @@ git -C /Users/javrodher/aegis-builds/gap4-walk-records-20261015 config maintenan
    walk_runner's codes are: 0 committed; 1 refused at launch or held; 2 refused before anything was built.
 4. **Fetch,** only after `exit=`. It takes the new commits only, scanned by athena_suite's `scan_unpublished` with no allowance, then lands them as branch `walk/<child name>` in the records clone.
    ```
-   $PY -B $WL fetch --child <child> --head <FINAL_HEAD> --ref walk/first-20261015 \
+   $PY -B $WL fetch --child <child> --head ce818d85f4bd988deb87ff7dfa7abd32a46a9f40 --ref walk/first-20261015 \
      --records /Users/javrodher/aegis-builds/gap4-walk-records-20261015 \
      --gitleaks /Users/javrodher/.local/bin/gitleaks --work /Users/javrodher/aegis-builds/gap4-walk-work-20261015 \
      --suite /Users/javrodher/glitch/workspaces/aegis/ops/athena_suite.py
@@ -112,7 +121,7 @@ git -C /Users/javrodher/aegis-builds/gap4-walk-records-20261015 config maintenan
 ## 4. Pre-walk checklist (in order, at the time of the walk)
 
 1. **athena idle.**
-   - `$PY -B <records clone>/evals/gap-study-4/machine_gate.py mac-precheck /Users/javrodher/glitch/workspaces/aegis/ops/athena_suite.py` prints `gate: OPEN`.
+   - `$PY -B /Users/javrodher/aegis-builds/gap4-walk-records-20261015/evals/gap-study-4/machine_gate.py mac-precheck /Users/javrodher/glitch/workspaces/aegis/ops/athena_suite.py` prints `gate: OPEN`.
    - Then: `ssh -a -x -o BatchMode=yes athena -- 'echo suite=$(ps -u athena-suite -o pid= | wc -l) runners=$(ps -eo args | grep -c "[a]thena_suite_remote.py work") reserved=$(test -e /srv/aegis-handoff/machine/reserved.json && echo yes || echo no) containers=$(docker ps -aq | wc -l)'`. It must print `suite=0 runners=0 reserved=no containers=0`.
 2. **The Claude1 sign-in file.** `ssh -a -x -o BatchMode=yes athena -- python3 -I /home/javier/gap4-tools/walk-login/verify_walk_login.py claude1 | grep '^RESULT'` must print `RESULT: OK`. Read only that line, never the token.
    - **Read at 05:30: `RESULT: OK`.** The script's sha256 on athena is `2e0e624c…`, equal to the committed file. The token file is javier 600, 133 bytes, in a 700 folder (stat only).
@@ -126,7 +135,7 @@ git -C /Users/javrodher/aegis-builds/gap4-walk-records-20261015 config maintenan
    - `sha256:13d0597e…` (sidecar);
    - `sha256:5055a840…` (egress).
 
-   All three were read at 05:23 with `docker image inspect`. The take's own preflight (`image-matches-lock`) re-checks at launch. Also check `git -C <records clone> diff --quiet 1cde8066 <FINAL_HEAD> -- evals/gap-study-4/box/image.lock evals/gap-study-4/box/sidecar/image.lock evals/gap-study-4/box/egress/image.lock` (the locks the stub takes ran).
+   All three were read at 05:23 with `docker image inspect`. The take's own preflight (`image-matches-lock`) re-checks at launch. Also check `git -C /Users/javrodher/aegis-builds/gap4-walk-records-20261015 diff --quiet 1cde8066 ce818d85 -- evals/gap-study-4/box/image.lock evals/gap-study-4/box/sidecar/image.lock evals/gap-study-4/box/egress/image.lock` (the locks the stub takes ran).
 5. **The ship's own checks** (done by `ship`): the outward scan is clean, the bundle and athena-reserve sha256 read back (athena-reserve `efeecb3a…`), and athena's clone is at the head.
 
 ## 5. Stop rules: stop and ask glitch-6b
@@ -153,7 +162,7 @@ git -C /Users/javrodher/aegis-builds/gap4-walk-records-20261015 config maintenan
 
 ## 6. What could not be settled here
 
-1. **`<FINAL_HEAD>`:** the re-merge carrying `fb0c5d98` and its battery verdict.
+1. **Settled 06:20:** the ship head is `ce818d85`, battery PASS 274/274.
 2. **The record set** a committed walk carries. `watched.json` does not exist on `26dd61be`; the watch is `evidence-ledger-copy.json`. Confirm on the first walk's commit.
 3. **`run`, `status` and `fetch` against the real athena** have run only on fakes and the dry ship. The first walk is their first real use.
 4. **The athena child folders:** the walk's child holds the athena repository and its log. It is kept until glitch-6b rules after reading the records.
