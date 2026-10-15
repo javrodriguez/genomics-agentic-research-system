@@ -165,3 +165,20 @@ S4's draft text went to glitch-6b, since build_draft is not this lane's file. On
 Correction (15 Oct 04:55, review NIT 1): with GAP4_CONFIG_PARENT unset, production also lacks lease_path (the Codex lease) and agent_version for codex and gemini (per-harness Missing inside the PerHarness); neither matters for a Claude walk.
 - 184f05b3's review MINOR 2 is folded in the next commit: WATCH_FALLBACK_TASKS binds the fallback in code.
 Owed: a battery that includes 184f05b3.
+
+## RESUME HERE (15 Oct 14:38 EDT; supersedes the blocks above): w006 ruling A and B, items D, E and F
+
+Writer: the harness lane, for glitch-6b (Lane-orchestrator). Nothing pushed. No athena access was used.
+Commits since 664a24e7, each red-first and through the gitleaks staged gate (0 findings):
+- d7ec1db0 merge of the bootstrap head 253fb094 (check_take CHECKER_CONSTANTS and test_checker_constants were not on 664a24e7).
+- 1b51f5ce A: the scheduled-wakeup kind (transcript_view.is_scheduled_wakeup and ScheduledWakeups, shared by check_take.user_text_records; meta_kinds in CHECKER_CONSTANTS; the departure in build_draft; BOOTSTRAP_SPANS updated). Constants digest 8fd8c39b2baf... to d836285fdfda4bad8f7baaca8aac94e79ddfacc6e9f63f32ac9468cf3b81c842.
+- d9c54f50 B: walk_regrade recheck-<n>.json from committed records (append-only, tamper refuses, machine named); pending_walk.checker_standing reads a verified recheck.
+- 2adfebad merge of the ship head ce818d85 (box modules for D); no conflict hunk.
+- 4545622e D: drive.py calls box operator_read and operator_list with the O-3 signature; FakeOwnership updated; tests/test_drive_box_seams.py adopted from the box lane.
+- 8a79b261 E: run.transcript_lines; both production grading callers hand the graders lines; tests/test_walk_grade_seam.py over all nine tasks.
+- b7aca72a F: the review notes (arm on a non-error result once per id; --check re-derives only the latest recheck; no checker events in a recheck).
+
+## Exact next step
+1. glitch-6b merges this head into the ship head and runs the athena battery (test_build_draft, a heavy module, did not get a Mac slot here: thermal holds).
+2. After review, glitch-6b runs `walk_regrade.py --recheck <walk> --home H --temp-root T --checkout C` on the fetched real walks, naming athena's own home, temp root and checkout.
+3. Open for a ruling: awareness_furniture reads harness_types one line at a time, so a take carrying a wakeup line would be refused by that check (the line alone has no earlier call).
