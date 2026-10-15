@@ -1018,6 +1018,20 @@ class B8Present(Drafted):
                 got = self.must("B8.present", wb().production_builders)
         self.assertIs(got.get("rules_scanner"), scanner, "B8.present")   # an absent key fails by assertion
 
+    def test_a_pending_rules_scanner_is_missing(self):
+        """R2 (glitch-6b, 14 Oct 2026): the fail-closed branch, driven through the pending() seam on every tree. While
+        scan_record.pending() names rules_scanner, the production scanner is Missing with that reason and the real one
+        is never built (the merged tree's pending() no longer names it, so only this test reaches the branch there)."""
+        from box import scan_record
+        why = "synthetic: the rules scanner record is PENDING for this test"
+        with pinned_class(), mock.patch.object(scan_record, "pending", lambda: {"rules_scanner": why}):
+            from box import rules_scanner
+            with mock.patch.object(rules_scanner, "real_rules_scanner", create=True,
+                                   side_effect=AssertionError("B8.pending: the real scanner was built while PENDING")):
+                got = self.must("B8.pending", wb().production_builders)
+        self.assertIsInstance(got.get("rules_scanner"), wb().Missing, "B8.pending: a PENDING scanner is not Missing")
+        self.assertIn(why, got["rules_scanner"].why, "B8.pending: the Missing scanner does not carry pending()'s reason")
+
 
 # ------------------------------------------------------------------------------------------------- B9
 def sidecar_for(row, ev, tree):
@@ -2087,6 +2101,46 @@ def b13_environment_problems(mod) -> list:
     return out
 
 
+# R1 (glitch-6b, 14 Oct 2026): B13 swaps walk_builders.lease_secrets for fake_lease_secrets at the boundary, so on a
+# tree that carries the box's real one (b9f876b5, over scan_record.read_lease_tokens) no test drove it and the merged
+# battery's sweep left 12 of its mutants alive. This contract is the one the integration lane proved with the real box
+# symbols: auth.json's access and refresh tokens read at take start and kept, a refreshed value added at each later
+# read, a missing lease file refused at take start. It runs both ways on every tree: over the real function where the
+# tree carries it, and over B13's fake always, so the stand-in B13 uses is held to the same contract.
+def _lease_reader_on_tree() -> bool:
+    from box import scan_record
+    return callable(getattr(scan_record, "read_lease_tokens", None))
+
+
+LEASE_READER_ON_TREE = _lease_reader_on_tree()
+REFRESHED_TWO = "synthetic-lease-four-" + "d" * 12
+REFRESHED_THREE = "synthetic-lease-five-" + "e" * 12
+
+
+@problems_by_assertion("B13.lease_secrets")
+def lease_secrets_contract_problems(fn, tmp: Path, refusal) -> list:
+    """fn is a lease_secrets: fn(auth_path) reads now (a missing file raises `refusal`) and returns secrets(), which
+    re-reads auth.json and gives every value read so far, each once, in the order first read."""
+    out = []
+    try:
+        fn(str(tmp / "no-lease" / "auth.json"))
+        out.append("B13.lease_secrets: a missing lease file was admitted at take start")
+    except refusal:
+        pass
+    src = lease_file(tmp)
+    secrets = fn(str(src))
+    lease_file(tmp, REFRESHED, REFRESHED_TWO)         # both rewritten before the first scan: take start's values stay
+    want = [("token", v) for v in (ACCESS, REFRESH, REFRESHED, REFRESHED_TWO)]
+    if not callable(secrets) or secrets() != want:
+        return out + [f"B13.lease_secrets: the first scan's secrets are not {want}"]
+    if secrets() != want:
+        out.append("B13.lease_secrets: a second scan of the same file changed the secrets")
+    lease_file(tmp, REFRESHED, REFRESHED_THREE)       # the host's refresh between turns: one value added
+    if secrets() != want + [("token", REFRESHED_THREE)]:
+        out.append("B13.lease_secrets: a refreshed value was not added after every value read before")
+    return out
+
+
 class B13Lease(Drafted):
     def test_a_codex_row_has_no_login_file(self):
         self.assertEqual(b13_login_problems(wb()), [])
@@ -2104,6 +2158,20 @@ class B13Lease(Drafted):
 
     def test_the_environment_record_sets_no_codex_login(self):
         self.assertEqual(b13_environment_problems(wb()), [])
+
+    def test_lease_secrets_meets_the_lease_contract_both_ways(self):
+        """R1: the real lease_secrets where the tree carries it (synthetic lease files, mode 600, read by the real
+        scan_record.read_lease_tokens), and B13's fake on every tree."""
+        mod = wb()
+        from box import scan_record
+        self.assertEqual(callable(getattr(mod, "lease_secrets", None)), LEASE_READER_ON_TREE,
+                         "B13.lease_secrets: walk_builders.lease_secrets and scan_record.read_lease_tokens disagree")
+        if LEASE_READER_ON_TREE:
+            with tempfile.TemporaryDirectory() as t:
+                self.assertEqual(lease_secrets_contract_problems(mod.lease_secrets, Path(t), scan_record.LoginError),
+                                 [])
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(lease_secrets_contract_problems(fake_lease_secrets([]), Path(t), OSError), [])
 
 
 # ------------------------------------------------------------------------------------------------- B14

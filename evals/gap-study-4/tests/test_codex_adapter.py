@@ -449,6 +449,15 @@ def a3_usage(mod, p):
 EXEC_COMMANDS = ("resume", "fork", "review", "help")
 
 
+def help_binding_problems(adapter_commands, run_take_mod) -> list:
+    """The adapter's subcommand list against run_take.CODEX_HELP_COMMANDS where that module carries one (else nothing
+    to bind): any difference, in names or order, is a problem."""
+    theirs = getattr(run_take_mod, "CODEX_HELP_COMMANDS", None)
+    if theirs is None or tuple(theirs) == tuple(adapter_commands):
+        return []
+    return [f"A4-help: the adapter's {tuple(adapter_commands)} is not run_take's {tuple(theirs)}"]
+
+
 def a4_word(mod, word) -> list:
     p, out = "A4-argv", []
     got = refusal(lambda: mod.argv(word, model=MODEL, mode=MODE, session_id=TID, first=True), mod.StreamError)
@@ -1265,10 +1274,16 @@ class TestTheAdapter(unittest.TestCase):
         self.assertEqual(a4_word(ca, "help"), [])
 
     def test_a4_the_commands_are_the_pinned_helps(self):
-        """The adapter's list is the pinned help's, and run_take's wherever the box has landed it: they cannot drift."""
+        """The adapter's list is the pinned help's, and run_take's wherever the box has landed it: they cannot drift.
+        Both ways on every tree (review of 83b83ea1, NIT 1): the binding reads run_take's list whenever one is there, so
+        a run_take holding another list is caught here even on a tree without the box's (box 14670435)."""
         self.assertEqual(getattr(ca, "CODEX_EXEC_COMMANDS", None), EXEC_COMMANDS)
-        if hasattr(rt, "CODEX_HELP_COMMANDS"):
-            self.assertEqual(ca.CODEX_EXEC_COMMANDS, tuple(rt.CODEX_HELP_COMMANDS))
+        self.assertEqual(help_binding_problems(ca.CODEX_EXEC_COMMANDS, rt), [])
+        with mock.patch.object(rt, "CODEX_HELP_COMMANDS", ("resume", "fork", "review"), create=True):
+            self.assertTrue(help_binding_problems(ca.CODEX_EXEC_COMMANDS, rt),
+                            "A4-help: a run_take list that drifted from the adapter's was not caught")
+        if hasattr(rt, "CODEX_HELP_COMMANDS"):         # the box's own list, compared directly where it is on the tree
+            self.assertEqual(tuple(rt.CODEX_HELP_COMMANDS), ca.CODEX_EXEC_COMMANDS)
 
     def test_a5_the_served_model_is_only_a_reroutes(self):
         self.assertEqual(a5_model(ca), [])

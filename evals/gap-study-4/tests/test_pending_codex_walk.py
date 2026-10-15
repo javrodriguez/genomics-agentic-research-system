@@ -190,10 +190,15 @@ def lease_postflight(real):
 
 class LeasePostflightStandIn(unittest.TestCase):
     def test_only_the_lease_file_is_taken_out(self):
+        """The stand-in over the postflight it stands in for, on every tree: the box's lease-less postflight. Where the
+        tree carries the box's lease postflight (preflight.LEASE_CREDENTIAL), its lease branch is switched off for this
+        test, so the stand-in is checked against the credential rule it edits (the merged battery on 151b0e91 ran it
+        over the lease branch, which reads auth.json itself)."""
         import tempfile
         from box import preflight
         post = lease_postflight(preflight.postflight)
-        with tempfile.TemporaryDirectory() as cfg:
+        with mock.patch.object(preflight, "LEASE_CREDENTIAL", {}, create=True), \
+                tempfile.TemporaryDirectory() as cfg:
             (Path(cfg) / "auth.json").write_text("{}")
             self.assertTrue(post(cfg, rt.CODEX)["ok"], "the lease file alone is not admitted")
             (Path(cfg) / "token.txt").write_text("x")
