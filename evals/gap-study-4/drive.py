@@ -3194,6 +3194,12 @@ def script_from_design(design, project: str, source: str) -> list:
     return out
 
 
+def login_file_of(login_file, take) -> str:
+    """The take's login file: login_file(take) when it is per take (the Codex lease road: the take's placed
+    cfg/auth.json, review MINOR 1 of 1f032586..27ade10a), else the one path given."""
+    return login_file(take) if callable(login_file) else login_file
+
+
 def claude_code_adapter_for(*, runtime, login_file: str, counters_for, pin_for, clock, caller_env=None):
     """TakeDriver's adapter_for in production: (row, take) -> claude_code_adapter.ClaudeCodeAdapter on the take's
     container and run tree, with the take's imposed session id, the row's model, its routing pin, the driver's stream
@@ -3201,7 +3207,7 @@ def claude_code_adapter_for(*, runtime, login_file: str, counters_for, pin_for, 
     measures it)."""
     def make(row, take):
         return _cc.ClaudeCodeAdapter(runtime=runtime, take_id=take.launched.take_id,
-                                     run_tree=take.launched.spec.run_tree, login_file=login_file,
+                                     run_tree=take.launched.spec.run_tree, login_file=login_file_of(login_file, take),
                                      session_id=take.identity["session_id"], model=row["model"], pin=pin_for(row),
                                      stream_path_for=lambda n, take=take: stream_path(take, n),
                                      counters_for=lambda take=take: counters_for(take), clock=clock,
@@ -3228,7 +3234,7 @@ def harness_adapter_for(*, runtime, login_file: str, counters_for, pin_for, cloc
         if harness not in ("codex", "gemini"):
             raise AdapterIdentityRefused(f"no production adapter for harness {harness!r}")
         common = dict(runtime=runtime, take_id=take.launched.take_id,
-                      run_tree=take.launched.spec.run_tree, login_file=login_file,
+                      run_tree=take.launched.spec.run_tree, login_file=login_file_of(login_file, take),
                       model=row["model"], pin=pin_for(row),
                       stream_path_for=lambda n: stream_path(take, n),
                       counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env)

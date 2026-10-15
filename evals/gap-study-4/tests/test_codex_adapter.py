@@ -442,6 +442,27 @@ def a3_usage(mod, p):
     return out
 
 
+# The pinned `codex exec --help` Commands list (box evidence codex-exec-help.json, sha256 a90c28e8...; the box's
+# run_take.CODEX_HELP_COMMANDS, box 14670435): a first turn's line that is exactly one of them would run as that
+# subcommand (`codex exec [OPTIONS] <COMMAND> [ARGS]`). A later turn's line follows `resume <thread id>` and stays a
+# prompt.
+EXEC_COMMANDS = ("resume", "fork", "review", "help")
+
+
+def a4_word(mod, word) -> list:
+    p, out = "A4-argv", []
+    got = refusal(lambda: mod.argv(word, model=MODEL, mode=MODE, session_id=TID, first=True), mod.StreamError)
+    if got:
+        out.append(f"{p}: a first turn's line {word!r}, a codex exec subcommand name, was {got}")
+    try:
+        later = mod.argv(word, model=MODEL, mode=MODE, session_id=TID, first=False)
+        if later[-3:] != ["resume", TID, word]:
+            out.append(f"{p}: a later turn's line {word!r} is not the prompt after resume: {later[-3:]}")
+    except Exception as e:  # noqa: BLE001
+        out.append(f"{p}: a later turn's line {word!r} was refused ({type(e).__name__})")
+    return out
+
+
 @guarded("A4-argv", CA_API)
 def a4_argv(mod, p):
     out = []
@@ -456,6 +477,8 @@ def a4_argv(mod, p):
             out.append(f"{p}: the {name} turn's argv opens {a[:5]}")
     if refusal(lambda: mod.argv("-x", model=MODEL, mode=MODE, session_id=TID, first=True), mod.StreamError):
         out.append(f"{p}: a line starting with '-' was not refused")
+    for word in EXEC_COMMANDS:          # the box Codex-exec review's MAJOR, on this side: a subcommand-name prompt
+        out += a4_word(mod, word)
     for bad in ("PENDING", "default", "", None, ["bypass"]):
         got = refusal(lambda: adapter(mod, FakeRuntime([]), mode=bad), rt.NotReady)
         if got:
@@ -1229,6 +1252,24 @@ class TestTheAdapter(unittest.TestCase):
     def test_a4_the_turn_argv(self):
         self.assertEqual(a4_argv(ca), [])
 
+    def test_a4_a_first_line_resume_is_refused(self):
+        self.assertEqual(a4_word(ca, "resume"), [])
+
+    def test_a4_a_first_line_fork_is_refused(self):
+        self.assertEqual(a4_word(ca, "fork"), [])
+
+    def test_a4_a_first_line_review_is_refused(self):
+        self.assertEqual(a4_word(ca, "review"), [])
+
+    def test_a4_a_first_line_help_is_refused(self):
+        self.assertEqual(a4_word(ca, "help"), [])
+
+    def test_a4_the_commands_are_the_pinned_helps(self):
+        """The adapter's list is the pinned help's, and run_take's wherever the box has landed it: they cannot drift."""
+        self.assertEqual(getattr(ca, "CODEX_EXEC_COMMANDS", None), EXEC_COMMANDS)
+        if hasattr(rt, "CODEX_HELP_COMMANDS"):
+            self.assertEqual(ca.CODEX_EXEC_COMMANDS, tuple(rt.CODEX_HELP_COMMANDS))
+
     def test_a5_the_served_model_is_only_a_reroutes(self):
         self.assertEqual(a5_model(ca), [])
 
@@ -1347,6 +1388,8 @@ WITNESSES = {
                            "vals = {k: rec[\"usage\"].get(k, 0) for k in tc.USAGE_KEYS}"),), a3_usage, "A3-usage"),
     "resume-first": ("ca", (("    if not first:\n        if not isinstance(session_id",
                              "    if True:\n        if not isinstance(session_id"),), a4_argv, "A4-argv"),
+    "subcommand-word-admitted": ("ca", (("    if first and line in CODEX_EXEC_COMMANDS:", "    if False:"),),
+                                 a4_argv, "A4-argv"),
     "model-first-only": ("ca", (("    out = [CLIENT, SUBCOMMAND, JSON_FLAG, MODEL_FLAG, model, *MODE_FLAGS[mode]]",
                                  "    out = [CLIENT, SUBCOMMAND, JSON_FLAG, *MODE_FLAGS[mode]] + "
                                  "([MODEL_FLAG, model] if first else [])"),), a4_argv, "A4-argv"),
@@ -1413,6 +1456,9 @@ class TestWitnesses(unittest.TestCase):
     def test_witness_model_first_only(self):
         self.kill("model-first-only")
 
+    def test_witness_subcommand_word_admitted(self):
+        self.kill("subcommand-word-admitted")
+
     def test_witness_model_defaulted(self):
         self.kill("model-defaulted")
 
@@ -1432,7 +1478,7 @@ class TestWitnesses(unittest.TestCase):
         self.kill("shapes-recorded")
 
     def test_the_witnesses_are_named_and_each_anchor_occurs_once(self):
-        self.assertEqual(len(WITNESSES), 15)            # Codex slice 2 added reroute-unread and requested-model-as-served
+        self.assertEqual(len(WITNESSES), 16)            # + subcommand-word-admitted (the box Codex-exec review's MAJOR)
         for name, (target, edits, _, _) in WITNESSES.items():
             path = Path(TARGETS[target]().__file__)
             self.assertTrue(path.is_file(), f"{name}: {path.name} does not exist")

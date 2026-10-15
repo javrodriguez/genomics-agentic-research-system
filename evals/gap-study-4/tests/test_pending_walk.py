@@ -141,7 +141,11 @@ class Road:
         cm = tbi.scratch_repo()
         self.root = cm.__enter__()
         test.addCleanup(cm.__exit__, None, None, None)
-        for name, value in (("VENDOR_BILLING_ROUTE_VARIABLES", {rt.CODEX: (), rt.GEMINI: ()}),
+        # A vendor's billing-route list is stubbed empty only while it is still PENDING on this tree; where the box
+        # has filled it (Gemini: bea73659 / 3a0d7f5a; Codex: 9d4bfd40) the real list is checked (the Gemini walk wiring).
+        routes = dict(rt.VENDOR_BILLING_ROUTE_VARIABLES)
+        routes.update({h: () for h in (rt.CODEX, rt.GEMINI) if routes.get(h) == rt.PENDING})
+        for name, value in (("VENDOR_BILLING_ROUTE_VARIABLES", routes),
                             ("run_turn", journaling(run_turn or rt.run_turn))):
             patch = mock.patch.object(rt, name, value)
             patch.start()
@@ -172,6 +176,7 @@ class Road:
         login = tbi.SCRATCH / f"login-{self.root.name}"
         login.write_text(f"{LOGIN}={LOGIN_VALUE}\n")
         os.chmod(login, 0o600)
+        self.login = login
         r = self.rig
         self.driver = drive.WalkDriver(
             records_root=self.study, records="walks", runtime=r.box,
@@ -661,6 +666,59 @@ class Regrade(unittest.TestCase):
             self.assertIn("does not re-derive", road.refused())               # regrade refuses the registration
             self.assertEqual(pending_walk.uncounted_walks(road.study / "rehearsals", [WALK]), {WALK: "pending"},
                              "a regrade that does not re-derive supersedes nothing")
+
+
+class KeyedGeminiBox(GeminiBox):
+    """GeminiBox whose agent also writes the planted key's value into its own reply (the stream); the session carries
+    it through the box's summary."""
+
+    def run(self, argv, env=None, timeout=None):
+        got = super().run(argv, env=env, timeout=timeout)
+        a = list(argv)
+        if a[:2] == ["docker", "exec"] and "gemini" in a and a[-1] != "--version":
+            return rt.Completed(got.returncode, got.stdout.replace('"Done."', json.dumps(f"Done. {LOGIN_VALUE}")),
+                                got.stderr)
+        return got
+
+
+class GeminiKeyMask(unittest.TestCase):
+    """The Gemini walk wiring (glitch-06, 14 Oct 2026), item 2: the exact-value mask bound to the walk's key file. The
+    walk's driver and its WalkRepo scan with walk_builders.login_secrets over the Gemini login file (GEMINI_API_KEY,
+    the planted low-entropy LOGIN_VALUE), as walk_builders.walk_driver_for hands them. A pending Gemini walk has no
+    transcript (no reviewed native reader), so the agent's text lives in its streams and its session snapshots."""
+
+    def keyed_road(self, **kw):
+        import walk_builders
+        road = Road(self, box=KeyedGeminiBox(summary=f"a session naming {LOGIN_VALUE}"), **kw)
+        road.driver.secrets = road.repo.secrets = walk_builders.login_secrets(str(road.login), rt.GEMINI)
+        return road
+
+    def committed(self, road) -> dict:
+        names = git(road.root, "ls-tree", "-r", "--name-only", "HEAD", "--", "study/rehearsals/" + WALK).split()
+        return {n: tbi.git_bytes(road.root, "show", f"HEAD:{n}") for n in names}
+
+    def test_the_key_in_a_stream_or_a_session_is_masked_before_the_commit(self):
+        road = self.keyed_road()
+        got = road.walk()
+        self.assertEqual(got[0]["state"], "pending-native-reader", got)
+        self.assertNotIn(LOGIN_VALUE, json.dumps(got, default=str), "the key reached the result")
+        files = self.committed(road)
+        self.assertTrue(files, "nothing was committed")
+        leaked = sorted(n for n, b in files.items() if LOGIN_VALUE.encode() in b)
+        self.assertEqual(leaked, [], "the key reached the committed walk")
+        masked = sorted(n.rsplit("/", 1)[-1] for n, b in files.items() if b"[masked: token]" in b)
+        self.assertTrue(any(n.startswith("turn-") and n.endswith(".jsonl") for n in masked), masked)
+        self.assertTrue(any(n.startswith("native-turn-") for n in masked), masked)
+
+    def test_the_key_in_the_ledger_refuses_the_walk(self):
+        road = self.keyed_road()
+        road.driver.script_for = lambda row: [{"n": 1, "line": f"sent {LOGIN_VALUE}"}, {"n": 2, "line": "sent 2"}]
+        head = git(road.root, "rev-parse", "HEAD")
+        got = road.walk()
+        self.assertEqual(got[0]["state"], "held", got)
+        self.assertRegex(got[0]["why"], r"\(token\): a token value in a \w+ file, which cannot be masked", got)
+        self.assertNotIn(LOGIN_VALUE, json.dumps(got, default=str), "the key reached the result")
+        self.assertEqual(git(road.root, "rev-parse", "HEAD"), head, "a walk carrying the key was committed")
 
 
 if __name__ == "__main__":

@@ -38,11 +38,12 @@ DockerRuntime and every other value only the real box can tell (next-slices plan
 checker's PENDING constants, the turn budgets, the run tree's exclusions in run_location). Nothing here fills any of
 them: a value is either measured and recorded where it lives, or the command line refuses.
 
-Claude Code and, on the lease road, Codex: a Codex row has no login file (login_name gives run_take.NO_LOGIN); prepare
+Claude Code, Gemini (its r4-g key file, login_name GEMINI_API_KEY, the same login_secrets for the walk's driver and
+its WalkRepo) and, on the lease road, Codex: a Codex row has no login file (login_name gives run_take.NO_LOGIN); prepare
 refuses it while run_take.CODEX_SUBSCRIPTION_READY is closed or its lease source is missing, and its walk places the
 lease (run_take.place_lease) and reads it (lease_secrets) through CodexLeaseRoad, whose secrets() the walk's driver
-and its WalkRepo both get. A Gemini row is refused before anything is built. No model, no network and no spend here;
-the walk itself is walk_runner's.
+and its WalkRepo both get. Any other harness is refused before anything is built. No model, no network and no
+spend here; the walk itself is walk_runner's.
 """
 from __future__ import annotations
 
@@ -66,7 +67,7 @@ NAMES = ("runtime", "config_parent", "take_spec", "sidecar_for", "proxy", "lock_
          "machine_gate")
 # Values only a row of one harness needs (the Codex lease road, glitch-06, 14 Oct 2026): known to the command line, so a
 # set may hold them, but never a reason to refuse every walk; prepare refuses a Codex row while its value is missing.
-ROW_NAMES = ("lease_path",)
+ROW_NAMES = ("lease_path", "gemini_login_path")
 CELL = ("task", "half", "wording", "arm", "model")
 # TakeSpec.resources: the take container's capacity POLICY, never a measurement (box lane report live-box-2026-10-13.md,
 # "TakeSpec.resources: values only, for walk_builders' take_spec", rule R-RES from athena's capacity and three
@@ -189,19 +190,23 @@ def login_file_by_name(path, harness) -> str:
 # run_take.WALK_LOGIN_FILES (box lane 1eb02a9e: one file per account, prepared and verified on athena), never typed here.
 # The CP6 walks run on the Claude1 account's token. A tree without that record leaves login_path Missing, by name.
 WALK_ACCOUNT = "claude1"
+# The Gemini walks' key (glitch-06, 14 Oct 2026, the Gemini walk wiring): the box's r4-g record (box 1d32399b), one line
+# `GEMINI_API_KEY=<the study key>`, read only by name here and by value only at exec and scan time, like Claude's.
+GEMINI_WALK_ACCOUNT = "r4-g"
 
 
-def walk_login_path():
-    """The walk token's login file as the box records it (run_take.WALK_LOGIN_FILES[WALK_ACCOUNT]), or Missing while
-    this tree's run_take has no such record. Only the path: prepare's login_file_by_name checks the file by NAME."""
+def walk_login_path(account: str = WALK_ACCOUNT):
+    """A walk's login file as the box records it (run_take.WALK_LOGIN_FILES[account]), or Missing while this tree's
+    run_take has no such record. Only the path: prepare's login_file_by_name checks the file by NAME."""
     from box import run_take as rt
     files = getattr(rt, "WALK_LOGIN_FILES", None)
-    if not isinstance(files, dict) or WALK_ACCOUNT not in files:
-        return Missing(f"the walk token's login file: box/run_take.py records no WALK_LOGIN_FILES[{WALK_ACCOUNT!r}] on "
-                       f"this tree (the box lane's 1eb02a9e; the hands card's Part 3, next-slices plan item 7)")
-    path = files[WALK_ACCOUNT]
+    if not isinstance(files, dict) or account not in files:
+        return Missing(f"the walk token's login file: box/run_take.py records no WALK_LOGIN_FILES[{account!r}] on "
+                       f"this tree (the box lane's 1eb02a9e and 1d32399b; the hands card's Part 3, next-slices plan "
+                       f"item 7)")
+    path = files[account]
     if not isinstance(path, str) or not os.path.isabs(path):
-        raise BuilderRefused(f"run_take.WALK_LOGIN_FILES[{WALK_ACCOUNT!r}] is not an absolute path: {path!r}")
+        raise BuilderRefused(f"run_take.WALK_LOGIN_FILES[{account!r}] is not an absolute path: {path!r}")
     return path
 
 
@@ -267,6 +272,9 @@ class CodexLeaseRoad:
 
     def place(self, config_dir: str) -> str:
         from box import run_take as rt
+        gate = codex_gate_problem()                     # review NIT 4: the gate first, before place_lease
+        if gate:
+            raise BuilderRefused(f"the Codex lease is not placed: {gate}")
         place = getattr(rt, "place_lease", None)
         read = globals().get("lease_secrets")          # the box lane's take-start reader (b9f876b5), this module's
         if not callable(place) or not callable(read):
@@ -278,6 +286,13 @@ class CodexLeaseRoad:
         self._secrets = read(dst)                       # the take-start read: no lease file, no take
         self.placed = dst
         return dst
+
+    def login_file_for(self, take) -> str:
+        """The take's login file for the Codex exec (box 1e10e320's exec branch reads the placed cfg/auth.json): the
+        lease placed for this walk, refused before placement (review MINOR 1 of 1f032586..27ade10a)."""
+        if self.placed is None:
+            raise BuilderRefused("no lease placed: a Codex take's login file exists only after run_take.place_lease")
+        return self.placed
 
     def secrets(self) -> list:
         if self._secrets is None:
@@ -548,6 +563,7 @@ def production_builders() -> dict:
         "lock_path": Missing(f"the take lock (box/image.lock, pinned at the bring-up): {box}"),
         "hosts": Missing(f"preflight's hosts mapping: {box}"),
         "login_path": walk_login_path(),
+        "gemini_login_path": walk_login_path(GEMINI_WALK_ACCOUNT),
         "lease_path": Missing("the Codex lease source: Javier's Codex2 login, registered by the box lane; until then "
                               "run_take.CODEX_SUBSCRIPTION_READY stays closed (a Codex row only)"),
         "agent_version": Missing("the Claude Code version the walk runs: prereg-draft.json's version_pins are "
@@ -623,13 +639,18 @@ def prepare(builders: dict, args) -> tuple[dict, str, Path]:
         if gate:
             raise BuilderRefused(f"harness {harness!r}: {gate}")
         lease = builders.get("lease_path")
-        if isinstance(lease, Missing) or not isinstance(lease, str) or not os.path.isabs(lease):
+        if not isinstance(lease, str) or not os.path.isabs(lease):          # a Missing is not a str either
             why = lease.why if isinstance(lease, Missing) else f"not an absolute path: {lease!r}"
             raise BuilderRefused(f"harness {harness!r}: the Codex lease source is missing: {why}")
         login = NO_LOGIN
+    elif harness == rt.GEMINI:                  # the r4-g key (box 1d32399b), checked by name like Claude's token
+        path = builders.get("gemini_login_path")
+        if isinstance(path, Missing):
+            raise BuilderRefused(f"harness {harness!r}: the Gemini walk key's login file is missing: {path.why}")
+        login = login_file_by_name(path, harness)
     elif harness != rt.CLAUDE_CODE:
-        raise BuilderRefused(f"harness {harness!r}: the walk driver admits Claude Code and, on the lease road, "
-                             f"Codex; arm G waits for its adapter's admission")
+        raise BuilderRefused(f"harness {harness!r}: the walk driver admits Claude Code, Gemini and, on the lease "
+                             f"road, Codex")
     else:
         login = login_file_by_name(builders["login_path"], harness)
     repo, commit = builders["run_tree_origin"]
@@ -650,7 +671,7 @@ def walk_driver_for(builders: dict, row: dict, login: str, tree: Path, *, real: 
     from box import run_take as rt
     if row["agent"]["harness"] == rt.CODEX:         # the lease road: placed after make_config_dir, before launch
         lease = CodexLeaseRoad(builders["lease_path"])
-        secrets = lease.secrets
+        secrets, login = lease.secrets, lease.login_file_for       # the take's placed cfg/auth.json, never "-"
 
         def spec_for(r, cfg):
             lease.place(cfg)

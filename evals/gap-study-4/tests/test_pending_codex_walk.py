@@ -165,6 +165,47 @@ class TokenNamedBox(CodexBox):
         return super().run(argv, env=env, timeout=timeout)
 
 
+def lease_postflight(real):
+    """The box's lease postflight (2fd8215a) on a tree that lacks it: the real postflight with exactly the top-level
+    auth.json hit taken out (review NIT 3 of 1f032586..27ade10a); every other problem, and every other
+    credential-like hit, is kept."""
+    import ast
+    head = "credential-like files present: "
+
+    def postflight(config_dir, harness):
+        post = real(config_dir, harness)
+        kept = []
+        for problem in ([] if post["ok"] else post["checks"][0]["detail"].split("; ")):
+            if problem.startswith(head):
+                hits = [h for h in ast.literal_eval(problem[len(head):]) if h != "auth.json"]
+                if hits:
+                    kept.append(head + repr(hits))
+            else:
+                kept.append(problem)
+        ok = not kept
+        detail = "; ".join(kept) or "no credential file"
+        return dict(post, ok=ok, checks=[dict(post["checks"][0], ok=ok, detail=detail)])
+    return postflight
+
+
+class LeasePostflightStandIn(unittest.TestCase):
+    def test_only_the_lease_file_is_taken_out(self):
+        import tempfile
+        from box import preflight
+        post = lease_postflight(preflight.postflight)
+        with tempfile.TemporaryDirectory() as cfg:
+            (Path(cfg) / "auth.json").write_text("{}")
+            self.assertTrue(post(cfg, rt.CODEX)["ok"], "the lease file alone is not admitted")
+            (Path(cfg) / "token.txt").write_text("x")
+            got = post(cfg, rt.CODEX)
+            self.assertFalse(got["ok"], "another credential-like file was admitted with the lease")
+            self.assertIn("token.txt", got["checks"][0]["detail"])
+            self.assertNotIn("'auth.json'", got["checks"][0]["detail"])
+        got = post(str(Path(tempfile.gettempdir()) / "no-such-config-folder-for-this-test"), rt.CODEX)
+        self.assertFalse(got["ok"], "a postflight problem other than a credential hit was dropped")
+        self.assertIn("not a folder", got["checks"][0]["detail"])
+
+
 class CodexLeaseCommitScan(unittest.TestCase):
     def test_a_token_named_file_in_the_lease_home_refuses_the_commit(self):
         """NIT 5 (the box review of b9f876b5): a Codex walk on the lease road (walk_builders.CodexLeaseRoad: the lease
@@ -184,14 +225,7 @@ class CodexLeaseCommitScan(unittest.TestCase):
             if not hasattr(preflight, "LEASE_CREDENTIAL"):
                 real = preflight.postflight
 
-                def postflight(config_dir, harness):
-                    post = real(config_dir, harness)
-                    hits = [p for p in post["recorded"]["listing"] if p != "auth.json"
-                            and (Path(p).name == "auth.json" or preflight.CREDENTIAL_LIKE.search(Path(p).name))]
-                    ok = not hits
-                    detail = "no credential file" if ok else f"credential-like files present: {hits}"
-                    return dict(post, ok=ok, checks=[dict(post["checks"][0], ok=ok, detail=detail)])
-                stack.enter_context(mock.patch.object(preflight, "postflight", postflight))
+                stack.enter_context(mock.patch.object(preflight, "postflight", lease_postflight(real)))
             head = tpw.git(road.root, "rev-parse", "HEAD")
             got = road.walk()
         self.assertIsNotNone(road.lease.placed, "the lease was never placed")

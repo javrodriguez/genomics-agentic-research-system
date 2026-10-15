@@ -78,6 +78,11 @@ SUBCOMMAND = "exec"
 JSON_FLAG = "--json"
 MODEL_FLAG = "-m"
 RESUME = "resume"
+# The pinned `codex exec --help` Commands list (box evidence codex-exec-help.json, sha256 a90c28e8...): the usage is
+# `codex exec [OPTIONS] <COMMAND> [ARGS]`, so a first turn's prompt that is exactly one of these runs as that subcommand
+# (the box Codex-exec review's MAJOR, the same hole here). The box's run_take.CODEX_HELP_COMMANDS (box 14670435) holds
+# the same names; a test binds the two wherever both are on the tree.
+CODEX_EXEC_COMMANDS = ("resume", "fork", "review", "help")
 VERSION_ARGV = (CLIENT, "--version")
 VERSION_FORM = re.compile(r"codex-cli ([0-9]+\.[0-9]+\.[0-9]+)")
 # The routing pin's permission mode for arm O -> the exec's approvals and sandbox flags (D8:110-112).
@@ -272,6 +277,8 @@ def argv(line: str, *, model: str, mode: str, session_id, first: bool) -> list:
             raise StreamError(f"the turn's {what} must be a non-empty string")
     if line.startswith("-"):
         raise StreamError("a line that starts with '-' would be read as a flag")
+    if first and line in CODEX_EXEC_COMMANDS:
+        raise StreamError("a one-word line that is a `codex exec` subcommand name would run as that subcommand")
     if mode not in MODE_FLAGS:
         raise StreamError(f"no flags pre-registered for mode {mode!r}")
     out = [CLIENT, SUBCOMMAND, JSON_FLAG, MODEL_FLAG, model, *MODE_FLAGS[mode]]

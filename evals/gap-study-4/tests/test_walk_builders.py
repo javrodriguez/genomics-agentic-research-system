@@ -165,6 +165,13 @@ def mutants() -> dict:
                                       "os.path.normpath(source) != source:", "    if False:"),
         "identity-any-walk": ("B1.identity", "walk_builders", "        if walk not in prepared:",
                               "        if False:"),
+        "lease-login-before-place": ("B13.secrets", "walk_builders",
+                                     "        if self.placed is None:\n            raise BuilderRefused(\"no lease placed: a "
+                                     "Codex take's login file", "        if False:\n            raise BuilderRefused(\"no "
+                                     "lease placed: a Codex take's login file"),
+        "lease-gate-unchecked": ("B13.secrets", "walk_builders",
+                                 "        if gate:\n            raise BuilderRefused(f\"the Codex lease is not placed",
+                                 "        if False:\n            raise BuilderRefused(f\"the Codex lease is not placed"),
         "scanner-real-unchecked": ("B12.scanner", "walk_builders",
                                    "        if type(scanner) is not pinned:", "        if False:"),     # 0f1aa5ea's line
         "scanner-raw-to-driver": ("B12.scanner", "walk_builders",
@@ -296,6 +303,8 @@ METHOD = {
     "scanner-raw-to-driver": "B12Scanner.test_a_pinned_scanner_is_built_once_for_a_walk",
     "report-dir-shared": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
     "scanner-class-by-name": "B12Scanner.test_the_scanner_is_built_per_walk_and_bound_on_a_real_walk",
+    "lease-login-before-place": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
+    "lease-gate-unchecked": "B13Lease.test_the_driver_and_walkrepo_get_the_lease_secrets",
 }
 WITNESSES = {name: (METHOD[name], m[0]) for name, m in mutants().items()}
 
@@ -858,6 +867,10 @@ class B7Production(Case):
         self.assertEqual(sorted(got), sorted(wb().NAMES + wb().ROW_NAMES), "B7.production: the set is not NAMES")
         self.assertIsInstance(got["lease_path"], wb().Missing, "B7.production: a Codex lease source is filled")
         self.assertIn("CODEX_SUBSCRIPTION_READY", got["lease_path"].why, "B7.production: lease_path does not say why")
+        if WALK_GEMINI_ON_TREE:
+            self.assertEqual(got["gemini_login_path"], rt.WALK_LOGIN_FILES["r4-g"], "B7.production: not the r4-g record")
+        else:
+            self.assertIsInstance(got["gemini_login_path"], wb().Missing, "B7.production: a Gemini key path is filled")
 
     def test_main_refuses_by_name_before_anything(self):
         for argv in ([], ARGV, ["--no-such-flag"]):
@@ -1308,7 +1321,7 @@ class TestSysPath(unittest.TestCase):
 
 # Under --gen-mutant the classes run cheapest first, so failfast meets a kill as early as it can.
 GENERATED_ORDER = ("B1Identity", "B6Row", "B2Login", "B3Counters", "B11Derived", "B10Resources", "B7Production",
-                   "B8Present", "B13Lease", "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli",
+                   "B8Present", "B13Lease", "B14Gemini", "B5Fixture", "B4RunTree", "G1Generated", "B12Scanner", "B9Cli",
                    "TestSysPath")
 
 
@@ -1932,17 +1945,6 @@ def b13_prepare_problems(mod, tmp: Path) -> list:
                     out.append(f"B13.prepare: an admitted Codex row gave {login!r}, {row['agent']}, {len(built)}")
             except Exception as e:  # noqa: BLE001
                 out.append(f"B13.prepare: an admitted Codex row raised {type(e).__name__}: {e}")
-    gem = types.SimpleNamespace(walk="w-0001", **dict(codex_cell(), arm="G"))
-    import prereg
-    if any(r["arm"] == "G" for r in prereg.load()["rows"]):
-        g = next(r for r in prereg.load()["rows"] if r["arm"] == "G" and r["task"] == gem.task)
-        gem.model, gem.half, gem.wording = g["model"], g["half"], g["wording"]
-        try:
-            mod.prepare(dict(base, lease_path=src), gem)
-            out.append("B13.prepare: a Gemini row was admitted")
-        except mod.BuilderRefused as e:
-            if "arm G" not in str(e):
-                out.append(f"B13.prepare: a Gemini row refused for another reason: {e}")
     return out
 
 
@@ -1979,14 +1981,18 @@ def b13_secrets_problems(mod, tmp: Path) -> list:
         road = getattr(s_driver, "__self__", None)
         if s_driver is not s_repo or not isinstance(road, mod.CodexLeaseRoad):
             out.append(f"B13.secrets: the driver got {s_driver!r} and WalkRepo {s_repo!r}, not one lease road's")
-        if got["driver"]["login_file"] != "-":
-            out.append(f"B13.secrets: the driver's login_file is {got['driver']['login_file']!r}")
-        try:
-            s_driver()
-            out.append("B13.secrets: the secrets read before any lease was placed")
-        except mod.BuilderRefused:
-            pass
+        login_for = got["driver"]["login_file"]       # review MINOR 1: the take's placed lease, never "-"
+        if not callable(login_for) or getattr(login_for, "__self__", None) is not road:
+            out.append(f"B13.secrets: the driver's login_file is {login_for!r}, not the lease road's per-take path")
+        for what, fn in (("the secrets", s_driver), ("the login file", lambda: login_for(None))):
+            try:
+                fn()
+                out.append(f"B13.secrets: {what} read before any lease was placed")
+            except mod.BuilderRefused:
+                pass
         spec = got["driver"]["spec_for"](row, str(cfg))
+        if callable(login_for) and login_for(None) != str(cfg / "auth.json"):
+            out.append(f"B13.secrets: the driver's login file after placement is {login_for(None)!r}")
         if spec != "spec" or specs != [("O", str(cfg), str(tmp / "tree"))]:
             out.append(f"B13.secrets: spec_for gave {spec!r} over {specs}")
         if placed != [(src, str(cfg), str(cfg / "auth.json"))] or reads != [str(cfg / "auth.json")]:
@@ -1998,6 +2004,14 @@ def b13_secrets_problems(mod, tmp: Path) -> list:
             out.append("B13.secrets: a second lease was placed for one walk")
         except mod.BuilderRefused:
             pass
+        with mock.patch.object(rt, "CODEX_SUBSCRIPTION_READY", False):     # review NIT 4: the gate first
+            again = mod.CodexLeaseRoad(src)
+            try:
+                again.place(str(tmp))
+                out.append("B13.secrets: a closed gate placed a lease")
+            except mod.BuilderRefused as e:
+                if "gate is closed" not in str(e) or len(placed) != 1 or again.placed is not None:
+                    out.append(f"B13.secrets: a closed gate reached place_lease or refused for another reason: {e}")
         os.chmod(cfg / "auth.json", 0o600)          # the refresh rule: the host rewrites auth.json between turns
         (cfg / "auth.json").write_text(json.dumps({"tokens": {"access_token": REFRESHED, "refresh_token": REFRESH}}))
         if road.refreshed() != [("token", ACCESS), ("token", REFRESH), ("token", REFRESHED)]:
@@ -2016,6 +2030,34 @@ def b13_secrets_problems(mod, tmp: Path) -> list:
         got["driver"]["spec_for"](claude, str(tmp / "cfg2"))
         if got["driver"]["secrets"] is not marker or got["repo"]["secrets"] is not marker or placed:
             out.append("B13.secrets: a Claude walk's secrets are not its login file's, or it placed a lease")
+    return out
+
+
+@problems_by_assertion("B13.adapter")
+def b13_adapter_problems(mod) -> list:
+    """drive.harness_adapter_for resolves a callable login_file per take (review MINOR 1: the box's Codex exec reads
+    the take's placed cfg/auth.json), and still passes a plain path as given."""
+    out = []
+    drive = MODS["drive"]
+    take = types.SimpleNamespace(launched=types.SimpleNamespace(take_id="c" * 64, spec=types.SimpleNamespace(
+        run_tree="/synthetic/tree")), config_dir="/synthetic/cfg",
+        identity={"session_id": "00000000-0000-4000-8000-000000000001"})
+    seen = []
+    for harness, mode, login in ((rt.CODEX, "bypass", lambda t: seen.append(t) or t.config_dir + "/auth.json"),
+                                 (rt.CLAUDE_CODE, "bypassPermissions", "/synthetic/login")):
+        make = drive.harness_adapter_for(runtime=None, login_file=login, counters_for=lambda t: {},
+                                         pin_for=lambda r, m=mode: {"permission_mode": m, "version": "1.2.3"},
+                                         clock=lambda: 0, config_view=lambda t: (None, None))
+        try:
+            a = make({"agent": {"harness": harness}, "model": "synthetic-model"}, take)
+        except Exception as e:  # noqa: BLE001
+            out.append(f"B13.adapter: {harness} adapter not built: {type(e).__name__}: {e}")
+            continue
+        want = "/synthetic/cfg/auth.json" if callable(login) else login
+        if a.login_file != want:
+            out.append(f"B13.adapter: the {harness} adapter's login file is {a.login_file!r}, not {want!r}")
+    if seen != [take]:
+        out.append(f"B13.adapter: the login file was not resolved once for the take: {seen}")
     return out
 
 
@@ -2057,8 +2099,149 @@ class B13Lease(Drafted):
         with tempfile.TemporaryDirectory() as t:
             self.assertEqual(b13_secrets_problems(wb(), Path(t)), [])
 
+    def test_the_adapter_gets_the_takes_own_login_file(self):
+        self.assertEqual(b13_adapter_problems(wb()), [])
+
     def test_the_environment_record_sets_no_codex_login(self):
         self.assertEqual(b13_environment_problems(wb()), [])
+
+
+# ------------------------------------------------------------------------------------------------- B14
+# The Gemini walk wiring (glitch-06, 14 Oct 2026): a Gemini row is admitted by the r4-g key file the box records
+# (run_take.WALK_LOGIN_FILES["r4-g"], box 1d32399b), Missing by name where the record is absent, checked by NAME like
+# Claude's token (login_name GEMINI_API_KEY), and its login_secrets, the exact-value mask's values, go to the walk's
+# driver and its WalkRepo alike. Synthetic, low-entropy key values only.
+GEMINI_KEY = "synthetic-gemini-key-" + "a" * 12
+WALK_GEMINI_ON_TREE = isinstance(getattr(rt, "WALK_LOGIN_FILES", None), dict) and "r4-g" in rt.WALK_LOGIN_FILES
+
+
+def gemini_cell() -> dict:
+    import prereg
+    row = next(r for r in prereg.load()["rows"] if r["arm"] == "G")
+    return {k: row[k] for k in ("task", "half", "wording", "arm", "model")}
+
+
+@problems_by_assertion("B14.login")
+def b14_login_problems(mod) -> list:
+    out = []
+    if mod.login_name(rt.GEMINI) != "GEMINI_API_KEY" or rt.LOGIN_VARIABLE[rt.GEMINI] != "GEMINI_API_KEY":
+        out.append(f"B14.login: a Gemini row's login name is {mod.login_name(rt.GEMINI)!r}")
+    if getattr(mod, "GEMINI_WALK_ACCOUNT", None) != "r4-g":
+        out.append(f"B14.login: the Gemini walk account is {getattr(mod, 'GEMINI_WALK_ACCOUNT', None)!r}")
+    path = "/synthetic/r4-g/gemini-walk-login"
+    with walk_login_files({"claude1": SYNTHETIC_LOGIN, "r4-g": path}):
+        if mod.walk_login_path("r4-g") != path or mod.production_builders()["gemini_login_path"] != path:
+            out.append("B14.login: the Gemini login path is not the r4-g record")
+        if mod.walk_login_path() != SYNTHETIC_LOGIN:
+            out.append("B14.login: Claude's login path moved off claude1")
+    with walk_login_files({"claude1": SYNTHETIC_LOGIN}):
+        got = mod.production_builders()["gemini_login_path"]
+        if not isinstance(got, mod.Missing) or "WALK_LOGIN_FILES['r4-g']" not in got.why:
+            out.append(f"B14.login: no r4-g record gives {got!r}")
+    with walk_login_files({"r4-g": "relative/gemini-walk-login"}):
+        try:
+            mod.walk_login_path("r4-g")
+            out.append("B14.login: a relative r4-g record was taken")
+        except mod.BuilderRefused as e:
+            if "WALK_LOGIN_FILES['r4-g']" not in str(e):
+                out.append(f"B14.login: the relative record's refusal names another record: {e}")
+    return out
+
+
+@problems_by_assertion("B14.prepare")
+def b14_prepare_problems(mod, tmp: Path) -> list:
+    """prepare admits a Gemini row by its key file, checked by name only; refuses it, before the run tree, while the
+    key's file is Missing or not a GEMINI_API_KEY file."""
+    out, built = [], []
+    args = types.SimpleNamespace(walk="w-0001", **gemini_cell())
+    good = str(login_file(f"GEMINI_API_KEY={GEMINI_KEY}\n"))
+    claude = str(login_file(f"{LOGIN}={GEMINI_KEY}\n"))
+    base = {"agent_version": "0.64.0", "login_path": "/synthetic/never-read",
+            "run_tree_origin": ("/synthetic/repo", "0" * 40), "run_tree_exclude": ["evals"]}
+    with mock.patch.object(mod, "build_run_tree", lambda *a, **k: built.append(a) or tmp / "tree"):
+        for label, path, words in (("a missing key file", mod.Missing("synthetic: no r4-g record"),
+                                    "synthetic: no r4-g record"),
+                                   ("Claude's token file", claude, "does not start with GEMINI_API_KEY="),
+                                   ("a relative path", "r4-g/gemini-walk-login", "absolute path")):
+            try:
+                mod.prepare(dict(base, gemini_login_path=path), args)
+                out.append(f"B14.prepare: {label} was admitted")
+            except mod.BuilderRefused as e:
+                if words not in str(e):
+                    out.append(f"B14.prepare: {label} refused for another reason: {e}")
+                if GEMINI_KEY in str(e):
+                    out.append(f"B14.prepare: {label}'s refusal carries the key")
+        if built:
+            out.append(f"B14.prepare: a refused Gemini row built its run tree: {built}")
+        with mock.patch.object(os, "read", wraps=os.read) as reads:
+            row, login, tree = mod.prepare(dict(base, gemini_login_path=good), args)
+        if (row["agent"]["harness"], row["arm"], login, len(built)) != (rt.GEMINI, "G", good, 1):
+            out.append(f"B14.prepare: an admitted Gemini row gave {row['agent']}, {login!r}, {len(built)}")
+        if any(c.args[1] > len("GEMINI_API_KEY=") for c in reads.call_args_list):
+            out.append("B14.prepare: more than the key's name was read")
+        real_row = mod.walk_row                 # a harness the walk driver does not admit, refused before anything
+        def other(*a, **k):
+            return dict(real_row(*a, **k), agent={"harness": "synthetic-other", "version": "1.0.0"})
+        with mock.patch.object(mod, "walk_row", other):
+            try:
+                mod.prepare(dict(base, gemini_login_path=good), args)
+                out.append("B14.prepare: a row of an unknown harness was admitted")
+            except mod.BuilderRefused as e:
+                if "admits Claude Code, Gemini and" not in str(e):
+                    out.append(f"B14.prepare: an unknown harness refused for another reason: {e}")
+        if len(built) != 1:
+            out.append(f"B14.prepare: an unknown harness built its run tree: {built}")
+    return out
+
+
+@problems_by_assertion("B14.secrets")
+def b14_secrets_problems(mod, tmp: Path) -> list:
+    """A Gemini walk's driver and its WalkRepo get one and the same secrets(): login_secrets over the key file, read
+    only when the scan asks, giving the key's value as the exact-value mask's token."""
+    out = []
+    drive = MODS["drive"]
+    got = {}
+    good = str(login_file(f"GEMINI_API_KEY={GEMINI_KEY}\n"))
+    builders = {"rules_scanner": lambda paths: [], "runtime": "rt", "config_parent": str(tmp), "budgets": (600, 5, 1),
+                "take_spec": lambda r, c, t: "spec", "sidecar_for": None, "proxy": None, "lock_path": None,
+                "hosts": None, "cgroup_dir_for": lambda t: "", "pin_for": None, "design_for": None, "uid_map": None,
+                "clock": None, "sleep": None, "ownership": None, "settings_guard": None, "machine_gate": None}
+    row = {"walk": "w-0001", "arm": "G", "agent": {"harness": rt.GEMINI, "version": "0.64.0"}}
+    from box import scan_record
+    reads = []
+    real = scan_record.read_login
+    with mock.patch.object(drive, "walk_driver", lambda **kw: got.setdefault("driver", kw) and "driver"), \
+            mock.patch.object(drive, "WalkRepo", lambda **kw: got.setdefault("repo", kw) and "repo"), \
+            mock.patch.object(drive, "records_repo", lambda root: "/synthetic/repo"), \
+            mock.patch.object(mod, "build_walk_fixture", lambda r, t, p: ({"sha256": "0" * 64}, "/synthetic/src")), \
+            mock.patch.object(mod, "walk_identity", lambda *a, **k: {"walk": "w-0001"}), \
+            mock.patch.object(scan_record, "read_login", lambda *a, **k: reads.append(a) or real(*a, **k)):
+        try:
+            mod.walk_driver_for(builders, row, good, tmp / "tree")
+        except Exception as e:  # noqa: BLE001
+            return [f"B14.secrets: walk_driver_for raised {type(e).__name__}: {e}"]
+        if reads:
+            out.append("B14.secrets: the key was read before a scan asked")
+        s_driver, s_repo = got["driver"]["secrets"], got["repo"]["secrets"]
+        if s_driver is not s_repo or got["driver"]["login_file"] != good:
+            out.append(f"B14.secrets: the driver got {s_driver!r} and WalkRepo {s_repo!r} over "
+                       f"{got['driver']['login_file']!r}")
+        if s_repo() != [("token", GEMINI_KEY)] or [a[:2] for a in reads] != [(good, "GEMINI_API_KEY")]:
+            out.append(f"B14.secrets: the scan's secrets read {[a[:2] for a in reads]}")
+    return out
+
+
+class B14Gemini(Drafted):
+    def test_a_gemini_row_logs_in_by_its_r4g_key_file(self):
+        self.assertEqual(b14_login_problems(wb()), [])
+
+    def test_prepare_admits_a_gemini_row_by_name(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b14_prepare_problems(wb(), Path(t)), [])
+
+    def test_the_driver_and_walkrepo_get_the_key_secrets(self):
+        with tempfile.TemporaryDirectory() as t:
+            self.assertEqual(b14_secrets_problems(wb(), Path(t)), [])
 
 
 if __name__ == "__main__":
