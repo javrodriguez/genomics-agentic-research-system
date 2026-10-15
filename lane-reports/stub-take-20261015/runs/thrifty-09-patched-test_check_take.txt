@@ -1,0 +1,25 @@
+test_a_process_start_trips (__main__.TestGuardArmed.test_a_process_start_trips) ... ok
+test_a_checker_and_reader_that_disagree_refuse (__main__.TestRound4Edits.test_a_checker_and_reader_that_disagree_refuse) ... ok
+test_an_unpinned_mode_equals_nothing (__main__.TestRound4Edits.test_an_unpinned_mode_equals_nothing) ... ok
+test_k1_the_mode_is_keyed_by_arm (__main__.TestRound4Edits.test_k1_the_mode_is_keyed_by_arm) ... ok
+test_k2_check_reads_the_wordings_script (__main__.TestRound4Edits.test_k2_check_reads_the_wordings_script) ... ok
+test_k3_three_reasons_become_counted_events (__main__.TestRound4Edits.test_k3_three_reasons_become_counted_events) ... ok
+test_k4_the_recorded_mode_binds_and_routes (__main__.TestRound4Edits.test_k4_the_recorded_mode_binds_and_routes) ... ok
+test_only_three_lines_above_the_round4_section_changed (__main__.TestRound4Edits.test_only_three_lines_above_the_round4_section_changed) ... ok
+test_the_event_ids_are_routings_never_retyped (__main__.TestRound4Edits.test_the_event_ids_are_routings_never_retyped) ... ok
+test_the_witnesses_are_named_and_each_bound_to_its_own_check (__main__.TestWitnesses.test_the_witnesses_are_named_and_each_bound_to_its_own_check) ... ok
+test_witness_ledger_arm_unbound (__main__.TestWitnesses.test_witness_ledger_arm_unbound) ... 
+WITNESS ledger-arm-unbound: red by K1-arm (2 own, 0 collateral, 0 errors) ok
+test_witness_nothing_lifted (__main__.TestWitnesses.test_witness_nothing_lifted) ... 
+WITNESS nothing-lifted: red by K3-events (1 own, 0 collateral, 0 errors) ok
+test_witness_one_mode_constant (__main__.TestWitnesses.test_witness_one_mode_constant) ... 
+WITNESS one-mode-constant: red by K1-arm (4 own, 0 collateral, 0 errors) ok
+test_witness_recorded_mode_unchecked (__main__.TestWitnesses.test_witness_recorded_mode_unchecked) ... 
+WITNESS recorded-mode-unchecked: red by K4-mode (5 own, 0 collateral, 0 errors) ok
+test_witness_the_halfs_script (__main__.TestWitnesses.test_witness_the_halfs_script) ... 
+WITNESS the-halfs-script: red by K2-wording (2 own, 0 collateral, 0 errors) ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.380s
+
+OK

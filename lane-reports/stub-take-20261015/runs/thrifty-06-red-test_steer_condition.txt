@@ -1,0 +1,100 @@
+Thu Oct 15 18:35:22 EDT 2026
+check_take.py at box 0e0bbe20, unpatched; test added
+test_disagree (__main__.Steer.test_disagree) ... ERROR
+test_quiet (__main__.Steer.test_quiet) ... ERROR
+test_unreadable (__main__.Steer.test_unreadable) ... ERROR
+test_violated (__main__.Steer.test_violated) ... ERROR
+test_wired (__main__.Steer.test_wired) ... FAIL
+test_witnesses (__main__.Steer.test_witnesses) ... ERROR
+
+======================================================================
+ERROR: test_disagree (__main__.Steer.test_disagree)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 131, in test_disagree
+    self.assertEqual(self.check_disagree(), [])
+                     ~~~~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 97, in check_disagree
+    got = self.run_case([USER], ["false", None])
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 74, in run_case
+    return ct.steer_condition_problems(take(Path(d), records, values))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'check_take' has no attribute 'steer_condition_problems'
+
+======================================================================
+ERROR: test_quiet (__main__.Steer.test_quiet)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 128, in test_quiet
+    self.assertEqual(self.check_quiet(), [])
+                     ~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 91, in check_quiet
+    got = self.run_case(records, values)
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 74, in run_case
+    return ct.steer_condition_problems(take(Path(d), records, values))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'check_take' has no attribute 'steer_condition_problems'
+
+======================================================================
+ERROR: test_unreadable (__main__.Steer.test_unreadable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 134, in test_unreadable
+    self.assertEqual(self.check_unreadable(), [])
+                     ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 108, in check_unreadable
+    ct.steer_condition_problems(path)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'check_take' has no attribute 'steer_condition_problems'
+
+======================================================================
+ERROR: test_violated (__main__.Steer.test_violated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 125, in test_violated
+    self.assertEqual(self.check_violated(), [])
+                     ~~~~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 77, in check_violated
+    got = self.run_case([USER, AUTO, USER, AUTO], ["false", "false"])
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 74, in run_case
+    return ct.steer_condition_problems(take(Path(d), records, values))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'check_take' has no attribute 'steer_condition_problems'
+
+======================================================================
+ERROR: test_witnesses (__main__.Steer.test_witnesses)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 150, in test_witnesses
+    with ctx():
+         ~~~^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py", line 1495, in __enter__
+    original, local = self.get_original()
+                      ~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py", line 1465, in get_original
+    raise AttributeError(
+        "%s does not have the attribute %r" % (target, name)
+    )
+AttributeError: <module 'check_take' from '/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/check_take.py'> does not have the attribute 'STEER_OFF_VALUES'
+
+======================================================================
+FAIL: test_wired (__main__.Steer.test_wired)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt/evals/gap-study-4/tests/test_steer_condition.py", line 137, in test_wired
+    self.assertEqual(self.check_wired(), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["S-wired: check4 does not add the steer c[84 chars]ems"] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"S-wired: check4 does not add the steer condition's problems"
+
++ []
+- ["S-wired: check4 does not add the steer condition's problems",
+-  "S-wired: check4_walk does not add the steer condition's problems"]
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.035s
+
+FAILED (failures=1, errors=5)
