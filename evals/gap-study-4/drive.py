@@ -2137,6 +2137,7 @@ class TakeDriver:
         with self._lock:
             self._by_slot[row["slot"]] = take
         os.mkdir(take.evidence_dir)
+        os.chmod(take.evidence_dir, 0o755)   # never the umask's (box lane, 15 Oct 2026: umask 077 hid it from the host)
         take.sidecar = self.sidecar_for(row, take.evidence_dir)
         spec = self.spec_for(row, cfg)       # every host-side write into the run tree and config folder is done here
         take.spec = spec

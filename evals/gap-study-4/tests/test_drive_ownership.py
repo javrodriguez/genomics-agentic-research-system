@@ -920,6 +920,33 @@ MUTANTS = {
 }
 
 
+@tbi.guarded("E1-evidence-mode")
+def e1_evidence_mode(mod, p):
+    """The box lane (15 Oct 2026): the take's evidence folder took its mode from the process umask, and umask 077 made
+    it unreadable to the host. drive makes it 0755 itself, whatever the umask, before the grant reads it."""
+    import stat as _stat
+    out, modes = [], []
+
+    class Spy(tbi.FakeOwnership):
+        def grant(self, runtime, *, image, run_tree, config_dir, evidence_dir, caller_env=None):
+            modes.append(_stat.S_IMODE(os.lstat(evidence_dir).st_mode))
+            return super().grant(runtime, image=image, run_tree=run_tree, config_dir=config_dir,
+                                 evidence_dir=evidence_dir, caller_env=caller_env)
+    with tbi.scratch_repo() as root:
+        rig = tbi.Rig(mod, root)
+        rig.ownership = road = Spy(rig.box)
+        rig.driver.ownership = road
+        old = os.umask(0o077)
+        try:
+            tbi.run_batch(rig, [tbi.row(1)])
+        finally:
+            os.umask(old)
+    if modes != [0o755]:
+        out.append(f"{p}: under umask 077 the evidence folder reached the grant with mode "
+                   f"{[oct(m) for m in modes]}, not 0o755")
+    return out
+
+
 class TestOwnershipRoad(unittest.TestCase):
     def test_o1_grant(self):
         self.assertEqual(o1_grant(tbi.drive), [])
@@ -962,6 +989,9 @@ class TestOwnershipRoad(unittest.TestCase):
 
     def test_p2_machine(self):
         self.assertEqual(p2_machine(tbi.drive), [])
+
+    def test_e1_evidence_mode(self):
+        self.assertEqual(e1_evidence_mode(tbi.drive), [])
 
     def test_l1_ledger(self):
         self.assertEqual(l1_ledger(tbi.drive), [])
