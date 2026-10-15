@@ -27,10 +27,11 @@ the Claude1 file already on athena (run_take.WALK_LOGIN_FILES), read there by th
         `running` while the recorded pid lives, else the walk's exit code from its exit file.
 
     python3 .../walk_launch.py fetch --child <athena child> --head <sha> --ref <branch> --records <Mac clone>
-                                     --gitleaks <binary> --work <Mac folder>
+                                     --gitleaks <binary> --work <Mac folder> --suite <athena_suite.py>
         On athena, a bundle of the new commits only (`<head>..<ref>`); copied to the Mac, its sha256 read back;
-        fetched into a scratch shared clone of the records clone, gitleaks over exactly `<head>..<fetched>` with no
-        allowance at all; then fetched into the records clone as refs/heads/walk/<child name>. A walk that made no
+        fetched into a scratch shared clone of the records clone, athena_suite's scan_unpublished at the tip with
+        public_shas=[head] and no allowance at all (allow comments ignored, messages and binary blobs refused); then
+        fetched into the records clone as refs/heads/walk/<child name>. A walk that made no
         commit has nothing to fetch and says so.
 
 Every remote and local command goes through one Runner, so tests drive the whole road on fakes.
@@ -126,26 +127,6 @@ def hold_id(walk: str) -> str:
     if not machine_gate.HOLD_ID.match(hid):
         raise LaunchRefused(f"the hold id {hid!r} is not one athena-reserve accepts (BY_RE, 64 characters)")
     return hid
-
-
-def scan_findings(runner: Runner, gitleaks: str, repo: str, report: str, log_opts: str | None = None) -> list:
-    """gitleaks git over repo (redacted), its fingerprints; exit 0 with no report, or 1 with a readable report."""
-    argv = [gitleaks, "git", "--no-banner", "--redact", "--report-format", "json", "--report-path", report]
-    if log_opts:
-        argv += ["--log-opts", log_opts]
-    code, _, err = runner.local(argv + [repo])
-    if code not in (0, 1):
-        raise LaunchRefused(f"gitleaks failed (exit {code}): {(err or '').strip()[:200]}")
-    try:
-        found = json.loads(Path(report).read_text(encoding="utf-8")) if os.path.exists(report) else []
-    except ValueError:
-        raise LaunchRefused("gitleaks wrote a report that is not JSON") from None
-    if code == 1 and not found:
-        raise LaunchRefused("gitleaks exited 1 with no findings in its report")
-    if not isinstance(found, list) or not all(isinstance(f, dict) and isinstance(f.get("Fingerprint"), str)
-                                              for f in found):
-        raise LaunchRefused("gitleaks' report is off its shape")
-    return sorted({f["Fingerprint"] for f in found})
 
 
 # ------------------------------------------------------------------------------------------------ ship
@@ -269,7 +250,8 @@ def status(runner: Runner, *, child: str) -> str:
 
 
 # ------------------------------------------------------------------------------------------------ fetch
-def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitleaks: str, work: str) -> dict:
+def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitleaks: str, work: str,
+          suite: str, suite_module=None) -> dict:
     _child(child)
     if not HEX40.fullmatch(head or ""):
         raise LaunchRefused("the head is one full commit id")
@@ -298,10 +280,18 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
     got = _ok(runner.local(["git", "-C", scratch, "rev-parse", "refs/walk/back"]), "the fetched tip").strip()
     if got != tip:
         raise LaunchRefused("the back bundle's tip is not athena's")
-    found = scan_findings(runner, gitleaks, scratch, os.path.join(work, "back-scan.json"),
-                          log_opts=f"{head}..{tip}")
-    if found:
-        raise LaunchRefused(f"gitleaks found {len(found)} finding(s) in the walk's commits; nothing is fetched")
+    # The review's MAJOR 1 (15 Oct 2026): athena_suite's own scan_unpublished over the scratch clone at the tip, every
+    # commit past the shipped head and NO allowance (no rulings, no allowed or ruled blobs, no ruled messages): its
+    # --ignore-gitleaks-allow, empty ignore file, remerge diffs, commit-message scan and binary-blob refusal.
+    suite_mod = load_suite(suite) if suite_module is None else suite_module
+    try:
+        n = suite_mod.scan_unpublished(scratch, tip, os.path.join(work, "back-scan-work"), gitleaks, [head], None,
+                                       (), None, None, None)
+    except Exception as e:  # noqa: BLE001 - athena_suite's Refused, a git or scanner failure: nothing is fetched
+        raise LaunchRefused(f"the return scan refused, nothing is fetched: {type(e).__name__}: {str(e)[:300]}") \
+            from None
+    if not isinstance(n, int) or n < 1:
+        raise LaunchRefused("the return scan scanned no commit past the head; nothing is fetched")
     name = os.path.basename(child)
     _ok(runner.local(["git", "-C", records, "fetch", "-q", local, f"{ref}:refs/heads/walk/{name}"]),
         "the records fetch")
@@ -320,7 +310,7 @@ def main(argv=None) -> int:
     t = sub.add_parser("status")
     t.add_argument("--child", required=True)
     f = sub.add_parser("fetch")
-    for k in ("child", "head", "ref", "records", "gitleaks", "work"):
+    for k in ("child", "head", "ref", "records", "gitleaks", "work", "suite"):
         f.add_argument(f"--{k}", required=True)
     a = ap.parse_args(argv)
     runner = Runner()
@@ -335,7 +325,7 @@ def main(argv=None) -> int:
             out = {"state": status(runner, child=a.child)}
         else:
             out = fetch(runner, child=a.child, head=a.head, ref=a.ref, records=a.records, gitleaks=a.gitleaks,
-                        work=a.work)
+                        work=a.work, suite=a.suite)
     except LaunchRefused as e:
         print(json.dumps({"refused": str(e)}))
         return 1

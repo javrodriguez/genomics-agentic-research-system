@@ -77,6 +77,8 @@ class FakeRunner(wl.Runner):
         self.athena_head, self.athena_tip, self.walk_state = athena_head, athena_tip, walk_state
         self.back_bundle = back_bundle
         self.files = {}
+        self.sha_override = {}          # a path whose sha256 athena misreports (the read-back guards)
+        self.ancestor_rc = 0            # merge-base --is-ancestor's exit on athena
 
     def local(self, argv, *, timeout=3600):
         argv = list(argv)
@@ -98,6 +100,8 @@ class FakeRunner(wl.Runner):
         if cmd.startswith("sha256sum "):
             path = cmd.split()[1]
             src = self.files.get(path)
+            if path in self.sha_override:
+                return 0, self.sha_override[path] + "  " + path + "\n", ""
             return (0, hashlib.sha256(Path(src).read_bytes()).hexdigest() + "  " + path + "\n", "") if src else (1, "", "")
         if cmd.startswith("git clone -q -b"):
             return 0, "", ""
@@ -106,7 +110,7 @@ class FakeRunner(wl.Runner):
         if " rev-parse --verify " in cmd:
             return 0, (self.athena_tip or "") + "\n", ""
         if " merge-base --is-ancestor " in cmd:
-            return 0, "", ""
+            return self.ancestor_rc, "", ""
         if " bundle create " in cmd:
             self.files[f"{CHILD}/walk-back.bundle"] = self.back_bundle
             return 0, "", ""
@@ -140,6 +144,7 @@ class FakeSuite:
 
     def __init__(self, log, *, public=("a" * 40,), public_error=False, nonpublic_finding=False, hits=()):
         self.log, self.public, self.public_error = log, list(public), public_error
+        self.scans = []
         self.nonpublic_finding, self.hits = nonpublic_finding, list(hits)
 
     def committed_allowlist(self, path):
@@ -174,6 +179,8 @@ class FakeSuite:
     def scan_unpublished(self, repo, sha, workdir, gitleaks, public_shas, rulings, allow_blobs, ruled, ruled_used,
                          ruled_messages):
         self.log.append(("suite", ["scan_unpublished", sha, list(public_shas), rulings, ruled, ruled_messages]))
+        self.scans.append({"repo": repo, "sha": sha, "public": list(public_shas), "rulings": rulings,
+                           "allow_blobs": allow_blobs, "ruled": ruled, "ruled_messages": ruled_messages})
         if self.nonpublic_finding:
             raise RuntimeError("gitleaks found 1 item(s) in commits that are not public: x.txt:generic-api-key:1")
         return 3
@@ -308,25 +315,40 @@ def l2(mod) -> list:
     return out
 
 
-def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, back_findings=()):
+def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, suite_kw=None, suite=None, gitleaks="gitleaks",
+              make_commit=None, runner_kw=None, after_runner=None):
+    """A Mac records clone at `head`, an athena clone with one walk commit (or make_commit(athena)), the real
+    `<head>..main` bundle; fetch through the fake athena with a fake athena_suite (or the real one, `suite`)."""
     repo, root, head = make_repo(t)
     athena = os.path.join(t, "athena-repo")
     git("clone", "-q", repo, athena)
     if commit_on_athena:
-        Path(athena, "walk.txt").write_text("walk\n")
-        git("-C", athena, "add", "walk.txt")
-        git("-C", athena, "commit", "-q", "-m", "walk")
+        if make_commit is None:
+            Path(athena, "walk.txt").write_text("walk\n")
+            git("-C", athena, "add", "walk.txt")
+            git("-C", athena, "commit", "-q", "-m", "walk")
+        else:
+            make_commit(athena)
     tip = git("-C", athena, "rev-parse", "HEAD").strip()
     back = os.path.join(t, "athena-back.bundle")
     if commit_on_athena:
         git("-C", athena, "bundle", "create", back, f"{head}..main")
-    runner = FakeRunner(athena_tip=tip, walk_state=walk_state, back_bundle=back, back_findings=back_findings)
+    runner = FakeRunner(athena_tip=tip, walk_state=walk_state, back_bundle=back, **(runner_kw or {}))
+    if after_runner is not None:
+        after_runner(runner, tip)
+    fake = FakeSuite(runner.calls, **(suite_kw or {})) if suite is None else None
     try:
-        got = mod.fetch(runner, child=CHILD, head=head, ref="main", records=repo, gitleaks="gitleaks",
-                        work=os.path.join(t, "work"))
+        got = mod.fetch(runner, child=CHILD, head=head, ref="main", records=repo, gitleaks=gitleaks,
+                        work=os.path.join(t, "work"), suite="/x/athena_suite.py",
+                        suite_module=fake if suite is None else suite)
     except mod.LaunchRefused as e:
         got = e
+    runner.fake_suite = fake
     return runner, got, repo, head, tip
+
+
+def walk_branches(repo):
+    return git("-C", repo, "for-each-ref", "refs/heads/walk/").strip()
 
 
 def l3(mod) -> list:
@@ -340,19 +362,25 @@ def l3(mod) -> list:
         creates = [c[1] for c in runner.calls if c[0] == "remote" and " bundle create " in c[1]]
         if creates != [f"git -C {CHILD}/repo bundle create {CHILD}/walk-back.bundle {head}..main"]:
             out.append("L3-fetch: the back bundle is not exactly the new commits")
-        scans = [c[1] for c in runner.calls if c[0] == "local" and c[1][0] == "gitleaks"]
-        if len(scans) != 1 or scans[0][scans[0].index("--log-opts") + 1] != f"{head}..{tip}":
-            out.append("L3-fetch: the back scan is not exactly <head>..<tip>")
-        i_scan = next(i for i, c in enumerate(runner.calls) if c[0] == "local" and c[1][0] == "gitleaks")
+        scans = runner.fake_suite.scans
+        if len(scans) != 1 or {k: scans[0][k] for k in ("sha", "public", "rulings", "allow_blobs", "ruled",
+                                                         "ruled_messages")} != {
+                "sha": tip, "public": [head], "rulings": None, "allow_blobs": (), "ruled": None,
+                "ruled_messages": None}:
+            out.append("L3-fetch: the back scan is not athena_suite's scan_unpublished(tip, [head]) with no allowance")
+        if any(c[0] == "local" and c[1][0] == "gitleaks" for c in runner.calls):
+            out.append("L3-fetch: a plain gitleaks scan still runs on the way back")
+        i_scan = next((i for i, c in enumerate(runner.calls) if c[0] == "suite" and c[1][0] == "scan_unpublished"),
+                      None)
         i_rec = next(i for i, c in enumerate(runner.calls) if c[0] == "local" and c[1][:3] == ["git", "-C", repo]
                      and "fetch" in c[1])
-        if not i_scan < i_rec:
+        if i_scan is None or not i_scan < i_rec:
             out.append("L3-fetch: the records clone is fetched before the scan")
     with tempfile.TemporaryDirectory() as t:
-        _, got, repo, _, _ = fetch_rig(mod, t, back_findings=["c" * 40 + ":docs/environment.md:generic-api-key:156"])
+        _, got, repo, _, _ = fetch_rig(mod, t, suite_kw={"nonpublic_finding": True})
         if not isinstance(got, mod.LaunchRefused):
             out.append("L3-fetch: a finding in the walk's commits is fetched (no allowance comes back)")
-        elif git("-C", repo, "for-each-ref", "refs/heads/walk/").strip():
+        elif walk_branches(repo):
             out.append("L3-fetch: a refused fetch left a walk branch")
     with tempfile.TemporaryDirectory() as t:
         _, got, _, _, _ = fetch_rig(mod, t, walk_state="running")
@@ -417,10 +445,12 @@ WITNESSES = {
     "reservation-not-checked": ((("set -e; test ! -e {RESERVATION}; {gate}", "set -e; {gate}"),), "L2-run"),
     "back-range-whole-history": ((("bundle create {child}/walk-back.bundle {head}..{shlex.quote(ref)}",
                                    "bundle create {child}/walk-back.bundle {shlex.quote(ref)}"),), "L3-fetch"),
-    "back-scan-allowance": ((("    if found:\n        raise LaunchRefused(f\"gitleaks found {len(found)} finding(s) in "
-                              "the walk's",
-                              "    if [f for f in found if not f.endswith(':156')]:\n        raise LaunchRefused(f\"gitleaks "
-                              "found {len(found)} finding(s) in the walk's"),), "L3-fetch"),
+    "back-scan-allowance": ((("        n = suite_mod.scan_unpublished(scratch, tip, os.path.join(work, \"back-scan-work\"), "
+                              "gitleaks, [head], None,",
+                              "        n = suite_mod.scan_unpublished(scratch, tip, os.path.join(work, \"back-scan-work\"), "
+                              "gitleaks, [head], suite_mod.rulings_file(records),"),), "L3-fetch"),
+    "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
+                        "L3-fetch"),
 }
 
 
@@ -443,6 +473,79 @@ class TestTheRoad(unittest.TestCase):
 
     def test_reserve_pin_is_the_runbooks(self):
         self.assertTrue(wl.RESERVE_SHA256.startswith("efeecb3a"))
+
+
+ATHENA_SUITE_PY = os.environ.get("GAP4_ATHENA_SUITE_PY", "/Users/javrodher/glitch/workspaces/aegis/ops/athena_suite.py")
+
+
+def _real_gitleaks():
+    import shutil
+    for c in (shutil.which("gitleaks"), os.path.expanduser("~/.local/bin/gitleaks"),
+              "/home/javier/gap4-tools/gitleaks-8.30.1/gitleaks"):
+        if c and os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    return None
+
+
+def _fake_token():
+    import secrets
+    import string
+    return "ghp_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(36))
+
+
+class TestRealReturnScan(unittest.TestCase):
+    """The review's MAJOR 1, on the REAL scanner: athena_suite.scan_unpublished and gitleaks themselves, through
+    fetch. A `gitleaks:allow` line, a token in a commit message and a token inside a .json.gz blob each refuse, and
+    nothing reaches the records clone; a clean walk commit is fetched. Synthetic tokens made at run time, never
+    printed. Where athena_suite.py or gitleaks is not on this machine (the athena battery's clone has no aegis
+    checkout), the class is skipped BY NAME, never passed: the lane report carries this machine's run."""
+
+    def setUp(self):
+        if not os.path.isfile(ATHENA_SUITE_PY):
+            self.skipTest(f"REAL RETURN SCAN NOT RUN: no athena_suite.py at {ATHENA_SUITE_PY}")
+        self.gitleaks = _real_gitleaks()
+        if self.gitleaks is None:
+            self.skipTest("REAL RETURN SCAN NOT RUN: no gitleaks binary on this machine")
+        self.suite = wl.load_suite(ATHENA_SUITE_PY)
+
+    def case(self, make_commit):
+        with tempfile.TemporaryDirectory() as t:
+            _, got, repo, _, _ = fetch_rig(wl, t, suite=self.suite, gitleaks=self.gitleaks, make_commit=make_commit)
+            return got, walk_branches(repo)
+
+    def test_allow_comment_refuses(self):
+        def commit(a):
+            Path(a, "notes.txt").write_text(f"token = {_fake_token()}  # gitleaks:allow\n")
+            git("-C", a, "add", "notes.txt")
+            git("-C", a, "commit", "-q", "-m", "notes")
+        got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_message_token_refuses(self):
+        def commit(a):
+            Path(a, "m.txt").write_text("m\n")
+            git("-C", a, "add", "m.txt")
+            git("-C", a, "commit", "-q", "-m", f"walk note: token {_fake_token()}")
+        got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_binary_blob_refuses(self):
+        import gzip
+
+        def commit(a):
+            Path(a, "rec.json.gz").write_bytes(gzip.compress(json.dumps({"token": _fake_token()}).encode()))
+            git("-C", a, "add", "rec.json.gz")
+            git("-C", a, "commit", "-q", "-m", "record")
+        got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_clean_commit_is_fetched(self):
+        got, branches = self.case(None)
+        self.assertIsInstance(got, dict, got)
+        self.assertIn("refs/heads/walk/w-AbCd1234", branches)
 
 
 class TestWitnesses(unittest.TestCase):
