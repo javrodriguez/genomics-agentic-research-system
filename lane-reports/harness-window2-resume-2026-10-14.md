@@ -84,3 +84,24 @@ Owed, in order (the light gate held at load ~159 at the handover, so nothing mor
 3. Re-prove 0095f47a's last edit (the unknown-harness case, the redundant term) and 77418a8e..2c8b0d26 on a scratch `git clone --shared` of the merge clone with the box head (1e10e320 or later) applied; the scratch proof so far covered 0095f47a's earlier draft.
 4. The integration merge's list: the boundary fakes (CODEX_SUBSCRIPTION_READY, NO_LOGIN, place_lease, lease_secrets / read_lease_tokens, LEASE_CREDENTIAL, CODEX_HELP_COMMANDS); walk_builders' two conflicts (login_name takes NO_LOGIN; keep box's lease_secrets beside CodexLeaseRoad); the Codex exec reads login_file = the take's placed cfg/auth.json (77418a8e).
 5. athena: the full battery and generated sweeps on this head.
+
+## RESUME HERE (window 3, 14 Oct 23:5x EDT; supersedes the block above)
+
+Written 14 Oct 2026 23:53 EDT (clock read first), restarted by glitch-6b. HEAD: the commit that adds this block (parent 9442333a). Nothing pushed. No Mac process of this lane is running.
+
+Commits (each red first, then green, through the gitleaks staged gate):
+- 1b0fce97: R1 and R2. The real lease_secrets is held to the lease contract, both ways on every tree. The pending rules-scanner branch is driven through the pending() seam. test_walk_builders: 62 OK here, 62 OK on the merged scratch.
+- fdf3297b: review NIT 1. The Codex subcommand binding is proven to read run_take's list on every tree. test_codex_adapter: 54 OK here and on the merged scratch.
+- 9442333a: the lease postflight stand-in test is checked against the lease-less postflight. It was red on the merged tree. test_pending_codex_walk: 11 OK on both trees.
+
+Merged scratch: /Users/javrodher/aegis-builds/gap4-harness-scratch-merge-20261014b at ad9ee13f, which is the integration lane's 5110eae5 (13031aca plus box 3f3beb21) with these three test diffs. It differs from this branch's three test files only by the integration lane's 8-line resolution in test_walk_builders.
+Correction: scratch 151b0e91 copied this branch's test_walk_builders over the merged one and lost that resolution (3 B9 and B12 reds came from that copy, not from the code). Its athena run was cancelled. 8b83a3bb restored the resolution.
+
+athena:
+- gap4-harness-alone-83b83ea-83b83ea-20261015T025335Z (kind gars): PASS, GARS step 1 only, Ran 1303. It is not the battery.
+- gap4-harness-alone-27ade10-…005635Z (gars-gap4): FAIL 270/271. Its one red was prepare:drop-0, already closed in 0095f47a.
+- gap4-harness-r123-merged-ad9ee13-20261015T034740Z (gars-gap4, jobs 12): launched 23:47. It is the R1-R3 proof and the item 3 re-proof. Fetch it with `athena_suite.py fetch <id> --wait`.
+
+Mac, item 1 (light-ok gate), this branch: test_build_draft 47 OK, test_drive_loop 27 OK, test_walk_wiring 20 OK, test_drive_ownership 43 OK. Merged scratch: test_build_draft 48 OK, with TakeALock 2 OK (review NIT 2).
+
+Next: read every red line of ad9ee13's run. R3 means the prepare L16 mutants are killed there; also check walk_driver_for:delete:L38. Fix any red that is this lane's. Then send the final report to glitch-6b. Next gars-gap4 launches use --jobs 24.
