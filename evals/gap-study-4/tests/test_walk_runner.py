@@ -220,8 +220,10 @@ def own_mutants():
         "walk-config-left": ("R1.chain", "walk_runner",
                              "            kept = _publish(driver, row, folder)\n", "            kept = None\n"),
         "walk-check-unwritten": ("R1.chain", "walk_runner",
-                                 "    write_check(folder, check_record(walk, records, table, route_fn, checked=checked))\n",
-                                 ""),
+                                 "    write_check(folder, check_record(walk, records, table, route_fn, checked=checked,\n"
+                                 "                                     constants_sha256=read(row) if callable(read) else "
+                                 "None))\n",
+                                 ""),    # BOOTSTRAP: re-anchored on the call that now passes the checker's digest
         "checked-always": ("R3.dead-walk", "walk_runner", "\"checked\": checked is True", "\"checked\": True"),
         "walk-launch-journal-not-a-turn": ("R3.dead-walk", "drive",       # integration red A3 (glitch-06, 14 Oct)
                                            "\n                 or LAUNCH_JOURNAL_NAME.fullmatch(n))", ")"),

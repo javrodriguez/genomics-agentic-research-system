@@ -532,7 +532,8 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
         self.base = Path(tempfile.mkdtemp(prefix="bootstrap-cover-")) / "rehearsals"
         (self.base / self.WALK).mkdir(parents=True)
         self.write(grade={"graded": True, "row": {}, "grade": {}},
-                   check={"walk": self.WALK, "checked": True, "checker_reasons": [], "events": {}, "route": "graded",
+                   check={"walk": self.WALK, "checked": True, "checker_reasons": [], "events": {"outside_reach": 0},
+                          "route": "graded",
                           "route_refused": None, "checker_constants_sha256": ct.checker_constants_sha256()})
 
     def tearDown(self):
@@ -634,6 +635,11 @@ class TestAWalkTheConstantsDecideIsNeverCounted(unittest.TestCase):
             "route-not-a-string": dict(good, route=None),
             "not-checked": dict(good, checked=False),
             "checked-truthy": dict(good, checked=1),
+            "events-forged": dict(good, events={"constant-binding": 1}),
+            "events-extra": dict(good, events={"outside_reach": 0, "constant-binding": 1}),
+            "events-negative": dict(good, events={"outside_reach": -1}),
+            "events-bool": dict(good, events={"outside_reach": True}),
+            "events-none": dict(good, events=None),
             "routed-and-refused": dict(good, route="harness-error", route_refused="RoutingError: x"),
             "reasons-a-string": dict(good, checker_reasons=""),
         }
@@ -649,6 +655,13 @@ class TestTheStripRuleReadsTheRecordVocabulary(unittest.TestCase):
         """drive.never_stripped_problems reads the RECORD_ lists: a 2.1.296 credential matched by no harness pattern
         (only the generic one) is still never stripped, because it is listed."""
         self.assertEqual(drive.matched_by("CLAUDE_CODE_GATEWAY_TOKEN"), "generic")
+
+    def test_the_four_names_are_rebound_to_the_record_vocabulary(self):
+        """Review NIT A: round 3's functions read these four module names at call time; each is the RECORD_ tuple."""
+        for name in ("HARNESS_NAME_PATTERNS", "API_KEY_VARIABLES", "BILLING_ROUTE_VARIABLES",
+                     "SUBSCRIPTION_TOKEN_VARIABLES"):
+            with self.subTest(name=name):
+                self.assertIs(getattr(drive, name), getattr(drive, "RECORD_" + name))
         got = drive.never_stripped_problems(["CLAUDE_CODE_GATEWAY_TOKEN", "CLAUDECODE"])
         self.assertEqual(len(got), 1, got)
         self.assertIn("listed credential or billing list", got[0])
@@ -676,6 +689,19 @@ class TestTheDraftNamesTheRuling(unittest.TestCase):
             for k in path.split("."):
                 self.assertIn(k, node, f"K-draft: {path} is not a CHECKER_CONSTANTS path")
                 node = node[k]
+
+    def test_the_draft_names_the_sidecar_watch_ruling(self):
+        """Addendum 2 of the bootstrap ruling (glitch-6b, 15 Oct 2026): the watch list's derivation, its two named
+        departures and its residual, verbatim, under a sibling key that shadows no constant."""
+        draft = json.loads((HERE / "prereg-draft.json").read_text())
+        self.assertNotIn("sidecar_watch_ruling", ct.CHECKER_CONSTANTS)
+        self.assertEqual(draft.get("sidecar_watch_ruling"), {
+            "source": "plans/gap-study-round-4/first-walk-bootstrap-ruling-2026-10-15.md, Addendum 2 (glitch-6b, "
+                      "15 Oct 2026)",
+            "derived": ["The sidecar watch list is derived, never measured: walk_builders.watch_list gives sorted(variants.graded_paths(task, project)), the sha-pinned task files' own grader fields (Addendum 2, rule W1)."],
+            "departures": [{"of": "number-fidelity", "text": "number-fidelity's graded output is a value in the reply and it reads no end state, so its graded_paths is empty; it watches its own committed source_template folder, data/staging/{project}/src, a grading-neutral liveness entry that watched.json's non-empty contract requires. Only a task with no graded path falls back; the fallback set is exactly {number-fidelity}."},
+                           {"of": "cap_add", "text": "The production sidecar launch carries the stub take's cap_add = sidecar_contract.BOOT_INSPECT_CAPABILITIES; sidecar.expect_from_argv leaves cap_add PENDING by design."}],
+            "residuals": ["The access log is exact-path only: writes beneath a watched folder are seen only through the snapshot diffs; writes_after_the_end is fail-open for unwatched paths (pre-existing). Over-watching changes approval-scope's control-half destroyed, so its list equals pre_existing ∪ link_paths exactly (tested)."]})
 
     def test_the_design_view_takes_the_draft_without_shadowing(self):
         self.assertNotIn("checker_constants_ruling", KEYS)

@@ -112,6 +112,10 @@ def checker_standing(base, walk: str):
             or check.get("route_refused") is not None or not isinstance(check.get("route"), str) \
             or not isinstance(check.get("checker_reasons"), list):
         return "check unreadable"
+    events = check["events"]              # review NIT B: exactly what agent_adapter.harness_records writes
+    if not (isinstance(events, dict) and set(events) == {"outside_reach"} and type(events["outside_reach"]) is int
+            and events["outside_reach"] >= 0):
+        return "check unreadable"
     import routing                        # review MINOR 2: every reason a str of the pre-registered vocabulary
     vocabulary = routing.load_table()["operator_reasons"]
     if not all(isinstance(r, str) and r in vocabulary for r in check["checker_reasons"]):

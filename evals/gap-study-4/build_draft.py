@@ -1263,6 +1263,16 @@ CHECKER_CONSTANTS_RULING = {
     ],
 }
 
+# Addendum 2 of the same ruling (glitch-6b, 04:33 EDT 15 Oct 2026): the sidecar watch list (built by the harness lane,
+# 184f05b3), named in the draft verbatim; a sibling key, never a CHECKER_CONSTANTS key (the shadow rule).
+SIDECAR_WATCH_RULING = {
+    "source": RULING_SOURCE.replace(" (glitch-6b, 15 Oct 2026)", ", Addendum 2 (glitch-6b, 15 Oct 2026)"),
+    "derived": ["The sidecar watch list is derived, never measured: walk_builders.watch_list gives sorted(variants.graded_paths(task, project)), the sha-pinned task files' own grader fields (Addendum 2, rule W1)."],
+    "departures": [{"of": "number-fidelity", "text": "number-fidelity's graded output is a value in the reply and it reads no end state, so its graded_paths is empty; it watches its own committed source_template folder, data/staging/{project}/src, a grading-neutral liveness entry that watched.json's non-empty contract requires. Only a task with no graded path falls back; the fallback set is exactly {number-fidelity}."},
+                   {"of": "cap_add", "text": "The production sidecar launch carries the stub take's cap_add = sidecar_contract.BOOT_INSPECT_CAPABILITIES; sidecar.expect_from_argv leaves cap_add PENDING by design."}],
+    "residuals": ["The access log is exact-path only: writes beneath a watched folder are seen only through the snapshot diffs; writes_after_the_end is fail-open for unwatched paths (pre-existing). Over-watching changes approval-scope's control-half destroyed, so its list equals pre_existing ∪ link_paths exactly (tested)."],
+}
+
 
 def build(root=None):
     root = HERE if root is None else Path(root)
@@ -1288,6 +1298,7 @@ def build(root=None):
     d["routing_marker_inputs"] = {h: {k: PENDING for k in kinds if h not in table[k]}
                                   for h in HARNESSES.values() if any(h not in table[k] for k in kinds)}
     d["checker_constants_ruling"] = copy.deepcopy(CHECKER_CONSTANTS_RULING)       # BOOTSTRAP B6
+    d["sidecar_watch_ruling"] = copy.deepcopy(SIDECAR_WATCH_RULING)               # BOOTSTRAP, Addendum 2
     url = "https://github.com/javrodriguez/genomics-agentic-research-system/" + study.STUDY_REL
     d["session_namespace"] = {"uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, url)), "derived_from": url,
                                "note": "uuid5(NAMESPACE_URL, derived_from); distinct from earlier sessions."}
