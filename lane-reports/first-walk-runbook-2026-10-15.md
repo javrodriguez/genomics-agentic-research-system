@@ -172,6 +172,6 @@ PY=/usr/local/bin/python3.13
 - **Before w001**, typed by Javier in glitch-6b's window, relayed verbatim at 09:36 EDT on 15 Oct 2026:
   > Claude1 before w001: session 0% used, weekly 0% used, resets Thurs 9 am
 - **After w001:** pending. glitch-6b asks Javier for it once the walk ends.
-- **After w001**, typed by Javier in glitch-6b's window and relayed verbatim (10:2x EDT):
+- **After w001**, typed by Javier in glitch-6b's window and relayed verbatim (received between 10:22 and 10:29 EDT):
   > Claude1 after w001: session 0% used, weekly 0% used, resets Thu 9am
   - With 0% before and after, the readings are inconclusive. The records summary will add account evidence and token sums from the committed records.
