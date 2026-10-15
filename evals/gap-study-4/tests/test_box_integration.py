@@ -312,7 +312,9 @@ class FakeOwnership:
             os.close(fd)
         return {"ok": True, "path": rel_path, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
 
-    def operator_read(self, runtime, *, image, root_kind, root, rel_path, caller_env=None):
+    def operator_read(self, runtime, *, image, root_kind, run_tree, config_dir, rel_path, caller_env=None):
+        # the box's O-3 signature (box 161d038d; item D, glitch-6b 15 Oct 2026): the root chosen by kind from the pair
+        root = run_tree if root_kind == "run_tree" else config_dir if root_kind == "config" else None
         self.events.append(("operator_read", {"image": image, "root_kind": root_kind, "root": root,
                                               "run_tree": root if root_kind == "run_tree" else None,
                                               "rel_path": rel_path, "at": self._at()}))
@@ -345,8 +347,10 @@ class FakeOwnership:
             finally:
                 os.close(fd)
 
-    def operator_list(self, runtime, *, image, root_kind, root, rel_dir, caller_env=None):
-        """One level of a folder, [(name, kind)] with kind file, dir, link or other; never follows a link."""
+    def operator_list(self, runtime, *, image, root_kind, run_tree, config_dir, rel_dir, caller_env=None):
+        """One level of a folder, [(name, kind)] with kind file, dir, link or other; never follows a link. The box's
+        O-3 signature (box 161d038d): the root chosen by kind from the take's run tree and config folder."""
+        root = run_tree if root_kind == "run_tree" else config_dir if root_kind == "config" else None
         self.events.append(("operator_list", {"root_kind": root_kind, "root": root, "rel_dir": rel_dir,
                                               "at": self._at()}))
         if self.fail_read:
