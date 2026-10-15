@@ -143,3 +143,13 @@ Stopped on glitch-6b's word: the athena battery's sweep covers every function.
 
 Next: launch the next battery on scratch f05ad45f (/Users/javrodher/aegis-builds/gap4-harness-scratch-0cd9b1be; gars-gap4, jobs 24, --solo) once athena is free after the bootstrap battery (glitch-6b's word). Then report.
 sidecar_for stays Missing and needs a ruling: there is no registered watch list.
+
+### Addendum, 15 Oct 04:26 EDT
+
+Battery gap4-harness-g123b-merged-56a1780-20261015T074328Z (head 56a17802 = 0cd9b1be + 89525f03..6fe573d5): **PASS**, 272/272, step 1 1303 OK. Log sha256 c41636a9e3df126bd4d64bd1d5dbde0986896db4c56ad0d075d609c048b81dda. All 18 w12b lines pass (module, witnesses, 16 generated shards).
+
+Since then (Mac proof only, light-ok, not yet in a battery):
+- 3943d61c: design_for's pending list test (the bootstrap battery's survivor; red on a b1f4df1c scratch).
+- d6ad30c2: the review fold (MINOR 1-3, NIT 1-2, the evidence-folder comment). test_walk_builders 76 OK on both trees; witnesses 41/41.
+
+Owed: a battery on scratch 355d615c (0cd9b1be + 89525f03..d6ad30c2), or the admission merge's own battery. sidecar_for stays Missing pending a ruling on the watch list.
