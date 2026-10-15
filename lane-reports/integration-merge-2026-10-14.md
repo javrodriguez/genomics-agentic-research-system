@@ -452,3 +452,28 @@ Written by a fresh integration window, under glitch-06.
   - **Box, 1 line:** test_round4, from test_live_box `SubscriptionTransitionRegression.test_walk_login_and_scanner_refuse_before_open`. It expects "subscription binding not ready" where the ruled `NO_LOGIN` now refuses with "its login is the lease"; 2 subtests.
 - **Known, not a red here:** the harness passes `login_file` `"-"` where the box exec needs the placed lease path. It fails closed, and the harness fold is queued.
 - **Next:** the two owner fixes, then a re-merge of the newer heads (the harness tip was already `be4bbdca`) and a solo battery, with light-ok exiting 0 first (the Mac was at load1 165 at handover).
+
+## Interim re-merge onto harness 83b83ea1 and box 3f3beb21 (14 Oct, 22:57-23:47 EDT, coordinator glitch-6b)
+
+- `13031aca`: harness `83b83ea1` (`27ade10a..83b83ea1`: `0095f47a` Gemini walk wiring, `be4bbdca` subcommand words, review folds `77418a8e`, `0ba98258`, `2c8b0d26`, and the RESUME commit). No conflict hunk.
+  - The three rulings hold on the merged tree: `login_name` gives `NO_LOGIN` for a Codex row; box `lease_secrets` sits beside harness `CodexLeaseRoad`; the Codex exec's `login_file` is the take's placed `cfg/auth.json` through `CodexLeaseRoad.login_file_for` and `drive.login_file_of` (`77418a8e`).
+  - The merged `walk_builders.py` differs from `83b83ea1` only by box `lease_secrets` (18 added lines).
+  - Boundary symbol present on the tree: `run_take.CODEX_HELP_COMMANDS` (box `14670435`), which `codex_adapter` binds to.
+- `5110eae5`: box `3f3beb21` (`22f80269`, test_live_box follows the ruled `NO_LOGIN`; `3f3beb21`, its report), merged on glitch-6b's word. No conflict hunk.
+- Checks, on `13031aca` and again on `5110eae5`: `build_draft --check` ok; `copy_manifest --check` ok, 414 files; `freeze --check` ok, 415 paths; `batch --check` ready. T52 `name_hits` with the committed allowlist (aegis HEAD, list sha256 `b878a17a…7b9202`): 12 secret-shaped paths, 12 exempt, 0 new.
+- Mac, on `5110eae5`, light-ok exiting 0 before each module (glitch-6b's gate, aegis `19c4e39`): test_walk_builders 60, test_codex_adapter 54, test_gemini_adapter 143, test_run_take 58, all OK.
+- athena:
+  - `gap4-merge-interim-13031ac-13031ac-20261015T030108Z`: refused, busy `other-suite`.
+  - `gap4-merge-interim-13031ac-13031ac-20261015T030250Z`: launched with the default `--kind gars`, so it ran **step 1 only** (the 1303 GARS unit tests), not the Gap Study battery. Step 1 PASS: ran 1303, failures 0, errors 0, skipped 82; log sha256 `423c63680bd65637e18af7398518b2e53c8cbd100bf09ea4dcca7995e7c1259d`. It is not a battery verdict and is not cited as one.
+  - `gap4-merge-interim-5110eae-5110eae-20261015T031358Z` (`--kind gars-gap4 --jobs 12`, not solo): refused, busy `other-suite`.
+  - `gap4-merge-interim-5110eae-5110eae-20261015T034151Z` (`--kind gars-gap4 --jobs 12`, not solo): launched automatically by this lane's wait loop 7 seconds after the harness run `gap4-harness-r123-merged-151b0e9-20261015T031158Z` ended (state failed, reason cancelled, 03:41:44Z). **Cancelled by glitch-6b; no verdict.** Fetched record: rc 143, log sha256 `dbcf4f04aac22e47bb04b50ea7158a611489e0ab97dec712cc6b3b36c270cddb`.
+- The busy rule (read in `ops/athena_suite_remote.py`): `run_is_solo(solo, suite_user)` returns true for every run as the suite account, and the Mac's `cmd_run` always passes `SUITE_USER`. So every run is solo on athena, without `--solo`, and `acquire_slots` raises `Busy("other-suite")` while any other suite-shaped process runs. Two suite batteries cannot share athena; "at most 2 runs share it" cannot happen through this tool.
+- No red is classified in this window: no Gap Study battery finished on a merged head.
+
+## RESUME HERE (handover 14 Oct 23:47 EDT)
+
+- **Merge clone:** `/Users/javrodher/aegis-builds/gap4-live-merge-20261014`, branch `gap4/live-merge-20261014`. The merged code head is `5110eae5` (box `3f3beb21` + harness `83b83ea1`, via `13031aca`); log commits follow it. Nothing was pushed.
+- **Checks on `5110eae5`:** all four ok; T52 12/12 exempt, none new.
+- **Battery:** none with a verdict on this head. The last Gap Study verdict on a merged head is still `gap4-merge-5e72209-20261015T015202Z` (FAIL, 256 of 272).
+- **Expected at the final:** the box red (test_live_box `NO_LOGIN`) should be gone with `22f80269`; the harness's 16 test_walk_builders mutant survivors depend on the harness head glitch-6b sends.
+- **Next:** on glitch-6b's go, merge the harness's new head (and any newer box head), rerun the four checks and T52, then one `--kind gars-gap4` battery on athena, which runs alone there by construction, then fetch, the verdict on the Mac, and every red by owner.
