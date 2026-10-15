@@ -96,6 +96,20 @@ VENDOR_KEY_VARIABLES = ("CODEX_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GO
 # The current independently grounded transcript projection admits the legacy path.
 GEMINI_MODE_ROUTE_VARIABLES = ("GEMINI_CLI_EXP_AGENT",)
 
+# THE BASH-FIRST STEER OFF (glitch-6b's study-condition ruling, 15 Oct 2026, approved by Javier's "Your call sounds
+# good"). Under bypassPermissions, Claude Code 2.1.296 tells the model "While bypass permissions mode is active:" plus a
+# Bash-first steer (an auto_mode attachment, renderedRole system) whenever its gate HXt() holds: the env switch when it
+# is set, otherwise a model-keyed cohort (CP6 walk w032, claude-opus-5-5, got it; the Haiku walks did not). The study
+# condition is the steer OFF for every claude-code take, whatever the model; the product default is model-dependent
+# (a named departure). Read statically from the pinned binary in the take image (docker create --network none +
+# docker cp, never run; lane-reports/stub-take-20261015/claude-2.1.296-thrifty-sonic-*.json and
+# claude-2.1.296-tribool*.json, bound by tests/test_run_take.py TestBashFirstSteerOff): HXt returns
+# a.CLAUDE_CODE_THRIFTY_SONIC whenever it is not undefined; it is declared rE=H.triBool(); triBool is true for Ne's
+# list ["1","true","yes","on"] and false for vs's ["0","false","no","off"] (lowercased, trimmed), else undefined. The
+# value rides the exec's pairs (the row below) and the inline settings' env (claude_study_settings: the level above the
+# run tree's files, and the argv the per-turn launch journal records for the checker's auto_mode rule).
+BASH_FIRST_STEER_ENV = {"CLAUDE_CODE_THRIFTY_SONIC": "false"}
+
 # ------------------------------------------------------------------- THE TAKE ENVIRONMENT (ruling docs-1, w12a)
 # An ALLOWLIST, never a blocklist. Every agent process starts from an EMPTY environment (the turn's launcher, below,
 # execs the harness with exactly this row and nothing else: not the image's ENV, not docker exec's defaults, not the
@@ -111,7 +125,7 @@ TAKE_ENV = {
     CLAUDE_CODE: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
                   "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
                   "DISABLE_AUTOUPDATER": "1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", **ISOLATION_ENV,
-                  "CLAUDE_CONFIG_DIR": CONFIG_MOUNT, "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
+                  **BASH_FIRST_STEER_ENV, "CLAUDE_CONFIG_DIR": CONFIG_MOUNT, "CLAUDE_CODE_OAUTH_TOKEN": CREDENTIAL},
     CODEX: {"PATH": TAKE_PATH, "HOME": CONFIG_MOUNT, "LANG": TAKE_LANG,
             "TMPDIR": RUN_TREE_TMP, "TMP": RUN_TREE_TMP, "TEMP": RUN_TREE_TMP, "HTTPS_PROXY": PROXY_URL,
             "CODEX_HOME": CONFIG_MOUNT},     # no credential: subscriptions only (glitch-06, 14 Oct; the 13 Oct amendment)
@@ -213,7 +227,7 @@ FALLBACK_MODEL_FLAG = "--fallback-model"
 #   fallbackModel []           the chain is taken whole from the highest file that defines it: here, none
 #   availableModels [model]    the take's pinned model only (non-managed lists merge, so box/settings_guard.py also
 #                              refuses a run tree whose settings files carry the key)
-#   env                        FALLBACK_ENV again, at a level above the run tree's files
+#   env                        FALLBACK_ENV and BASH_FIRST_STEER_ENV again, at a level above the run tree's files
 CLAUDE_SETTINGS_FLAG = "--settings"
 # The walk tokens' files on athena (box lane, 14 Oct 2026; the CP2 hands card's "separately prepared protected Athena
 # file for that account"). One file per account, in a folder of its own: /home/javier/gap4-secrets/<account>/, mode 700,
@@ -905,7 +919,7 @@ def claude_study_settings(model: str) -> str:
         raise NotReady(f"CLAUDE_BYPASS_KEY is PENDING: {PENDING_WHY['CLAUDE_BYPASS_KEY']}")
     if CLAUDE_BYPASS_KEY != CLAUDE_BYPASS_NOT_REQUIRED:
         raise Refused("the study sends no bypass acceptance key: RULED not required in -p runs (CLAUDE_BYPASS_RULING)")
-    return json.dumps({"availableModels": [model], "env": dict(FALLBACK_ENV),
+    return json.dumps({"availableModels": [model], "env": {**FALLBACK_ENV, **BASH_FIRST_STEER_ENV},
                        "fallbackModel": [], "switchModelsOnFlag": False}, sort_keys=True, separators=(",", ":"))
 
 

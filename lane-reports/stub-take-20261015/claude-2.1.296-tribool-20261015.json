@@ -1,0 +1,56 @@
+{
+ "binary_path": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+ "binary_sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+ "definition_sites": [
+  {
+   "offset": 102784852,
+   "sha256_1200": "2fe2803333c56cb728d78e718093a3fc3d0b4dc010e1fd570cb4cce2ec811ac2",
+   "text": "DE_CODE_DEBUG_LOG_LEVEL.!.......CLAUDE_CODE_OTEL_FLUSH_TIMEOUT_MS...$....Q;.CLAUDE_CODE_OTEL_SHUTDOWN_TIMEOUT_MS%....{*.CLAUDE_CODE_PERFETTO_WRITE_INTERVAL_S.......{Br.CLAUDE_CODE_TERMINAL_RECORDING......U.@.CLAUDE_DEBUG.....M..DEBUG_CLAUDE_AGENT_SDK.......ke.DEBUG_SDK...........digitsOnly......MJ..triBool.#....C..CLAUDE_CODE_BG_TASKS_REPORT_RUNNING.#.......CLAUDE_CODE_DISABLE_LAUNCH_COMPOSER./....S&.CLAUDE_CODE_DISABLE_NOTIFICATION_PRESENCE_CHECK.....b...CLAUDE_CODE_EDITOR_CODELIVERY...,...oO..CLAUDE_CODE_ENABLE_BACKGROUND_PLUGIN_REFRESH\".......CLAUDE_CODE_ENABLE_LAUNCH_COMPOSER..!.....x.CLAUDE_CODE_SKIP_PROJECT_BACKFILL........ks.CLAUDE_CODE_SKIP_REPO_UPLOAD.....w..CLAUDE_CODE_TAG_ISMETA_MESSAGES. ...l(;.CLAUDE_CODE_TWO_STAGE_CLASSIFIER\".......CLAUDE_CODE_USE_NATIVE_FILE_SEARCH.......)..CLAUDE_IMPORT_CONVERSATIONS......nj.CLAUDE_RUNNER_DISABLE_AWAITING_ACTION_OVERRIDE.......|..EMBEDDED_SEARCH_TOOLS........Y).ENABLE_LOCKLESS_UPDATES......a-.ENABLE_LSP_TOOL.........ENABLE_MCP_LARGE_OUTPUT_FILES... .......ENABLE_PID_BASED_VERSION_LOCKING.....+..ENABLE_SESSION_BACKGROUNDING....t4..ENABLE_SESSION_PERSISTENCE..........FORCE_VCR........a1.wholeValue......}...APP_URL.....w...AZURE_FUNCTI"
+  },
+  {
+   "offset": 207489237,
+   "sha256_1200": "b4e9129b20aa27c4a1442dfdc0524fd095e5a79da709a8038b502d87f26d169d",
+   "text": "){let e=n?.trim();return e?e:void 0}function u(n){return n===void 0?void 0:String(n)}var o=i(t),f=i((n)=>n),l=i((n)=>Ne(n)),s=i((n)=>{if(Ne(n))return!0;if(vs(n))return!1;return}),a=d();function SMs(n){if(typeof n===\"boolean\")return n?\"1\":\"0\";return String(n)}var H={str:()=>o,rawStr:()=>f,bool:()=>l,triBool:()=>s,int:(n)=>n?d(n):a,enum:(n)=>i((e)=>e!==void 0&&n.includes(e.trim())?e.trim():void 0)};function d(n){return i((e)=>{if(e===void 0)return;if(n?.digitsOnly&&!/^[+-]?\\d+$/.test(e.trim()))return;if(n?.wholeValue&&!/^[+-]?\\d+$/.test(e.trim())&&aOo(e.trim())===void 0)return;let r=Dd(e);if(!Number.isFinite(r))return;if(n?.min!==void 0&&r<n.min)return;if(n?.max!==void 0&&r>n.max)return;return r})}.export{SMs,H};..// @bun @bytecode.// Claude Code is a Beta product per Anthropic's Commercial Terms of Service..// By using Claude Code, you agree that all code acceptance or rejection decisions you make,.// and the associated conversations in context, constitute Feedback under Anthropic's Commercial Terms,.// and may be used to improve Anthropic's products, including training models..// You are responsible for reviewing any code suggestions before use...// (c) Anthropic PBC. All rights re"
+  }
+ ],
+ "extraction": [
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--pull=never",
+    "--network",
+    "none",
+    "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+    "true"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "8302f48b0aad81134430da8dceffe1aee3dbc69cbd5e231750babccf28af7917"
+  },
+  {
+   "argv": [
+    "docker",
+    "cp",
+    "-L",
+    "8302f48b0aad81134430da8dceffe1aee3dbc69cbd5e231750babccf28af7917:/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+    "/tmp/tmp.xIPU3LBAzp/claude.bin"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": ""
+  },
+  {
+   "argv": [
+    "docker",
+    "rm",
+    "8302f48b0aad81134430da8dceffe1aee3dbc69cbd5e231750babccf28af7917"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "8302f48b0aad81134430da8dceffe1aee3dbc69cbd5e231750babccf28af7917"
+  }
+ ],
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "probe": "claude-tribool"
+}
