@@ -875,15 +875,50 @@ def top_names(source: str) -> set:
     return names
 
 
+# BOOTSTRAP (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026; lane bootstrap-constants): the ruling fills
+# check_take.CHECKER_CONSTANTS IN PLACE (B1), corrects the comments and the refusal that said a walk measures them, and
+# binds the ledger's cap and poll in check4 (B4). R5's prefix rule is superseded for exactly these five spans, each
+# (start anchor, end anchor) found once in the base and once now: the base's span is replaced by the current one before
+# the prefix comparison, and every other byte of the base must still be a prefix. The spans' content is bound by
+# tests/test_checker_constants.py (the constants) and tests/test_checker_body.py (the refusal).
+BOOTSTRAP_SPANS = (
+    ("        raise CheckRefused(f\"the design view's constants {list(design.pending)} are still PENDING;",
+     "    if design.task_id != task_id or design.half != half_name:"),
+    ("    led = _ledger_beside(path)\n", "    reasons, kept, lifted = [], [], set()\n"),
+    ("#          and check() reads them through one keyword.", "#   R4C-1/D1."),
+    ("# The keys round 3's check() reads that the round-4 draft does not carry", "\ndef harness_guard("),
+    ("#   R4C-10. run_tree_tmpdir (line 546)", "#   R4C-11."),
+)
+
+
+def bootstrap_base(base: str, now: str) -> str:
+    """The base with each BOOTSTRAP_SPANS span replaced by the current file's; an anchor not found exactly once in
+    either raises AssertionError."""
+    def span(text, start, end):
+        if text.count(start) != 1:
+            raise AssertionError(f"R5.bootstrap: {start[:50]!r} occurs {text.count(start)} times")
+        i = text.index(start)
+        j = text.index(end, i + len(start))
+        return i, j
+    for start, end in BOOTSTRAP_SPANS:
+        i, j = span(base, start, end)
+        k, m = span(now, start, end)
+        base = base[:i] + now[k:m] + base[j:]
+    return base
+
+
 class R5Round3(Case):
     def test_round_3_walks_are_untouched(self):
         self.assertIsNotNone(BASE_CHECK_TAKE, f"R5.round3: git cannot show {BASE}'s check_take.py")
         now = SOURCES.get("check_take") or (HERE / "check_take.py").read_text()
         cut = BASE_CHECK_TAKE.rindex("\nif __name__")
-        self.assertTrue(now.startswith(BASE_CHECK_TAKE[:cut]), "R5.round3: the base's bytes are not a prefix")
-        self.assertTrue(now.endswith(BASE_CHECK_TAKE[cut:]), "R5.round3: the __main__ block moved")
-        added = now[cut:len(now) - (len(BASE_CHECK_TAKE) - cut)]
-        shadow = top_names(added) & top_names(BASE_CHECK_TAKE[:cut])
+        ruled = bootstrap_base(BASE_CHECK_TAKE[:cut], now)          # BOOTSTRAP: the five ruled spans, nothing else
+        self.assertTrue(now.startswith(ruled), "R5.round3: the base's bytes are not a prefix")
+        cut = len(ruled)
+        BASE_CHECK_TAKE_RULED = ruled + BASE_CHECK_TAKE[BASE_CHECK_TAKE.rindex("\nif __name__"):]
+        self.assertTrue(now.endswith(BASE_CHECK_TAKE_RULED[cut:]), "R5.round3: the __main__ block moved")
+        added = now[cut:len(now) - (len(BASE_CHECK_TAKE_RULED) - cut)]
+        shadow = top_names(added) & top_names(BASE_CHECK_TAKE_RULED[:cut])
         self.assertEqual(shadow, set(), f"R5.round3: appended names shadow the base's {sorted(shadow)}")
         # the same transcript read as a round-3 walk by the base module and by this one
         with study() as w:

@@ -35,8 +35,8 @@ and the end-to-end take S6c covered only in halves (D7 the records, D8 the check
              tree the driver gave it is readers-disagree after the first agent turn, so routing labels it
              harness-error, never graded. Witness: tree-unchecked (check_take.py without the cross-check).
 
-TEST DATA, NEVER PRODUCTION VALUES. Every value only a walk can measure is supplied here, labelled, and never written
-into a production constant (check_take.CHECKER_CONSTANTS and routing.json's pin_profiles stay PENDING):
+TEST DATA, NEVER PRODUCTION VALUES. The rig's own values are supplied here, labelled, and never written into a
+production constant (check_take.CHECKER_CONSTANTS holds the bootstrap ruling's values since 15 Oct 2026):
   WALK_CONSTANTS  the six checker constants (test_checker_body's walk-shaped values; the turn budget equals the
                   driver's budget here; environment_record mirrors the vocabulary drive.py publishes, which is the
                   equality a walk must show; stripped_env empty, as drive.STRIPPED_ENV reads under this process);
@@ -117,12 +117,16 @@ def the_table() -> dict:
 def walk_constants(ct, drive) -> dict:
     """The checker constants a walk measures (TEST DATA; production stays PENDING and check4 refuses it)."""
     c = tcb.walk_constants(ct)
-    c["budgets"] = {"turn_timeout_s": 600}                     # the rig's budget_s
+    c["budgets"] = {"turn_timeout_s": 600,                     # the rig's budget_s
+                    "finalize_wait_s": tbi.CAP_S, "poll_s": tbi.POLL_S}   # BOOTSTRAP B4: the rig's cap and poll
     c["environment_record"] = {
         "file": drive.ENVIRONMENT_RECORD_FILE, "schema": drive.ENVIRONMENT_SCHEMA,
-        "name_patterns": {"harness": list(drive.HARNESS_NAME_PATTERNS), "generic": list(drive.GENERIC_NAME_PATTERNS)},
-        "api_key_variables": list(drive.API_KEY_VARIABLES), "billing_route_variables": list(drive.BILLING_ROUTE_VARIABLES),
-        "subscription_token_variables": list(drive.SUBSCRIPTION_TOKEN_VARIABLES),
+        # BOOTSTRAP: the record's vocabulary is drive.py's RECORD_ names (round 3's, extended with 2.1.296's)
+        "name_patterns": {"harness": list(drive.RECORD_HARNESS_NAME_PATTERNS),
+                          "generic": list(drive.GENERIC_NAME_PATTERNS)},
+        "api_key_variables": list(drive.RECORD_API_KEY_VARIABLES),
+        "billing_route_variables": list(drive.RECORD_BILLING_ROUTE_VARIABLES),
+        "subscription_token_variables": list(drive.RECORD_SUBSCRIPTION_TOKEN_VARIABLES),
         "credential_source_key": drive.CREDENTIAL_SOURCE_KEY}
     return c
 
@@ -481,6 +485,9 @@ def e1_take(mod, p):
                 or [t["n"] for t in led["turns"]] != list(range(1, n + 1)) or led["source"] != w.source):
             out.append(f"{p}: the ledger reads {led['outcome']!r}, cross-check {led['cross_check']}, turns "
                        f"{[t['n'] for t in led['turns']]}")
+        if (led.get("finalize_wait_s"), led.get("poll_s")) != (tbi.CAP_S, tbi.POLL_S):     # BOOTSTRAP B4
+            out.append(f"{p}: the ledger records cap {led.get('finalize_wait_s')!r} and poll {led.get('poll_s')!r}, "
+                       f"not the driver's {tbi.CAP_S} and {tbi.POLL_S}")
         if tbi.EMAIL in (folder / "transcript.jsonl").read_text():
             out.append(f"{p}: the session copy still carries the account email")
         if json.loads((folder / "operator-check.json").read_text()) is None:
@@ -569,9 +576,12 @@ def w5_one_road(sources, p):
     return [f"{p}: {x}" for x in constructions(sources)]
 
 
-PENDING_PATHS = ["budgets.turn_timeout_s", "driver_constants.run_tree_tmpdir", "driver_constants.stripped_env",
-                 "environment_record", "harness_delivered_user_records", "run_location"]
-KNOWN_VALUES = ("driver_outcome_shapes", "system_under_test")       # check_take names these two as known values
+# BOOTSTRAP (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026): every checker constant now holds its ruled,
+# sourced value (tests/test_checker_constants.py binds each to its source), so none is PENDING; superseding the list of
+# six PENDING paths this check held until then. A constant set back to PENDING, or a key outside the block, is red.
+PENDING_PATHS: list = []
+KNOWN_VALUES = ("budgets", "driver_constants", "driver_outcome_shapes", "environment_record",
+                "harness_delivered_user_records", "run_location", "system_under_test")
 
 
 # CP5's registration, typed once from plans/gap-study-round-4/cp5-values-draft-2026-10-14.md (Javier: "CP5: all as
@@ -582,7 +592,8 @@ CP5_PROFILES = {"claude-code": {m: {"permission_mode": "bypassPermissions", "ver
 
 @guarded("W6-pending")
 def w6_pending(world_, p):
-    """W7B-R1-6: every checker constant a walk measures is PENDING in production (the two known values aside), and
+    """W7B-R1-6, superseded by the bootstrap ruling (15 Oct 2026): no checker constant is PENDING in production and
+    the block holds exactly KNOWN_VALUES (each bound to its source by tests/test_checker_constants.py), and
     routing.json's pin_profiles are exactly CP5's registration (Javier, 14 Oct 2026: arm A's three profiles, nothing
     else): the end-to-end take's values are test data only."""
     ct, table = world_
@@ -592,7 +603,7 @@ def w6_pending(world_, p):
         out.append(f"{p}: the PENDING checker constants are {got}, not {PENDING_PATHS}")
     others = sorted(set(ct.CHECKER_CONSTANTS) - set(KNOWN_VALUES) - {x.split('.')[0] for x in got})
     if others:
-        out.append(f"{p}: checker constants {others} hold values a walk has not measured")
+        out.append(f"{p}: checker constants {others} are outside the ruled block")
     if table.get("pin_profiles") != CP5_PROFILES:
         out.append(f"{p}: routing.json's pin_profiles are {table.get('pin_profiles')!r}, not CP5's registration")
     return out
@@ -636,20 +647,21 @@ class TestTheEndToEndTake(unittest.TestCase):
     def test_e2_a_session_outside_its_run_tree_is_never_graded(self):
         self.assertEqual(e2_tree(tbi.drive), [])
 
-    def test_the_production_constants_stay_pending(self):
+    def test_the_production_constants_are_the_ruled_block(self):
         import check_take as ct
         import routing
         self.assertEqual(w6_pending((ct, routing.load_table())), [])
 
     def test_w6_witness_a_filled_constant_or_pin_is_red(self):
-        """Rule B for W6 (W7B-R1-6): one walk constant filled, or one routing pin profile, is red by its own line."""
+        """Rule B for W6 (W7B-R1-6; bootstrap): one constant set back to PENDING, or one routing pin profile, is red
+        by its own line."""
         import check_take as ct
         import routing
         table = routing.load_table()
         self.assertEqual(w6_pending((ct, table)), [])
         filled = copy.deepcopy(ct.CHECKER_CONSTANTS)
-        filled["run_location"] = {"checkout_identity": "x", "checkout_subject": "y"}
-        cases = (("constant-filled", types.SimpleNamespace(CHECKER_CONSTANTS=filled, _pending_paths=ct._pending_paths),
+        filled["run_location"] = ct.PENDING
+        cases = (("constant-pending", types.SimpleNamespace(CHECKER_CONSTANTS=filled, _pending_paths=ct._pending_paths),
                   table),
                  ("pin-filled", ct, dict(table, pin_profiles={"claude-code": {"m": {"permission_mode": "x",
                                                                                      "version": "0"}}})))

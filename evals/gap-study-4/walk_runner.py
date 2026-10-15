@@ -84,11 +84,14 @@ def check_record(walk: str, records, table, route_fn, *, checked: bool) -> dict:
     """check.json: whether the checker ran (W10 review note: it runs only when a turn ran, and its reading is then
     the driver ledger's companion; otherwise the driver hands an empty reading, which this file must not pass off
     as a clean one), the checker's reasons and events as the drive returned them, and the route routing gives the
-    records (or why it refused). Read, never counted."""
+    records (or why it refused), and (BOOTSTRAP B5) the sha256 of the resolved check_take.CHECKER_CONSTANTS, which
+    pending_walk.coverage_status compares with the constants in force. Read, never counted."""
     if not isinstance(records, dict):
         raise TypeError("the drive returned no records")
+    import check_take                    # BOOTSTRAP B5: the digest of the constants the checker read this walk under
     doc = {"walk": walk, "checked": checked is True, "checker_reasons": list(records.get("checker_reasons") or []),
-           "events": records.get("events"), "route": None, "route_refused": None}
+           "events": records.get("events"), "route": None, "route_refused": None,
+           "checker_constants_sha256": check_take.checker_constants_sha256()}
     try:
         doc["route"] = route_fn(records, table)["route"]
     except Exception as e:  # noqa: BLE001 - routing must never sink a walk; its refusal is the walk's record

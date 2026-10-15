@@ -1202,6 +1202,57 @@ def finalize(draft):
     return d
 
 
+# BOOTSTRAP B6 (glitch-6b's first-walk bootstrap ruling, plans/gap-study-round-4/first-walk-bootstrap-ruling-2026-10-15.md,
+# 01:07 EDT 15 Oct 2026, and its addition of the same morning): what the checker constants carry, depart from and
+# cannot show, named in the draft. The values live in check_take.CHECKER_CONSTANTS and nowhere here (this key never
+# shadows one of its keys: check_take.design_view refuses a draft that carries one); tests/test_checker_constants.py
+# binds every path named here to that block.
+RULING_SOURCE = "plans/gap-study-round-4/first-walk-bootstrap-ruling-2026-10-15.md (glitch-6b, 15 Oct 2026)"
+CHECKER_CONSTANTS_RULING = {
+    "source": RULING_SOURCE,
+    "rule": "Every checker constant is filled from its source and bound to it by a test; none is measured by a walk. "
+            "The first CP6 walk, pre-freeze and never counted, falsifies a carried value; it does not measure one.",
+    "carried": [
+        {"constant": "budgets.turn_timeout_s", "from": "round 3 prereg.json budgets.turn_timeout_s (e2979b31); "
+         "D8-non-claude-arms.md line 294, the same for every arm"},
+        {"constant": "budgets.finalize_wait_s", "from": "round 3 prereg.json driver_constants.finalize_wait_s "
+         "(e2979b31); drive.FINALIZE_WAIT_S"},
+        {"constant": "budgets.poll_s", "from": "round 3 drive.py line 769 (e2979b31), a driver code value there, "
+         "pre-registered here"},
+    ],
+    "derived": [
+        {"constant": "harness_delivered_user_records", "from": "transcript_view.CC_TASK_NOTIFICATION; equals round 3",
+         "evidence": "task-notification is present in the 2.1.296 binary (box ba6d7f14)"},
+        {"constant": "run_location", "from": "box/preflight.py STUDY_PATHS (Javier's CP5 ruling, 14 Oct 2026); "
+         "drive.TREE_IDENTITY and drive.TREE_SUBJECT; equals round 3"},
+        {"constant": "environment_record", "from": "drive.py's environment-record vocabulary (RECORD_ names)"},
+        {"constant": "driver_constants.stripped_env", "from": "drive.STRIPPED_ENV, empty"},
+        {"constant": "driver_constants.run_tree_tmpdir", "from": "drive.RUN_TREE_TMPDIR and "
+         "RUN_TREE_TMPDIR_VARIABLES, bound to run_take.TAKE_ENV; equals round 3"},
+    ],
+    "departures": [
+        {"constant": "budgets.finalize_wait_s", "text": "Round 4 also uses the finalize wait as the quiescence cap "
+         "after every turn, not only after stage 00's finalize."},
+        {"constant": "run_location", "text": "The run tree is exported from the pinned commit (variants.PINNED_TREE), "
+         "not from the repository's HEAD."},
+        {"constant": "driver_constants.stripped_env", "text": "Nothing is stripped: round 4 builds each take's "
+         "environment from an allowlist (run_take.TAKE_ENV), so nothing is inherited."},
+        {"constant": "environment_record", "text": "Round 3's vocabulary, read from the 2.1.267 binary, extended "
+         "with the 2.1.296 names from the pinned binary's static read (box ba6d7f14): three name patterns, thirteen "
+         "billing routes, seven API-key names and one subscription token."},
+    ],
+    "limitations": [
+        {"constant": "environment_record", "text": "The vocabulary is used for recording only; the box's environment "
+         "allowlist is the real guarantee of what reaches the agent."},
+    ],
+    "residuals": [
+        {"constant": "harness_delivered_user_records", "text": "The 2.1.296 binary frames a user record of origin "
+         "kind auto-continuation as human. It is not on the list, so a take carrying one is refused "
+         "(unknown-harness-origin): it fails closed."},
+    ],
+}
+
+
 def build(root=None):
     root = HERE if root is None else Path(root)
     d = describe(root)
@@ -1225,6 +1276,7 @@ def build(root=None):
     d["routing_markers"] = {k: table[k] for kind in kinds for k in (kind, kind + "_status")}
     d["routing_marker_inputs"] = {h: {k: PENDING for k in kinds if h not in table[k]}
                                   for h in HARNESSES.values() if any(h not in table[k] for k in kinds)}
+    d["checker_constants_ruling"] = copy.deepcopy(CHECKER_CONSTANTS_RULING)       # BOOTSTRAP B6
     url = "https://github.com/javrodriguez/genomics-agentic-research-system/" + study.STUDY_REL
     d["session_namespace"] = {"uuid": str(uuid.uuid5(uuid.NAMESPACE_URL, url)), "derived_from": url,
                                "note": "uuid5(NAMESPACE_URL, derived_from); distinct from earlier sessions."}

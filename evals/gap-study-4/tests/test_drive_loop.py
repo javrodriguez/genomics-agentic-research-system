@@ -39,8 +39,8 @@ What is tested, each guard with its own bound check and a whole-file witness of 
              env-per-turn-dropped.
   D8-checker the production checker callable (take_checker): check4 on the take's published transcript against its
              design view (the real round-4 design, test_checker_body's synthetic clean take); a cross-check that
-             failed adds readers-disagree; no transcript at all is readers-disagree; the production constants
-             (PENDING) refuse, never a default. Witnesses: cross-check-unrouted, missing-transcript-graded.
+             failed adds readers-disagree; no transcript at all is readers-disagree; constants holding a PENDING
+             value refuse, never a default (bootstrap, 15 Oct 2026: production's are ruled, so one is set back). Witnesses: cross-check-unrouted, missing-transcript-graded.
   D11-numbering  W6J-R1-3: a script whose steps are not numbered exactly 1..k in order is refused (a bare line beside
              a step of the same n, a gap, a repeat, a reversal); a strict driver refuses bare lines. Witnesses:
              any-numbering, strict-ignored. D7 also carries W6J-R1-1 (a session file the cost reader refuses is a
@@ -550,10 +550,13 @@ def d8_checker(mod, p):
         got = checker(r, take(empty, ["no session file"]), [])
         if got["checker_reasons"] != [mod.READERS_DISAGREE]:
             out.append(f"{p}: a take with no transcript reads {got['checker_reasons']}, not readers-disagree")
-        production = mod.take_checker(design_for=lambda row, t: ct.design_view(row, pin=tcb.pin(), run_tree=tcb.RUN_TREE))
+        # BOOTSTRAP (15 Oct 2026): production's constants hold the ruled values; one set back to PENDING must refuse.
+        held = dict(ct.CHECKER_CONSTANTS, run_location=ct.PENDING)
+        production = mod.take_checker(design_for=lambda row, t: ct.design_view(row, pin=tcb.pin(), run_tree=tcb.RUN_TREE,
+                                                                                 constants=held))
         try:
             production(r, take(clean.parent, []), [])
-            out.append(f"{p}: the production constants (PENDING) did not refuse")
+            out.append(f"{p}: constants holding a PENDING value did not refuse")
         except ct.CheckRefused:
             pass
     return out

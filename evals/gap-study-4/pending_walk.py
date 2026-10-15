@@ -69,8 +69,9 @@ def _regrade_state(base, walk: str):
 
 def coverage_status(base, walk: str):
     """Batch-8 fix ruling (glitch-06, 14 Oct 2026; CP6: "Every walk is graded but never counted"): None when the walk
-    counts as coverage, else why not. A walk covers its spec only when its grade.json is graded true, or when it is a
-    pending walk that a verified graded-true regrade supersedes. Fail closed: a missing or unreadable grade.json, an
+    counts as coverage, else why not. A walk covers its spec only when its grade.json is graded true and its check.json
+    passes checker_standing (BOOTSTRAP B5: no constant-bound checker reason, checked under the constants in force), or
+    when it is a pending walk that a verified graded-true regrade supersedes (the checker never ran on it). Fail closed: a missing or unreadable grade.json, an
     ungraded walk, a pending walk, and a pending walk whose verified regrade refused are each reported, never counted."""
     import json
     from pathlib import Path
@@ -81,11 +82,39 @@ def coverage_status(base, walk: str):
     if not isinstance(grade, dict):
         return "grade unreadable"
     if grade.get("graded") is True:
-        return None
+        return checker_standing(base, walk)
     if grade.get("status") == PENDING:
         state = _regrade_state(base, walk)
         return None if state == "graded" else "regrade refused" if state == "refused" else "pending"
     return "not graded"
+
+
+def checker_standing(base, walk: str):
+    """BOOTSTRAP B5 (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026; required, or the falsifier argument fails):
+    None when a graded walk's check.json lets it count, else why not. A walk is graded whenever its first agent turn
+    ran, whatever its checker reasons; a walk whose checker named a reason a CHECKER_CONSTANTS value decides
+    (check_take.CONSTANT_BOUND_REASONS) is never counted, and neither is one checked under constants other than those
+    in force (its check.json's checker_constants_sha256): it reads stale until it is regraded. Fail closed: a missing
+    or unreadable check.json, one with no reasons list, and constants still PENDING are each reported."""
+    import json
+    from pathlib import Path
+    import check_take
+    try:
+        check = json.loads((Path(base) / walk / "check.json").read_bytes())
+    except (OSError, ValueError):
+        return "check unreadable"
+    if not isinstance(check, dict) or not isinstance(check.get("checker_reasons"), list):
+        return "check unreadable"
+    bound = [r for r in check["checker_reasons"] if r in check_take.CONSTANT_BOUND_REASONS]
+    if bound:
+        return f"constant-bound checker reason: {', '.join(bound)}"
+    try:
+        now = check_take.checker_constants_sha256()
+    except check_take.CheckRefused:
+        return "the checker constants in force are PENDING"
+    if check.get("checker_constants_sha256") != now:
+        return "stale: checked under other checker constants; regrade it"
+    return None
 
 
 def uncounted_walks(base, walks) -> dict:

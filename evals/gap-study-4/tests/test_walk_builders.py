@@ -128,6 +128,18 @@ if RULES_SCANNER_ON_TREE:
 # present on the merged head (B7.production checks it is then drive's own `_ownership`).
 OWNERSHIP_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "ownership.py").is_file()
 EXPECTED_MISSING += [] if OWNERSHIP_ON_TREE else ["ownership"]
+# BOOTSTRAP (glitch-6b's first-walk bootstrap ruling, 15 Oct 2026): check_take.CHECKER_CONSTANTS holds its ruled values,
+# so design_for is built (B8's rule on the real constants); missing, by name, only on a tree still holding a PENDING one.
+def _constants_held() -> list:
+    import check_take
+    return [x for k, v in check_take.CHECKER_CONSTANTS.items() for x in check_take._pending_paths(v, k)]
+
+
+
+def expected_missing() -> list:
+    """EXPECTED_MISSING, less design_for where no checker constant is PENDING (read when a test runs, never at import:
+    check_take.py puts evals/ on sys.path when imported)."""
+    return [n for n in EXPECTED_MISSING if n != "design_for" or _constants_held()]
 SETTINGS_GUARD_ON_TREE = (Path(__file__).resolve().parents[1] / "box" / "settings_guard.py").is_file()
 EXPECTED_MISSING += [] if SETTINGS_GUARD_ON_TREE else ["settings_guard"]
 EXPECTED_MISSING += ["machine_gate"]       # P-2: until the operator's runner names its paths (machine_gate's env)
@@ -830,7 +842,7 @@ class B7Production(Case):
     def test_production_leaves_exactly_these_missing(self):
         got = self.must("B7.production", wb().production_builders)
         gaps = self.must("B7.production", wb().missing, got)
-        self.assertEqual([n for n, _ in gaps], EXPECTED_MISSING, "B7.production: not exactly the missing values")
+        self.assertEqual([n for n, _ in gaps], expected_missing(), "B7.production: not exactly the missing values")
         self.assertTrue(all(isinstance(why, str) and len(why) > 20 for _, why in gaps), "B7.production")
         why = dict(gaps)
         for name, words in (("runtime", "DockerRuntime"), ("proxy", "next-slices plan item 4"),
@@ -876,7 +888,7 @@ class B7Production(Case):
                 code, out, err = self.must("B7.production", run_main, argv)
                 self.assertEqual(code, 2, "B7.production: not refused")
                 named = re.findall(r"^refused: missing (\w+): ", err, re.M)
-                self.assertEqual(named, EXPECTED_MISSING, f"B7.production: {err[:600]}")
+                self.assertEqual(named, expected_missing(), f"B7.production: {err[:600]}")
                 self.assertIn("Q-w7b-3", err, "B7.production")
                 self.assertEqual(err.strip().splitlines()[-1], f"refused: {MODS['walk_runner'].CLI_REFUSAL}",
                                  "B7.production: the refusal line is not the last line")
