@@ -138,11 +138,29 @@ class LaunchRefused(RuntimeError):
     """A step of the road refused; the message names the rule, never a secret."""
 
 
+def clean_git_env(extra=None) -> dict:
+    """git (and gitleaks) with no global or system config and no prompt: athena_suite.clean_git_env's rule, mirrored
+    (closure review of a3b09f02, MINOR; test_walk_launch pins the rule): every GIT_* and GITLEAKS_* variable of the
+    operator's environment is dropped, so a GIT_CONFIG_COUNT setting (fsck.zeroPaddedFilemode=ignore, say) or a
+    GITLEAKS_CONFIG cannot change what a check reads."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_", "GITLEAKS_"))}
+    env.update({"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0"})
+    env.update(extra or {})
+    return env
+
+
+# The remote git calls run in javier's ssh environment on athena; they carry the same isolation as a prefix.
+REMOTE_GIT = "GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 git"
+
+
 class Runner:
-    """The one place a process starts. local(argv) and remote(cmd) return (code, stdout, stderr)."""
+    """The one place a process starts. local(argv) and remote(cmd) return (code, stdout, stderr). A local git or
+    gitleaks call runs under clean_git_env."""
 
     def local(self, argv, *, timeout=3600):
-        p = subprocess.run(list(argv), capture_output=True, text=True, timeout=timeout)
+        argv = list(argv)
+        env = clean_git_env() if argv and os.path.basename(str(argv[0])) in ("git", "gitleaks") else None
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, env=env)
         return p.returncode, p.stdout, p.stderr
 
     def remote(self, cmd: str, *, timeout=3600):
@@ -156,9 +174,12 @@ class Runner:
 
 
 def _ok(res, what):
+    """The step's stdout, or a refusal naming the step and its exit code ONLY (closure review of a3b09f02, MAJOR):
+    stderr and stdout are never echoed, at any site, so no athena-made byte (a bundle header, a log tail, a path) reaches
+    the terminal, a transcript or a lane report unscanned."""
     code, out, err = res
     if code != 0:
-        raise LaunchRefused(f"{what} failed (exit {code}): {(err or '').strip()[:200]}")
+        raise LaunchRefused(f"{what} failed (exit {code})")
     return out
 
 
@@ -172,7 +193,8 @@ def _sha256(path: str) -> str:
 
 def _child(child: str) -> str:
     if not isinstance(child, str) or not CHILD.fullmatch(child):
-        raise LaunchRefused(f"the athena child must be a new /home/javier/w-XXXXXXXX folder, not {child!r}")
+        # the value is never echoed: on ship it is athena's mktemp output (closure review of a3b09f02)
+        raise LaunchRefused("the athena child must be a new /home/javier/w-XXXXXXXX folder")
     return child
 
 
@@ -261,7 +283,7 @@ def gunzip_to(data: bytes, out, limit: int) -> tuple:
 
 
 def _git_out(repo: str, *args: str, binary: bool = False):
-    p = subprocess.run(["git", "-C", repo, *args], capture_output=True, timeout=600)
+    p = subprocess.run(["git", "-C", repo, *args], capture_output=True, timeout=600, env=clean_git_env())
     if p.returncode != 0:
         raise LaunchRefused(f"git {args[0]} failed (exit {p.returncode})")
     return p.stdout if binary else p.stdout.decode("utf-8", "replace")
@@ -303,7 +325,8 @@ def _tree_entries(repo: str, commit: str) -> list:
             declared.setdefault(meta[2].decode(), set()).add(meta[1].decode())
     if declared:
         p = subprocess.run(["git", "-C", repo, "cat-file", "--batch-check=%(objectname) %(objecttype)"],
-                           input=("\n".join(declared) + "\n").encode(), capture_output=True, timeout=600)
+                           input=("\n".join(declared) + "\n").encode(), capture_output=True, timeout=600,
+                           env=clean_git_env())
         if p.returncode != 0:
             raise LaunchRefused(f"git cat-file --batch-check failed (exit {p.returncode})")
         real = dict(line.split()[:2] for line in p.stdout.decode().splitlines() if len(line.split()) >= 2)
@@ -318,7 +341,7 @@ def _fsck_problems(repo: str) -> list:
     """`git fsck --strict --no-dangling` over the scratch (the sibling review's first layer, as athena_suite): every
     output line when it fails or prints anything at all (a warning too); [] when the repository is clean."""
     p = subprocess.run(["git", "-C", repo, "fsck", "--strict", "--no-dangling", "--no-progress"],
-                       capture_output=True, timeout=1800)
+                       capture_output=True, timeout=1800, env=clean_git_env())
     lines = [x for x in (p.stdout + p.stderr).decode("utf-8", "replace").splitlines() if x.strip()]
     if p.returncode != 0 or lines:                 # a clean repository prints nothing: any line refuses
         return lines or [f"git fsck exited {p.returncode}"]
@@ -367,7 +390,7 @@ def canary_scan(gitleaks: str, src: str, work: str) -> list:
     report = os.path.join(work, "report.json")
     p = subprocess.run([gitleaks, "dir", "--no-banner", "--redact", "--exit-code", "0", "--ignore-gitleaks-allow",
                         "--gitleaks-ignore-path", ignore, "--report-format", "json", "--report-path", report, src],
-                       capture_output=True, timeout=900)
+                       capture_output=True, timeout=900, env=clean_git_env())
     try:
         with open(report, encoding="utf-8") as fh:
             found = json.load(fh)
@@ -546,8 +569,8 @@ def ship(runner: Runner, *, repo: str, ref: str, suite: str, reserve: str, gitle
         got = _ok(runner.remote(f"sha256sum {child}/{name}"), f"reading {name}'s sha256").split()[:1]
         if got != [want]:
             raise LaunchRefused(f"{name}'s sha256 on athena is not the Mac's")
-    _ok(runner.remote(f"git clone -q -b {shlex.quote(ref)} {child}/walk-out.bundle {child}/repo"), "the athena clone")
-    if _ok(runner.remote(f"git -C {child}/repo rev-parse HEAD"), "the athena head").strip() != head:
+    _ok(runner.remote(f"{REMOTE_GIT} clone -q -b {shlex.quote(ref)} {child}/walk-out.bundle {child}/repo"), "the athena clone")
+    if _ok(runner.remote(f"{REMOTE_GIT} -C {child}/repo rev-parse HEAD"), "the athena head").strip() != head:
         raise LaunchRefused("athena's clone is not at the head")
     return {"child": child, "head": head, "bundle_sha256": digest, "scanned_commits": scanned}
 
@@ -609,9 +632,11 @@ def status(runner: Runner, *, child: str) -> str:
     code, out, _ = runner.remote(f"if kill -0 $(cat {child}/walk.pid) 2>/dev/null; then echo running; "
                                  f"elif test -f {child}/walk.exit; then echo exit=$(cat {child}/walk.exit); "
                                  f"else echo lost; fi")
-    if code != 0 or not out.strip():
-        raise LaunchRefused("the walk's state cannot be read")
-    return out.strip()
+    state = out.strip() if code == 0 else ""
+    # athena-made bytes: only the three closed forms are ever returned or printed (closure review of a3b09f02)
+    if not re.fullmatch(r"running|lost|exit=[0-9]{1,3}", state):
+        raise LaunchRefused("the walk's state cannot be read (not one of its closed forms)")
+    return state
 
 
 # ------------------------------------------------------------------------------------------------ fetch
@@ -623,16 +648,18 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
     st = status(runner, child=child)
     if st == "running":
         raise LaunchRefused("the walk is still running; nothing is fetched")
-    if _ok(runner.remote(f"git -C {child}/repo cat-file -t {shlex.quote(ref)}"), "the athena ref's type").strip() \
+    if _ok(runner.remote(f"{REMOTE_GIT} -C {child}/repo cat-file -t {shlex.quote(ref)}"), "the athena ref's type").strip() \
             != "commit":
         raise LaunchRefused(f"athena's ref {ref!r} does not name a commit object (an annotated tag is refused)")
-    tip = _ok(runner.remote(f"git -C {child}/repo rev-parse --verify {shlex.quote(ref)}^{{commit}}"),
+    tip = _ok(runner.remote(f"{REMOTE_GIT} -C {child}/repo rev-parse --verify {shlex.quote(ref)}^{{commit}}"),
               "the athena tip").strip()
+    if not HEX40.fullmatch(tip):
+        raise LaunchRefused("athena's tip is not one full commit id")
     if tip == head:
         return {"state": st, "fetched": None, "why": "the walk made no commit"}
-    if runner.remote(f"git -C {child}/repo merge-base --is-ancestor {head} {tip}")[0] != 0:
+    if runner.remote(f"{REMOTE_GIT} -C {child}/repo merge-base --is-ancestor {head} {tip}")[0] != 0:
         raise LaunchRefused("athena's tip does not descend from the shipped head")
-    _ok(runner.remote(f"git -C {child}/repo bundle create {child}/walk-back.bundle {head}..{shlex.quote(ref)}"),
+    _ok(runner.remote(f"{REMOTE_GIT} -C {child}/repo bundle create {child}/walk-back.bundle {head}..{shlex.quote(ref)}"),
         "the back bundle")
     digest = _ok(runner.remote(f"sha256sum {child}/walk-back.bundle"), "the back bundle's sha256").split()[:1]
     os.makedirs(work, exist_ok=True)
@@ -669,13 +696,17 @@ def fetch(runner: Runner, *, child: str, head: str, ref: str, records: str, gitl
         n = suite_mod.scan_unpublished(scratch, tip, os.path.join(work, "back-scan-work"), gitleaks, [head], None,
                                        allow, None, None, None)
     except Exception as e:  # noqa: BLE001 - athena_suite's Refused, a git or scanner failure: nothing is fetched
-        raise LaunchRefused(f"the return scan refused, nothing is fetched: {type(e).__name__}: {str(e)[:300]}") \
-            from None
+        # athena-made bytes (a path, a commit message) can sit in a foreign refusal's words: only this road's own
+        # refusals, which name ids, counts and rules, are passed on; any other names its type alone.
+        why = str(e) if isinstance(e, LaunchRefused) else f"{type(e).__name__} (its words are not echoed)"
+        raise LaunchRefused(f"the return scan refused, nothing is fetched: {why}") from None
     if not isinstance(n, int) or n < 1:
         raise LaunchRefused("the return scan scanned no commit past the head; nothing is fetched")
     name = os.path.basename(child)
     _ok(runner.local(["git", "-C", records, "fetch", "-q", "--no-tags", scratch, f"refs/walk/back:refs/heads/walk/{name}"]),
         "the records fetch")                                     # from the scanned scratch only, never the bundle
+    # A defensive invariant (closure review of a3b09f02, NIT): the scratch check above already binds the scratch to
+    # exactly the reachable set, and a fetch of one ref from it transfers no more, so no test can make this fire alone.
     if _all_objects(records) - before != expected - before:
         raise LaunchRefused(f"the records clone gained objects beyond the walk's commits (branch walk/{name} is "
                             f"left for a human)")

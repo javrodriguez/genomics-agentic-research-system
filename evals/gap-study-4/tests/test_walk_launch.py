@@ -110,7 +110,7 @@ class FakeRunner(wl.Runner):
             if path in self.sha_override:
                 return 0, self.sha_override[path] + "  " + path + "\n", ""
             return (0, hashlib.sha256(Path(src).read_bytes()).hexdigest() + "  " + path + "\n", "") if src else (1, "", "")
-        if cmd.startswith("git clone -q -b"):
+        if " clone -q -b " in cmd:
             return 0, "", ""
         if cmd.endswith("/repo rev-parse HEAD"):
             return 0, (self.athena_head or "") + "\n", ""
@@ -414,7 +414,7 @@ def l3(mod) -> list:
         if git("-C", repo, "rev-parse", "refs/heads/walk/w-AbCd1234").strip() != tip:
             out.append("L3-fetch: the records clone does not hold the walk's tip")
         creates = [c[1] for c in runner.calls if c[0] == "remote" and " bundle create " in c[1]]
-        if creates != [f"git -C {CHILD}/repo bundle create {CHILD}/walk-back.bundle {head}..main"]:
+        if creates != [f"{mod.REMOTE_GIT} -C {CHILD}/repo bundle create {CHILD}/walk-back.bundle {head}..main"]:
             out.append("L3-fetch: the back bundle is not exactly the new commits")
         scans = runner.fake_suite.scans
         if len(scans) != 1 or {k: scans[0][k] for k in ("sha", "public", "rulings", "allow_blobs", "ruled",
@@ -1026,6 +1026,88 @@ def l8(mod) -> list:
     return out
 
 
+def bundle_with_token_header(token: str):
+    """A make_bundle for fetch_rig: a valid bundle with one extra header line carrying `token`, which `git bundle
+    list-heads` reports on stderr ("unrecognized header: <token>")."""
+    def make(athena, head, back):
+        tip = git("-C", athena, "rev-parse", "main").strip()
+        objs = git("-C", athena, "rev-list", "--objects", "--no-object-names", tip, "--not", head).split()
+        pack = subprocess.run(["git", "-C", athena, "pack-objects", "--stdout"], input="\n".join(objs).encode(),
+                              capture_output=True, env=GIT_ENV, check=True).stdout
+        Path(back).write_bytes(f"# v2 git bundle\n-{head} head\n{tip} refs/heads/main\n{token}\n\n".encode() + pack)
+    return make
+
+
+def l9(mod) -> list:
+    """The closure review of a3b09f02: no athena-made byte is echoed, and git runs under a clean environment."""
+    import io
+    out = []
+    marker = "PLANTEDmarker" + "Q" * 20
+    # (1) a token in a bundle header: absent from the refusal and from main()'s printed JSON
+    with tempfile.TemporaryDirectory() as t:
+        runner, got, repo, head, _ = fetch_rig(mod, t, make_bundle=bundle_with_token_header(marker))
+        if not isinstance(got, mod.LaunchRefused):
+            out.append("L9-echo: a bundle with a token header line is fetched")
+        elif marker in str(got):
+            out.append("L9-echo: the refusal echoes athena-made bytes (a bundle header)")
+    with tempfile.TemporaryDirectory() as t:
+        fake = fake_gitleaks(t)
+        holder = {}
+
+        def capture(r, tip):
+            holder["runner"] = r
+        _, got, repo, head, _ = fetch_rig(mod, t, make_bundle=bundle_with_token_header(marker), after_runner=capture)
+        r2 = holder["runner"]
+        work2 = os.path.join(t, "work2")
+        buf = io.StringIO()
+        with mock.patch.object(mod, "Runner", lambda: r2), contextlib.redirect_stdout(buf):
+            code = mod.main(["fetch", "--child", CHILD, "--head", head, "--ref", "main", "--records", repo,
+                             "--gitleaks", fake, "--work", work2, "--suite", "/x/athena_suite.py"])
+        if code == 0 or marker in buf.getvalue() or "refused" not in buf.getvalue():
+            out.append("L9-echo: main() prints athena-made bytes, or does not refuse")
+    # (2) a foreign refusal's words are not echoed (a path can hold a token)
+    with tempfile.TemporaryDirectory() as t:
+        _, got, _, _, _ = fetch_rig(mod, t, suite_kw={"nonpublic_finding": True})
+        if not isinstance(got, mod.LaunchRefused) or "x.txt" in str(got):
+            out.append("L9-echo: a foreign refusal's words (a path) are echoed")
+    # (2b) athena's mktemp output is never echoed when it is off its form
+    try:
+        mod._child("/home/javier/" + marker)
+        out.append("L9-echo: a child off its form is admitted")
+    except mod.LaunchRefused as e:
+        if marker in str(e):
+            out.append("L9-echo: the child check echoes athena's mktemp output")
+    # (3) status passes only its closed forms
+    for state in ("exit=0; " + marker, marker, "exit=1234"):
+        r = FakeRunner(walk_state=state)
+        try:
+            mod.status(r, child=CHILD)
+            out.append(f"L9-echo: status returns an open form ({len(state)} bytes)")
+        except mod.LaunchRefused as e:
+            if marker in str(e):
+                out.append("L9-echo: status echoes athena-made bytes")
+    # (4) the clean environment: athena_suite.clean_git_env's rule, and the config-silencing probe
+    with mock.patch.dict(os.environ, {"GIT_DIR": "/x", "GITLEAKS_CONFIG": "/y", "KEEP_ME": "1"}):
+        env = mod.clean_git_env()
+        if any(k.startswith(("GIT_", "GITLEAKS_")) and k not in ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM",
+                                                                  "GIT_TERMINAL_PROMPT") for k in env) \
+                or env.get("GIT_CONFIG_GLOBAL") != os.devnull or env.get("GIT_CONFIG_NOSYSTEM") != "1" \
+                or env.get("GIT_TERMINAL_PROMPT") != "0" or env.get("KEEP_ME") != "1":
+            out.append("L9-env: clean_git_env is not athena_suite's rule")
+    with tempfile.TemporaryDirectory() as t:
+        repo, _, head = make_repo(t)
+        zero_padded_mode_commit(repo)
+        tip = git("-C", repo, "rev-parse", "main").strip()
+        silence = {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "fsck.zeroPaddedFilemode", "GIT_CONFIG_VALUE_0": "ignore"}
+        with mock.patch.dict(os.environ, silence):
+            try:
+                mod.admitted_evidence_blobs(FakeSuite([]), repo, head, tip, fake_gitleaks(t), os.path.join(t, "w"))
+                out.append("L9-env: an operator's GIT_CONFIG_COUNT silences fsck --strict")
+            except mod.LaunchRefused:
+                pass
+    return out
+
+
 def l4(mod) -> list:
     out = []
     with tempfile.TemporaryDirectory() as t:
@@ -1049,7 +1131,7 @@ def l4(mod) -> list:
 
 
 CHECKS = {"L1-ship": l1, "L2-run": l2, "L3-fetch": l3, "L4-bounds": l4, "L5-guards": l5, "L6-start": l6,
-          "L7-env": l7, "L8-blobs": l8}
+          "L7-env": l7, "L8-blobs": l8, "L9-echo": l9, "L9-env": l9}
 
 
 def witness(edits) -> types.ModuleType:
@@ -1148,6 +1230,15 @@ WITNESSES = {
                                   "    if False:"),), "L5-guards"),
     "fsck-dropped": ((("    fsck = _fsck_problems(repo)\n    if fsck:", "    fsck = _fsck_problems(repo)\n    if False:"),), "L8-blobs"),
     "entry-types-unchecked": ((("            if kinds != {real.get(oid)}:", "            if False:"),), "L8-blobs"),
+    "stderr-echoed": ((("        raise LaunchRefused(f\"{what} failed (exit {code})\")",
+                        "        raise LaunchRefused(f\"{what} failed (exit {code}): {(err or '').strip()[:200]}\")"),), "L9-echo"),
+    "foreign-words-echoed": ((("        why = str(e) if isinstance(e, LaunchRefused) else f\"{type(e).__name__} (its words are not echoed)\"",
+                               "        why = str(e)"),), "L9-echo"),
+    "status-open-form": ((("    if not re.fullmatch(r\"running|lost|exit=[0-9]{1,3}\", state):", "    if False:"),), "L9-echo"),
+    "child-echoed": ((("        raise LaunchRefused(\"the athena child must be a new /home/javier/w-XXXXXXXX folder\")",
+                       "        raise LaunchRefused(f\"the athena child must be a new folder, not {child!r}\")"),), "L9-echo"),
+    "dirty-git-env": ((("    env = {k: v for k, v in os.environ.items() if not k.startswith((\"GIT_\", \"GITLEAKS_\"))}",
+                        "    return dict(os.environ)\n    env = {}"),), "L9-env"),
     # Named equivalent, no witness: the 1f 8b magic check in gzip_header is the only gate before parsing; dropping it
     # leaves the method byte and zlib's raw inflate to refuse a non-gzip, so only the refusal's words change.
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
@@ -1179,6 +1270,9 @@ class TestTheRoad(unittest.TestCase):
 
     def test_l8_blobs(self):
         self.assertEqual(l8(wl), [])
+
+    def test_l9_echo_and_env(self):
+        self.assertEqual(l9(wl), [])
 
     def test_pinned_tree_is_variants(self):
         import variants
