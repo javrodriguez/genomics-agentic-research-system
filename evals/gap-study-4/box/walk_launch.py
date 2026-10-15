@@ -126,6 +126,12 @@ BLOB_TOTAL_MAX = 64 * 1024 * 1024        # decompressed, all of a walk's evidenc
 BLOB_MAX_COUNT = 256                      # evidence blobs one walk may bring (review MAJOR 2)
 GZ_FHCRC, GZ_FEXTRA, GZ_FNAME, GZ_FCOMMENT, GZ_RESERVED = 0x02, 0x04, 0x08, 0x10, 0xE0
 CHUNK = 1 << 20
+GZ_FIELD_MAX = 4096                       # each of FEXTRA, FNAME, FCOMMENT (closure review MINOR C)
+# The canary proof (closure review MAJOR A and B): gitleaks `dir` silently skips a file that looks like an archive (a
+# gzip, bzip2, zstd, 7z or zip signature at its start, tar's ustar at offset 257), so a clean scan proves nothing by
+# itself. Every scanned file ends with its own synthetic GitHub-token-shaped canary (made at run time, never a key),
+# and the scan must report exactly that one canary per file, on its own line, and nothing else.
+CANARY_RULE = "github-pat"
 
 
 class LaunchRefused(RuntimeError):
@@ -199,6 +205,8 @@ def gzip_header(data: bytes) -> tuple:
         xlen = int.from_bytes(data[i:i + 2], "little")
         if len(data) < i + 2 + xlen:
             raise LaunchRefused("the gzip header is cut short (FEXTRA)")
+        if xlen > GZ_FIELD_MAX:
+            raise LaunchRefused(f"the gzip header's FEXTRA is longer than {GZ_FIELD_MAX} bytes")
         fields.append(("FEXTRA", data[i + 2:i + 2 + xlen]))
         i += 2 + xlen
     for bit, name in ((GZ_FNAME, "FNAME"), (GZ_FCOMMENT, "FCOMMENT")):
@@ -206,6 +214,8 @@ def gzip_header(data: bytes) -> tuple:
             j = data.find(b"\0", i)
             if j < 0:
                 raise LaunchRefused(f"the gzip header is cut short ({name})")
+            if j - i > GZ_FIELD_MAX:
+                raise LaunchRefused(f"the gzip header's {name} is longer than {GZ_FIELD_MAX} bytes")
             fields.append((name, data[i:j]))
             i = j + 1
     if flg & GZ_FHCRC:
@@ -278,29 +288,92 @@ def evidence_candidates(repo: str, head: str, tip: str) -> dict:
     return out
 
 
+def _canary() -> bytes:
+    import secrets
+    import string
+    return ("ghp_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(36))).encode()
+
+
+def _append_canary(path: str) -> int:
+    """Append a fresh canary on its own last line; return that line's number (1-based), the line gitleaks must name."""
+    lines, last = 0, b"\n"
+    with open(path, "rb") as fh:
+        for block in iter(lambda: fh.read(CHUNK), b""):
+            lines += block.count(b"\n")
+            last = block[-1:]
+    with open(path, "ab") as fh:
+        if last != b"\n":
+            fh.write(b"\n")
+            lines += 1
+        fh.write(_canary() + b"\n")
+    return lines + 1
+
+
+def _write_private(path: str, data: bytes) -> None:
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as fh:
+        fh.write(data)
+
+
+def canary_scan(gitleaks: str, src: str, work: str) -> list:
+    """gitleaks dir over src (no allowance: --ignore-gitleaks-allow, an empty ignore file, redacted), every file
+    carrying its canary; returns [(file name, why)] for every file whose canary is missing or that has any other
+    finding. Never content: names, rules and line numbers only."""
+    expected = {name: _append_canary(os.path.join(src, name)) for name in sorted(os.listdir(src))}
+    ignore = os.path.join(work, "empty.gitleaksignore")
+    open(ignore, "w").close()
+    report = os.path.join(work, "report.json")
+    p = subprocess.run([gitleaks, "dir", "--no-banner", "--redact", "--exit-code", "0", "--ignore-gitleaks-allow",
+                        "--gitleaks-ignore-path", ignore, "--report-format", "json", "--report-path", report, src],
+                       capture_output=True, timeout=900)
+    try:
+        with open(report, encoding="utf-8") as fh:
+            found = json.load(fh)
+        if not isinstance(found, list):
+            raise ValueError
+    except (OSError, ValueError):
+        raise LaunchRefused(f"the private scan wrote no readable report (exit {p.returncode})") from None
+    if p.returncode != 0:
+        raise LaunchRefused(f"the private scan failed (exit {p.returncode})")
+    canaries, problems = {}, []
+    for f in found:
+        name = os.path.basename(str(f.get("File", "")))
+        if name in expected and f.get("RuleID") == CANARY_RULE and f.get("StartLine") == expected[name]:
+            canaries[name] = canaries.get(name, 0) + 1
+        else:
+            problems.append((name, f"a finding ({f.get('RuleID')}, line {f.get('StartLine')})"))
+    for name in expected:
+        if canaries.get(name, 0) != 1:
+            problems.append((name, "its canary was not reported exactly once (the scanner skipped or misread it)"))
+    return problems
+
+
 def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks: str, work: str) -> tuple:
-    """The blob ids scan_unpublished may allow (glitch-6b's ruling (b), with the review of b1f5c952 folded): every
-    candidate blob (evidence_candidates, plus athena_suite's own binary list) must be absent from the shipped head's
-    history, sit at every path under rehearsals/<walk>/evidence/blobs/<sha256 of its stored bytes>, and decode as one
-    gzip member within its bounds and the walk's totals; each payload streams into its own 0600 file, and its header
-    fields (FEXTRA, FNAME, FCOMMENT) into a sibling 0600 file, in a private folder that gitleaks then scans with no
-    allowance. Refuses on anything else; reports counts and blob ids only, never content."""
+    """The walk road's own private scan, and the blob ids scan_unpublished may allow (glitch-6b's ruling (b), with
+    the reviews of b1f5c952 and acbdd8e4 folded). Every candidate blob (evidence_candidates, plus athena_suite's own
+    binary list) must be absent from the shipped head's history, sit at every path under
+    rehearsals/<walk>/evidence/blobs/<sha256 of its stored bytes>, and decode as one gzip member within its bounds and
+    the walk's totals; each payload streams into its own 0600 file, its header (MTIME, XFL, OS and any FEXTRA, FNAME,
+    FCOMMENT, each at most 4 KiB) into a sibling 0600 file, and every new commit's message into its own 0600 file
+    (MAJOR B: the message scan's own blind spot, closed on the walk road). The canary proof then scans them all.
+    Refuses on anything else; reports counts and ids only, never content."""
     import shutil
     import tempfile
     cands = evidence_candidates(repo, head, tip)
     for _path, oid, _digest in suite_mod.binary_blobs_hashed(repo, tip, [head]):
         if oid not in cands:
             raise LaunchRefused(f"binary blob {oid} is not among the walk's new commits' blobs")
-    if not cands:
-        return ()
     if len(cands) > BLOB_MAX_COUNT:
         raise LaunchRefused(f"{len(cands)} evidence blobs, past the walk's cap of {BLOB_MAX_COUNT}")
-    in_head = set(_git_out(repo, "rev-list", "--objects", head).split())
+    in_head = set(_git_out(repo, "rev-list", "--objects", head).split()) if cands else set()
     os.makedirs(work, exist_ok=True)
     tmp = tempfile.mkdtemp(prefix="blobs-", dir=work)            # mode 0700
     try:
         src = os.path.join(tmp, "src")
         os.mkdir(src, 0o700)
+        for commit in _git_out(repo, "rev-list", f"{head}..{tip}").split():
+            _write_private(os.path.join(src, f"msg-{commit}"), _git_out(repo, "log", "-1", "--format=%B", commit,
+                                                                        binary=True))
         total = 0
         for oid in sorted(cands):
             if oid in in_head:
@@ -320,33 +393,18 @@ def admitted_evidence_blobs(suite_mod, repo: str, head: str, tip: str, gitleaks:
             except LaunchRefused as e:
                 raise LaunchRefused(f"evidence blob {oid}: {e}") from None
             total += n
+            if any(b"\0" in v for _k, v in fields):
+                raise LaunchRefused(f"evidence blob {oid}: a gzip header field is binary")
+            meta = (b"MTIME: " + str(int.from_bytes(data[4:8], "little")).encode() + b"\nXFL: "
+                    + str(data[8]).encode() + b"\nOS: " + str(data[9]).encode() + b"\n")
+            _write_private(os.path.join(src, oid + ".header"),
+                           meta + b"".join(k.encode() + b": " + v + b"\n" for k, v in fields))
             del data
-            if fields:
-                if any(b"\0" in v for _k, v in fields):
-                    raise LaunchRefused(f"evidence blob {oid}: a gzip header field is binary")
-                fd = os.open(os.path.join(src, oid + ".header"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-                with os.fdopen(fd, "wb") as fh:
-                    for k, v in fields:
-                        fh.write(k.encode() + b": " + v + b"\n")
-        ignore = os.path.join(tmp, "empty.gitleaksignore")
-        open(ignore, "w").close()
-        report = os.path.join(tmp, "report.json")
-        p = subprocess.run([gitleaks, "dir", "--no-banner", "--redact", "--exit-code", "0", "--ignore-gitleaks-allow",
-                            "--gitleaks-ignore-path", ignore, "--report-format", "json", "--report-path", report, src],
-                           capture_output=True, timeout=900)
-        try:
-            with open(report, encoding="utf-8") as fh:
-                found = json.load(fh)
-            if not isinstance(found, list):
-                raise ValueError
-        except (OSError, ValueError):
-            raise LaunchRefused(f"the decompressed-blob scan wrote no readable report (exit {p.returncode})") \
-                from None
-        if p.returncode != 0:
-            raise LaunchRefused(f"the decompressed-blob scan failed (exit {p.returncode})")
-        hits = sorted({os.path.basename(str(f.get("File", ""))).split(".")[0] for f in found})
-        if hits:
-            raise LaunchRefused(f"gitleaks found items in {len(hits)} decompressed evidence blob(s): {', '.join(hits)}")
+        problems = canary_scan(gitleaks, src, tmp)
+        if problems:
+            names = sorted({n.split(".")[0] for n, _why in problems})
+            raise LaunchRefused(f"the private scan refused {len(names)} item(s) (evidence blobs or commit messages): "
+                                f"{', '.join(names)}")
         return tuple(sorted(cands))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

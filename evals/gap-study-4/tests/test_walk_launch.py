@@ -352,10 +352,12 @@ def l2(mod) -> list:
     return out
 
 
-def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, suite_kw=None, suite=None, gitleaks="gitleaks",
+def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, suite_kw=None, suite=None, gitleaks=None,
               make_commit=None, runner_kw=None, after_runner=None):
     """A Mac records clone at `head`, an athena clone with one walk commit (or make_commit(athena)), the real
     `<head>..main` bundle; fetch through the fake athena with a fake athena_suite (or the real one, `suite`)."""
+    if gitleaks is None:
+        gitleaks = fake_gitleaks(t)
     repo, root, head = make_repo(t)
     athena = os.path.join(t, "athena-repo")
     git("clone", "-q", repo, athena)
@@ -382,6 +384,14 @@ def fetch_rig(mod, t, *, walk_state="exit=0", commit_on_athena=True, suite_kw=No
         got = e
     runner.fake_suite = fake
     return runner, got, repo, head, tip
+
+
+def fake_gitleaks(t):
+    path = os.path.join(t, "fake-gitleaks")
+    if not os.path.exists(path):
+        Path(path).write_text("#!" + sys.executable + "\n" + FAKE_GITLEAKS)
+        os.chmod(path, 0o755)
+    return path
 
 
 def walk_branches(repo):
@@ -598,13 +608,24 @@ def nul_blobs(repo, sha, present):
     return sorted(out)
 
 
-FAKE_GITLEAKS = """import json, os, sys
+FAKE_GITLEAKS = """import json, os, re, sys
 a = sys.argv
 src, report = a[-1], a[a.index("--report-path") + 1]
 honour_allow = "--ignore-gitleaks-allow" not in a          # gitleaks' own rule: an allow comment hides its line
-found = [{"File": os.path.join(src, n), "RuleID": "x"} for n in sorted(os.listdir(src))
-         if any(b"PLANTED" in line and not (honour_allow and b"gitleaks:allow" in line)
-                for line in open(os.path.join(src, n), "rb").read().splitlines())]
+SIGS = (b"\\x1f\\x8b", b"BZh", b"\\x28\\xb5\\x2f\\xfd", b"7z\\xbc\\xaf\\x27\\x1c", b"PK\\x03\\x04")
+TOKEN = re.compile(rb"ghp_[A-Za-z0-9]{36}")
+found = []
+for n in sorted(os.listdir(src)):
+    data = open(os.path.join(src, n), "rb").read()
+    if data.startswith(SIGS) or data[257:262] == b"ustar":      # gitleaks dir skips what looks like an archive
+        continue
+    for i, line in enumerate(data.splitlines(), 1):
+        if honour_allow and b"gitleaks:allow" in line:
+            continue
+        if b"PLANTED" in line:
+            found.append({"File": os.path.join(src, n), "RuleID": "x", "StartLine": i})
+        if TOKEN.search(line):
+            found.append({"File": os.path.join(src, n), "RuleID": "github-pat", "StartLine": i})
 json.dump(found, open(report, "w"))
 """
 
@@ -696,11 +717,10 @@ def l8(mod) -> list:
         except mod.LaunchRefused:
             pass
     with tempfile.TemporaryDirectory() as t:
-        fake = os.path.join(t, "gitleaks")
-        Path(fake).write_text("#!" + sys.executable + "\n" + FAKE_GITLEAKS)
-        os.chmod(fake, 0o755)
+        fake = fake_gitleaks(t)
         suite = FakeSuite([])
         planted = gzip.compress(b"PLANTED synthetic marker")
+        pad = b"x" * 257
         textlike = b"\x1f\x8b\x08\x01" + b"A" * 60                     # git reads it as text: no NUL
         second = gzip.compress(b"another clean record\n")
         cases = {
@@ -719,7 +739,13 @@ def l8(mod) -> list:
                               "evals/gap-study-4/rehearsals/w001/copy.gz": clean}, False),
             "misnamed": ({"evals/gap-study-4/rehearsals/w001/evidence/blobs/" + "0" * 64: clean}, False),
             "text-looking gzip": ({"evals/gap-study-4/rehearsals/w001/notes.txt": textlike}, False),
+            "long FNAME": ((lambda g: {evidence_path("w001", g): g})(make_gz(text, name=b"n" * 5000)), False),
         }
+        for sig, payload in (("gzip", b"\x1f\x8b\x08y"), ("bzip2", b"BZh9"), ("zstd", b"\x28\xb5\x2f\xfd"),
+                             ("7z", b"7z\xbc\xaf\x27\x1c"), ("zip", b"PK\x03\x04"),
+                             ("tar", pad + b"ustar00")):
+            g = gzip.compress(payload + b"\nfill\nPLANTED synthetic\n")
+            cases[f"{sig}-signature payload"] = ({evidence_path("w001", g): g}, False)
         for name, (files, ok) in cases.items():
             d = os.path.join(t, name.replace(" ", "-"))
             os.mkdir(d)
@@ -770,6 +796,24 @@ def l8(mod) -> list:
                 out.append("L8-blobs: a blob from the shipped head's history is admitted")
             except mod.LaunchRefused:
                 pass
+        # MAJOR B: a walk commit's message, tar-signed at offset 257 with a marker after it, and a plain one
+        for why, msg, ok in (("a ustar-signed message", "x" * 257 + "ustar00\nPLANTED synthetic\n", False),
+                             ("a planted message", "walk\nPLANTED synthetic\n", False),
+                             ("a clean message", "Commit one walk; never counted\n", True)):
+            d = os.path.join(t, why.replace(" ", "-"))
+            os.mkdir(d)
+            repo, _, head = make_repo(d)
+            Path(repo, "w.txt").write_text("w\n")
+            git("-C", repo, "add", "w.txt")
+            git("-C", repo, "commit", "-q", "-m", msg)
+            tip = git("-C", repo, "rev-parse", "HEAD").strip()
+            try:
+                mod.admitted_evidence_blobs(suite, repo, head, tip, fake, os.path.join(d, "w"))
+                if not ok:
+                    out.append(f"L8-blobs: {why} passes the walk's message scan")
+            except mod.LaunchRefused as e:
+                if ok:
+                    out.append(f"L8-blobs: {why} is refused: {e}")
     return out
 
 
@@ -860,18 +904,17 @@ WITNESSES = {
     "blob-name-unbound": ((("EVIDENCE_BLOB.fullmatch(p) and p.rsplit(\"/\", 1)[1] == name for p in where",
                             "EVIDENCE_BLOB.fullmatch(p) for p in where"),), "L8-blobs"),
     "blob-head-history-unchecked": ((("            if oid in in_head:", "            if False:"),), "L8-blobs"),
-    "decompressed-findings-ignored": ((("        if hits:\n            raise LaunchRefused(f\"gitleaks found items in",
-                                         "        if False:\n            raise LaunchRefused(f\"gitleaks found items in"),),
+    "decompressed-findings-ignored": ((("        if problems:\n            names = sorted(", "        if False:\n            names = sorted("),),
                                        "L8-blobs"),
-    "header-fields-unscanned": ((("            if fields:\n                if any(", "            if False:\n                if any("),),
-                                 "L8-blobs"),
+    "header-fields-unscanned": ((("_write_private(os.path.join(src, oid + \".header\"),",
+                                  "(lambda *x: None)(os.path.join(src, oid + \".header\"),"),), "L8-blobs"),
     "reserved-bits-admitted": ((("    if flg & GZ_RESERVED:", "    if False:"),), "L8-blobs"),
     "fhcrc-unchecked": ((("        if len(data) < i + 2 or int.from_bytes(data[i:i + 2], \"little\") != zlib.crc32(data[:i]) & 0xFFFF:",
                           "        if len(data) < i + 2:"),), "L8-blobs"),
     "trailer-unchecked": ((("    if int.from_bytes(trailer[:4], \"little\") != crc or", "    if False and int.from_bytes(trailer[:4], \"little\") != crc or"),), "L8-blobs"),
     "text-gzip-skipped": ((("        if head_bytes[:2] == b\"\\x1f\\x8b\" or b\"\\0\" in head_bytes:", "        if b\"\\0\" in head_bytes:"),), "L8-blobs"),
-    "allow-comments-honoured": ((("\"--exit-code\", \"0\", \"--ignore-gitleaks-allow\",\n                            \"--gitleaks-ignore-path\", ignore",
-                                   "\"--exit-code\", \"0\",\n                            \"--gitleaks-ignore-path\", ignore"),), "L8-blobs"),
+    "allow-comments-honoured": ((("\"--exit-code\", \"0\", \"--ignore-gitleaks-allow\",", "\"--exit-code\", \"0\","),),
+                                "L8-blobs"),
     # Named equivalent, no witness: the 1f 8b magic check in gzip_header is the only gate before parsing; dropping it
     # leaves the method byte and zlib's raw inflate to refuse a non-gzip, so only the refusal's words change.
     "back-scan-plain": ((("        n = suite_mod.scan_unpublished(", "        n = 1 or suite_mod.scan_unpublished("),),
@@ -997,7 +1040,7 @@ class TestRealReturnScan(unittest.TestCase):
         data = gzip.compress(json.dumps({"text": f"token = {_fake_token()}"}).encode())
         got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
         self.assertIsInstance(got, wl.LaunchRefused)
-        self.assertIn("decompressed evidence blob", str(got))
+        self.assertIn("private scan refused", str(got))
         self.assertEqual(branches, "")
 
     def test_clean_evidence_gzip_is_fetched(self):
@@ -1024,7 +1067,7 @@ class TestRealReturnScan(unittest.TestCase):
         data = make_gz(json.dumps({"op": "open"}).encode(), **{k: f"token = {_fake_token()}".encode() for k in field})
         got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
         self.assertIsInstance(got, wl.LaunchRefused)
-        self.assertIn("decompressed evidence blob", str(got))
+        self.assertIn("private scan refused", str(got))
         self.assertEqual(branches, "")
 
     def test_token_in_gzip_fextra_refuses(self):
@@ -1041,7 +1084,7 @@ class TestRealReturnScan(unittest.TestCase):
         data = gzip.compress(f"token = {_fake_token()}  # gitleaks:allow\n".encode())
         got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
         self.assertIsInstance(got, wl.LaunchRefused)
-        self.assertIn("decompressed evidence blob", str(got))
+        self.assertIn("private scan refused", str(got))
         self.assertEqual(branches, "")
 
     def test_text_looking_gzip_is_not_skipped(self):
@@ -1049,6 +1092,49 @@ class TestRealReturnScan(unittest.TestCase):
         got, branches = self.case(self.evidence_commit({"evals/gap-study-4/rehearsals/w001/notes.txt": data}))
         self.assertIsInstance(got, wl.LaunchRefused)
         self.assertEqual(branches, "")
+
+    def signature_case(self, prefix: bytes):
+        import gzip
+        data = gzip.compress(prefix + b"\nfill\n" + f"token = {_fake_token()}\n".encode())
+        got, branches = self.case(self.evidence_commit({evidence_path("w001", data): data}))
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertIn("private scan refused", str(got))
+        self.assertEqual(branches, "")
+
+    def test_gzip_signature_payload_refuses(self):
+        self.signature_case(b"\x1f\x8b\x08y")
+
+    def test_bzip2_signature_payload_refuses(self):
+        self.signature_case(b"BZh9")
+
+    def test_zstd_signature_payload_refuses(self):
+        self.signature_case(b"\x28\xb5\x2f\xfd")
+
+    def test_7z_signature_payload_refuses(self):
+        self.signature_case(b"7z\xbc\xaf\x27\x1c")
+
+    def test_zip_signature_payload_refuses(self):
+        self.signature_case(b"PK\x03\x04")
+
+    def test_tar_ustar_at_257_payload_refuses(self):
+        self.signature_case(b"x" * 257 + b"ustar00")
+
+    def message_case(self, pad: int):
+        def commit(a):
+            Path(a, "w.txt").write_text("w\n")
+            git("-C", a, "add", "w.txt")
+            git("-C", a, "commit", "-q", "-m", "x" * pad + "ustar00\n" + f"token = {_fake_token()}\n")
+        got, branches = self.case(commit)
+        self.assertIsInstance(got, wl.LaunchRefused)
+        self.assertEqual(branches, "")
+
+    def test_ustar_at_257_of_the_message_refuses(self):
+        self.message_case(257)
+
+    def test_ustar_at_257_of_athena_suites_message_stream_refuses(self):
+        # athena_suite's stdin stream is `%H%n%B`: 41 bytes (the id and its newline) come first, so ustar at 216 of
+        # the message sits at 257 of that stream, where gitleaks skips it (the closure review's MAJOR B reproduction)
+        self.message_case(257 - 41)
 
     def test_clean_commit_is_fetched(self):
         got, branches = self.case(None)
