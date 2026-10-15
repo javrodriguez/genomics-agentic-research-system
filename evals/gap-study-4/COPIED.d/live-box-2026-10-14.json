@@ -90,6 +90,16 @@
       "path": "tests/fixtures/machine-gate-athena-suite-list-20261015.txt",
       "status": "new",
       "reason": "Lane live-box (glitch-6b's ruling of 15 Oct 2026, item 2): the Mac's real `athena_suite.py list` read 15 Oct 2026 about 00:58 EDT (1202 lines; 844 busy, 55 refused, 9 started without a verdict), each run name and commit masked, kind, launched, verdict and scope words kept; test_machine_gate replays it through the Mac pre-check."
+    },
+    {
+      "path": "box/walk_launch.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-6b's ruling of 15 Oct 2026, item 3): the CP6 walk's launch road, a git bundle out and back. ship (Mac pre-check, pinned history, bundle, verify, gitleaks with only the known public history findings allowed, a neutral athena child, sha256 read back, athena clone at the head), run (umask 0022, reservation absent and the athena gate open before `athena-reserve hold`, the walk under the hold with the gate's three variables, nohup with pid and exit), status, fetch (new commits only, sha256, gitleaks with no allowance, then the Mac records clone). Pushes nothing; places no login."
+    },
+    {
+      "path": "tests/test_walk_launch.py",
+      "status": "new",
+      "reason": "Lane live-box: the launch road on fakes (real local git on temporary repositories, a fake athena, a fake gitleaks): L1 ship, L2 run, L3 fetch, L4 bounds (no push, no login path, neutral child, the known findings' commits in this history), seven witnesses."
     }
   ]
 }
